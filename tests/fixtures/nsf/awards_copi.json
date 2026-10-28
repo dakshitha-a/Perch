@@ -1,0 +1,239 @@
+{
+ "response": {
+  "award": [
+   {
+    "abstractText": "Michael L. Klein at Temple University is supported by the Chemical Theory, Models and Computational Methods program in research coupling novel computational algorithms and methods with leadership-class HPC resources to understand membrane fusion, a key process in viral infection and neurotransmitter release at the synapse. In the latter, fusion proteins enhance the intrinsic slow rate of vesicle-membrane fusion when a 30-50 nm vesicle delivers neurotransmitter to the plasma membrane. The long-term aim is to elucidate the mechanistic role played fusion proteins. The size, time-scale, and complexity of the fusion process demands the use of coarse grain simulation methodologies such as those developed by the PI's group for lipid-vesicle self-assembly and related phenomena exhibited by surfactants and macromolecules. Synaptic vesicles are of the size just now accessible with molecular dynamics simulation on state-of-the-art hardware. The immediate challenge is to handle the fusion proteins and then build a complete simulation package - within the massively parallel LAMMPS simulation code - to eventually explore the complete fusion process using models calibrated to realistic simulations of the components. The proposal involves an international collaboration to further elaborate the needed models for charged lipids and their interaction with proteins and counter ions. The closely related process of vesicle-vesicle fusion is broadly relevant to research in surfactant science and nanotechnology. Thus, success will impact fundamental and applied science ranging from chemistry and biology to nanotechnology. \r\n\r\nThe proposed research on using state of the art computer simulation to model key biological processes will be carried out in the Institute for Computational Molecular Science (ICMS). Since its creation in 2009, ICMS has spawned new junior faculty hires with an interest in computation. ICMS already offers informal classes on parallel programming and HPC tools, and classes on molecular modeling, which have impacted education -- faculty, post-docs, grad students and undergraduates in Chemistry, Biology, Physics, Computer Science, and Mathematics take advantage of the expertise residing in ICMS. The long-term goal is to develop these informal offerings into formal undergraduate courses and masters degree programs. ICMS has already embraced significant outreach to the public and society at large (Philadelphia Science Fair and the Franklin Institute). Going forward, it will integrate its HR development efforts with existing programs such as TU-teach, which benefit undergraduates and local high school science teachers. ICMS will continue to host extended visits of scientists from around the World plus graduate students from other labs who can enjoy the intellectual diversity of ICMS research -- chemistry, physics, materials science, pharmacology, and neuroscience. ICMS graduates have been hired by industry and into tenure track positions in academe, which attests to the important of its societal impact.",
+    "activeAwd": "false",
+    "agency": "NSF",
+    "awardAgencyCode": "4900",
+    "awardee": "TEMPLE UNIVERSITY-OF THE COMMONWEALTH SYSTEM OF HIGHER EDUCATION",
+    "awardeeAddress": "1805 N BROAD ST",
+    "awardeeCity": "PHILADELPHIA",
+    "awardeeCountryCode": "US",
+    "awardeeDistrict": "02",
+    "awardeeDistrictCode": "PA02",
+    "awardeeName": "Temple University",
+    "awardeePhone": "[redacted]",
+    "awardeeStateCode": "PA",
+    "awardeeZipCode": "191226104",
+    "cfdaNumber": "47.049",
+    "coPDPI": [
+     "Axel Kohlmeyer [email redacted]",
+     "Giacomo Fiorin [email redacted]"
+    ],
+    "date": "05/29/2012",
+    "dirAbbr": "MPS",
+    "divAbbr": "CHE",
+    "estimatedTotalAmt": "405999",
+    "expDate": "06/30/2016",
+    "fundAgencyCode": "4900",
+    "fundProgramName": "Chem Thry, Mdls & Cmptnl Mthds",
+    "fundsObligated": [
+     "FY 2012 = $405,999.00"
+    ],
+    "fundsObligatedAmt": "405999",
+    "histAwd": "false",
+    "id": "1212416",
+    "initAmendmentDate": "05/29/2012",
+    "jrnl": [
+     {
+      "artPageNum": "9668--967",
+      "artTitl": "Counterion-Assisted Cation Transport in a Biological Calcium Channel",
+      "auth": "Dong, H. and Klein, M. L. and Fiorin, G.",
+      "dgtlObjId": "10.1021/jp5059897",
+      "jrnlTitl": "Journal of Physical Chemistry B",
+      "jrnlVol": "118",
+      "jrnlYr": "2014"
+     },
+     {
+      "artTitl": "Molecular dynamics simulations of cholesterol-rich membranes using a coarse-grained force field for cyclic alkanes",
+      "auth": "MacDermaid, C. M. and Kashyap, H. K. and DeVane, R. H. and Shinoda, W. and Klauda, J. B. and Klein, M. L. and Fiorin, G.",
+      "dgtlObjId": "10.1063/1.4937153",
+      "jrnlTitl": "Journal of Chemical Physics",
+      "jrnlVol": "143",
+      "jrnlYr": "2015"
+     },
+     {
+      "artPageNum": "12644--12",
+      "artTitl": "Proton Release from the Histidine-Tetrad in the M2 Channel of the Influenza A Virus",
+      "auth": "Dong, H. and Fiorin, G. and DeGrado, W. F. and Klein, M. L.",
+      "dgtlObjId": "10.1021/jp5102225",
+      "jrnlTitl": "Journal of Physical Chemistry B",
+      "jrnlVol": "118",
+      "jrnlYr": "2014"
+     },
+     {
+      "artPageNum": "3345--336",
+      "artTitl": "Using collective variables to drive molecular dynamics simulations",
+      "auth": "Fiorin, G. and Klein, M. L. and Henin, J.",
+      "dgtlObjId": "10.1080/00268976.2013.813594",
+      "jrnlTitl": "Molecular Physics",
+      "jrnlVol": "111",
+      "jrnlYr": "2013"
+     },
+     {
+      "artPageNum": "215",
+      "artTitl": "Effective interaction between small unilamellar vesicles as probed by coarse-grained molecular dynamics simulations.",
+      "auth": "Wataru Shinoda, Michael L. Klein",
+      "dgtlObjId": "10.1515/pac-2014-5023",
+      "jrnlTitl": "Pure and Applied Chemistry",
+      "jrnlVol": "86",
+      "jrnlYr": "2014"
+     },
+     {
+      "artPageNum": "22D526",
+      "artTitl": "Dehydration of multilamellar fatty acid membranes: Towards a computational model of the stratum corneum",
+      "auth": "Christopher M. MacDermaid1, Russell H. DeVane, Michael L. Klein, and Giacomo Fiorin",
+      "dgtlObjId": "10.1063/1.4902363",
+      "jrnlTitl": "Journal of Chemical Physics",
+      "jrnlVol": "141",
+      "jrnlYr": "2014"
+     },
+     {
+      "artPageNum": "22D526",
+      "artTitl": "Dehydration of multilamellar fatty acid membranes: Towards a computational model of the stratum corneum",
+      "auth": "MacDermaid, C. M. and DeVane, R. H. and Klein, M. L. and Fiorin, G.",
+      "dgtlObjId": "10.1063/1.4902363",
+      "jrnlTitl": "Journal of Chemical Physics",
+      "jrnlVol": "141",
+      "jrnlYr": "2014"
+     },
+     {
+      "artPageNum": "in press",
+      "artTitl": "Using collective variables to drive molecular dynamics simulations",
+      "auth": "Giacomo Fiorin, Michael Klein, J\u00e9r\u00f4me H\u00e9nin",
+      "dgtlObjId": "10.1080/00268976.2013.813594",
+      "jrnlTitl": "Molecular Physics",
+      "jrnlVol": "in pres",
+      "jrnlYr": "2013"
+     },
+     {
+      "artPageNum": "9668",
+      "artTitl": "Counterion-Assisted Cation Transport in a Biological Calcium Channel",
+      "auth": "Hao Dong , Michael L. Klein, and Giacomo Fiorin",
+      "dgtlObjId": "10.1021/jp5059897",
+      "jrnlTitl": "Journal of Physical Chemistry B",
+      "jrnlVol": "118",
+      "jrnlYr": "2014"
+     },
+     {
+      "artPageNum": "12644",
+      "artTitl": "Proton Release from the Histidine-Tetrad in the M2 Channel of the Influenza A Virus",
+      "auth": "Hao Dong, Giacomo Fiorin, William F. DeGrado, and Michael L. Klein",
+      "dgtlObjId": "10.1021/jp5102225",
+      "jrnlTitl": "Journal of Physical Chemistry B",
+      "jrnlVol": "118",
+      "jrnlYr": "2014"
+     },
+     {
+      "artPageNum": "1112--111",
+      "artTitl": "TopoGromacs: Automated Topology Conversion from CHARMM to GROMACS within VMD",
+      "auth": "Vermaas, J. V. and Hardy, D. J. and Stone, J. E. and Tajkhorshid, E. and Kohlmeyer, A.",
+      "dgtlObjId": "10.1021/acs.jcim.6b00103",
+      "jrnlTitl": "Journal of Chemical Information and Modeling",
+      "jrnlVol": "56",
+      "jrnlYr": "2016"
+     },
+     {
+      "artPageNum": "3595--359",
+      "artTitl": "How Sensitive is the Amide?I Vibration of the Polypeptide Backbone to Electric Fields?",
+      "auth": "Oh, Kwang-Im and Fiorin, Giacomo and Gai, Feng",
+      "dgtlObjId": "10.1002/cphc.201500777",
+      "jrnlTitl": "ChemPhysChem",
+      "jrnlVol": "16",
+      "jrnlYr": "2015"
+     },
+     {
+      "artPageNum": "14260--14",
+      "artTitl": "High-resolution structures of the M2 channel from influenza A virus reveal dynamic pathways for proton stabilization and transduction",
+      "auth": "Thomaston, J. L. and Alfonso-Prieto, M. and Woldeyes, R. A. and Fraser, J. S. and Klein, M. L. and Fiorin, G. and DeGrado, W. F.",
+      "dgtlObjId": "10.1073/pnas.1518493112",
+      "jrnlTitl": "Proceedings of the National Academy of Sciences of the United States of America",
+      "jrnlVol": "112",
+      "jrnlYr": "2015"
+     },
+     {
+      "artPageNum": "215--222",
+      "artTitl": "Effective interaction between small unilamellar vesicles as probed by coarse-grained molecular dynamics simulations",
+      "auth": "Shinoda, W. and Klein, M. L.",
+      "dgtlObjId": "10.1515/pac-2014-5023",
+      "jrnlTitl": "Pure and Applied Chemistry",
+      "jrnlVol": "86",
+      "jrnlYr": "2014"
+     },
+     {
+      "artPageNum": "243112",
+      "artTitl": "Coarse-grained molecular dynamics study of membrane fusion: Curvature effects on free energy barriers along the stalk mechanism",
+      "auth": "Kawamoto, S. and Klein, M. L. and Shinoda, W.",
+      "dgtlObjId": "10.1063/1.4933087",
+      "jrnlTitl": "Journal of Chemical Physics",
+      "jrnlVol": "143",
+      "jrnlYr": "2015"
+     }
+    ],
+    "latestAmendmentDate": "05/29/2012",
+    "managingPec": "688100",
+    "orgCodeDir": "03000000",
+    "orgCodeDiv": "03090000",
+    "orgLongName": "Directorate for Mathematical and Physical Sciences",
+    "orgLongName2": "Division Of Chemistry",
+    "orgUrl": "http://www.nsf.gov/div/index.jsp?div=che",
+    "parentUeiNumber": "QD4MGHFDJKU1",
+    "pdPIName": "Michael L Klein",
+    "perfAddress": "1900 N. 12th Street",
+    "perfCity": "Philadelphia",
+    "perfCountryCode": "US",
+    "perfDistrict": "02",
+    "perfDistrictCode": "PA02",
+    "perfLocation": "Temple University",
+    "perfStateCode": "PA",
+    "perfZipCode": "191226078",
+    "pi": [
+     "Michael L Klein [email redacted]"
+    ],
+    "piEmail": "[redacted]",
+    "piFirstName": "Michael",
+    "piId": "269834179",
+    "piLastName": "Klein",
+    "piMiddeInitial": "L",
+    "poEmail": "[redacted]",
+    "poName": "Evelyn Goldfield",
+    "poPhone": "[redacted]",
+    "primaryProgram": [
+     "01001213DB NSF RESEARCH & RELATED ACTIVIT"
+    ],
+    "progEleCode": "688100",
+    "program": "BIOCOMPLEXITY, BIOLOGICAL CHEMISTRY, CyberInfra Frmwrk 21st (CIF21), COMPLEXITY, SINGLE DIVISION/UNIVERSITY, HIGH PERFORMANCE COMPUTING SYSTEMS, ADVANCED SOFTWARE TECH & ALGOR, COMPUTATIONAL SCIENCE & ENGING, ADVANCED MATERIALS & PROCESSING PROGRAM, BIOTECHNOLOGY, HIGH PERFORMANCE COMPUTING & COMM, MANUFACTURING",
+    "progRefCode": "1366, 1982, 7433, 7722, 9161, 9215, 9216, 9263, AMPP, BIOT, HPCC, MANU",
+    "projectOutComesReport": "<div class=\"porColContainerWBG\">\n<div class=\"porContentCol\"><p>This award made possible the development of computational methods to study the dynamics of biological membranes at the molecular level, and then use these methods to shed light on the physical mechanism involved in the fusion between two membranes.&nbsp; The accurate technique called, molecular dynamics (MD) simulation is now routinely used to study the chemical and mechanical properties of individual proteins (comprised of tens of thousands of atoms).&nbsp; However, the same has not been achieved for aggregates of biological molecules such as those comprising self-assembling lipid membranes, which are the building blocks of cell walls. Here, the number of lipids contained in even a small portion with dimensions one-micron by one-micron can exceeds one million, which in turn implies more than 100 million atoms.</p>\n<p>Throughout the duration of this project, we performed MD simulations aimed to understand the mechanism involved in the fusion of two model lipid membranes. In so doing, we have had to develop new methods and implemented computer software, which has been made available to the research community at large.&nbsp; Our efforts have enabled MD simulations to provide quantitative results for other challenging problems.</p>\n<p>Specifically, we have adapted a software module previously developed for the study of small proteins for its use on large model systems (many millions of atoms), and augmented its functionality with new features dedicated to the study of lipid membranes.&nbsp; We also extended our \"coarse-grained\" MD simulation method, which alleviates the cost of large simulations by decreasing the model's resolution: previously, the method was limited to the study of synthetic membranes composed by a single lipid type (i.e., phosphocholine-based lipids).&nbsp; We extended the method to other lipid types and particularly cholesterol, allowing a realistic description of biological membranes as lipid mixtures.&nbsp; The method performs exceptionally well at retaining the accuracy of atomistic-resolution models for a small fraction of the computational cost, thus making accurate simulations of biological membranes affordable.&nbsp; These methods have already been used in several studies performed not only by us, but also by other labs.</p>\n<p>Importantly, we have carried out tests on the ability of the above-mentioned methods to describe realistic mechanisms of membrane fusion.&nbsp; In a simulation of two vesicles whose membranes are both composed by a mixture of lipid types, we showed that the mechanism of fusion strives to minimize the energy of the two vesicles' membranes not only by limiting their overall curvature, but also through the selective partitioning of lipids (phosphoetanolamine-based) that favor local curvature at the fusion point.</p>\n<p>In addition, we studied an example of membrane fusion where the mechanism favors a quick fusion process, through the action of lipids that favor a spontaneous curvature (ceramide lipids) of the entire membrane.&nbsp; This process is at the basis of the formation of the lipid matrix of mammalian skin, whereby multiple lipid membranes fuse into a thick multilayer that is able to seal the gap between two adjacent cells of the epidermis.&nbsp; Our model predicts that the multi-layered, fused structure is also preferred at the slightly acidic conditions characteristic of outer human skin.</p>\n<p>Importantly, the methods above described and their applications have already been published or in the process of being published in peer-reviewed journals.&nbsp; All developed software has been released under open-source licenses.</p><br>\n<p>\n\t\t\t\t      \tLast Modified: 09/14/2016<br>\n\t\t\t\t\tModified by: Giacomo&nbsp;Fiorin</p>\n</div>\n<div class=\"porSideCol\">\n<div class=\"each-gallery\">\n<div class=\"galContent\" id=\"gallery0\">\n<div class=\"photoCount\" id=\"photoCount0\">\n\t\t\t\t\t\t\t\t\tImages (<span id=\"selectedPhoto0\">1</span> of <span class=\"totalNumber\"></span>)\t\t\n\t\t\t\t\t\t\t\t</div>\n<div class=\"galControls\" id=\"controls0\"></div>\n<div class=\"galSlideshow\" id=\"slideshow0\"></div>\n<div class=\"galEmbox\" id=\"embox\">\n<div class=\"image-title\"></div>\n</div>\n</div>\n<div class=\"galNavigation\" id=\"navigation0\">\n<ul class=\"thumbs\" id=\"thumbs0\">\n<li>\n<a href=\"/por/images/Reports/POR/2016/1212416/1212416_10176275_1473729389429_fusion_snapshot--rgov-214x142.jpg\" original=\"/por/images/Reports/POR/2016/1212416/1212416_10176275_1473729389429_fusion_snapshot--rgov-800width.jpg\" title=\"Pre-fusion snapshot.\"><img src=\"/por/images/Reports/POR/2016/1212416/1212416_10176275_1473729389429_fusion_snapshot--rgov-66x44.jpg\" alt=\"Pre-fusion snapshot.\"></a>\n<div class=\"imageCaptionContainer\">\n<div class=\"imageCaption\">Molecular dynamics snapshot of two membranes during a simulation of membrane fusion (sticks = phospholipid molecules, pink spheres = cholesterol molecules).</div>\n<div class=\"imageCredit\">Giacomo Fiorin</div>\n<div class=\"imagePermisssions\">Copyrighted</div>\n<div class=\"imageSubmitted\">Giacomo&nbsp;Fiorin</div>\n<div class=\"imageTitle\">Pre-fusion snapshot.</div>\n</div>\n</li>\n<li>\n<a href=\"/por/images/Reports/POR/2016/1212416/1212416_10176275_1473729544620_kawamoto15-pmf--rgov-214x142.jpg\" original=\"/por/images/Reports/POR/2016/1212416/1212416_10176275_1473729544620_kawamoto15-pmf--rgov-800width.jpg\" title=\"Free energy profiles of membrane fusion\"><img src=\"/por/images/Reports/POR/2016/1212416/1212416_10176275_1473729544620_kawamoto15-pmf--rgov-66x44.jpg\" alt=\"Free energy profiles of membrane fusion\"></a>\n<div class=\"imageCaptionContainer\">\n<div class=\"imageCaption\">Free energy profiles (cost of the fusion process as a function of its progression).</div>\n<div class=\"imageCredit\">Shuhei Kawamoto</div>\n<div class=\"imagePermisssions\">Copyrighted</div>\n<div class=\"imageSubmitted\">Giacomo&nbsp;Fiorin</div>\n<div class=\"imageTitle\">Free energy profiles of membrane fusion</div>\n</div>\n</li>\n</ul>\n</div>\n</div>\n</div>\n</div>",
+    "publicAccessMandate": "0",
+    "publicationResearch": [
+     "Journal of Physical Chemistry B~2014~118~Dong, H. and Klein, M. L. and Fiorin, G.~10.1021/jp5059897~9668--967~Counterion-Assisted Cation Transport in a Biological Calcium Channel~2016-09-14 12:28:27.56",
+     "Journal of Chemical Physics~2015~143~MacDermaid, C. M. and Kashyap, H. K. and DeVane, R. H. and Shinoda, W. and Klauda, J. B. and Klein, M. L. and Fiorin, G.~10.1063/1.4937153~Molecular dynamics simulations of cholesterol-rich membranes using a coarse-grained force field for cyclic alkanes~2016-09-14 12:28:27.576",
+     "Journal of Physical Chemistry B~2014~118~Dong, H. and Fiorin, G. and DeGrado, W. F. and Klein, M. L.~10.1021/jp5102225~12644--12~Proton Release from the Histidine-Tetrad in the M2 Channel of the Influenza A Virus~2016-09-14 12:28:27.55",
+     "Molecular Physics~2013~111~Fiorin, G. and Klein, M. L. and Henin, J.~10.1080/00268976.2013.813594~3345--336~Using collective variables to drive molecular dynamics simulations~2016-09-14 12:28:27.566",
+     "Pure and Applied Chemistry~2014~86~Wataru Shinoda, Michael L. Klein~10.1515/pac-2014-5023~215~Effective interaction between small unilamellar vesicles as probed by coarse-grained molecular dynamics simulations.~",
+     "Journal of Chemical Physics~2014~141~Christopher M. MacDermaid1, Russell H. DeVane, Michael L. Klein, and Giacomo Fiorin~10.1063/1.4902363~22D526~Dehydration of multilamellar fatty acid membranes: Towards a computational model of the stratum corneum~",
+     "Journal of Chemical Physics~2014~141~MacDermaid, C. M. and DeVane, R. H. and Klein, M. L. and Fiorin, G.~10.1063/1.4902363~22D526~Dehydration of multilamellar fatty acid membranes: Towards a computational model of the stratum corneum~2016-09-14 12:28:27.576",
+     "Molecular Physics~2013~in pres~Giacomo Fiorin, Michael Klein, J\u00e9r\u00f4me H\u00e9nin~10.1080/00268976.2013.813594~in press~Using collective variables to drive molecular dynamics simulations~",
+     "Journal of Physical Chemistry B~2014~118~Hao Dong , Michael L. Klein, and Giacomo Fiorin~10.1021/jp5059897~9668~Counterion-Assisted Cation Transport in a Biological Calcium Channel~",
+     "Journal of Physical Chemistry B~2014~118~Hao Dong, Giacomo Fiorin, William F. DeGrado, and Michael L. Klein~10.1021/jp5102225~12644~Proton Release from the Histidine-Tetrad in the M2 Channel of the Influenza A Virus~",
+     "Journal of Chemical Information and Modeling~2016~56~Vermaas, J. V. and Hardy, D. J. and Stone, J. E. and Tajkhorshid, E. and Kohlmeyer, A.~10.1021/acs.jcim.6b00103~1112--111~TopoGromacs: Automated Topology Conversion from CHARMM to GROMACS within VMD~2016-09-14 12:28:27.6",
+     "ChemPhysChem~2015~16~Oh, Kwang-Im and Fiorin, Giacomo and Gai, Feng~10.1002/cphc.201500777~3595--359~How Sensitive is the Amide?I Vibration of the Polypeptide Backbone to Electric Fields?~2016-09-14 12:28:27.586",
+     "Proceedings of the National Academy of Sciences of the United States of America~2015~112~Thomaston, J. L. and Alfonso-Prieto, M. and Woldeyes, R. A. and Fraser, J. S. and Klein, M. L. and Fiorin, G. and DeGrado, W. F.~10.1073/pnas.1518493112~14260--14~High-resolution structures of the M2 channel from influenza A virus reveal dynamic pathways for proton stabilization and transduction~2016-09-14 12:28:27.596",
+     "Pure and Applied Chemistry~2014~86~Shinoda, W. and Klein, M. L.~10.1515/pac-2014-5023~215--222~Effective interaction between small unilamellar vesicles as probed by coarse-grained molecular dynamics simulations~2016-09-14 12:28:27.59",
+     "Journal of Chemical Physics~2015~143~Kawamoto, S. and Klein, M. L. and Shinoda, W.~10.1063/1.4933087~243112~Coarse-grained molecular dynamics study of membrane fusion: Curvature effects on free energy barriers along the stalk mechanism~2016-09-14 12:28:27.57"
+    ],
+    "startDate": "07/01/2012",
+    "title": "Building Computational Models to Probe Membrane Fusion",
+    "transType": "Standard Grant",
+    "ueiNumber": "QD4MGHFDJKU1"
+   }
+  ],
+  "metadata": {
+   "offset": 0,
+   "rpp": 25,
+   "totalCount": 1
+  }
+ }
+}
