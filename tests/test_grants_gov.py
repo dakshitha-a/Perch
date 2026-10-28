@@ -76,3 +76,11 @@ def test_error_code_raises():
             assert "bad" in str(e)
         else:
             raise AssertionError("expected RuntimeError")
+
+
+def test_archived_record_and_parent_activity_code():
+    o = gg.parse_opportunity(load("fetch_opportunity_archived.json")["data"], T, "archived")
+    assert o.opportunity_number == "PA-11-260"
+    assert o.open_date == date(2011, 7, 22) and o.close_date == date(2013, 9, 7)
+    assert o.activity_code == "R01"  # from "(Parent R01)"
+    assert o.description

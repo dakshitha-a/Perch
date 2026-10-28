@@ -35,7 +35,8 @@ CONTACT_FIELDS = ("agencyContactEmail", "agencyContactPhone", "agencyContactName
                   "agencyContactDesc", "agencyContactEmailDesc", "agencyPhone")
 Json = dict[str, "Json"] | list["Json"] | str | int | float | bool | None
 # NIH-style activity codes in a title, e.g. "(R01 Clinical Trial Required)".
-ACTIVITY_RE = re.compile(r"\(([A-Z]\d{2})\b")
+ACTIVITY_RE = re.compile(r"\((?:Parent )?([A-Z]\d{2})\b")
+EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 
 
 def _date(value: str | None) -> date | None:
@@ -67,7 +68,10 @@ def _text(value: str | None) -> str | None:
 
 
 def redact_contacts(data: Json) -> Json:
-    """Replace contact fields anywhere in a response (they also appear in history)."""
+    """Replace contact fields anywhere in a response (they also appear in history),
+    and any email address inside other text."""
+    if isinstance(data, str):
+        return EMAIL_RE.sub("[email redacted]", data)
     if isinstance(data, dict):
         for k, v in data.items():
             data[k] = "[redacted]" if k in CONTACT_FIELDS and v else redact_contacts(v)
