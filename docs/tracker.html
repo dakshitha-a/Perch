@@ -108,39 +108,29 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S2</code> <span class="badge s-in-progress">in progress</span><span>2/16 sessions done</span></div>
+<div class="at-a-glance"><code>S3</code> <span class="badge s-todo">todo</span><span>3/16 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
-<a id="tab-archive" href="#archive">Archive<span class="count">2</span></a>
+<a id="tab-archive" href="#archive">Archive<span class="count">3</span></a>
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
-<div id="s2"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S2 · Award sources and the award horizon</h1><span class="badge s-in-progress">in progress</span></div>
-<div class="meta">Started 2026-10-28 19:34 EDT</div></div>
-<p>Goal: public federal awards per researcher, with dates, and the field that makes the back-test possible. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="2 of 3 tasks done"><div class="counts"><span><b>2/3</b>tasks done</span><span class="s-done"><b>2</b>done</span><span class="s-in-progress"><b>1</b>in progress</span></div><div class="bar" role="img" aria-label="2 of 3 tasks done"><span class="s-done" style="width:66.67%" title="done: 2"></span><span class="s-in-progress" style="width:33.33%" title="in progress: 1"></span></div></section>
-<div class="panel scroll"><table>
-<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
-<tbody>
-<tr><td>1</td><td><code>perch/sources/nih_reporter.py</code>: Temple awards by organisation; project start and end; the funding-opportunity-number field under its real name. Live-verified fixture; SOURCES.md row</td><td><span class="badge s-done">done</span></td><td class="mono">6d24dbe</td><td>Field is <code>opportunity_number</code>; empty on most records before FY 2012. End dates move between fiscal years. Live: Skorski 13 projects, Persidsky 11, Gardiner 5.</td></tr>
-<tr><td>2</td><td><code>perch/sources/nsf.py</code>: Temple awards with expiration dates. Live-verified fixture; SOURCES.md row</td><td><span class="badge s-done">done</span></td><td class="mono">7101f88</td><td>Lead and co-PI queries. Responses include contact emails and phones; parser ignores them, fixtures redacted. The 3 NIH PIs have no Temple NSF awards. 36 tests green.</td></tr>
-<tr><td>3</td><td>Link awards to researchers by name, with a manual override table in <code>data/overrides/</code>; <code>perch profile &lt;author_id&gt;</code> prints key papers, awards and the public award horizon</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td>Override file location depends on Q1</td></tr>
-</tbody></table></div>
-<h2>Definition of done</h2>
-<ul class="panel done-list"><li><code>perch profile</code> works for 3 PIs with awards.</li><li>The award horizon is correct by hand check.</li><li>The NIH RePORTER and NSF rows in <code>docs/SOURCES.md</code> are honest.</li><li><code>make test</code> is green.</li></ul>
+<div id="s3"><div class="eyebrow">Current session</div>
+<div class="title-row"><h1>S3 · Opportunities</h1><span class="badge s-todo">todo</span></div>
+<div class="meta">Not started</div></div>
+<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S3.md</code> when the session starts.</div>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="2 of 16 sessions done"><div class="counts"><span><b>2/16</b>sessions done</span><span class="s-done"><b>2</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>13</b>todo</span></div><div class="bar" role="img" aria-label="2 of 16 sessions done"><span class="s-done" style="width:12.50%" title="done: 2"></span><span class="s-in-progress" style="width:6.25%" title="in progress: 1"></span><span class="s-todo" style="width:81.25%" title="todo: 13"></span></div></section>
+<section class="panel summary" aria-label="3 of 16 sessions done"><div class="counts"><span><b>3/16</b>sessions done</span><span class="s-done"><b>3</b>done</span><span class="s-todo"><b>13</b>todo</span></div><div class="bar" role="img" aria-label="3 of 16 sessions done"><span class="s-done" style="width:18.75%" title="done: 3"></span><span class="s-todo" style="width:81.25%" title="todo: 13"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
 <tr class="is-finished"><td><a href="#s0">S0</a></td><td>Repository</td><td><span class="badge s-done">done</span></td><td>2026-10-28 19:02 EDT</td><td>2026-10-28 19:03 EDT</td><td class="mono">928a148</td><td>Private repo dakshitha-a/perch on <code>main</code>. uv 0.13.6, Python 3.12.16, ruff 0.17.3, pytest 9.2.0 (pinned). <code>make test</code>: 3 passed. demo/bench/package are stubs. Q1 open (<code>data/</code> gitignore).</td></tr>
 <tr class="is-finished"><td><a href="#s1">S1</a></td><td>Schemas, store, OpenAlex</td><td><span class="badge s-done">done</span></td><td>2026-10-28 19:14 EDT</td><td>2026-10-28 19:31 EDT</td><td class="mono">31b3a56</td><td>28 tests green. Live: 1 public Temple PI resolved by name and ORCID; 35 works stored with provenance. OpenAlex meters a USD budget per day (Q2: API key). Tracker redesigned to Current, Master and Archive views.</td></tr>
-<tr class="is-current"><td><a href="#s2">S2</a></td><td>Award sources, award horizon</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-28 19:34 EDT</td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S3</td><td>Opportunities</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-finished"><td><a href="#s2">S2</a></td><td>Award sources, award horizon</td><td><span class="badge s-done">done</span></td><td>2026-10-28 19:34 EDT</td><td>2026-10-28 19:44 EDT</td><td class="mono">6ea2955</td><td>44 tests green. <code>perch profile</code> live for 3 PIs (13, 12 and 5 awards); horizons hand-checked against RePORTER. NIH field is <code>opportunity_number</code>, mostly empty before FY 2012. NSF has no opportunity field and returns contact details (redacted).</td></tr>
+<tr class="is-current"><td>S3</td><td>Opportunities</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S4</td><td>Route A, deterministic</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S5</td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S6</td><td>API</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
@@ -177,7 +167,18 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-archive" class="view" data-view="archive" hidden>
 <div><div class="eyebrow">Finished sessions</div><h1>Archive</h1></div>
-<div><details id="s1"><summary><span><span class="sid">S1</span> <span class="stitle">Schemas, store, OpenAlex</span></span><span></span><span class="badge s-done">done</span><span class="smeta">5/5 tasks done · finished 2026-10-28 19:31 EDT · commit <code>31b3a56</code></span></summary><div class="inner"><p>Goal: resolve a Temple researcher and pull their public works into a store with provenance. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<div><details id="s2"><summary><span><span class="sid">S2</span> <span class="stitle">Award sources and the award horizon</span></span><span></span><span class="badge s-done">done</span><span class="smeta">3/3 tasks done · finished 2026-10-28 19:44 EDT · commit <code>6ea2955</code></span></summary><div class="inner"><p>Goal: public federal awards per researcher, with dates, and the field that makes the back-test possible. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="3 of 3 tasks done"><div class="counts"><span><b>3/3</b>tasks done</span><span class="s-done"><b>3</b>done</span></div><div class="bar" role="img" aria-label="3 of 3 tasks done"><span class="s-done" style="width:100.00%" title="done: 3"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>perch/sources/nih_reporter.py</code>: Temple awards by organisation; project start and end; the funding-opportunity-number field under its real name. Live-verified fixture; SOURCES.md row</td><td><span class="badge s-done">done</span></td><td class="mono">6d24dbe</td><td>Field is <code>opportunity_number</code>; empty on most records before FY 2012. End dates move between fiscal years. Live: Skorski 13 projects, Persidsky 11, Gardiner 5.</td></tr>
+<tr><td>2</td><td><code>perch/sources/nsf.py</code>: Temple awards with expiration dates. Live-verified fixture; SOURCES.md row</td><td><span class="badge s-done">done</span></td><td class="mono">7101f88</td><td>Lead and co-PI queries. Responses include contact emails and phones; parser ignores them, fixtures redacted. The 3 NIH PIs have no Temple NSF awards. 36 tests green.</td></tr>
+<tr><td>3</td><td>Link awards to researchers by name, with a manual override table in <code>data/overrides/</code>; <code>perch profile &lt;author_id&gt;</code> prints key papers, awards and the public award horizon</td><td><span class="badge s-done">done</span></td><td class="mono">6ea2955</td><td>Live for 3 PIs: horizons Skorski 2027-05-31, Persidsky 2028-05-31, Gardiner 2027-05-31; all three match an independent RePORTER query sorted by end date. <code>data/overrides/</code> is committed via a narrow gitignore exception. Fixes found on the way: OpenAlex cursor paging needs a key, author lists truncate near 100, AHRQ is not NIH, consortium papers skipped as key papers. 44 tests green.</td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li><code>perch profile</code> works for 3 PIs with awards.</li><li>The award horizon is correct by hand check.</li><li>The NIH RePORTER and NSF rows in <code>docs/SOURCES.md</code> are honest.</li><li><code>make test</code> is green.</li></ul></div></details>
+<details id="s1"><summary><span><span class="sid">S1</span> <span class="stitle">Schemas, store, OpenAlex</span></span><span></span><span class="badge s-done">done</span><span class="smeta">5/5 tasks done · finished 2026-10-28 19:31 EDT · commit <code>31b3a56</code></span></summary><div class="inner"><p>Goal: resolve a Temple researcher and pull their public works into a store with provenance. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
 <section class="panel summary" aria-label="5 of 5 tasks done"><div class="counts"><span><b>5/5</b>tasks done</span><span class="s-done"><b>5</b>done</span></div><div class="bar" role="img" aria-label="5 of 5 tasks done"><span class="s-done" style="width:100.00%" title="done: 5"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>

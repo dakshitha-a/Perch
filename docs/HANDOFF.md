@@ -3,35 +3,35 @@
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
 ## Last session
-- Session: S1 — Schemas, store, OpenAlex
+- Session: S2 — Award sources and the award horizon
 - Status (done / continued): done
-- Last commit: 31b3a56 (task work); the ritual commit follows it on `main`
+- Last commit: 6ea2955 (task work); the ritual commit follows it on `main`
 
 ## What exists now (one line per subsystem)
-- Schemas: `perch/schemas.py`. Researcher, Work, Award, Opportunity, Organisation, Lead, Brief. Provenance fields are required; naive `fetched_at` and unknown fields are rejected.
-- Store: `perch/store/base.py` (Repository interface) and `perch/store/sqlite.py` (one JSON table keyed by kind and id, provenance columns, `works_by_author`).
-- OpenAlex: `perch/sources/openalex.py`. Resolve by name at Temple (up to 3) or by ORCID; works with rebuilt abstracts, topics, referenced works; cursor paging; retries on 429 and 5xx.
-- CLI: `perch resolve <name|orcid|id>` and `perch fetch openalex <id>`. Store defaults to `data/perch.db` (`PERCH_DB` overrides).
-- Config: `perch/config.py` reads `.env` without overriding the environment.
-- Fixtures: `tests/fixtures/openalex/` holds 3 real responses for public Temple researcher A5026494099.
-- Tests: 28 green. Hygiene test and git hooks (`make hooks`) block secrets and personal details.
-- Tracker: `make tracker` renders a page with Current, Master and Archive views from `docs/TRACKER.md` and `docs/sessions/S<n>.md`. The claude.ai artifact link is in `CLAUDE.local.md`.
+- Schemas: `perch/schemas.py`. Award now has `amount_basis`, `fiscal_year`, `activity_code`, `opportunity_number`.
+- Store: `perch/store/` SQLite repository (unchanged since S1).
+- OpenAlex: `perch/sources/openalex.py`. Works page by number (`page=N`), because cursor paging needs a key. The queried author is added back to works whose author list was truncated.
+- NIH RePORTER: `perch/sources/nih_reporter.py`. One Award per fiscal-year application, by PI name at `TEMPLE UNIV`; requests 1 s apart.
+- NSF: `perch/sources/nsf.py`. Lead-PI and co-PI queries at "Temple University", deduplicated. Contact fields are never read; `redact_contacts()` for fixtures.
+- Linking: `perch/awards.py`. Name match (same last name; same first name or initial; accents folded) plus `data/overrides/award_links.csv`. `summarise()` groups records per award; `award_horizon()` is the latest end date.
+- Profile: `perch/profile.py` `key_papers()` (most cited, skipping papers with more than 30 authors). S4 adds threads here.
+- CLI: `perch resolve`, `perch fetch openalex|awards <id>`, `perch profile <id>`.
+- Tests: 44 green. Fixtures: openalex (3), nih_reporter (1), nsf (2, contacts redacted).
 
 ## What is half-done (exact file, exact next step)
-- Nothing. S1 is complete.
+- Nothing. S2 is complete.
 
 ## Decisions made this session
-- OpenAlex now meters a dollar budget per day. Lists cost 1 credit, searches 10, single records are free. The plan's mailto polite pool no longer exists, so it is not used.
-- An optional `OPENALEX_API_KEY` is sent as a Bearer header, never in the URL.
-- Name search filters on `last_known_institutions`, so researchers who left Temple are missed. Recorded in SOURCES.md.
-- OpenAlex works carry `awards` and `funders` fields. They are not used yet; S2 should look at them next to NIH RePORTER.
-- Tracker: one artifact with three views, republished at session start, after each task and at session end (Dakshitha's direction).
-- Repo will go public: no session trailers in commits; machine notes in `CLAUDE.local.md`. History was rewritten once in S0.
+- Back-test PIs used for live checks: Skorski (A5063022331), Persidsky (A5057472361), Gardiner (A5023080104). All public Temple PIs.
+- Horizon = latest `end_date` across all fiscal-year records, because end dates move with extensions.
+- RePORTER agency is the record's abbreviation only (it includes AHRQ, which is not NIH).
+- NIH `opportunity_number` is mostly empty before FY 2012, so back-test awards should start in FY 2012 or later.
+- `.gitignore`: `data/*` ignored except `data/overrides/` (interim answer to Q1).
 
 ## Open questions (mirror of bridge/QUESTIONS.md, numbered)
-- Q1: `data/` is gitignored, but S2, S8 and S13 put committed files there. Needed by S2.
-- Q2: OpenAlex API key. Dakshitha signs up and puts it in `.env`. Not blocking until S8.
+- Q1: `data/backtest/` (S8) and `data/synthetic/` (S13) need a gitignore decision. `data/overrides/` is handled.
+- Q2: OpenAlex API key in `.env`. Without it, list calls share $0.10/day per IP and cursor paging is refused.
 
 ## Next session
-- Session to start: S2 — Award sources and the award horizon
+- Session to start: S3 — Opportunities (Grants.gov and the NIH Guide archive)
 - First command to run: `git pull && make hooks && make test`
