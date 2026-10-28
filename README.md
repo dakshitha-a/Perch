@@ -9,11 +9,16 @@ Perch reads a Temple researcher's public papers and lays out the routes to fund 
 Requires [uv](https://docs.astral.sh/uv/) and `make`. uv installs Python 3.12 and the pinned dependencies on first run.
 
 ```sh
+make hooks     # once per clone: blocks secrets and personal details at commit time
 make test      # ruff + pytest
 make tracker   # render docs/TRACKER.md to docs/tracker.html
 ```
 
 `make demo`, `make bench` and `make package` are placeholders until their sessions land.
+
+## Secrets
+
+API keys go in `.env`, which is gitignored. Copy `.env.example` to start. `make hooks` installs git hooks that refuse commits containing keys, tokens, local paths or emails.
 
 ## Licence
 

@@ -12,8 +12,13 @@ dist/
 node_modules/
 web/dist/
 
-# Secrets
+# Secrets (API keys go in .env only)
 .env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
 
 # Data and vector stores
 data/
@@ -21,3 +26,16 @@ data/
 
 # Archives (input zips; the submission ZIP from `make package`)
 *.zip
+
+# Local environment (never committed; repo will be public)
+CLAUDE.local.md
+.claude/settings.local.json
+.envrc
+.direnv/
+.python-version.local
+*.log
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

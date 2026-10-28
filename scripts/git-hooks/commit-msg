@@ -1,0 +1,3 @@
+#!/bin/sh
+# Blocks secrets and personal details in the commit message. Install: make hooks
+exec python3 scripts/check_public.py --message "$1"

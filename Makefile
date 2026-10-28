@@ -1,6 +1,6 @@
 UV ?= uv
 
-.PHONY: test demo bench tracker package
+.PHONY: test demo bench tracker package hooks
 
 test:
 	$(UV) run ruff check .
@@ -17,3 +17,6 @@ tracker:
 
 package:
 	@echo "make package: not built yet (S15, see docs/PLAN.md)"
+
+hooks:
+	git config core.hooksPath scripts/git-hooks

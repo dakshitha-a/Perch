@@ -14,7 +14,8 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - Tooling: ruff 0.17.3 and pytest 9.2.0 as exact-pinned dev deps; ruff config in `pyproject.toml`.
 - Makefile: `test` (ruff + pytest) and `tracker` work. `demo`, `bench`, `package` print a stub message.
 - Tracker: `scripts/render_tracker.py` is stdlib only and deterministic; `make tracker` writes `docs/tracker.html`.
-- Tests: `tests/test_render_tracker.py`, 3 tests, all green.
+- Tests: 6 green. `tests/test_render_tracker.py` and `tests/test_public_hygiene.py`.
+- Hygiene: `scripts/check_public.py` blocks API keys, tokens, local paths, emails and session links. `make hooks` installs it as pre-commit and commit-msg hooks.
 - Docs: CLAUDE.md, docs/ (SPEC, PLAN, TRACKER, HANDOFF, SOURCES, AI_USE_LOG), bridge/QUESTIONS.md.
 - `.env.example` has a header only; S1 adds the first variable (OpenAlex mailto).
 
@@ -23,7 +24,8 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 
 ## Decisions made this session
 - Input zips stay in the repo root but are gitignored by `*.zip`.
-- The Makefile calls `uv` and accepts `UV=/path/to/uv` as an override.
+- The Makefile calls `uv` and accepts `UV=/path/to/uv` as an override. Machine-specific setup lives in `CLAUDE.local.md`, which is gitignored.
+- The repo will be made public after dev. No personal details beyond Dakshitha's name and Temple affiliation go into files or commit messages. `tests/test_public_hygiene.py` checks tracked files.
 - Flat package layout, `perch/` at the root, to match the paths in SPEC and PLAN.
 - `.gitignore` ignores `data/` as PLAN S0 says. This clashes with later sessions; see Q1.
 
@@ -32,4 +34,4 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 
 ## Next session
 - Session to start: S1 — Schemas, store, OpenAlex
-- First command to run: `git pull && make test`
+- First command to run: `git pull && make hooks && make test`

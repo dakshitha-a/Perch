@@ -41,4 +41,5 @@ The plan is organised by **session**, each sized to one context window. Dakshith
 - Secrets only in `.env` (gitignored); `.env.example` lists every variable with a comment.
 - README documents how to run in one command; the submission ZIP is `make package`.
 - Each session's definition of done in `docs/PLAN.md` is the bar; do not start the next session's work in the same context unless Dakshitha says so.
+- **Public-ready at all times.** The repo goes public after dev, and history will not be rewritten. Tracked files, commit messages and PR bodies carry no personal details other than Dakshitha's name and Temple University affiliation: no local paths, machine names, emails, account or session links, and no other people's names. Machine-specific notes go in `CLAUDE.local.md` (gitignored). `tests/test_public_hygiene.py` scans tracked files.
 - `make tracker` is a small Python script (`scripts/render_tracker.py`) that converts `docs/TRACKER.md` to `docs/tracker.html`; build it in S0.
