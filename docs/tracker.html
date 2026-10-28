@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TRACKER.md — Perch master tracker</title>
+<style>
+:root {
+  --bg: #fbfbfa; --fg: #1d1d1f; --muted: #5f6368; --line: #dcdcdc;
+  --head: #f0f0ee; --code: #eeeeec;
+  --todo: #6b7280; --progress: #b45309; --continued: #7c3aed;
+  --done: #15803d; --cut: #b91c1c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161618; --fg: #e8e8e6; --muted: #a0a0a6; --line: #3a3a3e;
+    --head: #222226; --code: #2a2a2e;
+    --todo: #9ca3af; --progress: #f59e0b; --continued: #a78bfa;
+    --done: #4ade80; --cut: #f87171;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 1100px; margin: 0 auto; }
+h1 { font-size: 1.6rem; margin: 0 0 8px; }
+h2 { font-size: 1.15rem; margin: 32px 0 8px; }
+p, li { color: var(--muted); max-width: 75ch; }
+code { background: var(--code); padding: 1px 4px; border-radius: 3px; font-size: 0.9em; }
+a { color: inherit; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { border-bottom: 1px solid var(--line); padding: 6px 10px; text-align: left;
+  vertical-align: top; }
+th { background: var(--head); font-weight: 600; white-space: nowrap; }
+.badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px;
+  font-weight: 600; white-space: nowrap; border: 1px solid currentColor; }
+.s-todo { color: var(--todo); }
+.s-in-progress { color: var(--progress); }
+.s-continued { color: var(--continued); }
+.s-done { color: var(--done); }
+.s-cut { color: var(--cut); }
+</style>
+</head>
+<body>
+<main>
+<h1>TRACKER.md — Perch master tracker</h1>
+<p>Perch-dev updates this file at the end of every session (and at any stop mid-session). <code>make tracker</code> renders it to <code>docs/tracker.html</code> for reading in a browser; the Markdown is the source of truth. Status values: <code>todo</code> · <code>in progress</code> · <code>continued</code> (stopped mid-session, see HANDOFF) · <code>done</code> · <code>cut</code>.</p>
+<div class="scroll"><table>
+<thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
+<tbody>
+<tr><td>S0</td><td>Repository</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-28 19:02 EDT</td><td></td><td></td><td></td></tr>
+<tr><td>S1</td><td>Schemas, store, OpenAlex</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S2</td><td>Award sources, award horizon</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S3</td><td>Opportunities</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S4</td><td>Route A, deterministic</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S5</td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S6</td><td>API</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S7</td><td>Web app, first three screens</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S8</td><td>Back-test and bench</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S9</td><td>Deploy</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S10</td><td>Scout agent</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S11</td><td>Route B</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S12</td><td>Compare, hand-off, export</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S13</td><td>MCP server, private context</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S14</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>S15</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<h2>Milestone readiness</h2>
+<div class="scroll"><table>
+<thead><tr><th>Milestone</th><th>Date</th><th>Needs</th><th>Ready?</th></tr></thead>
+<tbody>
+<tr><td>Checkup 2</td><td>Tue 3 Nov</td><td>S0–S7</td><td></td></tr>
+<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S15</td><td></td></tr>
+<tr><td>Submission</td><td>Fri 6 Nov 12:00</td><td>ZIP + links</td><td></td></tr>
+</tbody></table></div>
+<h2>Key numbers (keep current)</h2>
+<div class="scroll"><table>
+<thead><tr><th>Metric</th><th>Value</th><th>Source</th><th>Updated</th></tr></thead>
+<tbody>
+<tr><td>Back-test hit@5 / hit@10 / MRR (best config)</td><td></td><td>bench/results/</td><td></td></tr>
+<tr><td>Keyword-only baseline hit@5 / hit@10 / MRR</td><td></td><td>bench/results/</td><td></td></tr>
+<tr><td>Validator rejection rate (API model / local)</td><td></td><td>audit log</td><td></td></tr>
+<tr><td>Cost per brief (API model)</td><td></td><td>audit log</td><td></td></tr>
+<tr><td>Warm-cache brief time</td><td></td><td></td><td></td></tr>
+<tr><td>Route B hand-judged precision</td><td></td><td></td><td></td></tr>
+</tbody></table></div>
+<p><em>Generated from docs/TRACKER.md by scripts/render_tracker.py. Edit the Markdown, then run <code>make tracker</code>.</em></p>
+</main>
+</body>
+</html>
