@@ -5,7 +5,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 ## Last session
 - Session: S0 — Repository
 - Status (done / continued): done
-- Last commit: 8ad60c3 (task work); the ritual commit follows it on `main`
+- Last commit: 928a148 (task work); later commits on `main` are the ritual and the public-ready hygiene work. History was rewritten once in S0 to remove session links, local paths and teammate names.
 
 ## What exists now (one line per subsystem)
 - Repo: private GitHub `dakshitha-a/perch`, default branch `main`, remote `origin`.

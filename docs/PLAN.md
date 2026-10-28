@@ -195,3 +195,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | Date | Session | Change | Reason | Asked by |
 |---|---|---|---|---|
 | 2026-10-28 | — | Plan reorganised from days into sessions | Fit one session per context window | Dakshitha |
+| 2026-10-28 | S0 | Teammate names replaced with roles (S8 back-test set, S8 cost notes, S15 QA log); history rewritten so no version holds them | Repo will be made public; only Dakshitha's name and Temple affiliation may appear | Dakshitha |
