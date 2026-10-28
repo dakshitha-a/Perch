@@ -186,19 +186,33 @@ class OpenAlexClient:
     # --- works ---
 
     def iter_works(self, author_id: str, per_page: int = 100) -> Iterator[Work]:
-        """Every work attributed to the author, newest first, via cursor paging."""
+        """Every work attributed to the author, newest first.
+
+        Uses page numbers: OpenAlex refuses cursor paging past the first page without
+        an API key (live 401, 2026-10-28), while page=N works for anyone.
+        """
         aid = parse_author_id(author_id)
         if not aid:
             raise ValueError(f"not an OpenAlex author id: {author_id!r}")
-        cursor: str | None = "*"
-        while cursor:
+        page = 1
+        while True:
             data = self.get("/works", {
                 "filter": f"author.id:{aid}",
                 "sort": "publication_date:desc",
                 "per-page": per_page,
-                "cursor": cursor,
+                "page": page,
             })
             now = datetime.now(UTC)
             results = data.get("results", [])
-            yield from (parse_work(w, now) for w in results)
-            cursor = data.get("meta", {}).get("next_cursor") if results else None
+            for raw in results:
+                work = parse_work(raw, now)
+                # List responses cut authorships at about 100 (a 203-author work came back
+                # with 98 ids, 2026-10-28). The author.id filter matched, so the author is
+                # on the work even when the truncated list drops them.
+                if f"https://openalex.org/{aid}" not in work.author_ids:
+                    work.author_ids.append(f"https://openalex.org/{aid}")
+                yield work
+            count = data.get("meta", {}).get("count", 0)
+            if not results or page * per_page >= count:
+                return
+            page += 1

@@ -20,8 +20,9 @@ web/dist/
 *.key
 secrets/
 
-# Data and vector stores
-data/
+# Data and vector stores. data/overrides/ is hand-curated and committed (Q1 is open for the rest).
+data/*
+!data/overrides/
 *.lance
 
 # Archives (input zips; the submission ZIP from `make package`)

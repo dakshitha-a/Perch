@@ -30,6 +30,8 @@ def test_parse_fixture_fields():
     assert a.activity_code == "R01"
     assert a.amount == 595366 and a.amount_basis == "fiscal year"
     assert a.institution == "TEMPLE UNIV OF THE COMMONWEALTH"
+    assert a.agency == "NIDDK"
+    assert {x.agency for x in awards} >= {"NIDDK", "AHRQ"}  # RePORTER is wider than NIH
     assert "Heather Marie Gardiner" in a.pi_names
 
 

@@ -49,7 +49,8 @@ def parse_project(raw: dict[str, Any], fetched_at: datetime) -> Award:
         source=SOURCE,
         source_url=raw.get("project_detail_url") or f"https://reporter.nih.gov/project-details/{appl}",
         fetched_at=fetched_at,
-        agency="NIH" + (f" {ic['abbreviation']}" if ic.get("abbreviation") else ""),
+        # RePORTER also lists other HHS agencies (e.g. AHRQ), so no "NIH" prefix is added.
+        agency=ic.get("abbreviation") or "RePORTER: agency not listed",
         award_number=raw.get("core_project_num") or raw.get("project_num") or str(appl),
         title=raw.get("project_title") or "",
         pi_names=[_pi_name(p) for p in raw.get("principal_investigators") or []],

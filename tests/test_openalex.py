@@ -68,11 +68,9 @@ def fixture_transport(calls):
             return httpx.Response(200, json=load("author_orcid.json"))
         if path == "/works":
             page = load("works_page.json")
-            if request.url.params["cursor"] == "*":
-                page["meta"]["next_cursor"] = "NEXT"
-            else:
+            page["meta"]["count"] = 7
+            if request.url.params["page"] != "1":
                 page["results"] = page["results"][:2]
-                page["meta"]["next_cursor"] = None
             return httpx.Response(200, json=page)
         return httpx.Response(404)
 
@@ -85,8 +83,9 @@ def test_client_resolve_and_page_works():
         found = c.resolve_by_name("Axel Kohlmeyer")
         assert [r.id for r in found] == [AUTHOR]
         assert c.resolve_by_orcid("0000-0001-6204-6475").id == AUTHOR
-        works = list(c.iter_works(AUTHOR))
+        works = list(c.iter_works(AUTHOR, per_page=5))
     assert len(works) == 7  # 5 on the first page, 2 on the second
+    assert [r.url.params["page"] for r in calls if r.url.path == "/works"] == ["1", "2"]
     search = calls[0].url.params
     assert search["filter"] == "last_known_institutions.id:I84392919"
     assert "authorization" not in calls[0].headers
@@ -116,3 +115,14 @@ def test_gives_up_after_retries(monkeypatch):
     with oa.OpenAlexClient(transport=transport, retries=1, min_interval=0) as c:
         with pytest.raises(httpx.HTTPStatusError):
             c.get_author("A5026494099")
+
+
+def test_queried_author_kept_when_authorships_are_truncated():
+    page = load("works_page.json")
+    page["results"] = page["results"][:1]
+    page["results"][0]["authorships"] = page["results"][0]["authorships"][1:]  # drop the author
+    page["meta"]["count"] = 1
+    transport = httpx.MockTransport(lambda req: httpx.Response(200, json=page))
+    with oa.OpenAlexClient(transport=transport, min_interval=0) as c:
+        (w,) = list(c.iter_works(AUTHOR))
+    assert AUTHOR in w.author_ids
