@@ -89,7 +89,7 @@ Grants.gov + NIH Guide · SBIR.gov         provenance on every row              
 
 Only the model layer runs a language model, and the agent inside it can call nothing but the deterministic functions. Every arrow into the store carries provenance; every arrow out of the model layer passes the validator.
 
-**Stack:** Python 3.12, httpx, pydantic v2; Postgres 16 + pgvector (+ pg_search) in production, SQLite + LanceDB for the demo, behind one repository interface; embeddings chosen by the block benchmark (default Qwen3-Embedding-0.6B, challenger SPECTER2); provider layer `perch/llm/`; own 200-line agent loop; MCP server on the official Python SDK **[verify version]**; FastAPI + job runner; React + Vite; Docker Compose with `make demo`. Reuse from NextTex/NexusQC limited to infrastructure and the approve-every-action pattern, disclosed in the AI-use log.
+**Stack:** Python 3.12, httpx, pydantic v2; Postgres 16 + pgvector (+ pg_search) in production, SQLite + LanceDB for the demo, behind one repository interface; embeddings chosen by the block benchmark (default Qwen3-Embedding-0.6B, challenger SPECTER2); provider layer `perch/llm/` with three primitives, chat, embed and decide (§8); own 200-line agent loop; MCP server on the official Python SDK **[verify version]**; FastAPI + job runner; React + Vite; Docker Compose with `make demo`. Reuse from NextTex/NexusQC limited to infrastructure and the approve-every-action pattern, disclosed in the AI-use log.
 
 **API:** `POST /briefs` · `GET /briefs/{id}` (status + partial results) · `POST /briefs/{id}/leads/{lead}/keep` · `POST /briefs/{id}/handoff` · `GET /records/{id}`. Audit log per model call: prompt hash, model, version, tokens, cost, validator result.
 
@@ -103,13 +103,15 @@ One held-out set (10 Temple PIs, date cut-off enforced), one script (`make bench
 | Embeddings | Qwen3-Embedding-0.6B → Qwen3-4B; SPECTER2; BGE-M3; harrier-oss-v1-0.6B; granite-embedding-english-r2 (CPU floor) | General MTEB leaders may not transfer to science; instruction prefixes allow asymmetric embedding | Recall@50; throughput |
 | Retrieval | Hybrid dense (HNSW) + BM25 with RRF → dense-only; BM25-only (baseline); learned sparse | Calls are full of exact tokens dense search blurs | Recall@50; p50 latency |
 | Eligibility filter | Deterministic rules on close date, applicant types, award ceiling, activity code, agency; never a model | The trust argument lives here | Zero ineligible leads |
-| Rerank | Qwen3-Reranker-0.6B → 4B; BGE-reranker-v2-m3 (baseline); mxbai-rerank-large-v2; jina-reranker-v3 **[verify licence]** | Top-50 → top-10, batched, cached | Hit@5/10 with vs without |
+| Rerank | Qwen3-Reranker-0.6B → 4B; BGE-reranker-v2-m3 (baseline); mxbai-rerank-large-v2; jina-reranker-v3 **[verify licence]**; decision models Jev, Laya via `decide` (score: fit of opportunity to thread) | Top-50 → top-10, batched, cached | Hit@5/10 with vs without; for decision models, hit@5/hit@10 vs the cross-encoder |
 | Fit explanation (skill 2) | Claude Sonnet via API (prompt caching) → Qwen3-8B/14B local; Gemma 4 26B-A4B (thinking off); gpt-oss-20b | Reasoning scratchpad then constrained JSON (XGrammar on vLLM; native structured output on API); parallel across leads | Validator pass rate; human agreement; latency; $/brief |
-| Claim validator | Layer 1 deterministic (IDs, numbers, dates) → layer 2 grounding model: LettuceDetect, MiniCheck, HHEM-2.1-Open | Layer 1 catches fatal errors; layer 2 catches paraphrased overreach | Agreement with QA log; false-flag rate |
+| Claim validator | Layer 1 deterministic (IDs, numbers, dates) → layer 2 grounding model: LettuceDetect, MiniCheck, HHEM-2.1-Open; decision models Jev, Laya via `decide` (judgment: does record R support sentence S?, batched per explanation) | Layer 1 catches fatal errors; layer 2 catches paraphrased overreach | Agreement with QA log; false-flag rate |
 | Scout agent loop | Claude via API → Qwen3-8B/14B local; Gemma 4 26B-A4B; gpt-oss-20b | Benchmark end-to-end tasks, not single tool calls | Completion on 20 scripted follow-ups; wrong-tool rate; restraint |
 | Route B signals | 1 company-type institutions publishing in the topics; 2 SBIR/STTR awards in the topics; **3 company-authored works citing the researcher** | Signal 3 is the strongest public evidence of interest and costs nothing | Hand-judged precision |
 | Serving (local) | vLLM → SGLang; Ollama/llama.cpp on the laptop | Small models share the GPU; explanations are a batch | tok/s at 10 concurrent; TTFT; VRAM |
 | Caching | Nightly embed of open opportunities; cache embeddings, rerank scores and explanations by content/profile hashes | Repeat brief in seconds | Warm-cache brief time |
+
+Decision models are never used for skills 1–3 (profile summary, fit explanation, hand-off draft) or for the eligibility filter. They are challengers only at the two decision points above.
 
 ## 8. Scout, and the platforms it runs on
 
@@ -121,6 +123,11 @@ Tools: `resolve_author · build_profile · list_awards · search_opportunities(r
 UI: each tool call is a card; modes *ask before every step* (default) and *run and show me*.
 
 Provider layer: one interface for chat, tool calling, structured output; adapters for Anthropic, OpenAI-compatible endpoints, Ollama and vLLM; model per role in config; fallback mode (structured prompts + validator) for small local models that tool-call poorly; three models benchmarked on the back-test.
+
+Decide primitive: `decide` sits in `perch/llm/` beside chat and embed. A typed question goes in: a choice among labelled options, a score on a fixed scale, or a yes/no judgment. A typed value plus a confidence comes out. Three adapters:
+- **Jev** (TypeSafe AI): hosted API; no self-hosted weights as of September 2026 **[verify]**.
+- **Laya** (Convai Innovations): open source, runs locally; reportedly needs fine-tuning before use **[verify]**.
+- **LLM fallback:** constrains the answer to a single token per option and reads the token logprobs, so `decide` works on any model whose provider returns logprobs **[verify which of the Anthropic, OpenAI-compatible, Ollama and vLLM adapters expose them]**.
 MCP server: the same tool set with the same allowlist, validator and budgets, usable from Claude Desktop/Code, Copilot where MCP is supported **[verify]**, or a local agent. Demo moment: a teammate asks a local Ollama agent for a brief through the MCP server and gets the same cited answer.
 
 Validator rule (pipeline and agent alike): an output citing an unknown ID, or containing a dollar amount or date not in cited records, is rejected and regenerated once; on second failure the lead is shown without explanation and flagged. Rejection rate reported per model.

@@ -85,6 +85,7 @@ Goal: the first and only model calls, each bounded and validated.
 4. Skill 2 fit explainer: profile + one candidate (IDs) → fit 0–100, 2–3 sentences, citations as IDs; reasoning first, constrained JSON last; parallel across leads; prompt caching of the shared prefix where the provider supports it.
 5. Validator layer 2: small grounding model (LettuceDetect or MiniCheck; must run on CPU in the request path); unsupported sentence → flagged.
 6. Audit log of every model call: prompt hash, model, version, tokens, cost, validator result.
+7. `decide` primitive in `perch/llm/` (typed choice, score or yes/no in; typed value plus confidence out) with the LLM-logprobs fallback adapter; unit tests with the fake provider.
 
 Done when: `perch brief --route A --explain` produces cited explanations for 3 PIs; validator rejection rate printed; tests green with the fake provider.
 
@@ -115,6 +116,7 @@ Goal: the numbers for the results slide.
 1. `bench/backtest.py`: for each PI in `data/backtest/pis.csv` (a teammate's set), profile from works before the award start; retrieve against announcements open at that time; rank of the actual announcement; hit@5, hit@10, MRR; keyword-only baseline on every row.
 2. `make bench`: config matrix — embeddings (Qwen3-0.6B, Qwen3-4B, SPECTER2, BGE-M3), retrieval (hybrid/dense/BM25), rerank on/off, three LLMs for skill 2 (API model, Qwen3-8B local, Gemma 4 26B-A4B local). One table to `bench/results/`.
 3. Cost per brief (tokens × price from the audit log) written to `docs/TRACKER.md` notes for the team.
+4. Jev and Laya rows in `make bench` for validator layer 2 and rerank. Skip either adapter if access or weights are unverified, and record why in `bench/results/`.
 
 Done when: a results table with baseline exists; winners written into config; runner-up one line away.
 
@@ -196,3 +198,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 |---|---|---|---|---|
 | 2026-10-28 | — | Plan reorganised from days into sessions | Fit one session per context window | Dakshitha |
 | 2026-10-28 | S0 | Teammate names replaced with roles (S8 back-test set, S8 cost notes, S15 QA log); history rewritten so no version holds them | Repo will be made public; only Dakshitha's name and Temple affiliation may appear | Dakshitha |
+| 2026-10-28 | S5, S8 | Added the `decide` primitive with LLM-logprobs fallback (S5 task 7) and Jev and Laya bench rows for validator layer 2 and rerank (S8 task 4); SPEC §6, §7 and §8 updated to match | Calibrated decision models as challenger at decision points | Dakshitha |
