@@ -103,9 +103,9 @@ One held-out set (10 Temple PIs, date cut-off enforced), one script (`make bench
 | Embeddings | Qwen3-Embedding-0.6B → Qwen3-4B; SPECTER2; BGE-M3; harrier-oss-v1-0.6B; granite-embedding-english-r2 (CPU floor) | General MTEB leaders may not transfer to science; instruction prefixes allow asymmetric embedding | Recall@50; throughput |
 | Retrieval | Hybrid dense (HNSW) + BM25 with RRF → dense-only; BM25-only (baseline); learned sparse | Calls are full of exact tokens dense search blurs | Recall@50; p50 latency |
 | Eligibility filter | Deterministic rules on close date, applicant types, award ceiling, activity code, agency; never a model | The trust argument lives here | Zero ineligible leads |
-| Rerank | Qwen3-Reranker-0.6B → 4B; BGE-reranker-v2-m3 (baseline); mxbai-rerank-large-v2; jina-reranker-v3 **[verify licence]**; decision models Jev, Laya via `decide` (score: fit of opportunity to thread) | Top-50 → top-10, batched, cached | Hit@5/10 with vs without; for decision models, hit@5/hit@10 vs the cross-encoder |
+| Rerank | Qwen3-Reranker-0.6B → 4B; BGE-reranker-v2-m3 (baseline); mxbai-rerank-large-v2; jina-reranker-v3 **[verify licence]**; decision models via `decide` (score: fit of opportunity to thread): Clef-flash (local default), Clef (accuracy challenger), Jev (hosted) | Top-50 → top-10, batched, cached | Hit@5/10 with vs without; for decision models, hit@5/hit@10 vs the cross-encoder |
 | Fit explanation (skill 2) | Claude Sonnet via API (prompt caching) → Qwen3-8B/14B local; Gemma 4 26B-A4B (thinking off); gpt-oss-20b | Reasoning scratchpad then constrained JSON (XGrammar on vLLM; native structured output on API); parallel across leads | Validator pass rate; human agreement; latency; $/brief |
-| Claim validator | Layer 1 deterministic (IDs, numbers, dates) → layer 2 grounding model: LettuceDetect, MiniCheck, HHEM-2.1-Open; decision models Jev, Laya via `decide` (judgment: does record R support sentence S?, batched per explanation) | Layer 1 catches fatal errors; layer 2 catches paraphrased overreach | Agreement with QA log; false-flag rate |
+| Claim validator | Layer 1 deterministic (IDs, numbers, dates) → layer 2 grounding model: LettuceDetect, MiniCheck, HHEM-2.1-Open; decision models via `decide` (judgment: does record R support sentence S?, batched per explanation): Clef-flash and Clef always tested together, plus Jev (hosted) | Layer 1 catches fatal errors; layer 2 catches paraphrased overreach | Agreement with QA log; false-flag rate |
 | Scout agent loop | Claude via API → Qwen3-8B/14B local; Gemma 4 26B-A4B; gpt-oss-20b | Benchmark end-to-end tasks, not single tool calls | Completion on 20 scripted follow-ups; wrong-tool rate; restraint |
 | Route B signals | 1 company-type institutions publishing in the topics; 2 SBIR/STTR awards in the topics; **3 company-authored works citing the researcher** | Signal 3 is the strongest public evidence of interest and costs nothing | Hand-judged precision |
 | Serving (local) | vLLM → SGLang; Ollama/llama.cpp on the laptop | Small models share the GPU; explanations are a batch | tok/s at 10 concurrent; TTFT; VRAM |
@@ -125,9 +125,14 @@ UI: each tool call is a card; modes *ask before every step* (default) and *run a
 Provider layer: one interface for chat, tool calling, structured output; adapters for Anthropic, OpenAI-compatible endpoints, Ollama and vLLM; model per role in config; fallback mode (structured prompts + validator) for small local models that tool-call poorly; three models benchmarked on the back-test.
 
 Decide primitive: `decide` sits in `perch/llm/` beside chat and embed. A typed question goes in: a choice among labelled options, a score on a fixed scale, or a yes/no judgment. A typed value plus a confidence comes out. Three adapters:
-- **Jev** (TypeSafe AI): hosted API; no self-hosted weights as of September 2026 **[verify]**.
-- **Laya** (Convai Innovations): open source, runs locally; reportedly needs fine-tuning before use **[verify]**.
+- **Jev-compatible adapter**, one adapter for three models, because the Clef API is Jev-compatible **[verify]**:
+  - **Clef-flash** (Cloudflare; 9.4B, Apache-2.0, GGUF weights) **[verify]**: the default local decision model.
+  - **Clef** (Cloudflare; 27B) **[verify]**: the accuracy challenger.
+  - **Jev** (TypeSafe AI): the hosted option; no self-hosted weights as of September 2026 **[verify]**.
+- **Strands Decider 2B** **[verify]**: CPU-only fallback for machines without a GPU.
 - **LLM fallback:** constrains the answer to a single token per option and reads the token logprobs, so `decide` works on any model whose provider returns logprobs **[verify which of the Anthropic, OpenAI-compatible, Ollama and vLLM adapters expose them]**.
+
+How much to trust the published numbers: published decision-model scores are mostly run by the vendors themselves, and none of them measure our judgment, "does record R support sentence S?". Perch's own bench (§7, `make bench`) decides which model is used. For the validator role, full Clef must be tested alongside Clef-flash, because Clef-flash has reported misses on safety-sensitive cases **[verify]**.
 MCP server: the same tool set with the same allowlist, validator and budgets, usable from Claude Desktop/Code, Copilot where MCP is supported **[verify]**, or a local agent. Demo moment: a teammate asks a local Ollama agent for a brief through the MCP server and gets the same cited answer.
 
 Validator rule (pipeline and agent alike): an output citing an unknown ID, or containing a dollar amount or date not in cited records, is rejected and regenerated once; on second failure the lead is shown without explanation and flagged. Rejection rate reported per model.
