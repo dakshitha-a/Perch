@@ -64,7 +64,7 @@ def fixture_transport(calls):
         path = request.url.path
         if path == "/authors":
             return httpx.Response(200, json=load("authors_search.json"))
-        if path.startswith("/authors/orcid:"):
+        if path.startswith("/authors/"):  # by ORCID or by id: same author
             return httpx.Response(200, json=load("author_orcid.json"))
         if path == "/works":
             page = load("works_page.json")
