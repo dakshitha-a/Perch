@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# Node
+node_modules/
+web/dist/
+
+# Secrets
+.env
+
+# Data and vector stores
+data/
+*.lance
+
+# Archives (input zips; the submission ZIP from `make package`)
+*.zip
