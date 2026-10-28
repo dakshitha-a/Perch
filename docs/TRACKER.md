@@ -7,7 +7,7 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S0 | Repository | done | 2026-10-28 19:02 EDT | 2026-10-28 19:03 EDT | 928a148 | Private repo dakshitha-a/perch on `main`. uv 0.13.6, Python 3.12.16, ruff 0.17.3, pytest 9.2.0 (pinned). `make test`: 3 passed. demo/bench/package are stubs. Q1 open (`data/` gitignore). |
 | S1 | Schemas, store, OpenAlex | done | 2026-10-28 19:14 EDT | 2026-10-28 19:31 EDT | 31b3a56 | 28 tests green. Live: 1 public Temple PI resolved by name and ORCID; 35 works stored with provenance. OpenAlex meters a USD budget per day (Q2: API key). Tracker redesigned to Current, Master and Archive views. |
 | S2 | Award sources, award horizon | done | 2026-10-28 19:34 EDT | 2026-10-28 19:44 EDT | 6ea2955 | 44 tests green. `perch profile` live for 3 PIs (13, 12 and 5 awards); horizons hand-checked against RePORTER. NIH field is `opportunity_number`, mostly empty before FY 2012. NSF has no opportunity field and returns contact details (redacted). |
-| S3 | Opportunities | todo | | | | |
+| S3 | Opportunities | in progress | 2026-10-28 19:50 EDT | | | |
 | S4 | Route A, deterministic | todo | | | | |
 | S5 | Provider layer, skills 1–2, validator | todo | | | | |
 | S6 | API | todo | | | | |
