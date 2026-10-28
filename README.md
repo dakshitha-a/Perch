@@ -33,6 +33,10 @@ An OpenAlex API key is optional; see `.env.example`.
 
 API keys go in `.env`, which is gitignored. Copy `.env.example` to start. `make hooks` installs git hooks that refuse commits containing keys, tokens, local paths or emails.
 
+## Data sources
+
+This product uses the Grants.gov API but is not endorsed or certified by the U.S. Department of Health and Human Services.
+
 ## Licence
 
 MIT. See `LICENSE`.

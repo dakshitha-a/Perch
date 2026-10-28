@@ -1,0 +1,408 @@
+{
+ "errorcode": 0,
+ "msg": "Webservice Succeeds",
+ "data": {
+  "id": 357303,
+  "revision": 1,
+  "opportunityNumber": "PAR-25-268",
+  "opportunityTitle": "Investigator Initiated Clinical Trials of Complementary and Integrative Interventions Delivered Remotely or via mHealth (R01 Clinical Trial Required)",
+  "owningAgencyCode": "HHS-NIH11",
+  "listed": "L",
+  "publisherUid": "85078724978857742224107944047325102090",
+  "flag2006": "N",
+  "opportunityCategory": {
+   "category": "D",
+   "description": "Discretionary"
+  },
+  "synopsis": {
+   "opportunityId": 357303,
+   "version": 2,
+   "agencyCode": "HHS-NIH11",
+   "agencyName": "National Institutes of Health",
+   "agencyPhone": "[redacted]",
+   "agencyAddressDesc": "See Section VII. Agency Contacts within the full opportunity announcement for all other inquires.",
+   "agencyDetails": {
+    "code": "NIH",
+    "seed": "HHS-NIH11",
+    "agencyName": "National Institutes of Health",
+    "agencyCode": "HHS-NIH11",
+    "topAgencyCode": "HHS"
+   },
+   "topAgencyDetails": {
+    "code": "HHS",
+    "seed": "HHS",
+    "agencyName": "Department of Health and Human Services",
+    "agencyCode": "HHS",
+    "topAgencyCode": "HHS"
+   },
+   "agencyContactPhone": "[redacted]",
+   "agencyContactName": "[redacted]",
+   "agencyContactDesc": "[redacted]",
+   "agencyContactEmail": "[redacted]",
+   "agencyContactEmailDesc": "[redacted]",
+   "synopsisDesc": "<p>This Notice of Funding Opportunity (NOFO) encourages applications for investigator-initiated fully remotely delivered and conducted clinical trials to assess the efficacy or effectiveness of complementary and integrative health interventions in NCCIH- designated areas of high research priority. Applications submitted under this NOFO are expected to propose a remotely delivered and conducted fully powered clinical trial with no in-person contact between research staff and study participants and may utilize mHealth tools or technologies. Applicants must provide justification for the remotely delivered approach and provide preliminary data on the feasibility and safety of the approach, along with evidence that the intervention has promise of clinical benefit. Applicants are encouraged to contact the appropriate NCCIH Scientific/Research contact for the area of science for which they are planning to develop an application prior to submitting to this NOFO.</p>",
+   "responseDate": "Nov 17, 2026 12:00:00 AM EST",
+   "responseDateDesc": "",
+   "fundingDescLinkUrl": "http://grants.nih.gov/grants/guide/pa-files/PAR-25-268.html",
+   "fundingDescLinkDesc": "https://grants.nih.gov/grants/guide/pa-files/PAR-25-268.html",
+   "postingDate": "Nov 21, 2024 12:00:00 AM EST",
+   "archiveDate": "Dec 23, 2026 12:00:00 AM EST",
+   "costSharing": false,
+   "awardCeiling": "none",
+   "awardFloor": "none",
+   "applicantEligibilityDesc": "Other Eligible Applicants include the following: Alaska Native and Native Hawaiian Serving Institutions; Asian American Native American Pacific Islander Serving Institutions (AANAPISISs); Eligible Agencies of the Federal Government; Faith-based or Community-based Organizations; Hispanic-serving Institutions; Historically Black Colleges and Universities (HBCUs); Indian/Native American Tribal Governments (Other than Federally Recognized); Non-domestic (non-U.S.) Entities (Foreign Organizations); Regional Organizations; Tribally Controlled Colleges and Universities (TCCUs) ; U.S. Territory or Possession; Non-domestic (non-U.S.) Entities (Foreign Organizations) are not eligible to apply.Non-domestic (non-U.S.) components of U.S. Organizations are not eligible to apply.Foreign components, as defined in the NIH Grants Policy Statement, are allowed.",
+   "sendEmail": "N",
+   "createTimeStamp": "Mar 31, 2025 09:08:30 AM EDT",
+   "modComments": "Description updated",
+   "createdDate": "Nov 21, 2024 01:56:54 PM EST",
+   "lastUpdatedDate": "Mar 31, 2025 09:08:30 AM EDT",
+   "applicantTypes": [
+    {
+     "id": "13",
+     "description": "Nonprofits that do not have a 501(c)(3) status with the IRS, other than institutions of higher education"
+    },
+    {
+     "id": "25",
+     "description": "Others (see text field entitled \"Additional Information on Eligibility\" for clarification)"
+    },
+    {
+     "id": "00",
+     "description": "State governments"
+    },
+    {
+     "id": "08",
+     "description": "Public housing authorities/Indian housing authorities"
+    },
+    {
+     "id": "20",
+     "description": "Private institutions of higher education"
+    },
+    {
+     "id": "02",
+     "description": "City or township governments"
+    },
+    {
+     "id": "04",
+     "description": "Special district governments"
+    },
+    {
+     "id": "23",
+     "description": "Small businesses"
+    },
+    {
+     "id": "22",
+     "description": "For profit organizations other than small businesses"
+    },
+    {
+     "id": "06",
+     "description": "Public and State controlled institutions of higher education"
+    },
+    {
+     "id": "05",
+     "description": "Independent school districts"
+    },
+    {
+     "id": "11",
+     "description": "Native American tribal organizations (other than Federally recognized tribal governments)"
+    },
+    {
+     "id": "01",
+     "description": "County governments"
+    },
+    {
+     "id": "12",
+     "description": "Nonprofits having a 501(c)(3) status with the IRS, other than institutions of higher education"
+    },
+    {
+     "id": "07",
+     "description": "Native American tribal governments (Federally recognized)"
+    }
+   ],
+   "fundingInstruments": [
+    {
+     "id": "G",
+     "description": "Grant"
+    }
+   ],
+   "fundingActivityCategories": [
+    {
+     "id": "HL",
+     "description": "Health"
+    }
+   ],
+   "responseDateStr": "2026-11-17-00-00-00",
+   "postingDateStr": "2024-11-21-00-00-00",
+   "archiveDateStr": "2026-12-23-00-00-00",
+   "createTimeStampStr": "2025-03-31-09-08-30"
+  },
+  "agencyDetails": {
+   "code": "NIH",
+   "seed": "HHS-NIH11",
+   "agencyName": "National Institutes of Health",
+   "agencyCode": "HHS-NIH11",
+   "topAgencyCode": "HHS"
+  },
+  "topAgencyDetails": {
+   "code": "HHS",
+   "seed": "HHS",
+   "agencyName": "Department of Health and Human Services",
+   "agencyCode": "HHS",
+   "topAgencyCode": "HHS"
+  },
+  "synopsisAttachmentFolders": [
+   {
+    "id": 75640,
+    "opportunityId": 357303,
+    "folderType": "Full Announcement",
+    "folderName": "PAR-25-268",
+    "zipLobSize": 449,
+    "createdDate": "Nov 21, 2024 01:57:02 PM EST",
+    "lastUpdatedDate": "Nov 21, 2024 02:01:31 PM EST",
+    "synopsisAttachments": [
+     {
+      "id": 344426,
+      "opportunityId": 357303,
+      "mimeType": "text/html",
+      "fileName": "PAR-25-268-Full-Announcement.html",
+      "fileDescription": "PAR-25-268 Full Announcement Text",
+      "fileLobSize": 422,
+      "createdDate": "Nov 21, 2024 02:01:31 PM EST",
+      "synopsisAttFolderId": 75640
+     }
+    ]
+   }
+  ],
+  "synopsisDocumentURLs": [],
+  "synAttChangeComments": [],
+  "cfdas": [
+   {
+    "id": 425497,
+    "opportunityId": 357303,
+    "cfdaNumber": "93.213",
+    "programTitle": "Research and Training in Complementary and Integrative Health"
+   },
+   {
+    "id": 425498,
+    "opportunityId": 357303
+   }
+  ],
+  "opportunityHistoryDetails": [
+   {
+    "oppHistId": {
+     "opportunityId": 357303,
+     "revision": 0
+    },
+    "opportunityId": 357303,
+    "revision": 0,
+    "opportunityNumber": "PAR-25-268",
+    "opportunityTitle": "Investigator Initiated Clinical Trials of Complementary and Integrative Interventions Delivered Remotely or via mHealth (R01 Clinical Trial Required)",
+    "owningAgencyCode": "HHS-NIH11",
+    "publisherUid": "85078724978857742224107944047325102090",
+    "listed": "L",
+    "opportunityCategory": {
+     "category": "D",
+     "description": "Discretionary"
+    },
+    "synopsis": {
+     "id": {
+      "opportunityId": 357303,
+      "revision": 0
+     },
+     "opportunityId": 357303,
+     "revision": 0,
+     "version": 1,
+     "agencyCode": "HHS-NIH11",
+     "agencyAddressDesc": "See Section VII. Agency Contacts within the full opportunity announcement for all other inquires.",
+     "agencyDetails": {
+      "code": "NIH",
+      "seed": "HHS-NIH11",
+      "agencyName": "National Institutes of Health",
+      "agencyCode": "HHS-NIH11",
+      "topAgencyCode": "HHS"
+     },
+     "agencyContactPhone": "[redacted]",
+     "agencyContactName": "[redacted]",
+     "agencyContactDesc": "[redacted]",
+     "agencyContactEmail": "[redacted]",
+     "agencyContactEmailDesc": "[redacted]",
+     "synopsisDesc": "This Notice of Funding Opportunity (NOFO) encourages applications for investigator-initiated fully remotely delivered and conducted clinical trials to assess the efficacy or effectiveness of complementary and integrative health interventions in NCCIH- designated areas of high research priority. Applications submitted under this NOFO are expected to propose a remotely delivered and conducted fully powered clinical trial with no in-person contact between research staff and study participants and may utilize mHealth tools or technologies. Applicants must provide justification for the remotely delivered approach and provide preliminary data on the feasibility and safety of the approach, along with evidence that the intervention has promise of clinical benefit.   \nApplicants are encouraged to contact the appropriate NCCIH Scientific/Research contact for the area of science for which they are planning to develop an application prior to submitting to this NOFO.  \nThis NOFO requires a Plan for Enhancing Diverse Perspectives (PEDP), which will be assessed as part of the scientific and technical peer review evaluation.  Applications that fail to include a PEDP will be considered incomplete and will be withdrawn.\nApplicants are strongly encouraged to read the NOFO instructions carefully and view the available PEDP guidance material.",
+     "responseDate": "Nov 17, 2026 12:00:00 AM EST",
+     "responseDateDesc": "",
+     "fundingDescLinkUrl": "http://grants.nih.gov/grants/guide/pa-files/PAR-25-268.html",
+     "fundingDescLinkDesc": "https://grants.nih.gov/grants/guide/pa-files/PAR-25-268.html",
+     "postingDate": "Nov 21, 2024 12:00:00 AM EST",
+     "archiveDate": "Dec 23, 2026 12:00:00 AM EST",
+     "costSharing": false,
+     "awardCeiling": "none",
+     "awardFloor": "none",
+     "applicantEligibilityDesc": "Other Eligible Applicants include the following:\n Alaska Native and Native Hawaiian Serving Institutions; Asian American Native American Pacific Islander Serving Institutions (AANAPISISs); Eligible Agencies of the Federal Government; Faith-based or Community-based Organizations; Hispanic-serving Institutions; Historically Black Colleges and Universities (HBCUs); Indian/Native American Tribal Governments (Other than Federally Recognized); Non-domestic (non-U.S.) Entities (Foreign Organizations); Regional Organizations; Tribally Controlled Colleges and Universities (TCCUs) ; U.S. Territory or Possession; Non-domestic (non-U.S.) Entities (Foreign Organizations) are not eligible to apply.\n\nNon-domestic (non-U.S.) components of U.S. Organizations are not eligible to apply.\n\nForeign components, as defined in the NIH Grants Policy Statement, are allowed.",
+     "createTimeStamp": "Nov 21, 2024 02:01:31 PM EST",
+     "actionType": "U",
+     "actionDate": "Mar 31, 2025 09:08:30 AM EDT",
+     "createdDate": "Nov 21, 2024 01:56:54 PM EST",
+     "lastUpdatedDate": "Nov 21, 2024 01:56:54 PM EST",
+     "applicantTypes": [
+      {
+       "id": "11",
+       "description": "Native American tribal organizations (other than Federally recognized tribal governments)"
+      },
+      {
+       "id": "12",
+       "description": "Nonprofits having a 501(c)(3) status with the IRS, other than institutions of higher education"
+      },
+      {
+       "id": "20",
+       "description": "Private institutions of higher education"
+      },
+      {
+       "id": "00",
+       "description": "State governments"
+      },
+      {
+       "id": "01",
+       "description": "County governments"
+      },
+      {
+       "id": "22",
+       "description": "For profit organizations other than small businesses"
+      },
+      {
+       "id": "23",
+       "description": "Small businesses"
+      },
+      {
+       "id": "04",
+       "description": "Special district governments"
+      },
+      {
+       "id": "07",
+       "description": "Native American tribal governments (Federally recognized)"
+      },
+      {
+       "id": "25",
+       "description": "Others (see text field entitled \"Additional Information on Eligibility\" for clarification)"
+      },
+      {
+       "id": "06",
+       "description": "Public and State controlled institutions of higher education"
+      },
+      {
+       "id": "05",
+       "description": "Independent school districts"
+      },
+      {
+       "id": "13",
+       "description": "Nonprofits that do not have a 501(c)(3) status with the IRS, other than institutions of higher education"
+      },
+      {
+       "id": "08",
+       "description": "Public housing authorities/Indian housing authorities"
+      },
+      {
+       "id": "02",
+       "description": "City or township governments"
+      }
+     ],
+     "fundingInstruments": [
+      {
+       "id": "G",
+       "description": "Grant"
+      }
+     ],
+     "fundingActivityCategories": [
+      {
+       "id": "HL",
+       "description": "Health"
+      }
+     ],
+     "responseDateStr": "2026-11-17-00-00-00",
+     "postingDateStr": "2024-11-21-00-00-00",
+     "archiveDateStr": "2026-12-23-00-00-00",
+     "createTimeStampStr": "2024-11-21-14-01-31"
+    },
+    "cfdas": [
+     {
+      "id": 425497,
+      "opportunityId": 357303,
+      "revision": 0,
+      "cfdaNumber": "93.213",
+      "programTitle": "Research and Training in Complementary and Integrative Health"
+     },
+     {
+      "id": 425498,
+      "opportunityId": 357303,
+      "revision": 0
+     }
+    ],
+    "synopsisModifiedFields": [],
+    "forecastModifiedFields": []
+   }
+  ],
+  "opportunityPkgs": [
+   {
+    "id": 288881,
+    "topportunityId": 357303,
+    "familyId": 14,
+    "dialect": "XFDL2.2",
+    "opportunityNumber": "PAR-25-268",
+    "opportunityTitle": "Investigator Initiated Clinical Trials of Complementary and Integrative Interventions Delivered Remotely or via mHealth (R01 Clinical Trial Required)",
+    "openingDate": "2025-01-20",
+    "closingDate": "2026-11-17",
+    "owningAgencyCode": "HHS-NIH11",
+    "agencyDetails": {
+     "code": "NIH",
+     "seed": "HHS-NIH11",
+     "agencyName": "National Institutes of Health",
+     "agencyCode": "HHS-NIH11",
+     "topAgencyCode": "HHS"
+    },
+    "topAgencyDetails": {
+     "code": "HHS",
+     "seed": "HHS",
+     "agencyName": "Department of Health and Human Services",
+     "agencyCode": "HHS",
+     "topAgencyCode": "HHS"
+    },
+    "contactInfo": "eRA Service Desk Monday to Friday 7 am to 8 pm ET http://grants.nih.gov/support/",
+    "gracePeriod": 35,
+    "competitionId": "FORMS-I",
+    "competitionTitle": "Use for due dates on or after January 25, 2025",
+    "electronicRequired": "Y",
+    "expectedApplicationCount": 100,
+    "expectedApplicationSize": 0,
+    "openToApplicantType": 1,
+    "listed": "L",
+    "isMultiProject": "N",
+    "extension": "pdf",
+    "mimetype": "application/pdf",
+    "lastUpdate": "Nov 21, 2024 01:58:28 PM EST",
+    "workspaceCompatibleFlag": "Y",
+    "packageId": "PKG00288881",
+    "openingDateStr": "2025-01-20-00-00-00",
+    "closingDateStr": "2026-11-17-00-00-00"
+   }
+  ],
+  "closedOpportunityPkgs": [],
+  "originalDueDate": "Nov 17, 2026 12:00:00 AM EST",
+  "originalDueDateDesc": "",
+  "synopsisModifiedFields": [
+   "revision",
+   "version",
+   "agencyContactDesc",
+   "synopsisDesc",
+   "applicantEligibilityDesc",
+   "createTimeStamp"
+  ],
+  "forecastModifiedFields": [],
+  "errorMessages": [],
+  "synPostDateInPast": true,
+  "docType": "synopsis",
+  "forecastHistCount": 0,
+  "synopsisHistCount": 0,
+  "assistCompatible": false,
+  "assistURL": "",
+  "relatedOpps": [],
+  "draftMode": "N",
+  "ost": "POSTED"
+ }
+}

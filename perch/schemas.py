@@ -104,8 +104,13 @@ class Opportunity(Record):
     award_ceiling: float | None = None
     award_floor: float | None = None
     eligible_applicants: list[str] = Field(default_factory=list)
+    eligibility_notes: str | None = None
     activity_code: str | None = None
     description: str | None = None
+    status: str | None = Field(default=None, description="As listed: forecasted, posted, ...")
+    archive_date: date | None = None
+    assistance_listings: list[str] = Field(default_factory=list, description="CFDA / ALN")
+    funding_instruments: list[str] = Field(default_factory=list)
 
 
 class Organisation(Record):
