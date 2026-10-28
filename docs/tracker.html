@@ -77,12 +77,12 @@ td:first-child { font-family: var(--mono); font-weight: 600; white-space: nowrap
 <main>
 <h1>S1 — Schemas, store, OpenAlex</h1>
 <p>Goal: resolve a Temple researcher and pull their public works into a store with provenance. Perch-dev updates this file as each task lands; <code>make artifacts</code> renders it.</p>
-<section class="summary" aria-label="1 of 5 tasks done"><div class="counts"><span><b>1/5</b>tasks done</span><span class="s-done"><b>1</b>done</span><span class="s-todo"><b>4</b>todo</span></div><div class="bar" role="img" aria-label="1 of 5 tasks done"><span class="s-done" style="width:20.00%" title="done: 1"></span><span class="s-todo" style="width:80.00%" title="todo: 4"></span></div></section>
+<section class="summary" aria-label="2 of 5 tasks done"><div class="counts"><span><b>2/5</b>tasks done</span><span class="s-done"><b>2</b>done</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="2 of 5 tasks done"><span class="s-done" style="width:40.00%" title="done: 2"></span><span class="s-todo" style="width:60.00%" title="todo: 3"></span></div></section>
 <div class="scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
 <tbody>
-<tr><td>0</td><td>One combined tracker: <code>docs/sessions/</code>, artifact mode in <code>scripts/render_tracker.py</code>, published by <code>make tracker</code></td><td><span class="badge s-done">done</span></td><td></td><td>Directed by Dakshitha at the start of S1</td></tr>
-<tr><td>1</td><td><code>perch/schemas.py</code>: Researcher, Work, Award, Opportunity, Organisation, Lead, Brief, each with provenance</td><td><span class="badge s-todo">todo</span></td><td></td><td></td></tr>
+<tr><td>0</td><td>One combined tracker: <code>docs/sessions/</code>, artifact mode in <code>scripts/render_tracker.py</code>, published by <code>make tracker</code></td><td><span class="badge s-done">done</span></td><td>5614941</td><td>Directed by Dakshitha at the start of S1</td></tr>
+<tr><td>1</td><td><code>perch/schemas.py</code>: Researcher, Work, Award, Opportunity, Organisation, Lead, Brief, each with provenance</td><td><span class="badge s-done">done</span></td><td>see next row</td><td>pydantic 2.14.1, httpx 0.28.1 pinned. Naive <code>fetched_at</code> rejected; extra fields rejected. <code>perch</code> installs as a package.</td></tr>
 <tr><td>2</td><td><code>perch/store/base.py</code> repository interface and <code>perch/store/sqlite.py</code></td><td><span class="badge s-todo">todo</span></td><td></td><td></td></tr>
 <tr><td>3</td><td><code>perch/sources/openalex.py</code>: resolve by name + Temple and by ORCID; works with abstracts, topics, referenced works; live-verified fixture; SOURCES.md row</td><td><span class="badge s-todo">todo</span></td><td></td><td></td></tr>
 <tr><td>4</td><td><code>perch/cli.py</code>: <code>perch resolve</code> and <code>perch fetch openalex</code></td><td><span class="badge s-todo">todo</span></td><td></td><td></td></tr>
