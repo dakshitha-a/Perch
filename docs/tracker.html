@@ -5,120 +5,159 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Perch Build Tracker</title>
 <style>
-/* Layout: one reading column; summary strip first, then the tables that hold the detail. */
+/* Layout: app bar with tabs; one view at a time in a single 1080px column. */
 :root {
-  --bg: #f7f8f6; --surface: #ffffff; --fg: #1b2420; --muted: #56635c; --line: #d9dfdb;
-  --head: #eef2ef; --code: #e9eeea; --accent: #1f6f5c;
-  --todo: #6a7570; --progress: #a15c07; --continued: #6d3fc0; --done: #1d7a43; --cut: #b42323;
+  --bg: #f5f7f5; --surface: #ffffff; --raised: #eef2ef; --fg: #18211d; --muted: #56635c;
+  --line: #d9e0db; --code: #e8eee9; --accent: #1f6f5c; --accent-soft: #dcefe8;
+  --todo: #67726c; --progress: #a15c07; --continued: #6d3fc0; --done: #1d7a43; --cut: #b42323;
   --sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #121715; --surface: #18201d; --fg: #e3ebe6; --muted: #9aa9a1; --line: #2c3833;
-    --head: #1e2824; --code: #24302b; --accent: #5cc4a6;
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111614; --surface: #171f1c; --raised: #1d2723; --fg: #e3ebe6; --muted: #98a79f;
+    --line: #2b3732; --code: #24302b; --accent: #5cc4a6; --accent-soft: #1b3a32;
     --todo: #9aa6a0; --progress: #f0a640; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #121715; --surface: #18201d; --fg: #e3ebe6; --muted: #9aa9a1; --line: #2c3833;
-  --head: #1e2824; --code: #24302b; --accent: #5cc4a6;
-  --todo: #9aa6a0; --progress: #f0a640; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
-  color-scheme: dark;
-}
+    color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #111614; --surface: #171f1c; --raised: #1d2723; --fg: #e3ebe6; --muted: #98a79f;
+    --line: #2b3732; --code: #24302b; --accent: #5cc4a6; --accent-soft: #1b3a32;
+    --todo: #9aa6a0; --progress: #f0a640; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
+    color-scheme: dark; }
 * { box-sizing: border-box; }
-body {
-  margin: 0; background: var(--bg); color: var(--fg);
-  font: 15px/1.55 var(--sans);
-  padding-block: 28px 56px;
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--sans); }
+.wrap { max-width: 1080px; margin: 0 auto;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-}
-main { max-width: 1120px; margin: 0 auto; display: grid; gap: 14px; }
-main > * { min-width: 0; margin: 0; }
-h1 { font-size: 1.65rem; line-height: 1.2; text-wrap: balance; letter-spacing: -0.01em; }
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.appbar { background: var(--surface); border-bottom: 1px solid var(--line); }
+.appbar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px;
+  padding-block: 12px 0; }
+.brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; padding-bottom: 10px; }
+.brand b { font-size: 1.15rem; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-size: 13px; }
+.at-a-glance { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted);
+  padding-bottom: 10px; }
+.at-a-glance code { font-weight: 600; }
+nav { flex-basis: 100%; display: flex; gap: 4px; overflow-x: auto; }
+nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 14px;
+  padding: 8px 12px 10px; border-bottom: 2px solid transparent; white-space: nowrap; }
+nav a:hover { color: var(--fg); }
+nav a[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); }
+nav a:focus-visible, summary:focus-visible, td a:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.count { font-family: var(--mono); font-size: 11px; background: var(--raised); color: var(--muted);
+  border-radius: 999px; padding: 1px 7px; margin-left: 6px; }
+main.wrap { padding-block: 24px 56px; }
+.view { display: grid; gap: 16px; }
+.view > * { min-width: 0; margin: 0; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+  font-weight: 600; }
+.title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+h1 { font-size: 1.6rem; line-height: 1.2; text-wrap: balance; letter-spacing: -0.01em; margin: 0; }
 h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
-  margin-top: 18px; }
-p, li { color: var(--muted); max-width: 70ch; }
-ul { padding-left: 1.2em; display: grid; gap: 4px; }
+  margin: 12px 0 0; }
+p, li { color: var(--muted); max-width: 72ch; margin: 0; }
+ul { padding-left: 1.2em; display: grid; gap: 4px; margin: 0; }
 code { font-family: var(--mono); background: var(--code); padding: 1px 5px; border-radius: 3px;
   font-size: 0.86em; }
 a { color: var(--accent); }
 strong { color: var(--fg); }
-.summary { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line);
-  border-radius: 6px; padding: 14px 16px; }
-.counts { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
-.counts b { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 1.15rem;
-  margin-right: 4px; }
-.bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--head); }
+.meta { font-size: 13px; color: var(--muted); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.summary { display: grid; gap: 10px; padding: 14px 16px; }
+.counts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
+.counts b { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 1.1rem;
+  margin-right: 5px; color: var(--fg); }
+.bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--raised); }
 .bar span { display: block; height: 100%; }
-.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line);
-  border-radius: 6px; }
+.scroll { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
-th, td { border-bottom: 1px solid var(--line); padding: 7px 12px; text-align: left;
+th, td { border-bottom: 1px solid var(--line); padding: 8px 12px; text-align: left;
   vertical-align: top; }
 tr:last-child td { border-bottom: 0; }
-th { background: var(--head); font-weight: 600; font-size: 12px; text-transform: uppercase;
+th { background: var(--raised); font-weight: 600; font-size: 12px; text-transform: uppercase;
   letter-spacing: 0.05em; color: var(--muted); white-space: nowrap; }
 td:first-child { font-family: var(--mono); font-weight: 600; white-space: nowrap; }
+td.mono { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+tr.is-current td { background: var(--accent-soft); }
+tr.is-finished td { color: var(--muted); }
 .badge { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px;
-  font-weight: 600; white-space: nowrap; border: 1px solid currentColor; }
+  font-weight: 600; white-space: nowrap; border: 1px solid currentColor; font-family: var(--sans); }
 .s-todo { color: var(--todo); } .s-in-progress { color: var(--progress); }
-.s-continued { color: var(--continued); } .s-done { color: var(--done); }
-.s-cut { color: var(--cut); }
+.s-continued { color: var(--continued); } .s-done { color: var(--done); } .s-cut { color: var(--cut); }
 .bar .s-todo { background: var(--todo); } .bar .s-in-progress { background: var(--progress); }
 .bar .s-continued { background: var(--continued); } .bar .s-done { background: var(--done); }
 .bar .s-cut { background: var(--cut); }
-.foot { font-size: 12px; }
+.done-list { list-style: none; padding: 14px 16px; }
+.done-list li::before { content: "\2610"; margin-right: 8px; color: var(--muted); }
+.empty { padding: 20px 16px; color: var(--muted); }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+details + details { margin-top: 10px; }
+summary { cursor: pointer; list-style: none; display: grid; align-items: center; gap: 4px 14px;
+  grid-template-columns: auto 1fr auto; padding: 12px 16px; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "\25B8"; color: var(--muted); grid-row: span 2; }
+details[open] summary::before { content: "\25BE"; }
+summary .sid { font-family: var(--mono); font-weight: 600; }
+summary .stitle { font-weight: 600; }
+summary .smeta { grid-column: 2 / -1; font-size: 13px; color: var(--muted); }
+details .inner { display: grid; gap: 14px; padding: 0 16px 16px; }
+details .inner > * { min-width: 0; }
+.foot { font-size: 12px; color: var(--muted); }
+@media (max-width: 560px) { summary { grid-template-columns: auto 1fr; }
+  summary .badge { grid-column: 2; justify-self: start; } }
 </style>
 </head>
 <body>
-<main>
-<h1>S1 — Schemas, store, OpenAlex</h1>
-<p>Goal: resolve a Temple researcher and pull their public works into a store with provenance. Perch-dev updates this file as each task lands; <code>make artifacts</code> renders it.</p>
-<section class="summary" aria-label="2 of 5 tasks done"><div class="counts"><span><b>2/5</b>tasks done</span><span class="s-done"><b>2</b>done</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="2 of 5 tasks done"><span class="s-done" style="width:40.00%" title="done: 2"></span><span class="s-todo" style="width:60.00%" title="todo: 3"></span></div></section>
-<div class="scroll"><table>
+<header class="appbar"><div class="wrap">
+<div class="brand"><b>Perch</b><span>Build tracker</span></div>
+<div class="at-a-glance"><code>S1</code> <span class="badge s-in-progress">in progress</span><span>1/16 sessions done</span></div>
+<nav aria-label="Tracker views">
+<a id="tab-current" href="#current" aria-current="page">Current</a>
+<a id="tab-master" href="#master">Master</a>
+<a id="tab-archive" href="#archive">Archive<span class="count">1</span></a>
+</nav></div></header>
+<main class="wrap">
+<section id="view-current" class="view" data-view="current">
+<div id="s1"><div class="eyebrow">Current session</div>
+<div class="title-row"><h1>S1 · Schemas, store, OpenAlex</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-28 19:14 EDT</div></div>
+<p>Goal: resolve a Temple researcher and pull their public works into a store with provenance. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="2 of 5 tasks done"><div class="counts"><span><b>2/5</b>tasks done</span><span class="s-done"><b>2</b>done</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="2 of 5 tasks done"><span class="s-done" style="width:40.00%" title="done: 2"></span><span class="s-todo" style="width:60.00%" title="todo: 3"></span></div></section>
+<div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
 <tbody>
-<tr><td>0</td><td>One combined tracker: <code>docs/sessions/</code>, artifact mode in <code>scripts/render_tracker.py</code>, published by <code>make tracker</code></td><td><span class="badge s-done">done</span></td><td>5614941</td><td>Directed by Dakshitha at the start of S1</td></tr>
-<tr><td>1</td><td><code>perch/schemas.py</code>: Researcher, Work, Award, Opportunity, Organisation, Lead, Brief, each with provenance</td><td><span class="badge s-done">done</span></td><td>see next row</td><td>pydantic 2.14.1, httpx 0.28.1 pinned. Naive <code>fetched_at</code> rejected; extra fields rejected. <code>perch</code> installs as a package.</td></tr>
-<tr><td>2</td><td><code>perch/store/base.py</code> repository interface and <code>perch/store/sqlite.py</code></td><td><span class="badge s-todo">todo</span></td><td></td><td></td></tr>
-<tr><td>3</td><td><code>perch/sources/openalex.py</code>: resolve by name + Temple and by ORCID; works with abstracts, topics, referenced works; live-verified fixture; SOURCES.md row</td><td><span class="badge s-todo">todo</span></td><td></td><td></td></tr>
-<tr><td>4</td><td><code>perch/cli.py</code>: <code>perch resolve</code> and <code>perch fetch openalex</code></td><td><span class="badge s-todo">todo</span></td><td></td><td></td></tr>
+<tr><td>0</td><td>Tracker web page: Current, Master and Archive views from <code>docs/sessions/</code> and <code>docs/TRACKER.md</code>; published by <code>make tracker</code></td><td><span class="badge s-done">done</span></td><td class="mono">5614941</td><td>Directed by Dakshitha. Redesigned to three views on request.</td></tr>
+<tr><td>1</td><td><code>perch/schemas.py</code>: Researcher, Work, Award, Opportunity, Organisation, Lead, Brief, each with provenance</td><td><span class="badge s-done">done</span></td><td class="mono">28b5fac</td><td>pydantic 2.14.1, httpx 0.28.1 pinned. Naive <code>fetched_at</code> rejected; extra fields rejected. <code>perch</code> installs as a package.</td></tr>
+<tr><td>2</td><td><code>perch/store/base.py</code> repository interface and <code>perch/store/sqlite.py</code></td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td><code>perch/sources/openalex.py</code>: resolve by name + Temple and by ORCID; works with abstracts, topics, referenced works; live-verified fixture; SOURCES.md row</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td><code>perch/cli.py</code>: <code>perch resolve</code> and <code>perch fetch openalex</code></td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Definition of done</h2>
-<ul>
-<li><code>perch resolve</code> then <code>perch fetch</code> stores works for one public Temple PI.</li>
-<li>The fixture under <code>tests/fixtures/openalex/</code> is a real response.</li>
-<li>The OpenAlex row in <code>docs/SOURCES.md</code> is filled from live requests.</li>
-<li><code>make test</code> is green.</li>
-</ul>
-<h1>TRACKER.md — Perch master tracker</h1>
-<p>Perch-dev updates this file at the end of every session (and at any stop mid-session). <code>make tracker</code> renders it to <code>docs/tracker.html</code> for reading in a browser; the Markdown is the source of truth. Status values: <code>todo</code> · <code>in progress</code> · <code>continued</code> (stopped mid-session, see HANDOFF) · <code>done</code> · <code>cut</code>.</p>
-<section class="summary" aria-label="1 of 16 sessions done"><div class="counts"><span><b>1/16</b>sessions done</span><span class="s-done"><b>1</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>14</b>todo</span></div><div class="bar" role="img" aria-label="1 of 16 sessions done"><span class="s-done" style="width:6.25%" title="done: 1"></span><span class="s-in-progress" style="width:6.25%" title="in progress: 1"></span><span class="s-todo" style="width:87.50%" title="todo: 14"></span></div></section>
-<div class="scroll"><table>
+<ul class="panel done-list"><li><code>perch resolve</code> then <code>perch fetch</code> stores works for one public Temple PI.</li><li>The fixture under <code>tests/fixtures/openalex/</code> is a real response.</li><li>The OpenAlex row in <code>docs/SOURCES.md</code> is filled from live requests.</li><li><code>make test</code> is green.</li></ul>
+</section>
+<section id="view-master" class="view" data-view="master" hidden>
+<div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
+<section class="panel summary" aria-label="1 of 16 sessions done"><div class="counts"><span><b>1/16</b>sessions done</span><span class="s-done"><b>1</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>14</b>todo</span></div><div class="bar" role="img" aria-label="1 of 16 sessions done"><span class="s-done" style="width:6.25%" title="done: 1"></span><span class="s-in-progress" style="width:6.25%" title="in progress: 1"></span><span class="s-todo" style="width:87.50%" title="todo: 14"></span></div></section>
+<div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
-<tr><td>S0</td><td>Repository</td><td><span class="badge s-done">done</span></td><td>2026-10-28 19:02 EDT</td><td>2026-10-28 19:03 EDT</td><td>928a148</td><td>Private repo dakshitha-a/perch on <code>main</code>. uv 0.13.6, Python 3.12.16, ruff 0.17.3, pytest 9.2.0 (pinned). <code>make test</code>: 3 passed. demo/bench/package are stubs. Q1 open (<code>data/</code> gitignore).</td></tr>
-<tr><td>S1</td><td>Schemas, store, OpenAlex</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-28 19:14 EDT</td><td></td><td></td><td></td></tr>
-<tr><td>S2</td><td>Award sources, award horizon</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S3</td><td>Opportunities</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S4</td><td>Route A, deterministic</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S5</td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S6</td><td>API</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S7</td><td>Web app, first three screens</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S8</td><td>Back-test and bench</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S9</td><td>Deploy</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S10</td><td>Scout agent</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S11</td><td>Route B</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S12</td><td>Compare, hand-off, export</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S13</td><td>MCP server, private context</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S14</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>S15</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td></td><td></td></tr>
+<tr class="is-finished"><td><a href="#s0">S0</a></td><td>Repository</td><td><span class="badge s-done">done</span></td><td>2026-10-28 19:02 EDT</td><td>2026-10-28 19:03 EDT</td><td class="mono">928a148</td><td>Private repo dakshitha-a/perch on <code>main</code>. uv 0.13.6, Python 3.12.16, ruff 0.17.3, pytest 9.2.0 (pinned). <code>make test</code>: 3 passed. demo/bench/package are stubs. Q1 open (<code>data/</code> gitignore).</td></tr>
+<tr class="is-current"><td><a href="#s1">S1</a></td><td>Schemas, store, OpenAlex</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-28 19:14 EDT</td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S2</td><td>Award sources, award horizon</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S3</td><td>Opportunities</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S4</td><td>Route A, deterministic</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S5</td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S6</td><td>API</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S7</td><td>Web app, first three screens</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S8</td><td>Back-test and bench</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S9</td><td>Deploy</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S10</td><td>Scout agent</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S11</td><td>Route B</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S12</td><td>Compare, hand-off, export</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S13</td><td>MCP server, private context</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S14</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S15</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
-<div class="scroll"><table>
+<div class="panel scroll"><table>
 <thead><tr><th>Milestone</th><th>Date</th><th>Needs</th><th>Ready?</th></tr></thead>
 <tbody>
 <tr><td>Checkup 2</td><td>Tue 3 Nov</td><td>S0–S7</td><td></td></tr>
@@ -126,7 +165,7 @@ td:first-child { font-family: var(--mono); font-weight: 600; white-space: nowrap
 <tr><td>Submission</td><td>Fri 6 Nov 12:00</td><td>ZIP + links</td><td></td></tr>
 </tbody></table></div>
 <h2>Key numbers (keep current)</h2>
-<div class="scroll"><table>
+<div class="panel scroll"><table>
 <thead><tr><th>Metric</th><th>Value</th><th>Source</th><th>Updated</th></tr></thead>
 <tbody>
 <tr><td>Back-test hit@5 / hit@10 / MRR (best config)</td><td></td><td>bench/results/</td><td></td></tr>
@@ -136,7 +175,50 @@ td:first-child { font-family: var(--mono); font-weight: 600; white-space: nowrap
 <tr><td>Warm-cache brief time</td><td></td><td></td><td></td></tr>
 <tr><td>Route B hand-judged precision</td><td></td><td></td><td></td></tr>
 </tbody></table></div>
-<p class="foot"><em>Generated from docs/sessions/S1.md and docs/TRACKER.md by scripts/render_tracker.py. The Markdown is the source of truth.</em></p>
+<p class="meta">Perch-dev updates this file at the end of every session (and at any stop mid-session). <code>make tracker</code> renders it to <code>docs/tracker.html</code> for reading in a browser; the Markdown is the source of truth. Status values: <code>todo</code> · <code>in progress</code> · <code>continued</code> (stopped mid-session, see HANDOFF) · <code>done</code> · <code>cut</code>.</p>
+</section>
+<section id="view-archive" class="view" data-view="archive" hidden>
+<div><div class="eyebrow">Finished sessions</div><h1>Archive</h1></div>
+<div><details id="s0"><summary><span><span class="sid">S0</span> <span class="stitle">Repository</span></span><span></span><span class="badge s-done">done</span><span class="smeta">5/5 tasks done · finished 2026-10-28 19:03 EDT · commit <code>928a148</code></span></summary><div class="inner"><p>Goal: a private repo with the skeleton, docs and tooling, so every later session starts from <code>git pull</code>. Written at the start of S1, from the S0 commits, so the archive has S0.</p>
+<section class="panel summary" aria-label="5 of 5 tasks done"><div class="counts"><span><b>5/5</b>tasks done</span><span class="s-done"><b>5</b>done</span></div><div class="bar" role="img" aria-label="5 of 5 tasks done"><span class="s-done" style="width:100.00%" title="done: 5"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>gh auth status</code>; create the private <code>perch</code> repo and push</td><td><span class="badge s-done">done</span></td><td class="mono">d6101b5</td><td>Repo created after the first three commits</td></tr>
+<tr><td>2</td><td>uv (Python 3.12), <code>.gitignore</code>, <code>.env.example</code>, MIT <code>LICENSE</code>, <code>README.md</code>, <code>Makefile</code> targets</td><td><span class="badge s-done">done</span></td><td class="mono">2392580</td><td>demo, bench, package are stubs</td></tr>
+<tr><td>3</td><td>ruff + pytest configured, trivial test, <code>make test</code> green; <code>scripts/render_tracker.py</code> and <code>make tracker</code></td><td><span class="badge s-done">done</span></td><td class="mono">58b337d</td><td></td></tr>
+<tr><td>4</td><td>Copy <code>docs/</code>, <code>bridge/</code>, <code>CLAUDE.md</code>; AI-use log row; S0 tracker row</td><td><span class="badge s-done">done</span></td><td class="mono">928a148</td><td></td></tr>
+<tr><td>5</td><td>Public-ready hygiene: secret and personal-detail checks, git hooks, history rewrite</td><td><span class="badge s-done">done</span></td><td class="mono">5edb190</td><td>Directed by Dakshitha after S0</td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>Private repo on GitHub.</li><li><code>make test</code> green on <code>main</code>.</li><li>Tracker shows S0 done.</li></ul></div></details></div>
+</section>
+<p class="foot">Generated from docs/TRACKER.md and docs/sessions/ by scripts/render_tracker.py.
+The Markdown is the source of truth.</p>
 </main>
+<script>
+(function () {
+  var views = ["current", "master", "archive"];
+  function route() {
+    var h = (location.hash || "#current").slice(1).toLowerCase();
+    var target = null;
+    if (/^s[0-9]+$/.test(h)) {
+      target = document.getElementById(h);
+      var host = target && target.closest("[data-view]");
+      h = host ? host.getAttribute("data-view") : "current";
+      if (target && target.tagName === "DETAILS") target.open = true;
+    }
+    if (views.indexOf(h) < 0) h = "current";
+    views.forEach(function (v) {
+      document.getElementById("view-" + v).hidden = v !== h;
+      var tab = document.getElementById("tab-" + v);
+      if (v === h) tab.setAttribute("aria-current", "page"); else tab.removeAttribute("aria-current");
+    });
+    if (target) target.scrollIntoView({ block: "start" }); else window.scrollTo(0, 0);
+  }
+  window.addEventListener("hashchange", route);
+  route();
+})();
+</script>
 </body>
 </html>

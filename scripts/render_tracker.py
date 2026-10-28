@@ -1,22 +1,20 @@
-"""Render a tracker Markdown file (docs/TRACKER.md, docs/sessions/S*.md) to HTML.
+"""Render the Perch build tracker as a small three-view web page.
 
-Standard library only. Handles the Markdown subset the trackers use: headings,
-paragraphs, bullet lists and pipe tables, with inline code, bold, italics and
-links. Status cells (todo, in progress, continued, done, cut) get a badge, and
-the first table with a Status column gets a summary strip above the page.
-Output is deterministic so re-running does not dirty the tree.
+Sources (Markdown is the source of truth):
+  docs/TRACKER.md          master tracker: sessions, milestones, key numbers
+  docs/sessions/S<n>.md    one task file per session
 
-Two outputs:
-  standalone (default): a complete HTML document with no external requests,
-    for docs/tracker.html.
-  --artifact: a page fragment for publishing as a claude.ai Artifact. The host
-    wraps it in a document skeleton; it adds a Google Fonts link.
+Views, switched by plain hash links (#current, #master, #archive, #s<n>):
+  Current  the session marked in progress or continued, else the first todo
+  Master   every session, milestones and key numbers
+  Archive  finished sessions (done or cut), collapsed, newest first
 
-One page holds everything: the current session's tasks (the highest-numbered
-docs/sessions/S<n>.md) come first, then the master tracker.
+Standard library only. Output is deterministic so re-running does not dirty the
+tree. Two outputs: a complete standalone document with no external requests
+(docs/tracker.html), and --artifact, a fragment for a claude.ai Artifact (the
+host adds the document skeleton; the fragment adds a Google Fonts link).
 
-Usage: python scripts/render_tracker.py [SRC] [DEST] [--artifact] [--title NAME]
-                                        [--no-session]
+Usage: python scripts/render_tracker.py [TRACKER.md] [DEST] [--artifact] [--title NAME]
 """
 
 from __future__ import annotations
@@ -25,83 +23,146 @@ import argparse
 import html
 import re
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 
 STATUSES = ("done", "in progress", "continued", "todo", "cut")
+FINISHED = ("done", "cut")
 
 FONT_LINK = (
     '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?'
     "family=Public+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap\">"
 )
 
-CSS = """
-/* Layout: one reading column; summary strip first, then the tables that hold the detail. */
+DARK = """--bg: #111614; --surface: #171f1c; --raised: #1d2723; --fg: #e3ebe6; --muted: #98a79f;
+    --line: #2b3732; --code: #24302b; --accent: #5cc4a6; --accent-soft: #1b3a32;
+    --todo: #9aa6a0; --progress: #f0a640; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
+    color-scheme: dark;"""
+
+CSS = (
+    """
+/* Layout: app bar with tabs; one view at a time in a single 1080px column. */
 :root {
-  --bg: #f7f8f6; --surface: #ffffff; --fg: #1b2420; --muted: #56635c; --line: #d9dfdb;
-  --head: #eef2ef; --code: #e9eeea; --accent: #1f6f5c;
-  --todo: #6a7570; --progress: #a15c07; --continued: #6d3fc0; --done: #1d7a43; --cut: #b42323;
+  --bg: #f5f7f5; --surface: #ffffff; --raised: #eef2ef; --fg: #18211d; --muted: #56635c;
+  --line: #d9e0db; --code: #e8eee9; --accent: #1f6f5c; --accent-soft: #dcefe8;
+  --todo: #67726c; --progress: #a15c07; --continued: #6d3fc0; --done: #1d7a43; --cut: #b42323;
   --sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #121715; --surface: #18201d; --fg: #e3ebe6; --muted: #9aa9a1; --line: #2c3833;
-    --head: #1e2824; --code: #24302b; --accent: #5cc4a6;
-    --todo: #9aa6a0; --progress: #f0a640; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
-  --bg: #121715; --surface: #18201d; --fg: #e3ebe6; --muted: #9aa9a1; --line: #2c3833;
-  --head: #1e2824; --code: #24302b; --accent: #5cc4a6;
-  --todo: #9aa6a0; --progress: #f0a640; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
-  color-scheme: dark;
-}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { DARK } }
+:root[data-theme="dark"] { DARK }
 * { box-sizing: border-box; }
-body {
-  margin: 0; background: var(--bg); color: var(--fg);
-  font: 15px/1.55 var(--sans);
-  padding-block: 28px 56px;
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--sans); }
+.wrap { max-width: 1080px; margin: 0 auto;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-}
-main { max-width: 1120px; margin: 0 auto; display: grid; gap: 14px; }
-main > * { min-width: 0; margin: 0; }
-h1 { font-size: 1.65rem; line-height: 1.2; text-wrap: balance; letter-spacing: -0.01em; }
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.appbar { background: var(--surface); border-bottom: 1px solid var(--line); }
+.appbar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px;
+  padding-block: 12px 0; }
+.brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; padding-bottom: 10px; }
+.brand b { font-size: 1.15rem; letter-spacing: -0.01em; }
+.brand span { color: var(--muted); font-size: 13px; }
+.at-a-glance { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted);
+  padding-bottom: 10px; }
+.at-a-glance code { font-weight: 600; }
+nav { flex-basis: 100%; display: flex; gap: 4px; overflow-x: auto; }
+nav a { color: var(--muted); text-decoration: none; font-weight: 600; font-size: 14px;
+  padding: 8px 12px 10px; border-bottom: 2px solid transparent; white-space: nowrap; }
+nav a:hover { color: var(--fg); }
+nav a[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); }
+nav a:focus-visible, summary:focus-visible, td a:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.count { font-family: var(--mono); font-size: 11px; background: var(--raised); color: var(--muted);
+  border-radius: 999px; padding: 1px 7px; margin-left: 6px; }
+main.wrap { padding-block: 24px 56px; }
+.view { display: grid; gap: 16px; }
+.view > * { min-width: 0; margin: 0; }
+.eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+  font-weight: 600; }
+.title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+h1 { font-size: 1.6rem; line-height: 1.2; text-wrap: balance; letter-spacing: -0.01em; margin: 0; }
 h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
-  margin-top: 18px; }
-p, li { color: var(--muted); max-width: 70ch; }
-ul { padding-left: 1.2em; display: grid; gap: 4px; }
+  margin: 12px 0 0; }
+p, li { color: var(--muted); max-width: 72ch; margin: 0; }
+ul { padding-left: 1.2em; display: grid; gap: 4px; margin: 0; }
 code { font-family: var(--mono); background: var(--code); padding: 1px 5px; border-radius: 3px;
   font-size: 0.86em; }
 a { color: var(--accent); }
 strong { color: var(--fg); }
-.summary { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--line);
-  border-radius: 6px; padding: 14px 16px; }
-.counts { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
-.counts b { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 1.15rem;
-  margin-right: 4px; }
-.bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--head); }
+.meta { font-size: 13px; color: var(--muted); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+.summary { display: grid; gap: 10px; padding: 14px 16px; }
+.counts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
+.counts b { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 1.1rem;
+  margin-right: 5px; color: var(--fg); }
+.bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--raised); }
 .bar span { display: block; height: 100%; }
-.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line);
-  border-radius: 6px; }
+.scroll { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
-th, td { border-bottom: 1px solid var(--line); padding: 7px 12px; text-align: left;
+th, td { border-bottom: 1px solid var(--line); padding: 8px 12px; text-align: left;
   vertical-align: top; }
 tr:last-child td { border-bottom: 0; }
-th { background: var(--head); font-weight: 600; font-size: 12px; text-transform: uppercase;
+th { background: var(--raised); font-weight: 600; font-size: 12px; text-transform: uppercase;
   letter-spacing: 0.05em; color: var(--muted); white-space: nowrap; }
 td:first-child { font-family: var(--mono); font-weight: 600; white-space: nowrap; }
+td.mono { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+tr.is-current td { background: var(--accent-soft); }
+tr.is-finished td { color: var(--muted); }
 .badge { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px;
-  font-weight: 600; white-space: nowrap; border: 1px solid currentColor; }
+  font-weight: 600; white-space: nowrap; border: 1px solid currentColor; font-family: var(--sans); }
 .s-todo { color: var(--todo); } .s-in-progress { color: var(--progress); }
-.s-continued { color: var(--continued); } .s-done { color: var(--done); }
-.s-cut { color: var(--cut); }
+.s-continued { color: var(--continued); } .s-done { color: var(--done); } .s-cut { color: var(--cut); }
 .bar .s-todo { background: var(--todo); } .bar .s-in-progress { background: var(--progress); }
 .bar .s-continued { background: var(--continued); } .bar .s-done { background: var(--done); }
 .bar .s-cut { background: var(--cut); }
-.foot { font-size: 12px; }
+.done-list { list-style: none; padding: 14px 16px; }
+.done-list li::before { content: "\\2610"; margin-right: 8px; color: var(--muted); }
+.empty { padding: 20px 16px; color: var(--muted); }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+details + details { margin-top: 10px; }
+summary { cursor: pointer; list-style: none; display: grid; align-items: center; gap: 4px 14px;
+  grid-template-columns: auto 1fr auto; padding: 12px 16px; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "\\25B8"; color: var(--muted); grid-row: span 2; }
+details[open] summary::before { content: "\\25BE"; }
+summary .sid { font-family: var(--mono); font-weight: 600; }
+summary .stitle { font-weight: 600; }
+summary .smeta { grid-column: 2 / -1; font-size: 13px; color: var(--muted); }
+details .inner { display: grid; gap: 14px; padding: 0 16px 16px; }
+details .inner > * { min-width: 0; }
+.foot { font-size: 12px; color: var(--muted); }
+@media (max-width: 560px) { summary { grid-template-columns: auto 1fr; }
+  summary .badge { grid-column: 2; justify-self: start; } }
 """
+).replace("DARK", DARK)
+
+SCRIPT = """
+(function () {
+  var views = ["current", "master", "archive"];
+  function route() {
+    var h = (location.hash || "#current").slice(1).toLowerCase();
+    var target = null;
+    if (/^s[0-9]+$/.test(h)) {
+      target = document.getElementById(h);
+      var host = target && target.closest("[data-view]");
+      h = host ? host.getAttribute("data-view") : "current";
+      if (target && target.tagName === "DETAILS") target.open = true;
+    }
+    if (views.indexOf(h) < 0) h = "current";
+    views.forEach(function (v) {
+      document.getElementById("view-" + v).hidden = v !== h;
+      var tab = document.getElementById("tab-" + v);
+      if (v === h) tab.setAttribute("aria-current", "page"); else tab.removeAttribute("aria-current");
+    });
+    if (target) target.scrollIntoView({ block: "start" }); else window.scrollTo(0, 0);
+  }
+  window.addEventListener("hashchange", route);
+  route();
+})();
+"""
+
+
+# ---------- Markdown subset ----------
 
 
 def inline(text: str) -> str:
@@ -121,94 +182,61 @@ def inline(text: str) -> str:
 
 
 def split_row(line: str) -> list[str]:
-    cells = line.strip().strip("|").split("|")
-    return [c.strip() for c in cells]
+    return [c.strip() for c in line.strip().strip("|").split("|")]
 
 
 def is_separator(line: str) -> bool:
     return bool(re.fullmatch(r"\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?", line.strip()))
 
 
-def slug(status: str) -> str:
-    return "s-" + status.replace(" ", "-")
+@dataclass
+class Table:
+    head: list[str]
+    rows: list[list[str]]
+
+    def col(self, name: str) -> int | None:
+        lower = [h.lower() for h in self.head]
+        return lower.index(name) if name in lower else None
 
 
-def cell(text: str, tag: str) -> str:
-    if tag == "td" and text.lower() in STATUSES:
-        return f'<td><span class="badge {slug(text.lower())}">{html.escape(text)}</span></td>'
-    return f"<{tag}>{inline(text)}</{tag}>"
+@dataclass
+class Doc:
+    title: str = ""
+    # Each block is ("h", level, text), ("p", text), ("ul", [items]) or ("table", Table).
+    blocks: list[tuple] = field(default_factory=list)
+
+    def tables(self) -> list[Table]:
+        return [b[1] for b in self.blocks if b[0] == "table"]
 
 
-def render_table(head: list[str], body: list[list[str]]) -> str:
-    rows = ["<tr>" + "".join(cell(c, "th") for c in head) + "</tr>"]
-    for r in body:
-        r = (r + [""] * len(head))[: len(head)]
-        rows.append("<tr>" + "".join(cell(c, "td") for c in r) + "</tr>")
-    return (
-        '<div class="scroll"><table>\n<thead>' + rows[0] + "</thead>\n<tbody>\n"
-        + "\n".join(rows[1:]) + "\n</tbody></table></div>"
-    )
-
-
-def render_summary(statuses: list[str], noun: str) -> str:
-    """Counts per status and a stacked bar, in a fixed order."""
-    total = len(statuses)
-    counts = [(s, statuses.count(s)) for s in STATUSES if statuses.count(s)]
-    done = statuses.count("done")
-    items = "".join(
-        f'<span class="{slug(s)}"><b>{n}</b>{html.escape(s)}</span>' for s, n in counts
-    )
-    bar = "".join(
-        f'<span class="{slug(s)}" style="width:{100 * n / total:.2f}%" title="{s}: {n}"></span>'
-        for s, n in counts
-    )
-    label = f"{done} of {total} {noun} done"
-    return (
-        f'<section class="summary" aria-label="{label}"><div class="counts">'
-        f'<span><b>{done}/{total}</b>{noun} done</span>{items}</div>'
-        f'<div class="bar" role="img" aria-label="{label}">{bar}</div></section>'
-    )
-
-
-def render_body(md: str) -> tuple[str, str]:
-    """Return (title, body_html) for the Markdown subset."""
+def parse(md: str) -> Doc:
+    doc = Doc()
     lines = md.splitlines()
-    blocks: list[str] = []
-    title = "Perch tracker"
     i = 0
     while i < len(lines):
-        line = lines[i]
-        stripped = line.strip()
-        if not stripped:
+        s = lines[i].strip()
+        if not s:
             i += 1
-        elif m := re.match(r"(#{1,6})\s+(.*)", stripped):
-            level = len(m.group(1))
-            if level == 1:
-                title = m.group(2).strip()
-            blocks.append(f"<h{level}>{inline(m.group(2).strip())}</h{level}>")
+        elif m := re.match(r"(#{1,6})\s+(.*)", s):
+            if len(m.group(1)) == 1 and not doc.title:
+                doc.title = m.group(2).strip()
+            else:
+                doc.blocks.append(("h", len(m.group(1)), m.group(2).strip()))
             i += 1
-        elif stripped.startswith("|") and i + 1 < len(lines) and is_separator(lines[i + 1]):
+        elif s.startswith("|") and i + 1 < len(lines) and is_separator(lines[i + 1]):
             j = i + 2
             while j < len(lines) and lines[j].strip().startswith("|"):
                 j += 1
             head = split_row(lines[i])
-            body = [split_row(row) for row in lines[i + 2 : j]]
-            lower = [h.lower() for h in head]
-            if "status" in lower:
-                k = lower.index("status")
-                noun = "sessions" if lower[0] == "session" else "tasks"
-                statuses = [r[k].lower() for r in body if len(r) > k and r[k].lower() in STATUSES]
-                if statuses:
-                    blocks.append(render_summary(statuses, noun))
-            blocks.append(render_table(head, body))
+            rows = [(split_row(r) + [""] * len(head))[: len(head)] for r in lines[i + 2 : j]]
+            doc.blocks.append(("table", Table(head, rows)))
             i = j
-        elif re.match(r"[-*]\s+", stripped):
+        elif re.match(r"[-*]\s+", s):
             items = []
             while i < len(lines) and re.match(r"\s*[-*]\s+", lines[i]):
-                text = re.sub(r"\s*[-*]\s+", "", lines[i], count=1)
-                items.append(f"<li>{inline(text)}</li>")
+                items.append(re.sub(r"\s*[-*]\s+", "", lines[i], count=1))
                 i += 1
-            blocks.append("<ul>\n" + "\n".join(items) + "\n</ul>")
+            doc.blocks.append(("ul", items))
         else:
             para = []
             while i < len(lines) and lines[i].strip() and not re.match(
@@ -216,56 +244,279 @@ def render_body(md: str) -> tuple[str, str]:
             ):
                 para.append(lines[i].strip())
                 i += 1
-            blocks.append("<p>" + inline(" ".join(para)) + "</p>")
-    return title, "\n".join(blocks)
+            doc.blocks.append(("p", " ".join(para)))
+    return doc
 
 
-def current_session(sessions_dir: Path) -> Path | None:
-    """The highest-numbered docs/sessions/S<n>.md, or None."""
-    files = [f for f in sessions_dir.glob("S*.md") if re.fullmatch(r"S\d+", f.stem)]
-    return max(files, key=lambda f: int(f.stem[1:]), default=None)
+# ---------- HTML pieces ----------
 
 
-def render(md: str, source: str = "docs/TRACKER.md", artifact: bool = False,
-           page_title: str | None = None) -> str:
-    title, body = render_body(md)
-    name = html.escape(page_title or re.sub(r"[`*]", "", title))
-    foot = (
-        f'<p class="foot"><em>Generated from {html.escape(source)} by '
-        "scripts/render_tracker.py. The Markdown is the source of truth.</em></p>"
-    )
-    main = f"<main>\n{body}\n{foot}\n</main>\n"
-    if artifact:
-        return (
-            f"<title>{name}</title>\n"
-            '<meta name="claude:viewport-fit-sides" content="cover">\n'
-            f"{FONT_LINK}\n<style>{CSS}</style>\n{main}"
-        )
+def slug(status: str) -> str:
+    return "s-" + status.replace(" ", "-")
+
+
+def badge(status: str) -> str:
+    s = status.lower()
+    if s not in STATUSES:
+        return inline(status)
+    return f'<span class="badge {slug(s)}">{html.escape(s)}</span>'
+
+
+def render_table(t: Table, row_class: dict[int, str] | None = None,
+                 link_ids: set[str] | None = None) -> str:
+    status_i, commit_i = t.col("status"), t.col("commit")
+    head = "".join(f"<th>{inline(h)}</th>" for h in t.head)
+    rows = []
+    for n, r in enumerate(t.rows):
+        cells = []
+        for k, c in enumerate(r):
+            if k == status_i:
+                cells.append(f"<td>{badge(c)}</td>")
+            elif k == commit_i:
+                cells.append(f'<td class="mono">{html.escape(c)}</td>')
+            elif k == 0 and link_ids and c.lower() in link_ids:
+                cells.append(f'<td><a href="#{c.lower()}">{html.escape(c)}</a></td>')
+            else:
+                cells.append(f"<td>{inline(c)}</td>")
+        cls = (row_class or {}).get(n)
+        rows.append((f'<tr class="{cls}">' if cls else "<tr>") + "".join(cells) + "</tr>")
     return (
-        "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
-        '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        f"<title>{name}</title>\n<style>{CSS}</style>\n</head>\n<body>\n{main}"
-        "</body>\n</html>\n"
+        f'<div class="panel scroll"><table>\n<thead><tr>{head}</tr></thead>\n<tbody>\n'
+        + "\n".join(rows) + "\n</tbody></table></div>"
     )
+
+
+def statuses_of(t: Table) -> list[str]:
+    k = t.col("status")
+    if k is None:
+        return []
+    return [r[k].lower() for r in t.rows if r[k].lower() in STATUSES]
+
+
+def render_summary(statuses: list[str], noun: str) -> str:
+    """Counts per status and a stacked bar, in a fixed order."""
+    total = len(statuses)
+    if not total:
+        return ""
+    counts = [(s, statuses.count(s)) for s in STATUSES if statuses.count(s)]
+    done = statuses.count("done")
+    label = f"{done} of {total} {noun} done"
+    items = "".join(f'<span class="{slug(s)}"><b>{n}</b>{s}</span>' for s, n in counts)
+    bar = "".join(
+        f'<span class="{slug(s)}" style="width:{100 * n / total:.2f}%" title="{s}: {n}"></span>'
+        for s, n in counts
+    )
+    return (
+        f'<section class="panel summary" aria-label="{label}"><div class="counts">'
+        f"<span><b>{done}/{total}</b>{noun} done</span>{items}</div>"
+        f'<div class="bar" role="img" aria-label="{label}">{bar}</div></section>'
+    )
+
+
+def render_blocks(blocks: list[tuple]) -> list[str]:
+    out = []
+    after_done_heading = False
+    for b in blocks:
+        if b[0] == "h":
+            after_done_heading = b[2].lower().startswith("definition of done")
+            out.append(f"<h2>{inline(b[2])}</h2>")
+        elif b[0] == "p":
+            out.append(f"<p>{inline(b[1])}</p>")
+        elif b[0] == "ul":
+            cls = ' class="panel done-list"' if after_done_heading else ""
+            out.append(f"<ul{cls}>" + "".join(f"<li>{inline(x)}</li>" for x in b[1]) + "</ul>")
+        elif b[0] == "table":
+            t = b[1]
+            noun = "sessions" if t.head[0].lower() == "session" else "tasks"
+            out.append(render_summary(statuses_of(t), noun))
+            out.append(render_table(t))
+    return [x for x in out if x]
+
+
+# ---------- Model of the tracker ----------
+
+
+@dataclass
+class Session:
+    sid: str  # "S1"
+    name: str  # "Schemas, store, OpenAlex"
+    status: str = "todo"
+    started: str = ""
+    finished: str = ""
+    commit: str = ""
+    doc: Doc | None = None
+
+
+def session_title(doc: Doc, sid: str) -> str:
+    return re.sub(rf"^{sid}\s*[—–-]\s*", "", doc.title) or sid
+
+
+def build_sessions(master: Doc, files: dict[str, str]) -> list[Session]:
+    table = next((t for t in master.tables() if t.head and t.head[0].lower() == "session"), None)
+    sessions: list[Session] = []
+    if table:
+        idx = {name: table.col(name) for name in ("goal", "status", "started", "finished", "commit")}
+
+        def get(r: list[str], name: str) -> str:
+            k = idx[name]
+            return r[k] if k is not None else ""
+
+        for r in table.rows:
+            sessions.append(Session(r[0], get(r, "goal"), get(r, "status").lower() or "todo",
+                                    get(r, "started"), get(r, "finished"), get(r, "commit")))
+    known = {s.sid for s in sessions}
+    sessions += [Session(sid, sid) for sid in files if sid not in known]
+    for s in sessions:
+        if s.sid in files:
+            s.doc = parse(files[s.sid])
+            if s.doc.title:
+                s.name = session_title(s.doc, s.sid)
+    return sessions
+
+
+def pick_current(sessions: list[Session]) -> Session | None:
+    for wanted in (("in progress", "continued"), ("todo",)):
+        for s in sessions:
+            if s.status in wanted:
+                return s
+    return None
+
+
+# ---------- Views ----------
+
+
+def session_body(s: Session) -> list[str]:
+    if not s.doc:
+        return ['<div class="panel empty">No task file yet. Perch-dev writes '
+                f"<code>docs/sessions/{html.escape(s.sid)}.md</code> when the session starts.</div>"]
+    return render_blocks(s.doc.blocks)
+
+
+def view_current(s: Session | None) -> str:
+    if not s:
+        return '<div class="panel empty">Every session is finished or cut.</div>'
+    when = f"Started {html.escape(s.started)}" if s.started else "Not started"
+    return "\n".join([
+        f'<div id="{s.sid.lower()}"><div class="eyebrow">Current session</div>',
+        f'<div class="title-row"><h1>{html.escape(s.sid)} · {inline(s.name)}</h1>'
+        f"{badge(s.status)}</div>",
+        f'<div class="meta">{when}</div></div>',
+        *session_body(s),
+    ])
+
+
+def view_master(master: Doc, sessions: list[Session], current: Session | None) -> str:
+    intro = [b for b in master.blocks[:1] if b[0] == "p"]
+    rest = master.blocks[len(intro):]
+    linkable = {s.sid.lower() for s in sessions if s.doc and (s.status in FINISHED or s is current)}
+    out = ['<div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>']
+    for b in rest:
+        if b[0] == "table" and b[1].head[0].lower() == "session":
+            t = b[1]
+            k = t.col("status")
+            classes = {}
+            for n, r in enumerate(t.rows):
+                if current and r[0] == current.sid:
+                    classes[n] = "is-current"
+                elif k is not None and r[k].lower() in FINISHED:
+                    classes[n] = "is-finished"
+            out.append(render_summary(statuses_of(t), "sessions"))
+            out.append(render_table(t, row_class=classes, link_ids=linkable))
+        else:
+            out += render_blocks([b])
+    out += [f'<p class="meta">{inline(b[1])}</p>' for b in intro]
+    return "\n".join(out)
+
+
+def view_archive(sessions: list[Session]) -> str:
+    done = [s for s in sessions if s.status in FINISHED]
+    done.sort(key=lambda s: int(re.sub(r"\D", "", s.sid) or 0), reverse=True)
+    out = ['<div><div class="eyebrow">Finished sessions</div><h1>Archive</h1></div>']
+    if not done:
+        out.append('<div class="panel empty">Sessions move here when they are done or cut.</div>')
+    items = []
+    for s in done:
+        tasks = statuses_of(s.doc.tables()[0]) if s.doc and s.doc.tables() else []
+        bits = []
+        if tasks:
+            bits.append(f"{tasks.count('done')}/{len(tasks)} tasks done")
+        if s.finished:
+            bits.append(f"finished {html.escape(s.finished)}")
+        if s.commit:
+            bits.append(f"commit <code>{html.escape(s.commit)}</code>")
+        items.append(
+            f'<details id="{s.sid.lower()}"><summary><span><span class="sid">'
+            f'{html.escape(s.sid)}</span> <span class="stitle">{inline(s.name)}</span></span>'
+            f'<span></span>{badge(s.status)}<span class="smeta">{" · ".join(bits)}</span>'
+            '</summary><div class="inner">' + "\n".join(session_body(s)) + "</div></details>"
+        )
+    if items:
+        out.append("<div>" + "\n".join(items) + "</div>")
+    return "\n".join(out)
+
+
+def render_page(master_md: str, session_files: dict[str, str], artifact: bool = False,
+                page_title: str = "Perch Build Tracker") -> str:
+    master = parse(master_md)
+    sessions = build_sessions(master, session_files)
+    current = pick_current(sessions)
+    finished = sum(s.status == "done" for s in sessions)
+    archived = sum(s.status in FINISHED for s in sessions)
+    glance = (
+        f"<code>{html.escape(current.sid)}</code> {badge(current.status)}" if current else ""
+    ) + f"<span>{finished}/{len(sessions)} sessions done</span>"
+    name = html.escape(page_title)
+    page = f"""<header class="appbar"><div class="wrap">
+<div class="brand"><b>Perch</b><span>Build tracker</span></div>
+<div class="at-a-glance">{glance}</div>
+<nav aria-label="Tracker views">
+<a id="tab-current" href="#current" aria-current="page">Current</a>
+<a id="tab-master" href="#master">Master</a>
+<a id="tab-archive" href="#archive">Archive<span class="count">{archived}</span></a>
+</nav></div></header>
+<main class="wrap">
+<section id="view-current" class="view" data-view="current">
+{view_current(current)}
+</section>
+<section id="view-master" class="view" data-view="master" hidden>
+{view_master(master, sessions, current)}
+</section>
+<section id="view-archive" class="view" data-view="archive" hidden>
+{view_archive(sessions)}
+</section>
+<p class="foot">Generated from docs/TRACKER.md and docs/sessions/ by scripts/render_tracker.py.
+The Markdown is the source of truth.</p>
+</main>
+<script>{SCRIPT}</script>
+"""
+    if artifact:
+        return (f"<title>{name}</title>\n"
+                '<meta name="claude:viewport-fit-sides" content="cover">\n'
+                f"{FONT_LINK}\n<style>{CSS}</style>\n{page}")
+    return ("<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"
+            '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+            f"<title>{name}</title>\n<style>{CSS}</style>\n</head>\n<body>\n{page}"
+            "</body>\n</html>\n")
+
+
+def load_sessions(sessions_dir: Path) -> dict[str, str]:
+    files = [f for f in sessions_dir.glob("S*.md") if re.fullmatch(r"S\d+", f.stem)]
+    files.sort(key=lambda f: int(f.stem[1:]))
+    return {f.stem: f.read_text(encoding="utf-8") for f in files}
 
 
 def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap = argparse.ArgumentParser(description="Render the Perch build tracker.")
     ap.add_argument("src", nargs="?", default="docs/TRACKER.md")
     ap.add_argument("dest", nargs="?")
     ap.add_argument("--artifact", action="store_true", help="emit a claude.ai Artifact fragment")
-    ap.add_argument("--title", help="page name (defaults to the Markdown H1)")
-    ap.add_argument("--no-session", action="store_true", help="master tracker only")
+    ap.add_argument("--title", default="Perch Build Tracker", help="page name")
     args = ap.parse_args(argv[1:])
     src = Path(args.src)
     dest = Path(args.dest) if args.dest else src.with_name("tracker.html")
     dest.parent.mkdir(parents=True, exist_ok=True)
-    md, source = src.read_text(encoding="utf-8"), args.src
-    session = None if args.no_session else current_session(src.parent / "sessions")
-    if session:
-        md = session.read_text(encoding="utf-8") + "\n\n" + md
-        source = f"{session.as_posix()} and {source}"
-    page = render(md, source, args.artifact, args.title or "Perch Build Tracker")
+    sessions = load_sessions(src.parent / "sessions")
+    page = render_page(src.read_text(encoding="utf-8"), sessions, args.artifact, args.title)
     dest.write_text(page, encoding="utf-8")
     print(f"wrote {dest}")
     return 0
