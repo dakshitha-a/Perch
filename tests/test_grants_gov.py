@@ -84,3 +84,10 @@ def test_archived_record_and_parent_activity_code():
     assert o.open_date == date(2011, 7, 22) and o.close_date == date(2013, 9, 7)
     assert o.activity_code == "R01"  # from "(Parent R01)"
     assert o.description
+
+
+def test_list_fields_are_order_independent():
+    d1 = load("fetch_opportunity.json")["data"]
+    d2 = json.loads(json.dumps(d1))
+    d2["synopsis"]["applicantTypes"].reverse()
+    assert gg.parse_opportunity(d1, T) == gg.parse_opportunity(d2, T)

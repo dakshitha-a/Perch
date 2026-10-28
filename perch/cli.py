@@ -3,6 +3,7 @@
   perch resolve <name|orcid|author id>
   perch fetch openalex <author id>
   perch fetch awards <author id>      NIH RePORTER and NSF awards at Temple, by name
+  perch fetch opportunities           Grants.gov opportunities (nightly refresh: upsert by number)
   perch profile <author id>           key papers, awards and the public award horizon
 """
 
@@ -16,8 +17,8 @@ from pathlib import Path
 from perch import awards as aw
 from perch.config import env, load_dotenv
 from perch.profile import MAX_AUTHORS, key_papers
-from perch.schemas import Award, Researcher
-from perch.sources import nih_reporter, nsf
+from perch.schemas import Award, Opportunity, Researcher
+from perch.sources import grants_gov, nih_reporter, nsf
 from perch.sources import openalex as oa
 from perch.store.sqlite import SQLiteRepository
 
@@ -64,6 +65,9 @@ def researcher_for(args: argparse.Namespace, repo: SQLiteRepository,
 
 
 def fetch_awards(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
+    if not args.author_id:
+        print("perch fetch awards needs an author id.", file=sys.stderr)
+        return 2
     with SQLiteRepository(args.db) as repo:
         r = researcher_for(args, repo, client)
         ov = aw.load_overrides(r.id, Path(args.overrides))
@@ -82,11 +86,50 @@ def fetch_awards(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     return 0
 
 
+def same_content(a: Opportunity, b: Opportunity) -> bool:
+    return a.model_dump(exclude={"fetched_at"}) == b.model_dump(exclude={"fetched_at"})
+
+
+def fetch_opportunities(args: argparse.Namespace) -> int:
+    """Upsert by opportunity number; report what is new, changed and unchanged."""
+    new = changed = unchanged = 0
+    with SQLiteRepository(args.db) as repo, args.grants_factory() as gg:
+        if args.opp_num:
+            items = []
+            for number in args.opp_num:
+                hits = gg.search(statuses="forecasted|posted|closed|archived", keyword="",
+                                 rows=5, opp_num=number).get("oppHits") or []
+                items += [h for h in hits if h["number"] == number]
+            opps = (gg.fetch(h["id"], h.get("oppStatus")) for h in items)
+        else:
+            opps = gg.iter_opportunities(args.statuses, args.agencies, limit=args.limit)
+        for o in opps:
+            old = repo.get(Opportunity, o.id)
+            if old is None:
+                new += 1
+            elif same_content(old, o):
+                unchanged += 1
+            else:
+                changed += 1
+            repo.upsert([o])
+        total = len(repo.list(Opportunity))
+    print(f"{new} new, {changed} changed, {unchanged} unchanged; "
+          f"{total} opportunities in {args.db}.")
+    print(grants_gov.ATTRIBUTION)
+    return 0
+
+
 def cmd_fetch(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     if args.source == "awards":
         return fetch_awards(args, client)
+    if args.source == "opportunities":
+        return fetch_opportunities(args)
     if args.source != "openalex":
-        print(f"Unknown source {args.source!r}. Available: openalex, awards.", file=sys.stderr)
+        print(f"Unknown source {args.source!r}. Available: openalex, awards, opportunities.",
+              file=sys.stderr)
+        return 2
+    if not args.author_id:
+        print("perch fetch openalex needs an author id.", file=sys.stderr)
         return 2
     author = client.get_author(args.author_id)
     works = list(client.iter_works(args.author_id))
@@ -149,8 +192,14 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser("resolve", help="find a Temple researcher in OpenAlex")
     r.add_argument("query", help="name, ORCID iD or OpenAlex author id")
     f = sub.add_parser("fetch", help="fetch records from a source into the store")
-    f.add_argument("source", help="openalex or awards")
-    f.add_argument("author_id", help="OpenAlex author id, e.g. A5026494099")
+    f.add_argument("source", help="openalex, awards or opportunities")
+    f.add_argument("author_id", nargs="?", help="OpenAlex author id, e.g. A5026494099")
+    f.add_argument("--statuses", default=grants_gov.OPEN_STATUSES,
+                   help="opportunities: Grants.gov statuses (default forecasted|posted)")
+    f.add_argument("--agencies", default="", help="opportunities: agency codes, e.g. HHS-NIH11")
+    f.add_argument("--limit", type=int, default=None, help="opportunities: stop after N")
+    f.add_argument("--opp-num", action="append", default=[],
+                   help="opportunities: fetch this number in any status (repeatable)")
     pr = sub.add_parser("profile", help="key papers, awards and the public award horizon")
     pr.add_argument("author_id", help="OpenAlex author id")
     pr.add_argument("--papers", type=int, default=10, help="key papers to show (default 10)")
@@ -159,11 +208,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None = None,
          nih_factory: Callable[[], nih_reporter.NIHReporterClient] = nih_reporter.NIHReporterClient,
-         nsf_factory: Callable[[], nsf.NSFClient] = nsf.NSFClient) -> int:
+         nsf_factory: Callable[[], nsf.NSFClient] = nsf.NSFClient,
+         grants_factory: Callable[[], grants_gov.GrantsGovClient] = grants_gov.GrantsGovClient,
+         ) -> int:
     load_dotenv()
     args = build_parser().parse_args(argv)
     args.db = args.db or env("PERCH_DB", DEFAULT_DB)
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory
+    args.grants_factory = grants_factory
     commands = {"resolve": cmd_resolve, "fetch": cmd_fetch, "profile": cmd_profile}
     with (client_factory or default_client)() as client:
         return commands[args.command](args, client)

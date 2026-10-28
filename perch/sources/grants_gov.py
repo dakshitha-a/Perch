@@ -99,16 +99,18 @@ def parse_opportunity(detail: dict[str, Any], fetched_at: datetime,
         archive_date=_date(syn.get("archiveDate")),
         award_ceiling=_money(syn.get("awardCeiling")),
         award_floor=_money(syn.get("awardFloor")),
-        eligible_applicants=[t["description"] for t in syn.get("applicantTypes") or []
-                             if t.get("description")],
+        # Grants.gov returns list fields in a different order on each call; sort them so
+        # a refresh reports only real changes.
+        eligible_applicants=sorted({t["description"] for t in syn.get("applicantTypes") or []
+                                    if t.get("description")}),
         eligibility_notes=_text(syn.get("applicantEligibilityDesc")),
         activity_code=activity.group(1) if activity else None,
         description=_text(syn.get("synopsisDesc")),
         status=status,
-        assistance_listings=[c["cfdaNumber"] for c in detail.get("cfdas") or []
-                             if c.get("cfdaNumber")],
-        funding_instruments=[f["description"] for f in syn.get("fundingInstruments") or []
-                             if f.get("description")],
+        assistance_listings=sorted({c["cfdaNumber"] for c in detail.get("cfdas") or []
+                                    if c.get("cfdaNumber")}),
+        funding_instruments=sorted({f["description"] for f in syn.get("fundingInstruments") or []
+                                    if f.get("description")}),
     )
 
 
@@ -149,9 +151,11 @@ class GrantsGovClient:
         raise RuntimeError("unreachable")
 
     def search(self, statuses: str = OPEN_STATUSES, agencies: str = "", keyword: str = "",
-               start: int = 0, rows: int = PAGE) -> dict[str, Any]:
+               start: int = 0, rows: int = PAGE, opp_num: str = "") -> dict[str, Any]:
         body = {"keyword": keyword, "oppStatuses": statuses, "agencies": agencies,
                 "rows": rows, "startRecordNum": start}
+        if opp_num:
+            body["oppNum"] = opp_num
         return self.post("/search2", body)["data"]
 
     def iter_hits(self, statuses: str = OPEN_STATUSES, agencies: str = "", keyword: str = "",

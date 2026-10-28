@@ -73,3 +73,53 @@ def test_fetch_awards_and_profile_horizon(tmp_path, capsys):
 
 def test_profile_needs_store(tmp_path, capsys):
     assert cli.main(["--db", str(tmp_path / "p.db"), "profile", "A1"], factory) == 1
+
+
+def grants_factory():
+    import json
+    from pathlib import Path
+
+    import httpx
+
+    from perch.sources import grants_gov
+
+    fix = Path(__file__).parent / "fixtures" / "grants_gov"
+    search = json.loads((fix / "search2_nih_posted.json").read_text())
+    detail = json.loads((fix / "fetch_opportunity.json").read_text())
+    archived = json.loads((fix / "fetch_opportunity_archived.json").read_text())
+
+    def handler(request):
+        body = json.loads(request.content)
+        if request.url.path.endswith("/search2"):
+            if body.get("oppNum") == "PA-11-260":
+                hit = {"id": archived["data"]["id"], "number": "PA-11-260", "oppStatus": "archived"}
+                return httpx.Response(200, json={"errorcode": 0, "data": {"hitCount": 1,
+                                                                         "oppHits": [hit]}})
+            return httpx.Response(200, json=search)
+        if body["opportunityId"] == int(archived["data"]["id"]):
+            return httpx.Response(200, json=archived)
+        return httpx.Response(200, json=detail)
+
+    t = httpx.MockTransport(handler)
+    return lambda: grants_gov.GrantsGovClient(transport=t, min_interval=0)
+
+
+def test_fetch_opportunities_upserts_by_number(tmp_path, capsys):
+    from perch.schemas import Opportunity
+
+    db = str(tmp_path / "p.db")
+    g = grants_factory()
+    argv = ["--db", db, "fetch", "opportunities", "--agencies", "HHS-NIH11", "--limit", "2"]
+    assert cli.main(argv, factory, grants_factory=g) == 0
+    out = capsys.readouterr().out
+    # the mock returns the same detail record for both hits, so one number, seen twice
+    assert "1 new, 0 changed, 1 unchanged; 1 opportunities" in out
+    assert "not endorsed or certified" in out
+    assert cli.main(argv, factory, grants_factory=g) == 0
+    assert "0 new, 0 changed, 2 unchanged" in capsys.readouterr().out
+    assert cli.main(["--db", db, "fetch", "opportunities", "--opp-num", "PA-11-260"], factory,
+                    grants_factory=g) == 0
+    assert "1 new" in capsys.readouterr().out
+    with SQLiteRepository(db) as repo:
+        got = repo.get(Opportunity, "grants_gov:PA-11-260")
+        assert got.status == "archived" and got.source_url.startswith("https://www.grants.gov/")
