@@ -7,6 +7,7 @@ Required for the final deck's "AI use declaration" slide. One row per tool per p
 | 2026-10-28 | Claude Code (Claude Opus 5.5), run inside NextTex | Opus 5.5 | Initial research on the challenge rules, judges and problem bank; drafting the handoff brief | Dakshitha |
 | 2026-10-28 | Claude (claude.ai, Project "AI-Build-Challenge") | Claude Fable 5.1 | Planning: reframing the problem, critiquing assumptions, ten-day plan; drafting Checkup 1 | Dakshitha |
 | 2026-10-28 | Claude (claude.ai, web search) | Claude Fable 5.1 | Research round 1: checked Temple's existing funding tools, verified the $300M/R1 figures, surveyed the problem bank, compared alternative ideas | Dakshitha |
+| 2026-10-28 | Claude Code CLI (model Claude Opus 5.5, `claude-opus-5-5`), session Perch-dev | 2.1.312 (Claude Code) | S0: created the private repo, uv/ruff/pytest tooling, Makefile, tracker renderer (`scripts/render_tracker.py`) and tests; writes project code from here on | Dakshitha (directing Perch-dev) |
 
 Reminders:
 - Record Claude Code's version (`claude --version`) the first time it writes project code.
