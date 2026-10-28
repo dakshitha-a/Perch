@@ -5,7 +5,7 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | Session | Goal | Status | Started | Finished | Commit | Notes (numbers, decisions, blockers) |
 |---|---|---|---|---|---|---|
 | S0 | Repository | done | 2026-10-28 19:02 EDT | 2026-10-28 19:03 EDT | 928a148 | Private repo dakshitha-a/perch on `main`. uv 0.13.6, Python 3.12.16, ruff 0.17.3, pytest 9.2.0 (pinned). `make test`: 3 passed. demo/bench/package are stubs. Q1 open (`data/` gitignore). |
-| S1 | Schemas, store, OpenAlex | todo | | | | |
+| S1 | Schemas, store, OpenAlex | in progress | 2026-10-28 19:14 EDT | | | |
 | S2 | Award sources, award horizon | todo | | | | |
 | S3 | Opportunities | todo | | | | |
 | S4 | Route A, deterministic | todo | | | | |

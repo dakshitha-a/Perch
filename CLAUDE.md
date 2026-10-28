@@ -10,15 +10,15 @@ Dakshitha owns the codebase and makes every product decision; when a decision is
 
 The plan is organised by **session**, each sized to one context window. Dakshitha starts each session in a fresh context with a message like "Start S4" and clears when it is done.
 
-**Start of session:** read `CLAUDE.md`, `docs/HANDOFF.md`, `docs/TRACKER.md`, then the current session in `docs/PLAN.md`. Read `docs/SPEC.md` in full only in S0 and whenever a session touches something you do not understand; otherwise read the relevant section. Set the session's tracker row to `in progress` with a start time. Then work the tasks in order.
+**Start of session:** read `CLAUDE.md`, `docs/HANDOFF.md`, `docs/TRACKER.md`, then the current session in `docs/PLAN.md`. Read `docs/SPEC.md` in full only in S0 and whenever a session touches something you do not understand; otherwise read the relevant section. Set the session's tracker row to `in progress` with a start time. Write `docs/sessions/S<n>.md` with the session's tasks as a status table (copy the shape of the previous one). Run `make tracker` and republish the tracker artifact (link in `CLAUDE.local.md`). Then work the tasks in order.
 
-**During:** commit after every task. If a task is blocked for more than 20 minutes, log it in `bridge/QUESTIONS.md` and move on. If the context is past roughly two-thirds and the definition of done is not close, stop at a clean commit rather than pushing through.
+**During:** commit after every task, update the task's row in `docs/sessions/S<n>.md`, then `make tracker` and republish the tracker artifact. If a task is blocked for more than 20 minutes, log it in `bridge/QUESTIONS.md` and move on. If the context is past roughly two-thirds and the definition of done is not close, stop at a clean commit rather than pushing through.
 
-**End of session (never skip):** 1. `make test` green on `main`. 2. Update `docs/TRACKER.md` (status, finish time, commit, notes with any numbers). 3. Rewrite `docs/HANDOFF.md` completely. 4. Update `bridge/QUESTIONS.md`. 5. Run `make tracker` so `docs/tracker.html` is current. 6. Commit and push. 7. Reply with three lines: session status, what the next session is, and the open questions. Then stop; Dakshitha clears.
+**End of session (never skip):** 1. `make test` green on `main`. 2. Update `docs/TRACKER.md` (status, finish time, commit, notes with any numbers). 3. Rewrite `docs/HANDOFF.md` completely. 4. Update `bridge/QUESTIONS.md`. 5. Run `make tracker` so `docs/tracker.html` is current, and republish the tracker artifact. 6. Commit and push. 7. Reply with three lines: session status, what the next session is, and the open questions. Then stop; Dakshitha clears.
 
 **Editing the plan:** you may split, merge, reorder, add or drop tasks and sessions in `docs/PLAN.md` based on what you find or on Dakshitha's direction. Every edit goes in PLAN.md's change log with the reason and who asked. Scope changes (adding or removing a feature) go to `bridge/QUESTIONS.md` first unless Dakshitha already directed them. Standing rules below are never edited.
 
-**The tracker:** `docs/TRACKER.md` is the master tracker and the source of truth; `make tracker` renders it to `docs/tracker.html` (a single static page, no dependencies) so Dakshitha can open it in a browser or serve it from the lab node. Keep the key-numbers table current whenever a number changes.
+**The tracker:** `docs/TRACKER.md` is the master tracker and the source of truth; `make tracker` renders it, with the current session's task file `docs/sessions/S<n>.md` on top, to `docs/tracker.html` (a single static page, no dependencies) and to `build/artifacts/tracker.html` (the claude.ai artifact page) so Dakshitha can open it in a browser or serve it from the lab node. Keep the key-numbers table current whenever a number changes.
 
 ## Standing rules (never break these)
 
