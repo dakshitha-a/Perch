@@ -82,7 +82,12 @@ class Award(Record):
     institution: str | None = None
     start_date: date | None = None
     end_date: date | None = None
-    amount: float | None = None
+    amount: float | None = Field(default=None, description="As the source states it")
+    amount_basis: str | None = Field(
+        default=None, description="What amount means, e.g. 'fiscal year' or 'estimated total'"
+    )
+    fiscal_year: int | None = None
+    activity_code: str | None = None
     opportunity_number: str | None = Field(
         default=None, description="Funding opportunity the award was made under"
     )
