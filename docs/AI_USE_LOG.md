@@ -28,6 +28,9 @@ Required for the final deck's "AI use declaration" slide. One row per tool per p
 | 2026-10-29 | gemma4:26b-a4b and qwen3:8b (Ollama, already on the node) | Ollama digests 001e5dafc3c7, 500a1f067a9f | S10 Scout bench: 20 scripted follow-ups on public records, native tool calling and the structured fallback, local | Perch-dev for Dakshitha |
 | 2026-10-29 | Claude Code CLI (Claude Opus 5.5), session Perch-dev | 2.1.312 (Claude Code) | S12: compare view, skill 3 hand-off drafter, Markdown and print export, Scout compare and draft_handoff tools, egress filter, Temple STTR table | Dakshitha (directing Perch-dev) |
 | 2026-10-29 | gemma4:26b-a4b (Ollama) and claude-sonnet-5-5 (Anthropic API) | Ollama digest 001e5dafc3c7; API model id | S12: hand-off drafts (skill 3) on the demo and the Scout bench rerun with compare and hand-off tasks | Perch-dev for Dakshitha |
+| 2026-10-29 | Claude Code CLI (Claude Opus 5.5), session Perch-dev | 2.1.312 (Claude Code) | S13 and S14: private mode (sessions, private threads, CV parse, egress UI, canary tests), normal-mode context fields, Help scoring section, proposal stand-in bench, MCP server | Dakshitha (directing Perch-dev) |
+| 2026-10-29 | gemma4:26b-a4b (Ollama, demo unit) | Ollama digest 001e5dafc3c7 | S13 live private canary (summary, fit explanations, hand-off openings on SYNTHETIC persona-1 text) and S14 live MCP check (one fit explanation on public records) | Perch-dev for Dakshitha |
+| 2026-10-29 | Claude Code CLI in print mode with the haiku model alias, as an MCP client | 2.1.312 (Claude Code) | S14: one test query to Perch's MCP server over stdio (public records only) | Perch-dev for Dakshitha |
 
 Reminders:
 - Record Claude Code's version (`claude --version`) the first time it writes project code.

@@ -16,7 +16,10 @@ import sys
 from pathlib import Path
 
 WEB = Path(__file__).resolve().parent.parent / "web"
-MODULES = {"format.js": "f", "dom.js": None, "api.js": None, "owl.js": None, "help.js": None}
+# In dependency order. format.js keeps its alias (app.js imports it as `f`); compare.js
+# also imports formatDate from it by name, which bundle() pulls out of `f`.
+MODULES = {"format.js": "f", "dom.js": None, "api.js": None, "owl.js": None, "private.js": None,
+           "help.js": None, "compare.js": None, "handoff.js": None, "scout.js": None}
 EXPORT = re.compile(r"^export (?:async )?(?:function|const|class) (\w+)", re.M)
 IMPORT = re.compile(r"^import .*?;\n", re.M)
 
@@ -32,7 +35,9 @@ def wrap(name: str, alias: str | None) -> str:
 
 def bundle() -> str:
     app = IMPORT.sub("", (WEB / "app.js").read_text(encoding="utf-8"))
-    return "".join(wrap(n, a) for n, a in MODULES.items()) + "// ---- app.js\n" + app
+    mods = "".join(wrap(n, a) + ("const { formatDate } = f;\n" if n == "format.js" else "")
+                   for n, a in MODULES.items())
+    return mods + "// ---- app.js\n" + app
 
 
 def page(replay: dict) -> str:

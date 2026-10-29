@@ -352,6 +352,38 @@ def explain_brief(b: object, args: argparse.Namespace) -> None:
           f"{t2 - t1:.1f} s.")
 
 
+def cmd_mcp(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
+    """MCP server on stdio (S14). Nothing may be printed to stdout: it carries the protocol."""
+    from perch.mcp_server import create_server, make_context, serve_stdio
+    from perch.service import BriefService, Clients, default_models
+
+    data = Path(args.db).parent
+    service = BriefService(args.db, default_models(args.models == "fake", data, args.llm),
+                           Clients(openalex=default_client), Path(args.overrides))
+    audit = None
+    if args.private:
+        from perch.llm.audit import AuditLog
+        from perch.privacy import PrivateSettings, harden_process
+        from perch.private.session import PrivateSessions
+
+        settings = PrivateSettings.from_env()
+        problems = settings.problems() if settings.enabled else ["PERCH_PRIVATE_MODE is not 1"]
+        if problems:
+            print("perch mcp --private: private mode cannot start:\n  " + "\n  ".join(problems),
+                  file=sys.stderr)
+            return 2
+        harden_process()
+        try:
+            service = PrivateSessions(service, settings).open().service
+        except PermissionError as e:
+            print(f"perch mcp --private: {e}", file=sys.stderr)
+            return 2
+        audit = AuditLog(None)
+    ctx = make_context(service, args.author, audit=audit)
+    serve_stdio(create_server(ctx, private=args.private))
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     import uvicorn
 
@@ -459,6 +491,12 @@ def build_parser() -> argparse.ArgumentParser:
     sc.add_argument("--policy", choices=["native", "structured"], default=None,
                     help="structured: JSON steps for models that tool-call poorly")
     sc.add_argument("--models", choices=["local", "fake"], default="local")
+    m = sub.add_parser("mcp", help="run Perch's tools as an MCP server on stdio")
+    m.add_argument("--author", help="OpenAlex author id the tools default to")
+    m.add_argument("--private", action="store_true",
+                   help="private session: no writes or logs; self-hosted models only")
+    m.add_argument("--models", choices=["local", "fake"], default="local")
+    m.add_argument("--llm", default=None, help="provider spec for the model-backed tools")
     sv = sub.add_parser("serve", help="run the HTTP API")
     sv.add_argument("--host", default="127.0.0.1")
     sv.add_argument("--port", type=int, default=8100)
@@ -480,7 +518,7 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory
     args.grants_factory = grants_factory
     commands = {"resolve": cmd_resolve, "fetch": cmd_fetch, "profile": cmd_profile,
-                "brief": cmd_brief, "serve": cmd_serve, "scout": cmd_scout}
+                "brief": cmd_brief, "serve": cmd_serve, "scout": cmd_scout, "mcp": cmd_mcp}
     with (client_factory or default_client)() as client:
         return commands[args.command](args, client)
 

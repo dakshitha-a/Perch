@@ -131,7 +131,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S14</code> <span class="badge s-todo">todo</span><span>14/17 sessions done</span></div>
+<div class="at-a-glance"><code>S14</code> <span class="badge s-in-progress">in progress</span><span>14/17 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
@@ -145,13 +145,21 @@ details .inner > * { min-width: 0; }
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
 <div id="s14"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S14 · MCP server</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S14.md</code> when the session starts.</div>
+<div class="title-row"><h1>S14 · MCP server</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-29 15:01 EDT</div></div>
+<p>Goal: any platform, including local. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 1 tasks done"><div class="counts"><span><b>0/1</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span></div><div class="bar" role="img" aria-label="0 of 1 tasks done"><span class="s-in-progress" style="width:100.00%" title="in progress: 1"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>perch/mcp_server.py</code> on the official Python SDK (verify version): Scout's nine tools from <code>perch.scout.tools.TOOLS</code>, with <code>check_arguments</code>, the validator and budgets; private tools only for self-hosted clients and models; tested from an MCP client; exact commands in README</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>An MCP client gets a cited brief.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="14 of 17 sessions done"><div class="counts"><span><b>14/17</b>sessions done</span><span class="s-done"><b>14</b>done</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="14 of 17 sessions done"><span class="s-done" style="width:82.35%" title="done: 14"></span><span class="s-todo" style="width:17.65%" title="todo: 3"></span></div></section>
+<section class="panel summary" aria-label="14 of 17 sessions done"><div class="counts"><span><b>14/17</b>sessions done</span><span class="s-done"><b>14</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="14 of 17 sessions done"><span class="s-done" style="width:82.35%" title="done: 14"></span><span class="s-in-progress" style="width:5.88%" title="in progress: 1"></span><span class="s-todo" style="width:11.76%" title="todo: 2"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -169,7 +177,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s11">S11</a></td><td>Route B</td><td><span class="badge s-done">done</span></td><td>2026-10-29 12:38 EDT</td><td>2026-10-29 13:21 EDT</td><td class="mono">see git log</td><td>182 tests green. Route B from three public signals: company works citing the researcher, NIH SBIR/STTR awards from RePORTER, and company works in their topics. The SBIR.gov API is down (Q19). A lead needs two kinds of signal. Every lead is labelled inferred and not verified, and no model writes it. 3 PIs give 14 leads: 8 yes, 6 thin, 0 wrong (judged by Perch-dev). Papers with more than 30 authors do not seed Route B. Grants and Industry switch on the Routes tab. Scout's <code>get_org_signals</code> returns the leads, and the repeated-call guard is in. Scout bench: Sonnet 20/20 and 5/5 ($0.34); Gemma 19/20 and 5/5. Demo rebuilt; Industry tab live on the public URL. Architecture overview figure added.</td></tr>
 <tr class="is-finished"><td><a href="#s12">S12</a></td><td>Compare, hand-off, export</td><td><span class="badge s-done">done</span></td><td>2026-10-29 13:38 EDT</td><td>2026-10-29 14:10 EDT</td><td class="mono">see git log</td><td>194 tests green. Compare tab: kept leads side by side, every cell copied from or counted from a record, each opening its record; no effort, IP or likelihood column, because no record states them. Hand off: skill 3 writes a 2 to 4 sentence opening, code writes the rest, To left empty, office names from research.temple.edu; copy and open in mail; never sent or stored. Markdown export and a print page the browser saves as PDF. Scout <code>compare</code> and <code>draft_handoff</code> built. Bench: Sonnet 20/20, 5/5, 3/3 ($0.41); Gemma 18/20, 5/5, 2/3. Egress filter for private mode. Temple STTR table (41 awards) adds 0 leads, so not wired in (Q20). Done-when met on the public URL.</td></tr>
 <tr class="is-finished"><td><a href="#s13">S13</a></td><td>Private mode</td><td><span class="badge s-done">done</span></td><td>2026-10-29 14:22 EDT</td><td>2026-10-29 15:00 EDT</td><td class="mono">see git log</td><td>208 tests green. Private mode built end to end: sessions in memory with the session id in a header, idle timeout and caps; paste or upload (text, Markdown, DOCX, PDF from bytes); a self-hosted gate on every model and endpoint; the store as an overlay on a read-only base, no cache, log or index writes. Private threads take 0.6 (proposal 0.5, direction 0.3, unpublished 0.2 of it; Q21). The CV parse unlocks career-stage calls as "may be eligible", using NIH's ESI definition and its smaller-grants list. Private-only briefs work. Exports and hand-offs withhold private text, or mask it with an in-memory key. Lock labels, Help and a private bar in the UI. Live canary on the dev node: no trace in data/, /tmp or six model-server journals; the private-only brief had 8 of 8 explained leads citing private documents. Normal-mode context fields with "You said". Stand-in proposal (funded abstract, an upper bound): 7 to 16 of 48 in the top 10. Persona tab on the tracker. Q21, Q22 open.</td></tr>
-<tr class="is-current"><td>S14</td><td>MCP server</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s14">S14</a></td><td>MCP server</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 15:01 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S15</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S16</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
