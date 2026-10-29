@@ -1,0 +1,22 @@
+{
+ "counts": {
+  "projects": 740,
+  "research, FY2015 on, opportunity named, single PI": 345,
+  "opportunity in Grants.gov corpus": 338,
+  "PI resolved": 128,
+  "PI not found": 23,
+  "PI ambiguous": 33,
+  "awards with a resolved PI": 235,
+  "chosen targeted": 69,
+  "chosen parent": 91
+ },
+ "opportunities_not_in_corpus": [
+  "PAR-18-798",
+  "PAR-18-804",
+  "PAR-18-812",
+  "PAR-26-006",
+  "RFA-CE-19-002",
+  "RFA-FD-20-009",
+  "RFA-PS-16-001"
+ ]
+}

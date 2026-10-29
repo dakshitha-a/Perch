@@ -47,19 +47,27 @@ class Constraints:
     exclude_agencies: list[str] = field(default_factory=list)
     exclude_activity: list[str] = field(default_factory=list)  # extra codes, exact
     include_restricted: bool = False  # keep title-restricted opportunities
+    check_dates: bool = True  # the back-test sets False and applies its own time window
+
+
+def date_reasons(o: Opportunity, as_of: date) -> list[str]:
+    reasons = []
+    if o.open_date and o.open_date > as_of:
+        reasons.append(f"opens {o.open_date.isoformat()}, after {as_of.isoformat()}")
+    if o.close_date is None and o.status != "forecasted":
+        reasons.append("no close date in the record")
+    elif o.close_date and o.close_date < as_of:
+        reasons.append(f"closed {o.close_date.isoformat()}")
+    return reasons
 
 
 def check(o: Opportunity, c: Constraints) -> list[str]:
     """Reasons the opportunity is ineligible; empty means eligible."""
     reasons = []
-    if o.status == "forecasted" and not c.include_forecasted:
-        reasons.append("forecasted, not yet open for applications")
-    if o.open_date and o.open_date > c.as_of:
-        reasons.append(f"opens {o.open_date.isoformat()}, after {c.as_of.isoformat()}")
-    if o.close_date is None and o.status != "forecasted":
-        reasons.append("no close date in the record")
-    elif o.close_date and o.close_date < c.as_of:
-        reasons.append(f"closed {o.close_date.isoformat()}")
+    if c.check_dates:
+        if o.status == "forecasted" and not c.include_forecasted:
+            reasons.append("forecasted, not yet open for applications")
+        reasons += date_reasons(o, c.as_of)
     if not o.eligible_applicants:
         reasons.append("no applicant types in the record")
     elif not APPLICANT_OK & set(o.eligible_applicants):

@@ -18,6 +18,12 @@ import numpy as np
 
 DEFAULT_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 QUERY_TASK = "Given a research paper, retrieve funding opportunities whose aims it fits"
+# Qwen3-Embedding's documented query format: "Instruct: <task>\nQuery:<text>".
+# BGE-M3's model card uses no instruction for dense retrieval.
+QWEN_PROMPT = f"Instruct: {QUERY_TASK}\nQuery:"
+QUERY_PROMPTS = {"Qwen/Qwen3-Embedding-0.6B": QWEN_PROMPT, "Qwen/Qwen3-Embedding-4B": QWEN_PROMPT,
+                 "BAAI/bge-m3": None}
+SPECTER2 = "allenai/specter2_base"
 
 
 def normalise(m: np.ndarray) -> np.ndarray:
@@ -74,6 +80,7 @@ class SentenceTransformerEmbedder(Embedder):
             self.model.get_sentence_embedding_dimension
         self.dim = int(dim())
         self.batch_size = batch_size
+        self.query_prompt = QUERY_PROMPTS.get(model, QWEN_PROMPT)
 
     def _encode(self, texts: list[str], prompt: str | None) -> np.ndarray:
         v = self.model.encode(texts, batch_size=self.batch_size, prompt=prompt,
@@ -85,8 +92,44 @@ class SentenceTransformerEmbedder(Embedder):
         return self._encode(texts, None)
 
     def embed_queries(self, texts: list[str]) -> np.ndarray:
-        # Qwen3-Embedding's documented query format: "Instruct: <task>\nQuery:<text>"
-        return self._encode(texts, f"Instruct: {QUERY_TASK}\nQuery:")
+        return self._encode(texts, self.query_prompt)
+
+
+class Specter2Embedder(Embedder):
+    """SPECTER2 base, without the proximity adapter: title and abstract joined by the
+    separator token, 512 tokens, first-token state, as the allenai/specter2 card shows.
+    Symmetric (no query instruction). The card's adapter needs the `adapters` library,
+    which pins transformers 4.57 while sentence-transformers 6.2 needs transformers 5,
+    so the adapter row is not benched (S8)."""
+
+    def __init__(self, device: str | None = None, batch_size: int = 32) -> None:
+        import torch
+        from transformers import AutoModel, AutoTokenizer  # optional dependency (ml)
+
+        self.torch = torch
+        self.tok = AutoTokenizer.from_pretrained(SPECTER2)
+        self.model = AutoModel.from_pretrained(SPECTER2)
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device).eval()
+        self.name, self.dim, self.batch_size = SPECTER2, 768, batch_size
+
+    def _embed(self, texts: list[str]) -> np.ndarray:
+        # Perch texts are "title. abstract"; the card's format puts [SEP] between them.
+        texts = [t.replace(". ", self.tok.sep_token, 1) for t in texts]
+        out = []
+        with self.torch.no_grad():
+            for i in range(0, len(texts), self.batch_size):
+                batch = self.tok(texts[i:i + self.batch_size], padding=True, truncation=True,
+                                 max_length=512, return_tensors="pt").to(self.device)
+                out.append(self.model(**batch).last_hidden_state[:, 0].float().cpu().numpy())
+        return normalise(np.concatenate(out) if out else np.zeros((0, self.dim))).astype(
+            np.float32)
+
+    def embed_documents(self, texts: list[str]) -> np.ndarray:
+        return self._embed(texts)
+
+    def embed_queries(self, texts: list[str]) -> np.ndarray:
+        return self._embed(texts)
 
 
 def content_hash(text: str) -> str:
@@ -138,6 +181,11 @@ class CachedEmbedder(Embedder):
 
 def get_embedder(name: str = DEFAULT_MODEL, cache: str | Path | None = "data/cache/embeddings.db",
                  device: str | None = None) -> Embedder:
-    inner: Embedder = (FakeEmbedder(int(name.split("-")[1])) if name.startswith("fake-")
-                       else SentenceTransformerEmbedder(name, device=device))
+    inner: Embedder
+    if name.startswith("fake-"):
+        inner = FakeEmbedder(int(name.split("-")[1]))
+    elif name == SPECTER2:
+        inner = Specter2Embedder(device=device)
+    else:
+        inner = SentenceTransformerEmbedder(name, device=device)
     return CachedEmbedder(inner, cache) if cache else inner

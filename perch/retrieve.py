@@ -3,7 +3,9 @@
 Deterministic given the index, the embedder and the profile. Each thread runs a
 dense search with its vector and a BM25 search with its label terms and top paper
 titles; the two lists are fused with reciprocal rank fusion (k=60). Threads are
-merged by RRF weighted by each thread's share of the profile.
+merged by RRF weighted by each thread's share of the profile. `mode` keeps one
+list only ("dense" or "bm25"); the back-test uses it for the bench matrix and the
+keyword-only baseline.
 """
 
 from __future__ import annotations
@@ -57,17 +59,24 @@ def rrf(ranked: list[str]) -> dict[str, float]:
     return {rid: 1.0 / (RRF_K + r) for r, rid in enumerate(ranked, start=1)}
 
 
+MODES = ("hybrid", "dense", "bm25")
+
+
 def retrieve(profile: Profile, index: VectorIndex, k: int = TOP_K,
-             per_list: int = PER_LIST) -> Retrieval:
+             per_list: int = PER_LIST, mode: str = "hybrid") -> Retrieval:
+    if mode not in MODES:
+        raise ValueError(f"retrieval mode must be one of {MODES}: {mode!r}")
     timings: dict[str, float] = {"dense": 0.0, "bm25": 0.0}
     total: dict[str, float] = {}
     best: dict[str, tuple[float, int]] = {}
     ranks: dict[str, dict[str, int]] = {}
     for t in profile.threads:
         t0 = time.perf_counter()
-        dense = [rid for rid, _ in index.dense(t.vector.tolist(), per_list)]
+        dense = ([rid for rid, _ in index.dense(t.vector.tolist(), per_list)]
+                 if mode != "bm25" else [])
         t1 = time.perf_counter()
-        sparse = [rid for rid, _ in index.bm25(thread_query(t), per_list)]
+        sparse = ([rid for rid, _ in index.bm25(thread_query(t), per_list)]
+                  if mode != "dense" else [])
         t2 = time.perf_counter()
         timings["dense"] += (t1 - t0) * 1000
         timings["bm25"] += (t2 - t1) * 1000
