@@ -38,6 +38,20 @@ TITLE_RESTRICTIONS = {
 }
 
 
+# Grants.gov names an agency by its full name in some records and by its code in others
+# ("National Institutes of Health", "HHS-NIH11"), so a filter matches either.
+AGENCY_NAMES = {
+    "nih": ("national institutes of health", "hhs-nih"),
+    "ahrq": ("agency for health care research and quality", "hhs-ahrq"),
+    "nsf": ("national science foundation", "nsf"),
+}
+
+
+def agency_matches(agency: str, wanted: str) -> bool:
+    a, w = agency.lower(), wanted.lower().strip()
+    return w in a or any(n in a for n in AGENCY_NAMES.get(w, ()))
+
+
 @dataclass
 class Constraints:
     as_of: date
@@ -103,9 +117,9 @@ def check(o: Opportunity, c: Constraints) -> list[str]:
     hit = [k for k in c.exclude_keywords if k.lower() in text]
     if hit:
         reasons.append(f"mentions excluded keyword {hit[0]!r}")
-    if c.agencies and not any(a.lower() in o.agency.lower() for a in c.agencies):
+    if c.agencies and not any(agency_matches(o.agency, a) for a in c.agencies):
         reasons.append(f"agency {o.agency} not in the chosen agencies")
-    if any(a.lower() in o.agency.lower() for a in c.exclude_agencies):
+    if any(agency_matches(o.agency, a) for a in c.exclude_agencies):
         reasons.append(f"agency {o.agency} excluded by the user")
     return reasons
 

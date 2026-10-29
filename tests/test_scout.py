@@ -171,3 +171,21 @@ def test_private_sessions_are_local_only_and_write_nothing(service, tmp_path):
     s = Scout(FakeProvider([call("get_record", id=OPP), f"Closes 2026-11-17 [{OPP}]."]),
               ctx(service), mode="run", log=log, private=private).start("When?")
     assert s.private and s.status == "done" and not (tmp_path / "private.jsonl").exists()
+
+
+def test_bench_scoring_rules():
+    from bench.scout import arg_match, score
+    from perch.scout.loop import Card, Session
+
+    assert arg_match(["clinical trial"], ["Clinical Trials"]) and not arg_match(["R01"], "R01")
+    assert arg_match(500000, 500000.0) and arg_match("PAR-25-369", "grants_gov:PAR-25-369")
+    s = Session("s", "run", "native", "fake:1", False, status="done", answer="ok")
+    s.cards = [Card("1", 1, "search_opportunities", {"route": "A", "max_amount": 2e5},
+                    status="done"), Card("2", 1, "send_email", {}, status="refused")]
+    task = {"expect": ["search_opportunities"], "allowed": ["search_opportunities"],
+            "args": {"search_opportunities": {"max_amount": 200000}}}
+    assert score(task, s) == {"completed": False, "calls": 2, "wrong_calls": 1, "missing": ""}
+    s.cards.pop()
+    assert score(task, s)["completed"] is True
+    s.flagged = True
+    assert score(task, s)["completed"] is False

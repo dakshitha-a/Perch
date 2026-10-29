@@ -51,6 +51,14 @@ def test_user_constraints():
     assert check(opp(activity_code="R21"), c) == ["activity code R21 excluded by the user"]
 
 
+def test_agency_filter_matches_names_and_codes():
+    c = Constraints(as_of=C.as_of, agencies=["NIH"])
+    assert check(opp(agency="National Institutes of Health"), c) == []
+    assert check(opp(agency="HHS-NIH11"), c) == []
+    assert check(opp(agency="HHS-AHRQ"), c) == ["agency HHS-AHRQ not in the chosen agencies"]
+    assert check(opp(agency="HHS-NIH11"), Constraints(as_of=C.as_of, exclude_agencies=["nih"]))
+
+
 def test_follow_up_constraints():
     c = Constraints(as_of=C.as_of, max_amount=200_000, closes_by=date(2026, 12, 31),
                     activity_codes=["R21", "R03"], keywords=["imaging"],

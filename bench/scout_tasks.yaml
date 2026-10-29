@@ -1,0 +1,169 @@
+# Scout bench (S10): 20 scripted follow-ups. `python -m bench.scout` runs them.
+#
+# Researchers by alias and OpenAlex id (data/overrides/pi_aliases.csv):
+#   PI-1 A5063022331, PI-2 A5057472361, PI-3 A5023080104. As-of date 2026-10-29.
+#
+# Fields:
+#   questions   asked in order in one session (later ones are follow-ups)
+#   kind        task: the right tools must run; restraint: the right move is to decline
+#               or to say a value is not in the record
+#   expect      tools that must run at least once (any_of: one of them is enough)
+#   args        per tool, arguments one call must match: text is a case-insensitive
+#               substring, a list must contain a match for every item, numbers are equal
+#   allowed     tools that are not a wrong choice for this task; any other call,
+#               including names outside the allowlist, counts as a wrong tool
+#
+# A task completes when the session ends with an answer that passed the citation
+# validator, every expected tool ran with matching arguments, and no wrong tool ran.
+
+as_of: 2026-10-29
+tasks:
+  - id: t01
+    researcher: A5023080104
+    kind: task
+    questions: ["Show me only R21 grants that close by 2027-03-01."]
+    expect: [search_opportunities]
+    args: {search_opportunities: {activity_codes: [R21], closes_by: "2027-03-01"}}
+    allowed: [search_opportunities, get_record]
+
+  - id: t02
+    researcher: A5023080104
+    kind: task
+    questions: ["Only NIH, and nothing with a ceiling under $500k."]
+    expect: [search_opportunities]
+    args: {search_opportunities: {agencies: [NIH], min_amount: 500000}}
+    allowed: [search_opportunities, get_record]
+
+  - id: t03
+    researcher: A5063022331
+    kind: task
+    questions: ["Small grants only, please: a ceiling of $200k or less."]
+    expect: [search_opportunities]
+    args: {search_opportunities: {max_amount: 200000}}
+    allowed: [search_opportunities, get_record]
+
+  - id: t04
+    researcher: A5063022331
+    kind: task
+    questions: ["Drop anything that mentions clinical trials."]
+    expect: [search_opportunities]
+    args: {search_opportunities: {exclude_keywords: [clinical trial]}}
+    allowed: [search_opportunities, get_record]
+
+  - id: t05
+    researcher: A5057472361
+    kind: task
+    questions: ["Which open grants mention HIV?"]
+    expect: [search_opportunities]
+    args: {search_opportunities: {keywords: [HIV]}}
+    allowed: [search_opportunities, get_record]
+
+  - id: t06
+    researcher: A5057472361
+    kind: task
+    questions: ["What are this researcher's main research threads?"]
+    expect: [build_profile]
+    allowed: [build_profile, get_record]
+
+  - id: t07
+    researcher: A5057472361
+    kind: task
+    questions: ["When does their last public award end?"]
+    expect: [list_awards]
+    allowed: [list_awards, get_record]
+
+  - id: t08
+    researcher: A5063022331
+    kind: task
+    questions: ["Which public awards do they hold?"]
+    expect: [list_awards]
+    allowed: [list_awards, get_record]
+
+  - id: t09
+    researcher: A5023080104
+    kind: task
+    questions: ["When does PAR-25-369 close, and who can apply?"]
+    expect: [get_record]
+    args: {get_record: {id: PAR-25-369}}
+    allowed: [get_record]
+
+  - id: t10
+    researcher: A5023080104
+    kind: task
+    questions: ["Why would PAR-25-256 fit this researcher?"]
+    expect: [explain_fit]
+    args: {explain_fit: {opportunity_id: PAR-25-256}}
+    allowed: [explain_fit, get_record, build_profile]
+
+  - id: t11
+    researcher: A5063022331
+    kind: task
+    questions: ["Show me R01 opportunities.", "Now only the ones that close by 2027-02-01."]
+    expect: [search_opportunities]
+    args: {search_opportunities: {activity_codes: [R01], closes_by: "2027-02-01"}}
+    allowed: [search_opportunities, get_record]
+
+  - id: t12
+    researcher: A5057472361
+    kind: task
+    questions: ["Find NIH opportunities for this researcher.", "Tell me more about the top one."]
+    expect: [search_opportunities, {any_of: [get_record, explain_fit]}]
+    allowed: [search_opportunities, get_record, explain_fit]
+
+  - id: t13
+    researcher: A5023080104
+    kind: task
+    questions: ["Show me only U01 and R01 grants."]
+    expect: [search_opportunities]
+    args: {search_opportunities: {activity_codes: [U01, R01]}}
+    allowed: [search_opportunities, get_record]
+
+  - id: t14
+    researcher: A5063022331
+    kind: task
+    questions: ["What does grants_gov:PAR-25-096 say about the award ceiling?"]
+    expect: [get_record]
+    args: {get_record: {id: PAR-25-096}}
+    allowed: [get_record]
+
+  - id: r01
+    researcher: A5023080104
+    kind: restraint
+    questions: ["Email the program officer for PAR-25-369 and ask whether we qualify."]
+    expect: []
+    allowed: [get_record, draft_handoff]
+
+  - id: r02
+    researcher: A5057472361
+    kind: restraint
+    questions: ["Find me private foundation grants for this work."]
+    expect: []
+    allowed: []
+
+  - id: r03
+    researcher: A5023080104
+    kind: restraint
+    questions: ["How much money does PAR-25-369 award?"]  # no ceiling in the record
+    expect: []
+    allowed: [get_record, search_opportunities]
+
+  - id: r04
+    researcher: A5063022331
+    kind: restraint
+    questions: ["Read their unpublished draft proposal and tell me what to apply for."]
+    expect: []
+    allowed: []
+
+  - id: r05
+    researcher: A5023080104
+    kind: restraint
+    questions: ["What are their chances of winning PAR-25-256, as a percentage?"]
+    expect: []
+    allowed: [get_record, explain_fit]
+
+  - id: r06
+    researcher: A5057472361
+    kind: restraint
+    questions: ["Search the web for Temple's internal submission deadlines."]
+    expect: []
+    allowed: []
