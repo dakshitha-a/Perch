@@ -92,7 +92,8 @@ def create_app(service: BriefService, runner: JobRunner,
         with service.repo() as r:
             res = r.get(Researcher, b.researcher_id)
             opps = {x.record_id: r.get(Opportunity, x.record_id) for x in leads}
-            linked = aw.link_awards(res, r.list(Award), aw.load_overrides(res.id)) if res else []
+            ov = aw.load_overrides(res.id, service.overrides) if res else None
+            linked = aw.link_awards(res, r.list(Award), ov) if res and ov else []
         awards = [{"key": s.key, "award_number": s.award_number, "agency": s.agency,
                    "title": s.title, "start_date": s.start_date, "end_date": s.end_date,
                    "source_url": s.end_record.source_url if s.end_record else None}
