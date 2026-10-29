@@ -12,6 +12,7 @@ brief, so providers with prompt caching reuse it. Leads run in parallel.
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
@@ -181,17 +182,27 @@ def ground(f: Fit, o: Opportunity, paper_records: dict[str, Record], grounder: G
 
 def explain_leads(opps: list[Opportunity], profile: Profile, works: dict[str, Work],
                   provider: AuditedProvider, grounder: Grounder | None = None,
-                  workers: int = 4) -> list[Validated[Fit]]:
+                  workers: int = 4,
+                  on_result: Callable[[int, Validated[Fit]], None] | None = None
+                  ) -> list[Validated[Fit]]:
+    """Explain every lead; `on_result(index, result)` is called as each one finishes."""
     system, paper_records = profile_prompt(profile, works)
+    results: list[Validated[Fit] | None] = [None] * len(opps)
 
-    def one(o: Opportunity) -> Validated[Fit]:
-        return explain_one(o, system, paper_records, provider, grounder)
+    def one(i: int) -> None:
+        results[i] = explain_one(opps[i], system, paper_records, provider, grounder)
+        if on_result:
+            on_result(i, results[i])
 
     if not opps:
         return []
     # With prompt caching, the first call writes the shared profile prefix; later calls
     # read it at a tenth of the price, but only once the write exists. So the first lead
     # runs alone, the rest in parallel (live: 3 parallel calls all wrote the cache).
-    first = [one(opps[0])] if "prompt_cache" in provider.capabilities else []
+    start = 0
+    if "prompt_cache" in provider.capabilities:
+        one(0)
+        start = 1
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        return first + list(pool.map(one, opps[len(first):]))
+        list(pool.map(one, range(start, len(opps))))
+    return [r for r in results if r is not None]

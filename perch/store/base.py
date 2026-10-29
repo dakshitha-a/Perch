@@ -27,6 +27,10 @@ class Repository(ABC):
         """Return every record of type cls, ordered by id."""
 
     @abstractmethod
+    def get_any(self, id: str) -> Record | None:
+        """Return the record with this id, whatever its kind, or None."""
+
+    @abstractmethod
     def works_by_author(self, author_id: str) -> list[Work]:
         """Return works that list author_id among their authors, newest first."""
 

@@ -130,12 +130,26 @@ class Lead(Record):
     route: Literal["A", "B"]
     record_id: str = Field(description="Opportunity (route A) or Organisation (route B) id")
     rank: int | None = None
+    rerank_score: float | None = None
+    matched_thread: int | None = None
     fit_score: float | None = None
-    explanation: str | None = None
+    explanation: str | None = Field(default=None, description="Factual sentences, validated")
+    inference: str | None = Field(default=None, description="Link sentence, shown as inference")
+    unsupported: list[str] = Field(default_factory=list, description="Validator layer 2 flags")
     cited_ids: list[str] = Field(default_factory=list)
     status: Literal["new", "kept", "dismissed"] = "new"
-    flagged: bool = False
+    flagged: bool = Field(default=False, description="Explanation withheld after two failures")
     inferred: bool = Field(default=False, description="Route B leads are inferences, never facts")
+
+
+class Stage(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    status: Literal["pending", "running", "done", "skipped", "failed"] = "pending"
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    detail: str | None = None
 
 
 class Brief(Record):
@@ -146,10 +160,17 @@ class Brief(Record):
     researcher_id: str
     created_at: datetime = Field(default_factory=utcnow)
     status: Literal["queued", "running", "done", "failed"] = "queued"
+    stages: list[Stage] = Field(default_factory=list)
+    error: str | None = None
+    options: dict = Field(default_factory=dict, description="as_of, top, explain, constraints")
     work_ids: list[str] = Field(default_factory=list)
     award_ids: list[str] = Field(default_factory=list)
     lead_ids: list[str] = Field(default_factory=list)
     award_horizon: date | None = Field(default=None, description="End date of last public award")
+    threads: list[dict] = Field(default_factory=list, description="index, label, weight, work_ids")
+    topics: list[str] = Field(default_factory=list)
+    summary: str | None = None
+    timings_ms: dict[str, float] = Field(default_factory=dict)
 
 
 RECORD_TYPES: tuple[type[Record], ...] = (
