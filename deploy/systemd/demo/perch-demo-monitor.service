@@ -1,0 +1,11 @@
+# Perch demo: the weekly watch (S16). Runs `perch monitor` inside the running app
+# container, for the researchers in PERCH_WATCH (docker-compose.yml). It refreshes open
+# NIH opportunities, re-runs their briefs and stores what changed with an email draft,
+# which is never sent. Started by perch-demo-monitor.timer; installed by `make demo`.
+[Unit]
+Description=Perch demo: weekly watch of the demo researchers
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO@
+ExecStart=@DOCKER@ compose exec -T perch /opt/venv/bin/perch monitor

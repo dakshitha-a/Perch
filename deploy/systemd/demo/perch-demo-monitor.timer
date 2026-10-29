@@ -1,0 +1,10 @@
+# Perch demo: the weekly watch, Mondays at 06:00 local time, after the 05:30 warm-up.
+[Unit]
+Description=Perch demo: weekly watch of the demo researchers
+
+[Timer]
+OnCalendar=Mon *-*-* 06:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -38,6 +38,12 @@ Route B lists up to five companies with at least two kinds of public signal: the
 uv run perch brief A5026494099 --route B
 ```
 
+The weekly watch refreshes open NIH opportunities from Grants.gov, re-runs each watched researcher's brief and compares it with the last run. When a public award ends within 12 months, or an opportunity enters the top 10, code writes an email draft. Nothing is sent. The What changed screen (`#/changes`) shows the latest run:
+
+```sh
+uv run perch monitor --author A5026494099      # or set PERCH_WATCH; --no-refresh skips Grants.gov
+```
+
 Award links are matched by name. Fix a wrong or missed match in `data/overrides/award_links.csv`.
 
 An OpenAlex API key is optional; see `.env.example`.

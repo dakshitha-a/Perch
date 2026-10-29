@@ -18,6 +18,8 @@ services:
       OLLAMA_BASE_URL: http://127.0.0.1:11437
       PERCH_CLEF_URL: http://127.0.0.1:8094
       PERCH_CLEF_FLASH_URL: http://127.0.0.1:8095
+      # The weekly watch (S16): the demo researchers, as in scripts/demo_warm.py.
+      PERCH_WATCH: A5034175589,A5026494099,A5057472361
       # Private mode on the public URL (Q22, Dakshitha, 2026-10-29). Every model above is on
       # loopback, and Tailscale Funnel decrypts on this node, so TLS ends on the server.
       PERCH_PRIVATE_MODE: "1"

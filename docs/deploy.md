@@ -16,6 +16,7 @@ make demo-down                     # stop everything
 
 - **Why two halves:** Docker on the lab node has no GPU access, so the models run on the host and the app container reaches them over localhost.
 - **The demo store:** briefs live in `data/demo/`, seeded once from `data/`. The three demo researchers' briefs are built every morning at 05:30, and a visitor's request for one is answered at once.
+- **The weekly watch:** every Monday at 06:00, `perch-demo-monitor.timer` runs `perch monitor` in the app container for the researchers in `PERCH_WATCH`. It refreshes open NIH opportunities from Grants.gov, re-runs their briefs and stores what changed, with an email draft that is never sent. The What changed screen shows the latest run. `make demo-monitor` runs it at once.
 - **Limits:** each visitor can start 10 new briefs an hour (`PERCH_BRIEFS_PER_HOUR`).
 - **Health:** `GET /health` answers when the app is up; `GET /health?deep=true` checks every model service.
 
