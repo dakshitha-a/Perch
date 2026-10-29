@@ -2,6 +2,8 @@
 // Plain DOM, no build step. Every value from a record goes in through textContent.
 
 import { liveApi, replayApi } from "./api.js";
+import { add, fill, h, icon } from "./dom.js";
+import { renderHelp } from "./help.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
 
@@ -28,61 +30,8 @@ const S = {
   startedHere: false,
 };
 
-// ---------- tiny DOM helper ----------
-
-function h(tag, attrs = {}, ...kids) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) {
-    if (v === null || v === undefined || v === false) continue;
-    if (k === "class") el.className = v;
-    else if (k === "text") el.textContent = v;
-    else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
-    else if (v === true) el.setAttribute(k, "");
-    else el.setAttribute(k, v);
-  }
-  add(el, kids);
-  return el;
-}
-
-function add(el, kids) {
-  for (const k of kids.flat(Infinity)) {
-    if (k === null || k === undefined || k === false) continue;
-    el.append(k instanceof Node ? k : document.createTextNode(String(k)));
-  }
-  return el;
-}
-
-function fill(el, ...kids) {
-  el.replaceChildren();
-  return add(el, kids);
-}
-
 const $ = (sel) => document.querySelector(sel);
 const main = () => $("#main");
-
-function icon(name) {
-  const paths = {
-    keep: "M5 12.5l4.5 4.5L19 7.5",
-    dismiss: "M6.5 6.5l11 11M17.5 6.5l-11 11",
-    restore: "M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5",
-    evidence: "M10.5 4.5h-5v14h13v-5M13.5 4.5h6v6M19.5 4.5l-9 9",
-    search: "M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5l4.5 4.5",
-    back: "M14.5 5.5l-6.5 6.5 6.5 6.5",
-    warn: "M12 4l9 16H3zM12 10v4.5M12 17.2v.3",
-    clock: "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V12l3 2",
-    close: "M6.5 6.5l11 11M17.5 6.5l-11 11",
-    theme: "M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z",
-    download: "M12 4v11M7 10.5l5 5 5-5M5 19.5h14",
-  };
-  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  s.setAttribute("viewBox", "0 0 24 24");
-  s.setAttribute("aria-hidden", "true");
-  s.setAttribute("class", "icon");
-  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  p.setAttribute("d", paths[name]);
-  s.append(p);
-  return s;
-}
 
 function announce(msg) {
   const live = $("#live");
@@ -95,6 +44,18 @@ function announce(msg) {
 function route() {
   if (location.hash && !location.hash.startsWith("#/")) return; // in-page anchors, e.g. the skip link
   const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+  if (parts[0] === "help") {
+    stopPolling();
+    S.briefId = null;
+    S.brief = null;
+    document.title = "Help — Perch";
+    barOwl("idle");
+    renderHelp(main(), { back: S.lastHash && S.lastHash !== location.hash ? S.lastHash : "#/" });
+    window.scrollTo(0, 0);
+    main().focus({ preventScroll: true });
+    return;
+  }
+  S.lastHash = location.hash || "#/";
   if (parts[0] === "brief" && parts[1]) {
     const id = decodeURIComponent(parts[1]);
     S.tab = parts[2] === "routes" ? "routes" : parts[2] === "profile" ? "profile" : S.tab;
@@ -185,7 +146,8 @@ function renderFind() {
       h("div", { class: "hero-text" },
         h("h1", { text: "See every route to fund your work." }),
         h("p", { class: "lede", text:
-          "Perch reads a researcher’s public papers and lists open funding that fits. Every claim links to the public record behind it." }))),
+          "Perch reads a researcher’s public papers and lists open funding that fits. Every claim links to the public record behind it." }),
+        h("p", { class: "hero-help" }, h("a", { href: "#/help" }, icon("help"), h("span", { text: "New here? See how Perch works" }))))),
     form,
     h("div", { class: "results" }, results),
     recent.length ? h("section", { class: "recent" },

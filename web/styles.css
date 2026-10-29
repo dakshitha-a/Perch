@@ -486,6 +486,80 @@ button.owl:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px;
   .next .btn { width: auto; }
 }
 .noscript { padding: 24px 16px; }
+
+/* ---------- help ---------- */
+.bar-tools { display: flex; gap: 2px; align-items: flex-end; }
+.hero-help { margin-top: 10px; }
+.hero-help a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-weight: 600; }
+.help { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+.help-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.help-head .lede { margin-top: 6px; max-width: 52ch; }
+.help-owl { width: 72px; height: 72px; margin-top: -4px; }
+.help-block { display: grid; gap: 12px; padding: 18px 0 22px; border-bottom: 1px solid var(--line); }
+.help-block:last-of-type { border-bottom: 0; }
+.how-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 22px; }
+.how-step { display: grid; gap: 12px; }
+.how-text { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 10px; row-gap: 4px; align-items: baseline; }
+.how-text > :not(.step-n) { grid-column: 2; }
+.step-n { grid-row: span 2; width: 28px; height: 28px; border-radius: 50%; background: var(--moss); color: var(--moss-ink); display: grid; place-items: center; font-weight: 700; font-size: 14px; align-self: start; }
+.how-text h3 { font-size: 17px; font-weight: 650; }
+.how-text p { color: var(--ink-2); }
+.pic { margin-left: 44px; background: var(--sunk); border-radius: var(--r-card); padding: 14px; display: grid; gap: 10px; position: relative; }
+.ph { display: inline-block; height: 10px; border-radius: 5px; background: var(--line); }
+.pic-field { background: var(--leaf); border: 1px solid var(--line); border-radius: var(--r-ctl); min-height: 40px; display: flex; align-items: center; padding: 0 12px; }
+.pic-ph-text { color: var(--ink-3); font-size: 14px; }
+.pic-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: var(--r-ctl); background: var(--moss); color: var(--moss-ink); font-weight: 600; font-size: 14px; }
+.pic-btn .icon { width: 16px; height: 16px; }
+.pic-btn.ghost { background: var(--leaf); color: var(--ink); border: 1px solid var(--line); min-height: 32px; padding: 0 8px; font-size: 13px; }
+.pic-card { background: var(--leaf); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+.pic-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pic-row.between { justify-content: space-between; }
+.pic-row .ph { flex: 0 0 auto; }
+.pic-title { flex: 1; display: grid; gap: 6px; }
+.pic-title .ph { height: 12px; background: var(--ink-3); opacity: .45; }
+.pic-fact { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.pic-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pic-branch { position: relative; height: 64px; margin: 0 18px; }
+.pic-branch .owl-rider { width: 46px; height: 46px; left: -23px; }
+.pic-cap { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 14px; color: var(--ink-2); }
+.callout { width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--paper); font-size: 12px; font-weight: 700; display: inline-grid; place-items: center; flex: none; }
+.fit .callout { margin-left: -6px; }
+.callouts { margin: 4px 0 0; padding-left: 0; list-style: none; counter-reset: c; display: grid; gap: 8px; }
+.callouts li { counter-increment: c; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; color: var(--ink-2); }
+.callouts li::before { content: counter(c); width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--paper); font-size: 12px; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
+.flow-key { display: flex; flex-wrap: wrap; gap: 6px; }
+.kind { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12.5px; font-weight: 650; white-space: nowrap; }
+.kind.record { background: var(--sunk); color: var(--ink-2); }
+.kind.code, .kind.rules { background: var(--moss-soft); color: var(--ink); }
+.kind.model { background: var(--model-soft); color: var(--model); }
+.kind.you { background: var(--ember-soft); color: var(--ember); }
+.flow { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.flow-step { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; position: relative; padding-bottom: 16px; }
+.flow-step:not(:last-child)::after { content: ""; position: absolute; left: 19px; top: 40px; bottom: 0; width: 2px; background: var(--branch); opacity: .55; }
+.flow-icon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--leaf); border: 1px solid var(--line); }
+.flow-step.model .flow-icon { background: var(--model-soft); border-color: transparent; color: var(--model); }
+.flow-step.code .flow-icon, .flow-step.rules .flow-icon { background: var(--moss-soft); border-color: transparent; color: var(--moss); }
+.flow-step.you .flow-icon { background: var(--ember-soft); border-color: transparent; color: var(--ember); }
+.flow-step h3 { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 16px; font-weight: 650; margin-top: 8px; }
+.flow-step p { color: var(--ink-2); font-size: 15px; margin-top: 2px; }
+.label-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.label-list li { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 12px; align-items: start; }
+.label-list p { color: var(--ink-2); font-size: 15px; }
+.sample { display: flex; }
+.mini-inf { margin: 0; padding: 6px 10px; }
+.sample-warn { padding: 4px 10px; font-size: 13px; }
+.sample-warn .icon { width: 16px; height: 16px; }
+.big-date { font: 600 17px/1.2 var(--serif); }
+.plain-list { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--ink-2); }
+.help-scout { color: var(--ink-3); font-size: 14px; padding-top: 8px; }
+@media (max-width: 479px) {
+  .pic { margin-left: 0; }
+  .label-list li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
+@media (min-width: 720px) {
+  .how-step { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 20px; }
+  .pic { margin-left: 0; }
+}
 @media (max-width: 359px) {
   .narrow-hide { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .actions { grid-template-columns: 1fr 1fr 48px; }

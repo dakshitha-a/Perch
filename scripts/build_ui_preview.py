@@ -16,7 +16,7 @@ import sys
 from pathlib import Path
 
 WEB = Path(__file__).resolve().parent.parent / "web"
-MODULES = {"format.js": "f", "api.js": None, "owl.js": None}
+MODULES = {"format.js": "f", "dom.js": None, "api.js": None, "owl.js": None, "help.js": None}
 EXPORT = re.compile(r"^export (?:async )?(?:function|const|class) (\w+)", re.M)
 IMPORT = re.compile(r"^import .*?;\n", re.M)
 
@@ -24,7 +24,7 @@ IMPORT = re.compile(r"^import .*?;\n", re.M)
 def wrap(name: str, alias: str | None) -> str:
     src = (WEB / name).read_text(encoding="utf-8")
     names = EXPORT.findall(src)
-    body = re.sub(r"^export ", "", src, flags=re.M)
+    body = re.sub(r"^export ", "", IMPORT.sub("", src), flags=re.M)
     ret = "{ " + ", ".join(names) + " }"
     lhs = f"const {alias}" if alias else f"const {ret}"
     return f"// ---- {name}\n{lhs} = (() => {{\n{body}\nreturn {ret};\n}})();\n"
