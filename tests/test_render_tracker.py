@@ -95,3 +95,13 @@ def test_real_decisions_and_change_log_render():
                           decisions_md=(ROOT / "docs/DECISIONS.md").read_text(encoding="utf-8"),
                           plan_md=(ROOT / "docs/PLAN.md").read_text(encoding="utf-8"))
     assert "Plan change log (0)" not in real and "Decisions (0)" not in real
+
+
+def test_bench_tab_appears_only_with_a_summary():
+    md = ("# Bench results, summary\n\n## Back-test\n\n"
+          "| Setup | hit@10 |\n|---|---|\n| BENCH-ROW | 0.1 |\n")
+    p = rt.render_page(MASTER, {}, bench_md=md)
+    assert '<a id="tab-bench" href="#bench">Bench</a>' in p
+    assert '<section id="view-bench" class="view" data-view="bench" hidden>' in p
+    assert "BENCH-ROW" in p and "<h1>Bench results, summary</h1>" in p
+    assert "tab-bench" not in rt.render_page(MASTER, {})

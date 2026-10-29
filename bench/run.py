@@ -6,7 +6,8 @@ terms, no dense, no rerank, threads from the default embedder) is computed once 
 shown beside every row. Results: bench/results/backtest_matrix.csv (one line per
 award and config) and bench/results/RESULTS.md (the table, a paired comparison of
 each config against the default on the same awards, plus the skill-2, validator
-layer-2, cost and single-card tables when their CSVs exist).
+layer-2, cost and single-card tables when their CSVs exist), and SUMMARY.md, the
+short version shown on the tracker's Bench tab.
 
   uv run --extra ml python -m bench.run [--render-only] [--device cuda]
 """
@@ -172,6 +173,89 @@ def render() -> str:
     return "\n".join(lines) + "\n"
 
 
+SUMMARY = RESULTS / "SUMMARY.md"
+
+
+def read_csv(name: str) -> list[dict]:
+    p = RESULTS / name
+    if not p.exists():
+        return []
+    with p.open(newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
+
+
+def summary() -> str:
+    """The short version of RESULTS.md for the tracker's Bench tab. Every number is
+    copied from the CSVs in bench/results/."""
+    lines = ["# Bench results, summary", "",
+             f"Rendered {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')} by `make bench` from "
+             "the CSVs in `bench/results/`. Full tables: `bench/results/RESULTS.md`.", ""]
+    if MATRIX_CSV.exists():
+        m = load_matrix()
+        pt = {(r["embedder"], r["config"]): r for r in paired(m, "targeted")}
+        pp = {(r["embedder"], r["config"]): r for r in paired(m, "parent")}
+        rows = []
+        for (emb, label), xs in m.items():
+            t = summarise([x for x in xs if x.stratum == "targeted"])
+            a, b = pt.get((short(emb), label), {}), pp.get((short(emb), label), {})
+            rows.append({"Embedder": short(emb), "Setup": label,
+                         "Targeted in top 10": f"{a.get('hit@10 count')} of {a.get('n')}",
+                         "hit@5": t.get("hit@5"), "hit@10": t.get("hit@10"), "MRR": t.get("mrr"),
+                         "MRR against default, 95% interval": a.get("MRR difference, 95% interval"),
+                         "Parent in top 10": f"{b.get('hit@10 count')} of {b.get('n')}",
+                         "Seconds per award": a.get("p50 s per award")})
+        tied = [r for r in pt.values() if r["config"] != DEFAULT_CONFIG
+                and float(r["MRR difference, 95% interval"].strip("[]").split(",")[0]) < 0
+                < float(r["MRR difference, 95% interval"].strip("[]").split(",")[1])]
+        n = next(iter(pt.values()))["n"] if pt else 0
+        lines += ["## Back-test (NIH, Temple, date cut-off)", "",
+                  "Rank of the announcement each award was funded under, from papers before the "
+                  "award start. Keyword-only is the baseline. Seconds are the median per award "
+                  "on the targeted rows.", "", *table(rows, list(rows[0])), "",
+                  f"- **Too close to call:** {len(tied)} of {len(pt) - 1} setups have an MRR "
+                  f"interval that contains 0, so {n} targeted awards cannot tell them from the "
+                  "default.",
+                  "- **Measurably different:** "
+                  + "; ".join(f"{r['embedder']} {r['config']}, {r['hit@10 count']} of {r['n']} "
+                              f"in the top 10, interval {r['MRR difference, 95% interval']}"
+                              for r in pt.values()
+                              if r["config"] != DEFAULT_CONFIG and r not in tied)
+                  + ". A negative interval means worse than the default.",
+                  "- **Parent announcements:** these are general calls, and almost none rank "
+                  "in the top 10 under any setup.", ""]
+    s2 = read_csv("skill2_summary.csv")
+    cost = {r["model"]: r for r in read_csv("cost.csv")}
+    if s2:
+        rows = [{"Model": r["model"], "Passed both checks": both_layers(r["model"]),
+                 "p50 brief s": r["p50_brief_s"],
+                 "Cost per brief, USD": cost.get(r["model"], {}).get("brief_total_usd")
+                 or r["cost_per_brief_usd"]} for r in s2]
+        rows.sort(key=lambda r: -int(r["Passed both checks"].split()[0] or 0))
+        lines += ["## Fit explanations (skill 2)", "",
+                  "Passed both checks: the citation validator passed and the grounding check "
+                  "found no unsupported sentence. Cost covers the summary and 10 explanations "
+                  "where both were logged, otherwise the explanations only.", "",
+                  *table(rows, list(rows[0])), ""]
+    g = read_csv("grounders.csv")
+    if g:
+        rows = [{"Grounder": r["grounder"], "Pairs": r["pairs"], "AUC": r["auc"] or "not benched",
+                 "False flags": r["false_flag_rate"], "Misses": r["miss_rate"],
+                 "Seconds per sentence": r["s_per_claim"], "Note": r["note"]} for r in g]
+        lines += ["## Grounding check (validator layer 2)", "",
+                  "Supported sentences against the same sentences with a swapped record. AUC "
+                  "is how well the score separates the two; 1.0 is perfect. Rates are at the "
+                  "0.5 threshold.", "", *table(rows, list(rows[0])), ""]
+    sc = read_csv("single_card.csv")
+    if sc:
+        rows = [{"Model": r["model"], "Peak MiB": r["peak_mib"], "p50 brief s": r["p50_brief_s"],
+                 "Explained": r["explained"], "QA and Scout gates": "not measured"} for r in sc]
+        rows.sort(key=lambda r: int(r["Peak MiB"]))
+        lines += ["## One card, three briefs at once", "",
+                  "Chat model, Clef-flash, embedder and reranker on one clean GPU. The gate is "
+                  "a peak under 28 GB.", "", *table(rows, list(rows[0])), ""]
+    return "\n".join(lines) + "\n"
+
+
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="make bench")
     ap.add_argument("--render-only", action="store_true")
@@ -180,7 +264,8 @@ def main(argv: list[str] | None = None) -> None:
     if not a.render_only:
         run_matrix(a.device)
     REPORT.write_text(render(), encoding="utf-8")
-    print(f"wrote {REPORT}")
+    SUMMARY.write_text(summary(), encoding="utf-8")
+    print(f"wrote {REPORT} and {SUMMARY}")
 
 
 if __name__ == "__main__":

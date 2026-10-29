@@ -6,12 +6,14 @@ Sources (Markdown is the source of truth):
 
   docs/DECISIONS.md        decision log
   docs/PLAN.md             only its "## Change log" table
+  bench/results/SUMMARY.md bench results, written by `make bench`
 
 Views, switched by plain hash links (#current, #master, #archive, #decisions, #s<n>):
   Current    the session marked in progress or continued, else the first todo
   Master     every session, milestones and key numbers
   Archive    finished sessions (done or cut), collapsed, newest first
   Decisions  the decision log and the plan change log, newest first
+  Bench      the bench results summary, when bench/results/SUMMARY.md exists
 
 Standard library only. Output is deterministic so re-running does not dirty the
 tree. Two outputs: a complete standalone document with no external requests
@@ -512,6 +514,13 @@ def view_decisions(decisions_md: str, plan_md: str) -> str:
     return "\n".join(out)
 
 
+def view_bench(bench_md: str) -> str:
+    doc = parse(bench_md)
+    out = ['<div><div class="eyebrow">Measured in S8, copied from bench/results/</div>'
+           f"<h1>{inline(doc.title or 'Bench results')}</h1></div>"]
+    return "\n".join(out + render_blocks(doc.blocks))
+
+
 def view_ui(src: str) -> str:
     s = html.escape(src)
     return f"""<h2>UI preview</h2>
@@ -530,7 +539,7 @@ title="Perch web app preview"></iframe></div>"""
 
 def render_page(master_md: str, session_files: dict[str, str], artifact: bool = False,
                 page_title: str = "Perch Build Tracker", decisions_md: str = "",
-                plan_md: str = "", ui: str | None = None) -> str:
+                plan_md: str = "", ui: str | None = None, bench_md: str = "") -> str:
     master = parse(master_md)
     sessions = build_sessions(master, session_files)
     current = pick_current(sessions)
@@ -548,6 +557,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 <a id="tab-master" href="#master">Master</a>
 <a id="tab-archive" href="#archive">Archive<span class="count">{archived}</span></a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
+{'<a id="tab-bench" href="#bench">Bench</a>' if bench_md else ""}
 {'<a id="tab-ui" href="#ui">UI</a>' if ui else ""}
 </nav></div></header>
 <main class="wrap">
@@ -563,8 +573,9 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 {view_decisions(decisions_md, plan_md)}
 </section>
+{f'<section id="view-bench" class="view" data-view="bench" hidden>{view_bench(bench_md)}</section>' if bench_md else ""}
 {f'<section id="view-ui" class="view" data-view="ui" hidden>{view_ui(ui)}</section>' if ui else ""}
-<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md and the PLAN.md change log by scripts/render_tracker.py.
+<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log and bench/results/SUMMARY.md by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>
 <script>{SCRIPT}</script>
@@ -603,7 +614,8 @@ def main(argv: list[str]) -> int:
         return f.read_text(encoding="utf-8") if f.is_file() else ""
 
     page = render_page(src.read_text(encoding="utf-8"), sessions, args.artifact, args.title,
-                       read("DECISIONS.md"), read("PLAN.md"), args.ui)
+                       read("DECISIONS.md"), read("PLAN.md"), args.ui,
+                       read("../bench/results/SUMMARY.md"))
     dest.write_text(page, encoding="utf-8")
     print(f"wrote {dest}")
     return 0
