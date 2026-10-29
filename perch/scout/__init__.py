@@ -32,7 +32,9 @@ def make_scout(service: object, author_id: str, *, as_of: date | None = None,
                                                         or spec_for_role("fit_explainer")),
                                 audit, "fit_explainer")
     ctx = ScoutContext(service, as_of or date.today(), explainer=explainer)
-    ctx.researcher_id = ctx.full_author_id(author_id)
+    # A private brief with no public profile has no OpenAlex id; tools that need one say so.
+    ctx.researcher_id = (author_id if author_id.startswith("private:")
+                         else ctx.full_author_id(author_id))
     note = ""
     if brief_id and (got := service.get(brief_id)):
         b, leads = got

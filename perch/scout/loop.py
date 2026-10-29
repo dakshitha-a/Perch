@@ -174,8 +174,11 @@ class Scout:
         self.budget = budget or ScoutBudget()
         self.log = log
         self.private = private is not None
-        self.system = (f"{RULES}\n\nSession: researcher {ctx.full_author_id(None)} "
-                       f"(OpenAlex), as-of date {ctx.as_of.isoformat()}.{brief_note}")
+        who = ("a researcher with no public profile (private documents only)"
+               if (ctx.researcher_id or "").startswith("private:")
+               else f"researcher {ctx.full_author_id(None)} (OpenAlex)")
+        self.system = (f"{RULES}\n\nSession: {who}, as-of date {ctx.as_of.isoformat()}."
+                       f"{brief_note}")
         self.tools = [t for t, _ in TOOLS.values()]
 
     # --- public API ---

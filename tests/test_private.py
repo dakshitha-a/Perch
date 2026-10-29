@@ -35,7 +35,8 @@ def fit_reply(messages, system, schema):
             "reasoning": "r", "fit": 70,
             "opportunity_sentence": "The announcement funds research projects [PAR-25-268].",
             "research_findings": [{"paper_id": "private:proposal",
-                                   "finding": "proposed home insole sensing of gait"}],
+                                   "finding": "proposed a system that records ground "
+                                              "reaction force at home"}],
             "link_sentence": "The proposal fits the announcement.",
             "cited_ids": ["PAR-25-268", "private:proposal"]})
     return ""
@@ -112,3 +113,189 @@ def test_inputs_parse_from_bytes():
         parse_bytes("a.pdf", b"not a pdf")
     with pytest.raises(InputError):
         make_doc("proposal", "x" * 70_000)
+
+
+# --- through the API: canary, isolation, refusal, masking ---
+
+def private_env(monkeypatch):
+    monkeypatch.setenv("PERCH_PRIVATE_MODE", "1")
+    monkeypatch.setenv("PERCH_TLS_AT", "server")
+    monkeypatch.setenv("PERCH_PRIVATE_OPERATOR", "Test operator")
+    monkeypatch.delenv("PERCH_PUBLIC_URL", raising=False)
+    monkeypatch.delenv("PERCH_PRIVATE_ENDPOINTS", raising=False)
+
+
+def private_app(tmp_path, monkeypatch, responder=fit_reply):
+    private_env(monkeypatch)
+    c, service = make(tmp_path)
+    with service.repo() as r:
+        index_opportunities(r, service.models.get("index"), service.models.get("embedder"))
+    service.models.provider = lambda spec: FakeProvider(responder=responder)
+    return c, service
+
+
+def open_with_persona(c):
+    tok = c.post("/private/session").json()["token"]
+    h = {"X-Perch-Private": tok}
+    for kind, name in FILES.items():
+        assert c.post("/private/documents", headers=h,
+                      json={"kind": kind, "text": (PERSONA / name).read_text()}).status_code == 201
+    return h
+
+
+def snapshot(root):
+    return {str(p): (p.stat().st_size, p.stat().st_mtime_ns)
+            for p in Path(root).rglob("*") if p.is_file()}
+
+
+def files_with(root, tokens, since=None):
+    hits = []
+    for p in Path(root).rglob("*"):
+        try:
+            if not p.is_file() or p.is_symlink() or p.stat().st_size > 50_000_000:
+                continue
+            if since and p.stat().st_mtime < since:
+                continue
+            data = p.read_bytes()
+        except OSError:
+            continue
+        hits += [f"{p}: {t}" for t in tokens if t.encode() in data]
+    return hits
+
+
+def test_canary_leaves_no_trace(tmp_path, monkeypatch, capfd):
+    import time
+
+    import httpx
+
+    start = time.time()
+    c, service = private_app(tmp_path, monkeypatch)
+    sent = []
+    real_send = httpx.Client.send
+
+    def spy(self, request, **kw):
+        sent.append((request.url.host, request.content or b""))
+        return real_send(self, request, **kw)
+
+    monkeypatch.setattr(httpx.Client, "send", spy)
+    before = snapshot(tmp_path)
+    h = open_with_persona(c)
+    assert c.post("/private/documents", headers=h, json={
+        "kind": "direction", "text": "SYNTHETIC direction PERCH-CANARY-DIR-Z5P1: home gait "
+        "sensing for early Parkinson's detection."}).status_code == 201
+    for author in (None, "A5026494099"):  # private-only, then with a public profile
+        assert c.post("/private/brief", headers=h, json={
+            "author_id": author, "as_of": "2026-10-28"}).status_code == 202
+        got = c.get("/private/brief", headers=h).json()
+        assert got["brief"]["status"] == "done", got["brief"]["error"]
+        lead = got["leads"][0]
+        assert c.post(f"/private/leads/{lead['id']}/keep", headers=h).status_code == 200
+        c.get("/private/compare", headers=h)
+        for mask in (False, True):
+            for ext in ("json", "md", "html"):
+                c.get(f"/private/export.{ext}", headers=h, params={"mask": mask})
+            c.post("/private/handoff", headers=h,
+                   json={"office": "research_development", "mask": mask})
+        sc = c.post("/private/scout", headers=h, json={"question": "Which lead fits best?"})
+        assert sc.status_code == 202, sc.text
+    assert c.post("/private/end", headers=h).json()["ended"]
+    canaries = [*CANARIES, "PERCH-CANARY-DIR-Z5P1"]
+    assert snapshot(tmp_path) == before, "a private session wrote to the data directory"
+    assert files_with(tmp_path, canaries) == []
+    assert files_with("/tmp", canaries, since=start) == []
+    out, err = capfd.readouterr()
+    assert not any(t in out + err for t in canaries)
+    allowed = SETTINGS.endpoints
+    leaks = [host for host, body in sent if any(t.encode() in body for t in canaries)
+             and host not in allowed]
+    assert leaks == [], f"private text sent off the allowlist: {leaks}"
+    assert sent, "the spy saw the public fetches"
+
+
+def test_default_exports_withhold_and_masking_round_trips(tmp_path, monkeypatch):
+    c, _ = private_app(tmp_path, monkeypatch)
+    h = open_with_persona(c)
+    c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"})
+    got = c.get("/private/brief", headers=h).json()
+    assert got["leads"][0]["explanation"]  # on screen in the session
+    assert got["papers"]["private:proposal"]["private"] is True
+    exp = c.get("/private/export.json", headers=h).json()
+    assert exp["leads"][0]["explanation"].startswith("Withheld")
+    assert not any(r["source"] == "private" for r in exp["records"])
+    md = c.get("/private/export.md", headers=h).text
+    assert "ground reaction" not in md and "Withheld" in md
+    masked = c.get("/private/export.json", headers=h, params={"mask": True}).json()
+    text = masked["leads"][0]["explanation"]
+    assert "[PRIVATE-PHRASE-1]" in text and "ground reaction force" not in text
+    back = c.post("/private/unmask", headers=h, json={"text": text}).json()["text"]
+    assert back == got["leads"][0]["explanation"]
+
+
+def test_sessions_are_isolated(tmp_path, monkeypatch):
+    c, _ = private_app(tmp_path, monkeypatch)
+    a = open_with_persona(c)
+    b = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    c.post("/private/brief", headers=a, json={"as_of": "2026-10-28"})
+    bid = c.get("/private/brief", headers=a).json()["brief"]["id"]
+    assert c.get("/private/session", headers=b).json()["documents"] == []
+    assert c.get("/private/brief", headers=b).status_code == 404
+    assert c.get("/private/records/private:proposal", headers=b).status_code == 404
+    assert c.get(f"/briefs/{bid}").status_code == 404  # not in the shared store
+    assert c.get("/records/private:proposal").status_code == 404
+    assert c.get("/private/session").status_code == 401  # no token
+    c.post("/private/end", headers=a)
+    assert c.get("/private/brief", headers=a).status_code == 401
+
+
+def test_idle_sessions_end(tmp_path):
+    _, service = make(tmp_path)
+    service.models.provider = lambda spec: FakeProvider()
+    now = [0.0]
+    sessions = PrivateSessions(service, SETTINGS, clock=lambda: now[0], idle=60)
+    s = sessions.open()
+    add_document(s, make_doc("direction", "SYNTHETIC text"))
+    now[0] = 61
+    assert sessions.get(s.token) is None and s.docs == {}
+
+
+def test_hosted_or_unlisted_models_are_refused(tmp_path, monkeypatch):
+    import httpx
+
+    c, service = private_app(tmp_path, monkeypatch)
+
+    class Hosted(FakeProvider):
+        name = "anthropic"
+
+    service.models.provider = lambda spec: Hosted()
+    r = c.post("/private/session")
+    assert r.status_code == 403 and "hosted API" in r.json()["detail"]
+    remote = FakeProvider()
+    remote.http = httpx.Client(base_url="https://models.example.org")
+    service.models.provider = lambda spec: remote
+    r = c.post("/private/session")
+    assert r.status_code == 403 and "not an allowed endpoint" in r.json()["detail"]
+
+
+def test_private_mode_off_without_tls_location_on_a_public_url(tmp_path, monkeypatch):
+    private_env(monkeypatch)
+    monkeypatch.delenv("PERCH_TLS_AT")
+    monkeypatch.setenv("PERCH_PUBLIC_URL", "https://perch.example.org")
+    c, _ = make(tmp_path)
+    assert c.get("/private").json()["enabled"] is False
+    assert c.post("/private/session").status_code == 404
+
+
+def test_upload_as_base64_and_caps(tmp_path, monkeypatch):
+    import base64
+
+    c, _ = private_app(tmp_path, monkeypatch)
+    h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    data = base64.b64encode(b"# SYNTHETIC aims\n\nGait sensing.").decode()
+    r = c.post("/private/documents", headers=h,
+               json={"kind": "proposal", "filename": "aims.md", "data": data})
+    assert r.status_code == 201 and r.json()["chars"] > 0
+    r = c.post("/private/documents", headers=h,
+               json={"kind": "proposal", "filename": "aims.exe", "data": data})
+    assert r.status_code == 422 and "aims" not in r.text
+    assert c.post("/private/documents", headers=h,
+                  json={"kind": "proposal", "data": "!!"}).status_code == 422

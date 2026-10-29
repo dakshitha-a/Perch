@@ -36,13 +36,16 @@ class Entry:
 
 
 class ScoutHub:
-    def __init__(self, service: object, runner: JobRunner, log: ScoutLog | None = None) -> None:
-        self.service, self.runner, self.log = service, runner, log
+    def __init__(self, service: object, runner: JobRunner, log: ScoutLog | None = None,
+                 private: object | None = None) -> None:
+        """`private`: PrivateSettings for a private session's own hub (no log, local
+        models only)."""
+        self.service, self.runner, self.log, self.private = service, runner, log, private
         self.entries: OrderedDict[str, Entry] = OrderedDict()
 
     def start(self, brief_id: str, researcher_id: str, question: str, mode: Mode) -> Entry:
         scout = make_scout(self.service, researcher_id, brief_id=brief_id, mode=mode,
-                           log=self.log)
+                           log=self.log, private=self.private)
         e = Entry(scout, scout.open(), brief_id)
         self.entries[e.session.id] = e
         while len(self.entries) > MAX_SESSIONS:

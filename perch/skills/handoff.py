@@ -164,10 +164,11 @@ FALLBACK = "I would like to talk with your team about the funding leads listed b
 
 def draft_handoff(office: Office, researcher: Researcher,
                   items: list[tuple[Lead, Record | None]], papers: list[Work],
-                  provider: AuditedProvider | None, masker: egress.Masker | None = None
-                  ) -> Draft:
+                  provider: AuditedProvider | None, masker: egress.Masker | None = None,
+                  private: list[Work] | None = None) -> Draft:
     """items: the kept leads for this office with their opportunity or organisation.
-    A paragraph that cites a private record is withheld unless masked (perch.egress)."""
+    `private`: a private session's documents, which the model may cite. A paragraph that
+    cites a private record is withheld unless masked (perch.egress)."""
     papers = egress.public_only(papers)[:MAX_PAPERS]
     lead_ids = [x.id for x, _ in items]
     subject = subject_for(items)
@@ -185,6 +186,9 @@ def draft_handoff(office: Office, researcher: Researcher,
             views.append(org_view(lead, rec if isinstance(rec, Organisation) else None))
     prompt = (f"Researcher: {researcher.display_name}\nOffice: {office.name}\n\nLeads:\n"
               + "\n".join(views) + "\n\nPapers:\n" + "\n".join(work_view(w) for w in papers))
+    for d in private or []:
+        records[d.id] = d
+        prompt += "\n\nPrivate document:\n" + work_view(d, abstract_chars=1500)
 
     def generate(feedback: list[str]) -> tuple[str, list[str]]:
         msg = prompt + ("\n\nYour previous answer was rejected: " + "; ".join(feedback)

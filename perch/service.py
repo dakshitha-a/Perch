@@ -19,6 +19,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 from perch import awards as aw
+from perch import egress
 from perch.brief import route_a
 from perch.config import env
 from perch.eligibility import Constraints
@@ -168,7 +169,8 @@ class BriefService:
     # --- hand-off (skill 3; on request, not a pipeline stage) ---
 
     def handoff(self, brief_id: str, office_key: str, lead_ids: list[str] | None = None,
-                spec: str | None = None, use_model: bool = True) -> Draft | None:
+                spec: str | None = None, use_model: bool = True,
+                masker: egress.Masker | None = None) -> Draft | None:
         """A draft to one office about the brief's kept leads on that office's route (or
         the given lead ids). None if the brief does not exist. Nothing is stored or sent."""
         office = OFFICES[office_key]
@@ -190,7 +192,11 @@ class BriefService:
             return None
         provider = (self._audited("handoff", spec or self.models.handoff_spec)
                     if use_model and chosen else None)
-        return draft_handoff(office, res, items, papers, provider)
+        private = None
+        if b.source == "private":
+            with self.repo() as r:
+                private = [w for w in self._works(r, b).values() if egress.is_private(w)]
+        return draft_handoff(office, res, items, papers, provider, masker, private)
 
     # --- run ---
 

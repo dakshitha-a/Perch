@@ -160,7 +160,8 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
     with s.repo() as r:
         b = route_a(res, r, s.models.get("index"), s.models.get("embedder"),
                     s.models.get("reranker"), c, RerankCache(s.rerank_cache),
-                    top=max(1, min(int(top), 20)), timings_log=None)
+                    top=max(1, min(int(top), 20)), timings_log=None,
+                    index_new=getattr(s, "index_writes", True))  # a private session: no
     leads = []
     for i, x in enumerate(b.leads, 1):
         o = x.opportunity

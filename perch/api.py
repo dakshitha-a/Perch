@@ -264,22 +264,25 @@ def create_app(service: BriefService, runner: JobRunner,
         runner.submit(b.id, lambda: service.run(b.id))
         return {"id": b.id, "status": b.status, "poll": f"/briefs/{b.id}"}
 
-    def load(brief_id: str) -> tuple[Brief, list[Lead]]:
-        got = service.get(brief_id)
+    def load(brief_id: str, svc: BriefService = service) -> tuple[Brief, list[Lead]]:
+        got = svc.get(brief_id)
         if not got:
             raise HTTPException(404, f"no brief {brief_id!r}")
         return got
 
     @app.get("/briefs/{brief_id}")
     def get_brief(brief_id: str) -> dict:
-        b, leads = load(brief_id)
-        with service.repo() as r:
+        return brief_view(brief_id)
+
+    def brief_view(brief_id: str, svc: BriefService = service) -> dict:
+        b, leads = load(brief_id, svc)
+        with svc.repo() as r:
             res = r.get(Researcher, b.researcher_id)
             opps = {x.record_id: r.get(Opportunity, x.record_id) for x in leads
                     if x.route == "A"}
             out = [lead_json(x, opps.get(x.record_id)) if x.route == "A" else route_b_json(x, r)
                    for x in leads]
-            ov = aw.load_overrides(res.id, service.overrides) if res else None
+            ov = aw.load_overrides(res.id, svc.overrides) if res else None
             linked = aw.link_awards(res, r.list(Award), ov) if res and ov else []
             pids = {i for t in b.threads for i in t.get("work_ids", [])[:KEY_PAPERS]}
             pids |= {f"https://openalex.org/{c}" for x in leads for c in x.cited_ids
@@ -315,7 +318,11 @@ def create_app(service: BriefService, runner: JobRunner,
 
     @app.get("/briefs/{brief_id}/export.json")
     def export(brief_id: str, status: str | None = None) -> dict:
-        b, leads = load(brief_id)
+        return export_json(brief_id, status)
+
+    def export_json(brief_id: str, status: str | None = None, svc: BriefService = service,
+                    masker: egress.Masker | None = None) -> dict:
+        b, leads = load(brief_id, svc)
         if status:  # e.g. ?status=kept: the Keep bar's download
             leads = [x for x in leads if x.status == status]
         ids = {b.researcher_id, *(x.record_id for x in leads)}
@@ -324,20 +331,23 @@ def create_app(service: BriefService, runner: JobRunner,
         ids |= {f"grants_gov:{c}" for x in leads if x.route == "A" for c in x.cited_ids
                 if not c.startswith("W")}
         ids |= {i for x in leads for sig in x.signals for i in sig.record_ids}
-        with service.repo() as r:
+        with svc.repo() as r:
             records = [record_json(x) for x in
                        egress.public_only(y for y in (r.get_any(i) for i in sorted(ids)) if y)]
         out_leads = [{**x.model_dump(mode="json"),
-                      "explanation": egress.release(x.explanation, x.cited_ids),
-                      "inference": egress.release(x.inference, x.cited_ids)} for x in leads]
+                      "explanation": egress.release(x.explanation, x.cited_ids, masker),
+                      "inference": egress.release(x.inference, x.cited_ids, masker),
+                      "notes": [egress.release(n, ["private:cv"], masker) if "(private)" in n
+                                else n for n in x.notes]} for x in leads]
         return {"brief": b.model_dump(mode="json"), "leads": out_leads, "records": records,
                 "notice": grants_gov.ATTRIBUTION}
 
-    def export_blocks(brief_id: str, status: str | None) -> tuple[list, str]:
-        b, leads = load(brief_id)
+    def export_blocks(brief_id: str, status: str | None, svc: BriefService = service,
+                      masker: egress.Masker | None = None) -> tuple[list, str]:
+        b, leads = load(brief_id, svc)
         if status:
             leads = [x for x in leads if x.status == status]
-        with service.repo() as r:
+        with svc.repo() as r:
             res = r.get(Researcher, b.researcher_id)
             opps = {x.record_id: o for x in leads if x.route == "A"
                     and (o := r.get(Opportunity, x.record_id))}
@@ -348,7 +358,8 @@ def create_app(service: BriefService, runner: JobRunner,
             works = {w.id: w for w in (r.get(Work, i) for i in sorted(wids)) if w}
             rows = cmp.compare(b, leads, r, "kept")
         name = res.display_name if res else b.researcher_id
-        return ex.blocks(b, res, leads, opps, orgs, works, rows), f"Perch brief: {name}"
+        return (ex.blocks(b, res, leads, opps, orgs, works, rows, masker=masker),
+                f"Perch brief: {name}")
 
     @app.get("/briefs/{brief_id}/export.md")
     def export_md(brief_id: str, status: Literal["kept"] | None = None) -> Response:
@@ -440,6 +451,12 @@ def create_app(service: BriefService, runner: JobRunner,
         except Busy as err:
             raise HTTPException(409, str(err)) from err
         return scout_view(e)
+
+    from perch.private.routes import add_private_routes
+
+    add_private_routes(app, service, runner, scout_runner or runner, brief_view=brief_view,
+                       export_json=export_json, export_blocks=export_blocks, load=load,
+                       limiter=RateLimiter, client_key=client_key)
 
     if web_dir and (web_dir / "index.html").is_file():  # after every API route
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")

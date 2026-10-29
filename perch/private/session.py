@@ -244,7 +244,18 @@ class PrivateSessions:
         for t in [t for t, s in self.sessions.items() if now - s.last_used > self.idle]:
             self.sessions.pop(t).clear()
 
+    def check_models(self) -> None:
+        """PermissionError unless every chat model a session may call is self-hosted on an
+        allowed endpoint. Checked when a session opens, and again on every call."""
+        from perch.llm import spec_for_role
+
+        m = self.base.models
+        for spec, role in ((m.summary_spec, "profile_summary"), (m.fit_spec, "fit_explainer"),
+                           (m.handoff_spec, "handoff"), (None, "scout")):
+            refuse_if_not_local(m.provider(spec or spec_for_role(role)), self.settings)
+
     def open(self) -> PrivateSession:
+        self.check_models()
         with self.lock:
             self._sweep()
             if len(self.sessions) >= self.max_sessions:
