@@ -4,6 +4,18 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
+25. **The demo watch produced no draft (raised S16, 2026-10-29).** S16's done-when asks for a draft on the demo personas. The weekly job ran live on PI-5, PI-4 and PI-2, and nothing fired:
+- **Awards:** none of their public awards ends within 12 months. Their latest end dates are 2028-07-31, 2016-06-30 and 2028-05-31.
+- **Opportunities:** Grants.gov had 3 new NIH listings since 29 Oct, and none entered their top 10.
+- **Live draft elsewhere:** on a copy of the demo store, a researcher outside the demo set (A5052363442) got a real draft, because their NSF award ends 2027-03-31.
+
+Options:
+- (a) Leave the demo watch as it is. The What changed screen says "Nothing changed" until a real change happens; the first scheduled run is Mon 2 Nov.
+- (b) Add A5052363442 to `PERCH_WATCH`, so the public screen shows a real draft. This person is not one of your chosen demo researchers, and the draft names them, as briefs already do.
+- (c) Pick another Temple researcher you prefer whose award ends within 12 months.
+
+Perch-dev will not bend a trigger to make a draft appear. Default: (a).
+
 24. **What counts as a "new opportunity above threshold" for monitoring? (raised S16, 2026-10-29).** The plan says the weekly job re-runs a brief when a new opportunity scores above a threshold. The reranker's scores are not on one scale across researchers. In the demo store, the top lead scores 0.015 for one researcher and 0.98 for another. A single score cut-off would fire for some people every week and never for others. Perch-dev built a position rule instead:
 - **The rule:** an opportunity that is in the fresh brief's top 10 and was not a lead in the last run.
 - **Other option:** a smaller window, such as the top 5, which fires less often.

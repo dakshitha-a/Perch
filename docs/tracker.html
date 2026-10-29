@@ -150,15 +150,15 @@ details .inner > * { min-width: 0; }
 <div class="title-row"><h1>S16 · Monitoring</h1><span class="badge s-in-progress">in progress</span></div>
 <div class="meta">Started 2026-10-29 16:34 EDT</div></div>
 <p>Goal: Perch tells you before you need it. Kept by Dakshitha on 2026-10-29. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="1 of 5 tasks done"><div class="counts"><span><b>1/5</b>tasks done</span><span class="s-done"><b>1</b>done</span><span class="s-todo"><b>4</b>todo</span></div><div class="bar" role="img" aria-label="1 of 5 tasks done"><span class="s-done" style="width:20.00%" title="done: 1"></span><span class="s-todo" style="width:80.00%" title="todo: 4"></span></div></section>
+<section class="panel summary" aria-label="3 of 5 tasks done"><div class="counts"><span><b>3/5</b>tasks done</span><span class="s-done"><b>3</b>done</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="3 of 5 tasks done"><span class="s-done" style="width:60.00%" title="done: 3"></span><span class="s-todo" style="width:40.00%" title="todo: 2"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
 <tbody>
 <tr><td>1</td><td>Monitor core: a Grants.gov delta refresh, then a fresh brief per watched researcher that bypasses brief reuse, compared with the last run. Triggers: a public award ending within 12 months, or an opportunity new to the top 10. A code-written email draft, never sent, stored as a <code>digest</code> record. <code>perch monitor</code> on the CLI.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
 <tr><td>2</td><td>One screen, "What changed": the latest digest per watched researcher, with its changes and its draft. API routes and a Help section.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>GET /watch</code> and <code>web/watch.js</code> at <code>#/changes</code>, linked from Find as "What changed this week". Each card shows the triggers, the other changes, a link to this week's brief and the code-written draft to copy. A Help step describes it. Checked in Chromium at 390 px and 1200 px on a throwaway store: no console errors and no sideways scroll.</td></tr>
-<tr><td>3</td><td>Weekly timer: a systemd user unit runs <code>perch monitor</code> in the demo container for the demo researchers; <code>make demo</code> installs it.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>Weekly timer: a systemd user unit runs <code>perch monitor</code> in the demo container for the demo researchers; <code>make demo</code> installs it.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>perch-demo-monitor.service</code> and <code>.timer</code>, Mondays at 06:00, after the 05:30 warm-up. The unit runs <code>perch monitor</code> in the app container, so it uses the demo store and model servers. The watched ids are <code>PERCH_WATCH</code> in <code>docker-compose.yml</code>, the same three as the warm-up. <code>make demo-monitor</code> runs it at once. <code>systemd-analyze verify</code> passes; the next run would be Mon 2 Nov 06:00. Documented in <code>docs/deploy.md</code>, <code>docs/running.md</code> and <code>.env.example</code>.</td></tr>
 <tr><td>4</td><td>Live run on the demo researchers; record what fired and show the draft on the public URL.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>5</td><td>Fix <code>make bench --render-only</code>, so it no longer overwrites the hand-written Scout sections of RESULTS.md (from the S15 handoff).</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>5</td><td>Fix <code>make bench --render-only</code>, so it no longer overwrites the hand-written Scout sections of RESULTS.md (from the S15 handoff).</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>RESULTS.md now has a marker line above the Scout sections, and <code>write_report()</code> keeps everything from it on. A real <code>--render-only</code> run changed only the render date and added the marker; every Scout section stayed. 1 test.</td></tr>
 </tbody></table></div>
 <h2>Definition of done</h2>
 <ul class="panel done-list"><li>The job runs on the demo personas and produces a draft.</li></ul>
@@ -595,7 +595,7 @@ details .inner > * { min-width: 0; }
 </tbody></table></div>
 </section>
 <section id="view-bench" class="view" data-view="bench" hidden><div><div class="eyebrow">Measured in S8 to S13, copied from bench/results/</div><h1>Bench results, summary</h1></div>
-<p>Rendered 2026-10-29 19:08 UTC by <code>make bench</code> from the CSVs in <code>bench/results/</code>. Full tables: <code>bench/results/RESULTS.md</code>.</p>
+<p>Rendered 2026-10-29 20:50 UTC by <code>make bench</code> from the CSVs in <code>bench/results/</code>. Full tables: <code>bench/results/RESULTS.md</code>.</p>
 <h2>Back-test (NIH, Temple, date cut-off)</h2>
 <p>Rank of the announcement each award was funded under, from papers before the award start. Keyword-only is the baseline. Seconds are the median per award on the targeted rows.</p>
 <div class="panel scroll"><table>
