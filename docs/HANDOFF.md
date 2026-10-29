@@ -44,11 +44,14 @@ Private mode is built end to end:
   - Compare's PAR close dates.
   - Replay mode has no compare or hand-off.
 
-## Next session: S15 — Monitoring (optional; first to cut)
-1. Read S15 in `docs/PLAN.md`. The task is a weekly job that re-runs briefs when an award is within 12 months of ending or a new opportunity scores above a threshold. Its output is an email draft that is never sent, plus one "what changed" screen.
-2. It is first to cut. Code freeze is Thu 5 Nov 12:00. If time is short, Dakshitha may prefer to go straight to S16.
-3. S16 task 2 frees GPUs 1 and 2 after the last test run (local notes).
+## Now: S15 — README and public release (in progress)
+1. **Tasks 1 to 3 are done.** The README, its clips and the docs split are in place. The README tab is on the tracker. The history audit found names only (Q23).
+2. **Waiting on Dakshitha:** README approval, and an answer to Q23 (names in tests). Then apply the Q23 choice, confirm once more, and run `gh repo edit dakshitha-a/perch --visibility public --accept-visibility-change-consequences`.
+3. **To refilm the clips:** run `uv run --with playwright --with pillow python scripts/tour/film.py [--scenes ...]`, with the demo up.
+4. **After that:** S16, Monitoring (optional, first to cut), then S17, QA, freeze and package. S17 task 2 frees GPUs 1 and 2.
+5. **Known gap:** Scout on Gemma often has an answer that states a count withheld by the validator.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 - Q20: should a past Temple STTR partner count as an industry lead on its own? Default: no.
+- Q23: names in tests and one old commit. Default: change the tests (b) before going public.
 - Q21: private document shares. Default: proposal 0.5, direction 0.3, unpublished 0.2; the CV gets none.
