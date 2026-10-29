@@ -41,16 +41,22 @@ export function daysBetween(fromIso, toIso) {
   return a && b ? Math.round((b - a) / 86400000) : null;
 }
 
-// Plain-words distance to a closing date, computed by code from two record dates.
-export function closesIn(days) {
+// Plain-words distance to a date, computed by code from two record dates.
+export function until(days) {
   if (days === null) return "";
-  if (days < 0) return "closed";
-  if (days === 0) return "closes today";
+  if (days === 0) return "today";
   if (days === 1) return "tomorrow";
   if (days < 60) return `in ${days} days`;
   const months = Math.round(days / 30.44);
   if (months < 24) return `in ${months} months`;
   return `in ${Math.floor(months / 12)} years`;
+}
+
+export function closesIn(days) {
+  if (days === null) return "";
+  if (days < 0) return "closed";
+  if (days === 0) return "closes today";
+  return until(days);
 }
 
 export function urgency(days) {
@@ -79,10 +85,10 @@ export function agencyShort(name) {
 
 export function fitBand(score) {
   if (score === null || score === undefined) return null;
-  if (score >= 80) return { key: "strong", label: "Strong fit" };
-  if (score >= 60) return { key: "good", label: "Good fit" };
-  if (score >= 40) return { key: "partial", label: "Partial fit" };
-  return { key: "weak", label: "Weak fit" };
+  if (score >= 80) return { key: "strong", word: "strong", label: "Strong fit" };
+  if (score >= 60) return { key: "good", word: "good", label: "Good fit" };
+  if (score >= 40) return { key: "partial", word: "partial", label: "Partial fit" };
+  return { key: "weak", word: "weak", label: "Weak fit" };
 }
 
 // Applicant categories that name higher education, copied from the record.
@@ -97,16 +103,18 @@ export function shortId(id) {
 
 // Split text into plain strings and citation ids. Ids are [BRACKETED] tokens or bare
 // OpenAlex work ids (W followed by digits).
-const TOKEN = /\[([A-Za-z0-9][A-Za-z0-9.\-]*)\]|\b(W\d{5,})\b/g;
+const ID = "[A-Za-z0-9][A-Za-z0-9.\\-]*";
+const TOKEN = new RegExp(`\\[(${ID}(?:,\\s*${ID})*)\\]|\\b(W\\d{5,})\\b`, "g");
 
 export function segments(text, known = null) {
   const out = [];
   let last = 0;
+  const isCite = (id) => !known || known.has(id) || /^W\d+$/.test(id) || /^[A-Z]{2,4}(-[A-Z]{2,3})?-\d{2}-\d{3}$/.test(id);
   for (const m of String(text || "").matchAll(TOKEN)) {
-    const id = m[1] || m[2];
-    if (m[1] && known && !known.has(id) && !/^W\d+$/.test(id)) continue;
+    const ids = m[1] ? m[1].split(/,\s*/) : [m[2]];
+    if (m[1] && !ids.every(isCite)) continue;
     if (m.index > last) out.push(text.slice(last, m.index));
-    out.push({ cite: id });
+    for (const id of ids) out.push({ cite: id });
     last = m.index + m[0].length;
   }
   if (last < String(text || "").length) out.push(text.slice(last));
@@ -143,6 +151,12 @@ export function parseExplanation(text, citedIds = []) {
     findings.push({ paper: m[1], text: m[2].trim().replace(/\.$/, "") });
   }
   return { opportunity: segments(opp, known), findings };
+}
+
+// Today's date where the user is, as YYYY-MM-DD (not the UTC date).
+export function localToday(d = new Date()) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
 export function elapsed(ms) {

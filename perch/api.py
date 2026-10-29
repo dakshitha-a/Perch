@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from perch import awards as aw
+from perch.config import env
 from perch.jobs import JobRunner
 from perch.schemas import Award, Brief, Lead, Opportunity, Record, Researcher, Work
 from perch.service import BriefService
@@ -64,8 +65,10 @@ def create_app(service: BriefService, runner: JobRunner,
                web_dir: Path | None = WEB_DIR) -> FastAPI:
     app = FastAPI(title="Perch API", description="See every route to fund your work. "
                   + grants_gov.ATTRIBUTION, version="0.1.0")
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["GET", "POST"],
-                       allow_headers=["*"])
+    origins = [o.strip() for o in (env("PERCH_CORS_ORIGINS") or "").split(",") if o.strip()]
+    if origins:  # the web app is same-origin; other origins only when listed
+        app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"],
+                           allow_headers=["*"])
 
     @app.get("/health")
     def health() -> dict:
@@ -114,7 +117,8 @@ def create_app(service: BriefService, runner: JobRunner,
             papers = {w.id: paper_json(w) for w in (r.get(Work, i) for i in sorted(pids)) if w}
         awards = [{"key": s.key, "award_number": s.award_number, "agency": s.agency,
                    "title": s.title, "start_date": s.start_date, "end_date": s.end_date,
-                   "source_url": s.end_record.source_url if s.end_record else None}
+                   "source_url": s.end_record.source_url if s.end_record else None,
+                   "record_id": (s.end_record or s.records[0]).id}
                   for s in aw.summarise(linked) if s.key in set(b.award_ids)]
         return {"brief": b.model_dump(mode="json"),
                 "researcher": record_json(res) if res else None, "awards": awards,

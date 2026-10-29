@@ -38,7 +38,7 @@ def bundle() -> str:
 def page(replay: dict) -> str:
     html = (WEB / "index.html").read_text(encoding="utf-8")
     css = (WEB / "styles.css").read_text(encoding="utf-8")
-    data = json.dumps(replay, separators=(",", ":")).replace("</", "<\\/")
+    data = json.dumps(replay, separators=(",", ":")).replace("<", "\\u003c")
     js = bundle().replace("</script", "<\\/script")
     html = html.replace('<link rel="icon" href="favicon.svg" type="image/svg+xml">\n', "")
     html = html.replace('<link rel="stylesheet" href="styles.css">', f"<style>\n{css}</style>")

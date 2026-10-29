@@ -22,6 +22,7 @@ const S = {
   open: new Set(), // lead ids whose "Why it fits" is open
   stepsOpen: false,
   pollTimer: null,
+  gen: 0, // bumps whenever the brief on screen changes; stale polls drop out
   failedPolls: 0,
   seen: { explained: 0, stagesDone: 0 },
   startedHere: false,
@@ -92,6 +93,7 @@ function announce(msg) {
 // ---------- routing ----------
 
 function route() {
+  if (location.hash && !location.hash.startsWith("#/")) return; // in-page anchors, e.g. the skip link
   const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
   if (parts[0] === "brief" && parts[1]) {
     const id = decodeURIComponent(parts[1]);
@@ -119,6 +121,15 @@ function barOwl(state) {
 
 // ---------- Find ----------
 
+function keepFocus(render) {
+  const a = document.activeElement;
+  const key = a && (a.id || a.dataset.key);
+  render();
+  if (!key) return;
+  const t = document.getElementById(key) || main().querySelector(`[data-key="${CSS.escape(key)}"]`);
+  if (t && t !== document.activeElement) t.focus({ preventScroll: true });
+}
+
 function renderFind() {
   document.title = "Perch";
   barOwl(S.find.busy ? "look" : "idle");
@@ -145,7 +156,7 @@ function renderFind() {
         h("span", { class: "hint", text:
           " A model writes a short, cited reason for every lead. This is the slow step." }))),
     h("label", { class: "field-label", for: "min", text: "Smallest award ceiling, in US dollars" }),
-    h("input", { id: "min", type: "number", inputmode: "numeric", min: "0", step: "1000",
+    h("input", { id: "min", type: "number", inputmode: "numeric", min: "0", step: "any",
       placeholder: "Any", value: F.minAmount, "aria-describedby": "min-hint",
       oninput: (e) => { F.minAmount = e.target.value; } }),
     h("p", { id: "min-hint", class: "hint", text:
@@ -155,7 +166,8 @@ function renderFind() {
   if (F.error) {
     results.push(h("div", { class: "notice error", role: "alert" }, icon("warn"),
       h("p", { text: F.error })));
-  } else if (F.candidates && !F.candidates.length) {
+  }
+  if (F.candidates && !F.candidates.length) {
     results.push(h("div", { class: "empty" }, owl("worry", "owl-md"),
       h("div", {}, h("p", { class: "lede", text: `No Temple University author matches “${F.searched}”.` }),
         h("p", { class: "hint", text:
@@ -175,7 +187,7 @@ function renderFind() {
         h("p", { class: "lede", text:
           "Perch reads a researcher’s public papers and lists open funding that fits. Every claim links to the public record behind it." }))),
     form,
-    h("div", { class: "results", "aria-live": "polite" }, results),
+    h("div", { class: "results" }, results),
     recent.length ? h("section", { class: "recent" },
       h("h2", { class: "section-title", text: "Recent briefs on this device" }),
       h("ul", {}, recent.map((r) => h("li", {}, h("a", { href: `#/brief/${encodeURIComponent(r.id)}/routes` },
@@ -218,7 +230,7 @@ function candidateCard(c) {
       c.orcid ? h("a", { href: f.safeUrl(c.orcid), target: "_blank", rel: "noopener",
         text: `ORCID ${c.orcid.replace(/^https?:\/\/orcid\.org\//, "")}` }) : null),
     h("button", { class: "btn primary wide", onclick: () => build(c) },
-      h("span", { text: "Build brief" })));
+      h("span", { text: "Build brief" }), h("span", { class: "sr-only", text: ` for ${c.display_name}` })));
 }
 
 async function search() {
@@ -226,7 +238,7 @@ async function search() {
   const q = F.q.trim();
   if (!q) { $("#q").focus(); return; }
   Object.assign(F, { busy: true, error: null, candidates: null, searched: q });
-  renderFind();
+  keepFocus(renderFind);
   try {
     const r = await api.resolve(q);
     F.candidates = r.candidates || [];
@@ -236,6 +248,8 @@ async function search() {
   }
   F.busy = false;
   renderFind();
+  const n = (F.candidates || []).length;
+  if (F.candidates) announce(n ? `${f.plural(n, "match", "matches")} found.` : "No match found.");
   const pick = $("#pick");
   if (pick) pick.focus();
 }
@@ -254,6 +268,8 @@ async function build(c) {
   } catch (e) {
     F.error = `The brief could not start: ${e.message}`;
     renderFind();
+    const err = main().querySelector(".notice.error");
+    if (err) err.scrollIntoView({ block: "center" });
   }
 }
 
@@ -276,6 +292,7 @@ function remember(id, name) {
 function stopPolling() {
   clearTimeout(S.pollTimer);
   S.pollTimer = null;
+  S.gen += 1;
 }
 
 async function openBrief(id) {
@@ -288,19 +305,19 @@ async function openBrief(id) {
 }
 
 async function poll() {
-  const id = S.briefId;
+  const id = S.briefId, gen = S.gen;
   let data;
   try {
     data = await api.brief(id);
   } catch (e) {
-    if (id !== S.briefId) return;
+    if (gen !== S.gen) return;
     if (e.status === 404) return renderMissing(id, e.message);
     S.failedPolls += 1;
     if (S.failedPolls >= 4 || !S.brief) return renderMissing(id, e.message);
     S.pollTimer = setTimeout(poll, POLL_MS * 2);
     return;
   }
-  if (id !== S.briefId) return;
+  if (gen !== S.gen) return;
   S.failedPolls = 0;
   const first = !S.brief;
   S.brief = data;
@@ -380,6 +397,7 @@ function renderTabs() {
   const n = leadsOf().filter((l) => l.status !== "dismissed").length;
   const c = $("#tab-routes .tab-count");
   c.textContent = isDone("route_a") ? String(n) : "";
+  if (isDone("route_a")) c.append(h("span", { class: "sr-only", text: n === 1 ? " lead" : " leads" }));
   c.hidden = !isDone("route_a");
   $("#panel").setAttribute("aria-labelledby", `tab-${S.tab}`);
 }
@@ -495,12 +513,14 @@ setInterval(() => {
 async function rebuild() {
   const b = S.brief.brief;
   try {
-    const r = await api.create({ author_id: f.shortId(b.researcher_id), ...b.options,
-      as_of: undefined });
+    const r = await api.create({ author_id: f.shortId(b.researcher_id), ...b.options });
+    remember(r.id, (S.brief.researcher || {}).display_name || f.shortId(b.researcher_id));
     S.startedHere = true;
     go(`#/brief/${encodeURIComponent(r.id)}/profile`);
   } catch (e) {
-    announce(`The brief could not start again: ${e.message}`);
+    const box = $("#progress .progress-text");
+    if (box) add(box, [h("p", { class: "notice error", role: "alert" }, icon("warn"),
+      h("span", { text: `The brief could not start again: ${e.message}` }))]);
   }
 }
 
@@ -527,11 +547,11 @@ function renderProfile(panel) {
     Object.keys(d.papers || {}).length, b.stages.map((s) => s.status)]);
   if (panel.dataset.sig === sig) return;
   panel.dataset.sig = sig;
-  fill(panel, 
+  keepFocus(() => fill(panel, 
     summarySection(), horizonSection(), threadsSection(),
     isDone("route_a") ? h("p", { class: "next" },
       h("a", { class: "btn primary", href: `#/brief/${encodeURIComponent(S.briefId)}/routes` },
-        h("span", { text: `See ${f.plural(leadsOf().filter((l) => l.status !== "dismissed").length, "route")}` }))) : null);
+        h("span", { text: `See ${f.plural(leadsOf().filter((l) => l.status !== "dismissed").length, "route")}` }))) : null));
 }
 
 function summarySection() {
@@ -577,7 +597,7 @@ function horizonSection() {
   return h("section", { class: "block horizon" }, title,
     h("p", { class: "horizon-date" },
       h("span", { class: "big", text: b.award_horizon ? f.formatDate(b.award_horizon) : "Not stated" }),
-      left !== null ? h("span", { class: "hint", text: left < 0 ? "already passed" : f.closesIn(left).replace(/^in /, "in ") }) : null),
+      left !== null ? h("span", { class: "hint", text: left < 0 ? "already passed" : f.until(left) }) : null),
     h("p", { class: "hint", text:
       `The end date of the last public federal award found, out of ${f.plural(d.awards.length, "award")}. Nothing about lab finances is inferred.` }),
     h("p", { class: "legend", "aria-hidden": "true" },
@@ -598,7 +618,8 @@ function awardTimeline(awards, asOf) {
   const item = (a) => {
     const active = a.end_date && a.end_date >= asOf;
     return h("li", { class: `award${active ? " active" : ""}` },
-      h("button", { class: "award-btn", onclick: (e) => openEvidence(a.key, e.currentTarget) },
+      h("button", { class: "award-btn", "data-key": `award-${a.key}`,
+        onclick: (e) => openEvidence(a.record_id || a.key, e.currentTarget) },
         h("span", { class: "award-top" },
           h("span", { class: "award-num", text: `${a.agency} ${a.award_number}` }),
           h("span", { class: "award-dates", text: `${f.formatDate(a.start_date)} to ${f.formatDate(a.end_date)}` })),
@@ -636,7 +657,7 @@ function threadsSection() {
 }
 
 function paperRow(w) {
-  return h("li", {}, h("button", { class: "paper", onclick: (e) => openEvidence(w.id, e.currentTarget) },
+  return h("li", {}, h("button", { class: "paper", "data-key": `paper-${w.id}`, onclick: (e) => openEvidence(w.id, e.currentTarget) },
     h("span", { class: "paper-title", text: w.title }),
     h("span", { class: "paper-meta", text: [w.publication_year, w.venue].filter(Boolean).join(", ") })));
 }
@@ -682,10 +703,10 @@ function renderRoutes(panel) {
       h("div", { class: "routes-bar" },
         h("div", {}, h("h2", { class: "section-title", id: "routes-title" }),
           h("p", { class: "hint routes-sub" })),
-        h("label", { class: "sort" }, h("span", { text: "Sort" }),
+        h("label", { class: "sort" }, h("span", { class: "sr-only", text: "Sort leads by" }),
           h("select", { onchange: (e) => { S.sort = e.target.value; renderPanel(); } },
-            h("option", { value: "order", text: "Perch order" }),
-            h("option", { value: "closing", text: "Closing soonest" }),
+            h("option", { value: "order", text: "Best match" }),
+            h("option", { value: "closing", text: "Closing soon" }),
             h("option", { value: "fit", text: "Fit estimate" })))),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
       h("div", { class: "dismissed-box" }));
@@ -695,8 +716,8 @@ function renderRoutes(panel) {
   const subBits = [];
   if (kept) subBits.push(`${kept} kept`);
   if (explaining && S.brief.brief.options.explain) subBits.push(`${explainedCount()} of ${leadsOf().length} explained so far`);
-  if (S.sort === "order") subBits.push("In the order Perch ranked them: closest match to the papers first.");
-  panel.querySelector(".routes-sub").textContent = subBits.join(". ").replace(/\.\./g, ".");
+  subBits.push("Fit is a model’s estimate, not the odds of funding");
+  panel.querySelector(".routes-sub").textContent = `${subBits.join(". ")}.`;
 
   if (!leads.length) {
     fill(panel.querySelector(".leads"), h("li", { class: "empty" }, owl("worry", "owl-md"),
@@ -724,7 +745,7 @@ function syncList(ol, leads) {
   for (const [id, el] of have) if (!want.has(id)) el.remove();
   leads.forEach((l, i) => {
     const sig = JSON.stringify([l.status, l.fit_score, l.explanation, l.inference, l.flagged,
-      l.unsupported, S.brief.papers && l.cited_ids.length]);
+      l.unsupported, l.cited_ids.length, isPending(l)]);
     let el = have.get(l.id);
     if (!el || el.dataset.sig !== sig) {
       const focusKey = el && el.contains(document.activeElement)
@@ -740,21 +761,30 @@ function syncList(ol, leads) {
   });
 }
 
+function cssId(s) {
+  return String(s).replace(/[^A-Za-z0-9_-]/g, "_");
+}
+
+function isPending(l) {
+  return !l.explanation && !l.flagged && Boolean(S.brief.brief.options.explain)
+    && !isDone("explanations") && S.brief.brief.status !== "failed";
+}
+
 function leadCard(l) {
   const o = l.opportunity || {};
   const days = f.daysBetween(api.mode === "replay" ? S.brief.brief.options.as_of : today(), o.close_date);
   const urg = f.urgency(days);
   const size = f.awardSize(o);
   const band = f.fitBand(l.fit_score);
-  const pending = !l.explanation && !l.flagged && S.brief.brief.options.explain
-    && !isDone("explanations") && S.brief.brief.status !== "failed";
+  const pending = isPending(l);
   const parsed = f.parseExplanation(l.explanation, l.cited_ids);
 
   let fit;
   if (band) {
-    fit = h("span", { class: `fit ${band.key}`, title: "Fit estimate from a model, 0 to 100" },
-      h("span", { text: band.label }), h("b", { text: String(Math.round(l.fit_score)) }),
-      h("span", { class: "sr-only", text: " out of 100, a model estimate" }));
+    fit = h("span", { class: `fit ${band.key}` },
+      h("span", { class: "fit-k", text: "Fit estimate" }),
+      h("span", { text: band.word }), h("b", { text: String(Math.round(l.fit_score)) }),
+      h("span", { class: "sr-only", text: " out of 100, from a model" }));
   } else if (pending) {
     fit = h("span", { class: "fit pending" }, owl("work", "owl-xs"), h("span", { text: "Reading" }));
   }
@@ -767,12 +797,12 @@ function leadCard(l) {
       l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null),
     fit);
 
-  const facts = h("dl", { class: "facts" },
+  const facts = h("dl", { class: `facts${size ? "" : " one"}` },
     h("div", { class: `fact close ${urg}` }, h("dt", { text: "Closes" }),
       h("dd", {}, o.close_date ? h("span", { text: f.formatDate(o.close_date) }) : h("span", { class: "missing", text: "Not stated in the record" }),
         days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),
-    h("div", { class: "fact" }, h("dt", { text: "Award size" }),
-      h("dd", {}, size ? h("span", { text: size }) : h("span", { class: "missing", text: "Not stated in the record" }))));
+    size ? h("div", { class: "fact" }, h("dt", { text: "Award size" }), h("dd", {}, h("span", { text: size }))) : null);
+  const noSize = size ? null : h("p", { class: "hint no-size", text: "Award size: not stated in the record." });
 
   let explain = null;
   if (l.flagged) {
@@ -785,61 +815,70 @@ function leadCard(l) {
   }
 
   const evid = h("button", { class: "btn quiet", "data-key": "evidence",
-    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { text: "Evidence" }));
+    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { class: "narrow-hide", text: "Evidence" }));
   let actions;
   if (l.status === "dismissed") {
-    actions = [h("button", { class: "btn", "data-key": "restore", onclick: () => setLead(l, "restore") },
+    actions = [h("button", { class: "btn", "data-key": "restore", onclick: () => setLead(l.id, "restore") },
       icon("restore"), h("span", { text: "Restore" })), evid];
   } else {
     actions = [
       h("button", { class: `btn keep${l.status === "kept" ? " on" : ""}`, "data-key": "keep",
         "aria-pressed": String(l.status === "kept"),
-        onclick: () => setLead(l, l.status === "kept" ? "restore" : "keep") },
+        onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") },
       icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
-      h("button", { class: "btn", "data-key": "dismiss", onclick: () => setLead(l, "dismiss") },
+      h("button", { class: "btn", "data-key": "dismiss", onclick: () => setLead(l.id, "dismiss") },
         icon("dismiss"), h("span", { text: "Dismiss" })),
       evid];
   }
 
+  for (const b of actions) b.setAttribute("aria-describedby", `t-${cssId(l.id)}`);
   return h("li", { class: `card lead${l.status === "kept" ? " kept" : ""}${l.status === "dismissed" ? " gone" : ""}`,
     "data-id": l.id },
   head,
-  h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title",
+  h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
     onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: o.title || l.record_id }))),
   h("p", { class: "opp-num", text: o.opportunity_number || "" }),
-  facts, explain, h("div", { class: "actions" }, actions));
+  facts, noSize, explain, h("div", { class: "actions" }, actions));
 }
 
 function explanationBlock(l, parsed, o) {
   const papers = S.brief.papers || {};
   if (parsed.raw) {
-    return h("div", { class: "explain" }, h("p", { class: "what" }, renderSegs(parsed.raw)),
-      inferenceBox(l));
+    return h("div", { class: "explain" }, modelTag(),
+      h("p", { class: "what" }, renderSegs(parsed.raw, ownIds(o))), inferenceBox(l, o));
   }
   const open = S.open.has(l.id);
   const why = h("details", { class: "why", open,
     ontoggle: (e) => { if (e.target.open) S.open.add(l.id); else S.open.delete(l.id); } },
   h("summary", { "data-key": "why" }, h("span", { text: "Why it fits" }),
-    h("span", { class: "hint", text: ` cites ${parsed.findings.length} of your papers` })),
-  h("h4", { class: "mini", text: "From your papers" }),
+    h("span", { class: "hint", text: ` cites ${f.plural(parsed.findings.length, "paper")} by the researcher` })),
+  h("h4", { class: "mini", text: "From the researcher’s papers" }),
   h("ul", { class: "findings" }, parsed.findings.map((x) => h("li", {},
     paperRef(x.paper, papers), h("p", { text: `${x.text}.` })))),
-  inferenceBox(l),
+  inferenceBox(l, o),
   l.unsupported && l.unsupported.length ? h("div", { class: "notice warn" }, icon("warn"),
     h("div", {}, h("p", { text: "This statement could not be matched to its source:" }),
       h("ul", {}, l.unsupported.map((u) => h("li", { text: u }))))) : null,
   eligibilityRows(o));
-  const own = new Set([o.opportunity_number]);
-  return h("div", { class: "explain" },
-    h("p", { class: "what" }, renderSegs(parsed.opportunity, own)), why);
+  return h("div", { class: "explain" }, modelTag(),
+    h("p", { class: "what" }, renderSegs(parsed.opportunity, ownIds(o))), why);
 }
 
-function inferenceBox(l) {
+function modelTag() {
+  return h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
+    h("span", { text: "Checked against the records it cites." }));
+}
+
+function ownIds(o) {
+  return new Set([o.opportunity_number].filter(Boolean));
+}
+
+function inferenceBox(l, o = {}) {
   if (!l.inference) return null;
   return h("div", { class: "inference" },
     h("p", { class: "inference-label" }, h("span", { class: "tag model", text: "Inference" }),
       h("span", { text: "A model’s reading of the fit, not a fact from a record." })),
-    h("p", {}, renderSegs(f.segments(l.inference, new Set(l.cited_ids)))));
+    h("p", {}, renderSegs(f.segments(l.inference, new Set(l.cited_ids)), ownIds(o))));
 }
 
 function eligibilityRows(o) {
@@ -864,7 +903,7 @@ function renderSegs(segs, skip = new Set()) {
     const next = segs[i + 1];
     const m = typeof next === "string" ? next.match(/^[.,;:)]+/) : null;
     if (m) segs[i + 1] = next.slice(m[0].length);
-    out.push(h("span", { class: "nowrap" }, cite(s.cite, papers), m ? m[0] : null));
+    out.push(cite(s.cite, papers), m ? m[0] : null);
   }
   return out;
 }
@@ -881,7 +920,7 @@ function cite(id, papers) {
   const w = papers[`https://openalex.org/${id}`];
   let label = id;
   if (w) {
-    const t = w.title.length > 54 ? `${w.title.slice(0, 52).trimEnd()}…` : w.title;
+    const t = w.title.length > 34 ? `${w.title.slice(0, 32).trimEnd()}…` : w.title;
     label = `${t}${w.publication_year ? `, ${w.publication_year}` : ""}`;
   }
   return h("button", { class: `cite${w ? " paper-cite" : ""}`, "data-key": `cite-${id}`,
@@ -890,10 +929,14 @@ function cite(id, papers) {
 }
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return f.localToday();
 }
 
-async function setLead(l, action) {
+async function setLead(leadId, action) {
+  const l = leadsOf().find((x) => x.id === leadId);
+  if (!l) return;
+  const list = [...document.querySelectorAll("#panel .leads > li[data-id]")].filter((x) => !x.closest(".dismissed"));
+  const at = list.findIndex((x) => x.dataset.id === leadId);
   const before = l.status;
   l.status = { keep: "kept", dismiss: "dismissed", restore: "new" }[action];
   renderPanel();
@@ -908,9 +951,11 @@ async function setLead(l, action) {
     announce(`That change was not saved: ${e.message}`);
   }
   if (action === "dismiss") {
-    // keep focus on the list, not on a button that moved away
-    const next = document.querySelector(".leads > li .btn.keep");
-    if (next) next.focus();
+    // focus the card that took this one's place, or the one before it at the end
+    const now = [...document.querySelectorAll("#panel .leads > li[data-id]")].filter((x) => !x.closest(".dismissed"));
+    const next = now[Math.min(at, now.length - 1)];
+    const target = next && next.querySelector(".title-btn");
+    if (target) target.focus();
   }
 }
 
@@ -924,6 +969,10 @@ async function openEvidence(id, opener) {
   const body = $("#evidence-body");
   fill(body, h("div", { class: "loading" }, owl("look", "owl-sm"), h("p", { text: "Fetching the record" })));
   $("#evidence-kind").textContent = "Evidence";
+  const modal = !window.matchMedia("(min-width: 960px)").matches;
+  panel.setAttribute("aria-modal", String(modal));
+  panel.setAttribute("aria-labelledby", "evidence-kind");
+  for (const el of [main(), $(".bar"), $(".foot"), $("#banner")]) el.inert = modal;
   panel.hidden = false;
   document.body.classList.add("sheet-open");
   requestAnimationFrame(() => panel.classList.add("in"));
@@ -933,6 +982,7 @@ async function openEvidence(id, opener) {
     if (panel.hidden) return;
     $("#evidence-kind").textContent = KINDS[r.kind] || "Record";
     fill(body, ...recordView(r));
+    panel.setAttribute("aria-labelledby", "evidence-kind evidence-title");
   } catch (e) {
     fill(body, h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The record could not be opened: ${e.message}` })));
   }
@@ -943,6 +993,7 @@ function closeEvidence() {
   if (panel.hidden) return;
   panel.classList.remove("in");
   document.body.classList.remove("sheet-open");
+  for (const el of [main(), $(".bar"), $(".foot"), $("#banner")]) el.inert = false;
   panel.hidden = true;
   if (evidenceOpener && document.contains(evidenceOpener)) evidenceOpener.focus();
 }
@@ -958,7 +1009,8 @@ function recordView(r) {
     out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.title }),
       h("dl", { class: "fields" },
         field("Opportunity number", r.opportunity_number), field("Agency", r.agency),
-        field("Status", r.status), field("Posted", f.formatDate(r.open_date)),
+        field("Status", r.status ? r.status[0].toUpperCase() + r.status.slice(1) : null),
+        field("Posted", f.formatDate(r.open_date)),
         field("Closes", f.formatDate(r.close_date) || "Not stated in the record"),
         field("Archive date", f.formatDate(r.archive_date)),
         field("Award ceiling", r.award_ceiling ? f.money(r.award_ceiling) : "Not stated in the record"),
@@ -1000,11 +1052,14 @@ function recordView(r) {
     out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.id }));
   }
   const url = f.safeUrl(r.source_url);
+  if (url) {
+    out.splice(1, 0, h("p", { class: "source-top" }, h("a", { class: "btn primary", href: url, target: "_blank", rel: "noopener" },
+      icon("evidence"), h("span", { text: `Open at ${SOURCES[r.source] || "the source"}` }))));
+  }
   out.push(h("div", { class: "source" },
     h("p", {}, h("span", { class: "hint", text: "Source " }), h("b", { text: SOURCES[r.source] || r.source })),
     h("p", { class: "hint", text: `Fetched ${fetched(r.fetched_at)}` }),
-    url ? h("a", { class: "btn primary", href: url, target: "_blank", rel: "noopener" }, icon("evidence"),
-      h("span", { text: `Open at ${SOURCES[r.source] || "the source"}` })) : null,
+    url ? h("a", { href: url, target: "_blank", rel: "noopener", text: url }) : null,
     r.source === "grants_gov" ? h("p", { class: "attrib", text: S.brief ? S.brief.notice : GRANTS_NOTICE }) : null));
   return out;
 }
@@ -1031,8 +1086,9 @@ function applyTheme(t) {
   if (t === "system") delete document.documentElement.dataset.theme;
   else document.documentElement.dataset.theme = t;
   const b = $("#theme");
-  b.setAttribute("aria-label", `Colour theme: ${t}. Change theme`);
-  b.querySelector(".theme-word").textContent = { system: "Auto", light: "Light", dark: "Dark" }[t];
+  const word = { system: "Auto", light: "Light", dark: "Dark" }[t];
+  b.setAttribute("aria-label", `Theme: ${word}`);
+  b.querySelector(".theme-word").textContent = word;
 }
 
 function initTheme() {
@@ -1069,10 +1125,14 @@ function init() {
     const b = $("#banner");
     b.hidden = false;
     fill(b, h("p", {}, h("b", { text: "Preview. " }),
-      h("span", { text: "This plays back a saved brief, so nothing is fetched. Search for anything to start it." }),
-      h("a", { href: `#/brief/${encodeURIComponent(api.briefId)}/routes`, text: "Open the finished brief" })));
+      h("span", { text: "A saved brief, played back. Press Find researcher to watch it build." }),
+      h("a", { href: `#/brief/${encodeURIComponent(api.briefId)}/routes`, text: "Skip to the result" })));
     S.find.q = (window.PERCH_REPLAY.candidates[0] || {}).display_name || "";
   }
+  $(".skip").addEventListener("click", (e) => { e.preventDefault(); main().focus(); });
+  const setBar = () => document.documentElement.style.setProperty("--bar-h", `${$(".bar").offsetHeight}px`);
+  setBar();
+  window.addEventListener("resize", setBar);
   window.addEventListener("hashchange", route);
   route();
 }

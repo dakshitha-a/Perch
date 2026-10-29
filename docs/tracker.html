@@ -103,6 +103,17 @@ details .inner > * { min-width: 0; }
 .foot { font-size: 12px; color: var(--muted); }
 @media (max-width: 560px) { summary { grid-template-columns: auto 1fr; }
   summary .badge { grid-column: 2; justify-self: start; } }
+.ui-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ui-tools button { min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--fg); font: inherit; font-weight: 600; cursor: pointer; }
+.ui-tools button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.ui-tools a { margin-left: auto; color: var(--accent); }
+.ui-stage { display: flex; justify-content: center; padding: 8px 0 4px; }
+.ui-frame { display: block; border: 0; background: var(--surface); }
+.ui-frame.phone { width: 390px; max-width: 100%; height: 800px; border-radius: 30px;
+  box-shadow: 0 0 0 10px var(--fg), 0 12px 40px rgba(0, 0, 0, .25); margin: 10px 0; }
+.ui-frame.wide { width: 100%; height: 820px; border-radius: 10px; border: 1px solid var(--line); }
+@media (max-width: 560px) { .ui-frame.phone { box-shadow: none; border-radius: 0; height: 760px; } }
 </style>
 </head>
 <body>
@@ -114,6 +125,7 @@ details .inner > * { min-width: 0; }
 <a id="tab-master" href="#master">Master</a>
 <a id="tab-archive" href="#archive">Archive<span class="count">7</span></a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
+
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
@@ -121,15 +133,15 @@ details .inner > * { min-width: 0; }
 <div class="title-row"><h1>S7 · Web app, first three screens</h1><span class="badge s-in-progress">in progress</span></div>
 <div class="meta">Started 2026-10-28 22:40 EDT</div></div>
 <p>Goal: Find → Profile → Routes in the browser, with the evidence panel. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="0 of 6 tasks done"><div class="counts"><span><b>0/6</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>5</b>todo</span></div><div class="bar" role="img" aria-label="0 of 6 tasks done"><span class="s-in-progress" style="width:16.67%" title="in progress: 1"></span><span class="s-todo" style="width:83.33%" title="todo: 5"></span></div></section>
+<section class="panel summary" aria-label="4 of 6 tasks done"><div class="counts"><span><b>4/6</b>tasks done</span><span class="s-done"><b>4</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="4 of 6 tasks done"><span class="s-done" style="width:66.67%" title="done: 4"></span><span class="s-in-progress" style="width:16.67%" title="in progress: 1"></span><span class="s-todo" style="width:16.67%" title="todo: 1"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
 <tbody>
-<tr><td>1</td><td>Interaction audit and UI/UX design doc</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td><code>docs/design/UI.md</code></td></tr>
-<tr><td>2</td><td>No-build web app served by <code>perch serve</code>; Find, candidates, build, stage progress</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>3</td><td>Profile and Routes screens; evidence panel; keep and dismiss</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>4</td><td>Accessibility, touch, phone, themes; replay mode</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>5</td><td>Adversarial review, then fixes</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>1</td><td>Interaction audit and UI/UX design doc</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td><code>docs/design/UI.md</code>: per-screen inputs, outputs, progress, required statements; tokens; Scout's states.</td></tr>
+<tr><td>2</td><td>No-build web app served by <code>perch serve</code>; Find, candidates, build, stage progress</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td><code>web/</code> (ES modules, no npm) mounted at <code>/</code> after the API routes. Progress branch with Scout riding it; stage details copied; elapsed time, no promised finish.</td></tr>
+<tr><td>3</td><td>Profile and Routes screens; evidence panel; keep and dismiss</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td><code>GET /briefs/{id}</code> now carries key papers; new <code>POST .../restore</code>. Citation ids render as paper titles; inference labelled on every card; missing amounts say so.</td></tr>
+<tr><td>4</td><td>Accessibility, touch, phone, themes; replay mode</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td>44 px targets, keyboard tabs, focus return, live region, reduced motion, light and dark. Replay: <code>scripts/export_replay.py</code> and <code>scripts/build_ui_preview.py</code> (output under <code>build/</code>, alias only).</td></tr>
+<tr><td>5</td><td>Adversarial review, then fixes</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
 <tr><td>6</td><td>Screenshots; UI tab in the tracker artifact</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Definition of done</h2>
@@ -331,12 +343,25 @@ details .inner > * { min-width: 0; }
 <tr><td>2026-10-28</td><td>—</td><td>Plan reorganised from days into sessions</td><td>Fit one session per context window</td><td>Dakshitha</td></tr>
 </tbody></table></div>
 </section>
+
 <p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md and the PLAN.md change log by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>
 <script>
 (function () {
-  var views = ["current", "master", "archive", "decisions"];
+  var views = Array.prototype.map.call(document.querySelectorAll("section[data-view]"),
+    function (s) { return s.getAttribute("data-view"); });
+  var frame = document.getElementById("ui-frame");
+  Array.prototype.forEach.call(document.querySelectorAll("[data-size]"), function (b) {
+    b.addEventListener("click", function () {
+      frame.className = "ui-frame " + b.getAttribute("data-size");
+      Array.prototype.forEach.call(document.querySelectorAll("[data-size]"), function (x) {
+        x.setAttribute("aria-pressed", String(x === b));
+      });
+    });
+  });
+  var restart = document.getElementById("ui-restart");
+  if (restart) restart.addEventListener("click", function () { frame.src = frame.src.split("#")[0]; });
   function route() {
     var h = (location.hash || "#current").slice(1).toLowerCase();
     var target = null;

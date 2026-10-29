@@ -47,7 +47,7 @@ def main(argv: list[str]) -> int:
     payload = got.json()
     b = payload["brief"]
     ids = {b["researcher_id"], *(x["record_id"] for x in payload["leads"]),
-           *payload["papers"], *(a["key"] for a in payload["awards"])}
+           *payload["papers"], *(a["record_id"] for a in payload["awards"])}
     for lead in payload["leads"]:
         ids |= {f"https://openalex.org/{i}" if i.startswith("W") else f"grants_gov:{i}"
                 for i in lead["cited_ids"]}

@@ -137,12 +137,35 @@ details .inner > * { min-width: 0; }
 .foot { font-size: 12px; color: var(--muted); }
 @media (max-width: 560px) { summary { grid-template-columns: auto 1fr; }
   summary .badge { grid-column: 2; justify-self: start; } }
+.ui-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.ui-tools button { min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--fg); font: inherit; font-weight: 600; cursor: pointer; }
+.ui-tools button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.ui-tools a { margin-left: auto; color: var(--accent); }
+.ui-stage { display: flex; justify-content: center; padding: 8px 0 4px; }
+.ui-frame { display: block; border: 0; background: var(--surface); }
+.ui-frame.phone { width: 390px; max-width: 100%; height: 800px; border-radius: 30px;
+  box-shadow: 0 0 0 10px var(--fg), 0 12px 40px rgba(0, 0, 0, .25); margin: 10px 0; }
+.ui-frame.wide { width: 100%; height: 820px; border-radius: 10px; border: 1px solid var(--line); }
+@media (max-width: 560px) { .ui-frame.phone { box-shadow: none; border-radius: 0; height: 760px; } }
 """
 ).replace("DARK", DARK)
 
 SCRIPT = """
 (function () {
-  var views = ["current", "master", "archive", "decisions"];
+  var views = Array.prototype.map.call(document.querySelectorAll("section[data-view]"),
+    function (s) { return s.getAttribute("data-view"); });
+  var frame = document.getElementById("ui-frame");
+  Array.prototype.forEach.call(document.querySelectorAll("[data-size]"), function (b) {
+    b.addEventListener("click", function () {
+      frame.className = "ui-frame " + b.getAttribute("data-size");
+      Array.prototype.forEach.call(document.querySelectorAll("[data-size]"), function (x) {
+        x.setAttribute("aria-pressed", String(x === b));
+      });
+    });
+  });
+  var restart = document.getElementById("ui-restart");
+  if (restart) restart.addEventListener("click", function () { frame.src = frame.src.split("#")[0]; });
   function route() {
     var h = (location.hash || "#current").slice(1).toLowerCase();
     var target = null;
@@ -489,9 +512,25 @@ def view_decisions(decisions_md: str, plan_md: str) -> str:
     return "\n".join(out)
 
 
+def view_ui(src: str) -> str:
+    s = html.escape(src)
+    return f"""<h2>UI preview</h2>
+<p>The S7 web app in replay mode: a saved brief played back in about 15 seconds, the researcher shown
+by alias. Press <b>Find researcher</b>, then <b>Build brief</b>, to watch Scout build it. Nothing is
+fetched; keep and dismiss work but are not saved.</p>
+<div class="ui-tools" role="group" aria-label="Preview size">
+<button type="button" data-size="phone" aria-pressed="true">Phone</button>
+<button type="button" data-size="wide" aria-pressed="false">Laptop</button>
+<button type="button" id="ui-restart">Restart</button>
+<a href="{s}" target="_blank" rel="noopener">Open on its own</a>
+</div>
+<div class="ui-stage"><iframe id="ui-frame" class="ui-frame phone" src="{s}"
+title="Perch web app preview"></iframe></div>"""
+
+
 def render_page(master_md: str, session_files: dict[str, str], artifact: bool = False,
                 page_title: str = "Perch Build Tracker", decisions_md: str = "",
-                plan_md: str = "") -> str:
+                plan_md: str = "", ui: str | None = None) -> str:
     master = parse(master_md)
     sessions = build_sessions(master, session_files)
     current = pick_current(sessions)
@@ -509,6 +548,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 <a id="tab-master" href="#master">Master</a>
 <a id="tab-archive" href="#archive">Archive<span class="count">{archived}</span></a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
+{'<a id="tab-ui" href="#ui">UI</a>' if ui else ""}
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
@@ -523,6 +563,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 {view_decisions(decisions_md, plan_md)}
 </section>
+{f'<section id="view-ui" class="view" data-view="ui" hidden>{view_ui(ui)}</section>' if ui else ""}
 <p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md and the PLAN.md change log by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>
@@ -550,6 +591,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("dest", nargs="?")
     ap.add_argument("--artifact", action="store_true", help="emit a claude.ai Artifact fragment")
     ap.add_argument("--title", default="Perch Build Tracker", help="page name")
+    ap.add_argument("--ui", help="published path of the UI preview page; adds a UI tab")
     args = ap.parse_args(argv[1:])
     src = Path(args.src)
     dest = Path(args.dest) if args.dest else src.with_name("tracker.html")
@@ -561,7 +603,7 @@ def main(argv: list[str]) -> int:
         return f.read_text(encoding="utf-8") if f.is_file() else ""
 
     page = render_page(src.read_text(encoding="utf-8"), sessions, args.artifact, args.title,
-                       read("DECISIONS.md"), read("PLAN.md"))
+                       read("DECISIONS.md"), read("PLAN.md"), args.ui)
     dest.write_text(page, encoding="utf-8")
     print(f"wrote {dest}")
     return 0

@@ -19,6 +19,7 @@ from pathlib import Path
 from playwright.async_api import Page, async_playwright
 
 PHONE = {"width": 390, "height": 844}
+NARROW = {"width": 320, "height": 640}
 WIDE = {"width": 1280, "height": 860}
 
 
@@ -67,6 +68,12 @@ async def walk(page: Page, url: str, out: Path, tag: str, errors: list[str]) -> 
     await page.click(".lead .btn.keep")
     await page.locator(".lead").nth(1).locator("[data-key=dismiss]").click()
     await page.wait_for_timeout(300)
+    kept = await page.locator(".lead.kept").count()
+    if kept != 1 or await page.locator(".dismissed").count() != 1:
+        errors.append(f"{tag}: keep or dismiss did not take effect")
+    wide = await page.evaluate("document.documentElement.scrollWidth - innerWidth")
+    if wide > 0:
+        errors.append(f"{tag}: page scrolls sideways by {wide}px")
     await snap("9-routes-full", full=True)
     await page.click("#tab-profile")
     await page.wait_for_timeout(300)
@@ -78,13 +85,14 @@ async def main(argv: list[str]) -> int:
     ap.add_argument("--chrome", default=find_chrome())
     ap.add_argument("--page", default="build/artifacts/ui.html")
     ap.add_argument("--out", default="docs/screenshots")
-    ap.add_argument("--only", choices=["phone", "wide", "dark"], action="append")
+    ap.add_argument("--only", choices=["phone", "wide", "dark", "narrow"], action="append")
     args = ap.parse_args(argv[1:])
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     url = Path(args.page).resolve().as_uri()
     errors: list[str] = []
-    runs = [("phone", PHONE, "light", 2), ("wide", WIDE, "light", 1), ("dark", PHONE, "dark", 2)]
+    runs = [("phone", PHONE, "light", 2), ("wide", WIDE, "light", 1), ("dark", PHONE, "dark", 2),
+            ("narrow", NARROW, "light", 2)]
     async with async_playwright() as p:
         browser = await p.chromium.launch(executable_path=args.chrome, args=["--no-sandbox"])
         for tag, size, scheme, scale in runs:

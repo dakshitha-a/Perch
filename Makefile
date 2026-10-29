@@ -13,10 +13,13 @@ bench:
 	@echo "make bench: not built yet (S8, see docs/PLAN.md)"
 
 # docs/tracker.html for the browser; build/artifacts/tracker.html is the page published as
-# the claude.ai tracker artifact (gitignored).
+# the claude.ai tracker artifact (gitignored), with a UI tab when a replay preview exists
+# (scripts/build_ui_preview.py, also gitignored).
 tracker:
 	$(UV) run python scripts/render_tracker.py docs/TRACKER.md docs/tracker.html
-	$(UV) run python scripts/render_tracker.py docs/TRACKER.md build/artifacts/tracker.html --artifact
+	-$(UV) run python scripts/build_ui_preview.py
+	$(UV) run python scripts/render_tracker.py docs/TRACKER.md build/artifacts/tracker.html --artifact \
+		$$(test -f build/artifacts/ui.html && echo --ui ui.html)
 
 package:
 	@echo "make package: not built yet (S15, see docs/PLAN.md)"

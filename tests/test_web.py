@@ -77,3 +77,15 @@ console.log(JSON.stringify(out));
     assert p["findings"] == [{"paper": "W123456", "text": "did A"},
                              {"paper": "W654321", "text": "did B"}]
     assert {"cite": "W123456"} in out["raw"]["raw"]
+
+
+def test_award_rows_open_their_record_and_cors_is_off_by_default(tmp_path):
+    c, _ = make(tmp_path)
+    bid = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28",
+                                  "explain": False}).json()["id"]
+    awards = c.get(f"/briefs/{bid}").json()["awards"]
+    assert awards
+    for a in awards:
+        assert c.get(f"/records/{a['record_id']}").json()["kind"] == "award"
+    r = c.get("/health", headers={"Origin": "https://elsewhere.example"})
+    assert "access-control-allow-origin" not in r.headers

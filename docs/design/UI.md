@@ -128,3 +128,43 @@ Scout never speaks. Words beside Scout come from stage details or fixed labels, 
 ## 5. Replay mode
 
 `web/` can run without the API from a saved brief (`window.PERCH_REPLAY`): the stages play back in about 15 s using the recorded order. It feeds the tracker preview, the screenshots and the Demo Day fallback. Replay files are built by `scripts/export_replay.py` into `build/` (gitignored) with the researcher shown by alias.
+
+## 6. Adversarial review (S7 task 5)
+
+Two independent reviewers, given the code, this document and the screenshots, looked for UX, accessibility, standing-rule and logic failures. They reported 32 findings. Each is fixed or decided below.
+
+- **Fixed: logic.**
+  - Keep and Dismiss acted on stale lead objects after a watched build, so the card did not change. Handlers now look the lead up by id.
+  - Award rows opened the wrong id, so 11 of 12 had no record. The API now sends each award's `record_id`.
+  - The skip link reset the app to Find.
+  - Overlapping polls could run twice. A generation counter stops the stale one.
+  - The day count used the UTC date instead of the local date.
+  - Cards stayed in "Reading" after a failed brief.
+  - "Build again" changed the as-of date.
+  - Grouped citations such as `[A, B]` left stray brackets.
+  - The amount field blocked search on values that are not round thousands.
+- **Fixed: standing rules.**
+  - Explanations now carry a visible "Model text" tag.
+  - The fit pill reads "Fit estimate", and the routes header says it is not the odds of funding.
+  - A card no longer cites its own opportunity number.
+- **Fixed: layout and accessibility.**
+  - Citation chips caused sideways scrolling at 320 px.
+  - Action buttons overflowed at 320 px.
+  - Light-theme hint and ember text failed contrast. `--ink-3` and `--ember` were darkened.
+  - The selected tab was hard to see. It now has a moss underline.
+  - The evidence panel is now modal only on phones, with the page behind it inert.
+  - Focus is kept through re-renders.
+  - Repeated buttons now name their lead.
+  - After a dismiss, focus moves to the next card.
+  - The visible and spoken names of the theme button and Routes count now match.
+  - "Open at source" moved to the top of the evidence panel.
+  - The finished progress card is one line.
+  - A missing award size no longer takes half the facts row.
+  - A failed start no longer clears the candidate list.
+  - The sticky tabs sit flush under the bar.
+- **Fixed: security.**
+  - Embedded replay data escapes every `<`.
+  - Cross-origin requests are off unless `PERCH_CORS_ORIGINS` lists an origin. Before, any web page could start briefs that spend the model budget.
+- **Kept, by decision.** Scout still blinks now and then while idle; that is the "a bit of personality" the brief asked for. Only the progress owl moves while work runs. The app-bar owl and the small card owls stay still, and reduced motion stops all of it.
+
+Checked by `scripts/screenshots.py`: keep and dismiss take effect after a watched build, and no layout scrolls sideways at 320, 390 or 1280 px in light or dark.
