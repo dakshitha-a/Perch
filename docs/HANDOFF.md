@@ -27,7 +27,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - The dev profile sends chat to gemma4:26b-a4b on the primary Ollama (GPU 0). The first brief there evicts qwen3.8:27b. Set `PERCH_LLM_DEFAULT=ollama:qwen3.8:27b` to keep the old model.
 
 ## Next session: S9 — Deploy
-1. Read S9 in `docs/PLAN.md`. Deploy with the profile from `perch/profiles.py` through `PERCH_PROFILE`; add `make gpus`.
+1. Read S9 in `docs/PLAN.md`. Deploy the demo with `PERCH_PROFILE=deploy-2gpu` (Dakshitha, 29 Oct); add `make gpus`.
 2. Private-mode groundwork in S9: check whether the chosen tunnel decrypts traffic at its edge (design doc, "The secure connection").
 
 ## Decisions made this session (all in docs/DECISIONS.md)
