@@ -36,7 +36,7 @@ Then it drafts a hand-off to the right Temple office, which you send yourself.
 Perch needs [uv](https://docs.astral.sh/uv/) and `make`. uv installs Python 3.12 and every pinned dependency on first run.
 
 ```bash
-git clone https://github.com/dakshitha-a/perch && cd perch
+git clone https://github.com/dakshitha-a/Perch && cd Perch
 make test                              # lint and 210 tests; no network or GPU
 uv run perch serve --models fake       # the whole app at http://127.0.0.1:8100, with fake models
 ```
