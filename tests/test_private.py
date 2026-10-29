@@ -12,10 +12,10 @@ import pytest
 
 from perch.llm.fake import FakeProvider
 from perch.privacy import PrivateSettings
-from perch.retrieve import index_opportunities
 from perch.private.cv import parse_cv
 from perch.private.inputs import InputError, docx_text, make_doc, parse_bytes
 from perch.private.session import YOU, PrivateSessions, add_document
+from perch.retrieve import index_opportunities
 from perch.schemas import Brief, Lead
 
 from .test_api import make
