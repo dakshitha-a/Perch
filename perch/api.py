@@ -48,6 +48,7 @@ from pydantic import BaseModel, Field
 
 from perch import awards as aw
 from perch import compare as cmp
+from perch import egress
 from perch import export as ex
 from perch.config import env
 from perch.jobs import JobRunner
@@ -324,9 +325,12 @@ def create_app(service: BriefService, runner: JobRunner,
                 if not c.startswith("W")}
         ids |= {i for x in leads for sig in x.signals for i in sig.record_ids}
         with service.repo() as r:
-            records = [record_json(x) for x in (r.get_any(i) for i in sorted(ids)) if x]
-        return {"brief": b.model_dump(mode="json"),
-                "leads": [x.model_dump(mode="json") for x in leads], "records": records,
+            records = [record_json(x) for x in
+                       egress.public_only(y for y in (r.get_any(i) for i in sorted(ids)) if y)]
+        out_leads = [{**x.model_dump(mode="json"),
+                      "explanation": egress.release(x.explanation, x.cited_ids),
+                      "inference": egress.release(x.inference, x.cited_ids)} for x in leads]
+        return {"brief": b.model_dump(mode="json"), "leads": out_leads, "records": records,
                 "notice": grants_gov.ATTRIBUTION}
 
     def export_blocks(brief_id: str, status: str | None) -> tuple[list, str]:

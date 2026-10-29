@@ -14,6 +14,7 @@ import html
 from dataclasses import dataclass, field
 from datetime import date
 
+from perch import egress
 from perch.compare import COLUMNS, Row
 from perch.offices import for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Work
@@ -45,7 +46,9 @@ def _work(w: Work) -> str:
 
 def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
            opps: dict[str, Opportunity], orgs: dict[str, Organisation],
-           works: dict[str, Work], compare_rows: list[Row]) -> list[Block]:
+           works: dict[str, Work], compare_rows: list[Row],
+           masker: egress.Masker | None = None) -> list[Block]:
+    """Private-derived text is withheld unless a masker is given (perch.egress)."""
     name = researcher.display_name if researcher else brief.researcher_id
     as_of = brief.options.get("as_of") or date.today().isoformat()
     out = [Block("h1", f"Perch brief: {name}"),
@@ -94,13 +97,14 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
             f"Activity code: {o.activity_code or 'Not in the record'}",
             f"Office: {for_route('A').name}"]))
         if x.explanation and not x.flagged:
-            out.append(Block("model", x.explanation))
+            out.append(Block("model", egress.release(x.explanation, x.cited_ids, masker)))
             if x.inference:
-                out.append(Block("model", f"Inference: {x.inference}"))
+                out.append(Block("model", "Inference: "
+                                 + egress.release(x.inference, x.cited_ids, masker)))
         elif x.flagged:
             out.append(Block("note", "The explanation was withheld: it failed the checks twice."))
-        cited = [works[f"https://openalex.org/{c}"] for c in x.cited_ids
-                 if f"https://openalex.org/{c}" in works]
+        cited = egress.public_only(works[f"https://openalex.org/{c}"] for c in x.cited_ids
+                                   if f"https://openalex.org/{c}" in works)
         if cited:
             out.append(Block("list", items=[f"Cites: {_work(w)}" for w in cited]))
         out.append(Block("link", f"Record: Grants.gov {o.opportunity_number}", href=o.source_url))

@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from perch import egress
 from perch.llm import Message
 from perch.llm.audit import AuditedProvider
 from perch.offices import Office
@@ -163,9 +164,11 @@ FALLBACK = "I would like to talk with your team about the funding leads listed b
 
 def draft_handoff(office: Office, researcher: Researcher,
                   items: list[tuple[Lead, Record | None]], papers: list[Work],
-                  provider: AuditedProvider | None) -> Draft:
-    """items: the kept leads for this office with their opportunity or organisation."""
-    papers = papers[:MAX_PAPERS]
+                  provider: AuditedProvider | None, masker: egress.Masker | None = None
+                  ) -> Draft:
+    """items: the kept leads for this office with their opportunity or organisation.
+    A paragraph that cites a private record is withheld unless masked (perch.egress)."""
+    papers = egress.public_only(papers)[:MAX_PAPERS]
     lead_ids = [x.id for x, _ in items]
     subject = subject_for(items)
     if provider is None:
@@ -214,5 +217,10 @@ def draft_handoff(office: Office, researcher: Researcher,
                      lead_ids, flagged=True, errors=v.errors, model=provider.model)
     text, cited = v.value
     text = BRACKETED.sub("", text)  # ids are for the validator, not the reader
+    if egress.uses_private(cited) and masker is None:
+        return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers),
+                     lead_ids, cited_ids=cited, model=provider.model, flagged=True,
+                     errors=[egress.WITHHELD])
+    text = egress.release(text, cited, masker) or FALLBACK
     return Draft(office, subject, assemble(office, researcher, text, items, papers), lead_ids,
                  cited_ids=cited, model=provider.model)

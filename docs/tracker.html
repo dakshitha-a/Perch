@@ -388,10 +388,12 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (86)</h2>
+<h2>Decisions (88)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S12</td><td>Temple STTR partners table is not wired into Route B</td><td>Under the two-signal rule it adds 0 leads on PI-1, PI-2 and PI-4 (task 7 gate). Q20 asks whether to allow it as a single-signal lead</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S12</td><td>Egress filter (<code>perch/egress.py</code>): text that cites a private record is withheld from exports (JSON, Markdown, print) and hand-off drafts, and private records are dropped from exports. Opt-in <code>Masker</code>: typed placeholders for emails, phones, ORCIDs, NIH award numbers, URLs and caller-given names and institutions; private-only 4-word phrases become <code>[PRIVATE-PHRASE-n]</code>; the key stays in the Masker object in memory</td><td>Design doc, "Leaving the app". Names have no reliable pattern, so S13's CV parse passes them in. The on-screen unmask and the warning UI are S13 work</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S12</td><td>PDF export is a print-ready HTML page (<code>/briefs/{id}/export.html</code>) that the browser saves as PDF; Markdown is a download. Both are built by code from one list of blocks and carry the Grants.gov notice</td><td>No PDF library is in the project; adding one (and its system fonts) to the Docker image is not worth it for one page. Help says plainly that the browser makes the PDF</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S12</td><td>"Open in my mail app" puts the full draft in the mailto link only when it is short; it always copies the full draft too</td><td>Some mail apps cut long mailto links</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S12</td><td>Hand-offs run on request (<code>POST /briefs/{id}/handoff</code>), are returned and never stored, and are not a pipeline stage. 30 drafts per visitor an hour</td><td>A new stage would make every stored brief count as old code and be rebuilt; a draft holds nothing worth keeping</td><td>Perch-dev</td></tr>
