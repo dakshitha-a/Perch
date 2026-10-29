@@ -4,7 +4,7 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
-(none)
+19. **SBIR/STTR source for Route B (raised S11, 2026-10-29).** The SBIR.gov API returns 403 for every request. Its page says the APIs are under maintenance. Proposal: signal 2 reads NIH SBIR/STTR awards from NIH RePORTER, which is already a verified source. It covers NIH only, and every Route B screen and note says so. SBIR.gov also offers a monthly bulk download of all agencies' awards. I have not tried it. It would mean a large file kept on the node and refreshed by hand. Default: RePORTER only, NIH-only label. Say if you want the bulk file tried in a later session.
 
 ## Answered
 

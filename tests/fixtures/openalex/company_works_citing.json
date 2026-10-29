@@ -1,0 +1,1070 @@
+{
+ "meta": {
+  "count": 19,
+  "db_response_time_ms": 27,
+  "page": 1,
+  "per_page": 3,
+  "groups_count": null,
+  "x_query": {
+   "oql": "get works where institution type is [company](company) and it cites (W2054086725 or W2100016706 or W2148753835), newest first",
+   "x_new_oql": "get works where institution type is [company](company) and it cites (W2054086725 or W2100016706 or W2148753835), newest first",
+   "oqo": {
+    "get_rows": "works",
+    "filter_rows": [
+     {
+      "column_id": "authorships.institutions.type",
+      "value": "company"
+     },
+     {
+      "join": "or",
+      "filters": [
+       {
+        "column_id": "referenced_works",
+        "value": "W2054086725"
+       },
+       {
+        "column_id": "referenced_works",
+        "value": "W2100016706"
+       },
+       {
+        "column_id": "referenced_works",
+        "value": "W2148753835"
+       }
+      ]
+     }
+    ],
+    "sort_by": [
+     {
+      "column_id": "publication_date",
+      "direction": "desc"
+     }
+    ]
+   },
+   "url": "/works?filter=authorships.institutions.type:company,referenced_works:W2054086725|W2100016706|W2148753835&sort=publication_date:desc&per_page=3&page=1",
+   "order": "newest first",
+   "order_default": false
+  },
+  "cost_usd": 0.0001
+ },
+ "results": [
+  {
+   "id": "https://openalex.org/W4414427237",
+   "title": "Macroscopic Analyses of RNA-Seq Data to Reveal Chromatin Modifications in Aging and Disease",
+   "publication_year": 2025,
+   "publication_date": "2025-09-23",
+   "doi": "https://doi.org/10.7554/elife.107396",
+   "type": "preprint",
+   "primary_location": {
+    "id": "doi:10.7554/elife.107396",
+    "doi": "https://doi.org/10.7554/elife.107396",
+    "is_oa": true,
+    "landing_page_url": "https://doi.org/10.7554/elife.107396",
+    "pdf_url": null,
+    "source": {
+     "id": "https://openalex.org/S1336409049",
+     "display_name": "eLife",
+     "issn_l": "2050-084X",
+     "issn": [
+      "2050-084X"
+     ],
+     "is_oa": true,
+     "is_in_doaj": true,
+     "is_core": true,
+     "listed_in": [
+      "anvur-scientific",
+      "cwts-core",
+      "doaj",
+      "dongbi-a",
+      "jufo-2",
+      "ki-jl-2",
+      "medline",
+      "norway-2",
+      "oarl",
+      "poland-200",
+      "russia-white-list-1",
+      "vabb-shw"
+     ],
+     "host_organization": "https://openalex.org/P4310311710",
+     "host_organization_name": "eLife Sciences Publications Ltd",
+     "host_organization_lineage": [
+      "https://openalex.org/P4310311710"
+     ],
+     "host_organization_lineage_names": [
+      "eLife Sciences Publications Ltd"
+     ],
+     "type": "journal"
+    },
+    "license": "cc-by",
+    "license_id": "https://openalex.org/licenses/cc-by",
+    "version": "acceptedVersion",
+    "is_accepted": true,
+    "is_published": false,
+    "raw_source_name": "eLife",
+    "raw_type": "posted-content"
+   },
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5065004615",
+      "display_name": "Achal Mahajan",
+      "orcid": "https://orcid.org/0000-0001-5316-1332",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-5316-1332"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Achal Mahajan",
+     "raw_orcid": "https://orcid.org/0000-0001-5316-1332",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5107992956",
+      "display_name": "Francesca Ratti",
+      "orcid": "https://orcid.org/0000-0002-9639-8089",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-9639-8089"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Francesca Ratti",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5102912836",
+      "display_name": "Ban Wang",
+      "orcid": "https://orcid.org/0000-0003-2907-6132",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-2907-6132"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Ban Wang",
+     "raw_orcid": "https://orcid.org/0000-0003-2907-6132",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5091876535",
+      "display_name": "Hana El\u2010Samad",
+      "orcid": "https://orcid.org/0000-0001-6239-9916",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-6239-9916"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Hana El-Samad",
+     "raw_orcid": "https://orcid.org/0000-0001-6239-9916",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5059270545",
+      "display_name": "James H. Kaufman",
+      "orcid": "https://orcid.org/0000-0002-7049-7134",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-7049-7134"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "James H Kaufman",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "last",
+     "author": {
+      "id": "https://openalex.org/A5103090811",
+      "display_name": "Vishrawas Gopalakrishnan",
+      "orcid": "https://orcid.org/0000-0002-7161-7943",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-7161-7943"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Vishrawas Gopalakrishnan",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10222",
+     "display_name": "Genomics and Chromatin Dynamics",
+     "score": 0.9667999744415283,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T10269",
+     "display_name": "Epigenetics and DNA Methylation",
+     "score": 0.012900000438094139,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T11289",
+     "display_name": "Single-cell and spatial transcriptomics",
+     "score": 0.0027000000700354576,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    }
+   ],
+   "primary_topic": {
+    "id": "https://openalex.org/T10222",
+    "display_name": "Genomics and Chromatin Dynamics",
+    "score": 0.9667999744415283,
+    "subfield": {
+     "id": "https://openalex.org/subfields/1312",
+     "display_name": "Molecular Biology"
+    },
+    "field": {
+     "id": "https://openalex.org/fields/13",
+     "display_name": "Biochemistry, Genetics and Molecular Biology"
+    },
+    "domain": {
+     "id": "https://openalex.org/domains/1",
+     "display_name": "Life Sciences"
+    }
+   },
+   "cited_by_count": 0
+  },
+  {
+   "id": "https://openalex.org/W4414433947",
+   "title": "Macroscopic Analyses of RNA-Seq Data to Reveal Chromatin Modifications in Aging and Disease",
+   "publication_year": 2025,
+   "publication_date": "2025-09-23",
+   "doi": "https://doi.org/10.7554/elife.107396.1",
+   "type": "preprint",
+   "primary_location": {
+    "id": "doi:10.7554/elife.107396.1",
+    "doi": "https://doi.org/10.7554/elife.107396.1",
+    "is_oa": true,
+    "landing_page_url": "https://doi.org/10.7554/elife.107396.1",
+    "pdf_url": null,
+    "source": {
+     "id": "https://openalex.org/S1336409049",
+     "display_name": "eLife",
+     "issn_l": "2050-084X",
+     "issn": [
+      "2050-084X"
+     ],
+     "is_oa": true,
+     "is_in_doaj": true,
+     "is_core": true,
+     "listed_in": [
+      "anvur-scientific",
+      "cwts-core",
+      "doaj",
+      "dongbi-a",
+      "jufo-2",
+      "ki-jl-2",
+      "medline",
+      "norway-2",
+      "oarl",
+      "poland-200",
+      "russia-white-list-1",
+      "vabb-shw"
+     ],
+     "host_organization": "https://openalex.org/P4310311710",
+     "host_organization_name": "eLife Sciences Publications Ltd",
+     "host_organization_lineage": [
+      "https://openalex.org/P4310311710"
+     ],
+     "host_organization_lineage_names": [
+      "eLife Sciences Publications Ltd"
+     ],
+     "type": "journal"
+    },
+    "license": "cc-by",
+    "license_id": "https://openalex.org/licenses/cc-by",
+    "version": "acceptedVersion",
+    "is_accepted": true,
+    "is_published": false,
+    "raw_source_name": "eLife",
+    "raw_type": "posted-content"
+   },
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5065004615",
+      "display_name": "Achal Mahajan",
+      "orcid": "https://orcid.org/0000-0001-5316-1332",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-5316-1332"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Achal Mahajan",
+     "raw_orcid": "https://orcid.org/0000-0001-5316-1332",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5107992956",
+      "display_name": "Francesca Ratti",
+      "orcid": "https://orcid.org/0000-0002-9639-8089",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-9639-8089"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Francesca Ratti",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5102912836",
+      "display_name": "Ban Wang",
+      "orcid": "https://orcid.org/0000-0003-2907-6132",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-2907-6132"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Ban Wang",
+     "raw_orcid": "https://orcid.org/0000-0003-2907-6132",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5091876535",
+      "display_name": "Hana El\u2010Samad",
+      "orcid": "https://orcid.org/0000-0001-6239-9916",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-6239-9916"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Hana El-Samad",
+     "raw_orcid": "https://orcid.org/0000-0001-6239-9916",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5059270545",
+      "display_name": "James H. Kaufman",
+      "orcid": "https://orcid.org/0000-0002-7049-7134",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-7049-7134"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "James H Kaufman",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "last",
+     "author": {
+      "id": "https://openalex.org/A5103090811",
+      "display_name": "Vishrawas Gopalakrishnan",
+      "orcid": "https://orcid.org/0000-0002-7161-7943",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-7161-7943"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Vishrawas Gopalakrishnan",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10222",
+     "display_name": "Genomics and Chromatin Dynamics",
+     "score": 0.9667999744415283,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T10269",
+     "display_name": "Epigenetics and DNA Methylation",
+     "score": 0.012900000438094139,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T11289",
+     "display_name": "Single-cell and spatial transcriptomics",
+     "score": 0.0027000000700354576,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    }
+   ],
+   "primary_topic": {
+    "id": "https://openalex.org/T10222",
+    "display_name": "Genomics and Chromatin Dynamics",
+    "score": 0.9667999744415283,
+    "subfield": {
+     "id": "https://openalex.org/subfields/1312",
+     "display_name": "Molecular Biology"
+    },
+    "field": {
+     "id": "https://openalex.org/fields/13",
+     "display_name": "Biochemistry, Genetics and Molecular Biology"
+    },
+    "domain": {
+     "id": "https://openalex.org/domains/1",
+     "display_name": "Life Sciences"
+    }
+   },
+   "cited_by_count": 0
+  },
+  {
+   "id": "https://openalex.org/W4410475490",
+   "title": "Macroscopic Analyses of RNA-Seq Data to Reveal Chromatin Modifications in Aging and Disease",
+   "publication_year": 2025,
+   "publication_date": "2025-05-18",
+   "doi": "https://doi.org/10.1101/2025.05.14.654062",
+   "type": "preprint",
+   "primary_location": {
+    "id": "doi:10.1101/2025.05.14.654062",
+    "doi": "https://doi.org/10.1101/2025.05.14.654062",
+    "is_oa": true,
+    "landing_page_url": "https://doi.org/10.1101/2025.05.14.654062",
+    "pdf_url": null,
+    "source": {
+     "id": "https://openalex.org/S4306402567",
+     "display_name": "bioRxiv (Cold Spring Harbor Laboratory)",
+     "issn_l": null,
+     "issn": null,
+     "is_oa": false,
+     "is_in_doaj": false,
+     "is_core": false,
+     "listed_in": [],
+     "host_organization": "https://openalex.org/I2750212522",
+     "host_organization_name": "Cold Spring Harbor Laboratory",
+     "host_organization_lineage": [
+      "https://openalex.org/I2750212522"
+     ],
+     "host_organization_lineage_names": [],
+     "type": "repository"
+    },
+    "license": "cc-by",
+    "license_id": "https://openalex.org/licenses/cc-by",
+    "version": "acceptedVersion",
+    "is_accepted": true,
+    "is_published": false,
+    "raw_source_name": "bioRxiv",
+    "raw_type": "posted-content"
+   },
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5065004615",
+      "display_name": "Achal Mahajan",
+      "orcid": "https://orcid.org/0000-0001-5316-1332",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-5316-1332"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": true,
+     "raw_author_name": "Achal Mahajan",
+     "raw_orcid": "https://orcid.org/0000-0001-5316-1332",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5107992956",
+      "display_name": "Francesca Ratti",
+      "orcid": "https://orcid.org/0000-0002-9639-8089",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-9639-8089"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Francesca Ratti",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5102912836",
+      "display_name": "Ban Wang",
+      "orcid": "https://orcid.org/0000-0003-2907-6132",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-2907-6132"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Ban Wang",
+     "raw_orcid": "https://orcid.org/0000-0003-2907-6132",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5091876535",
+      "display_name": "Hana El\u2010Samad",
+      "orcid": "https://orcid.org/0000-0001-6239-9916",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-6239-9916"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Hana El-Samad",
+     "raw_orcid": "https://orcid.org/0000-0001-6239-9916",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5059270545",
+      "display_name": "James H. Kaufman",
+      "orcid": "https://orcid.org/0000-0002-7049-7134",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-7049-7134"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "James H. Kaufman",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "last",
+     "author": {
+      "id": "https://openalex.org/A5103090811",
+      "display_name": "Vishrawas Gopalakrishnan",
+      "orcid": "https://orcid.org/0000-0002-7161-7943",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-7161-7943"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4387153853",
+       "display_name": "Altos Labs",
+       "ror": "https://ror.org/05467hx49",
+       "country_code": "US",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Vishrawas Gopalakrishnan",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4387153853"
+       ]
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10222",
+     "display_name": "Genomics and Chromatin Dynamics",
+     "score": 0.9667999744415283,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T10269",
+     "display_name": "Epigenetics and DNA Methylation",
+     "score": 0.012900000438094139,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T11289",
+     "display_name": "Single-cell and spatial transcriptomics",
+     "score": 0.0027000000700354576,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    }
+   ],
+   "primary_topic": {
+    "id": "https://openalex.org/T10222",
+    "display_name": "Genomics and Chromatin Dynamics",
+    "score": 0.9667999744415283,
+    "subfield": {
+     "id": "https://openalex.org/subfields/1312",
+     "display_name": "Molecular Biology"
+    },
+    "field": {
+     "id": "https://openalex.org/fields/13",
+     "display_name": "Biochemistry, Genetics and Molecular Biology"
+    },
+    "domain": {
+     "id": "https://openalex.org/domains/1",
+     "display_name": "Life Sciences"
+    }
+   },
+   "cited_by_count": 0
+  }
+ ],
+ "group_by": []
+}

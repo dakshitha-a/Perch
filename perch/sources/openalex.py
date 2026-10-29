@@ -16,13 +16,17 @@ from typing import Any
 
 import httpx
 
-from perch.schemas import Researcher, Topic, Work
+from perch.schemas import Organisation, Researcher, Topic, Work
 
 SOURCE = "openalex"
 API = "https://api.openalex.org"
 # Temple University's OpenAlex institution id, read from /institutions on 2026-10-28.
 TEMPLE_INSTITUTION_ID = "https://openalex.org/I84392919"
 MAX_CANDIDATES = 3
+# OpenAlex refuses more than 100 values in one OR filter (live 400, 2026-10-29).
+MAX_OR_VALUES = 100
+COMPANY_SELECT = ("id,title,publication_year,publication_date,doi,type,primary_location,"
+                  "authorships,topics,primary_topic,cited_by_count")
 
 ORCID_RE = re.compile(r"(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$")
 AUTHOR_RE = re.compile(r"(A\d+)$")
@@ -110,6 +114,21 @@ def parse_work(raw: dict[str, Any], fetched_at: datetime) -> Work:
         referenced_works=list(raw.get("referenced_works") or []),
         cited_by_count=raw.get("cited_by_count"),
     )
+
+
+def companies_on(raw: dict[str, Any], fetched_at: datetime) -> list[Organisation]:
+    """Institutions of type 'company' on a work's authorships, one per id."""
+    seen: dict[str, Organisation] = {}
+    for a in raw.get("authorships") or []:
+        for i in a.get("institutions") or []:
+            if i.get("type") != "company" or not i.get("id") or i["id"] in seen:
+                continue
+            seen[i["id"]] = Organisation(
+                id=i["id"], source=SOURCE, source_url=f"{API}/institutions/{short_id(i['id'])}",
+                fetched_at=fetched_at, name=i.get("display_name") or short_id(i["id"]),
+                type="company", country=i.get("country_code"),
+                aliases=[i.get("display_name") or ""], institution_ids=[i["id"]])
+    return list(seen.values())
 
 
 class OpenAlexClient:
@@ -216,3 +235,40 @@ class OpenAlexClient:
             if not results or page * per_page >= count:
                 return
             page += 1
+
+    # --- Route B: company works ---
+
+    def _company_pages(self, filt: str, max_pages: int,
+                       per_page: int = 100) -> Iterator[tuple[Work, list[Organisation]]]:
+        for page in range(1, max_pages + 1):
+            data = self.get("/works", {"filter": f"{filt},authorships.institutions.type:company",
+                                       "sort": "publication_date:desc", "per-page": per_page,
+                                       "page": page, "select": COMPANY_SELECT})
+            now = datetime.now(UTC)
+            results = data.get("results", [])
+            for raw in results:
+                yield parse_work(raw, now), companies_on(raw, now)
+            if not results or page * per_page >= data.get("meta", {}).get("count", 0):
+                return
+
+    def company_works_citing(self, work_ids: list[str], max_pages: int = 5
+                             ) -> list[tuple[Work, list[Organisation]]]:
+        """Works with a company author that cite any of work_ids, newest first. Ids go in
+        chunks of 100, the OR-filter ceiling; each chunk reads at most max_pages of 100."""
+        ids = [short_id(w) for w in work_ids]
+        out: dict[str, tuple[Work, list[Organisation]]] = {}
+        for i in range(0, len(ids), MAX_OR_VALUES):
+            chunk = "|".join(ids[i:i + MAX_OR_VALUES])
+            for w, orgs in self._company_pages(f"cites:{chunk}", max_pages):
+                out.setdefault(w.id, (w, orgs))
+        return list(out.values())
+
+    def company_works_in_topics(self, topic_ids: list[str], since: date, until: date,
+                                max_pages: int = 3) -> list[tuple[Work, list[Organisation]]]:
+        """The newest works (at most max_pages of 100) with a company author whose primary
+        topic is one of topic_ids, published between since and until."""
+        topics = "|".join(short_id(t) for t in topic_ids[:MAX_OR_VALUES])
+        filt = (f"primary_topic.id:{topics},from_publication_date:{since.isoformat()},"
+                f"to_publication_date:{until.isoformat()}")
+        return list(self._company_pages(filt, max_pages))
+

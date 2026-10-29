@@ -1,0 +1,190 @@
+{
+ "meta": {
+  "search_id": "pqC27wEY90epQmtJk52alA",
+  "total": 1416,
+  "offset": 0,
+  "limit": 3,
+  "sort_field": null,
+  "sort_order": "ASC",
+  "sorted_by_relevance": true,
+  "properties": {
+   "URL": "https:/reporter.nih.gov/search/pqC27wEY90epQmtJk52alA/projects"
+  }
+ },
+ "results": [
+  {
+   "appl_id": 11410176,
+   "fiscal_year": 2026,
+   "project_num": "1R43CA309911-01A1",
+   "organization": {
+    "org_name": "BLACKSMITH MEDICINES, INC.",
+    "city": null,
+    "country": null,
+    "org_city": "SAN DIEGO",
+    "org_country": "UNITED STATES",
+    "org_state": "CA",
+    "org_state_name": null,
+    "dept_type": null,
+    "fips_country_code": null,
+    "org_duns": [
+     "078884924"
+    ],
+    "org_ueis": [
+     "ZCWKWSWHAJD6"
+    ],
+    "primary_duns": "078884924",
+    "primary_uei": "ZCWKWSWHAJD6",
+    "org_fips": "US",
+    "org_ipf_code": "10034771",
+    "org_zipcode": "92121",
+    "external_org_id": 10034771
+   },
+   "activity_code": "R43",
+   "award_amount": 399915,
+   "principal_investigators": [
+    {
+     "profile_id": 79690286,
+     "first_name": "Konstantin",
+     "middle_name": "",
+     "last_name": "Taganov",
+     "is_contact_pi": true,
+     "full_name": "Konstantin  Taganov",
+     "title": ""
+    }
+   ],
+   "agency_ic_admin": {
+    "code": "CA",
+    "abbreviation": "NCI",
+    "name": "National Cancer Institute",
+    "admin_org_id": "12500008",
+    "admin_funding_url": ""
+   },
+   "project_start_date": "2026-09-10T00:00:00",
+   "project_end_date": "2027-08-31T00:00:00",
+   "opportunity_number": "PA-24-245",
+   "award_notice_date": "2026-09-11T00:00:00",
+   "core_project_num": "R43CA309911",
+   "project_title": "Combination of a novel selective FEN1 metallonuclease inhibitor with Olaparib for the treatment of PARP-resistant ovarian cancers",
+   "project_detail_url": "https://reporter.nih.gov/project-details/11410176"
+  },
+  {
+   "appl_id": 11402184,
+   "fiscal_year": 2026,
+   "project_num": "1R44CA314487-01",
+   "organization": {
+    "org_name": "REMEDY PLAN",
+    "city": null,
+    "country": null,
+    "org_city": "GAITHERSBURG",
+    "org_country": "UNITED STATES",
+    "org_state": "MD",
+    "org_state_name": null,
+    "dept_type": null,
+    "fips_country_code": null,
+    "org_duns": [
+     "117489106"
+    ],
+    "org_ueis": [
+     "E8FJP3A42GC6"
+    ],
+    "primary_duns": "117489106",
+    "primary_uei": "E8FJP3A42GC6",
+    "org_fips": "US",
+    "org_ipf_code": "10070837",
+    "org_zipcode": "208781751",
+    "external_org_id": 10070837
+   },
+   "activity_code": "R44",
+   "award_amount": 1181436,
+   "principal_investigators": [
+    {
+     "profile_id": 9844628,
+     "first_name": "Gregory",
+     "middle_name": "Thomas",
+     "last_name": "Crimmins",
+     "is_contact_pi": true,
+     "full_name": "Gregory Thomas Crimmins",
+     "title": "CEO"
+    }
+   ],
+   "agency_ic_admin": {
+    "code": "CA",
+    "abbreviation": "NCI",
+    "name": "National Cancer Institute",
+    "admin_org_id": "12500008",
+    "admin_funding_url": ""
+   },
+   "project_start_date": "2026-09-18T00:00:00",
+   "project_end_date": "2028-08-31T00:00:00",
+   "opportunity_number": "PA-24-245",
+   "award_notice_date": "2026-09-17T00:00:00",
+   "core_project_num": "R44CA314487",
+   "project_title": "Preclinical validation of NAMPT and PARP inhibitor combinations for breast cancer to support clinical studies",
+   "project_detail_url": "https://reporter.nih.gov/project-details/11402184"
+  },
+  {
+   "appl_id": 11408627,
+   "fiscal_year": 2026,
+   "project_num": "5R44ES035550-03",
+   "organization": {
+    "org_name": "LITRON LABORATORIES, LTD.",
+    "city": null,
+    "country": null,
+    "org_city": "ROCHESTER",
+    "org_country": "UNITED STATES",
+    "org_state": "NY",
+    "org_state_name": null,
+    "dept_type": null,
+    "fips_country_code": null,
+    "org_duns": [
+     "085992055"
+    ],
+    "org_ueis": [
+     "LJH7LE9AUHL5"
+    ],
+    "primary_duns": "085992055",
+    "primary_uei": "LJH7LE9AUHL5",
+    "org_fips": "US",
+    "org_ipf_code": "1420501",
+    "org_zipcode": "146232860",
+    "external_org_id": 1420501
+   },
+   "activity_code": "R44",
+   "award_amount": 843789,
+   "principal_investigators": [
+    {
+     "profile_id": 7755453,
+     "first_name": "Jeffrey",
+     "middle_name": "C",
+     "last_name": "Bemis",
+     "is_contact_pi": false,
+     "full_name": "Jeffrey C Bemis",
+     "title": "DIRECTOR OF CLINICAL STUDIES"
+    },
+    {
+     "profile_id": 2108891,
+     "first_name": "STEPHEN",
+     "middle_name": "D",
+     "last_name": "DERTINGER",
+     "is_contact_pi": true,
+     "full_name": "STEPHEN D DERTINGER",
+     "title": "DIRECTOR OF RESEARCH"
+    }
+   ],
+   "agency_ic_admin": {
+    "code": "ES",
+    "abbreviation": "NIEHS",
+    "name": "National Institute of Environmental Health Sciences",
+    "admin_org_id": "12500022",
+    "admin_funding_url": ""
+   },
+   "project_start_date": "2023-08-01T00:00:00",
+   "project_end_date": "2027-08-31T00:00:00",
+   "opportunity_number": "PA-24-245",
+   "award_notice_date": "2026-08-10T00:00:00",
+   "core_project_num": "R44ES035550",
+   "project_title": "Modeling the Responsiveness of Sensitive Populations to Genotoxic Agents Using DNA Repair Inhibitors",
+   "project_detail_url": "https://reporter.nih.gov/project-details/11408627"
+  }
+ ]
+}

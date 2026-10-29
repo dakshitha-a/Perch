@@ -119,6 +119,26 @@ class Organisation(Record):
     name: str
     type: str | None = Field(default=None, description="Type as the source labels it")
     country: str | None = None
+    aliases: list[str] = Field(
+        default_factory=list,
+        description="Names as each source wrote them, merged into this organisation (Route B)",
+    )
+    institution_ids: list[str] = Field(
+        default_factory=list, description="OpenAlex institution ids merged into this one"
+    )
+
+
+class Signal(BaseModel):
+    """One public signal behind a Route B lead. Counts and dates are computed by code
+    from the records in record_ids; nothing here comes from a model."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["citing_works", "sbir_sttr", "topic_works"]
+    record_ids: list[str] = Field(default_factory=list, description="Evidence records")
+    count: int = 0
+    latest: date | None = Field(default=None, description="Newest record date, copied")
+    score: float = 0.0
 
 
 class Lead(Record):
@@ -140,6 +160,9 @@ class Lead(Record):
     status: Literal["new", "kept", "dismissed"] = "new"
     flagged: bool = Field(default=False, description="Explanation withheld after two failures")
     inferred: bool = Field(default=False, description="Route B leads are inferences, never facts")
+    signals: list[Signal] = Field(default_factory=list, description="Route B only")
+    relationship: str | None = Field(default=None, description="Route B: suggested type, by rule")
+    confidence: str | None = Field(default=None, description="Route B: label from signal count")
 
 
 class Stage(BaseModel):

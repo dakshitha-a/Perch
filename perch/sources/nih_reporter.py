@@ -21,6 +21,8 @@ API = "https://api.reporter.nih.gov"
 # Organisation name filter; RePORTER lists Temple as "TEMPLE UNIV OF THE COMMONWEALTH".
 TEMPLE_ORG = "TEMPLE UNIV"
 PAGE = 500  # RePORTER's maximum page size
+# SBIR (R43, R44, SB1, U44) and STTR (R41, R42, U43) activity codes.
+SBIR_STTR_CODES = ["R41", "R42", "R43", "R44", "SB1", "U43", "U44"]
 FIELDS = [
     "ApplId", "ProjectNum", "CoreProjectNum", "ProjectTitle", "FiscalYear", "ProjectStartDate",
     "ProjectEndDate", "AwardAmount", "OpportunityNumber", "ActivityCode", "AgencyIcAdmin",
@@ -89,6 +91,9 @@ class NIHReporterClient:
     def search(self, criteria: dict[str, Any], offset: int = 0) -> dict[str, Any]:
         body = {"criteria": criteria, "include_fields": FIELDS, "offset": offset, "limit": PAGE,
                 "sort_field": "fiscal_year", "sort_order": "desc"}
+        return self._post(body)
+
+    def _post(self, body: dict[str, Any]) -> dict[str, Any]:
         for attempt in range(self.retries + 1):
             wait = self.min_interval - (time.monotonic() - self._last)
             if wait > 0:
@@ -122,3 +127,17 @@ class NIHReporterClient:
 
     def awards_for_org(self, fiscal_years: list[int], org: str = TEMPLE_ORG) -> list[Award]:
         return list(self.iter_projects({"org_names": [org], "fiscal_years": fiscal_years}))
+
+    def sbir_sttr(self, text: str, fiscal_years: list[int], limit: int = 200) -> list[Award]:
+        """NIH SBIR/STTR awards whose title, terms or abstract match any word of text, most
+        relevant first (RePORTER's own ranking), at most limit records."""
+        criteria = {"activity_codes": SBIR_STTR_CODES, "fiscal_years": fiscal_years,
+                    "advanced_text_search": {"operator": "or",
+                                             "search_field": "projecttitle,terms,abstracttext",
+                                             "search_text": text}}
+        body = {"criteria": criteria, "include_fields": FIELDS, "offset": 0,
+                "limit": min(limit, PAGE)}
+        data = self._post(body)
+        now = datetime.now(UTC)
+        return [parse_project(r, now) for r in (data.get("results") or [])[:limit]]
+

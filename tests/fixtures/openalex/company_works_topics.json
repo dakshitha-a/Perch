@@ -1,0 +1,2684 @@
+{
+ "meta": {
+  "count": 404,
+  "db_response_time_ms": 31,
+  "page": 1,
+  "per_page": 3,
+  "groups_count": null,
+  "x_query": {
+   "oql": "get works from 2023-10-29 through 2026-10-29 where institution type is [company](company) and topic is (T10123 or T11215), newest first",
+   "x_new_oql": "get works from 2023-10-29 through 2026-10-29 where institution type is [company](company) and topic is (T10123 or T11215), newest first",
+   "oqo": {
+    "get_rows": "works",
+    "filter_rows": [
+     {
+      "column_id": "authorships.institutions.type",
+      "value": "company"
+     },
+     {
+      "column_id": "from_publication_date",
+      "value": "2023-10-29"
+     },
+     {
+      "column_id": "to_publication_date",
+      "value": "2026-10-29"
+     },
+     {
+      "join": "or",
+      "filters": [
+       {
+        "column_id": "primary_topic.id",
+        "value": "T10123"
+       },
+       {
+        "column_id": "primary_topic.id",
+        "value": "T11215"
+       }
+      ]
+     }
+    ],
+    "sort_by": [
+     {
+      "column_id": "publication_date",
+      "direction": "desc"
+     }
+    ]
+   },
+   "url": "/works?filter=authorships.institutions.type:company,from_publication_date:2023-10-29,to_publication_date:2026-10-29,primary_topic.id:T10123|T11215&sort=publication_date:desc&per_page=3&page=1",
+   "order": "newest first",
+   "order_default": false
+  },
+  "cost_usd": 0.0001
+ },
+ "results": [
+  {
+   "id": "https://openalex.org/W7224123020",
+   "title": "DNA-PK enforces the S/G2 checkpoint in ATM-deficient cells to limit ATR inhibitor efficacy",
+   "publication_year": 2026,
+   "publication_date": "2026-10-28",
+   "doi": "https://doi.org/10.64898/2026.10.25.761677",
+   "type": "preprint",
+   "primary_location": {
+    "id": "doi:10.64898/2026.10.25.761677",
+    "doi": "https://doi.org/10.64898/2026.10.25.761677",
+    "is_oa": true,
+    "landing_page_url": "https://doi.org/10.64898/2026.10.25.761677",
+    "pdf_url": null,
+    "source": {
+     "id": "https://openalex.org/S4306402567",
+     "display_name": "bioRxiv (Cold Spring Harbor Laboratory)",
+     "issn_l": null,
+     "issn": null,
+     "is_oa": false,
+     "is_in_doaj": false,
+     "is_core": false,
+     "listed_in": [],
+     "host_organization": "https://openalex.org/I2750212522",
+     "host_organization_name": "Cold Spring Harbor Laboratory",
+     "host_organization_lineage": [
+      "https://openalex.org/I2750212522"
+     ],
+     "host_organization_lineage_names": [],
+     "type": "repository"
+    },
+    "license": "cc-by-nc-nd",
+    "license_id": "https://openalex.org/licenses/cc-by-nc-nd",
+    "version": "acceptedVersion",
+    "is_accepted": true,
+    "is_published": false,
+    "raw_source_name": "bioRxiv",
+    "raw_type": "posted-content"
+   },
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5009370475",
+      "display_name": "Timothy B. Branigan",
+      "orcid": "https://orcid.org/0009-0000-7301-8445",
+      "observed_orcids": [
+       "https://orcid.org/0009-0000-7301-8445"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Timothy B. Branigan",
+     "raw_orcid": "https://orcid.org/0009-0000-7301-8445",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5094224792",
+      "display_name": "Roshen Alharthi",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Roshen Alharthi",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5088192892",
+      "display_name": "Bose S. Kochupurakkal",
+      "orcid": "https://orcid.org/0000-0001-8929-3070",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-8929-3070"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Bose S. Kochupurakkal",
+     "raw_orcid": "https://orcid.org/0000-0001-8929-3070",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5017635065",
+      "display_name": "Jie Hao",
+      "orcid": "https://orcid.org/0000-0002-4610-0563",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-4610-0563"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Jie Hao",
+     "raw_orcid": "https://orcid.org/0000-0002-4610-0563",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5000807613",
+      "display_name": "Steffie Revia",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I164928964",
+       "display_name": "Merck KGaA, Darmstadt (Germany)",
+       "ror": "https://ror.org/04b2dty93",
+       "country_code": "DE",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I164928964"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4405266695",
+       "display_name": "Merck Healthcare KGaA, Darmstadt (Germany)",
+       "ror": "https://ror.org/04vpzfb52",
+       "country_code": "DE",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I164928964",
+        "https://openalex.org/I4405266695"
+       ]
+      }
+     ],
+     "countries": [
+      "DE"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Steffie Revia",
+     "raw_orcid": "https://orcid.org/0000-0003-4088-3250",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I164928964",
+        "https://openalex.org/I4405266695"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5033739548",
+      "display_name": "Joachim Albers",
+      "orcid": "https://orcid.org/0000-0003-0582-1863",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-0582-1863"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I164928964",
+       "display_name": "Merck KGaA, Darmstadt (Germany)",
+       "ror": "https://ror.org/04b2dty93",
+       "country_code": "DE",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I164928964"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4405266695",
+       "display_name": "Merck Healthcare KGaA, Darmstadt (Germany)",
+       "ror": "https://ror.org/04vpzfb52",
+       "country_code": "DE",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I164928964",
+        "https://openalex.org/I4405266695"
+       ]
+      }
+     ],
+     "countries": [
+      "DE"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Joachim Albers",
+     "raw_orcid": "https://orcid.org/0000-0003-0582-1863",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I164928964",
+        "https://openalex.org/I4405266695"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5040048515",
+      "display_name": "Mu-Yan Cai",
+      "orcid": "https://orcid.org/0000-0001-5315-8336",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-5315-8336",
+       "https://orcid.org/0000-0002-4646-4391"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Mu-Yan Cai",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5049428974",
+      "display_name": "Yuqing Jiao",
+      "orcid": "https://orcid.org/0009-0005-4257-4867",
+      "observed_orcids": [
+       "https://orcid.org/0009-0005-4257-4867"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Yuqing Jiao",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5050753145",
+      "display_name": "Kelsey McQueen",
+      "orcid": "https://orcid.org/0000-0002-2448-0200",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-2448-0200"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Kelsey McQueen",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5026387890",
+      "display_name": "Sirisha Mukkavalli",
+      "orcid": "https://orcid.org/0000-0002-8875-7985",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-8875-7985"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Sirisha Mukkavalli",
+     "raw_orcid": "https://orcid.org/0000-0002-8875-7985",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5080396886",
+      "display_name": "Ian A. Roundtree",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I48633490",
+       "display_name": "Mass General Brigham",
+       "ror": "https://ror.org/04py2rh25",
+       "country_code": "US",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I48633490"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Ian A. Roundtree",
+     "raw_orcid": "https://orcid.org/0000-0002-9791-054X",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I48633490"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5105923745",
+      "display_name": "Gregory Michael Cote",
+      "orcid": "https://orcid.org/0000-0003-0181-886X",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-0181-886X"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I48633490",
+       "display_name": "Mass General Brigham",
+       "ror": "https://ror.org/04py2rh25",
+       "country_code": "US",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I48633490"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Gregory M. Cote",
+     "raw_orcid": "https://orcid.org/0000-0003-0181-886X",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I48633490"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5080775024",
+      "display_name": "Prafulla C. Gokhale",
+      "orcid": "https://orcid.org/0000-0002-1974-5921",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-1974-5921"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Prafulla C. Gokhale",
+     "raw_orcid": "https://orcid.org/0000-0002-1974-5921",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5043442872",
+      "display_name": "Kalindi Parmar",
+      "orcid": "https://orcid.org/0000-0002-9522-1716",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-9522-1716"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Kalindi Parmar",
+     "raw_orcid": "https://orcid.org/0000-0002-9522-1716",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5044648110",
+      "display_name": "Alan D. D\u2019Andrea",
+      "orcid": "https://orcid.org/0000-0001-6168-6294",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-6168-6294",
+       "https://orcid.org/0000-0002-3672-8760"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Alan D. D'Andrea",
+     "raw_orcid": "https://orcid.org/0000-0001-6168-6294",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5080482492",
+      "display_name": "Astrid Zimmermann",
+      "orcid": "https://orcid.org/0000-0001-6146-9812",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-6146-9812"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I164928964",
+       "display_name": "Merck KGaA, Darmstadt (Germany)",
+       "ror": "https://ror.org/04b2dty93",
+       "country_code": "DE",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I164928964"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4405266695",
+       "display_name": "Merck Healthcare KGaA, Darmstadt (Germany)",
+       "ror": "https://ror.org/04vpzfb52",
+       "country_code": "DE",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I164928964",
+        "https://openalex.org/I4405266695"
+       ]
+      }
+     ],
+     "countries": [
+      "DE"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Astrid Zimmermann",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I164928964",
+        "https://openalex.org/I4405266695"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "last",
+     "author": {
+      "id": "https://openalex.org/A5045419282",
+      "display_name": "Geoffrey Ira Shapiro",
+      "orcid": "https://orcid.org/0000-0002-3331-4095",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-3331-4095"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210117453",
+       "display_name": "Dana-Farber Cancer Institute",
+       "ror": "https://ror.org/02jzgtq86",
+       "country_code": "US",
+       "type": "facility",
+       "lineage": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ],
+     "countries": [
+      "US"
+     ],
+     "is_corresponding": true,
+     "raw_author_name": "Geoffrey I. Shapiro",
+     "raw_orcid": "https://orcid.org/0000-0002-3331-4095",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210117453"
+       ]
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10123",
+     "display_name": "DNA Repair Mechanisms",
+     "score": 0.9887999892234802,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T11914",
+     "display_name": "PARP inhibition in cancer therapy",
+     "score": 0.003700000001117587,
+     "subfield": {
+      "id": "https://openalex.org/subfields/2730",
+      "display_name": "Oncology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/27",
+      "display_name": "Medicine"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/4",
+      "display_name": "Health Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T12820",
+     "display_name": "Chromatin Remodeling and Cancer",
+     "score": 0.0007999999797903001,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    }
+   ],
+   "primary_topic": {
+    "id": "https://openalex.org/T10123",
+    "display_name": "DNA Repair Mechanisms",
+    "score": 0.9887999892234802,
+    "subfield": {
+     "id": "https://openalex.org/subfields/1312",
+     "display_name": "Molecular Biology"
+    },
+    "field": {
+     "id": "https://openalex.org/fields/13",
+     "display_name": "Biochemistry, Genetics and Molecular Biology"
+    },
+    "domain": {
+     "id": "https://openalex.org/domains/1",
+     "display_name": "Life Sciences"
+    }
+   },
+   "cited_by_count": 0
+  },
+  {
+   "id": "https://openalex.org/W7223671437",
+   "title": "Mechanistic insights into atmospheric and room-temperature plasma (ARTP)-induced genomic alterations and phenotypic evolution in Saccharomyces cerevisiae",
+   "publication_year": 2026,
+   "publication_date": "2026-10-26",
+   "doi": "https://doi.org/10.1128/aem.00955-26",
+   "type": "article",
+   "primary_location": {
+    "id": "doi:10.1128/aem.00955-26",
+    "doi": "https://doi.org/10.1128/aem.00955-26",
+    "is_oa": true,
+    "landing_page_url": "https://doi.org/10.1128/aem.00955-26",
+    "pdf_url": null,
+    "source": {
+     "id": "https://openalex.org/S158228368",
+     "display_name": "Applied and Environmental Microbiology",
+     "issn_l": "0099-2240",
+     "issn": [
+      "0099-2240",
+      "1070-6291",
+      "1098-5336"
+     ],
+     "is_oa": true,
+     "is_in_doaj": true,
+     "is_core": true,
+     "listed_in": [
+      "anvur-scientific",
+      "cwts-core",
+      "doaj",
+      "dongbi-b",
+      "doyens",
+      "jufo-1",
+      "ki-jl-1",
+      "medline",
+      "norway-2",
+      "poland-100",
+      "russia-white-list-1",
+      "vabb-shw"
+     ],
+     "host_organization": "https://openalex.org/P4310320263",
+     "host_organization_name": "American Society for Microbiology",
+     "host_organization_lineage": [
+      "https://openalex.org/P4310320263"
+     ],
+     "host_organization_lineage_names": [
+      "American Society for Microbiology"
+     ],
+     "type": "journal"
+    },
+    "license": "cc-by",
+    "license_id": "https://openalex.org/licenses/cc-by",
+    "version": "publishedVersion",
+    "is_accepted": true,
+    "is_published": true,
+    "raw_source_name": "Applied and Environmental Microbiology",
+    "raw_type": "journal-article"
+   },
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5016739828",
+      "display_name": "Huan Sheng",
+      "orcid": "https://orcid.org/0009-0004-7920-7529",
+      "observed_orcids": [
+       "https://orcid.org/0009-0004-7920-7529"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I76130692",
+       "display_name": "Zhejiang University",
+       "ror": "https://ror.org/00a2xv884",
+       "country_code": "CN",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ],
+     "countries": [
+      "CN"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Huan Sheng",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159720566",
+      "display_name": "Jun Yao",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I76130692",
+       "display_name": "Zhejiang University",
+       "ror": "https://ror.org/00a2xv884",
+       "country_code": "CN",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ],
+     "countries": [
+      "CN"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Jun Yao",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I76130692"
+       ]
+      },
+      {
+       "institution_ids": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5125108728",
+      "display_name": "Yue Liu",
+      "orcid": "https://orcid.org/0009-0009-1093-4097",
+      "observed_orcids": [
+       "https://orcid.org/0009-0009-1093-4097"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I100135526",
+       "display_name": "BGI Group (China)",
+       "ror": "https://ror.org/045pn2j94",
+       "country_code": "CN",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I100135526"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4387153646",
+       "display_name": "BGI Research",
+       "ror": "https://ror.org/05gsxrt27",
+       "country_code": "CN",
+       "type": "nonprofit",
+       "lineage": [
+        "https://openalex.org/I100135526",
+        "https://openalex.org/I4387153646"
+       ]
+      }
+     ],
+     "countries": [
+      "CN"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Yue Liu",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I100135526",
+        "https://openalex.org/I4387153646"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159721869",
+      "display_name": "Ke-Jing Li",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I76130692",
+       "display_name": "Zhejiang University",
+       "ror": "https://ror.org/00a2xv884",
+       "country_code": "CN",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ],
+     "countries": [
+      "CN"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Ke-Jing Li",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159578130",
+      "display_name": "Jin-Zhe Zhang",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I76130692",
+       "display_name": "Zhejiang University",
+       "ror": "https://ror.org/00a2xv884",
+       "country_code": "CN",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ],
+     "countries": [
+      "CN"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Jin-Zhe Zhang",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5074104101",
+      "display_name": "Dao\u2010Qiong Zheng",
+      "orcid": "https://orcid.org/0000-0001-9365-2339",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-9365-2339"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I76130692",
+       "display_name": "Zhejiang University",
+       "ror": "https://ror.org/00a2xv884",
+       "country_code": "CN",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ],
+     "countries": [
+      "CN"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Dao-Qiong Zheng",
+     "raw_orcid": "https://orcid.org/0000-0001-9365-2339",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "last",
+     "author": {
+      "id": "https://openalex.org/A5014443354",
+      "display_name": "Ke Zhang",
+      "orcid": "https://orcid.org/0000-0001-9204-6556",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-9204-6556"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I76130692",
+       "display_name": "Zhejiang University",
+       "ror": "https://ror.org/00a2xv884",
+       "country_code": "CN",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ],
+     "countries": [
+      "CN"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Ke Zhang",
+     "raw_orcid": "https://orcid.org/0000-0001-9204-6556",
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I76130692"
+       ]
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T10123",
+     "display_name": "DNA Repair Mechanisms",
+     "score": 0.7354000210762024,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T10497",
+     "display_name": "Fungal and yeast genetics research",
+     "score": 0.1339000016450882,
+     "subfield": {
+      "id": "https://openalex.org/subfields/1312",
+      "display_name": "Molecular Biology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/13",
+      "display_name": "Biochemistry, Genetics and Molecular Biology"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/1",
+      "display_name": "Life Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T10642",
+     "display_name": "Plasma Applications and Diagnostics",
+     "score": 0.04830000177025795,
+     "subfield": {
+      "id": "https://openalex.org/subfields/2741",
+      "display_name": "Radiology, Nuclear Medicine and Imaging"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/27",
+      "display_name": "Medicine"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/4",
+      "display_name": "Health Sciences"
+     }
+    }
+   ],
+   "primary_topic": {
+    "id": "https://openalex.org/T10123",
+    "display_name": "DNA Repair Mechanisms",
+    "score": 0.7354000210762024,
+    "subfield": {
+     "id": "https://openalex.org/subfields/1312",
+     "display_name": "Molecular Biology"
+    },
+    "field": {
+     "id": "https://openalex.org/fields/13",
+     "display_name": "Biochemistry, Genetics and Molecular Biology"
+    },
+    "domain": {
+     "id": "https://openalex.org/domains/1",
+     "display_name": "Life Sciences"
+    }
+   },
+   "cited_by_count": 0
+  },
+  {
+   "id": "https://openalex.org/W7223359133",
+   "title": "Correction to: Real-world outcomes of ponatinib in heavily pretreated patients with chronic myeloid leukemia and Philadelphia chromosome-positive acute lymphoblastic leukemia",
+   "publication_year": 2026,
+   "publication_date": "2026-10-24",
+   "doi": "https://doi.org/10.1007/s00277-026-07311-7",
+   "type": "erratum",
+   "primary_location": {
+    "id": "doi:10.1007/s00277-026-07311-7",
+    "doi": "https://doi.org/10.1007/s00277-026-07311-7",
+    "is_oa": true,
+    "landing_page_url": "https://doi.org/10.1007/s00277-026-07311-7",
+    "pdf_url": "https://link.springer.com/content/pdf/10.1007/s00277-026-07311-7.pdf",
+    "source": {
+     "id": "https://openalex.org/S163204731",
+     "display_name": "Annals of Hematology",
+     "issn_l": "0939-5555",
+     "issn": [
+      "0939-5555",
+      "1432-0584"
+     ],
+     "is_oa": true,
+     "is_in_doaj": true,
+     "is_core": true,
+     "listed_in": [
+      "anvur-scientific",
+      "cwts-core",
+      "doaj",
+      "doyens",
+      "jufo-1",
+      "ki-jl-1",
+      "medline",
+      "norway-1",
+      "poland-70",
+      "russia-white-list-2",
+      "vabb-shw"
+     ],
+     "host_organization": "https://openalex.org/P4310319900",
+     "host_organization_name": "Springer Science+Business Media",
+     "host_organization_lineage": [
+      "https://openalex.org/P4310319900",
+      "https://openalex.org/P4310319965"
+     ],
+     "host_organization_lineage_names": [
+      "Springer Science+Business Media",
+      "Springer Nature"
+     ],
+     "type": "journal"
+    },
+    "license": "cc-by-nc-nd",
+    "license_id": "https://openalex.org/licenses/cc-by-nc-nd",
+    "version": "publishedVersion",
+    "is_accepted": true,
+    "is_published": true,
+    "raw_source_name": "Annals of Hematology",
+    "raw_type": "journal-article"
+   },
+   "authorships": [
+    {
+     "author_position": "first",
+     "author": {
+      "id": "https://openalex.org/A5136781115",
+      "display_name": "Seok Lee",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210160144",
+       "display_name": "The Catholic University of Korea Seoul St. Mary's Hospital",
+       "ror": "https://ror.org/056cn0e37",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I4210160144",
+        "https://openalex.org/I4405260414",
+        "https://openalex.org/I87111246"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4405258598",
+       "display_name": "Ewha Womans University Mokdong Hospital",
+       "ror": "https://ror.org/00ypk0v12",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I138925566",
+        "https://openalex.org/I4210132203",
+        "https://openalex.org/I4405258598"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I87111246",
+       "display_name": "Catholic University of Korea",
+       "ror": "https://ror.org/01fpnj063",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I87111246"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Seok Lee",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4405258598"
+       ]
+      },
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210160144",
+        "https://openalex.org/I87111246"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159352387",
+      "display_name": "Hyeoung-Joon Kim",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210088426",
+       "display_name": "Gachon University Gil Medical Center",
+       "ror": "https://ror.org/005nteb15",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I12832649",
+        "https://openalex.org/I4210088426"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4210148121",
+       "display_name": "Chonnam National University Hwasun Hospital",
+       "ror": "https://ror.org/054gh2b75",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I111277659",
+        "https://openalex.org/I4210092150",
+        "https://openalex.org/I4210148121"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4405259397",
+       "display_name": "Gachon University Medical Center",
+       "ror": "https://ror.org/02687b281",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I12832649",
+        "https://openalex.org/I4405259397"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Hyeoung-Joon Kim",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210088426",
+        "https://openalex.org/I4405259397"
+       ]
+      },
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210148121"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5043824226",
+      "display_name": "June\u2010Won Cheong",
+      "orcid": "https://orcid.org/0000-0002-1744-0921",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-1744-0921"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I193775966",
+       "display_name": "Yonsei University",
+       "ror": "https://ror.org/01wjejq96",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I193775966"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I2799970807",
+       "display_name": "Severance Hospital",
+       "ror": "https://ror.org/044kjp413",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I193775966",
+        "https://openalex.org/I2799970807",
+        "https://openalex.org/I4210160791"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4210160791",
+       "display_name": "Yonsei University Health System",
+       "ror": "https://ror.org/04sze3c15",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I193775966",
+        "https://openalex.org/I4210160791"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "June-Won Cheong",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I193775966",
+        "https://openalex.org/I2799970807",
+        "https://openalex.org/I4210160791"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159344419",
+      "display_name": "Ho-Jin Shin",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210115854",
+       "display_name": "Pusan National University Hospital",
+       "ror": "https://ror.org/027zf7h57",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I4210115854",
+        "https://openalex.org/I4921948"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4921948",
+       "display_name": "Pusan National University",
+       "ror": "https://ror.org/01an57a31",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I4921948"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Ho-Jin Shin",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210115854",
+        "https://openalex.org/I4921948"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5020404601",
+      "display_name": "Jee Hyun Kong",
+      "orcid": "https://orcid.org/0000-0001-7833-8480",
+      "observed_orcids": [
+       "https://orcid.org/0000-0001-7833-8480"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210103122",
+       "display_name": "Wonju Severance Christian Hospital",
+       "ror": "https://ror.org/01b346b72",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I193775966",
+        "https://openalex.org/I4210103122",
+        "https://openalex.org/I4405258769"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Jee Hyun Kong",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210103122"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5103193360",
+      "display_name": "Sang Kyun Sohn",
+      "orcid": "https://orcid.org/0000-0003-1932-0429",
+      "observed_orcids": [
+       "https://orcid.org/0000-0003-1932-0429",
+       "https://orcid.org/0000-0002-1874-3959"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I2801673063",
+       "display_name": "Kyungpook National University Hospital",
+       "ror": "https://ror.org/04qn0xg47",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I2801673063",
+        "https://openalex.org/I31419693"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Sang Kyun Sohn",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I2801673063"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5109337392",
+      "display_name": "Sung-Soo Yoon",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I139264467",
+       "display_name": "Seoul National University",
+       "ror": "https://ror.org/04h9pn542",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I139264467"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I2802835388",
+       "display_name": "Seoul National University Hospital",
+       "ror": "https://ror.org/01z4nnt86",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I139264467",
+        "https://openalex.org/I2802835388"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Sung-Soo Yoon",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I139264467",
+        "https://openalex.org/I2802835388"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5025405694",
+      "display_name": "Dae Young Zang",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210159787",
+       "display_name": "Hallym University Sacred Heart Hospital",
+       "ror": "https://ror.org/04ngysf93",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I4210159787",
+        "https://openalex.org/I4210167048"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Dae Young Zang",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210159787"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5015112169",
+      "display_name": "Chul Won Jung",
+      "orcid": "https://orcid.org/0000-0002-5474-6807",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-5474-6807"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I2802194831",
+       "display_name": "Samsung Medical Center",
+       "ror": "https://ror.org/05a15z872",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I2250650973",
+        "https://openalex.org/I2802194831"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I848706",
+       "display_name": "Sungkyunkwan University",
+       "ror": "https://ror.org/04q78tk20",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I848706"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Chul Won Jung",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I2802194831",
+        "https://openalex.org/I848706"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159324213",
+      "display_name": "Jeong-A Kim",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210092045",
+       "display_name": "The Catholic University of Korea St. Vincent's Hospital",
+       "ror": "https://ror.org/00msb1w96",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I4210092045",
+        "https://openalex.org/I4405260414",
+        "https://openalex.org/I87111246"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I87111246",
+       "display_name": "Catholic University of Korea",
+       "ror": "https://ror.org/01fpnj063",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I87111246"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Jeong-A Kim",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210092045",
+        "https://openalex.org/I87111246"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159327131",
+      "display_name": "Sung-Eun Lee",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210160144",
+       "display_name": "The Catholic University of Korea Seoul St. Mary's Hospital",
+       "ror": "https://ror.org/056cn0e37",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I4210160144",
+        "https://openalex.org/I4405260414",
+        "https://openalex.org/I87111246"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4405258598",
+       "display_name": "Ewha Womans University Mokdong Hospital",
+       "ror": "https://ror.org/00ypk0v12",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I138925566",
+        "https://openalex.org/I4210132203",
+        "https://openalex.org/I4405258598"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I87111246",
+       "display_name": "Catholic University of Korea",
+       "ror": "https://ror.org/01fpnj063",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I87111246"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Sung-Eun Lee",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4405258598"
+       ]
+      },
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210160144",
+        "https://openalex.org/I87111246"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159341048",
+      "display_name": "Won Sik Lee",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I104338594",
+       "display_name": "Inje University",
+       "ror": "https://ror.org/04xqwq985",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I104338594"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4210109935",
+       "display_name": "Inje University Busan Paik Hospital",
+       "ror": "https://ror.org/01pzf6r50",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I104338594",
+        "https://openalex.org/I4210109935",
+        "https://openalex.org/I4405258751"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4405258751",
+       "display_name": "Inje University Paik Hospital",
+       "ror": "https://ror.org/015471y74",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I104338594",
+        "https://openalex.org/I4405258751"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Won Sik Lee",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I104338594",
+        "https://openalex.org/I4210109935",
+        "https://openalex.org/I4405258751"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5152474869",
+      "display_name": "Yunsuk Choi",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I2801680663",
+       "display_name": "Asan Medical Center",
+       "ror": "https://ror.org/03s5q0090",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I2801680663",
+        "https://openalex.org/I4210167194"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I40542001",
+       "display_name": "University of Ulsan",
+       "ror": "https://ror.org/02c2f8975",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I40542001"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Yunsuk Choi",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I2801680663",
+        "https://openalex.org/I40542001"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5139296950",
+      "display_name": "Inho Kim",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I139264467",
+       "display_name": "Seoul National University",
+       "ror": "https://ror.org/04h9pn542",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I139264467"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I2802835388",
+       "display_name": "Seoul National University Hospital",
+       "ror": "https://ror.org/01z4nnt86",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I139264467",
+        "https://openalex.org/I2802835388"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Inho Kim",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I139264467",
+        "https://openalex.org/I2802835388"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159350781",
+      "display_name": "Jae Joon Han",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I35928602",
+       "display_name": "Kyung Hee University",
+       "ror": "https://ror.org/01zqcg218",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I35928602"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Jae Joon Han",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I35928602"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159297049",
+      "display_name": "Min Kyoung Kim",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210149656",
+       "display_name": "Yeungnam University Medical Center",
+       "ror": "https://ror.org/04ntyjt11",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I4210149656",
+        "https://openalex.org/I55240360"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4400573303",
+       "display_name": "Yeungnam University College",
+       "ror": "https://ror.org/05e6g0130",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I4400573303"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I55240360",
+       "display_name": "Yeungnam University",
+       "ror": "https://ror.org/05yc6p159",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I55240360"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Min Kyoung Kim",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210149656",
+        "https://openalex.org/I4400573303",
+        "https://openalex.org/I55240360"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159354502",
+      "display_name": "So Young Chong",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210134376",
+       "display_name": "CHA University Bundang Medical Center",
+       "ror": "https://ror.org/04nbqb988",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I4210134376",
+        "https://openalex.org/I4210148737",
+        "https://openalex.org/I4405258985"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4210148737",
+       "display_name": "CHA University",
+       "ror": "https://ror.org/04yka3j04",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I4210148737",
+        "https://openalex.org/I4405258985"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "So Young Chong",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210134376",
+        "https://openalex.org/I4210148737"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5136799163",
+      "display_name": "Da Jung Kim",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I21028721",
+       "display_name": "Eulji University",
+       "ror": "https://ror.org/005bty106",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I21028721"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I2801674040",
+       "display_name": "Kosin University Gospel Hospital",
+       "ror": "https://ror.org/02xkmx604",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I2801674040"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4405258978",
+       "display_name": "Eulji University Uijeongbu Eulji Medical Center",
+       "ror": "https://ror.org/01ghq5e75",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I21028721",
+        "https://openalex.org/I4210164890",
+        "https://openalex.org/I4405258978"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I90735388",
+       "display_name": "Kosin University",
+       "ror": "https://ror.org/024b57v39",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I90735388"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": true,
+     "raw_author_name": "Da Jung Kim",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4405258978"
+       ]
+      },
+      {
+       "institution_ids": [
+        "https://openalex.org/I2801674040",
+        "https://openalex.org/I90735388"
+       ]
+      },
+      {
+       "institution_ids": [
+        "https://openalex.org/I21028721",
+        "https://openalex.org/I4405258978"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159427891",
+      "display_name": "Deog-Yeon Jo",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I196345858",
+       "display_name": "Chungnam National University",
+       "ror": "https://ror.org/0227as991",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I196345858"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4210143602",
+       "display_name": "Chungnam National University Hospital",
+       "ror": "https://ror.org/04353mq94",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I196345858",
+        "https://openalex.org/I4210143602"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Deog-Yeon Jo",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I196345858",
+        "https://openalex.org/I4210143602"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5143830504",
+      "display_name": "Hawk Kim",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210088426",
+       "display_name": "Gachon University Gil Medical Center",
+       "ror": "https://ror.org/005nteb15",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I12832649",
+        "https://openalex.org/I4210088426"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4210148121",
+       "display_name": "Chonnam National University Hwasun Hospital",
+       "ror": "https://ror.org/054gh2b75",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I111277659",
+        "https://openalex.org/I4210092150",
+        "https://openalex.org/I4210148121"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4405259397",
+       "display_name": "Gachon University Medical Center",
+       "ror": "https://ror.org/02687b281",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I12832649",
+        "https://openalex.org/I4405259397"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Hawk Kim",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210088426",
+        "https://openalex.org/I4405259397"
+       ]
+      },
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210148121"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5004822725",
+      "display_name": "\uacfd\uc7ac\uc6a9",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210131908",
+       "display_name": "Jeonbuk National University Hospital",
+       "ror": "https://ror.org/03by16w37",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I4210131908",
+        "https://openalex.org/I80611190"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I80611190",
+       "display_name": "Jeonbuk National University",
+       "ror": "https://ror.org/05q92br09",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I80611190"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Jae-Yong Kwak",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210131908",
+        "https://openalex.org/I80611190"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5146898664",
+      "display_name": "Je-Hwan Lee",
+      "orcid": "https://orcid.org/0000-0002-7060-1675",
+      "observed_orcids": [
+       "https://orcid.org/0000-0002-7060-1675"
+      ]
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I2801680663",
+       "display_name": "Asan Medical Center",
+       "ror": "https://ror.org/03s5q0090",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I2801680663",
+        "https://openalex.org/I4210167194"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I40542001",
+       "display_name": "University of Ulsan",
+       "ror": "https://ror.org/02c2f8975",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I40542001"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Je-Hwan Lee",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I2801680663",
+        "https://openalex.org/I40542001"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5159399476",
+      "display_name": "Jieun Uhm",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210142845",
+       "display_name": "Hanyang University Seoul Hospital",
+       "ror": "https://ror.org/04n76mm80",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I4210142845",
+        "https://openalex.org/I4210152466",
+        "https://openalex.org/I4575257"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4575257",
+       "display_name": "Hanyang University",
+       "ror": "https://ror.org/046865y68",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I4575257"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Jieun Uhm",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210142845",
+        "https://openalex.org/I4575257"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5136805002",
+      "display_name": "Min-Yi Lee",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210160144",
+       "display_name": "The Catholic University of Korea Seoul St. Mary's Hospital",
+       "ror": "https://ror.org/056cn0e37",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I4210160144",
+        "https://openalex.org/I4405260414",
+        "https://openalex.org/I87111246"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4405258598",
+       "display_name": "Ewha Womans University Mokdong Hospital",
+       "ror": "https://ror.org/00ypk0v12",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I138925566",
+        "https://openalex.org/I4210132203",
+        "https://openalex.org/I4405258598"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I87111246",
+       "display_name": "Catholic University of Korea",
+       "ror": "https://ror.org/01fpnj063",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I87111246"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Sewon Lee",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4405258598"
+       ]
+      },
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210160144",
+        "https://openalex.org/I87111246"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "middle",
+     "author": {
+      "id": "https://openalex.org/A5136805002",
+      "display_name": "Min-Yi Lee",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I4210116420",
+       "display_name": "Otsuka (South Korea)",
+       "ror": "https://ror.org/02j6s3h86",
+       "country_code": "KR",
+       "type": "company",
+       "lineage": [
+        "https://openalex.org/I114030911",
+        "https://openalex.org/I4210116420"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": false,
+     "raw_author_name": "Min-Yi Lee",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4210116420"
+       ]
+      }
+     ]
+    },
+    {
+     "author_position": "last",
+     "author": {
+      "id": "https://openalex.org/A5159398307",
+      "display_name": "Dong-Wook Kim",
+      "orcid": null,
+      "observed_orcids": []
+     },
+     "institutions": [
+      {
+       "id": "https://openalex.org/I21028721",
+       "display_name": "Eulji University",
+       "ror": "https://ror.org/005bty106",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I21028721"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I2801674040",
+       "display_name": "Kosin University Gospel Hospital",
+       "ror": "https://ror.org/02xkmx604",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I2801674040"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I4405258978",
+       "display_name": "Eulji University Uijeongbu Eulji Medical Center",
+       "ror": "https://ror.org/01ghq5e75",
+       "country_code": "KR",
+       "type": "healthcare",
+       "lineage": [
+        "https://openalex.org/I21028721",
+        "https://openalex.org/I4210164890",
+        "https://openalex.org/I4405258978"
+       ]
+      },
+      {
+       "id": "https://openalex.org/I90735388",
+       "display_name": "Kosin University",
+       "ror": "https://ror.org/024b57v39",
+       "country_code": "KR",
+       "type": "education",
+       "lineage": [
+        "https://openalex.org/I90735388"
+       ]
+      }
+     ],
+     "countries": [
+      "KR"
+     ],
+     "is_corresponding": true,
+     "raw_author_name": "Dong-Wook Kim",
+     "raw_orcid": null,
+     "affiliations": [
+      {
+       "institution_ids": [
+        "https://openalex.org/I4405258978"
+       ]
+      },
+      {
+       "institution_ids": [
+        "https://openalex.org/I2801674040",
+        "https://openalex.org/I90735388"
+       ]
+      },
+      {
+       "institution_ids": [
+        "https://openalex.org/I21028721",
+        "https://openalex.org/I4405258978"
+       ]
+      }
+     ]
+    }
+   ],
+   "topics": [
+    {
+     "id": "https://openalex.org/T11215",
+     "display_name": "Chronic Myeloid Leukemia Treatments",
+     "score": 0.9839000105857849,
+     "subfield": {
+      "id": "https://openalex.org/subfields/2720",
+      "display_name": "Hematology"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/27",
+      "display_name": "Medicine"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/4",
+      "display_name": "Health Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T11157",
+     "display_name": "Chronic Lymphocytic Leukemia Research",
+     "score": 0.0052999998442828655,
+     "subfield": {
+      "id": "https://openalex.org/subfields/2716",
+      "display_name": "Genetics"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/27",
+      "display_name": "Medicine"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/4",
+      "display_name": "Health Sciences"
+     }
+    },
+    {
+     "id": "https://openalex.org/T10950",
+     "display_name": "Acute Lymphoblastic Leukemia research",
+     "score": 0.0012000000569969416,
+     "subfield": {
+      "id": "https://openalex.org/subfields/2739",
+      "display_name": "Public Health, Environmental and Occupational Health"
+     },
+     "field": {
+      "id": "https://openalex.org/fields/27",
+      "display_name": "Medicine"
+     },
+     "domain": {
+      "id": "https://openalex.org/domains/4",
+      "display_name": "Health Sciences"
+     }
+    }
+   ],
+   "primary_topic": {
+    "id": "https://openalex.org/T11215",
+    "display_name": "Chronic Myeloid Leukemia Treatments",
+    "score": 0.9839000105857849,
+    "subfield": {
+     "id": "https://openalex.org/subfields/2720",
+     "display_name": "Hematology"
+    },
+    "field": {
+     "id": "https://openalex.org/fields/27",
+     "display_name": "Medicine"
+    },
+    "domain": {
+     "id": "https://openalex.org/domains/4",
+     "display_name": "Health Sciences"
+    }
+   },
+   "cited_by_count": 0
+  }
+ ],
+ "group_by": []
+}
