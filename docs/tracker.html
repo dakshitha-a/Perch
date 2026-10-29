@@ -132,11 +132,11 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S15</code> <span class="badge s-in-progress">in progress</span><span>15/18 sessions done</span></div>
+<div class="at-a-glance"><code>S16</code> <span class="badge s-todo">todo</span><span>16/18 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
-<a id="tab-archive" href="#archive">Archive<span class="count">15</span></a>
+<a id="tab-archive" href="#archive">Archive<span class="count">16</span></a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
 <a id="tab-bench" href="#bench">Bench</a>
 <a id="tab-architecture" href="#architecture">Architecture</a>
@@ -146,25 +146,14 @@ details .inner > * { min-width: 0; }
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
-<div id="s15"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S15 · README and public release</h1><span class="badge s-in-progress">in progress</span></div>
-<div class="meta">Started 2026-10-29 15:25 EDT</div></div>
-<p>Goal: a README that shows Perch at a glance, then the repo made public. Asked for by Dakshitha on 2026-10-29. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="2 of 3 tasks done"><div class="counts"><span><b>2/3</b>tasks done</span><span class="s-done"><b>2</b>done</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="2 of 3 tasks done"><span class="s-done" style="width:66.67%" title="done: 2"></span><span class="s-todo" style="width:33.33%" title="todo: 1"></span></div></section>
-<div class="panel scroll"><table>
-<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
-<tbody>
-<tr><td>1</td><td>README with a hero clip, a feature tour of animated WebP clips filmed in the real app, the architecture figure, and links to separate docs; filmed with NextTex's pipeline</td><td>done, awaiting review</td><td class="mono">see git log</td><td>Five clips in <code>docs/tour/</code> (hero, industry, hand-off, Scout, private), 13 to 24 s and 1.0 to 3.0 MB each, filmed by <code>scripts/tour/film.py</code> in the demo on this node. They use NextTex's camera (<code>animate.py</code>, unchanged) and its recorder ported to Python. Researchers are shown by alias, and private mode uses the SYNTHETIC persona. The architecture figure is updated to as-built, with light and dark copies for GitHub. Docs are split into <code>docs/running.md</code>, <code>deploy.md</code>, <code>private-mode.md</code> and <code>mcp.md</code>. The Scout clip asks why the top lead fits: on Gemma, two questions about counts had their answers withheld by the validator (a number not in any cited record).</td></tr>
-<tr><td>2</td><td>README tab on the build tracker for Dakshitha's review</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>scripts/build_readme_preview.py</code> renders README.md like GitHub, with its clips and figures, and the tracker has a README tab (<code>make tracker</code> builds both).</td></tr>
-<tr><td>3</td><td>Public-readiness audit of tracked files and history</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>check_public</code>'s patterns were run over every patch and commit message in the history, along with the node's hostname and the real names of the researchers in the alias table. No keys, local paths, emails, session links or machine names were found. Three public researchers' names appear in six test files, and one appears in an old README commit (S1). That is Q23, and its default is to change the tests before going public.</td></tr>
-<tr><td>4</td><td>Push and make the repository public, after Dakshitha approves</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td>Waits for Dakshitha</td></tr>
-</tbody></table></div>
-<h2>Definition of done</h2>
-<ul class="panel done-list"><li>Dakshitha has approved the README, and the repository is public.</li></ul>
+<div id="s16"><div class="eyebrow">Current session</div>
+<div class="title-row"><h1>S16 · Monitoring (optional)</h1><span class="badge s-todo">todo</span></div>
+<div class="meta">Not started</div></div>
+<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S16.md</code> when the session starts.</div>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="15 of 18 sessions done"><div class="counts"><span><b>15/18</b>sessions done</span><span class="s-done"><b>15</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="15 of 18 sessions done"><span class="s-done" style="width:83.33%" title="done: 15"></span><span class="s-in-progress" style="width:5.56%" title="in progress: 1"></span><span class="s-todo" style="width:11.11%" title="todo: 2"></span></div></section>
+<section class="panel summary" aria-label="16 of 18 sessions done"><div class="counts"><span><b>16/18</b>sessions done</span><span class="s-done"><b>16</b>done</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="16 of 18 sessions done"><span class="s-done" style="width:88.89%" title="done: 16"></span><span class="s-todo" style="width:11.11%" title="todo: 2"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -183,8 +172,8 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s12">S12</a></td><td>Compare, hand-off, export</td><td><span class="badge s-done">done</span></td><td>2026-10-29 13:38 EDT</td><td>2026-10-29 14:10 EDT</td><td class="mono">see git log</td><td>194 tests green. Compare tab: kept leads side by side, every cell copied from or counted from a record, each opening its record; no effort, IP or likelihood column, because no record states them. Hand off: skill 3 writes a 2 to 4 sentence opening, code writes the rest, To left empty, office names from research.temple.edu; copy and open in mail; never sent or stored. Markdown export and a print page the browser saves as PDF. Scout <code>compare</code> and <code>draft_handoff</code> built. Bench: Sonnet 20/20, 5/5, 3/3 ($0.41); Gemma 18/20, 5/5, 2/3. Egress filter for private mode. Temple STTR table (41 awards) adds 0 leads, so not wired in (Q20). Done-when met on the public URL.</td></tr>
 <tr class="is-finished"><td><a href="#s13">S13</a></td><td>Private mode</td><td><span class="badge s-done">done</span></td><td>2026-10-29 14:22 EDT</td><td>2026-10-29 15:00 EDT</td><td class="mono">see git log</td><td>208 tests green. Private mode built end to end: sessions in memory with the session id in a header, idle timeout and caps; paste or upload (text, Markdown, DOCX, PDF from bytes); a self-hosted gate on every model and endpoint; the store as an overlay on a read-only base, no cache, log or index writes. Private threads take 0.6 (proposal 0.5, direction 0.3, unpublished 0.2 of it; Q21). The CV parse unlocks career-stage calls as "may be eligible", using NIH's ESI definition and its smaller-grants list. Private-only briefs work. Exports and hand-offs withhold private text, or mask it with an in-memory key. Lock labels, Help and a private bar in the UI. Live canary on the dev node: no trace in data/, /tmp or six model-server journals; the private-only brief had 8 of 8 explained leads citing private documents. Normal-mode context fields with "You said". Stand-in proposal (funded abstract, an upper bound): 7 to 16 of 48 in the top 10. Persona tab on the tracker. Q21, Q22 open.</td></tr>
 <tr class="is-finished"><td><a href="#s14">S14</a></td><td>MCP server</td><td><span class="badge s-done">done</span></td><td>2026-10-29 15:01 EDT</td><td>2026-10-29 15:10 EDT</td><td class="mono">see git log</td><td>210 tests green. <code>perch mcp</code>: Scout's nine tools over stdio on the MCP Python SDK 2.3.0, with the same argument checks and validator, a provenance map in every result, and budgets of 60 calls (20 model-backed) per connection. <code>--private</code> runs on a private session behind the self-hosted gate. Live: the SDK client over stdio got 5 leads with provenance and a validated explanation citing three papers in 7 s. Claude Code 2.1.312 (print mode, haiku) got a cited brief. The local Ollama agent was not tested. The tracker's UI tab was rebuilt with every module, and the Bench tab gained Scout and the stand-in result. The demo was rebuilt.</td></tr>
-<tr class="is-current"><td><a href="#s15">S15</a></td><td>README and public release</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 15:25 EDT</td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S16</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-finished"><td><a href="#s15">S15</a></td><td>README and public release</td><td><span class="badge s-done">done</span></td><td>2026-10-29 15:25 EDT</td><td>2026-10-29 16:13 EDT</td><td class="mono">see git log</td><td>New README in NextTex's style: a hero clip, five feature clips filmed in the real app with NextTex's camera and a Python port of its recorder, the as-built architecture figure in light and dark, measured results with the baseline, and docs split into running, deploy, private mode and MCP. A README tab on the tracker. History audit: no keys, paths, emails, session links or hostnames. Tests now read researcher names from their fixtures (Q23). Dakshitha approved the README, and the repository is public.</td></tr>
+<tr class="is-current"><td>S16</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S17</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
@@ -215,7 +204,21 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-archive" class="view" data-view="archive" hidden>
 <div><div class="eyebrow">Finished sessions</div><h1>Archive</h1></div>
-<div><details id="s14"><summary><span><span class="sid">S14</span> <span class="stitle">MCP server</span></span><span></span><span class="badge s-done">done</span><span class="smeta">1/1 tasks done · finished 2026-10-29 15:10 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: any platform, including local. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<div><details id="s15"><summary><span><span class="sid">S15</span> <span class="stitle">README and public release</span></span><span></span><span class="badge s-done">done</span><span class="smeta">4/4 tasks done · finished 2026-10-29 16:13 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: a README that shows Perch at a glance, then the repo made public. Asked for by Dakshitha on 2026-10-29. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="4 of 4 tasks done"><div class="counts"><span><b>4/4</b>tasks done</span><span class="s-done"><b>4</b>done</span></div><div class="bar" role="img" aria-label="4 of 4 tasks done"><span class="s-done" style="width:100.00%" title="done: 4"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>README with a hero clip, a feature tour of animated WebP clips filmed in the real app, the architecture figure, and links to separate docs; filmed with NextTex's pipeline</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Five clips in <code>docs/tour/</code> (hero, industry, hand-off, Scout, private), 13 to 24 s and 1.0 to 3.0 MB each, filmed by <code>scripts/tour/film.py</code> in the demo on this node. They use NextTex's camera (<code>animate.py</code>, unchanged) and its recorder ported to Python. Researchers are shown by alias, and private mode uses the SYNTHETIC persona. The architecture figure is updated to as-built, with light and dark copies for GitHub. Docs are split into <code>docs/running.md</code>, <code>deploy.md</code>, <code>private-mode.md</code> and <code>mcp.md</code>. The Scout clip asks why the top lead fits: on Gemma, two questions about counts had their answers withheld by the validator (a number not in any cited record).</td></tr>
+<tr><td>2</td><td>README tab on the build tracker for Dakshitha's review</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>scripts/build_readme_preview.py</code> renders README.md like GitHub, with its clips and figures, and the tracker has a README tab (<code>make tracker</code> builds both).</td></tr>
+<tr><td>3</td><td>Public-readiness audit of tracked files and history</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>check_public</code>'s patterns were run over every patch and commit message in the history, along with the node's hostname and the real names of the researchers in the alias table. No keys, local paths, emails, session links or machine names were found. Three public researchers' names appear in six test files, and one appears in an old README commit (S1). That is Q23, and its default is to change the tests before going public.</td></tr>
+<tr><td>4</td><td>Push and make the repository public, after Dakshitha approves</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Dakshitha approved the README and said "go public". The Q23 default was applied first, and the hygiene check passed. Then <code>gh repo edit --visibility public</code> ran. The README and its clips load from raw.githubusercontent.com.</td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>Dakshitha has approved the README, and the repository is public.</li></ul>
+<h2>Status at end</h2>
+<ul><li>Done. The repository is public at github.com/dakshitha-a/perch, with the new README. 210 tests pass.</li></ul></div></details>
+<details id="s14"><summary><span><span class="sid">S14</span> <span class="stitle">MCP server</span></span><span></span><span class="badge s-done">done</span><span class="smeta">1/1 tasks done · finished 2026-10-29 15:10 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: any platform, including local. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
 <section class="panel summary" aria-label="1 of 1 tasks done"><div class="counts"><span><b>1/1</b>tasks done</span><span class="s-done"><b>1</b>done</span></div><div class="bar" role="img" aria-label="1 of 1 tasks done"><span class="s-done" style="width:100.00%" title="done: 1"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
@@ -438,10 +441,11 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (101)</h2>
+<h2>Decisions (102)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S15</td><td>Repository made public, with the new README</td><td>Dakshitha approved the README and said to go public</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>after S14</td><td>Private mode on at the public demo URL; operator "Dakshitha, Temple University"; settings in <code>docker-compose.yml</code></td><td>Dakshitha wants to test it there (Q22)</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S14</td><td>Private documents are not added through MCP yet; <code>--private</code> gives the no-trace mode and the gate only</td><td>The design's floor drops MCP private tools first; documents stay in the web app</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S14</td><td><code>mcp</code> 2.3.0 added as a main dependency</td><td><code>perch mcp</code> is part of the app; FastAPI already brings Starlette, which the SDK uses</td><td>Perch-dev</td></tr>

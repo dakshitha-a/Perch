@@ -44,14 +44,16 @@ Private mode is built end to end:
   - Compare's PAR close dates.
   - Replay mode has no compare or hand-off.
 
-## Now: S15 — README and public release (in progress)
-1. **Tasks 1 to 3 are done.** The README, its clips and the docs split are in place. The README tab is on the tracker. The history audit found names only (Q23).
-2. **Waiting on Dakshitha:** README approval, and an answer to Q23 (names in tests). Then apply the Q23 choice, confirm once more, and run `gh repo edit dakshitha-a/perch --visibility public --accept-visibility-change-consequences`.
-3. **To refilm the clips:** run `uv run --with playwright --with pillow python scripts/tour/film.py [--scenes ...]`, with the demo up.
-4. **After that:** S16, Monitoring (optional, first to cut), then S17, QA, freeze and package. S17 task 2 frees GPUs 1 and 2.
-5. **Known gap:** Scout on Gemma often has an answer that states a count withheld by the validator.
+## Last: S15 — README and public release (done)
+- **The repository is public** at github.com/dakshitha-a/perch, with the new README. Everything pushed from now on is public, so the hygiene rules matter more than ever.
+- **Clips:** in `docs/tour/`. To refilm them, run `uv run --with playwright --with pillow python scripts/tour/film.py [--scenes ...]` with the demo up.
+- **Known gap:** Scout on Gemma often has an answer that states a count withheld by the validator.
+
+## Next session: S16 — Monitoring (optional; first to cut)
+1. Read S16 in `docs/PLAN.md`. Code freeze is Thu 5 Nov 12:00. Dakshitha may prefer to go straight to S17 (QA, freeze, package).
+2. S17 task 2 frees GPUs 1 and 2 after the last test run (local notes).
+3. Fix `make bench --render-only` before S17 reruns the bench, because it would overwrite the hand-written Scout sections of RESULTS.md.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 - Q20: should a past Temple STTR partner count as an industry lead on its own? Default: no.
-- Q23: names in tests and one old commit. Default: change the tests (b) before going public.
 - Q21: private document shares. Default: proposal 0.5, direction 0.3, unpublished 0.2; the CV gets none.
