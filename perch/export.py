@@ -162,15 +162,19 @@ CSS = """
 :root { color-scheme: light; }
 body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1F2B2D;
   background: #fff; max-width: 820px; margin: 24px auto; padding: 0 16px; }
-h1 { font: 600 28px/1.2 Georgia, serif; } h2 { margin-top: 28px; border-bottom: 1px solid #D8DED7; }
+h1 { font: 600 28px/1.2 Georgia, serif; }
+h2 { margin-top: 28px; border-bottom: 1px solid #D8DED7; }
 h3 { margin-bottom: 4px; } a { color: #2E6A54; word-break: break-all; }
-blockquote { margin: 8px 0; padding: 8px 12px; background: #F3F5F1; border-left: 3px solid #A9B6AC; }
+blockquote { margin: 8px 0; padding: 8px 12px; background: #F3F5F1;
+  border-left: 3px solid #A9B6AC; }
 blockquote.model { background: #ECEBF5; border-color: #5B5A86; }
 table { border-collapse: collapse; width: 100%; font-size: 13px; }
 th, td { border: 1px solid #D8DED7; padding: 6px 8px; text-align: left; vertical-align: top; }
 th { background: #E9EDE7; } .tw { overflow-x: auto; }
-table { min-width: 560px; } .print { margin: 8px 0 16px; padding: 10px 16px; font-size: 15px; }
-@media print { .print { display: none; } .tw { overflow: visible; } table { min-width: 0; } body { margin: 0; max-width: none; }
+table { min-width: 560px; }
+.print { margin: 8px 0 16px; padding: 10px 16px; font-size: 15px; }
+@media print { .print { display: none; } .tw { overflow: visible; } table { min-width: 0; }
+  body { margin: 0; max-width: none; }
   h2, h3 { break-after: avoid; } table, blockquote { break-inside: avoid; } }
 """
 
@@ -199,7 +203,8 @@ def to_html(bs: list[Block], title: str) -> str:
                          if href.startswith(("https://", "http://")) else f"<p>{e(b.text)}</p>")
         elif b.kind == "table":
             head, *body = b.rows
-            parts.append("<div class=\"tw\"><table><thead><tr>" + "".join(f"<th>{e(c)}</th>" for c in head)
+            parts.append("<div class=\"tw\"><table><thead><tr>"
+                         + "".join(f"<th>{e(c)}</th>" for c in head)
                          + "</tr></thead><tbody>"
                          + "".join("<tr>" + "".join(f"<td>{e(c)}</td>" for c in r) + "</tr>"
                                    for r in body) + "</tbody></table></div>")
