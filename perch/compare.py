@@ -79,7 +79,7 @@ def route_a_row(lead: Lead, o: Opportunity | None, as_of: date) -> Row:
         papers = [c for c in lead.cited_ids if c.startswith("W")]
         state = ("explanation withheld" if lead.flagged else
                  "explanation checked" if lead.explanation else "no explanation yet")
-        rank = f"Fit rank {lead.rank}" if lead.rank else "Fit rank not set"
+        rank = f"Fit rank {lead.rank}" if lead.rank else "Not ranked in a brief"
         ev = f"{rank}; cites {len(papers)} of your papers" if papers else rank
         cells = {
             "money": money(o),

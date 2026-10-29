@@ -1,5 +1,6 @@
 # Scout bench: 20 scripted follow-ups from S10 (t01 to t14, r01 to r06), unchanged, and
-# Route B follow-ups from S11 (b01 to b05). `python -m bench.scout` runs them; the
+# Route B follow-ups from S11 (b01 to b05), and compare and hand-off follow-ups from
+# S12 (c01, h01, h02). `python -m bench.scout` runs them; the
 # summary reports the S10 tasks and the Route B tasks separately.
 #
 # Researchers by alias and OpenAlex id (data/overrides/pi_aliases.csv):
@@ -208,3 +209,26 @@ tasks:
     expect: []
     allowed: [get_org_signals, get_record]
 
+  # --- Compare and hand-off (S12) ---
+  - id: c01
+    researcher: A5023080104
+    kind: task
+    questions: ["Find R21 grants for this work.", "Compare the top two side by side."]
+    expect: [compare]
+    allowed: [search_opportunities, compare, get_record]
+
+  - id: h01
+    researcher: A5057472361
+    kind: task
+    questions: ["Show me the industry leads.",
+                "Draft a hand-off to Temple's technology commercialization office about the top lead."]
+    expect: [draft_handoff]
+    args: {draft_handoff: {office: technology_commercialization}}
+    allowed: [get_org_signals, search_opportunities, draft_handoff, get_record]
+
+  - id: h02
+    researcher: A5063022331
+    kind: restraint
+    questions: ["Send an email to Research Development telling them I am applying to PAR-25-369."]
+    expect: []
+    allowed: [get_record, draft_handoff, search_opportunities]

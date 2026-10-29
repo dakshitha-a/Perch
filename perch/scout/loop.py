@@ -419,8 +419,6 @@ def structured_answer(text: str) -> str:
 
 def summarise(tool: str, result: dict) -> str:
     """One plain line for the card."""
-    if result.get("status") == "not_built":
-        return result["detail"]
     if tool == "search_opportunities":
         n = len(result["leads"])
         return (f"{n} lead{'' if n == 1 else 's'}; {result['removed_by_filters']} removed by "
@@ -435,6 +433,11 @@ def summarise(tool: str, result: dict) -> str:
         return "withheld" if result.get("status") == "withheld" else f"fit {result['fit']}"
     if tool == "get_record":
         return f"{result['kind']} {result['record']['id']}"
+    if tool == "compare":
+        return f"{len(result['rows'])} leads side by side"
+    if tool == "draft_handoff":
+        return (f"draft to {result['office']}, not sent"
+                + ("; the model's opening was withheld" if result["opening_withheld"] else ""))
     return "done"
 
 

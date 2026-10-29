@@ -90,7 +90,8 @@ class ScoutHub:
 def view(e: Entry) -> dict:
     s = e.session
     cards = [{"id": c.id, "tool": c.tool, "arguments": c.arguments, "status": c.status,
-              "detail": c.detail, "records": record_ids(c.result)} for c in s.cards]
+              "detail": c.detail, "records": record_ids(c.result), "draft": draft_of(c)}
+             for c in s.cards]
     exchanges = []
     for i, x in enumerate(s.exchanges):
         end = s.exchanges[i + 1]["cards_from"] if i + 1 < len(s.exchanges) else len(cards)
@@ -101,6 +102,14 @@ def view(e: Entry) -> dict:
             "tokens": s.tokens, "usd": round(s.usd, 4), "exchanges": exchanges}
 
 
+def draft_of(c) -> dict | None:  # noqa: ANN001 - a Card
+    """A hand-off draft from draft_handoff, shown in full on its card to copy."""
+    r = c.result
+    if c.tool != "draft_handoff" or not isinstance(r, dict) or "body" not in r:
+        return None
+    return {k: r[k] for k in ("office", "office_page", "subject", "body", "opening_withheld")}
+
+
 def record_ids(result: dict | None, cap: int = 12) -> list[str]:
     """Record ids a tool result names, for the card's evidence links."""
     out: list[str] = []
@@ -108,7 +117,8 @@ def record_ids(result: dict | None, cap: int = 12) -> list[str]:
     def walk(v: object) -> None:
         if isinstance(v, dict):
             for k, x in v.items():
-                if k in ("id", "opportunity", "lead") and isinstance(x, str) and x not in out:
+                if k in ("id", "opportunity", "lead", "record") and isinstance(x, str) \
+                        and x not in out:
                     out.append(x)
                 walk(x)
         elif isinstance(v, list):

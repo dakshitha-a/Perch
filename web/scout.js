@@ -10,13 +10,14 @@ const TOOLS = {
   resolve_author: "Find the researcher", build_profile: "Read the research profile",
   list_awards: "List public awards", search_opportunities: "Search opportunities",
   get_org_signals: "Industry signals", explain_fit: "Explain the fit",
-  compare: "Compare opportunities", draft_handoff: "Draft a hand-off", get_record: "Open a record",
+  compare: "Compare leads", draft_handoff: "Draft a hand-off", get_record: "Open a record",
 };
 const ARGS = {
   route: "Route", author_id: "Researcher", min_amount: "Ceiling at least", max_amount: "Ceiling at most",
   agencies: "Agencies", exclude_agencies: "Not these agencies", closes_by: "Closes by",
   activity_codes: "Activity codes", keywords: "Mentions", exclude_keywords: "Does not mention",
   top: "How many", id: "Record", opportunity_id: "Opportunity", opportunity_ids: "Opportunities",
+  ids: "Leads", office: "Office",
   name: "Name",
 };
 const STATUS = { proposed: "Waiting for you", done: "Done", skipped: "Skipped", refused: "Refused", error: "Failed", repeated: "Repeat, not run again" };
@@ -108,9 +109,26 @@ function card(c, ctx, busy) {
     c.detail ? h("p", { class: "hint", text: c.detail }) : null,
     c.records && c.records.length ? h("p", { class: "scout-records" }, h("span", { class: "hint", text: "Records: " }),
       ...c.records.slice(0, 8).map((id) => citeBtn(id, ctx))) : null,
+    c.draft ? draftBlock(c.draft, ctx) : null,
     c.status === "proposed" ? h("div", { class: "scout-actions" },
       h("button", { class: "btn primary", disabled: busy, onclick: () => act(ctx, "approve", c.id) }, icon("keep"), h("span", { text: "Approve" })),
       h("button", { class: "btn", disabled: busy, onclick: () => act(ctx, "skip", c.id) }, h("span", { text: "Skip" }))) : null);
+}
+
+// A hand-off draft from draft_handoff: the full text to copy. Never sent.
+function draftBlock(d, ctx) {
+  const text = `Subject: ${d.subject}\n\n${d.body}`;
+  return h("details", { class: "scout-draft" },
+    h("summary", { text: `The draft to ${d.office}` }),
+    d.opening_withheld ? h("p", { class: "hint", text: "The model’s opening failed the checks twice; a plain sentence replaces it." }) : null,
+    h("pre", { class: "draft-text", text }),
+    h("div", { class: "scout-actions" },
+      h("button", { class: "btn", type: "button", onclick: async () => {
+        try { await navigator.clipboard.writeText(text); ctx.announce("The draft is copied."); }
+        catch { ctx.announce("Copying was blocked by the browser. Select the text and copy it by hand."); }
+      } }, h("span", { text: "Copy the draft" })),
+      h("a", { class: "btn quiet", href: d.office_page, target: "_blank", rel: "noopener", text: "Office page" })),
+    h("p", { class: "hint", text: "Perch never sends this. The To line is yours to fill in." }));
 }
 
 function answer(x, ctx, thinking) {

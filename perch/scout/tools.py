@@ -3,7 +3,8 @@
 Scout can call these nine names and nothing else (SPEC section 8). Each returns a JSON
 object; every record it mentions is added to `ScoutContext.seen` under its short id,
 so the validator can check Scout's answer against exactly what the tools returned.
-Two tools belong to S12 and say so instead of doing anything (Q18).
+compare and draft_handoff (S12) use the compare view and skill 3; a draft is returned,
+never sent or stored.
 """
 
 from __future__ import annotations
@@ -25,7 +26,6 @@ from perch.sources import openalex as oa
 
 ALLOWLIST = ("resolve_author", "build_profile", "list_awards", "search_opportunities",
              "get_org_signals", "explain_fit", "compare", "draft_handoff", "get_record")
-NOT_BUILT = {"compare": "S12", "draft_handoff": "S12"}
 DESCRIPTION_CHARS = 1200
 
 
@@ -295,11 +295,99 @@ def get_record(ctx: ScoutContext, id: str) -> dict:
     return {"kind": rec.kind, "record": d}
 
 
-def not_built(name: str) -> Callable[..., dict]:
-    def run(ctx: ScoutContext, **_: object) -> dict:
-        return {"status": "not_built", "detail": f"{name} is built in {NOT_BUILT[name]}; "
-                "nothing was done."}
-    return run
+def _items(ctx: ScoutContext, ids: list[str] | None) -> list[tuple[Lead, Record | None]]:
+    """Leads with their opportunity or organisation, for compare and draft_handoff. An id
+    is a lead id, an opportunity id or number, or an organisation id. With no ids: the
+    kept leads of the brief the user is looking at."""
+    brief_leads: list[Lead] = []
+    if ctx.brief_id and (got := ctx.service.get(ctx.brief_id)):
+        brief_leads = got[1]
+    if not ids:
+        kept = [x for x in brief_leads if x.status == "kept"]
+        if not kept:
+            raise ToolError("no kept leads: pass the ids of the leads to use (opportunity ids "
+                            "from search_opportunities, or lead ids from get_org_signals)")
+        chosen = kept
+    else:
+        pool = brief_leads + [x for x in ctx.route_b or [] if x not in brief_leads]
+        chosen = []
+        for i in ids:
+            key = i.strip()
+            hit = next((x for x in pool if key in (
+                x.id, x.record_id, short_id(x), x.record_id.rsplit("/", 1)[-1],
+                x.record_id.removeprefix("grants_gov:"))), None)
+            if hit is None:
+                o = _opportunity(ctx, key)  # an opportunity outside any brief
+                hit = Lead(id=f"scout:{o.opportunity_number}", source=o.source,
+                           source_url=o.source_url, fetched_at=o.fetched_at, brief_id="scout",
+                           route="A", record_id=o.id)
+            if hit not in chosen:
+                chosen.append(hit)
+    with ctx.service.repo() as r:
+        return [(x, r.get(Opportunity if x.route == "A" else Organisation, x.record_id))
+                for x in chosen]
+
+
+def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
+    from perch import compare as cmp
+
+    items = _items(ctx, ids)
+    rows = []
+    for lead, rec in items:
+        row = (cmp.route_a_row(lead, rec, ctx.as_of) if lead.route == "A"
+               else cmp.route_b_row(lead, rec))
+        cells = {}
+        for key, label in cmp.COLUMNS:
+            c = row.cells[key]
+            cells[label] = f"{c.text} ({c.note})" if c.note else c.text
+        out = {"route": row.route, "title": row.title,
+               "record": ctx.see(rec) if rec else row.record_id, **cells}
+        if lead.route == "B":
+            out["lead"] = ctx.see(lead)  # holds the code-written signal sentences
+        rows.append(out)
+    return {"rows": rows, "note": "Each cell is copied from the record or counted from it "
+            "by code. \"Not in the record\" means the record does not say. Industry leads "
+            "are inferred from public signals, not verified. There is no effort, IP or "
+            "likelihood column because no record states them."}
+
+
+def draft_handoff(ctx: ScoutContext, office: str | None = None,
+                  ids: list[str] | None = None) -> dict:
+    from perch.offices import OFFICES, for_route
+    from perch.skills.handoff import draft_handoff as draft
+
+    items = _items(ctx, ids)
+    routes = {x.route for x, _ in items}
+    if office:
+        off = OFFICES[office]
+        items = [(x, rec) for x, rec in items if x.route == off.route]
+        if not items:
+            raise ToolError(f"none of these leads goes to {off.name}: grants go to "
+                            f"{for_route('A').name}, industry leads to {for_route('B').name}")
+    elif len(routes) > 1:
+        raise ToolError(f"grants go to {for_route('A').name} and industry leads to "
+                        f"{for_route('B').name}: call once per office")
+    else:
+        off = for_route(routes.pop())
+    res = _researcher(ctx, None)
+    wids = list(dict.fromkeys(c for x, _ in items for c in x.cited_ids if c.startswith("W")))
+    if not wids:  # leads from outside a brief cite no papers: use the profile's top ones
+        p = _profile(ctx, None)
+        wids = [short for t in p.threads for short in
+                (w.rsplit("/", 1)[-1] for w in t.work_ids[:2])][:6]
+    with ctx.service.repo() as r:
+        papers = [w for w in (r.get_any(f"https://openalex.org/{c}") for c in wids) if w]
+    s = ctx.service
+    d = draft(off, res, items, papers, s._audited("handoff", s.models.handoff_spec))
+    for x, rec in items:
+        if rec:
+            ctx.see(rec)
+        if x.route == "B":
+            ctx.see(x)
+    return {"office": off.name, "office_page": off.url, "to": "", "subject": d.subject,
+            "body": d.body, "opening_withheld": d.flagged,
+            "note": "A draft only. Perch never sends it. Show it to the user to edit and send; "
+            "the To line is for them to fill in from the office page."}
 
 
 # --- schemas (strict: no extra properties; optional ones are left out of "required") ---
@@ -357,12 +445,22 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
                          "opportunity record and their papers, checked by the citation "
                          "validator.", _obj({"opportunity_id": OPP}, ["opportunity_id"])),
                     explain_fit),
-    "compare": (Tool("compare", "Compare opportunities side by side (not built yet).",
-                     _obj({"opportunity_ids": STRS}, ["opportunity_ids"])), not_built("compare")),
-    "draft_handoff": (Tool("draft_handoff", "Draft a hand-off note to a Temple office (not "
-                           "built yet). Never sends anything.",
-                           _obj({"opportunity_id": OPP}, ["opportunity_id"])),
-                      not_built("draft_handoff")),
+    "compare": (Tool(
+        "compare",
+        "Kept or chosen leads side by side: money, close date, activity code, funding "
+        "instrument or suggested relationship, evidence and Temple office, each copied from "
+        "its record. Omit ids for the leads the user kept on the brief.",
+        _obj({"ids": {**STRS, "description": "opportunity ids (e.g. grants_gov:PAR-25-123) "
+                      "or industry lead ids from get_org_signals"}}, [])), compare),
+    "draft_handoff": (Tool(
+        "draft_handoff",
+        "Draft an email to a Temple office about leads: research_development for grants, "
+        "technology_commercialization for industry leads. Returns the draft for the user to "
+        "edit; Perch never sends anything. Omit ids for the leads the user kept.",
+        _obj({"office": {"type": "string", "enum": ["research_development",
+                                                    "technology_commercialization"]},
+              "ids": {**STRS, "description": "opportunity ids or industry lead ids"}}, [])),
+        draft_handoff),
     "get_record": (Tool("get_record", "One stored public record by id, with its fields "
                         "(dates, amounts, eligibility, description).",
                         _obj({"id": STR}, ["id"])), get_record),

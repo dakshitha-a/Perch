@@ -683,3 +683,6 @@ table.compare { border-collapse: collapse; width: 100%; min-width: 640px; font-s
 textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 .model-note { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; margin: 0; }
 .handoff .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.scout-draft { margin-top: 8px; }
+.scout-draft summary { cursor: pointer; font-weight: 600; min-height: 32px; }
+.draft-text { white-space: pre-wrap; word-break: break-word; font: 14px/1.5 var(--sans); background: var(--leaf); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; margin: 8px 0; max-height: 360px; overflow: auto; }

@@ -139,11 +139,22 @@ def test_structured_fallback_for_models_without_tool_calling(service):
     assert s.status == "failed"
 
 
-def test_tools_from_later_sessions_say_so(service):
+def test_compare_and_draft_handoff_use_records_and_send_nothing(service):
+    from perch.scout.tools import ToolError
+
     c = ctx(service)
-    for name in ("compare", "draft_handoff"):
-        args = {"opportunity_ids": [OPP]} if name == "compare" else {"opportunity_id": OPP}
-        assert TOOLS[name][1](c, **args)["status"] == "not_built"
+    with pytest.raises(ToolError, match="no kept leads"):
+        TOOLS["compare"][1](c)
+    out = TOOLS["compare"][1](c, ids=[OPP])
+    row = out["rows"][0]
+    assert row["record"] == OPP and row["Closes"].startswith("2026-11-17")
+    assert row["Money"] == "Not in the record" and row["Office"] == "Research Development"
+    d = TOOLS["draft_handoff"][1](c, ids=["PAR-25-268"])
+    assert d["office"] == "Research Development" and d["to"] == ""
+    assert "PAR-25-268" in d["body"] and "closes 2026-11-17" in d["body"]
+    assert d["opening_withheld"] is True  # the fake model gives nothing usable
+    with pytest.raises(ToolError, match="none of these leads"):
+        TOOLS["draft_handoff"][1](c, office="technology_commercialization", ids=[OPP])
 
 
 def _brief_with_route_b(service):

@@ -125,8 +125,9 @@ def summary() -> Path:
         rs = list(csv.DictReader(p.open()))
         if not rs:
             continue
-        s10 = [r for r in rs if not r["task"].startswith("b")]  # the 20 S10 tasks
+        s10 = [r for r in rs if r["task"][0] in "tr"]  # the 20 S10 tasks
         rb = [r for r in rs if r["task"].startswith("b")]  # Route B tasks, S11
+        ch = [r for r in rs if r["task"][0] in "ch"]  # compare and hand-off tasks, S12
         task = [r for r in s10 if r["kind"] == "task"]
         rest = [r for r in s10 if r["kind"] == "restraint"]
         calls = sum(int(r["calls"]) for r in rs)
@@ -139,6 +140,7 @@ def summary() -> Path:
             "completed": f"{yes(s10)}/{len(s10)}", "tasks_completed": f"{yes(task)}/{len(task)}",
             "restraint": f"{yes(rest)}/{len(rest)}",
             "route_b_completed": f"{yes(rb)}/{len(rb)}" if rb else "",
+            "compare_handoff_completed": f"{yes(ch)}/{len(ch)}" if ch else "",
             "wrong_tool_rate": f"{wrong / calls:.3f}" if calls else "0",
             "wrong_calls": f"{wrong}/{calls}", "outside_allowlist": unknown,
             "flagged": sum(r["flagged"] == "True" for r in rs),
