@@ -51,6 +51,26 @@ def test_user_constraints():
     assert check(opp(activity_code="R21"), c) == ["activity code R21 excluded by the user"]
 
 
+def test_follow_up_constraints():
+    c = Constraints(as_of=C.as_of, max_amount=200_000, closes_by=date(2026, 12, 31),
+                    activity_codes=["R21", "R03"], keywords=["imaging"],
+                    exclude_keywords=["clinical trial"])
+    good = dict(activity_code="R21", award_ceiling=150_000, close_date=date(2026, 12, 1),
+                title="SYNTHETIC imaging methods (R21)")
+    assert check(opp(**good), c) == []
+    assert check(opp(**{**good, "award_ceiling": None}), c) == []  # unknown amount: kept
+    assert check(opp(**{**good, "award_ceiling": 250_000}), c) == [
+        "award ceiling 250,000 is above 200,000"]
+    assert check(opp(**{**good, "close_date": date(2027, 2, 5)}), c) == [
+        "closes 2027-02-05, after 2026-12-31"]
+    assert check(opp(**{**good, "activity_code": "R01"}), c) == [
+        "activity code R01 not in the chosen codes"]
+    assert check(opp(**{**good, "title": "SYNTHETIC genomics (R21)"}), c) == [
+        "none of the chosen keywords in the title or description"]
+    assert check(opp(**{**good, "description": "Clinical Trial Required"}), c) == [
+        "mentions excluded keyword 'clinical trial'"]
+
+
 def test_split_keeps_order_and_reasons():
     a, b = opp(id="a"), opp(id="b", close_date=date(2020, 1, 1))
     ok, rejected = split([a, b], C)

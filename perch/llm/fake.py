@@ -42,7 +42,7 @@ class FakeProvider(Provider):
              tools: list[Tool] | None = None, schema: JsonSchema | None = None,
              max_tokens: int = 2048, logprobs: int = 0,
              cache_system: bool = False) -> ChatResult:
-        self.calls.append({"messages": messages, "system": system, "schema": schema,
+        self.calls.append({"messages": list(messages), "system": system, "schema": schema,
                            "tools": tools, "logprobs": logprobs})
         if self.responder:
             reply = self.responder(messages, system, schema)

@@ -43,6 +43,13 @@ class Constraints:
     as_of: date
     include_forecasted: bool = False
     min_amount: float | None = None  # drop if the record's ceiling is below this
+    # Drop if the record's ceiling is above this. A record with no ceiling is kept: the
+    # amount is unknown, and Scout says so rather than guess (S10).
+    max_amount: float | None = None
+    closes_by: date | None = None  # drop if the record closes after this date
+    activity_codes: list[str] = field(default_factory=list)  # keep only these, exact
+    keywords: list[str] = field(default_factory=list)  # keep if any is in title or description
+    exclude_keywords: list[str] = field(default_factory=list)
     agencies: list[str] = field(default_factory=list)  # keep only these (substring match)
     exclude_agencies: list[str] = field(default_factory=list)
     exclude_activity: list[str] = field(default_factory=list)  # extra codes, exact
@@ -84,6 +91,18 @@ def check(o: Opportunity, c: Constraints) -> list[str]:
                 reasons.append(why)
     if c.min_amount is not None and o.award_ceiling is not None and o.award_ceiling < c.min_amount:
         reasons.append(f"award ceiling {o.award_ceiling:,.0f} is below {c.min_amount:,.0f}")
+    if c.max_amount is not None and o.award_ceiling is not None and o.award_ceiling > c.max_amount:
+        reasons.append(f"award ceiling {o.award_ceiling:,.0f} is above {c.max_amount:,.0f}")
+    if c.closes_by and o.close_date and o.close_date > c.closes_by:
+        reasons.append(f"closes {o.close_date.isoformat()}, after {c.closes_by.isoformat()}")
+    if c.activity_codes and code not in c.activity_codes:
+        reasons.append(f"activity code {code or 'none'} not in the chosen codes")
+    text = f"{o.title} {o.description or ''}".lower()
+    if c.keywords and not any(k.lower() in text for k in c.keywords):
+        reasons.append("none of the chosen keywords in the title or description")
+    hit = [k for k in c.exclude_keywords if k.lower() in text]
+    if hit:
+        reasons.append(f"mentions excluded keyword {hit[0]!r}")
     if c.agencies and not any(a.lower() in o.agency.lower() for a in c.agencies):
         reasons.append(f"agency {o.agency} not in the chosen agencies")
     if any(a.lower() in o.agency.lower() for a in c.exclude_agencies):

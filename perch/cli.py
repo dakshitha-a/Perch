@@ -13,8 +13,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Callable, Sequence
+from datetime import date
 from pathlib import Path
 
 from perch import awards as aw
@@ -333,6 +335,35 @@ def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     return 0
 
 
+def cmd_scout(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
+    from perch.scout import make_scout
+    from perch.scout.log import ScoutLog, replay
+    from perch.scout.tools import ScoutContext
+    from perch.service import BriefService, Clients, default_models
+
+    data = Path(args.db).parent
+    service = BriefService(args.db, default_models(args.models == "fake", data),
+                           Clients(openalex=default_client), Path(args.overrides))
+    log = ScoutLog(data / "logs/scout.jsonl")
+    if args.action == "replay":
+        rows = replay(log, args.target, lambda r, a: ScoutContext(
+            service, date.fromisoformat(a), r))
+        for row in rows:
+            mark = {True: "same result", False: "DIFFERENT result", None: row.get("note")}
+            print(f"turn {row['turn']}  {row['tool']:<22} {mark[row['match']]}")
+        return 0 if all(r["match"] is not False for r in rows) else 1
+    as_of = date.fromisoformat(args.as_of) if args.as_of else None
+    scout = make_scout(service, args.target, as_of=as_of, brief_id=args.brief, llm=args.llm,
+                       mode="run", policy=args.policy, log=log)
+    s = scout.start(args.question)
+    for c in s.cards:
+        print(f"[{c.status}] {c.tool}({json.dumps(c.arguments)}): {c.detail}")
+    print()
+    print(s.answer if s.answer else f"(no answer: {'; '.join(s.errors)})")
+    print(f"\nsession {s.id} · {s.model} · {s.policy} · {s.tokens:,} tokens · ${s.usd:.4f}")
+    return 0 if s.answer else 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="perch", description="See every route to fund your work.")
     p.add_argument("--db", default=None, help=f"SQLite store (default $PERCH_DB or {DEFAULT_DB})")
@@ -372,6 +403,17 @@ def build_parser() -> argparse.ArgumentParser:
                    "ollama:qwen3.8:27b (default: PERCH_LLM_<ROLE>)")
     b.add_argument("--grounder", choices=["minicheck", "fake", "none"], default="minicheck",
                    help="validator layer 2")
+    sc = sub.add_parser("scout", help="ask Scout a question (runs every step), or replay a "
+                        "session's tool calls")
+    sc.add_argument("action", choices=["ask", "replay"])
+    sc.add_argument("target", help="ask: OpenAlex author id; replay: session id")
+    sc.add_argument("question", nargs="?", default="")
+    sc.add_argument("--brief", default=None, help="brief id the question is about")
+    sc.add_argument("--as-of", default=None, help="date, YYYY-MM-DD (default today)")
+    sc.add_argument("--llm", default=None, help="provider spec (default PERCH_LLM_SCOUT)")
+    sc.add_argument("--policy", choices=["native", "structured"], default=None,
+                    help="structured: JSON steps for models that tool-call poorly")
+    sc.add_argument("--models", choices=["local", "fake"], default="local")
     sv = sub.add_parser("serve", help="run the HTTP API")
     sv.add_argument("--host", default="127.0.0.1")
     sv.add_argument("--port", type=int, default=8100)
@@ -393,7 +435,7 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory
     args.grants_factory = grants_factory
     commands = {"resolve": cmd_resolve, "fetch": cmd_fetch, "profile": cmd_profile,
-                "brief": cmd_brief, "serve": cmd_serve}
+                "brief": cmd_brief, "serve": cmd_serve, "scout": cmd_scout}
     with (client_factory or default_client)() as client:
         return commands[args.command](args, client)
 
