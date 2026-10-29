@@ -31,6 +31,21 @@ from perch.llm.base import (
 )
 from perch.llm.budget import Budget
 
+
+def wire_message(m: Message) -> dict:
+    """A Message as the Messages API wants it: tool calls as tool_use blocks on the
+    assistant turn, results as tool_result blocks on the next user turn."""
+    if not m.tool_calls and not m.tool_results:
+        return {"role": m.role, "content": m.content}
+    blocks: list[dict] = [{"type": "tool_result", "tool_use_id": r.call_id, "content": r.content,
+                           "is_error": r.is_error} for r in m.tool_results]
+    if m.content:
+        blocks.append({"type": "text", "text": m.content})
+    blocks += [{"type": "tool_use", "id": c.id, "name": c.name, "input": c.arguments}
+               for c in m.tool_calls]
+    return {"role": m.role, "content": blocks}
+
+
 DEFAULT_MODEL = "claude-sonnet-5-5"  # SPEC section 7: skill 2 default is Claude Sonnet via API
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
@@ -63,7 +78,7 @@ class AnthropicProvider(Provider):
              max_tokens: int = 16000, logprobs: int = 0,
              cache_system: bool = False) -> ChatResult:
         kw: dict = {"model": self.model, "max_tokens": max_tokens,
-                    "messages": [{"role": m.role, "content": m.content} for m in messages]}
+                    "messages": [wire_message(m) for m in messages]}
         if system:
             block: dict = {"type": "text", "text": system}
             if cache_system:

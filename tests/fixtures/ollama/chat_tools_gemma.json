@@ -1,0 +1,145 @@
+{
+ "request_1": {
+  "model": "gemma4:26b-a4b",
+  "messages": [
+   {
+    "role": "system",
+    "content": "You answer only from records fetched with tools."
+   },
+   {
+    "role": "user",
+    "content": "What is the close date of record grants.gov:SYNTHETIC-1?"
+   }
+  ],
+  "stream": false,
+  "think": false,
+  "options": {
+   "temperature": 0,
+   "seed": 7,
+   "num_predict": 2048
+  },
+  "tools": [
+   {
+    "type": "function",
+    "function": {
+     "name": "get_record",
+     "description": "Fetch a record by id",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "id"
+      ]
+     }
+    }
+   }
+  ]
+ },
+ "response_1": {
+  "model": "gemma4:26b-a4b",
+  "created_at": "2026-10-29T15:42:46.759005836Z",
+  "message": {
+   "role": "assistant",
+   "content": "",
+   "tool_calls": [
+    {
+     "id": "call_1spfzqfr",
+     "function": {
+      "index": 0,
+      "name": "get_record",
+      "arguments": {
+       "id": "grants.gov:SYNTHETIC-1"
+      }
+     }
+    }
+   ]
+  },
+  "done": true,
+  "done_reason": "stop",
+  "total_duration": 22006981033,
+  "load_duration": 21672347734,
+  "prompt_eval_count": 86,
+  "prompt_eval_duration": 190787000,
+  "eval_count": 24,
+  "eval_duration": 139368000
+ },
+ "request_2": {
+  "model": "gemma4:26b-a4b",
+  "messages": [
+   {
+    "role": "system",
+    "content": "You answer only from records fetched with tools."
+   },
+   {
+    "role": "user",
+    "content": "What is the close date of record grants.gov:SYNTHETIC-1?"
+   },
+   {
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [
+     {
+      "function": {
+       "name": "get_record",
+       "arguments": {
+        "id": "grants.gov:SYNTHETIC-1"
+       }
+      }
+     }
+    ]
+   },
+   {
+    "role": "tool",
+    "tool_name": "get_record",
+    "content": "{\"id\": \"grants.gov:SYNTHETIC-1\", \"source\": \"SYNTHETIC\", \"title\": \"SYNTHETIC test opportunity\", \"close_date\": \"2027-02-05\"}"
+   }
+  ],
+  "stream": false,
+  "think": false,
+  "options": {
+   "temperature": 0,
+   "seed": 7,
+   "num_predict": 2048
+  },
+  "tools": [
+   {
+    "type": "function",
+    "function": {
+     "name": "get_record",
+     "description": "Fetch a record by id",
+     "parameters": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "id"
+      ]
+     }
+    }
+   }
+  ]
+ },
+ "response_2": {
+  "model": "gemma4:26b-a4b",
+  "created_at": "2026-10-29T15:42:47.624659105Z",
+  "message": {
+   "role": "assistant",
+   "content": "The close date of record grants.gov:SYNTHETIC-1 is 2027-02-05."
+  },
+  "done": true,
+  "done_reason": "stop",
+  "total_duration": 863730857,
+  "load_duration": 644200160,
+  "prompt_eval_count": 168,
+  "prompt_eval_duration": 73300000,
+  "eval_count": 32,
+  "eval_duration": 142212000
+ }
+}

@@ -26,6 +26,20 @@ from perch.llm.base import (
 )
 
 
+def wire_messages(m: Message) -> list[dict]:
+    """Tool results become "tool" role messages keyed by call id; tool calls ride on the
+    assistant turn with their arguments as JSON text."""
+    out = [{"role": "tool", "tool_call_id": r.call_id, "content": r.content}
+           for r in m.tool_results]
+    if m.content or not m.tool_results:
+        msg: dict = {"role": m.role, "content": m.content}
+        if m.tool_calls:
+            msg["tool_calls"] = [{"id": c.id, "type": "function", "function": {
+                "name": c.name, "arguments": json.dumps(c.arguments)}} for c in m.tool_calls]
+        out.append(msg)
+    return out
+
+
 class OpenAICompatProvider(Provider):
     name = "openai"
     capabilities = frozenset({"tools", "schema", "logprobs"})
@@ -47,7 +61,7 @@ class OpenAICompatProvider(Provider):
              max_tokens: int = 2048, logprobs: int = 0,
              cache_system: bool = False) -> ChatResult:
         msgs = ([{"role": "system", "content": system}] if system else []) + [
-            {"role": m.role, "content": m.content} for m in messages]
+            w for m in messages for w in wire_messages(m)]
         body: dict = {"model": self.model, "messages": msgs, "temperature": 0,
                       "seed": self.seed, "max_tokens": max_tokens}
         if schema:

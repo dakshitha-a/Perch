@@ -19,11 +19,13 @@ from perch.llm.base import (
     TokenChoice,
     Tool,
     ToolCall,
+    ToolResult,
     Usage,
 )
 
 __all__ = ["ChatResult", "Message", "Provider", "ProviderError", "Refusal", "TokenChoice",
-           "Tool", "ToolCall", "Usage", "cost_usd", "get_provider", "provider_for_role"]
+           "Tool", "ToolCall", "ToolResult", "Usage", "cost_usd", "get_provider",
+           "provider_for_role"]
 
 ROLES = ("profile_summary", "fit_explainer", "handoff", "scout", "decide")
 # Fallback when no profile applies; the chat model per profile is in perch/profiles.py.

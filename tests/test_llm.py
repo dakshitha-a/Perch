@@ -1,17 +1,19 @@
 """Provider layer: adapters against mocked HTTP shaped like live responses, registry, cost."""
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import httpx
 import pytest
 
-from perch.llm import Message, Tool, cost_usd, get_provider, spec_for_role
-from perch.llm.anthropic_provider import AnthropicProvider
+from perch.llm import Message, Tool, ToolCall, ToolResult, cost_usd, get_provider, spec_for_role
+from perch.llm.anthropic_provider import AnthropicProvider, wire_message
 from perch.llm.base import Refusal
 from perch.llm.fake import FakeProvider
 from perch.llm.ollama import OllamaProvider
 from perch.llm.openai_compat import OpenAICompatProvider
+from perch.llm.openai_compat import wire_messages as openai_wire
 
 SCHEMA = {"type": "object", "properties": {"answer": {"type": "string"}}, "required": ["answer"]}
 TOOL = Tool("get_record", "Fetch a record by id",
@@ -41,6 +43,45 @@ def test_ollama_request_and_parse():
     assert r.tool_calls[0].name == "get_record" and r.tool_calls[0].arguments == {"id": "R1"}
     assert [t.token for t in r.top_logprobs[0]] == ["Yes", "No"]
     assert cost_usd(r) == 0.0
+
+
+FIXTURE = Path(__file__).parent / "fixtures/ollama/chat_tools_gemma.json"
+
+
+def test_ollama_tool_round_trip_matches_live_fixture():
+    """A live gemma4:26b-a4b exchange (SYNTHETIC record): the tool call parses, and the
+    follow-up request Perch builds has the shape the live server accepted."""
+    live = json.loads(FIXTURE.read_text())
+    seen = []
+
+    def handler(req):
+        seen.append(json.loads(req.content))
+        return httpx.Response(200, json=live[f"response_{len(seen)}"])
+
+    p = OllamaProvider("gemma4:26b-a4b", transport=httpx.MockTransport(handler))
+    user = Message("user", live["request_1"]["messages"][1]["content"])
+    r1 = p.chat([user], system=live["request_1"]["messages"][0]["content"], tools=[TOOL])
+    assert [(c.name, c.arguments) for c in r1.tool_calls] == [
+        ("get_record", {"id": "grants.gov:SYNTHETIC-1"})]
+    result = ToolResult(r1.tool_calls[0].id, "get_record",
+                        live["request_2"]["messages"][3]["content"])
+    msgs = [user, Message("assistant", r1.text, tool_calls=r1.tool_calls),
+            Message("user", "", tool_results=[result])]
+    r2 = p.chat(msgs, system=live["request_1"]["messages"][0]["content"], tools=[TOOL])
+    assert seen[1] == live["request_2"]
+    assert "2027-02-05" in r2.text
+
+
+def test_tool_turns_on_the_wire_for_anthropic_and_openai():
+    call = ToolCall("c1", "get_record", {"id": "R1"})
+    asked = Message("assistant", "", tool_calls=[call])
+    answered = Message("user", "", tool_results=[ToolResult("c1", "get_record", "{}", True)])
+    assert wire_message(asked) == {"role": "assistant", "content": [
+        {"type": "tool_use", "id": "c1", "name": "get_record", "input": {"id": "R1"}}]}
+    assert wire_message(answered)["content"] == [
+        {"type": "tool_result", "tool_use_id": "c1", "content": "{}", "is_error": True}]
+    assert openai_wire(asked)[0]["tool_calls"][0]["function"]["arguments"] == '{"id": "R1"}'
+    assert openai_wire(answered) == [{"role": "tool", "tool_call_id": "c1", "content": "{}"}]
 
 
 def test_openai_compat_request_and_parse():

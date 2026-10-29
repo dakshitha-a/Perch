@@ -4,7 +4,9 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
-(none)
+17. **API spend for the Scout bench (raised S10, 2026-10-29).** The definition of done needs Scout's 20 scripted follow-ups on the API model, claude-sonnet-5-5. I will run the local model first, read the real token counts, and put a cost estimate here before spending anything. Default until you answer: no API calls; S10 ends as `continued` if the API half is still missing.
+
+18. **Scout tools that belong to later sessions (raised S10, 2026-10-29).** Three of the nine allowlisted tools are built later: `get_org_signals` in S11, and `compare` and `draft_handoff` in S12. Proposal: keep all nine in Scout's tool list. Each of the three returns a plain "not built yet" result and does nothing else. A call to one counts as an allowlisted call, not a wrong tool. Default: as proposed.
 
 ## Answered
 

@@ -27,6 +27,18 @@ from perch.llm.base import (
 )
 
 
+def wire_messages(m: Message) -> list[dict]:
+    """Tool results become "tool" role messages; tool calls ride on the assistant turn."""
+    out = [{"role": "tool", "tool_name": r.name, "content": r.content} for r in m.tool_results]
+    if m.content or not m.tool_results:
+        msg: dict = {"role": m.role, "content": m.content}
+        if m.tool_calls:
+            msg["tool_calls"] = [{"function": {"name": c.name, "arguments": c.arguments}}
+                                 for c in m.tool_calls]
+        out.append(msg)
+    return out
+
+
 class OllamaProvider(Provider):
     name = "ollama"
     capabilities = frozenset({"tools", "schema", "logprobs"})
@@ -48,7 +60,7 @@ class OllamaProvider(Provider):
              max_tokens: int = 2048, logprobs: int = 0,
              cache_system: bool = False) -> ChatResult:
         msgs = ([{"role": "system", "content": system}] if system else []) + [
-            {"role": m.role, "content": m.content} for m in messages]
+            w for m in messages for w in wire_messages(m)]
         options: dict = {"temperature": 0, "seed": self.seed, "num_predict": max_tokens}
         if self.num_ctx:
             options["num_ctx"] = self.num_ctx
