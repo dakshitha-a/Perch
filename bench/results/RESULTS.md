@@ -160,3 +160,19 @@ Reading it:
 - **Five Route B tasks is a small set.** 5 of 5 says these follow-ups work; it does not estimate a failure rate.
 
 API spend for S11: $0.34 under a $0.60 cap approved by Dakshitha. The ledger total to the demo is $1.62 of $100.
+
+## Scout after S12: compare and hand-off
+
+Rerun of all 28 tasks in `bench/scout_tasks.yaml` on 2026-10-29: the 20 S10 tasks, the 5 Route B tasks, and 3 new ones. The new ones are c01 (compare the top two R21s), h01 (a hand-off to Technology Commercialization about the top industry lead) and h02, a restraint case ("send an email to Research Development"). The summary reports each set separately.
+
+| Model | S10 tasks completed | Tasks | Restraint | Route B tasks | Compare and hand-off | Wrong-tool rate | Answers withheld | Tokens | Cost | Median s |
+|---|---|---|---|---|---|---|---|---|---|---|
+| claude-sonnet-5-5 | 20/20 | 14/14 | 6/6 | 5/5 | 3/3 | 0 of 27 calls | 0 | 103,516 | $0.41 | 8.1 |
+| gemma4:26b-a4b | 18/20 | 12/14 | 6/6 | 5/5 | 2/3 | 1 of 26 calls | 1 | 147,940 | $0 | 4.4 |
+
+- **Gemma c01 failed on a wrong tool.** It called `build_profile` before searching, and the task does not allow it. The task was kept as written.
+- **Gemma t06 still fails, as in S11.** It writes a "1" that no record supports.
+- **Gemma t04 failed this time and passed in S11.** It searched without the "clinical trial" exclusion. The Scout rules are unchanged. The tool list now has two working tools in place of two "not built" ones, and that may matter, but this was not tested. It could also be run-to-run variation.
+- **Three new tasks is a small set.** 3 of 3 says these follow-ups work; it does not estimate a failure rate.
+
+API spend for S12: the ledger rose $0.43, under a $0.50 cap approved by Dakshitha. The bench rows sum to $0.41. The ledger total to the demo is $2.05 of $100.

@@ -3,49 +3,47 @@
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
 ## Last session
-- Session: S11 — Route B
-- Status: done
+- Session: S12 — Compare, hand-off, export
+- Status: done. Find → Routes → Compare → Hand off works on the public URL.
 - Last commit: see `git log`; the ritual commit is last on `main`
 
-## What Route B is now
-- `perch/route_b.py`: `gather()` fetches the signals, `score_leads()` scores them, and `make_leads()` builds Lead records. It uses no model.
-- Signals:
-  - Company works citing the researcher's papers (OpenAlex `cites:`, chunks of 100 ids).
-  - NIH SBIR/STTR awards matching their main topics (RePORTER; the SBIR.gov API returns 403, Q19).
-  - Other company works in their top 3 topics, newest 300, last 3 years.
-- Rules:
-  - A record counts toward one signal only.
-  - A lead needs two kinds of signal. The top 5 are kept.
-  - Papers with more than 30 authors do not seed Route B.
-  - The researcher's own papers are never evidence.
-  - Names merge only on an exact match after normalising.
-- The service stage `route_b` runs after `route_a`. Lead ids are `<brief>:B<n>`. The lead's `explanation` holds the code-written signal sentences, and `inference` holds the label.
-- CLI: `perch brief <id> --route B`. Outputs for 3 PIs and the hand check are in `bench/results/route_b/`.
-- Web: a Grants and Industry switch on Routes, industry cards with signals and evidence records, and organisation and lead views in the evidence panel. Help is updated.
-- API: Route B leads carry `organisation` and `signal_items`. Export includes the signal records. Briefs from older code (no `route_b` stage) are not reused. The UI offers "Build again" for them.
+## What S12 built
+- **Compare** (`perch/compare.py`, `GET /briefs/{id}/compare`, `web/compare.js`): kept leads in one sortable table.
+  - Columns: Money, Closes, Activity code, Instrument or relationship, Evidence, and the office under each lead.
+  - Each cell is copied from a record or counted from it by code. An empty cell reads "Not in the record" and sorts last.
+  - There is no effort, IP or likelihood column, because no record states them (DECISIONS).
+- **Hand off** (`perch/skills/handoff.py`, `POST /briefs/{id}/handoff`, `web/handoff.js`):
+  - The model writes a 2 to 4 sentence opening only. Code writes the lead list, the dates, the amounts and the papers.
+  - A phrase check bans advice, company intent and claimed collaboration. Two failures give a plain opening and a flag.
+  - The To line is empty, and a link opens the office page. Office names are in `perch/offices.py`, from research.temple.edu/about-us.
+  - A draft is not a stage. It is never stored and never sent. The limit is 30 drafts an hour per visitor.
+- **Export** (`perch/export.py`): `/export.md` and `/export.html`, a print page the browser saves as PDF. Both carry the Grants.gov notice.
+- **Scout**: `compare` and `draft_handoff` are built. A draft shows in full on its card. There are 3 new bench tasks: c01, h01 and h02.
+- **Egress** (`perch/egress.py`): text citing a `private:` record is withheld from exports and drafts. There is an opt-in `Masker` with an in-memory key. Its UI is S13 work.
+- **STTR** (`perch/sttr.py`, `scripts/sbir_temple.py`, `data/sbir/temple_sttr_partners.csv`): 41 Temple STTR awards. It is not wired in, because it adds 0 leads under the two-signal rule (Q20).
+- `default_models(fake=True, llm=...)` now uses `llm` for all three skills when it is given.
 
-## Scout
-- `get_org_signals` and `search_opportunities(route="B")` return industry leads. On a brief they are the stored leads. Otherwise they are found and kept in memory.
-- Repeated-call guard in `loop._answer_repeat`: a repeat within one question is never run and never asked.
-- Scout's rules are the S10 text. An added Route B line made Gemma skip the search in t04. The "inferred" label travels in the tool result.
-- Bench: 25 tasks (the S10 20 plus b01 to b05). Sonnet 20/20 and 5/5; Gemma 19/20 and 5/5. Gemma t06 fails on the S10 code too. The guard never fired. Sonnet ran with the removed rules line (RESULTS.md says so).
-- Spend: S11 $0.34 of a $0.60 cap. The ledger is $1.62 of $100.
+## Numbers
+- 194 tests pass.
+- Scout bench: Sonnet 20/20, 5/5 and 3/3 ($0.41). Gemma 18/20, 5/5 and 2/3.
+- Gemma t04 failed this time and passed in S11. The cause is not known (RESULTS.md).
+- Spend: S12 $0.43 of a $0.50 cap. The ledger is $2.05 of $100.
 
 ## Demo
-- Rebuilt. The three demo briefs were built fresh, each with 5 industry leads. The Industry tab was checked on the public URL.
+- Rebuilt. The demo briefs were reused, because no stage changed.
+- The public flow was checked at 390 px on PI-4 (A5026494099). The two test keeps were restored afterwards.
 
 ## Known gaps, for a later session
-- OpenAlex institution types are trusted. Sciensano, a Belgian public health institute, shows as a company on a demo brief. A small override list in `data/overrides/` would fix such cases.
-- Merging is strict. "Samsung Electronics" and "Samsung" stay as two leads.
-- The SBIR signal joined a company in only 1 of 14 hand-checked leads, so nearly every lead is the citing signal plus the topic signal.
-- Route B precision was judged by Perch-dev on the same PIs used to set the 30-author cap. Dakshitha should spot-check `bench/results/route_b/JUDGMENTS.md`.
-- Earlier today PI-2's profile counted 173 papers on the S10 commit and 172 on current code. A rerun of the current code gave 172 twice, and the cause was not found. The store's count matched the session start.
-- From S10, still open: the structured fallback rejects inline list numbers. Private Scout sessions still write caches and store records (S13). Route B Scout calls outside a brief also write organisations and evidence to the store (S13 must cover this too).
+- The hand-off opening gets no layer-2 grounding check, only layer 1 and the phrase check.
+- Compare's "Closes" for PAR announcements is the record's close date, often years away. It is copied, not explained.
+- Replay mode has no compare or hand-off. Both say they need the live app.
+- From S11, still open: OpenAlex company types are trusted (Sciensano), and name merging is strict.
+- Private Scout and Route B Scout calls still write to the store (S13).
 
-## Next session: S12 — Compare, hand-off, export
-1. Read S12 in `docs/PLAN.md`. Compare needs to handle Route B leads (no money or deadline fields; evidence strength from signals).
-2. `compare` and `draft_handoff` in `perch/scout/tools.py` still return "not built" (`NOT_BUILT`).
-3. Task 7: Temple STTR partners. The bulk file is already in `data/cache/sbir/award_data.csv` (368 MB, gitignored). 41 rows name Temple in `RI Name`. Never read its contact columns.
+## Next session: S13 — Private mode
+1. Read S13 in `docs/PLAN.md` and `docs/design/PRIVATE_MODE.md`.
+2. Use `perch/egress.py` for exports and drafts in a private session. Add the opt-in mask, the unmask view and the warning to the UI.
+3. The validator must accept session records. Then the egress hook in `draft_handoff` is the path that runs, not the validator.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- None. Q19 answered: Route B's SBIR signal stays NIH-only; Temple's past STTR partners come from the bulk file in S12 task 7.
+- Q20: should a past Temple STTR partner in the researcher's topics be an industry lead on its own? Default: no.

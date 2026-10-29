@@ -26,6 +26,8 @@ Required for the final deck's "AI use declaration" slide. One row per tool per p
 | 2026-10-29 | Claude Code CLI (Claude Opus 5.5), session Perch-dev | 2.1.312 (Claude Code) | S8: back-test set builder, corpus fetcher, back-test, bench matrix, decision-model adapter, Keep bar | Dakshitha (directing Perch-dev) |
 | 2026-10-29 | Claude Code CLI (Claude Opus 5.5), session Perch-dev | 2.1.312 (Claude Code) | S10: Scout agent loop, tools, log and replay, Scout API and Ask Scout tab, Scout bench | Dakshitha (directing Perch-dev) |
 | 2026-10-29 | gemma4:26b-a4b and qwen3:8b (Ollama, already on the node) | Ollama digests 001e5dafc3c7, 500a1f067a9f | S10 Scout bench: 20 scripted follow-ups on public records, native tool calling and the structured fallback, local | Perch-dev for Dakshitha |
+| 2026-10-29 | Claude Code CLI (Claude Opus 5.5), session Perch-dev | 2.1.312 (Claude Code) | S12: compare view, skill 3 hand-off drafter, Markdown and print export, Scout compare and draft_handoff tools, egress filter, Temple STTR table | Dakshitha (directing Perch-dev) |
+| 2026-10-29 | gemma4:26b-a4b (Ollama) and claude-sonnet-5-5 (Anthropic API) | Ollama digest 001e5dafc3c7; API model id | S12: hand-off drafts (skill 3) on the demo and the Scout bench rerun with compare and hand-off tasks | Perch-dev for Dakshitha |
 
 Reminders:
 - Record Claude Code's version (`claude --version`) the first time it writes project code.
