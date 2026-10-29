@@ -3,37 +3,48 @@
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
 ## Last session
-- Session: S10 — Scout agent
+- Session: S11 — Route B
 - Status: done
 - Last commit: see `git log`; the ritual commit is last on `main`
 
-## What Scout is now
-- `perch/scout/`: `tools.py` holds the nine allowlisted tools; `loop.py` the loop, budget and answer check; `log.py` the log and replay; `hub.py` the API's in-memory sessions; `make_scout()` in `__init__.py` builds one.
-- Six tools wrap the pipeline. `get_org_signals`, `compare` and `draft_handoff` return "not built yet" (Q18). S11 and S12 replace their bodies in `TOOLS` and keep the names.
-- Answers pass `perch.validate.check` against the records the tools returned (`ScoutContext.seen`, short ids such as W123 and A456). Citations, list markers and numbers the user typed are removed first.
-- Two policies: native tool calls, and a structured JSON step for models without them.
-- `perch scout ask <author> "<question>"` and `perch scout replay <session>` (CLI).
-- API: `POST /briefs/{id}/scout`, `GET /scout/{sid}`, `POST /scout/{sid}/approve|skip|ask|mode`. Sessions are lost on restart. 30 questions an hour per visitor.
-- Web: Ask Scout tab (`web/scout.js`), a Help step. Checked in a browser at two widths.
-- Provider layer: `Message` carries tool calls and results. `Tool.strict` is on by default and off for Scout's tools, because strict mode made Sonnet drop filters.
-- Eligibility gained a maximum amount, close-by date, activity codes and keywords. Agency filters match names and codes.
+## What Route B is now
+- `perch/route_b.py`: `gather()` fetches the signals, `score_leads()` scores them, and `make_leads()` builds Lead records. It uses no model.
+- Signals:
+  - Company works citing the researcher's papers (OpenAlex `cites:`, chunks of 100 ids).
+  - NIH SBIR/STTR awards matching their main topics (RePORTER; the SBIR.gov API returns 403, Q19).
+  - Other company works in their top 3 topics, newest 300, last 3 years.
+- Rules:
+  - A record counts toward one signal only.
+  - A lead needs two kinds of signal. The top 5 are kept.
+  - Papers with more than 30 authors do not seed Route B.
+  - The researcher's own papers are never evidence.
+  - Names merge only on an exact match after normalising.
+- The service stage `route_b` runs after `route_a`. Lead ids are `<brief>:B<n>`. The lead's `explanation` holds the code-written signal sentences, and `inference` holds the label.
+- CLI: `perch brief <id> --route B`. Outputs for 3 PIs and the hand check are in `bench/results/route_b/`.
+- Web: a Grants and Industry switch on Routes, industry cards with signals and evidence records, and organisation and lead views in the evidence panel. Help is updated.
+- API: Route B leads carry `organisation` and `signal_items`. Export includes the signal records. Briefs from older code (no `route_b` stage) are not reused. The UI offers "Build again" for them.
 
-## Bench (bench/results/RESULTS.md, Scout section)
-- Completed of 20: Sonnet 20, Gemma 20, qwen3:8b 17 native and 12 structured. The fallback is worse than native on qwen3:8b.
-- First runs (Gemma 18, Sonnet 17) are in `bench/results/scout_first_runs/`.
-- API spend: about $0.93 under the approved $1.00 cap. Ledger total $1.25 of $100.
+## Scout
+- `get_org_signals` and `search_opportunities(route="B")` return industry leads. On a brief they are the stored leads. Otherwise they are found and kept in memory.
+- Repeated-call guard in `loop._answer_repeat`: a repeat within one question is never run and never asked.
+- Scout's rules are the S10 text. An added Route B line made Gemma skip the search in t04. The "inferred" label travels in the tool result.
+- Bench: 25 tasks (the S10 20 plus b01 to b05). Sonnet 20/20 and 5/5; Gemma 19/20 and 5/5. Gemma t06 fails on the S10 code too. The guard never fired. Sonnet ran with the removed rules line (RESULTS.md says so).
+- Spend: S11 $0.34 of a $0.60 cap. The ledger is $1.62 of $100.
 
 ## Demo
-- Rebuilt after S10 with `make demo`. Scout answered a follow-up on the demo stack with Gemma: one search, one cited lead.
+- Rebuilt. The three demo briefs were built fresh, each with 5 industry leads. The Industry tab was checked on the public URL.
 
 ## Known gaps, for a later session
-- Repeated identical calls: Sonnet's first run looped the same search up to nine times. A guard that answers a repeat call from the earlier result would stop this. It is not built, so the bench numbers describe the current code.
-- The structured fallback rejects inline list numbers ("1. … 2. …" on one line). Only line-start list markers are ignored.
-- Private Scout sessions skip the Scout log and keep the audit log in memory, but the tools still write the rerank cache, the embedding cache (`CachedEmbedder`) and store upserts. S13 must bypass these before private text reaches a tool.
+- OpenAlex institution types are trusted. Sciensano, a Belgian public health institute, shows as a company on a demo brief. A small override list in `data/overrides/` would fix such cases.
+- Merging is strict. "Samsung Electronics" and "Samsung" stay as two leads.
+- The SBIR signal joined a company in only 1 of 14 hand-checked leads, so nearly every lead is the citing signal plus the topic signal.
+- Route B precision was judged by Perch-dev on the same PIs used to set the 30-author cap. Dakshitha should spot-check `bench/results/route_b/JUDGMENTS.md`.
+- Earlier today PI-2's profile counted 173 papers on the S10 commit and 172 on current code. A rerun of the current code gave 172 twice, and the cause was not found. The store's count matched the session start.
+- From S10, still open: the structured fallback rejects inline list numbers. Private Scout sessions still write caches and store records (S13). Route B Scout calls outside a brief also write organisations and evidence to the store (S13 must cover this too).
 
-## Next session: S11 — Route B
-1. Read S11 in `docs/PLAN.md`. Tasks 4 to 6 are new: Route B in Scout, the repeated-call guard with a bench rerun, and a demo rebuild.
-2. The gaps above are now planned: the guard in S11, private Scout's cache and store writes in S13.
+## Next session: S12 — Compare, hand-off, export
+1. Read S12 in `docs/PLAN.md`. Compare needs to handle Route B leads (no money or deadline fields; evidence strength from signals).
+2. `compare` and `draft_handoff` in `perch/scout/tools.py` still return "not built" (`NOT_BUILT`).
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- None. Q18 answered: keep the three tools; S11 and S12 fill them.
+- Q19: SBIR/STTR source. The default is RePORTER only, labelled NIH-only. Should SBIR.gov's bulk file be tried later?
