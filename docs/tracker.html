@@ -108,7 +108,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S4</code> <span class="badge s-todo">todo</span><span>4/16 sessions done</span></div>
+<div class="at-a-glance"><code>S4</code> <span class="badge s-in-progress">in progress</span><span>4/16 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
@@ -117,13 +117,28 @@ details .inner > * { min-width: 0; }
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
 <div id="s4"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S4 · Route A, deterministic</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S4.md</code> when the session starts.</div>
+<div class="title-row"><h1>S4 · Route A, deterministic</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-28 20:05 EDT</div></div>
+<p>Goal: ranked, eligible Route A leads with no model involved. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 8 tasks done"><div class="counts"><span><b>0/8</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>7</b>todo</span></div><div class="bar" role="img" aria-label="0 of 8 tasks done"><span class="s-in-progress" style="width:12.50%" title="in progress: 1"></span><span class="s-todo" style="width:87.50%" title="todo: 7"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>0</td><td>Full open NIH opportunity set in the store (<code>perch fetch opportunities --agencies HHS-NIH11</code>)</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td>Needed for retrieval</td></tr>
+<tr><td>1</td><td><code>perch/embed/</code>: embedding adapter, local default Qwen3-Embedding-0.6B behind an interface; batch; cache by content hash</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td>LanceDB store for vectors + BM25 behind the repository interface</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td><code>perch/profile.py</code>: recency-weighted paper vectors into 2 to 4 research threads (k-means; one thread if fewer than 8 papers)</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td><code>perch/retrieve.py</code>: per-thread hybrid search (dense + BM25, RRF) merged across threads; top 50</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>5</td><td><code>perch/eligibility.py</code>: deterministic rules (close date, applicant types, ceiling, activity code and agency), applied before rerank</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>6</td><td>Reranker adapter, local default Qwen3-Reranker-0.6B; top 50 to top 10; cache by profile hash and record id</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>7</td><td><code>perch brief &lt;author_id&gt; --route A</code> prints 10 leads with record fields only</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>Leads for 3 PIs.</li><li>Zero ineligible leads by hand check.</li><li>Retrieval timing logged.</li><li><code>make test</code> is green.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="4 of 16 sessions done"><div class="counts"><span><b>4/16</b>sessions done</span><span class="s-done"><b>4</b>done</span><span class="s-todo"><b>12</b>todo</span></div><div class="bar" role="img" aria-label="4 of 16 sessions done"><span class="s-done" style="width:25.00%" title="done: 4"></span><span class="s-todo" style="width:75.00%" title="todo: 12"></span></div></section>
+<section class="panel summary" aria-label="4 of 16 sessions done"><div class="counts"><span><b>4/16</b>sessions done</span><span class="s-done"><b>4</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>11</b>todo</span></div><div class="bar" role="img" aria-label="4 of 16 sessions done"><span class="s-done" style="width:25.00%" title="done: 4"></span><span class="s-in-progress" style="width:6.25%" title="in progress: 1"></span><span class="s-todo" style="width:68.75%" title="todo: 11"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -131,7 +146,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s1">S1</a></td><td>Schemas, store, OpenAlex</td><td><span class="badge s-done">done</span></td><td>2026-10-28 19:14 EDT</td><td>2026-10-28 19:31 EDT</td><td class="mono">31b3a56</td><td>28 tests green. Live: 1 public Temple PI resolved by name and ORCID; 35 works stored with provenance. OpenAlex meters a USD budget per day (Q2: API key). Tracker redesigned to Current, Master and Archive views.</td></tr>
 <tr class="is-finished"><td><a href="#s2">S2</a></td><td>Award sources, award horizon</td><td><span class="badge s-done">done</span></td><td>2026-10-28 19:34 EDT</td><td>2026-10-28 19:44 EDT</td><td class="mono">6ea2955</td><td>44 tests green. <code>perch profile</code> live for 3 PIs (13, 12 and 5 awards); horizons hand-checked against RePORTER. NIH field is <code>opportunity_number</code>, mostly empty before FY 2012. NSF has no opportunity field and returns contact details (redacted).</td></tr>
 <tr class="is-finished"><td><a href="#s3">S3</a></td><td>Opportunities</td><td><span class="badge s-done">done</span></td><td>2026-10-28 19:50 EDT</td><td>2026-10-28 19:59 EDT</td><td class="mono">3b9740b</td><td>52 tests green. Grants.gov search2 + fetchOpportunity, no key; attribution notice required. No documented NIH Guide archive API; Grants.gov archive (12,152 NIH) is the back-test source: 16 of 17 sampled FOAs present. 56 opportunities stored live.</td></tr>
-<tr class="is-current"><td>S4</td><td>Route A, deterministic</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s4">S4</a></td><td>Route A, deterministic</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-28 20:05 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S5</td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S6</td><td>API</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S7</td><td>Web app, first three screens</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
