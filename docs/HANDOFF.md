@@ -3,35 +3,38 @@
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
 ## Last session
-- Session: S6 — API
+- Session: S7 — Web app, first three screens
 - Status (done / continued): done
-- Last commit: b3ccdf6 (task work); the ritual commit follows it on `main`
+- Last commit: see `git log`; the ritual commit is last on `main`
 
 ## What exists now (one line per subsystem)
 - Pipeline: sources, profile and threads, embeddings, LanceDB, retrieval, eligibility, rerank (S1 to S4); skills 1 and 2, validator layers 1 and 2, `decide`, audit log (S5).
-- API `perch/api.py` (run `perch serve`, port 8100): `GET /health`, `GET /authors/resolve?q=`, `POST /briefs`, `GET /briefs/{id}`, `POST /briefs/{id}/leads/{lead_id}/keep|dismiss`, `GET /briefs/{id}/export.json`, `GET /records/{id}` (full or short ids, opportunity numbers). CORS open. Every response carries the Grants.gov notice where its data appears.
-- Service `perch/service.py`: seven saved stages (researcher, works, awards, profile, route_a, summary, explanations); fetch stages skip when data exists; explanations saved one by one; failure recorded on the stage and brief.
-- Jobs `perch/jobs.py`: `JobRunner` interface; `InProcessRunner` (one worker); `InlineRunner` for tests.
-- Schemas: Brief has stages, options, threads, topics, summary, timings; Lead has rerank score, explanation, inference, layer 2 flags, keep or dismiss status.
-- Hosted tier: Anthropic adapter verified; spend cap $100 enforced in `perch/llm/budget.py`; spend $0.08.
-- Decision servers: Clef-flash GPU 1 :8097 and Clef GPU 2 :8098 as systemd user units (`make decide-up`, `make decide-status`); both answer `/v1/systemone`.
-- Tests: 112 green, all offline (fake models, fixture-backed clients).
+- API `perch/api.py` (`perch serve`, port 8100): resolve, briefs, keep/dismiss/restore, export, records, health. `GET /briefs/{id}` also returns `papers` (key papers per thread plus cited works) and each award's `record_id`. CORS off unless `PERCH_CORS_ORIGINS` is set.
+- Web app `web/` (plain ES modules and CSS, no npm, no build): served at `/` by `perch serve`. Find, Profile, Routes, evidence panel, Scout the owl. Design and review in `docs/design/UI.md`.
+- Replay mode: `scripts/export_replay.py <brief_id>` writes `build/replay/<id>.json` (alias only); `scripts/build_ui_preview.py` bundles one page to `build/artifacts/ui.html`; `make tracker` builds it and adds the tracker's UI tab.
+- Screenshots: `uv run --no-project --with playwright python scripts/screenshots.py` (Playwright is dev-only; uses the cached Chromium) writes `docs/screenshots/` and checks keep, dismiss and sideways scroll.
+- Hosted tier: Anthropic adapter verified; cap $100 in `perch/llm/budget.py`; spend $0.08.
+- Decision servers: Clef-flash GPU 1 :8097, Clef GPU 2 :8098, systemd user units (`make decide-up`).
+- Tests: 116 green, all offline. `tests/test_web.py` runs the format helpers under Node when Node is present (Node 12 on this node).
 
-## How to run the API with real models
-- `CUDA_VISIBLE_DEVICES=3 uv run --extra ml perch serve --llm ollama:qwen3.8:27b` from the repo root (it reads `.env` and relative data paths from there).
-- Live result: PI-2 brief with explanations in about 95 s; PI-5 (A5034175589) fetched from scratch in under a minute without explanations.
+## How to run
+- API and app with real models: `CUDA_VISIBLE_DEVICES=3 uv run --extra ml perch serve --llm ollama:qwen3.8:27b`, then open http://127.0.0.1:8100/.
+- Live result: PI-4 (A5026494099) brief built in the browser in 90 s, 10 of 10 explained.
+- Tracker artifact: publish `build/artifacts/tracker.html` with `files={"ui.html": "build/artifacts/ui.html"}` so the UI tab keeps its page.
 
 ## What is half-done (exact file, exact next step)
-- Nothing in S6.
-- Not built yet: `POST /briefs/{id}/handoff` (S12); Route B leads (S11); rate limit 10 briefs per hour (S9).
+- Nothing in S7.
+- Not built yet: hand-off (S12), Compare (S12), Route B (S11), rate limit (S9), Scout tool cards (S10).
+- `make demo` is still a stub (S9); replay mode is the Demo Day fallback when it is built.
 
 ## Decisions made this session (all in docs/DECISIONS.md)
-- Briefs run one at a time in-process; fetch stages skip when data exists.
-- PI-5 alias added in `data/overrides/pi_aliases.csv`.
+- Web app is no-build ES modules (Node 12, no npm on the node).
+- Owl mascot named Scout, driven only by real status.
+- CORS off by default.
 
 ## Open questions (mirror of bridge/QUESTIONS.md, numbered)
-- None open.
+- Q6: review the web app in the tracker's UI tab (not blocking).
 
 ## Next session
-- Session to start: S7 — Web app, first three screens (Find, Profile, Routes), evidence panel, Grants.gov notice
+- Session to start: S8 — Back-test and bench
 - First command to run: `git pull && make hooks && make test`

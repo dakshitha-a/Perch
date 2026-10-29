@@ -133,7 +133,7 @@ details .inner > * { min-width: 0; }
 <div class="title-row"><h1>S7 · Web app, first three screens</h1><span class="badge s-in-progress">in progress</span></div>
 <div class="meta">Started 2026-10-28 22:40 EDT</div></div>
 <p>Goal: Find → Profile → Routes in the browser, with the evidence panel. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="4 of 6 tasks done"><div class="counts"><span><b>4/6</b>tasks done</span><span class="s-done"><b>4</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="4 of 6 tasks done"><span class="s-done" style="width:66.67%" title="done: 4"></span><span class="s-in-progress" style="width:16.67%" title="in progress: 1"></span><span class="s-todo" style="width:16.67%" title="todo: 1"></span></div></section>
+<section class="panel summary" aria-label="5 of 6 tasks done"><div class="counts"><span><b>5/6</b>tasks done</span><span class="s-done"><b>5</b>done</span><span class="s-in-progress"><b>1</b>in progress</span></div><div class="bar" role="img" aria-label="5 of 6 tasks done"><span class="s-done" style="width:83.33%" title="done: 5"></span><span class="s-in-progress" style="width:16.67%" title="in progress: 1"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
 <tbody>
@@ -141,8 +141,8 @@ details .inner > * { min-width: 0; }
 <tr><td>2</td><td>No-build web app served by <code>perch serve</code>; Find, candidates, build, stage progress</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td><code>web/</code> (ES modules, no npm) mounted at <code>/</code> after the API routes. Progress branch with Scout riding it; stage details copied; elapsed time, no promised finish.</td></tr>
 <tr><td>3</td><td>Profile and Routes screens; evidence panel; keep and dismiss</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td><code>GET /briefs/{id}</code> now carries key papers; new <code>POST .../restore</code>. Citation ids render as paper titles; inference labelled on every card; missing amounts say so.</td></tr>
 <tr><td>4</td><td>Accessibility, touch, phone, themes; replay mode</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td>44 px targets, keyboard tabs, focus return, live region, reduced motion, light and dark. Replay: <code>scripts/export_replay.py</code> and <code>scripts/build_ui_preview.py</code> (output under <code>build/</code>, alias only).</td></tr>
-<tr><td>5</td><td>Adversarial review, then fixes</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
-<tr><td>6</td><td>Screenshots; UI tab in the tracker artifact</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>5</td><td>Adversarial review, then fixes</td><td><span class="badge s-done">done</span></td><td class="mono">b8607b4</td><td>Two independent reviewers (UX and accessibility; correctness and standing rules): 32 findings, all fixed or decided; list in <code>docs/design/UI.md</code> §6. Also live: a real brief built in the browser from <code>perch serve</code> in 90 s, 10 of 10 explained.</td></tr>
+<tr><td>6</td><td>Screenshots; UI tab in the tracker artifact</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Definition of done</h2>
 <ul class="panel done-list"><li>A brief renders in the browser from the API.</li><li>Screenshots saved to <code>docs/screenshots/</code> for Checkup 2.</li><li><code>make test</code> is green.</li></ul>
@@ -292,10 +292,12 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (34)</h2>
+<h2>Decisions (36)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-28</td><td>S7</td><td><code>perch serve</code> sends no CORS headers unless <code>PERCH_CORS_ORIGINS</code> lists origins</td><td>The web app is same-origin; open CORS let any page start briefs that spend the model budget (adversarial review)</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S7</td><td>The app's owl mascot is Scout, the same name as the S10 agent layer; it animates only from real stage status and never speaks a verdict</td><td>Dakshitha asked for an animated owl with personality; one name keeps the agent and its face together</td><td>Dakshitha (mascot), Perch-dev (name)</td></tr>
 <tr><td>2026-10-28</td><td>S7</td><td>The web app is plain ES modules and CSS in <code>web/</code>, with no build step and no npm dependencies, served by <code>perch serve</code> at <code>/</code></td><td>Node 12 and no npm on the node; nothing to install for <code>make demo</code> or the ZIP; the app is small</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-28</td><td>S6</td><td>Briefs run one at a time in an in-process job runner; fetch stages are skipped when the store already holds the data</td><td>GPU models are shared; the demo serves a handful of users; repeat briefs stay fast</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-28</td><td>after S5</td><td>Decision models served by llama.cpp's <code>cuda/89</code> build as systemd user units (<code>deploy/systemd/</code>, <code>make decide-up</code>)</td><td>Release folders are compute capabilities; the RTX 5000 Ada cards are 8.9; user units with lingering survive reboot without root</td><td>Dakshitha</td></tr>

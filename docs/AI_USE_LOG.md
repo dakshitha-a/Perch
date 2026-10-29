@@ -16,6 +16,7 @@ Required for the final deck's "AI use declaration" slide. One row per tool per p
 | 2026-10-28 | Clef-flash Q4_K_M (Cloudflare, Apache-2.0) | Hugging Face `ggml-org/Clef-Flash-GGUF` revision 6e2a164d70aa | Default local decision model for `decide` (S8 bench: validator layer 2 and rerank challengers); served on GPU 1 :8097 | Perch-dev for Dakshitha |
 | 2026-10-28 | Clef-flash Q4_K_M, bartowski quantisation (Apache-2.0) | Hugging Face `bartowski/Cloudflare_clef-flash-GGUF` revision 5fcdd9ba6d3d | Downloaded for the deploy-1gpu profile (S8 single-card validation); not served yet | Perch-dev for Dakshitha |
 | 2026-10-28 | Clef Q4_K_M (Cloudflare, Apache-2.0) | Hugging Face `bartowski/Cloudflare_clef-GGUF` revision 9d3b28af7cfe | Accuracy challenger for `decide` (S8 bench); served on GPU 2 :8098 | Perch-dev for Dakshitha |
+| 2026-10-28 | Claude Code CLI subagents (Claude Opus 5.5), session Perch-dev | 2.1.312 (Claude Code) | S7: designed and built the web app (`web/`), the owl mascot artwork (inline SVG, drawn by the model) and the replay preview; two independent subagents ran adversarial reviews (UX and accessibility; correctness and standing rules) whose 32 findings were then fixed | Dakshitha (directing Perch-dev) |
 
 Reminders:
 - Record Claude Code's version (`claude --version`) the first time it writes project code.

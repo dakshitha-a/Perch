@@ -4,7 +4,7 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
-None.
+6. **Review the web app (raised S7, 2026-10-28; not blocking).** The UI is in the tracker's UI tab: a saved brief played back on a phone or laptop frame. Product choices you may want to change: the owl is named Scout, the same as the S10 agent layer; the palette is evergreen with an amber accent, not Temple cherry; a finished brief opens on Routes, a new one on Profile; leads sort by best match by default; fit shows as a band plus the model's 0 to 100 number. Reply with any changes; S8 will not touch the UI unless you ask.
 
 ## Answered
 
