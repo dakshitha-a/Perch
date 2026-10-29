@@ -8,7 +8,7 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Answered
 
-16. **Information you add in normal mode (raised S8, 2026-10-29).** Normal mode read public records only; any user input went through private mode. **Answered 2026-10-29 by Dakshitha:** add a research direction, include and exclude keywords and a self-reported career stage to normal mode; a CV stays private-mode only. Build in S13 with private mode (same mechanism).
+16. **Information you add in normal mode (raised S8, 2026-10-29).** Normal mode read public records only; any user input went through private mode. **Answered 2026-10-29 by Dakshitha:** add optional fields: a research direction, include and exclude keywords and a self-reported career stage to normal mode; a CV stays private-mode only. Build in S13 with private mode (same mechanism).
 
 6. **Review the web app (raised S7, 2026-10-28; not blocking; still open).** The UI is in the tracker's UI tab: a saved brief played back on a phone or laptop frame. Product choices you may want to change: the owl is named Scout, the same as the S10 agent layer; the palette is evergreen with an amber accent, not Temple cherry; a finished brief opens on Routes, a new one on Profile; leads sort by best match by default; fit shows as a band plus the model's 0 to 100 number. Reply with any changes; S8 will not touch the UI unless you ask. **Answered 2026-10-29 by Dakshitha:** the UI looks good so far. Scout's tap reactions should be random, with a couple more added. Done in S8: eight reactions (wink, spin, flap, hoot, tilt, shuffle, dart, slow blink), picked at random, never the same twice in a row; the heart after five quick taps stays.
 
