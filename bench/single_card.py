@@ -122,6 +122,11 @@ def main(argv: list[str] | None = None) -> None:
         svc = BriefService(work / "perch.db", models, Clients(openalex=oa.OpenAlexClient))
         for name in ("embedder", "reranker", "index", "grounder"):
             models.get(name)
+        # Index the open opportunities before the clock, as a server does at start-up.
+        from perch.retrieve import index_opportunities
+
+        with svc.repo() as r:
+            index_opportunities(r, models.get("index"), models.get("embedder"))
         loaded = used_mib(gpu)
         mon = PeakMonitor(gpu)
         mon.start()

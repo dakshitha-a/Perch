@@ -7,6 +7,7 @@ Verified against lancedb 0.40.0: FTS via create_index(config=FTS()), scores in
 from __future__ import annotations
 
 import re
+import threading
 from pathlib import Path
 
 import lancedb
@@ -16,18 +17,26 @@ from perch.store.base import VectorIndex
 
 
 class LanceIndex(VectorIndex):
+    """One writer at a time: concurrent briefs on a cold index otherwise race to create
+    the table and the FTS index (lance commit conflict, seen in S8)."""
+
     def __init__(self, path: str | Path = "data/lance", table: str = "opportunities") -> None:
         Path(path).mkdir(parents=True, exist_ok=True)
         self.db = lancedb.connect(str(path))
         self.name = table
         names = self.db.list_tables().tables  # lancedb 0.40: a response object, not a list
         self.table = self.db.open_table(table) if table in names else None
+        self.lock = threading.Lock()
 
     def upsert(self, ids: list[str], texts: list[str], vectors: list[list[float]]) -> int:
         rows = [{"id": i, "text": t, "vector": [float(x) for x in v]}
                 for i, t, v in zip(ids, texts, vectors, strict=True)]
         if not rows:
             return 0
+        with self.lock:
+            return self._upsert(rows)
+
+    def _upsert(self, rows: list[dict]) -> int:
         if self.table is None:
             self.table = self.db.create_table(self.name, data=rows)
         else:
