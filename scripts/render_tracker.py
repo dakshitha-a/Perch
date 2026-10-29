@@ -540,7 +540,7 @@ def view_bench(bench_md: str) -> str:
 def view_architecture(arch_md: str, root: Path) -> str:
     """docs/ARCHITECTURE.md; each ![caption](file.svg) is inlined from root as a figure."""
     doc = parse(arch_md)
-    out = ['<div><div class="eyebrow">Models per step, from the S8 bench</div>'
+    out = ['<div><div class="eyebrow">How Perch is built</div>'
            f"<h1>{inline(doc.title or 'Architecture')}</h1></div>"]
     for b in doc.blocks:
         if b[0] == "fig":

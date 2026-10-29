@@ -1,6 +1,18 @@
-# Where the models sit
+# Architecture
 
-Which steps of a brief use a model, what runs where in the two-GPU demo, and which steps can move to a cloud model through an API key. Model choices come from the S8 bench (Bench tab); memory figures are nvidia-smi readings from S8.
+How Perch fits together, which steps of a brief use a model, what runs where in the two-GPU demo, and which steps can move to a cloud model through an API key. Model choices come from the S8 bench (Bench tab); memory figures are nvidia-smi readings from S8.
+
+## How Perch fits together
+
+![The whole system as built after S11, top to bottom. Public sources feed plain-code fetchers and the store. A brief runs two routes from the store. Models are bounded: they write, or they call Perch's own tools, and the validator checks every output before the researcher sees it. Dotted boxes are planned.](architecture/overview.svg)
+
+- **Public sources only:** OpenAlex, NIH RePORTER, NSF Award Search and Grants.gov. The SBIR.gov API was down in S11, so small-business awards come from RePORTER and cover NIH only.
+- **Fetchers and store:** plain code fetches each record and stores it with its source, link and fetch time. Numbers and dates are copied from records, never written by a model.
+- **Route A, grants:** two small local models find and rank open calls. Eligibility rules between them drop anything the researcher cannot apply to.
+- **Route B, industry leads:** plain code counts public signals per company. A company needs two kinds of signal to be shown. Every lead says it is inferred and not verified.
+- **Models are bounded:** the chat model writes the profile summary and the fit explanations. Scout, the agent, can only call Perch's own tools.
+- **The validator:** it checks every model output before it is shown. Code checks ids and numbers. Clef checks each sentence against the record it cites.
+- **What is planned:** the hand-off draft (S12), private mode (S13) and the MCP server (S14).
 
 ## A brief, step by step
 

@@ -369,10 +369,14 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (73)</h2>
+<h2>Decisions (77)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S11</td><td>A brief is reused only if it has the current stage list</td><td>Briefs from before S11 have no Route B; a visitor would get no industry leads</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S11</td><td>Scout repeated-call guard: within one question, a call with the same tool and arguments as one already run (done or failed) is answered from the earlier result with a note, is never run again and is never put to the user for approval. A new question may repeat it</td><td>S10's first Sonnet run repeated one search up to nine times</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S11</td><td>Scout's <code>get_org_signals</code> uses the brief's stored Route B leads when the session is on a brief; otherwise it finds them and keeps the leads in memory, storing only organisations and evidence records. <code>search_opportunities(route=&quot;B&quot;)</code> returns the same leads</td><td>Citations in the web app must open stored records; a lead record carries the code-written sentences, so it supports the counts and dates Scout repeats</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S11</td><td>Routes tab: a Grants and Industry switch, each with its count, instead of two columns</td><td>The app is one narrow column on every width; a switch keeps both routes equal and one tap apart</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S11</td><td>Route B relationship type by rule: SBIR/STTR signal gives "STTR or SBIR partner", a citing signal "Sponsored research or collaboration", otherwise "Collaboration". Confidence "stronger" with three kinds of signal, "moderate" with two. Route B text is rendered by code; no model writes it this session</td><td>Deterministic and checkable; a model explanation can come later</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S11</td><td>Papers with more than 30 authors do not seed Route B (topics or citing search)</td><td>The first hand check found all five PI-3 leads came from 96-to-100-author consortium papers; chosen on the same PIs, so not an independent measure</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S11</td><td>Route B merges organisations by exact name after removing case, punctuation, a trailing country in parentheses and a trailing legal form; no fuzzy matching. Merged names drop the country</td><td>A wrong merge would make one lead out of two companies</td><td>Perch-dev</td></tr>
@@ -530,8 +534,166 @@ details .inner > * { min-width: 0; }
 <tr><td>qwen3:30b</td><td>minicheck</td><td>3</td><td>30873</td><td>31471</td><td>332.0</td><td>0.033</td><td>not measured</td></tr>
 <tr><td>gemma4:26b-a4b</td><td>minicheck</td><td>3</td><td>31291</td><td>31729</td><td>144.3</td><td>0.933</td><td>not measured</td></tr>
 </tbody></table></div></section>
-<section id="view-architecture" class="view" data-view="architecture" hidden><div><div class="eyebrow">Models per step, from the S8 bench</div><h1>Where the models sit</h1></div>
-<p>Which steps of a brief use a model, what runs where in the two-GPU demo, and which steps can move to a cloud model through an API key. Model choices come from the S8 bench (Bench tab); memory figures are nvidia-smi readings from S8.</p>
+<section id="view-architecture" class="view" data-view="architecture" hidden><div><div class="eyebrow">How Perch is built</div><h1>Architecture</h1></div>
+<p>How Perch fits together, which steps of a brief use a model, what runs where in the two-GPU demo, and which steps can move to a cloud model through an API key. Model choices come from the S8 bench (Bench tab); memory figures are nvidia-smi readings from S8.</p>
+<h2>How Perch fits together</h2>
+<figure class="panel diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 850" class="arch" role="img" font-family="system-ui, sans-serif" aria-label="How Perch fits together. Public sources feed plain-code fetchers, which store every record with its provenance. A brief runs two routes from the store: grants, which uses two small local models and eligibility rules, and industry leads, which is code only. A chat model writes the profile summary and fit explanations, and Scout answers follow-ups by calling only Perch's own tools. Every model output passes the validator before the API and web app show it to the researcher. The hand-off draft, private mode and the MCP server are planned.">
+  <defs>
+    <marker id="oa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- legend -->
+  <g font-size="12" fill="currentColor">
+    <rect x="20" y="12" width="22" height="14" rx="3" fill="none" stroke="currentColor" stroke-opacity="0.45" class="k-code"/>
+    <text x="48" y="23">code, no model</text>
+    <rect x="160" y="12" width="22" height="14" rx="3" fill="#dcefe8" stroke="#1f6f5c" class="k-local"/>
+    <text x="188" y="23">local model, stays local</text>
+    <rect x="345" y="12" width="22" height="14" rx="3" fill="#f6ead8" stroke="#a15c07" stroke-dasharray="4 3" class="k-cloud"/>
+    <text x="373" y="23">chat model, can move to Sonnet</text>
+    <rect x="590" y="12" width="22" height="14" rx="3" fill="none" stroke="currentColor" stroke-opacity="0.4" stroke-dasharray="2 3"/>
+    <text x="618" y="23">planned</text>
+  </g>
+
+  <g font-size="11" fill="currentColor" opacity="0.7" font-weight="600" letter-spacing="0.06em">
+    <text x="20" y="58">PUBLIC SOURCES · READ ONLY</text>
+    <text x="20" y="300">A BRIEF · TWO ROUTES</text>
+    <text x="20" y="444">MODELS · BOUNDED</text>
+    <text x="20" y="666">WHAT THE RESEARCHER SEES</text>
+  </g>
+
+  <!-- sources -->
+  <g fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray="5 3">
+    <rect x="20" y="68" width="128" height="52" rx="6"/>
+    <rect x="158" y="68" width="128" height="52" rx="6"/>
+    <rect x="296" y="68" width="128" height="52" rx="6"/>
+    <rect x="434" y="68" width="128" height="52" rx="6"/>
+  </g>
+  <rect x="572" y="68" width="128" height="52" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.25" stroke-dasharray="2 3"/>
+  <g font-size="13" font-weight="600" fill="currentColor">
+    <text x="30" y="90">OpenAlex</text>
+    <text x="168" y="90">NIH RePORTER</text>
+    <text x="306" y="90">NSF Awards</text>
+    <text x="444" y="90">Grants.gov</text>
+    <text x="582" y="90" opacity="0.55">SBIR.gov</text>
+  </g>
+  <g font-size="11" fill="currentColor" opacity="0.75">
+    <text x="30" y="108">papers, companies</text>
+    <text x="168" y="108">awards, SBIR/STTR</text>
+    <text x="306" y="108">awards, dates</text>
+    <text x="444" y="108">open, archived calls</text>
+    <text x="582" y="108" opacity="0.7">API down, unused</text>
+  </g>
+  <g stroke="currentColor" stroke-opacity="0.6" fill="none" marker-end="url(#oa)">
+    <path d="M84 120 V148"/><path d="M222 120 V148"/><path d="M360 120 V148"/><path d="M498 120 V148"/>
+  </g>
+
+  <!-- fetchers and store -->
+  <g fill="none" stroke="currentColor" stroke-opacity="0.45" class="k-code">
+    <rect x="20" y="150" width="680" height="50" rx="6"/>
+    <rect x="20" y="226" width="680" height="50" rx="6"/>
+  </g>
+  <g font-size="13" font-weight="600" fill="currentColor">
+    <text x="36" y="171">Fetchers</text>
+    <text x="36" y="247">Store · SQLite records and a LanceDB search index</text>
+  </g>
+  <g font-size="11.5" fill="currentColor" opacity="0.8">
+    <text x="36" y="189">Rate-limited and retried. Each record keeps its source, link and fetch time. Numbers are copied.</text>
+    <text x="36" y="265">Researchers, works, awards, opportunities, organisations, leads and briefs; embedding and rerank caches.</text>
+  </g>
+  <path d="M360 200 V224" stroke="currentColor" stroke-opacity="0.6" fill="none" marker-end="url(#oa)"/>
+  <g stroke="currentColor" stroke-opacity="0.6" fill="none" marker-end="url(#oa)">
+    <path d="M187 276 V308"/><path d="M532 276 V308"/>
+  </g>
+
+  <!-- Route A -->
+  <rect x="20" y="310" width="335" height="112" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.35"/>
+  <text x="34" y="331" font-size="13" font-weight="600" fill="currentColor">Route A · grants</text>
+  <rect x="34" y="340" width="307" height="22" rx="4" fill="#dcefe8" stroke="#1f6f5c" class="k-local"/>
+  <rect x="34" y="366" width="307" height="22" rx="4" fill="none" stroke="currentColor" stroke-opacity="0.45" class="k-code"/>
+  <rect x="34" y="392" width="307" height="22" rx="4" fill="#dcefe8" stroke="#1f6f5c" class="k-local"/>
+  <g font-size="11.5" fill="currentColor">
+    <text x="44" y="355">Embed papers into threads; search calls</text>
+    <text x="44" y="381">Eligibility rules on record fields</text>
+    <text x="44" y="407">Rerank the best 50 to a top 10</text>
+  </g>
+
+  <!-- Route B -->
+  <rect x="365" y="310" width="335" height="112" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.45" class="k-code"/>
+  <text x="379" y="331" font-size="13" font-weight="600" fill="currentColor">Route B · industry leads, no model</text>
+  <g font-size="11.5" fill="currentColor">
+    <text x="379" y="353">Signals per company: works citing the papers,</text>
+    <text x="379" y="370">NIH SBIR/STTR awards, works in the same topics</text>
+    <text x="379" y="392">Two kinds of signal needed; top 5 by score</text>
+    <text x="379" y="410" opacity="0.8">Every lead: inferred from public signals; not verified</text>
+  </g>
+
+  <!-- skills and Scout -->
+  <rect x="20" y="454" width="335" height="104" rx="6" fill="#f6ead8" stroke="#a15c07" stroke-dasharray="4 3" class="k-cloud"/>
+  <text x="34" y="475" font-size="13" font-weight="600" fill="currentColor">Writing skills · chat model</text>
+  <g font-size="11.5" fill="currentColor">
+    <text x="34" y="496">1  Profile summary</text>
+    <text x="34" y="516">2  Fit explanation for each grant lead</text>
+    <text x="34" y="536" opacity="0.6">3  Hand-off draft, never sent (S12)</text>
+  </g>
+  <rect x="365" y="454" width="335" height="104" rx="6" fill="#f6ead8" stroke="#a15c07" stroke-dasharray="4 3" class="k-cloud"/>
+  <text x="379" y="475" font-size="13" font-weight="600" fill="currentColor">Scout · agent, chat model</text>
+  <g font-size="11.5" fill="currentColor">
+    <text x="379" y="496">Calls only Perch's nine tools: search,</text>
+    <text x="379" y="513">industry signals, records, profile, awards</text>
+    <text x="379" y="535">Asks before each step; repeats are reused</text>
+  </g>
+  <g stroke="currentColor" stroke-opacity="0.6" fill="none" marker-end="url(#oa)">
+    <path d="M187 422 V452"/>
+  </g>
+  <path d="M532 452 V424" stroke="#a15c07" stroke-dasharray="4 3" fill="none" marker-end="url(#oa)" class="k-loop"/>
+  <text x="540" y="442" font-size="11" fill="currentColor" opacity="0.75">tools re-run both routes</text>
+
+  <!-- validator -->
+  <rect x="20" y="582" width="680" height="62" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.35"/>
+  <text x="34" y="602" font-size="13" font-weight="600" fill="currentColor">Validator · every model output</text>
+  <rect x="34" y="610" width="320" height="24" rx="4" fill="none" stroke="currentColor" stroke-opacity="0.45" class="k-code"/>
+  <rect x="366" y="610" width="320" height="24" rx="4" fill="#dcefe8" stroke="#1f6f5c" class="k-local"/>
+  <g font-size="11.5" fill="currentColor">
+    <text x="44" y="626">1  Each id real; each number in a cited record</text>
+    <text x="376" y="626">2  Clef checks each sentence against its record</text>
+  </g>
+  <g stroke="currentColor" stroke-opacity="0.6" fill="none" marker-end="url(#oa)">
+    <path d="M187 558 V580"/><path d="M532 558 V580"/>
+  </g>
+
+  <!-- API and web, user -->
+  <rect x="200" y="676" width="500" height="70" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.45" class="k-code"/>
+  <text x="214" y="697" font-size="13" font-weight="600" fill="currentColor">API and web app · FastAPI, no-build web app</text>
+  <g font-size="11.5" fill="currentColor" opacity="0.85">
+    <text x="214" y="717">Profile · Routes (Grants and Industry) · Ask Scout</text>
+    <text x="214" y="735">Every claim opens its record in the evidence panel</text>
+  </g>
+  <rect x="20" y="676" width="150" height="70" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray="5 3"/>
+  <text x="34" y="697" font-size="13" font-weight="600" fill="currentColor">Researcher</text>
+  <g font-size="11.5" fill="currentColor" opacity="0.85">
+    <text x="34" y="717">keeps, dismisses, asks</text>
+    <text x="34" y="735">the app sends nothing</text>
+  </g>
+  <path d="M360 644 V674" stroke="currentColor" stroke-opacity="0.6" fill="none" marker-end="url(#oa)"/>
+  <path d="M174 711 H196" stroke="currentColor" stroke-opacity="0.6" fill="none" marker-start="url(#oa)" marker-end="url(#oa)"/>
+
+  <!-- planned -->
+  <g fill="none" stroke="currentColor" stroke-opacity="0.4" stroke-dasharray="2 3">
+    <rect x="200" y="770" width="245" height="58" rx="6"/>
+    <rect x="455" y="770" width="245" height="58" rx="6"/>
+  </g>
+  <g font-size="12.5" font-weight="600" fill="currentColor" opacity="0.75">
+    <text x="214" y="791">Private mode (S13)</text>
+    <text x="469" y="791">MCP server (S14)</text>
+  </g>
+  <g font-size="11.5" fill="currentColor" opacity="0.7">
+    <text x="214" y="811">local models only; writes nothing</text>
+    <text x="469" y="811">Scout's tools for other agents</text>
+  </g>
+</svg><figcaption>The whole system as built after S11, top to bottom. Public sources feed plain-code fetchers and the store. A brief runs two routes from the store. Models are bounded: they write, or they call Perch's own tools, and the validator checks every output before the researcher sees it. Dotted boxes are planned.</figcaption></figure>
+<ul><li><strong>Public sources only:</strong> OpenAlex, NIH RePORTER, NSF Award Search and Grants.gov. The SBIR.gov API was down in S11, so small-business awards come from RePORTER and cover NIH only.</li><li><strong>Fetchers and store:</strong> plain code fetches each record and stores it with its source, link and fetch time. Numbers and dates are copied from records, never written by a model.</li><li><strong>Route A, grants:</strong> two small local models find and rank open calls. Eligibility rules between them drop anything the researcher cannot apply to.</li><li><strong>Route B, industry leads:</strong> plain code counts public signals per company. A company needs two kinds of signal to be shown. Every lead says it is inferred and not verified.</li><li><strong>Models are bounded:</strong> the chat model writes the profile summary and the fit explanations. Scout, the agent, can only call Perch's own tools.</li><li><strong>The validator:</strong> it checks every model output before it is shown. Code checks ids and numbers. Clef checks each sentence against the record it cites.</li><li><strong>What is planned:</strong> the hand-off draft (S12), private mode (S13) and the MCP server (S14).</li></ul>
 <h2>A brief, step by step</h2>
 <figure class="panel diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 940" class="arch" role="img" font-family="system-ui, sans-serif" aria-label="A brief runs eight steps top to bottom: fetch and eligibility are code, embed and rerank are local models, the profile summary and fit explanation are chat models that can move to Sonnet, the citation check is code, and the grounding check is Clef. A failed check sends the explanation back once. Hand-off, Scout and decide run later, on request.">
   <defs>
