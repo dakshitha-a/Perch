@@ -297,7 +297,7 @@ function drawSwitch() {
   b.disabled = !st.available && !on;
   b.title = st.available ? (on ? "Private session on. Turn off to end it." : "Turn on private mode")
     : `Private mode is unavailable: ${st.reason || "this server does not offer it"}`;
-  b.querySelector(".switch-word").textContent = on ? "Private on" : "Private";
+  b.querySelector(".switch-word").textContent = "Private";
   document.body.classList.toggle("private-on", on);
   const label = $("#private-frame");
   if (label) label.hidden = !on;

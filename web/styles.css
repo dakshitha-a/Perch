@@ -749,3 +749,6 @@ body.private-on .bar { border-bottom: 3px solid var(--model); }
 table.compare { border-collapse: collapse; width: 100%; font-size: 14px; }
 table.compare th, table.compare td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
 .handoff textarea, .handoff input { width: 100%; }
+.table-wrap { overflow-x: auto; max-width: 100%; }
+.cites { display: flex; flex-wrap: wrap; gap: 6px; }
+.cites .paper-ref { display: inline-flex; gap: 6px; align-items: center; }

@@ -174,7 +174,7 @@ function card(l, { openEvidence, setLead, papers }) {
     l.flagged ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "The explanation was withheld because it failed the citation checks twice." }))
       : parsed ? h("div", { class: "explain" }, h("p", { class: "hint", text: "Why it may fit (a model wrote this; each part cites a record)" }),
         h("p", { text: plainExplanation(l.explanation) }),
-        l.inference ? h("p", { class: "inference" }, h("span", { class: "tag", text: "Inference" }), h("span", { text: ` ${l.inference}` })) : null,
+        l.inference ? h("p", { class: "inference" }, h("span", { class: "tag", text: "Inference" }), h("span", { text: ` ${plainExplanation(l.inference)}` })) : null,
         h("p", { class: "cites" }, l.cited_ids.filter((c) => papers[c]).map((c) => h("button", { class: "paper-ref",
           onclick: (e) => openEvidence(c, e.currentTarget) }, icon("lock"), h("span", { text: papers[c].title }))))) : null,
     h("div", { class: "actions" },
@@ -186,8 +186,13 @@ function card(l, { openEvidence, setLead, papers }) {
       h("button", { class: "btn quiet", onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { text: "Record" }))));
 }
 
+// Citation brackets go; a session record's id reads as "your achievement A".
 function plainExplanation(text) {
-  return String(text || "").replace(/\s*\[[^\]]*\]/g, "").trim();
+  return String(text || "").replace(/\s*\[[^\]]*\]/g, "")
+    .replace(/\b(?:private:)?achievement-([a-e])\b/g, (_, c) => `your achievement ${c.toUpperCase()}`)
+    .replace(/\b(?:private:)?interests\b/g, "your interests note")
+    .replace(/\bCited work:/, "Your work:").trim()
+    .replace(/^./, (c) => c.toUpperCase());
 }
 
 function amountText(r) {
@@ -216,7 +221,7 @@ export function studentCompare(panel, { brief, goRoutes, announce }) {
   const byOffice = { F: kept.filter((l) => l.route === "F"), S: kept.filter((l) => l.route === "S") };
   fill(panel,
     kept.some((l) => l.sample) ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }), h("span", { text: ` ${SAMPLE_NOTE}` })) : null,
-    h("div", { class: "scroll" }, h("table", { class: "compare" },
+    h("div", { class: "table-wrap" }, h("table", { class: "compare" },
       h("thead", {}, h("tr", {}, ["Lead", "Route", "Verdict", "Deadline", "Amount", "Still needed", "Office"].map((x) => h("th", { scope: "col", text: x })))),
       h("tbody", {}, rows.map((row) => h("tr", {}, row.map((x, i) => h(i ? "td" : "th", { scope: i ? null : "row", text: x }))))))),
     ["F", "S"].filter((r) => byOffice[r].length).map((r) => handoff(r, byOffice[r], announce)));

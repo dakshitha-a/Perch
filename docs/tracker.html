@@ -132,7 +132,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S18</code> <span class="badge s-todo">todo</span><span>18/24 sessions done</span></div>
+<div class="at-a-glance"><code>S18</code> <span class="badge s-in-progress">in progress</span><span>18/24 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -595,13 +595,27 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-current" class="view" data-view="current" hidden>
 <div id="s18"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S18 · Student mode</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S18.md</code> when the session starts.</div>
+<div class="title-row"><h1>S18 · Student mode</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-29 18:21 EDT</div></div>
+<p>Goal: a student can paste a CV, interests and achievements in private mode and get fellowships (public) and scholarships (sample) with eligibility by rule, a gap list and a hand-off. Private mode becomes an app-wide state. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 7 tasks done"><div class="counts"><span><b>0/7</b>tasks done</span><span class="s-in-progress"><b>4</b>in progress</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="0 of 7 tasks done"><span class="s-in-progress" style="width:57.14%" title="in progress: 4"></span><span class="s-todo" style="width:42.86%" title="todo: 3"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Private mode as a state: a header switch on every screen, personal-text fields only inside it, Student implies private, a browser-only paste nudge, off ends the session after a confirm, disabled with a reason when unavailable.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td>Student CV parse: level, expected graduation, degree year, GPA, major, honours, activities, posters and talks, employment, referees. Interests become the query thread; achievements become <code>private:achievement-a</code>, <code>-b</code>, ...</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>Eligibility by rule against <code>Scholarship.eligibility</code>; missing information gives "may be eligible"; targeted criteria quoted with "you decide".</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td>Gap list per lead, copied from the record.</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
+<tr><td>5</td><td>Retrieval and rerank as in Route A; skill 2 cites the student's records and the scholarship record; both validator layers.</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
+<tr><td>6</td><td>UI: Student on Find, "Fellowships (public)" and "Scholarships (sample)" tabs with badges, keep and compare, hand-off to SDFA or SFS, sample banner on exports, Help and the tracker's UI preview.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>7</td><td>Scout <code>search_scholarships</code> tool (moves to S19 if the context runs short).</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>The header switch, the student path and the paste nudge all start a private session before any personal text is sent (a test checks the request order).</li><li>Each of the three personas gets eligible leads on both tabs in a private session on the public URL.</li><li>The canary test extended to student mode passes.</li><li>No sample record is reachable outside student mode.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="18 of 24 sessions done"><div class="counts"><span><b>18/24</b>sessions done</span><span class="s-done"><b>18</b>done</span><span class="s-todo"><b>6</b>todo</span></div><div class="bar" role="img" aria-label="18 of 24 sessions done"><span class="s-done" style="width:75.00%" title="done: 18"></span><span class="s-todo" style="width:25.00%" title="todo: 6"></span></div></section>
+<section class="panel summary" aria-label="18 of 24 sessions done"><div class="counts"><span><b>18/24</b>sessions done</span><span class="s-done"><b>18</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>5</b>todo</span></div><div class="bar" role="img" aria-label="18 of 24 sessions done"><span class="s-done" style="width:75.00%" title="done: 18"></span><span class="s-in-progress" style="width:4.17%" title="in progress: 1"></span><span class="s-todo" style="width:20.83%" title="todo: 5"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -623,7 +637,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s15">S15</a></td><td>README and public release</td><td><span class="badge s-done">done</span></td><td>2026-10-29 15:25 EDT</td><td>2026-10-29 16:13 EDT</td><td class="mono">see git log</td><td>New README in NextTex's style: a hero clip, five feature clips filmed in the real app with NextTex's camera and a Python port of its recorder, the as-built architecture figure in light and dark, measured results with the baseline, and docs split into running, deploy, private mode and MCP. A README tab on the tracker. History audit: no keys, paths, emails, session links or hostnames. Tests now read researcher names from their fixtures (Q23). Dakshitha approved the README, and the repository is public.</td></tr>
 <tr class="is-finished"><td><a href="#s16">S16</a></td><td>Monitoring (optional)</td><td><span class="badge s-done">done</span></td><td>2026-10-29 16:34 EDT</td><td>2026-10-29 16:54 EDT</td><td class="mono">see git log</td><td>219 tests green. Weekly watch: <code>perch monitor</code> refreshes open NIH listings from Grants.gov as a delta, runs a fresh brief per watched researcher (never a reused copy), compares it with the last run and stores a digest. Triggers: a public award ending within 12 months (once per award), or an opportunity new to the top 10, a position rule because rerank scores are not on one scale (Q24). The email draft is written by code only and never sent. What changed screen at <code>#/changes</code>, <code>GET /watch</code>, a Help step. Monday 06:00 timer on the demo. Live on the demo: 660 listed, 3 new; PI-5, PI-4 and PI-2 had 0 changes, so no draft (Q25). On a copy of the store, a researcher whose NSF award ends 2027-03-31 got a real draft in 51 s. <code>make bench --render-only</code> now keeps the hand-written Scout sections.</td></tr>
 <tr class="is-finished"><td><a href="#s17">S17</a></td><td>Synthetic scholarship corpus, student personas</td><td><span class="badge s-done">done</span></td><td>2026-10-29 17:58 EDT</td><td>2026-10-29 18:19 EDT</td><td class="mono">see git log</td><td>234 tests green. 500 SYNTHETIC sample scholarships (24 planted by hand, 476 from templates; Gemma wrote 465 purpose sentences, 11 fell back to template text) in their own store, <code>data/sample.db</code>; 0 real-name hits on 105 fictional sponsors. Temple SDFA's fellowship list verified live: 76 public award records, levels copied from its headings, no amounts or deadlines on the page. SFS verified as the scholarship office. Three student personas (undergraduate, part-time MPH, PhD) with hand-written answer keys: 7 eligible, 5 may be eligible, 12 not eligible. ScholarshipUniverse publishes no schema, so a documented seam and Q26.</td></tr>
-<tr class="is-current"><td>S18</td><td>Student mode</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s18">S18</a></td><td>Student mode</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 18:21 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S19</td><td>Planted-case scoring and docs</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S20</td><td>QA and privacy audit</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S21</td><td>UI/UX audit for three audiences</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>

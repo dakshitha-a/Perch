@@ -96,6 +96,14 @@ Dakshitha asked for private mode to be rethought, because student mode needs it,
 - **Unavailable servers:** where any model is not self-hosted, the switch is shown disabled with the reason, and student mode is disabled with it.
 - **Every screen follows the mode:** Profile, Routes, Compare, hand-off, export and Scout. A public brief stays public; a private brief is a separate brief.
 
+## As built (S18): the switch and student mode
+
+- **Switch:** `#private-switch` in the header (`web/index.html`), driven by `web/mode.js`. On: `body.private-on` draws a coloured edge, and a line under the bar says the session is on. Off: a confirm lists the documents, any unsent moved text and the brief, then the session ends.
+- **Order of requests:** `mode.send()` and `mode.move()` call `enable()` first, which opens the session before anything else; `move()` keeps the text as an unsent draft. `tests/test_web.py` checks the order under Node.
+- **Student:** Find's "Student" button calls `enable()`, then opens `#/student` (`web/student.js`). The form shows only with a session open.
+- **Nudge:** `looksPersonal()` in `web/mode.js`, run on paste into Find's researcher box and direction box. It never switches the mode.
+- **Unavailable:** the switch and Student are disabled, with the reason as their hint.
+
 ## As built (S13)
 
 - **Code:** `perch/private/` holds the inputs, the CV parse, the threads, the overlay store and the session service. `perch/private/routes.py` holds the HTTP routes, and `web/private.js` the screens. The gate is in `perch/privacy.py`.

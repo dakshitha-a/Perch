@@ -14,6 +14,7 @@ services:
     environment:
       PERCH_PROFILE: deploy-2gpu
       PERCH_DB: /app/data/demo/perch.db
+      PERCH_SAMPLE_DB: /app/data/demo/sample.db  # SYNTHETIC scholarships, student mode only
       PERCH_MODEL_SERVER: http://127.0.0.1:8093
       OLLAMA_BASE_URL: http://127.0.0.1:11437
       PERCH_CLEF_URL: http://127.0.0.1:8094
