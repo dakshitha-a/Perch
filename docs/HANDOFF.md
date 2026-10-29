@@ -23,16 +23,17 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - First runs (Gemma 18, Sonnet 17) are in `bench/results/scout_first_runs/`.
 - API spend: about $0.93 under the approved $1.00 cap. Ledger total $1.25 of $100.
 
+## Demo
+- Rebuilt after S10 with `make demo`. Scout answered a follow-up on the demo stack with Gemma: one search, one cited lead.
+
 ## Known gaps, for a later session
 - Repeated identical calls: Sonnet's first run looped the same search up to nine times. A guard that answers a repeat call from the earlier result would stop this. It is not built, so the bench numbers describe the current code.
 - The structured fallback rejects inline list numbers ("1. … 2. …" on one line). Only line-start list markers are ignored.
-- The demo stack has not been rebuilt with S10. Run `make demo`, or `docker compose up -d --build` with `PERCH_UID` and `PERCH_GID` set. The demo Scout model is the profile's chat model, Gemma.
 - Private Scout sessions skip the Scout log and keep the audit log in memory, but the tools still write the rerank cache, the embedding cache (`CachedEmbedder`) and store upserts. S13 must bypass these before private text reaches a tool.
 
 ## Next session: S11 — Route B
-1. Read S11 in `docs/PLAN.md`.
-2. Route B fills `get_org_signals` and `search_opportunities(route="B")`. Update the Help step and the tool descriptions when it lands.
-3. Add any Route B follow-ups to `bench/scout_tasks.yaml` as new tasks; keep the 20 S10 tasks unchanged for comparison.
+1. Read S11 in `docs/PLAN.md`. Tasks 4 to 6 are new: Route B in Scout, the repeated-call guard with a bench rerun, and a demo rebuild.
+2. The gaps above are now planned: the guard in S11, private Scout's cache and store writes in S13.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- Q18: Scout's three later-session tools say "not built yet"; default is to keep them in the list.
+- None. Q18 answered: keep the three tools; S11 and S12 fill them.

@@ -156,8 +156,11 @@ Goal: industry leads from public signals, honestly labelled.
 1. Signal 1: company-type institutions publishing in the researcher's topics (OpenAlex). Signal 2: SBIR/STTR awards in those topics (verify SBIR.gov API first; fixture). Signal 3: company-authored works that cite the researcher's works (`referenced_works`).
 2. Score = weighted overlap × recency; two independent signals required; relationship-type suggestion; every lead carries "inferred from public signals; not verified".
 3. Routes screen shows Route B beside Route A.
+4. Scout: `get_org_signals` and `search_opportunities(route="B")` return Route B leads (they say "not built yet" until now, Q18); update their tool descriptions and the Help step. Add Route B follow-ups to `bench/scout_tasks.yaml` as new tasks, keeping the 20 S10 tasks unchanged, and rerun the bench on Gemma.
+5. Scout repeated-call guard: a call identical to one already run for the same question is answered from the earlier result with a note, not run again (Sonnet looped the same search up to nine times in S10's first run). Rerun the full Scout bench on Gemma and Sonnet afterwards (Sonnet about $0.30; ask before spending).
+6. Rebuild the demo (`make demo`) so the public URL serves this session's work.
 
-Done when: leads for 3 PIs with signals listed; hand-judged precision recorded in the tracker.
+Done when: leads for 3 PIs with signals listed; hand-judged precision recorded in the tracker; Scout answers a Route B follow-up with cited signals.
 
 ## S12 — Compare, hand-off, export
 
@@ -166,7 +169,9 @@ Goal: the decision and the hand-off.
 1. Compare screen: kept leads on money, time, effort, IP, evidence; sortable; evidence panel from any cell.
 2. Skill 3 hand-off drafter: editable email to the chosen office; never sent; copy / open in mail.
 3. PDF and Markdown export of the brief.
-4. Private mode egress filter: exports and hand-off drafts exclude private-derived text by default; opt-in masking of identifiers and novel phrases with typed placeholders, an in-memory key to unmask on screen, and a warning that the research direction stays visible.
+4. Scout: `compare` and `draft_handoff` call the new compare view and skill 3 (they say "not built yet" until now, Q18). The hand-off draft stays a draft. Add a compare and a hand-off task to the Scout bench.
+5. Rebuild the demo (`make demo`).
+6. Private mode egress filter: exports and hand-off drafts exclude private-derived text by default; opt-in masking of identifiers and novel phrases with typed placeholders, an in-memory key to unmask on screen, and a warning that the research direction stays visible.
 
 Done when: Find → Routes → Compare → Hand off works on the public URL.
 
@@ -178,9 +183,10 @@ Goal: private tailoring on self-hosted models that leaves no trace, on the publi
 2. Private session in memory: random session token, isolation between sessions, memory and size caps, idle timeout, "End private session"; inputs by paste or upload (parsed from bytes; text, Markdown, DOCX, PDF); self-hosted-endpoint gate; `PERCH_TLS_AT` rule on public URLs; every write path in the design's inventory switched off.
 3. Tailoring: private threads at 0.6 of the thread weight (Q13 default); deterministic CV parse (degree year, rank, appointments, prior sponsors) for the career-stage unlock and sponsor history; private-only brief with no OpenAlex id.
 4. Session records (`source: private`) cited in explanations and accepted by the validator in session only; lock label and the operator-named privacy statement in the UI; Help page section.
-5. Tests: canary test over files, logs, `/tmp`, browser storage and outbound requests; refusal test; isolation test; masking test. Persona: `data/synthetic/persona-1/`.
-6. Normal-mode context (Q16), every field optional (a brief with none runs exactly as today): a short research direction, keywords to include or exclude, and a self-reported career stage, on the Find screen's options. Same mechanism as private threads, but saved with the brief, usable by the configured model (hosted included) and shown on the Profile as "You said"; used as a query, never cited as a fact. A CV stays private-mode only.
-7. Mechanism measured (if time): RePORTER project abstract as stand-in for the unfinished proposal on the back-test rows (verify the field live), reported as an upper bound beside the public-only numbers.
+5. Private Scout: S10 built the local-only gate and turned off the Scout log, and the audit log stays in memory. Its tools still write to the rerank cache, the embedding cache (`CachedEmbedder`) and the store (researcher and works upserts). Route every one of these to memory in a private session, and include Scout sessions in the canary test.
+6. Tests: canary test over files, logs, `/tmp`, browser storage and outbound requests; refusal test; isolation test; masking test. Persona: `data/synthetic/persona-1/`.
+7. Normal-mode context (Q16), every field optional (a brief with none runs exactly as today): a short research direction, keywords to include or exclude, and a self-reported career stage, on the Find screen's options. Same mechanism as private threads, but saved with the brief, usable by the configured model (hosted included) and shown on the Profile as "You said"; used as a query, never cited as a fact. A CV stays private-mode only.
+8. Mechanism measured (if time): RePORTER project abstract as stand-in for the unfinished proposal on the back-test rows (verify the field live), reported as an upper bound beside the public-only numbers.
 
 Done when: the canary and isolation tests pass after full private briefs with persona-1 on a local model; a private-only brief returns cited routes.
 
@@ -188,7 +194,7 @@ Done when: the canary and isolation tests pass after full private briefs with pe
 
 Goal: any platform, including local.
 
-1. `perch/mcp_server.py` on the official Python SDK (verify version): same allowlisted tools, same validator and budgets. Private tools only when the MCP client and every model are self-hosted (stdio on the server, or an authenticated local transport). Test from Claude Code and from a local Ollama agent on the laptop; write the exact commands into README.
+1. `perch/mcp_server.py` on the official Python SDK (verify version): the same nine tools as Scout, from `perch.scout.tools.TOOLS`, with `check_arguments`, the same validator and budgets. Private tools only when the MCP client and every model are self-hosted (stdio on the server, or an authenticated local transport). Test from Claude Code and from a local Ollama agent on the laptop; write the exact commands into README.
 
 Done when: an MCP client gets a cited brief.
 
@@ -206,7 +212,7 @@ Done when: the job runs on the demo personas and produces a draft.
 Goal: ship.
 
 1. Work the fix list from the QA log a teammate keeps; accessibility checklist pass; privacy audit of private mode against the design's write-path inventory, canary test rerun on the frozen build.
-2. Final numbers (back-test, validator rate, cost per brief) into `docs/TRACKER.md` and `docs/RESULTS.md` for the deck.
+2. Rerun the Scout bench on the frozen build with the demo model. Final numbers (back-test, validator rate, cost per brief, Scout completion and wrong-tool rate) into `docs/TRACKER.md` and `docs/RESULTS.md` for the deck.
 3. README final; `make package` → submission ZIP with how-to-run; confirm with Dakshitha before changing repo visibility.
 4. Freeze: tag `v0.1-demo`; nothing on `main` after that except README typos.
 
@@ -231,3 +237,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S13 | Private mode: full back end and front end built in S13; no Demo Day demo | Dakshitha's direction | Dakshitha |
 | 2026-10-29 | S13 | Normal-mode context fields added (direction, include and exclude keywords, self-reported career stage); CV only in private mode | Dakshitha (Q16): normal mode had no user input fields |  Dakshitha |
 | 2026-10-29 | S9 | Task 1: Compose runs one app service (API, web app and in-process jobs, as built in S6) instead of four containers; the GPU models run as systemd user units | No GPU access in Docker on the node; the S6 design has no separate worker or database server | Dakshitha |
+| 2026-10-29 | S11 to S14, S16 | Scout's follow-ups cascaded: S11 fills `get_org_signals` and Route B search, adds a repeated-call guard and Route B bench tasks; S12 fills `compare` and `draft_handoff`; S11 and S12 rebuild the demo; S13 routes private Scout's cache and store writes to memory and adds Scout to the canary test; S14 reuses Scout's tool table; S16 reruns the Scout bench | Gaps found in S10; Q18 answered with the default | Dakshitha |
