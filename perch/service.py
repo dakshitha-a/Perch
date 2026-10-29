@@ -26,8 +26,8 @@ from perch.embed import Embedder
 from perch.grounding import Grounder
 from perch.llm import Provider, get_provider, spec_for_role
 from perch.llm.audit import AuditedProvider, AuditLog
-from perch.rerank import RerankCache, Reranker
 from perch.offices import OFFICES
+from perch.rerank import RerankCache, Reranker
 from perch.schemas import (
     Award,
     Brief,

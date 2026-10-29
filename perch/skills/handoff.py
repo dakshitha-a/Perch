@@ -18,8 +18,14 @@ from perch.llm import Message
 from perch.llm.audit import AuditedProvider
 from perch.offices import Office
 from perch.schemas import Lead, Opportunity, Organisation, Record, Researcher, Work
-from perch.skills import GROUND_RULES, opportunity_view, parse_json, sentences, short_work_id, \
-    work_view
+from perch.skills import (
+    GROUND_RULES,
+    opportunity_view,
+    parse_json,
+    sentences,
+    short_work_id,
+    work_view,
+)
 from perch.validate import Check, check, generate_validated
 
 SKILL = "handoff"
