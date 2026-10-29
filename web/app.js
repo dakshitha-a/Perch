@@ -345,8 +345,14 @@ function renderBrief() {
 
 function exportLink() {
   const url = api.exportUrl(S.briefId);
-  return url ? h("p", { class: "export" }, h("a", { class: "btn quiet", href: url, download: `perch-brief-${S.briefId}.json` },
-    icon("download"), h("span", { text: "Download the records as JSON" }))) : null;
+  if (!url) return null;
+  return h("p", { class: "export" },
+    h("a", { class: "btn quiet", href: api.exportUrl(S.briefId, "html"), target: "_blank", rel: "noopener" },
+      icon("paper"), h("span", { text: "Print or save as PDF" })),
+    h("a", { class: "btn quiet", href: api.exportUrl(S.briefId, "md"), download: `perch-brief-${S.briefId}.md` },
+      icon("download"), h("span", { text: "Markdown" })),
+    h("a", { class: "btn quiet", href: url, download: `perch-brief-${S.briefId}.json` },
+      icon("download"), h("span", { text: "Records as JSON" })));
 }
 
 function tabButton(key, label) {

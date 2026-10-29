@@ -31,7 +31,7 @@ export function liveApi(base = "") {
       `/briefs/${encodeURIComponent(id)}/leads/${encodeURIComponent(leadId)}/${action}`,
       { method: "POST" }),
     record: (id) => call(base, `/records/${encodeURIComponent(id)}`),
-    exportUrl: (id) => `${base}/briefs/${encodeURIComponent(id)}/export.json`,
+    exportUrl: (id, kind = "json") => `${base}/briefs/${encodeURIComponent(id)}/export.${kind}`,
     keptUrl: (id) => `${base}/briefs/${encodeURIComponent(id)}/export.json?status=kept`,
     compare: (id) => call(base, `/briefs/${encodeURIComponent(id)}/compare`),
     handoff: (id, body) => call(base, `/briefs/${encodeURIComponent(id)}/handoff`,

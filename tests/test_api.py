@@ -284,3 +284,21 @@ def test_handoff_draft_is_returned_not_stored(tmp_path):
         .status_code == 404
     with service.repo() as r:
         assert len(r.list(__import__("perch.schemas", fromlist=["Lead"]).Lead)) == before
+
+
+def test_markdown_and_print_exports_carry_records_and_the_notice(tmp_path):
+    c, _ = make(tmp_path)
+    bid = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28",
+                                  "explain": False}).json()["id"]
+    a = c.get(f"/briefs/{bid}").json()["brief"]["lead_ids"][0]
+    c.post(f"/briefs/{bid}/leads/{a}/keep")
+    md = c.get(f"/briefs/{bid}/export.md")
+    assert md.headers["content-type"].startswith("text/markdown")
+    t = md.text
+    assert t.startswith("# Perch brief: ") and "## Kept leads compared (1)" in t
+    assert "PAR-25-268" in t and "(kept)" in t and "not endorsed or certified" in t
+    assert "| Lead | Money | Closes |" in t and "https://www.grants.gov/" in t
+    page = c.get(f"/briefs/{bid}/export.html", params={"status": "kept"}).text
+    assert page.startswith("<!doctype html>") and "window.print()" in page
+    assert "<table>" in page and "not endorsed or certified" in page
+    assert c.get("/briefs/nope/export.md").status_code == 404

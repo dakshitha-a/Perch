@@ -9,6 +9,8 @@
   GET  /briefs/{id}                             status, stages, profile, leads with records
   POST /briefs/{id}/leads/{lead_id}/keep        and /dismiss, /restore
   GET  /briefs/{id}/export.json[?status=kept]   brief, leads and every record they cite
+  GET  /briefs/{id}/export.md, /export.html    the brief as Markdown, or a page to print or save
+                                                as PDF; ?status=kept for the kept leads only
   GET  /briefs/{id}/compare[?status=kept|all]   kept leads side by side, each cell with its record
   POST /briefs/{id}/handoff                     {"office", "lead_ids"?}: a hand-off draft to one
                                                 Temple office about the kept leads (skill 3);
@@ -46,6 +48,7 @@ from pydantic import BaseModel, Field
 
 from perch import awards as aw
 from perch import compare as cmp
+from perch import export as ex
 from perch.config import env
 from perch.jobs import JobRunner
 from perch.schemas import (
@@ -325,6 +328,35 @@ def create_app(service: BriefService, runner: JobRunner,
         return {"brief": b.model_dump(mode="json"),
                 "leads": [x.model_dump(mode="json") for x in leads], "records": records,
                 "notice": grants_gov.ATTRIBUTION}
+
+    def export_blocks(brief_id: str, status: str | None) -> tuple[list, str]:
+        b, leads = load(brief_id)
+        if status:
+            leads = [x for x in leads if x.status == status]
+        with service.repo() as r:
+            res = r.get(Researcher, b.researcher_id)
+            opps = {x.record_id: o for x in leads if x.route == "A"
+                    and (o := r.get(Opportunity, x.record_id))}
+            orgs = {x.record_id: o for x in leads if x.route == "B"
+                    and (o := r.get(Organisation, x.record_id))}
+            wids = {f"https://openalex.org/{c}" for x in leads for c in x.cited_ids
+                    if c.startswith("W")}
+            works = {w.id: w for w in (r.get(Work, i) for i in sorted(wids)) if w}
+            rows = cmp.compare(b, leads, r, "kept")
+        name = res.display_name if res else b.researcher_id
+        return ex.blocks(b, res, leads, opps, orgs, works, rows), f"Perch brief: {name}"
+
+    @app.get("/briefs/{brief_id}/export.md")
+    def export_md(brief_id: str, status: Literal["kept"] | None = None) -> Response:
+        bs, _ = export_blocks(brief_id, status)
+        return Response(ex.to_markdown(bs), media_type="text/markdown; charset=utf-8",
+                        headers={"Content-Disposition":
+                                 f'attachment; filename="perch-brief-{brief_id}.md"'})
+
+    @app.get("/briefs/{brief_id}/export.html")
+    def export_html(brief_id: str, status: Literal["kept"] | None = None) -> Response:
+        bs, title = export_blocks(brief_id, status)
+        return Response(ex.to_html(bs, title), media_type="text/html; charset=utf-8")
 
     @app.get("/briefs/{brief_id}/compare")
     def compare_view(brief_id: str, status: Literal["kept", "all"] = "kept") -> dict:
