@@ -4,7 +4,7 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
-None.
+26. **ScholarshipUniverse schema (raised S17, 2026-10-29; not blocking).** You asked that the sample scholarships use ScholarshipUniverse's data shape, so the business team could plug in the real feed. I checked on 2026-10-29. Temple's SFS page describes it: students sign in with AccessNet, answer profile questions, and are matched to internal and over 15,000 external awards. But no public API, export format or field list exists on Temple's pages, on other universities' guides, or in a web search. Standing rule 2 stops me from guessing field names. What I did: the `Scholarship` schema covers what any listing states (name, sponsor, amount range, deadline, level, field, eligibility, requirements). `perch/sources/scholarshipuniverse.py` is the one place a real feed would be mapped in, and it is documented. Student mode reads only `Scholarship` records, so swapping the sample store for the feed changes nothing else. **Ask:** can you or the business team get a sample export or field list from Temple SFS or the vendor? With one, I rename schema fields to match and write the mapping. Default until then: keep the current schema and the documented seam.
 
 ## Answered
 

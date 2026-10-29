@@ -34,6 +34,8 @@ Required for the final deck's "AI use declaration" slide. One row per tool per p
 | 2026-10-29 | Code reused from NextTex (Dakshitha's repo) | NextTex `e2e/shots/animate.py`, copied unchanged; `e2e/shots/recorder.ts`, ported to Python | S15: the README clips' camera (`scripts/tour/animate.py`) and recorder (`scripts/tour/recorder.py`); the README's layout follows NextTex's README | Dakshitha (asked for it) |
 | 2026-10-29 | gemma4:26b-a4b (Ollama, demo unit) | Ollama digest 001e5dafc3c7 | S15: model text in the README clips (fit explanations, a hand-off opening, a Scout answer, a private brief on SYNTHETIC persona-1) | Perch-dev for Dakshitha |
 | 2026-10-29 | Claude Code CLI (model Claude Opus 5.5, `claude-opus-5-5`), session Perch-dev; gemma4:26b-a4b on the demo for brief explanations | 2.1.312 (Claude Code) | S16: wrote the weekly watch (`perch/monitor.py`, the What changed screen, the timer) and the bench render fix; the live run's briefs used the demo's local model. The weekly email draft itself uses no model | Perch-dev |
+| 2026-10-29 | gemma4:26b-a4b (Ollama) | Ollama digest 001e5dafc3c7 | S17: wrote the purpose sentence of the SYNTHETIC sample scholarships (476 records), local. Code rejected any sentence with a number, month or name and set every structured field | Perch-dev for Dakshitha |
+| 2026-10-29 | Claude Code 2.1.312 (claude-opus-5-5) | CLI | S17 to S20: student mode (sample corpus, personas, rules, UI), scoring, QA and privacy audit | Perch-dev for Dakshitha |
 
 Reminders:
 - Record Claude Code's version (`claude --version`) the first time it writes project code.
