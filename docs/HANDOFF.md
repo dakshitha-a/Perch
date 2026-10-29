@@ -3,41 +3,42 @@
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
 ## Last session
-- Session: S3 — Opportunities
+- Session: S4 — Route A, deterministic
 - Status (done / continued): done
-- Last commit: 3b9740b (task work); the ritual commit follows it on `main`
+- Last commit: f00e02c (task work); later commits on `main` are tracker and ritual updates
 
 ## What exists now (one line per subsystem)
-- Schemas: Opportunity now has `eligibility_notes`, `status`, `archive_date`, `assistance_listings`, `funding_instruments`.
-- Researchers and works: `perch/sources/openalex.py` (page-number paging; truncated author lists handled).
-- Awards: `perch/sources/nih_reporter.py`, `perch/sources/nsf.py`, linking and horizon in `perch/awards.py`.
-- Opportunities: `perch/sources/grants_gov.py`. `search2` then `fetchOpportunity` per hit; no key; 1 request per second; list fields sorted; contacts never read.
-- CLI: `perch resolve`, `perch fetch openalex|awards|opportunities`, `perch profile`. `fetch opportunities` takes `--agencies`, `--statuses`, `--limit`, `--opp-num` (repeatable, any status).
-- Store (live, gitignored `data/perch.db`): 4 researchers, 710 works, award records for 3 PIs, 56 opportunities.
-- Tests: 52 green. Fixtures: openalex 3, nih_reporter 1, nsf 2, grants_gov 3 (contacts and tokens removed).
+- Sources: OpenAlex, NIH RePORTER, NSF, Grants.gov fetchers; `perch fetch openalex|awards|opportunities`.
+- Profile: `perch/profile.py` key papers and research threads (research work types only; recency half-life 5 y; spherical k-means, k 2 to 4 by silhouette; at least 3 papers per thread; `as_of` cut-off).
+- Embeddings: `perch/embed/` (Qwen3-Embedding-0.6B default, fake for tests, SQLite cache `data/cache/embeddings.db`).
+- Vector store: `perch/store/lance.py` LanceIndex (cosine + stemmed BM25) behind `VectorIndex` in `perch/store/base.py`; data in `data/lance/`.
+- Retrieval: `perch/retrieve.py` per-thread dense + BM25, RRF k=60, weighted merge; stage timings.
+- Eligibility: `perch/eligibility.py` dates, applicant types, excluded activity codes, title-stated restrictions, user constraints; reasons kept.
+- Rerank: `perch/rerank.py` Qwen3-Reranker-0.6B CrossEncoder, cache by (model, profile hash, record) in `data/cache/rerank.db`.
+- Brief: `perch/brief.py` + `perch brief <id> --route A` (retrieve 200, filter, rerank 50 to 10). Timings appended to `data/logs/brief_timings.jsonl`.
+- Store: 676 opportunities (660 open or forecasted NIH, 16 archived), 710 works, 3 PIs with awards.
+- Tests: 76 green; `--models fake` runs the brief with no downloads.
+
+## How to run the real models
+- `uv sync --extra ml`, then `CUDA_VISIBLE_DEVICES=3 uv run --extra ml perch brief A5057472361`.
+- torch is pinned to 2.14.1+cu126 from the PyTorch cu126 index: the node's driver (565.57.01, CUDA 12.7) rejects the default CUDA 13 wheel.
+- GPU 0 holds Ollama with `qwen3.8:27b` resident. Never unload it.
 
 ## What is half-done (exact file, exact next step)
-- Nothing. S3 is complete.
+- Nothing in S4.
+- Clef decision servers (setup task): blocked on the llama.cpp CUDA build (Q3). The torch result suggests the `cuda/120` llama.cpp build will work.
 
-## Decisions made this session
-- Grants.gov terms require the notice "This product uses the Grants.gov API but is not endorsed or certified by the U.S. Department of Health and Human Services." It is in the README and printed by `fetch opportunities`. **The web app (S7) must show it.**
-- NIH Guide: no documented structured archive (JS search app, RSS of recent items, HTML weekly indexes). Not scraped. Back-test uses Grants.gov archived listings instead (16 of 17 sampled FOAs present; RFA-AA-07-015 missing).
-- Activity code comes from NIH-style titles, e.g. "(R01 ...)" or "(Parent R01)". Other agencies have none.
-- A full refresh of open NIH opportunities is about 660 detail requests, about 11 minutes. Nightly scheduling is S9.
-- SPEC and PLAN gained the `decide` primitive (S5 task 7) and decision-model bench rows (S8 task 4): Clef-flash default local, Clef challenger, Jev hosted, Strands Decider 2B CPU fallback, LLM-logprobs fallback. All vendor facts marked [verify].
-
-## Setup task: Clef decision servers (asked by Dakshitha after S3)
-- llama.cpp b11941 installed via llama.app, but **CPU build only**: the CUDA probe exits 4 with no message (driver 565.57.01, CUDA 12.7). Stopped there as instructed; details in Q3.
-- Not done: Clef-flash on GPU 1 port 8097, the bartowski Q4_K_M pulls, Clef on GPU 2 port 8098, `/v1/systemone` checks, `make decide-up` or systemd unit.
-- GPU 0 Ollama has `qwen3.8:27b` resident (about 22 GB in use); never unload it. GPUs 1 to 7 were idle.
-- Docs updated: SPEC section 11 GPU profiles and VRAM budget; PLAN S8 task 5 single-card validation gates; PLAN S9 `PERCH_PROFILE` and `make gpus`; `.env.example` endpoint variables; tracker key-number row for deployment profile.
+## Decisions made this session (all in docs/DECISIONS.md)
+- Research work types only for threads and key papers; minimum 3 papers per thread.
+- Route A excludes forecasted, no close date, no applicant types, codes F, K99/R00, R36, SBIR/STTR, and titles stating limited competition or career stage.
+- Tracker gained a Decisions tab; decisions are logged in `docs/DECISIONS.md` as they are made.
 
 ## Open questions (mirror of bridge/QUESTIONS.md, numbered)
-- Q1: `data/backtest/` (S8) and `data/synthetic/` (S13) gitignore decision. `data/overrides/` is handled.
-- Q2: OpenAlex API key in `.env`.
+- Q1: `data/backtest/` (S8) and `data/synthetic/` (S13) gitignore decision.
+- Q2: OpenAlex API key. Dakshitha has offered one; needed at the start of S8.
 - Q3: llama.cpp CUDA build failed (probe exit 4); Clef servers need a hand install.
+- Q4: Temple's Grants.gov applicant category, and the v1 activity-code exclusions.
 
 ## Next session
-- Session to start: S4 — Route A, deterministic (embeddings, LanceDB, threads, retrieval, eligibility, rerank)
+- Session to start: S5 — Provider layer, skills 1 and 2, validator, `decide` primitive
 - First command to run: `git pull && make hooks && make test`
-- Before S4 retrieval: run `uv run perch fetch opportunities --agencies HHS-NIH11` for the full open NIH set (about 11 minutes).
