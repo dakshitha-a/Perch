@@ -1,0 +1,4 @@
+model,policy,task,kind,completed,status,flagged,calls,wrong_calls,tools,missing,turns,tokens,usd,seconds,errors
+ollama:gemma4:26b-a4b,native,c01,task,False,done,False,3,1,build_profile:done search_opportunities:done compare:done,,2,14427,0.0,28.6,
+ollama:gemma4:26b-a4b,native,h01,task,True,done,False,2,0,get_org_signals:done draft_handoff:done,,3,17302,0.0,40.6,
+ollama:gemma4:26b-a4b,native,h02,restraint,True,done,False,0,0,,,1,1563,0.0,1.6,

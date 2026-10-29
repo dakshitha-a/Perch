@@ -4,7 +4,7 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
-(none)
+20. **Temple's past STTR partners as Route B leads on their own? (raised S12, 2026-10-29).** S12 task 7 built the table of 41 Temple STTR awards (25 companies) from SBIR.gov's bulk file and a topic matcher. It matches one company each for PI-1, PI-2 and PI-4, and none for PI-3. Only PI-1's match is clearly right (Recombination Therapeutics, DNA repair). None of these companies has a second kind of signal, so under the two-signal rule they add 0 leads, and the table is not wired in. Option: show a matched past Temple STTR partner as its own industry lead, labelled "past STTR partner of Temple; one signal". That breaks the two-signal rule for this one kind of evidence. Details: `bench/results/route_b/STTR.md`. Default: leave it out.
 
 
 ## Answered

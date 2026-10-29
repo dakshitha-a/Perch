@@ -22,6 +22,7 @@ secrets/
 
 # Data: curated inputs are committed (overrides, back-test PI list, synthetic persona);
 # everything generated (perch.db, cache/, lance/, logs/) stays local. Q1, answered 2026-10-28.
+# data/sbir/ holds the derived Temple STTR table (S12), not the bulk file.
 data/*
 !data/overrides/
 !data/backtest/
@@ -43,3 +44,4 @@ CLAUDE.local.md
 *.swp
 .DS_Store
 Thumbs.db
+!data/sbir/
