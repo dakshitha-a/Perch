@@ -12,7 +12,7 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S5 | Provider layer, skills 1–2, validator | done | 2026-10-28 21:04 EDT | 2026-10-28 21:29 EDT | ce34844 | 105 tests green. `perch brief --explain` live for 3 PIs on qwen3.8:27b: layer 1 rejected 0 of 33, layer 2 flagged 1 of 30 (a false flag). 70 to 79 s per brief, $0. `decide` primitive with logprobs fallback. Anthropic adapter built on the SDK but not live-verified (Q5). |
 | S6 | API | done | 2026-10-28 22:07 EDT | 2026-10-28 22:13 EDT | b3ccdf6 | 112 tests green. FastAPI + in-process jobs; briefs end to end via curl for 2 PIs (one fetched from scratch); stages and partial results pollable; export with provenance. |
 | S7 | Web app, first three screens | done | 2026-10-28 22:40 EDT | 2026-10-28 23:14 EDT | 5da4e7e | 116 tests green. No-build web app in `web/` served by `perch serve` at `/`: Find, Profile, Routes, evidence panel, Scout the owl on the progress branch. Live brief in the browser in 90 s. Adversarial review: 32 findings fixed. Screenshots in `docs/screenshots/`; UI tab in the tracker. |
-| S8 | Back-test and bench | todo | | | | |
+| S8 | Back-test and bench | in progress | 2026-10-29 00:04 EDT | | | |
 | S9 | Deploy | todo | | | | |
 | S10 | Scout agent | todo | | | | |
 | S11 | Route B | todo | | | | |

@@ -675,8 +675,10 @@ function renderRoutes(panel) {
             h("option", { value: "closing", text: "Closing soon" }),
             h("option", { value: "fit", text: "Fit estimate" })))),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
-      h("div", { class: "dismissed-box" }));
+      h("div", { class: "dismissed-box" }),
+      h("div", { class: "keep-bar-box" }));
   }
+  renderKeepBar(panel.querySelector(".keep-bar-box"), kept);
   panel.querySelector("select").value = S.sort;
   panel.querySelector("#routes-title").textContent = `${f.plural(active.length, "open opportunity", "open opportunities")}`;
   const subBits = [];
@@ -701,6 +703,24 @@ function renderRoutes(panel) {
   }
   det.querySelector("summary").textContent = `Dismissed (${dismissed.length})`;
   syncList(det.querySelector("ol"), dismissed);
+}
+
+// Keep bar: once a lead is kept, how many and what comes next. Until the hand-off
+// is built (S12), its button downloads the kept leads with their records.
+function renderKeepBar(box, kept) {
+  if (!kept) { box.replaceChildren(); return; }
+  const sig = `keep:${kept}`;
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  const link = h("a", { class: "btn primary", href: "#", "data-key": "keep-download",
+    download: `perch-kept-${S.briefId}.json`,
+    onclick: (e) => { e.currentTarget.href = api.keptUrl(S.briefId); } },
+  icon("download"), h("span", { text: `Download ${kept === 1 ? "it" : "them"}` }));
+  fill(box, h("section", { class: "keep-bar", "aria-label": "Kept leads" },
+    h("div", {}, h("p", { class: "keep-count", text: `${f.plural(kept, "lead", "leads")} kept` }),
+      h("p", { class: "hint", text: "Next: a hand-off draft to the right Temple office. That step "
+        + "is not built yet. For now, download the kept leads with their records." })),
+    link));
 }
 
 // Keyed update: a card is rebuilt only when its data changed, so focus and open
@@ -908,7 +928,7 @@ async function setLead(leadId, action) {
   renderPanel();
   renderTabs();
   if (action === "dismiss") announce("Dismissed. It is in the Dismissed list at the bottom, where you can restore it.");
-  if (action === "keep") announce("Kept.");
+  if (action === "keep") announce("Kept. The bar at the bottom of the list downloads your kept leads.");
   try {
     await api.setLead(S.briefId, l.id, action);
   } catch (e) {

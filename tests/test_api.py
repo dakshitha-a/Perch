@@ -76,6 +76,11 @@ def test_keep_dismiss_export_records_and_errors(tmp_path):
     kinds = {x["kind"] for x in exp["records"]}
     assert {"researcher", "opportunity"} <= kinds
     assert all(x["source"] and x["source_url"] and x["fetched_at"] for x in exp["records"])
+    assert c.get(f"/briefs/{bid}/export.json", params={"status": "kept"}).json()["leads"] == []
+    c.post(f"/briefs/{bid}/leads/{lead_id}/keep")
+    kept = c.get(f"/briefs/{bid}/export.json", params={"status": "kept"}).json()
+    assert [x["id"] for x in kept["leads"]] == [lead_id]
+    assert any(x["kind"] == "opportunity" for x in kept["records"])
     assert c.get("/records/A5026494099").json()["kind"] == "researcher"
     assert c.get("/records/PAR-25-268").json()["kind"] == "opportunity"
     assert c.get("/records/nothing").status_code == 404

@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import glob
+import json
 import os
 import sys
 from pathlib import Path
@@ -71,13 +72,26 @@ async def walk(page: Page, url: str, out: Path, tag: str, errors: list[str]) -> 
     kept = await page.locator(".lead.kept").count()
     if kept != 1 or await page.locator(".dismissed").count() != 1:
         errors.append(f"{tag}: keep or dismiss did not take effect")
-    wide = await page.evaluate("document.documentElement.scrollWidth - innerWidth")
+    if await page.locator(".keep-bar").count() != 1:
+        errors.append(f"{tag}: the Keep bar did not appear")
+    else:
+        async with page.expect_download() as dl:
+            await page.click("[data-key=keep-download]")
+        saved = json.loads(Path(await (await dl.value).path()).read_text("utf-8"))
+        if [x["status"] for x in saved["leads"]] != ["kept"]:
+            errors.append(f"{tag}: the Keep bar download did not hold exactly the kept lead")
+        await snap("9b-keep-bar")
+    wide =await page.evaluate("document.documentElement.scrollWidth - innerWidth")
     if wide > 0:
         errors.append(f"{tag}: page scrolls sideways by {wide}px")
     await snap("9-routes-full", full=True)
     await page.click("#tab-profile")
     await page.wait_for_timeout(300)
     await snap("10-profile-full", full=True)
+    await page.evaluate("location.hash = '#/help'")
+    await page.wait_for_selector("#h-use")
+    await page.wait_for_timeout(300)
+    await snap("11-help-full", full=True)
 
 
 async def main(argv: list[str]) -> int:

@@ -5,7 +5,7 @@
   POST /briefs                                  {"author_id", "as_of"?, "top"?, "explain"?, ...}
   GET  /briefs/{id}                             status, stages, profile, leads with records
   POST /briefs/{id}/leads/{lead_id}/keep        and /dismiss, /restore
-  GET  /briefs/{id}/export.json                 brief, leads and every record they cite
+  GET  /briefs/{id}/export.json[?status=kept]   brief, leads and every record they cite
   GET  /records/{id}                            any stored record, with provenance
 
   GET  /                                       the web app (web/), when present
@@ -145,8 +145,10 @@ def create_app(service: BriefService, runner: JobRunner,
         return set_status(brief_id, lead_id, "new")
 
     @app.get("/briefs/{brief_id}/export.json")
-    def export(brief_id: str) -> dict:
+    def export(brief_id: str, status: str | None = None) -> dict:
         b, leads = load(brief_id)
+        if status:  # e.g. ?status=kept: the Keep bar's download
+            leads = [x for x in leads if x.status == status]
         ids = {b.researcher_id, *(x.record_id for x in leads)}
         ids |= {f"https://openalex.org/{c}" for x in leads for c in x.cited_ids
                 if c.startswith("W")}

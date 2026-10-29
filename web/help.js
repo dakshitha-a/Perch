@@ -56,6 +56,13 @@ function picLead() {
         h("span", { class: "pic-btn ghost" }, icon("evidence"), h("span", { text: "Evidence" })))));
 }
 
+function picKeep() {
+  return example(
+    h("div", { class: "pic-card pic-row between" },
+      h("span", {}, h("b", { text: "2 leads kept" }), bar(60)),
+      h("span", { class: "pic-btn" }, icon("download"), h("span", { text: "Download them" }))));
+}
+
 // ----- sections -----
 
 function steps() {
@@ -67,6 +74,8 @@ function steps() {
     ["Watch the brief build", picWatch(),
       "Scout moves along the branch as each step finishes. In tests on the local model, the profile was ready in about 10 seconds and a full brief with explanations took about a minute and a half."],
     ["Read the routes and decide", picLead(), null],
+    ["Take the kept leads with you", picKeep(),
+      "Once you keep a lead, a bar at the bottom of Routes shows how many you kept. Its button downloads the kept leads with their records as a JSON file. The next step will be a hand-off draft to the right Temple office; it is not built yet."],
   ];
   const legend = h("ol", { class: "callouts" },
     h("li", { text: "The fit estimate is a model’s judgment of how well the opportunity matches the papers. It is not the odds of funding." }),

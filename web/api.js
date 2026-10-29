@@ -32,6 +32,7 @@ export function liveApi(base = "") {
       { method: "POST" }),
     record: (id) => call(base, `/records/${encodeURIComponent(id)}`),
     exportUrl: (id) => `${base}/briefs/${encodeURIComponent(id)}/export.json`,
+    keptUrl: (id) => `${base}/briefs/${encodeURIComponent(id)}/export.json?status=kept`,
   };
 }
 
@@ -111,6 +112,16 @@ export function replayApi(data) {
       return r ? later(clone(r), 120) : Promise.reject(new ApiError(`No record ${id}.`, 404));
     },
     exportUrl: () => null,
+    // Same shape as the live export with ?status=kept, built from the saved records.
+    keptUrl: () => {
+      const leads = leadsIn().filter((l) => l.status === "kept");
+      const ids = new Set([final.brief.researcher_id]);
+      for (const l of leads) { ids.add(l.record_id); l.cited_ids.forEach((c) => ids.add(c)); }
+      const records = [...ids].map(find).filter(Boolean);
+      const body = { brief: final.brief, leads, records, notice: final.notice };
+      return URL.createObjectURL(new Blob([JSON.stringify(body, null, 1)],
+        { type: "application/json" }));
+    },
     briefId: final.brief.id,
   };
 }
