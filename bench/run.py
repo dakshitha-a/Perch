@@ -74,6 +74,19 @@ def table(rows: list[dict], cols: list[str]) -> list[str]:
             *("| " + " | ".join(str(r.get(c, "")) for c in cols) + " |" for r in rows)]
 
 
+def both_layers(model: str) -> str:
+    """Leads explained with no unsupported statement, from the per-lead skill-2 CSV."""
+    from bench.backtest import slug
+
+    p = RESULTS / f"skill2_{slug(model)}.csv"
+    if not p.exists():
+        return ""
+    with p.open(newline="", encoding="utf-8") as f:
+        r = list(csv.DictReader(f))
+    n = sum(x["passed"] == "True" and x["unsupported"] == "0" for x in r)
+    return f"{n} of {len(r)}"
+
+
 def short(name: str) -> str:
     return name.split("/")[-1]
 
@@ -110,6 +123,9 @@ def render() -> str:
         if p.exists():
             with p.open(newline="", encoding="utf-8") as f:
                 rows = list(csv.DictReader(f))
+            if name == "skill2_summary.csv":
+                rows = [{"model": r["model"], "passed_both_layers": both_layers(r["model"]),
+                         **{k: v for k, v in r.items() if k != "model"}} for r in rows]
             lines += [f"## {title}", "", *table(rows, list(rows[0]) if rows else []), ""]
     return "\n".join(lines) + "\n"
 
