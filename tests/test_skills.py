@@ -34,14 +34,14 @@ def audited(replies):
     return AuditedProvider(FakeProvider(replies), log, "x"), log
 
 
-def fit_reply(explanation, cited=("PAR-1", "W1")):
+def fit_reply(explanation, cited=("PAR-1", "W1"), finding_id="W1"):
     first, _, rest = explanation.partition(". ")
     return json.dumps({"reasoning": "r", "fit": 80, "opportunity_sentence": first + ".",
-                       "research_sentence": rest, "link_sentence": "Both concern donation.",
-                       "cited_ids": list(cited)})
+                       "research_findings": [{"paper_id": finding_id, "finding": rest}],
+                       "link_sentence": "Both concern donation.", "cited_ids": list(cited)})
 
 
-GOOD = "PAR-1 funds research on ethics of donation. W1 studies living kidney donor communication."
+GOOD = "PAR-1 funds research on ethics of donation. studied living kidney donor communication."
 
 
 def test_fit_passes_first_time_and_is_logged():
@@ -88,10 +88,20 @@ def test_layer2_flags_unsupported_factual_sentence_only():
 
     reply = json.dumps({"reasoning": "r", "fit": 70,
                         "opportunity_sentence": "PAR-1 funds deep ocean volcano drilling.",
-                        "research_sentence": "W1 studies living kidney donor communication.",
+                        "research_findings": [{
+                            "paper_id": "W1",
+                            "finding": "studied living kidney donor communication"}],
                         "link_sentence": "The fit is weak overall.", "cited_ids": ["PAR-1", "W1"]})
     p, log = audited([reply])
     (v,) = explain_leads([OPP], PROFILE, WORKS, p, grounder=FakeGrounder())
     assert v.value.unsupported == ["PAR-1 funds deep ocean volcano drilling."]
-    assert set(v.value.support) == {"opportunity_sentence", "research_sentence"}
+    assert set(v.value.support) == {"opportunity_sentence", "W1"}
+    assert v.value.research_sentence == "Cited work: W1 studied living kidney donor communication."
     assert log.rejection_rate("fit_explainer", layer=2) == (1, 1)
+
+
+def test_finding_must_name_a_given_and_cited_paper():
+    p, log = audited([fit_reply(GOOD, finding_id="W9"), fit_reply(GOOD, finding_id="W2")])
+    (v,) = explain_leads([OPP], PROFILE, WORKS, p)
+    assert v.flagged
+    assert any("W9" in e for e in log.events[1]["errors"])

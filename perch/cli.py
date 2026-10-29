@@ -288,9 +288,13 @@ def explain_brief(b: object, args: argparse.Namespace) -> None:
             continue
         f = v.value
         print(f"\n{i:2}. {o.opportunity_number}  fit {f.fit}/100  (cites {', '.join(f.cited_ids)})")
-        for sent in (f.opportunity_sentence, f.research_sentence):
-            mark = "  [not supported by the cited record]" if sent in f.unsupported else ""
-            print(f"    {sent}{mark}")
+        mark = "  [not supported by the cited record]"
+        print(f"    {f.opportunity_sentence}"
+              f"{mark if f.opportunity_sentence in f.unsupported else ''}")
+        print(f"    {f.research_sentence}")
+        for pid, clause in f.findings:
+            if f"{pid} {clause}" in f.unsupported:
+                print(f"      {pid}: \"{clause}\"{mark}")
         if f.link_sentence:
             print(f"    Inference: {f.link_sentence}")
     rej1, n1 = log.rejection_rate(layer=1)
@@ -299,7 +303,7 @@ def explain_brief(b: object, args: argparse.Namespace) -> None:
     tin, tout, cost = log.spend()
     print(f"\nValidator layer 1: {rej1} of {n1} outputs rejected; {flagged} withheld after "
           f"a second failure. Layer 2: {rej2} of {n2} explanations have an unsupported "
-          f"factual sentence.")
+          f"factual statement.")
     print(f"Model calls: {sum(e['kind'] == 'call' for e in log.events)}; tokens in {tin:,}, "
           f"out {tout:,}; cost ${cost:.4f}; summary {t1 - t0:.1f} s, explanations "
           f"{t2 - t1:.1f} s.")
