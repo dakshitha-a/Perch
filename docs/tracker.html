@@ -130,7 +130,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S13</code> <span class="badge s-todo">todo</span><span>13/17 sessions done</span></div>
+<div class="at-a-glance"><code>S13</code> <span class="badge s-in-progress">in progress</span><span>13/17 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
@@ -143,13 +143,28 @@ details .inner > * { min-width: 0; }
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
 <div id="s13"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S13 · Private mode</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S13.md</code> when the session starts.</div>
+<div class="title-row"><h1>S13 · Private mode</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-29 14:22 EDT</div></div>
+<p>Goal: private tailoring on self-hosted models that leaves no trace, on the public URL too. Built in full, back end and front end; not demoed on Demo Day. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 8 tasks done"><div class="counts"><span><b>0/8</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>7</b>todo</span></div><div class="bar" role="img" aria-label="0 of 8 tasks done"><span class="s-in-progress" style="width:12.50%" title="in progress: 1"></span><span class="s-todo" style="width:87.50%" title="todo: 7"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Verify first: Ollama and llama.cpp prompt logging; NIH early-stage investigator definition from the NIH page</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td>Private session in memory: token, isolation, caps, idle timeout, End; paste or upload (text, Markdown, DOCX, PDF from bytes); self-hosted-endpoint gate; <code>PERCH_TLS_AT</code> rule; every write path off</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>Tailoring: private threads at 0.6 of the thread weight; deterministic CV parse; career-stage unlock and sponsor history; private-only brief with no OpenAlex id</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td>Session records cited in explanations and accepted by the validator in session only; lock label and privacy statement in the UI; Help section</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>5</td><td>Private Scout: rerank cache, embedding cache and store writes go to memory; Scout in the canary test</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>6</td><td>Tests: canary, refusal, isolation, masking; persona-1</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>7</td><td>Normal-mode context: direction, include and exclude keywords, career stage on Find; saved with the brief; "You said" on Profile</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>8</td><td>Mechanism measured (if time): RePORTER abstract as a stand-in proposal on the back-test rows</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>The canary and isolation tests pass after full private briefs with persona-1 on a local model.</li><li>A private-only brief returns cited routes.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="13 of 17 sessions done"><div class="counts"><span><b>13/17</b>sessions done</span><span class="s-done"><b>13</b>done</span><span class="s-todo"><b>4</b>todo</span></div><div class="bar" role="img" aria-label="13 of 17 sessions done"><span class="s-done" style="width:76.47%" title="done: 13"></span><span class="s-todo" style="width:23.53%" title="todo: 4"></span></div></section>
+<section class="panel summary" aria-label="13 of 17 sessions done"><div class="counts"><span><b>13/17</b>sessions done</span><span class="s-done"><b>13</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="13 of 17 sessions done"><span class="s-done" style="width:76.47%" title="done: 13"></span><span class="s-in-progress" style="width:5.88%" title="in progress: 1"></span><span class="s-todo" style="width:17.65%" title="todo: 3"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -166,7 +181,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s10">S10</a></td><td>Scout agent</td><td><span class="badge s-done">done</span></td><td>2026-10-29 11:38 EDT</td><td>2026-10-29 12:21 EDT</td><td class="mono">see git log</td><td>161 tests green. Scout: own loop over nine allowlisted tools, ask and run modes, follow-up filters, a structured fallback, private-session rules, replay. Ask Scout tab with tool cards. Bench, 20 follow-ups completed: Sonnet 20, Gemma 20, qwen3:8b 17 native and 12 structured; wrong-tool rate 0 for Sonnet and Gemma. Strict tool use made Sonnet drop filters, so it is off for Scout's tools. API spend about $0.93 of a $1.00 cap. Q18 open.</td></tr>
 <tr class="is-finished"><td><a href="#s11">S11</a></td><td>Route B</td><td><span class="badge s-done">done</span></td><td>2026-10-29 12:38 EDT</td><td>2026-10-29 13:21 EDT</td><td class="mono">see git log</td><td>182 tests green. Route B from three public signals: company works citing the researcher, NIH SBIR/STTR awards from RePORTER, and company works in their topics. The SBIR.gov API is down (Q19). A lead needs two kinds of signal. Every lead is labelled inferred and not verified, and no model writes it. 3 PIs give 14 leads: 8 yes, 6 thin, 0 wrong (judged by Perch-dev). Papers with more than 30 authors do not seed Route B. Grants and Industry switch on the Routes tab. Scout's <code>get_org_signals</code> returns the leads, and the repeated-call guard is in. Scout bench: Sonnet 20/20 and 5/5 ($0.34); Gemma 19/20 and 5/5. Demo rebuilt; Industry tab live on the public URL. Architecture overview figure added.</td></tr>
 <tr class="is-finished"><td><a href="#s12">S12</a></td><td>Compare, hand-off, export</td><td><span class="badge s-done">done</span></td><td>2026-10-29 13:38 EDT</td><td>2026-10-29 14:10 EDT</td><td class="mono">see git log</td><td>194 tests green. Compare tab: kept leads side by side, every cell copied from or counted from a record, each opening its record; no effort, IP or likelihood column, because no record states them. Hand off: skill 3 writes a 2 to 4 sentence opening, code writes the rest, To left empty, office names from research.temple.edu; copy and open in mail; never sent or stored. Markdown export and a print page the browser saves as PDF. Scout <code>compare</code> and <code>draft_handoff</code> built. Bench: Sonnet 20/20, 5/5, 3/3 ($0.41); Gemma 18/20, 5/5, 2/3. Egress filter for private mode. Temple STTR table (41 awards) adds 0 leads, so not wired in (Q20). Done-when met on the public URL.</td></tr>
-<tr class="is-current"><td>S13</td><td>Private mode</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s13">S13</a></td><td>Private mode</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 14:22 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S14</td><td>MCP server</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S15</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S16</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
@@ -482,10 +497,11 @@ details .inner > * { min-width: 0; }
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (18)</h2>
+<h2>Plan change log (19)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>after S12</td><td>S16 task 2: after the last test run, stop the dev decision servers (<code>make decide-down</code>) and tell the other session on the node that their GPUs are free</td><td>The app needs only the demo's two GPUs; the dev copies exist for testing</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S12</td><td>Worked in the order 1 to 4, 7, 6, 5: the demo was rebuilt last so it carried every change. Task 7 is done but not wired in, because it adds 0 leads under the two-signal rule (Q20)</td><td>Tasks 1 to 5 are the definition of done; one demo rebuild instead of two</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S12</td><td>Task 7 added back, narrowed: Temple STTR partners (41 awards) from the SBIR.gov bulk file's research-partner column</td><td>Dakshitha: worth doing if useful; companies that already partnered with Temple are concrete leads</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S12</td><td>Task 7 (SBIR.gov bulk file) removed again; Route B stays NIH-only</td><td>Dakshitha: leave it while the SBIR.gov API is down</td><td>Dakshitha</td></tr>

@@ -30,7 +30,7 @@ pieces in S9, S10, S12, S14 (MCP) and S16 (QA) (see PLAN.md). Synthetic test per
 
 - **Threads:** each private document is chunked and embedded as queries. The chunks form one or more private threads. Private threads get a share of the thread weight; the proposed default is 0.6 (Q13). That number is a default, not a finding. Public threads share the rest.
 - **Retrieval and rerank:** these are unchanged. They run on the local embedder and reranker, and the private threads are just more threads.
-- **Eligibility unlock:** a deterministic CV parse reads degree year, rank, appointments and prior sponsors. Opportunities now dropped as "restricted by career stage" can then be kept, labelled "eligible per your CV (private)". NIH's early-stage investigator definition must be cited from the NIH page in S13; until then it is UNVERIFIED.
+- **Eligibility unlock:** a deterministic CV parse reads degree year, rank, appointments and prior sponsors. Opportunities now dropped as "restricted by career stage" can then be kept, labelled "eligible per your CV (private)". NIH's definition (grants.nih.gov, early-stage investigators page, read 2026-10-29): terminal research degree or end of post-graduate clinical training, whichever is later, within the past 10 years, and no prior substantial NIH independent research award as PD/PI. The CV parse reads the degree year and whether NIH grants are listed; it cannot read clinical training or extensions, so the label says "may be eligible per your CV (private)".
 - **Sponsor history:** prior sponsors listed on the CV raise the rank of the same sponsor's programmes. This is a rule in code, shown on the lead.
 - **Explanations:** these come from the local model only. They may cite private documents. The display uses a lock icon and the label "from your private document".
 
@@ -52,8 +52,8 @@ pieces in S9, S10, S12, S14 (MCP) and S16 (QA) (see PLAN.md). Synthetic test per
 | LanceDB | opportunities only | unchanged, because private text is never indexed |
 | uvicorn access log | method and path | private input travels in POST bodies only; log level stays at warning |
 | Python tracebacks | full text | the error handler scrubs request bodies; the job error keeps the exception type only |
-| Ollama server log | UNVERIFIED whether prompts are logged | verify first in S13; run with debug off |
-| llama.cpp server log | UNVERIFIED | verify first in S13 |
+| Ollama server log | method, path, status, timing per request | verified S13: a canary prompt did not reach the journal at default settings; keep `OLLAMA_DEBUG` unset (debug mode not tested) |
+| llama.cpp server log | slot and token counts | verified S13: a canary prompt did not reach the journal at default settings; do not pass `-v` (not tested) |
 | browser storage | tab, theme | no private text in local storage; inputs cleared when the session ends |
 | upload temp files | — | none, because parsing works on bytes |
 | core dumps, swap | system default | core dumps off in the process (`RLIMIT_CORE=0`); swap is not controllable and is documented |
