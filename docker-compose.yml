@@ -1,0 +1,23 @@
+# Perch demo, hybrid deployment (S9): this file runs the app; the models run on the host
+# as systemd user units on two GPUs (`make demo` starts both). Host networking lets the
+# app reach the model ports on 127.0.0.1 and keeps the app itself on 127.0.0.1:8090,
+# where the tunnel picks it up.
+services:
+  perch:
+    build: .
+    image: perch-demo
+    network_mode: host
+    user: "${PERCH_UID:-1000}:${PERCH_GID:-1000}"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PERCH_PROFILE: deploy-2gpu
+      PERCH_DB: /app/data/demo/perch.db
+      PERCH_MODEL_SERVER: http://127.0.0.1:8093
+      OLLAMA_BASE_URL: http://127.0.0.1:11437
+      PERCH_CLEF_URL: http://127.0.0.1:8094
+      PERCH_CLEF_FLASH_URL: http://127.0.0.1:8095
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

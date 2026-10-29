@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 
 DEFAULT_MODEL = "lytang/MiniCheck-RoBERTa-Large"
@@ -124,16 +125,18 @@ class DecisionGrounder(Grounder):
         return out
 
 
-def make_grounder(key: str, device: str = "cpu") -> Grounder:
+def make_grounder(key: str, device: str = "cpu",
+                  fallback: Callable[[], Grounder] | None = None) -> Grounder:
     """Grounder from a profile key. A decision server that does not answer its health
-    check falls back to MiniCheck, so a brief never fails on layer 2."""
+    check falls back to MiniCheck (in process, or `fallback`, e.g. on the model
+    server), so a brief never fails on layer 2."""
     if key.startswith("systemone:"):
         import httpx
 
-        from perch.llm.systemone import CLEF_FLASH_URL, CLEF_URL, SystemOneClient, SystemOneDecider
+        from perch.llm.systemone import SystemOneClient, SystemOneDecider, server_url
 
         name = key.split(":", 1)[1]
-        url = {"clef-flash": CLEF_FLASH_URL, "clef": CLEF_URL}[name]
+        url = server_url(name)
         try:
             httpx.get(f"{url}/health", timeout=3).raise_for_status()
             return DecisionGrounder(SystemOneDecider(SystemOneClient(url), name), key)
@@ -141,4 +144,4 @@ def make_grounder(key: str, device: str = "cpu") -> Grounder:
             print(f"perch: {key} not reachable at {url}; layer 2 falls back to MiniCheck")
     elif key != "minicheck":
         raise ValueError(f"unknown grounder {key!r}")
-    return MiniCheckGrounder(device=device)
+    return fallback() if fallback else MiniCheckGrounder(device=device)

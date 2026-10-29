@@ -1,13 +1,53 @@
 UV ?= uv
 
-.PHONY: test demo bench tracker package hooks decide-up decide-down decide-status
+.PHONY: test demo demo-units demo-seed demo-down demo-status gpus bench tracker package hooks \
+	decide-up decide-down decide-status
 
 test:
 	$(UV) run ruff check .
 	$(UV) run pytest
 
-demo:
-	@echo "make demo: not built yet (S9, see docs/PLAN.md)"
+# The demo (S9, deploy-2gpu, hybrid): models as systemd user units on two GPUs, the app
+# in Docker on 127.0.0.1:8090. One command: `make demo`. GPUs default to 6 and 7.
+DEMO_GPU_A ?= 6
+DEMO_GPU_B ?= 7
+DEMO_UNITS = perch-demo-ollama.service perch-demo-clef-flash.service \
+	perch-demo-clef.service perch-demo-models.service
+DEMO_CHAT = gemma4:26b-a4b
+
+demo: demo-units demo-seed
+	PERCH_UID=$$(id -u) PERCH_GID=$$(id -g) docker compose up -d --build
+	@for i in $$(seq 1 60); do curl -sf 127.0.0.1:8090/health >/dev/null && break; sleep 2; done
+	@curl -sf 127.0.0.1:8090/health && echo && echo "Perch demo: http://127.0.0.1:8090"
+
+demo-units:
+	mkdir -p $(HOME)/.config/systemd/user
+	for u in $(DEMO_UNITS); do sed -e "s|@GPU_A@|$(DEMO_GPU_A)|g" -e "s|@GPU_B@|$(DEMO_GPU_B)|g" \
+	  -e "s|@REPO@|$(CURDIR)|g" -e "s|@UV@|$$(command -v $(UV))|g" deploy/systemd/demo/$$u \
+	  > $(HOME)/.config/systemd/user/$$u; done
+	systemctl --user daemon-reload
+	systemctl --user enable --now $(DEMO_UNITS)
+	@for p in 11437/api/tags 8095/health 8094/health 8093/health; do \
+	  for i in $$(seq 1 90); do curl -sf 127.0.0.1:$$p >/dev/null && break; sleep 2; done; \
+	  printf "127.0.0.1:$$p "; curl -sf -o /dev/null -w "%{http_code}\n" 127.0.0.1:$$p || echo down; done
+	curl -sf 127.0.0.1:11437/api/generate -d '{"model": "$(DEMO_CHAT)", "keep_alive": -1}' >/dev/null
+
+# A separate demo store, seeded once from the dev store (briefs, caches, the index).
+demo-seed:
+	@test -f data/demo/perch.db || { mkdir -p data/demo && cp data/perch.db data/demo/ && \
+	  cp -r data/cache data/lance data/demo/ && echo "seeded data/demo from data/"; }
+
+demo-down:
+	docker compose down
+	systemctl --user disable --now $(DEMO_UNITS)
+
+demo-status:
+	@systemctl --user --no-pager status $(DEMO_UNITS) | grep -E 'Loaded|Active|service -' || true
+	@docker compose ps
+
+# GPU memory per service: nvidia-smi processes mapped to their systemd unit or container.
+gpus:
+	@$(UV) run python scripts/gpus.py
 
 # Back-test matrix and results table (bench/run.py). Needs the bench corpus
 # (python -m bench.corpus) and, for the Clef rows, `make decide-up`.

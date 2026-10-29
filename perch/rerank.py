@@ -140,9 +140,9 @@ def make_reranker(key: str, device: str | None = None) -> Reranker:
     """Reranker from a profile key: a cross-encoder model id, or "systemone:clef-flash" /
     "systemone:clef" for a decision server."""
     if key.startswith("systemone:"):
-        from perch.llm.systemone import CLEF_FLASH_URL, CLEF_URL, SystemOneClient, SystemOneDecider
+        from perch.llm.systemone import SystemOneClient, SystemOneDecider, server_url
 
         name = key.split(":", 1)[1]
-        url = {"clef-flash": CLEF_FLASH_URL, "clef": CLEF_URL}[name]
+        url = server_url(name)
         return DecisionReranker(SystemOneDecider(SystemOneClient(url), name), key)
     return CrossEncoderReranker(key, device=device)

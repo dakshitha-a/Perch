@@ -1,0 +1,16 @@
+# Perch demo (deploy-2gpu), GPU B: embedder, reranker and MiniCheck fallback
+# (perch.model_server), port 8093. Rendered and installed by `make demo`.
+[Unit]
+Description=Perch demo model server (embedder, reranker; GPU @GPU_B@, port 8093)
+After=network-online.target
+
+[Service]
+Environment=CUDA_VISIBLE_DEVICES=@GPU_B@
+Environment=HF_HUB_OFFLINE=1
+WorkingDirectory=@REPO@
+ExecStart=@UV@ run --extra ml python -m perch.model_server --port 8093
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

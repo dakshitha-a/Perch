@@ -1,0 +1,15 @@
+# Perch demo (deploy-2gpu), GPU A: Clef-flash for `decide`, port 8095. -ub 2048 fits
+# Perch's longest decide prompt and uses 7.44 GB (measured in S8).
+# Rendered and installed by `make demo`; a systemd user unit.
+[Unit]
+Description=Perch demo decision model Clef-flash (llama.cpp, GPU @GPU_A@, port 8095)
+After=network-online.target
+
+[Service]
+Environment=CUDA_VISIBLE_DEVICES=@GPU_A@
+ExecStart=%h/.local/bin/llama serve -hf ggml-org/Clef-Flash-GGUF --port 8095 -ngl 99 -ub 2048 -b 2048 --host 127.0.0.1
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

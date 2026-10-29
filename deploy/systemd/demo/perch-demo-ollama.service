@@ -1,0 +1,19 @@
+# Perch demo (deploy-2gpu), GPU A: Ollama with the chat model, port 11437, 8k context.
+# Rendered and installed by `make demo` (@GPU_A@ is DEMO_GPU_A); a systemd user unit.
+[Unit]
+Description=Perch demo chat model (Ollama, GPU @GPU_A@, port 11437)
+After=network-online.target
+
+[Service]
+Environment=CUDA_VISIBLE_DEVICES=@GPU_A@
+Environment=OLLAMA_HOST=127.0.0.1:11437
+Environment=OLLAMA_MODELS=/usr/share/ollama/.ollama/models
+Environment=OLLAMA_NOPRUNE=1
+Environment=OLLAMA_CONTEXT_LENGTH=8192
+Environment=OLLAMA_KEEP_ALIVE=-1
+ExecStart=/usr/local/bin/ollama serve
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

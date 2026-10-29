@@ -19,6 +19,7 @@ from pathlib import Path
 
 from perch import awards as aw
 from perch.brief import route_a
+from perch.config import env
 from perch.eligibility import Constraints
 from perch.embed import Embedder
 from perch.grounding import Grounder
@@ -303,7 +304,20 @@ def default_models(fake: bool = False, data_dir: Path = Path("data"),
     from perch.profiles import current
 
     p = current()
-    return Models(embedder=lambda: get_embedder(p.embedder, cache=data_dir / "cache/embeddings.db"),
+    emb_cache = data_dir / "cache/embeddings.db"
+    if server := env("PERCH_MODEL_SERVER"):
+        # Hybrid deployment (S9): the app has no GPU; models run on perch.model_server.
+        from perch.embed import CachedEmbedder
+        from perch.remote_models import RemoteEmbedder, RemoteGrounder, RemoteReranker
+
+        return Models(
+            embedder=lambda: CachedEmbedder(RemoteEmbedder(server, p.embedder), emb_cache),
+            reranker=lambda: (make_reranker(p.reranker) if p.reranker.startswith("systemone:")
+                              else RemoteReranker(server, p.reranker)),
+            index=lambda: LanceIndex(data_dir / "lance"),
+            grounder=lambda: make_grounder(p.grounder, fallback=lambda: RemoteGrounder(server)),
+            summary_spec=llm, fit_spec=llm)
+    return Models(embedder=lambda: get_embedder(p.embedder, cache=emb_cache),
                   reranker=lambda: make_reranker(p.reranker),
                   index=lambda: LanceIndex(data_dir / "lance"),
                   grounder=lambda: make_grounder(p.grounder), summary_spec=llm, fit_spec=llm)

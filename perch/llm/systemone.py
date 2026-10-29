@@ -22,6 +22,15 @@ CLEF_FLASH_URL = "http://127.0.0.1:8097"
 CLEF_URL = "http://127.0.0.1:8098"
 
 
+def server_url(name: str) -> str:
+    """Base URL of a decision server; PERCH_CLEF_FLASH_URL and PERCH_CLEF_URL override the
+    dev ports (the S9 demo runs its own servers on the demo GPUs)."""
+    from perch.config import env
+
+    default = {"clef-flash": CLEF_FLASH_URL, "clef": CLEF_URL}[name]
+    return env(f"PERCH_{name.replace('-', '_').upper()}_URL", default) or default
+
+
 class SystemOneClient:
     def __init__(self, base_url: str = CLEF_FLASH_URL, timeout: float = 60.0,
                  transport: httpx.BaseTransport | None = None) -> None:
