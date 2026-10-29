@@ -106,3 +106,4 @@ Perch-dev appends one row per decision as it is made, newest at the bottom. Plan
 | 2026-10-29 | S14 | Private documents are not added through MCP yet; `--private` gives the no-trace mode and the gate only | The design's floor drops MCP private tools first; documents stay in the web app | Perch-dev |
 | 2026-10-29 | after S14 | Private mode on at the public demo URL; operator "Dakshitha, Temple University"; settings in `docker-compose.yml` | Dakshitha wants to test it there (Q22) | Dakshitha |
 | 2026-10-29 | S15 | Repository made public, with the new README | Dakshitha approved the README and said to go public | Dakshitha |
+| 2026-10-29 | after S15 | Q20: a past Temple STTR partner is not an industry lead on its own; the two-signal rule stays | 1 of 3 hand-checked matches was right; the awards are mostly 2015 to 2020; one weak signal would weaken trust in every industry lead | Perch-dev (asked by Dakshitha to choose) |

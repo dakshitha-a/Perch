@@ -55,5 +55,4 @@ Private mode is built end to end:
 3. Fix `make bench --render-only` before S17 reruns the bench, because it would overwrite the hand-written Scout sections of RESULTS.md.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- Q20: should a past Temple STTR partner count as an industry lead on its own? Default: no.
 - Q21: private document shares. Default: proposal 0.5, direction 0.3, unpublished 0.2; the CV gets none.
