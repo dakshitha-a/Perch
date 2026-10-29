@@ -758,3 +758,5 @@ table.compare th, table.compare td { border-bottom: 1px solid var(--line); paddi
   .bar-tools { gap: 2px; }
   .bar-tools .btn { padding: 0 8px; }
 }
+.route-switch .route-btn { min-width: 0; flex-wrap: wrap; justify-content: center; row-gap: 2px; }
+.route-switch .route-btn .tag.sample { height: 20px; font-size: 12px; }

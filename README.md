@@ -131,9 +131,35 @@ A canary test checks that no trace is left in files, logs or requests.
 
 </td>
 </tr>
+<tr>
+<td>
+
+### Student mode, on sample data
+
+Choose Student, and Perch opens a private session first. Paste a CV, a note on
+your interests and a few achievements. Perch lists fellowships from public
+records and scholarships from a sample database. It checks each one against
+your CV by rule, and lists what you would still need.
+
+Every sample record is invented and badged **Sample data**. On 24 planted test
+cases, the rules matched every case that reached a brief; retrieval missed 2 of
+the 12 a student could apply for.
+[Scores →](bench/results/STUDENT_MODE.md)
+
+</td>
+<td><img src="docs/tour/student.webp" alt="The Scholarships (sample) tab of a student brief: a Sample data badge on the tab, a notice that the records are invented, and a card with its verdict, deadline, amount, what is still needed and a cited explanation." width="300"></td>
+</tr>
 </table>
 
-<sub>The private-mode clip uses an invented persona, labelled SYNTHETIC.</sub>
+<sub>The private-mode clip and the student screenshot use invented personas, labelled SYNTHETIC. The scholarships are from an invented sample corpus.</sub>
+
+**Real data for student mode.** The sample corpus stands in for a real
+scholarship feed. Temple already runs ScholarshipUniverse for its students,
+so the natural source is Temple's own feed, used under its contract; a licensed
+scholarship database would also work. Neither publishes a schema, so Perch has
+one documented place where a feed maps in (`perch/sources/scholarshipuniverse.py`).
+The proposed owner is Student Financial Services, with Scholar Development and
+Fellowships Advising for fellowships, to be agreed with those offices.
 
 ## How it works
 
