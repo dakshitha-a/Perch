@@ -584,12 +584,12 @@ def view_ui(src: str) -> str:
 by alias. Press <b>Find researcher</b>, then <b>Build brief</b>, to watch Scout build it. Nothing is
 fetched; keep and dismiss work but are not saved.</p>
 <div class="ui-tools" role="group" aria-label="Preview size">
-<button type="button" data-size="phone" aria-pressed="true">Phone</button>
-<button type="button" data-size="wide" aria-pressed="false">Laptop</button>
+<button type="button" data-size="wide" aria-pressed="true">Laptop</button>
+<button type="button" data-size="phone" aria-pressed="false">Phone</button>
 <button type="button" id="ui-restart">Restart</button>
 <a href="{s}" target="_blank" rel="noopener">Open on its own</a>
 </div>
-<div class="ui-stage"><iframe id="ui-frame" class="ui-frame phone" src="{s}"
+<div class="ui-stage"><iframe id="ui-frame" class="ui-frame wide" src="{s}"
 title="Perch web app preview"></iframe></div>"""
 
 

@@ -129,3 +129,10 @@ def test_tabs_run_ui_architecture_bench_current_master_and_decisions_last(tmp_pa
                      "decisions"]
     assert re.findall(r'data-view="([a-z]+)"', p) == order
     assert '<a id="tab-ui" href="#ui" aria-current="page">UI</a>' in p
+
+
+def test_ui_preview_opens_on_laptop_with_phone_second():
+    p = rt.render_page(MASTER, {}, ui="ui.html")
+    assert p.index('data-size="wide" aria-pressed="true">Laptop') \
+        < p.index('data-size="phone" aria-pressed="false">Phone')
+    assert 'class="ui-frame wide"' in p
