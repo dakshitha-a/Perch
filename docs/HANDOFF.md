@@ -23,7 +23,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - About 20k input and 5k output tokens per brief; 70 to 79 s for 10 explanations; $0.
 
 ## What is half-done (exact file, exact next step)
-- Anthropic adapter not live-verified (Q5): with a key in `.env`, run `uv run --extra anthropic perch brief A5023080104 --explain --llm anthropic:claude-sonnet-5-5`; check `cache_read_tokens` > 0 on the second lead in the audit log.
+- Anthropic adapter verified live after S5 (claude-sonnet-5-5, PI-3, 3 leads): schemas go through the SDK's `transform_schema` (the API rejects minimum/maximum and minItems > 1); the first lead runs alone so the rest read the cached profile prefix (about $0.0066 per lead). Spend $0.08 of the $100 cap (`perch/llm/budget.py`).
 - Clef servers still blocked (Q3). Jev-compatible decide adapter lands with S8.
 
 ## Decisions made this session (all in docs/DECISIONS.md)

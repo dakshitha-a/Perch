@@ -35,9 +35,9 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 |---|---|---|---|
 | Back-test hit@5 / hit@10 / MRR (best config) | | bench/results/ | |
 | Keyword-only baseline hit@5 / hit@10 / MRR | | bench/results/ | |
-| Validator rejection rate (API model / local) | API: not measured (no key, Q5) / local qwen3.8:27b: layer 1 0 of 33, layer 2 1 of 30 (false flag) | data/logs/model_calls.jsonl | 2026-10-28 |
-| Cost per brief (API model) | | audit log | |
+| Validator rejection rate (API model / local) | API claude-sonnet-5-5: layer 1 0 of 8, layer 2 0 of 6 (2 small runs) / local qwen3.8:27b: layer 1 0 of 33, layer 2 1 of 30 (false flag) | data/logs/model_calls.jsonl | 2026-10-28 |
+| Cost per brief (API model) | about $0.0066 per explained lead with the cached profile prefix, plus about $0.012 for the profile summary (claude-sonnet-5-5, PI-3, 3 leads) | data/logs/model_calls.jsonl | 2026-10-28 |
 | Warm-cache brief time | 0.7 to 1.1 s (Route A: embed + rerank, no LLM calls; 3 PIs) | data/logs/brief_timings.jsonl | 2026-10-28 |
 | Route B hand-judged precision | | | |
 | Deployment profile and peak VRAM | | S8 single-card validation | |
-| Anthropic API spend / budget to demo | $0.00 of $100 (key returned 401; nothing billed) | data/logs/anthropic_spend.jsonl | 2026-10-28 |
+| Anthropic API spend / budget to demo | $0.08 of $100 (adapter verification, 8 calls) | data/logs/anthropic_spend.jsonl | 2026-10-28 |

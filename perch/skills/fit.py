@@ -183,6 +183,15 @@ def explain_leads(opps: list[Opportunity], profile: Profile, works: dict[str, Wo
                   provider: AuditedProvider, grounder: Grounder | None = None,
                   workers: int = 4) -> list[Validated[Fit]]:
     system, paper_records = profile_prompt(profile, works)
+
+    def one(o: Opportunity) -> Validated[Fit]:
+        return explain_one(o, system, paper_records, provider, grounder)
+
+    if not opps:
+        return []
+    # With prompt caching, the first call writes the shared profile prefix; later calls
+    # read it at a tenth of the price, but only once the write exists. So the first lead
+    # runs alone, the rest in parallel (live: 3 parallel calls all wrote the cache).
+    first = [one(opps[0])] if "prompt_cache" in provider.capabilities else []
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        return list(pool.map(
-            lambda o: explain_one(o, system, paper_records, provider, grounder), opps))
+        return first + list(pool.map(one, opps[len(first):]))

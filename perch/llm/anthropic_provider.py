@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 
 from perch.llm.base import (
     ChatResult,
@@ -40,12 +41,18 @@ class AnthropicProvider(Provider):
 
     def __init__(self, model: str = DEFAULT_MODEL, api_key: str | None = None,
                  fallbacks: bool = True, effort: str | None = None, client: object = None,
-                 budget: Budget | None = None) -> None:
+                 budget: Budget | None = None,
+                 transform: Callable[[JsonSchema], JsonSchema] | None = None) -> None:
         if client is None:
             import anthropic  # vendor SDK, imported only inside perch/llm
 
             client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+            # The API supports a JSON Schema subset (no minimum/maximum, minItems only 0 or 1;
+            # live 400 on 2026-10-28). The SDK's transform_schema moves unsupported
+            # constraints into descriptions; Perch's validator still checks them.
+            transform = transform or anthropic.transform_schema
         self.client = client
+        self.transform = transform or (lambda schema: schema)
         self.model = model
         self.fallbacks = fallbacks
         self.effort = effort
@@ -64,10 +71,11 @@ class AnthropicProvider(Provider):
             kw["system"] = [block]
         if tools:
             kw["tools"] = [{"name": t.name, "description": t.description,
-                            "input_schema": t.parameters, "strict": True} for t in tools]
+                            "input_schema": self.transform(t.parameters), "strict": True}
+                           for t in tools]
         output_config: dict = {}
         if schema:
-            output_config["format"] = {"type": "json_schema", "schema": schema}
+            output_config["format"] = {"type": "json_schema", "schema": self.transform(schema)}
         if self.effort:
             output_config["effort"] = self.effort
         if output_config:

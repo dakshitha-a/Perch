@@ -150,3 +150,13 @@ def test_unknown_model_priced_at_the_most_expensive():
     from perch.llm.base import Usage
     from perch.llm.budget import call_cost
     assert call_cost("claude-unknown", Usage(1_000_000, 0)) == 4.00
+
+
+def test_anthropic_schema_goes_through_transform(tmp_path):
+    seen = []
+    client = FakeAnthropicClient(anthropic_response())
+    p = AnthropicProvider(client=client, budget=budget(tmp_path),
+                          transform=lambda sch: seen.append(sch) or {"type": "object"})
+    p.chat([Message("user", "q")], schema=SCHEMA, tools=[TOOL])
+    assert seen == [TOOL.parameters, SCHEMA]
+    assert client.kw["output_config"]["format"]["schema"] == {"type": "object"}

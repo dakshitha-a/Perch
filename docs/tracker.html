@@ -159,12 +159,12 @@ details .inner > * { min-width: 0; }
 <tbody>
 <tr><td>Back-test hit@5 / hit@10 / MRR (best config)</td><td></td><td>bench/results/</td><td></td></tr>
 <tr><td>Keyword-only baseline hit@5 / hit@10 / MRR</td><td></td><td>bench/results/</td><td></td></tr>
-<tr><td>Validator rejection rate (API model / local)</td><td>API: not measured (no key, Q5) / local qwen3.8:27b: layer 1 0 of 33, layer 2 1 of 30 (false flag)</td><td>data/logs/model_calls.jsonl</td><td>2026-10-28</td></tr>
-<tr><td>Cost per brief (API model)</td><td></td><td>audit log</td><td></td></tr>
+<tr><td>Validator rejection rate (API model / local)</td><td>API claude-sonnet-5-5: layer 1 0 of 8, layer 2 0 of 6 (2 small runs) / local qwen3.8:27b: layer 1 0 of 33, layer 2 1 of 30 (false flag)</td><td>data/logs/model_calls.jsonl</td><td>2026-10-28</td></tr>
+<tr><td>Cost per brief (API model)</td><td>about $0.0066 per explained lead with the cached profile prefix, plus about $0.012 for the profile summary (claude-sonnet-5-5, PI-3, 3 leads)</td><td>data/logs/model_calls.jsonl</td><td>2026-10-28</td></tr>
 <tr><td>Warm-cache brief time</td><td>0.7 to 1.1 s (Route A: embed + rerank, no LLM calls; 3 PIs)</td><td>data/logs/brief_timings.jsonl</td><td>2026-10-28</td></tr>
 <tr><td>Route B hand-judged precision</td><td></td><td></td><td></td></tr>
 <tr><td>Deployment profile and peak VRAM</td><td></td><td>S8 single-card validation</td><td></td></tr>
-<tr><td>Anthropic API spend / budget to demo</td><td>$0.00 of $100 (key returned 401; nothing billed)</td><td>data/logs/anthropic_spend.jsonl</td><td>2026-10-28</td></tr>
+<tr><td>Anthropic API spend / budget to demo</td><td>$0.08 of $100 (adapter verification, 8 calls)</td><td>data/logs/anthropic_spend.jsonl</td><td>2026-10-28</td></tr>
 </tbody></table></div>
 <p class="meta">Perch-dev updates this file at the end of every session (and at any stop mid-session). <code>make tracker</code> renders it to <code>docs/tracker.html</code> for reading in a browser; the Markdown is the source of truth. Status values: <code>todo</code> · <code>in progress</code> · <code>continued</code> (stopped mid-session, see HANDOFF) · <code>done</code> · <code>cut</code>.</p>
 </section>
