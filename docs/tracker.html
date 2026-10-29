@@ -454,10 +454,11 @@ details .inner > * { min-width: 0; }
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (14)</h2>
+<h2>Plan change log (15)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S12</td><td>Task 7 added: SBIR.gov bulk award file for Route B signal 2, kept only if it adds signal over RePORTER</td><td>Q19: the SBIR.gov API is down; Dakshitha asked to integrate the bulk file if it is beneficial</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S11 to S14, S16</td><td>Scout's follow-ups cascaded: S11 fills <code>get_org_signals</code> and Route B search, adds a repeated-call guard and Route B bench tasks; S12 fills <code>compare</code> and <code>draft_handoff</code>; S11 and S12 rebuild the demo; S13 routes private Scout's cache and store writes to memory and adds Scout to the canary test; S14 reuses Scout's tool table; S16 reruns the Scout bench</td><td>Gaps found in S10; Q18 answered with the default</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S9</td><td>Task 1: Compose runs one app service (API, web app and in-process jobs, as built in S6) instead of four containers; the GPU models run as systemd user units</td><td>No GPU access in Docker on the node; the S6 design has no separate worker or database server</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S13</td><td>Normal-mode context fields added (direction, include and exclude keywords, self-reported career stage); CV only in private mode</td><td>Dakshitha (Q16): normal mode had no user input fields</td><td>Dakshitha</td></tr>

@@ -4,9 +4,18 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
-19. **SBIR/STTR source for Route B (raised S11, 2026-10-29).** The SBIR.gov API returns 403 for every request. Its page says the APIs are under maintenance. Proposal: signal 2 reads NIH SBIR/STTR awards from NIH RePORTER, which is already a verified source. It covers NIH only, and every Route B screen and note says so. SBIR.gov also offers a monthly bulk download of all agencies' awards. I have not tried it. It would mean a large file kept on the node and refreshed by hand. Default: RePORTER only, NIH-only label. Say if you want the bulk file tried in a later session.
+(none)
+
 
 ## Answered
+
+19. **SBIR/STTR source for Route B (raised S11, 2026-10-29).** The SBIR.gov API returns 403 for every request. Its page says the APIs are under maintenance. Proposal: signal 2 reads NIH SBIR/STTR awards from NIH RePORTER, which is already a verified source. It covers NIH only, and every Route B screen and note says so. SBIR.gov also offers a monthly bulk download of all agencies' awards. I have not tried it. It would mean a large file kept on the node and refreshed by hand. Default: RePORTER only, NIH-only label. Say if you want the bulk file tried in a later session. **Answered 2026-10-29 by Dakshitha:** integrate it if it is beneficial. Checked the same day:
+- **The file:** `https://data.www.sbir.gov/awarddatapublic/award_data.csv` returns 200. It is a 368 MB CSV covering every agency, with abstracts.
+- **It is old:** it was last modified on 2026-01-01, so awards made after that are missing.
+- **Personal details:** it has PI and contact names, emails and phones. Perch must never read those columns, and the fixture must drop them.
+- **A new column, `RI Name`:** it names the research partner on STTR awards. That could show companies that have already partnered with Temple.
+- **Terms of use:** the page states none.
+- **Plan:** added to S12 as task 7. Keep it only if it adds signal over RePORTER on the 3 hand-checked PIs.
 
 18. **Scout tools that belong to later sessions (raised S10, 2026-10-29).** Three of the nine allowlisted tools are built later: `get_org_signals` in S11, and `compare` and `draft_handoff` in S12. Proposal: keep all nine in Scout's tool list. Each of the three returns a plain "not built yet" result and does nothing else. A call to one counts as an allowlisted call, not a wrong tool. Default: as proposed. **Answered 2026-10-29 by Dakshitha:** default. S11 and S12 fill the three tools (PLAN change log).
 
