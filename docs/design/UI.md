@@ -169,3 +169,30 @@ Two independent reviewers, given the code, this document and the screenshots, lo
 - **Kept, by decision.** Scout still blinks now and then while idle; that is the "a bit of personality" the brief asked for. Only the progress owl moves while work runs. The app-bar owl and the small card owls stay still, and reduced motion stops all of it.
 
 Checked by `scripts/screenshots.py`: keep and dismiss take effect after a watched build, and no layout scrolls sideways at 320, 390 or 1280 px in light or dark.
+
+## 7. Help page
+
+Opened from the Help button in the app bar, or the "New here?" link on Find, at `#/help` (`web/help.js`). It has four parts:
+
+- **How to use Perch:** four steps, each with a picture built from the app's own parts. The pictures carry an "Example" label, a dashed frame and muted colours, so they do not read as controls.
+- **How Perch works:** the pipeline, with each step tagged by who does it: public records, code, rules, model or you.
+- **Reading the labels:** what each label in the app means.
+- **What Perch does not do.**
+
+An independent review checked every sentence against the code and found 18 problems, all fixed:
+
+- **Accuracy:**
+  - The page said models do two jobs. It now names the embedding, ranking, summary, explanation and checking models, and adds the summary step.
+  - The check step now says that only citation-check failures are rewritten and withheld. Statements the grounding model cannot match are shown with a warning.
+  - Forecasted calls are not shown, and the page now says so.
+  - The eligibility step now lists what the rules drop. A new line says Perch does not check personal eligibility.
+  - "Nothing leaves the app" was false with a hosted model. It now reads "sends no email and writes to no outside system".
+  - The timing is now the measured figure, not a guess.
+  - The name search is described as matching the last known institution, with an ORCID iD as the fallback.
+- **UX:**
+  - On phones, the step-4 legend now follows its picture.
+  - Repeated items were cut, including the sources section, which is now folded into the first pipeline step.
+  - Back now uses browser history.
+  - The Help button shows when you are on Help.
+  - The preview banner is hidden on Help.
+  - The kind tags sit outside the headings, so screen readers announce each step cleanly.

@@ -492,6 +492,9 @@ button.owl:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px;
 .hero-help { margin-top: 10px; }
 .hero-help a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; font-weight: 600; }
 .help { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+.help .back { justify-self: start; }
+body.on-help .banner { display: none; }
+#help[aria-current="page"] { background: var(--sunk); color: var(--ink); }
 .help-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .help-head .lede { margin-top: 6px; max-width: 52ch; }
 .help-owl { width: 72px; height: 72px; margin-top: -4px; }
@@ -504,7 +507,11 @@ button.owl:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px;
 .step-n { grid-row: span 2; width: 28px; height: 28px; border-radius: 50%; background: var(--moss); color: var(--moss-ink); display: grid; place-items: center; font-weight: 700; font-size: 14px; align-self: start; }
 .how-text h3 { font-size: 17px; font-weight: 650; }
 .how-text p { color: var(--ink-2); }
-.pic { margin-left: 44px; background: var(--sunk); border-radius: var(--r-card); padding: 14px; display: grid; gap: 10px; position: relative; }
+.pic { margin: 0 0 0 44px; background: var(--sunk); border: 1.5px dashed var(--line); border-radius: var(--r-card); padding: 28px 14px 14px; display: grid; gap: 10px; position: relative; cursor: default; user-select: none; -webkit-user-select: none; }
+.pic > :not(.pic-label) { opacity: .88; filter: saturate(.7); pointer-events: none; }
+.pic-label { position: absolute; top: 6px; left: 12px; font-size: 12px; font-weight: 650; color: var(--ink-3); }
+.pic .fit-k, .sample .fit-k { display: inline !important; }
+.how-step > .callouts { margin-left: 44px; }
 .ph { display: inline-block; height: 10px; border-radius: 5px; background: var(--line); }
 .pic-field { background: var(--leaf); border: 1px solid var(--line); border-radius: var(--r-ctl); min-height: 40px; display: flex; align-items: center; padding: 0 12px; }
 .pic-ph-text { color: var(--ink-3); font-size: 14px; }
@@ -527,7 +534,6 @@ button.owl:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px;
 .callouts { margin: 4px 0 0; padding-left: 0; list-style: none; counter-reset: c; display: grid; gap: 8px; }
 .callouts li { counter-increment: c; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 8px; color: var(--ink-2); }
 .callouts li::before { content: counter(c); width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--paper); font-size: 12px; font-weight: 700; display: grid; place-items: center; margin-top: 1px; }
-.flow-key { display: flex; flex-wrap: wrap; gap: 6px; }
 .kind { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; font-size: 12.5px; font-weight: 650; white-space: nowrap; }
 .kind.record { background: var(--sunk); color: var(--ink-2); }
 .kind.code, .kind.rules { background: var(--moss-soft); color: var(--ink); }
@@ -540,7 +546,8 @@ button.owl:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px;
 .flow-step.model .flow-icon { background: var(--model-soft); border-color: transparent; color: var(--model); }
 .flow-step.code .flow-icon, .flow-step.rules .flow-icon { background: var(--moss-soft); border-color: transparent; color: var(--moss); }
 .flow-step.you .flow-icon { background: var(--ember-soft); border-color: transparent; color: var(--ember); }
-.flow-step h3 { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 16px; font-weight: 650; margin-top: 8px; }
+.flow-step h3 { font-size: 16px; font-weight: 650; margin-top: 8px; }
+.kinds { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; }
 .flow-step p { color: var(--ink-2); font-size: 15px; margin-top: 2px; }
 .label-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .label-list li { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr); gap: 12px; align-items: start; }
@@ -553,11 +560,13 @@ button.owl:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px;
 .plain-list { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: var(--ink-2); }
 .help-scout { color: var(--ink-3); font-size: 14px; padding-top: 8px; }
 @media (max-width: 479px) {
-  .pic { margin-left: 0; }
+  .pic, .how-step > .callouts { margin-left: 0; }
   .label-list li { grid-template-columns: minmax(0, 1fr); gap: 4px; }
 }
 @media (min-width: 720px) {
   .how-step { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; gap: 20px; }
+  .how-step > .callouts { grid-column: 1; grid-row: 2; margin-left: 44px; }
+  .how-step > .pic { grid-column: 2; grid-row: 1 / span 2; }
   .pic { margin-left: 0; }
 }
 @media (max-width: 359px) {

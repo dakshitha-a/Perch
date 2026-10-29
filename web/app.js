@@ -44,7 +44,11 @@ function announce(msg) {
 function route() {
   if (location.hash && !location.hash.startsWith("#/")) return; // in-page anchors, e.g. the skip link
   const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
-  if (parts[0] === "help") {
+  const onHelp = parts[0] === "help";
+  if (onHelp) $("#help").setAttribute("aria-current", "page");
+  else $("#help").removeAttribute("aria-current");
+  document.body.classList.toggle("on-help", onHelp);
+  if (onHelp) {
     stopPolling();
     S.briefId = null;
     S.brief = null;

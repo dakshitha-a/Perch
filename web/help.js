@@ -5,6 +5,11 @@
 import { h, icon } from "./dom.js";
 import { owl } from "./owl.js";
 
+function example(...kids) {
+  return h("figure", { class: "pic", "aria-hidden": "true" },
+    h("figcaption", { class: "pic-label", text: "Example" }), ...kids);
+}
+
 function bar(w) {
   return h("span", { class: "ph", style: `width:${w}%` });
 }
@@ -12,13 +17,13 @@ function bar(w) {
 // ----- step pictures (decorative; the step text says the same thing) -----
 
 function picFind() {
-  return h("div", { class: "pic", "aria-hidden": "true" },
+  return example(
     h("div", { class: "pic-field" }, h("span", { class: "pic-ph-text", text: "Name, ORCID iD or OpenAlex ID" })),
     h("div", { class: "pic-btn" }, icon("search"), h("span", { text: "Find researcher" })));
 }
 
 function picConfirm() {
-  return h("div", { class: "pic", "aria-hidden": "true" },
+  return example(
     h("div", { class: "pic-card" },
       h("div", { class: "pic-row" }, icon("person"), bar(46), h("span", { class: "tag moss", text: "Temple University" })),
       h("div", { class: "pic-row" }, bar(30), bar(24)),
@@ -27,7 +32,7 @@ function picConfirm() {
 
 function picWatch() {
   const knots = ["done", "done", "done", "running", "pending", "pending", "pending"];
-  return h("div", { class: "pic", "aria-hidden": "true" },
+  return example(
     h("div", { class: "pic-branch" },
       h("div", { class: "branch-line" }), h("div", { class: "branch-fill", style: "width:50%" }),
       h("div", { class: "knots" }, knots.map((s) => h("span", { class: "knot", "data-status": s }))),
@@ -37,7 +42,7 @@ function picWatch() {
 
 function picLead() {
   const n = (i) => h("span", { class: "callout", text: String(i) });
-  return h("div", { class: "pic pic-lead", "aria-hidden": "true" },
+  return example(
     h("div", { class: "pic-card" },
       h("div", { class: "pic-row between" },
         h("span", { class: "tags" }, h("span", { class: "tag", text: "NIH" }), h("span", { class: "tag", text: "R01" })),
@@ -56,58 +61,61 @@ function picLead() {
 function steps() {
   const items = [
     ["Find the researcher", picFind(),
-      "Type a name, an ORCID iD or an OpenAlex ID. Names are searched among Temple University authors."],
+      "Type a name, an ORCID iD or an OpenAlex ID. Names are searched among authors whose latest institution in OpenAlex is Temple University; if a name is not found, paste the ORCID iD."],
     ["Confirm it is the right person", picConfirm(),
       "Check the institution, topics and paper count. Nothing runs until you press Build brief."],
     ["Watch the brief build", picWatch(),
-      "Scout moves along the branch as each step finishes. The profile is ready in seconds; cited explanations take a minute or two."],
+      "Scout moves along the branch as each step finishes. In tests on the local model, the profile was ready in about 10 seconds and a full brief with explanations took about a minute and a half."],
     ["Read the routes and decide", picLead(), null],
   ];
   const legend = h("ol", { class: "callouts" },
     h("li", { text: "The fit estimate is a model’s judgment of how well the opportunity matches the papers. It is not the odds of funding." }),
-    h("li", { text: "The title opens the full record, as Grants.gov lists it." }),
+    h("li", { text: "The title, like Evidence, opens the record inside Perch, with a link to Grants.gov." }),
     h("li", { text: "Dates and amounts are copied from the record. Amber means it closes within 30 days." }),
     h("li", { text: "Text a model wrote is tagged. Open “Why it fits” to see which papers it cites." }),
-    h("li", { text: "Keep what is worth a closer look, dismiss what is not. Evidence opens the record behind the lead." }));
+    h("li", { text: "Keep what is worth a closer look; dismiss what is not. Dismissed leads can be restored." }));
   return h("section", { class: "help-block", "aria-labelledby": "h-use" },
     h("h2", { id: "h-use", class: "section-title", text: "How to use Perch" }),
     h("ol", { class: "how-steps" }, items.map(([title, pic, text], i) => h("li", { class: "how-step" },
       h("div", { class: "how-text" },
         h("span", { class: "step-n", "aria-hidden": "true", text: String(i + 1) }),
         h("h3", { text: title }),
-        text ? h("p", { text }) : legend),
-      pic))));
+        text ? h("p", { text }) : null),
+      pic, text ? null : legend))));
 }
 
 function pipeline() {
   const stages = [
-    ["paper", "Read the papers", "record",
-      "Perch fetches the researcher’s public papers from OpenAlex, and their public awards from NIH RePORTER and NSF."],
-    ["threads", "Group them into threads", "code",
-      "Papers are grouped by what they are about, with recent work counting for more."],
-    ["search2", "Search open funding", "code",
-      "Each thread is matched against open and forecasted opportunities from Grants.gov, by meaning and by shared words."],
-    ["filter", "Drop what you cannot apply to", "rules",
-      "Fixed rules read each record’s applicant types and title, and drop opportunities a university applicant is not eligible for."],
-    ["rank", "Rank the rest", "model",
-      "A ranking model puts the opportunities closest to the papers first."],
-    ["pen", "Explain each lead", "model",
+    ["paper", "Read the papers", ["record"],
+      "Perch fetches the researcher’s public papers from OpenAlex, and public awards from NIH RePORTER and NSF Award Search. Every record keeps its source, a link to it and when it was fetched."],
+    ["threads", "Group them into threads", ["code", "model"],
+      "An embedding model turns each paper into numbers that capture its meaning. Code groups the papers by topic, with recent work counting for more."],
+    ["search2", "Search open funding", ["code", "model"],
+      "Each thread is matched against opportunities posted on Grants.gov, by meaning and by shared words. Forecasted calls are not shown yet."],
+    ["filter", "Drop what a university cannot apply to", ["rules"],
+      "Rules drop anything closed, without a close date, or not open to universities. They also drop what this version leaves out: fellowships, postdoc and dissertation awards, small-business programs, limited competitions and calls restricted by career stage."],
+    ["rank", "Rank the rest", ["model"],
+      "A ranking model puts the closest matches to the papers first."],
+    ["threads", "Summarise the profile", ["model"],
+      "A language model writes topic labels and a two-sentence summary of the papers."],
+    ["pen", "Explain each lead", ["model"],
       "A language model writes what the opportunity funds and what the cited papers did, plus a fit estimate."],
-    ["check", "Check every claim", "rules",
-      "Code checks that each citation, date and number is in a cited record. A second model checks each statement against its source. Text that fails is rewritten once, then withheld."],
-    ["person", "You decide", "you",
-      "You keep or dismiss leads and open any record. Perch sends nothing."],
+    ["check", "Check every claim", ["rules", "model"],
+      "Code checks that each citation, date and number is in a cited record; text that fails is rewritten once, then withheld. A second model checks each statement against its source; one it cannot match is shown with a warning."],
+    ["person", "You decide", ["you"],
+      "You keep or dismiss leads and open any record. Perch sends no email and writes to no outside system."],
   ];
-  const kinds = { record: "Public records", code: "Code", rules: "Fixed rules", model: "Model", you: "You" };
+  const kinds = { record: "Public records", code: "Code", rules: "Rules", model: "Model", you: "You" };
   return h("section", { class: "help-block", "aria-labelledby": "h-how" },
     h("h2", { id: "h-how", class: "section-title", text: "How Perch works" }),
-    h("p", { class: "lede", text: "The same steps run the same way every time. Models do two bounded jobs, ranking and writing, and everything they write is checked against the records." }),
-    h("p", { class: "flow-key", "aria-hidden": "true" },
-      ...["record", "code", "rules", "model"].map((k) => h("span", { class: `kind ${k}`, text: kinds[k] }))),
-    h("ol", { class: "flow" }, stages.map(([ic, title, kind, text]) => h("li", { class: `flow-step ${kind}` },
+    h("p", { class: "lede", text: "The steps run the same way every time. Models turn text into numbers, rank and write; a separate model checks the writing; rules and code do the rest." }),
+    h("ol", { class: "flow" }, stages.map(([ic, title, ks, text]) => h("li", { class: `flow-step ${ks[ks.length - 1]}` },
       h("span", { class: "flow-icon", "aria-hidden": "true" }, icon(ic)),
       h("div", {},
-        h("h3", {}, h("span", { text: title }), h("span", { class: `kind ${kind}`, text: kinds[kind] })),
+        h("h3", { text: title }),
+        h("p", { class: "kinds" }, h("span", { class: "sr-only", text: "Done by: " }),
+          ks.map((k, n) => [n ? h("span", { class: "sr-only", text: " and " }) : null,
+            h("span", { class: `kind ${k}`, text: kinds[k] })])),
         h("p", { text }))))));
 }
 
@@ -116,16 +124,14 @@ function labels() {
   return h("section", { class: "help-block", "aria-labelledby": "h-labels" },
     h("h2", { id: "h-labels", class: "section-title", text: "Reading the labels" }),
     h("ul", { class: "label-list" },
-      row(h("span", { class: "tag model", text: "Model text" }),
-        "A model wrote this. It passed the citation checks, but read it as a summary, not as the record."),
       row(h("span", { class: "inference mini-inf" }, h("span", { class: "tag model", text: "Inference" })),
-        "A model’s reading of why the work fits. A judgment, never a fact."),
+        "A model’s reading of why the work fits. A judgment, not a fact."),
       row(h("span", { class: "fit strong" }, h("span", { class: "fit-k", text: "Fit estimate" }), h("span", { text: "strong" })),
         "Strong is 80 or more out of 100, good 60 to 79, partial 40 to 59, weak below 40."),
       row(h("span", { class: "missing", text: "Not stated in the record" }),
         "The source leaves this blank. Perch never fills a gap with a guess."),
       row(h("span", { class: "notice warn sample-warn" }, icon("warn"), h("span", { text: "Withheld" })),
-        "An explanation or statement failed the checks, so it is withheld or flagged. The record fields still show."),
+        "An explanation failed the citation check twice and is withheld, or a statement could not be matched to its source and is flagged. The record fields still show."),
       row(h("span", { class: "big-date", text: "Award horizon" }),
         "The end date of the last public NIH or NSF award found. Perch infers nothing about lab finances.")));
 }
@@ -134,31 +140,24 @@ function limits() {
   return h("section", { class: "help-block", "aria-labelledby": "h-limits" },
     h("h2", { id: "h-limits", class: "section-title", text: "What Perch does not do" }),
     h("ul", { class: "plain-list" },
-      h("li", { text: "It does not send anything. Nothing leaves the app unless you copy or download it." }),
+      h("li", { text: "It sends no email and writes to no outside system." }),
+      h("li", { text: "It does not check your personal eligibility, such as career stage, citizenship or internal limited-submission rules. Read each record." }),
       h("li", { text: "It does not tell you to apply, or predict whether you would win. A brief is a starting point." }),
-      h("li", { text: "It reads public records only: papers, public federal awards and posted opportunities." }),
-      h("li", { text: "It does not yet cover foundations, industry partners or hand-offs to Temple offices. Those are being built." })));
-}
-
-function sources() {
-  return h("section", { class: "help-block", "aria-labelledby": "h-src" },
-    h("h2", { id: "h-src", class: "section-title", text: "Where the data comes from" }),
-    h("dl", { class: "fields" },
-      h("div", { class: "field" }, h("dt", { text: "Papers and authors" }), h("dd", { text: "OpenAlex" })),
-      h("div", { class: "field" }, h("dt", { text: "Public awards" }), h("dd", { text: "NIH RePORTER, NSF Award Search" })),
-      h("div", { class: "field" }, h("dt", { text: "Open opportunities" }), h("dd", { text: "Grants.gov" }))),
-    h("p", { class: "hint", text: "Each record shows its source, a link to it, and when Perch fetched it. The Grants.gov notice is at the foot of every page." }));
+      h("li", { text: "It covers federal opportunities posted on Grants.gov. Foundations and industry partners are being built." }),
+      h("li", { text: "It reads public records only: papers, public federal awards and posted opportunities." })));
 }
 
 export function renderHelp(container, { back }) {
   const hello = owl("idle", "owl-md help-owl", { button: true });
   container.replaceChildren(h("article", { class: "help" },
-    h("a", { class: "back", href: back, "data-key": "help-back" }, icon("back"), h("span", { text: "Back" })),
+    h("a", { class: "back", href: back, "data-key": "help-back", onclick: (e) => {
+      if (back !== "#/" && history.length > 1) { e.preventDefault(); history.back(); }
+    } }, icon("back"), h("span", { text: "Back" })),
     h("header", { class: "help-head" },
       h("div", {},
         h("h1", { class: "who", text: "Help" }),
         h("p", { class: "lede", text: "Perch reads a researcher’s public papers, finds open federal funding that fits, and shows the record behind every claim." })),
       hello),
-    steps(), pipeline(), labels(), limits(), sources(),
+    steps(), pipeline(), labels(), limits(),
     h("p", { class: "help-scout" }, h("span", { text: "Scout the owl moves while Perch works. Tap Scout to say hello." }))));
 }
