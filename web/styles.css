@@ -175,6 +175,7 @@ details[open] > summary::before { transform: rotate(45deg); }
 .ids { display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .results:empty { display: none; }
 .results { display: grid; gap: 6px; }
+.recent-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
 .recent ul { list-style: none; padding: 0; margin: 8px 0 0; }
 .recent a { display: flex; justify-content: space-between; gap: 12px; min-height: 44px; align-items: center; border-bottom: 1px solid var(--line); text-decoration: none; color: var(--ink); }
 

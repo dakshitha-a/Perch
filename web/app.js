@@ -199,7 +199,10 @@ function renderFind() {
     form,
     h("div", { class: "results" }, results),
     recent.length ? h("section", { class: "recent" },
-      h("h2", { class: "section-title", text: "Recent briefs on this device" }),
+      h("div", { class: "recent-head" },
+        h("h2", { class: "section-title", text: "Recent briefs on this device" }),
+        h("button", { class: "btn quiet", type: "button", onclick: clearRecent },
+          icon("dismiss"), h("span", { text: "Clear history" }))),
       h("ul", {}, recent.map((r) => h("li", {}, h("a", { href: `#/brief/${encodeURIComponent(r.id)}/routes` },
         h("span", { text: r.name }), h("span", { class: "hint", text: f.formatDate(r.at) })))))) : null);
   fill(main(), page);
@@ -291,6 +294,14 @@ async function build(c) {
 function recentBriefs() {
   if (api.mode === "replay") return [];
   try { return JSON.parse(localStorage.getItem("perch.recent") || "[]"); } catch { return []; }
+}
+
+// Forgets the list on this device only. The briefs stay on the server, reachable by link.
+function clearRecent() {
+  try { localStorage.removeItem("perch.recent"); } catch { /* storage may be blocked */ }
+  renderFind();
+  announce("Recent briefs cleared from this device.");
+  $("#q").focus();
 }
 
 function remember(id, name) {

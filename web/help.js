@@ -215,7 +215,8 @@ function limits() {
       h("li", { text: "It does not tell you to apply, or predict whether you would win. A brief is a starting point." }),
       h("li", { text: "It covers federal opportunities posted on Grants.gov, and industry leads from public papers and NIH small-business awards. Foundations are not covered yet." }),
       h("li", { text: "It does not know whether a company wants to fund research. Industry leads are inferences from public signals." }),
-      h("li", { text: "It reads public records only: papers, public federal awards and posted opportunities." })));
+      h("li", { text: "It reads public records only: papers, public federal awards and posted opportunities." }),
+      h("li", { text: "It keeps your list of recent briefs only in this browser. Clear history on the Find screen forgets the list; the briefs themselves stay on the server, and anyone with a brief’s link can open it." })));
 }
 
 export function renderHelp(container, { back }) {
