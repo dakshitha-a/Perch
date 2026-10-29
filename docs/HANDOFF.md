@@ -50,7 +50,8 @@ Private mode is built end to end:
 - **Known gap:** Scout on Gemma often has an answer that states a count withheld by the validator.
 
 ## Next session: S16 — Monitoring (optional; first to cut)
-1. Read S16 in `docs/PLAN.md`. Code freeze is Thu 5 Nov 12:00. Dakshitha may prefer to go straight to S17 (QA, freeze, package).
+1. **Build it.** Dakshitha decided on 2026-10-29 not to cut S16. Read S16 in `docs/PLAN.md`. Code freeze is Thu 5 Nov 12:00, so leave room for S17.
+   - **Ideas to check first:** the 05:30 demo-warm timer (`scripts/demo_warm.py`) is the natural host for the weekly job. A brief's `award_horizon` and the leads' close dates give the triggers. The hand-off drafter's code-written list is a model for the email draft, which is never sent.
 2. S17 task 2 frees GPUs 1 and 2 after the last test run (local notes).
 3. Fix `make bench --render-only` before S17 reruns the bench, because it would overwrite the hand-written Scout sections of RESULTS.md.
 
