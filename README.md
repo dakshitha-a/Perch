@@ -34,6 +34,12 @@ CUDA_VISIBLE_DEVICES=3 uv run --extra ml perch brief A5026494099 --route A
 
 `--models fake` runs the same pipeline with no model downloads.
 
+Route B lists up to five companies with at least two kinds of public signal: their papers cite the researcher's, they hold NIH SBIR/STTR awards in the researcher's topics, or their papers share those topics. No model is used, and every lead is labelled as inferred and not verified:
+
+```sh
+uv run perch brief A5026494099 --route B
+```
+
 Award links are matched by name. Fix a wrong or missed match in `data/overrides/award_links.csv`.
 
 An OpenAlex API key is optional; see `.env.example`.

@@ -144,3 +144,13 @@ def test_consortium_papers_do_not_seed_route_b():
     g = rb.gather(oa, _FakeNIH(), [*MINE, big], AS_OF)
     assert set(oa.cited) == {MINE[0].id, MINE[1].id}
     assert big not in g.seeds
+
+
+def test_a_copy_of_the_researchers_own_paper_is_never_evidence():
+    # a list response cut the researcher from the author list of their own paper
+    cut = work(1, cites=[MINE[1].id])
+    assert score(citing=[(cut, [ACME])], topical=[(work(6), [ACME])]) == []
+    big = work(50)  # their consortium paper: not a seed, still theirs
+    leads = rb.score_leads(ME, MINE, [(work(5, cites=[MINE[0].id]), [ACME])],
+                           [(big, [ACME])], [], TOPICS, AS_OF, own={big.id})
+    assert leads == []

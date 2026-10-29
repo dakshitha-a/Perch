@@ -120,7 +120,8 @@ class BriefService:
         with self.repo() as r:
             done = [b for b in r.list(Brief)
                     if b.status == "done" and b.researcher_id == f"https://openalex.org/{aid}"
-                    and b.options == options and b.created_at >= cutoff]
+                    and b.options == options and b.created_at >= cutoff
+                    and tuple(s.name for s in b.stages) == STAGES]  # not from older code
             if not done:
                 return None
             src = max(done, key=lambda b: b.created_at)
@@ -281,7 +282,7 @@ class BriefService:
         with self.clients.openalex() as oc, self.clients.nih() as nc:
             g = rb.gather(oc, nc, works, as_of)
         found = rb.score_leads(b.researcher_id, g.seeds, g.citing, g.topical, g.sbir, g.topics,
-                               as_of)
+                               as_of, own=g.own)
         leads = rb.make_leads(found, b.id)
         with self.repo() as r:
             r.upsert([*rb.evidence_records(found, g), *(x.org for x in found), *leads])

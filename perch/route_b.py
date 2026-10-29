@@ -107,8 +107,12 @@ def score_leads(researcher_id: str, researcher_works: list[Work],
                 citing: list[tuple[Work, list[Organisation]]],
                 topical: list[tuple[Work, list[Organisation]]],
                 sbir: list[Award], topics: dict[str, tuple[str, float]],
-                as_of: date, top: int = TOP) -> list[OrgLead]:
+                as_of: date, top: int = TOP, own: set[str] | None = None) -> list[OrgLead]:
+    """own: ids of every paper of the researcher's, seeds or not. None of them is ever
+    company evidence: a list response can cut the researcher from a long author list, and
+    storing that copy would overwrite their own record of the paper."""
     mine = {w.id for w in researcher_works}
+    own = (own or set()) | mine
     orgs: dict[str, Organisation] = {}
     org_counts: dict[str, Counter] = defaultdict(Counter)
     records: dict[str, dict[str, dict[str, float]]] = defaultdict(lambda: defaultdict(dict))
@@ -132,7 +136,7 @@ def score_leads(researcher_id: str, researcher_works: list[Work],
 
     citing_ids: set[str] = set()
     for w, os_ in citing:
-        if researcher_id in w.author_ids:
+        if researcher_id in w.author_ids or w.id in own:
             continue  # the researcher's own paper citing their earlier work
         hits = [x for x in w.referenced_works if x in mine]
         citing_ids.add(w.id)
@@ -144,7 +148,7 @@ def score_leads(researcher_id: str, researcher_works: list[Work],
             cited_by[key].update(hits)
 
     for w, os_ in topical:
-        if w.id in citing_ids or researcher_id in w.author_ids:
+        if w.id in citing_ids or researcher_id in w.author_ids or w.id in own:
             continue
         share = max((topics[t.id][1] for t in w.topics[:1] if t.id in topics), default=0.0)
         if not share:
@@ -231,6 +235,7 @@ def sentence(s: Signal, name: str, n_cited: int) -> str:
 @dataclass
 class Gathered:
     seeds: list[Work]  # the researcher's papers used: dated by as_of, at most MAX_AUTHORS
+    own: set[str]  # ids of all the researcher's papers
     topics: dict[str, tuple[str, float]]
     citing: list[tuple[Work, list[Organisation]]]
     topical: list[tuple[Work, list[Organisation]]]
@@ -249,6 +254,7 @@ def gather(openalex: OpenAlexClient, nih: NIHReporterClient, works: list[Work],
     """Fetch the three signals for a researcher's works, as of a date. Clients are
     OpenAlexClient and NIHReporterClient (or fakes with the same methods). Only papers
     with at most MAX_AUTHORS authors seed the topics and the citing search."""
+    own = {w.id for w in works}
     works = [w for w in works if (w.publication_date is None or w.publication_date <= as_of)
              and len(w.author_ids) <= MAX_AUTHORS]
     newest = sorted(works, key=lambda w: w.publication_date or date.min, reverse=True)
@@ -259,7 +265,7 @@ def gather(openalex: OpenAlexClient, nih: NIHReporterClient, works: list[Work],
     years = list(range(as_of.year - SBIR_YEARS + 1, as_of.year + 1))
     text = " ".join(name for name, _ in topics.values())
     sbir = nih.sbir_sttr(text, years) if text else []
-    return Gathered(works, topics, citing, topical, sbir)
+    return Gathered(works, own, topics, citing, topical, sbir)
 
 
 def make_leads(found: list[OrgLead], brief_id: str) -> list[Lead]:

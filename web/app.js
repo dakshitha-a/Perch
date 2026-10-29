@@ -757,6 +757,14 @@ function renderRoutes(panel) {
 // is written by code from the records; the card says it is an inference.
 function renderIndustry(panel) {
   const st = stage("route_b");
+  if (!S.brief.brief.stages.some((x) => x.name === "route_b")) {
+    if (panel.dataset.sig === "oldB") return;
+    panel.dataset.sig = "oldB";
+    fill(panel, routeSwitch(), h("div", { class: "empty" }, owl("look", "owl-md"),
+      h("div", {}, h("p", { class: "lede", text: "This brief was built before Perch had industry leads." }),
+        h("button", { class: "btn primary", onclick: rebuild }, h("span", { text: "Build again" })))));
+    return;
+  }
   if (!isDone("route_b")) {
     const failed = st.status === "failed" || S.brief.brief.status === "failed";
     const sig = `waitB:${failed}`;

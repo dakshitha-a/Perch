@@ -1,0 +1,3 @@
+model,policy,task,kind,completed,status,flagged,calls,wrong_calls,tools,missing,turns,tokens,usd,seconds,errors
+ollama:gemma4:26b-a4b,native,t04,task,False,done,False,0,0,,"search_opportunities; search_opportunities arguments {""exclude_keywords"": [""clinical trial""]}",1,1480,0.0,1.5,
+ollama:gemma4:26b-a4b,native,t06,task,False,done,True,1,0,build_profile:done,,3,4409,0.0,11.3,cited id 'build_profile' was not in the input; number '1' is not in any cited record

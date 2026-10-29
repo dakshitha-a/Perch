@@ -270,7 +270,8 @@ def cmd_route_b(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     as_of = date.fromisoformat(args.as_of) if args.as_of else date.today()
     with nih_reporter.NIHReporterClient() as nc:
         g = rb.gather(client, nc, works, as_of)
-    leads = rb.score_leads(r.id, g.seeds, g.citing, g.topical, g.sbir, g.topics, as_of)
+    leads = rb.score_leads(r.id, g.seeds, g.citing, g.topical, g.sbir, g.topics, as_of,
+                           own=g.own)
     print(describe(r))
     print(f"As of {as_of.isoformat()}. Main topics: "
           + "; ".join(name for name, _ in g.topics.values()))

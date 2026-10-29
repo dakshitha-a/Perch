@@ -121,6 +121,18 @@ def test_a_finished_brief_is_reused_with_fresh_lead_state(tmp_path):
     assert c.post("/briefs", json={**req, "top": 5}).status_code == 202  # other options: new
 
 
+def test_a_brief_from_older_code_is_not_reused(tmp_path):
+    from perch.schemas import Brief
+
+    c, service = make(tmp_path)
+    req = {"author_id": "A5026494099", "as_of": "2026-10-28"}
+    first = c.post("/briefs", json=req).json()["id"]
+    with service.repo() as r:  # as built before S11: no route_b stage
+        b = r.get(Brief, first)
+        r.upsert([b.model_copy(update={"stages": [x for x in b.stages if x.name != "route_b"]})])
+    assert c.post("/briefs", json=req).status_code == 202
+
+
 def test_rate_limit_counts_new_briefs_per_forwarded_visitor(tmp_path, monkeypatch):
     monkeypatch.setenv("PERCH_BRIEFS_PER_HOUR", "2")
     monkeypatch.setenv("PERCH_BRIEF_REUSE_HOURS", "0")

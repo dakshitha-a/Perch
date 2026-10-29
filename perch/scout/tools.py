@@ -199,7 +199,8 @@ def _route_b_leads(ctx: ScoutContext, author_id: str | None) -> list[Lead]:
             works = r.works_by_author(res.id)
         with ctx.service.clients.openalex() as oc, ctx.service.clients.nih() as nc:
             g = rb.gather(oc, nc, works, ctx.as_of)
-        found = rb.score_leads(res.id, g.seeds, g.citing, g.topical, g.sbir, g.topics, ctx.as_of)
+        found = rb.score_leads(res.id, g.seeds, g.citing, g.topical, g.sbir, g.topics,
+                               ctx.as_of, own=g.own)
         with ctx.service.repo() as r:
             r.upsert([*rb.evidence_records(found, g), *(x.org for x in found)])
         leads = rb.make_leads(found, f"scout-{oa.short_id(res.id)}")
