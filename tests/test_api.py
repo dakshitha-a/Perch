@@ -13,7 +13,7 @@ from perch.sources import grants_gov, nih_reporter, nsf
 from perch.sources import openalex as oa
 from perch.store.sqlite import SQLiteRepository
 
-from .test_openalex import fixture_transport
+from .test_openalex import NAME, fixture_transport
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -90,7 +90,7 @@ def test_keep_dismiss_export_records_and_errors(tmp_path):
 
 def test_resolve_candidates(tmp_path):
     c, _ = make(tmp_path)
-    cands = c.get("/authors/resolve", params={"q": "Axel Kohlmeyer"}).json()["candidates"]
+    cands = c.get("/authors/resolve", params={"q": NAME}).json()["candidates"]
     assert [x["id"] for x in cands] == ["https://openalex.org/A5026494099"]
 
 

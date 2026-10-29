@@ -24,7 +24,7 @@ def test_parse_copi_fixture():
     assert a.source_url == "https://api.nsf.gov/services/v1/awards/1212416.json"
     assert a.start_date == date(2012, 7, 1) and a.end_date == date(2016, 6, 30)
     assert a.amount_basis == "estimated total" and a.amount is not None
-    assert "Axel Kohlmeyer" in a.pi_names
+    assert f"{raw['piFirstName']} {raw['piLastName']}" in a.pi_names
     assert all("@" not in n and "redacted" not in n for n in a.pi_names)
     assert a.opportunity_number is None
 
@@ -56,7 +56,7 @@ def test_client_queries_pi_and_copi_and_dedupes():
         return httpx.Response(200, json=page)
 
     with nsf.NSFClient(transport=httpx.MockTransport(handler), min_interval=0) as c:
-        awards = c.awards_for_pi("Kohlmeyer")
+        awards = c.awards_for_pi(page["response"]["award"][0]["piLastName"])
     assert [a.id for a in awards] == ["nsf:1212416"]
     assert {"pdPIName", "coPDPI"} == {k for p in seen for k in p if k in ("pdPIName", "coPDPI")}
     assert seen[0]["awardeeName"] == '"Temple University"' and seen[0]["offset"] == "0"

@@ -4,17 +4,6 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
-23. **Real researcher names in tests and in one old commit (raised S15, 2026-10-29).** The public-readiness audit scanned every tracked file and the whole history. It found no keys, local paths, emails, session links or machine names. It did find three public researchers' names:
-- **In current test files:** `tests/test_api.py`, `test_cli.py`, `test_nsf.py`, `test_openalex.py`, `test_awards.py` and `test_nih_reporter.py`. The tests assert names parsed from the real API fixtures. CLAUDE.md allows real names only in `data/overrides/` and in the fixtures themselves, so these tests break that rule.
-- **In history only:** the README in commit 31b3a56 (S1) used one of these names in an example command. The current README does not.
-
-Options:
-- (a) Keep everything as it is. The names are public authors in public API records.
-- (b) Change the tests to read the names from their fixtures, so no current file outside the fixtures names anyone. History still holds the old lines.
-- (c) Do (b) and rewrite history to remove the old lines. CLAUDE.md says history will not be rewritten, so only you can choose this.
-
-Default: (b), before the repository is made public.
-
 21. **How the private documents share the private weight (raised S13, 2026-10-29, asked by Dakshitha).** Private threads together get 0.6 of the thread weight (Q13). Inside that share, Perch-dev proposes:
 - **Draft proposal:** 0.5 of the private share. It is the closest thing to the work being funded.
 - **Research direction:** 0.3. It is short and looks forward.
@@ -27,6 +16,19 @@ These are starting defaults, not measurements. Default: as proposed, built in S1
 
 
 ## Answered
+
+23. **Real researcher names in tests and in one old commit (raised S15, 2026-10-29).** The public-readiness audit scanned every tracked file and the whole history. It found no keys, local paths, emails, session links or machine names. It did find three public researchers' names:
+- **In current test files:** `tests/test_api.py`, `test_cli.py`, `test_nsf.py`, `test_openalex.py`, `test_awards.py` and `test_nih_reporter.py`. The tests assert names parsed from the real API fixtures. CLAUDE.md allows real names only in `data/overrides/` and in the fixtures themselves, so these tests break that rule.
+- **In history only:** the README in commit 31b3a56 (S1) used one of these names in an example command. The current README does not.
+
+Options:
+- (a) Keep everything as it is. The names are public authors in public API records.
+- (b) Change the tests to read the names from their fixtures, so no current file outside the fixtures names anyone. History still holds the old lines.
+- (c) Do (b) and rewrite history to remove the old lines. CLAUDE.md says history will not be rewritten, so only you can choose this.
+
+Default: (b), before the repository is made public.
+
+**Answered 2026-10-29:** Dakshitha approved the README and said to go public without choosing, so the default (b) was applied. The tests now read the names from their fixtures. History keeps the old lines, as CLAUDE.md requires.
 
 22. **Turn private mode on at the public demo URL? (raised S13, 2026-10-29).** Private mode is built and tested, and every demo model runs on this node behind loopback. Tailscale Funnel decrypts on the node, so `PERCH_TLS_AT=server` holds. Turning it on means setting `PERCH_PRIVATE_MODE=1` and `PERCH_PRIVATE_OPERATOR` in the demo's environment, then running `make demo`. The Find screen would then show a Private mode link to every visitor. You said it is not demoed on Demo Day. Default: leave it off on the public URL. Please say how the operator should be named, if you want it on. **Answered 2026-10-29 by Dakshitha:** turn it on; operator "Dakshitha, Temple University". Done the same day: the settings are in `docker-compose.yml` and the demo was rebuilt. A private-only brief with persona-1 was run in Chromium at 390 px on the public URL and the session was ended. No canary was found in the container log, the four demo model journals, `data/demo` or `data/logs`, and nothing was written to browser storage.
 

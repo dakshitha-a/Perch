@@ -18,6 +18,10 @@ def load(name):
     return json.loads((FIX / name).read_text(encoding="utf-8"))
 
 
+# The researcher in the real API fixture, read from it so no test file names anyone.
+NAME = load("authors_search.json")["results"][0]["display_name"]
+
+
 def test_parse_author_from_orcid_fixture():
     r = oa.parse_author(load("author_orcid.json"), T)
     assert r.id == AUTHOR
@@ -53,7 +57,7 @@ def test_reconstruct_abstract_orders_by_position():
 def test_id_parsing():
     assert oa.parse_orcid("https://orcid.org/0000-0001-6204-6475") == "0000-0001-6204-6475"
     assert oa.parse_orcid("0000-0002-1825-009X") == "0000-0002-1825-009X"
-    assert oa.parse_orcid("Axel Kohlmeyer") is None
+    assert oa.parse_orcid(NAME) is None
     assert oa.parse_author_id(AUTHOR) == "A5026494099"
     assert oa.parse_author_id("A5026494099") == "A5026494099"
 
@@ -80,7 +84,7 @@ def fixture_transport(calls):
 def test_client_resolve_and_page_works():
     calls = []
     with oa.OpenAlexClient(transport=fixture_transport(calls), min_interval=0) as c:
-        found = c.resolve_by_name("Axel Kohlmeyer")
+        found = c.resolve_by_name(NAME)
         assert [r.id for r in found] == [AUTHOR]
         assert c.resolve_by_orcid("0000-0001-6204-6475").id == AUTHOR
         works = list(c.iter_works(AUTHOR, per_page=5))

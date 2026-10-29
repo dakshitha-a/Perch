@@ -3,7 +3,7 @@ from perch.schemas import Researcher, Work
 from perch.sources import openalex as oa
 from perch.store.sqlite import SQLiteRepository
 
-from .test_openalex import AUTHOR, fixture_transport
+from .test_openalex import AUTHOR, NAME, fixture_transport
 
 
 def factory():
@@ -12,9 +12,9 @@ def factory():
 
 def test_resolve_by_name_lists_and_stores_candidates(tmp_path, capsys):
     db = tmp_path / "p.db"
-    assert cli.main(["--db", str(db), "resolve", "Axel Kohlmeyer"], factory) == 0
+    assert cli.main(["--db", str(db), "resolve", NAME], factory) == 0
     out = capsys.readouterr().out
-    assert "A5026494099  Axel Kohlmeyer" in out and "Temple University" in out
+    assert f"A5026494099  {NAME}" in out and "Temple University" in out
     with SQLiteRepository(db) as repo:
         assert repo.get(Researcher, AUTHOR) is not None
 

@@ -32,7 +32,8 @@ def test_parse_fixture_fields():
     assert a.institution == "TEMPLE UNIV OF THE COMMONWEALTH"
     assert a.agency == "NIDDK"
     assert {x.agency for x in awards} >= {"NIDDK", "AHRQ"}  # RePORTER is wider than NIH
-    assert "Heather Marie Gardiner" in a.pi_names
+    pi = load()["results"][0]["principal_investigators"][0]
+    assert pi["full_name"] in a.pi_names
 
 
 def test_end_date_can_move_between_fiscal_years():
@@ -54,12 +55,13 @@ def test_client_pages_and_spaces_requests():
         return httpx.Response(200, json=out)
 
     with nih.NIHReporterClient(transport=httpx.MockTransport(handler), min_interval=0) as c:
-        awards = c.awards_for_pi("Heather", "Gardiner")
+        pi = page["results"][0]["principal_investigators"][0]
+        awards = c.awards_for_pi(pi["first_name"], pi["last_name"])
     assert len(awards) == 13
     assert [b["offset"] for b in bodies] == [0, 11]
     assert bodies[0]["criteria"] == {
         "org_names": ["TEMPLE UNIV"],
-        "pi_names": [{"first_name": "Heather", "last_name": "Gardiner"}],
+        "pi_names": [{"first_name": pi["first_name"], "last_name": pi["last_name"]}],
     }
 
 

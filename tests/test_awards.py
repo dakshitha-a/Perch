@@ -23,8 +23,8 @@ def test_name_matching():
     assert aw.same_person("Jane Doe Jr.", "Jane Doe")
     assert not aw.same_person("Jane Doe", "John Doe")
     assert not aw.same_person("Jane Doe", "Jane Roe")
-    assert aw.search_name("Tomasz Skórski") == ("Tomasz", "Skorski")
-    assert aw.search_name("Heather M. Gardiner") == ("Heather", "Gardiner")
+    assert aw.search_name("Zofia Wójcik") == ("Zofia", "Wojcik")
+    assert aw.search_name("Jane M. Doe") == ("Jane", "Doe")
 
 
 def test_link_respects_overrides(tmp_path):
