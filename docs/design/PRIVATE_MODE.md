@@ -83,3 +83,21 @@ pieces in S9, S10, S12, S14 (MCP) and S16 (QA) (see PLAN.md). Synthetic test per
 - **Core mechanics:** private threads and session records.
 - **Safety:** the self-hosted-endpoint gate, session isolation, the no-logs paths and the canary test.
 - **Dropped:** CV-based eligibility unlock, obfuscated export, MCP private tools.
+
+## As built (S13)
+
+- **Code:** `perch/private/` holds the inputs, the CV parse, the threads, the overlay store and the session service. `perch/private/routes.py` holds the HTTP routes, and `web/private.js` the screens. The gate is in `perch/privacy.py`.
+- **Turning it on:** set `PERCH_PRIVATE_MODE=1`, `PERCH_PRIVATE_OPERATOR` and, on a public URL, `PERCH_TLS_AT`. Without them, `GET /private` reports it as off and every private route answers 404.
+- **Write paths:**
+  - **Store:** the store is an overlay with a read-only base, so writes stay in the session.
+  - **Caches:** the embedding cache is read and never written. The rerank cache is not used.
+  - **Logs:** there is no audit log, timings log or Scout log.
+  - **Index:** the session does not index anything.
+  - **Errors:** a failed private brief records the exception type only.
+- **The gate:** a session opens only when every chat role resolves to a self-hosted adapter on an allowed host. Each later model call is checked again. So are the endpoints behind the embedder, reranker and grounder.
+- **Leaving the app:** exports and hand-off drafts withhold text that cites a `private:` record. With "mask" on, the session's Masker replaces that text, and `POST /private/unmask` reverses it on screen. Rule notes that mention the CV count as private.
+- **Tests:** `tests/test_private.py` holds the canary, isolation, refusal, masking, idle and browser-storage tests, all on fake models. `scripts/private_canary.py` runs the same canary live on the self-hosted models and checks `data/`, `/tmp` and the model servers' journals.
+- **Known limits:**
+  - **Index lag:** opportunities fetched since the public pipeline last indexed are not searched in a private brief.
+  - **Private Scout search:** Scout's search tool builds threads from public papers only. Private threads reach Scout through the brief it is about.
+  - **Swap:** swap is not controllable, as noted above.

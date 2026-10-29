@@ -345,3 +345,10 @@ def test_exclude_keyword_and_self_reported_stage_rules():
     assert check(o, Constraints(as_of=date(2026, 10, 28), career_stage_ok=True)) == []
     assert any("zebrafish" in x for x in check(o, Constraints(
         as_of=date(2026, 10, 28), career_stage_ok=True, exclude_keywords=["zebrafish"])))
+
+
+def test_private_screens_never_use_browser_storage():
+    web = Path(__file__).resolve().parent.parent / "web"
+    src = (web / "private.js").read_text() + (web / "api.js").read_text()
+    assert not any(x in src for x in ("localStorage", "sessionStorage", "indexedDB",
+                                      "document.cookie"))

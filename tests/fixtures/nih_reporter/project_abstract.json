@@ -1,0 +1,23 @@
+{
+    "meta": {
+        "search_id": "ppak3oSWsE-S-HkTa9PJ-Q",
+        "total": 1,
+        "offset": 0,
+        "limit": 10,
+        "sort_field": null,
+        "sort_order": "ASC",
+        "sorted_by_relevance": false,
+        "properties": {
+            "URL": "https:/reporter.nih.gov/search/ppak3oSWsE-S-HkTa9PJ-Q/projects"
+        }
+    },
+    "results": [
+        {
+            "appl_id": 8798061,
+            "project_num": "1R01CA190237-01",
+            "project_start_date": "2015-07-15T00:00:00",
+            "abstract_text": "DESCRIPTION (provided by applicant): Homologous recombination (HR) is a major cellular pathway that promotes the accurate repair of DNA in replicating cells. Thus, the proper function of this pathway is necessary for suppressing chromosome instability and cancer. For example, mutations of central HR factors BRCA1 or BRCA2 (BRCA1/2), which cause defects in HR repair of DNA, strongly predispose women to breast and ovarian cancer. Understanding the mechanisms of HR is therefore important for the development of new breast and ovarian cancer therapies.  Previous studies have revealed particular characteristics of BRCA1/2 deficient cells that inform strategies how to specifically target these cells for killing, while sparing normal cels. For example, new studies show that cells defective in BRCA1/2, such as subsets of breast and ovarian cancer cells rely upon RAD52-a backup HR factor in mammalian cells-for their growth and survival. In contrast, normal cells that are proficient in BRCA1/2 do not require RAD52. In fact, normal human cells and mice that are deficient in RAD52 do not exhibit any apparent phenotypes. On the other hand, cells that are deficient in both RAD52 and BRCA1/2 are unable to grow and survive (synthetic lethal) since they cannot sufficiently repair their chromosomes via HR. Together, these new studies demonstrate that suppression of RAD52 activity specifically kills BRCA1/2 deficient cancer cells, but has no effect on normal cells. Thus, drugs that specifically inhibit RAD52 activity are likely to target BRCA1/2 deficient cancer cells for killing while sparing normal cells. Since such drugs would have no effect on normal cells, they would enable a non-toxic form of breast and ovarian cancer treatment. Moreover, because defects in BRCA1/2 are known to promote subsets of breast and ovarian cancers, drugs that target BRCA1/2 deficient pre-cancerous cells for killing may be developed to prevent the onset of these diseases.  How does RAD52 promote the survival of BRCA1/2 deficient cells? Recent studies demonstrate that RAD52 binding to single-strand DNA (ssDNA) is necessary for the survival of BRCA1/2 deficient cells. We therefore aim to identify drugs that inhibit RAD52 ssDNA binding and target BRCA deficient cells for killing by developing the following Aims: 1. To perform high-throughput screening for RAD52 inhibitors; 2. To validate RAD52 inhibitors using secondary, tertiary, orthogonal, and surface plasmon resonance assays; 3. To identify and optimize RAD52 inhibitors that specifically target BRCA deficient cells for killing. In preliminary studies, we demonstrate the feasibility of this approach by performing limited high- throughput drug screening to identify RAD52 inhibitors that specifically kill BRCA2 deficient cells while sparing cells proficient in BRCA2. These positive preliminary results indicate that successful completion of the proposed research will lead to new targeted breast and ovarian cancer therapies.",
+            "project_title": "Targeting BRCA Deficient Cells for Killing"
+        }
+    ]
+}

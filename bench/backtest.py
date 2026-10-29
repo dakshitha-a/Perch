@@ -127,13 +127,19 @@ def works_for(repo: SQLiteRepository, author_id: str, client: OpenAlexClient) ->
 
 def rank_one(r: dict[str, str], works: list[Work], opps: dict[str, Opportunity],
              index: VectorIndex, embedder: Embedder, reranker: Reranker | None,
-             cache: RerankCache | None, mode: str, months: int, config: str) -> Row:
+             cache: RerankCache | None, mode: str, months: int, config: str,
+             extra: list[Work] | None = None) -> Row:
+    """`extra`: documents added as threads the way private mode adds them (S13 task 8)."""
     t0 = time.perf_counter()
     start = date.fromisoformat(r["award_start"])
     as_of = start - timedelta(days=1)
     truth = f"grants_gov:{r['opportunity_number']}"
     pool = {i for i, o in opps.items() if in_window(o.open_date, o.close_date, start, months)}
     profile = build_threads(f"https://openalex.org/{r['openalex_id']}", works, embedder, as_of)
+    if extra:
+        from perch.private.threads import add_threads
+
+        profile = add_threads(profile, extra, embedder)
     c = Constraints(as_of=as_of, check_dates=False)
     eligible = {i for i in pool if not check(opps[i], c)}
     ret = retrieve(profile, PoolIndex(index, eligible, len(opps)), k=RETRIEVE_K, mode=mode)
