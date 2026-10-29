@@ -116,7 +116,14 @@ def test_registry_and_roles(monkeypatch):
     assert isinstance(get_provider("fake:x"), FakeProvider)
     monkeypatch.delenv("PERCH_LLM_DEFAULT", raising=False)
     monkeypatch.delenv("PERCH_LLM_FIT_EXPLAINER", raising=False)
-    assert spec_for_role("fit_explainer") == "ollama:qwen3.8:27b"
+    monkeypatch.setenv("PERCH_PROFILE", "dev")
+    assert spec_for_role("fit_explainer") == "ollama:gemma4:26b-a4b"
+    monkeypatch.setenv("PERCH_PROFILE", "deploy-1gpu")
+    assert spec_for_role("fit_explainer") == "ollama:qwen3:14b"
+    monkeypatch.setenv("PERCH_PROFILE", "nope")
+    with pytest.raises(ValueError):
+        spec_for_role("fit_explainer")
+    monkeypatch.setenv("PERCH_PROFILE", "dev")
     monkeypatch.setenv("PERCH_LLM_DEFAULT", "fake:a")
     monkeypatch.setenv("PERCH_LLM_FIT_EXPLAINER", "anthropic:claude-sonnet-5-5")
     assert spec_for_role("fit_explainer") == "anthropic:claude-sonnet-5-5"

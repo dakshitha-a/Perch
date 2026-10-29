@@ -26,7 +26,7 @@ __all__ = ["ChatResult", "Message", "Provider", "ProviderError", "Refusal", "Tok
            "Tool", "ToolCall", "Usage", "cost_usd", "get_provider", "provider_for_role"]
 
 ROLES = ("profile_summary", "fit_explainer", "handoff", "scout", "decide")
-# Dev profile default: the chat model resident on GPU 0 (SPEC section 11).
+# Fallback when no profile applies; the chat model per profile is in perch/profiles.py.
 DEFAULT_SPEC = "ollama:qwen3.8:27b"
 
 # USD per million tokens: (input, output, cache read, cache write). Anthropic first-party
@@ -76,7 +76,9 @@ def get_provider(spec: str) -> Provider:
 def spec_for_role(role: str) -> str:
     if role not in ROLES:
         raise ValueError(f"unknown role {role!r}; roles are {', '.join(ROLES)}")
-    return env(f"PERCH_LLM_{role.upper()}") or env("PERCH_LLM_DEFAULT") or DEFAULT_SPEC
+    from perch.profiles import current
+
+    return env(f"PERCH_LLM_{role.upper()}") or env("PERCH_LLM_DEFAULT") or current().chat
 
 
 def provider_for_role(role: str) -> Provider:

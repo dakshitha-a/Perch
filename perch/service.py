@@ -291,7 +291,7 @@ class BriefService:
 def default_models(fake: bool = False, data_dir: Path = Path("data"),
                    llm: str | None = None) -> Models:
     from perch.embed import get_embedder
-    from perch.grounding import FakeGrounder, MiniCheckGrounder
+    from perch.grounding import FakeGrounder
     from perch.rerank import CrossEncoderReranker, FakeReranker
     from perch.store.lance import LanceIndex
 
@@ -299,7 +299,11 @@ def default_models(fake: bool = False, data_dir: Path = Path("data"),
         return Models(embedder=lambda: get_embedder("fake-256", data_dir / "cache/emb.db"),
                       reranker=FakeReranker, index=lambda: LanceIndex(data_dir / "lance-fake"),
                       grounder=FakeGrounder, summary_spec="fake:fake-1", fit_spec="fake:fake-1")
-    return Models(embedder=lambda: get_embedder(cache=data_dir / "cache/embeddings.db"),
-                  reranker=CrossEncoderReranker, index=lambda: LanceIndex(data_dir / "lance"),
-                  grounder=lambda: MiniCheckGrounder(device="cpu"), summary_spec=llm,
-                  fit_spec=llm)
+    from perch.grounding import make_grounder
+    from perch.profiles import current
+
+    p = current()
+    return Models(embedder=lambda: get_embedder(p.embedder, cache=data_dir / "cache/embeddings.db"),
+                  reranker=lambda: CrossEncoderReranker(p.reranker),
+                  index=lambda: LanceIndex(data_dir / "lance"),
+                  grounder=lambda: make_grounder(p.grounder), summary_spec=llm, fit_spec=llm)

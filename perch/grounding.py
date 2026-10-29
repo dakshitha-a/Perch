@@ -122,3 +122,23 @@ class DecisionGrounder(Grounder):
             d = self.decider.decide(YesNo(self.QUESTION), f"DOCUMENT:\n{document}\n\nCLAIM:\n{c}")
             out.append(d.probs.get("yes", 1.0 if d.value else 0.0))
         return out
+
+
+def make_grounder(key: str, device: str = "cpu") -> Grounder:
+    """Grounder from a profile key. A decision server that does not answer its health
+    check falls back to MiniCheck, so a brief never fails on layer 2."""
+    if key.startswith("systemone:"):
+        import httpx
+
+        from perch.llm.systemone import CLEF_FLASH_URL, CLEF_URL, SystemOneClient, SystemOneDecider
+
+        name = key.split(":", 1)[1]
+        url = {"clef-flash": CLEF_FLASH_URL, "clef": CLEF_URL}[name]
+        try:
+            httpx.get(f"{url}/health", timeout=3).raise_for_status()
+            return DecisionGrounder(SystemOneDecider(SystemOneClient(url), name), key)
+        except httpx.HTTPError:
+            print(f"perch: {key} not reachable at {url}; layer 2 falls back to MiniCheck")
+    elif key != "minicheck":
+        raise ValueError(f"unknown grounder {key!r}")
+    return MiniCheckGrounder(device=device)
