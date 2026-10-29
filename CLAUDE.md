@@ -32,6 +32,8 @@ The plan is organised by **session**, each sized to one context window. Dakshith
 8. **AI-use log.** `docs/AI_USE_LOG.md` lists every AI tool, exact version, purpose, date, user. Add your own row (`claude --version`) in your first session and keep it current. Any code or pattern reused from NexusQC or NextTex gets a row too.
 9. **Honest about evaluation.** The back-test is NIH-only with a strict date cut-off (papers before award start). Report the keyword-only baseline on every row. Never present a mechanism as a measured gain.
 10. **No fabricated facts anywhere.** No invented statistics, sources, office names or capabilities in code, docs, README or demo text. Write `UNVERIFIED` and move on.
+11. **Synthetic records are a mechanism demonstration, never a result.** Every synthetic record carries `source: synthetic`, an id prefix `sample:`, a canary token, and a sponsor name that is deliberately fictional and cannot be confused with a real organisation (no real company, foundation, agency or school names). The UI shows a "sample data" badge on every synthetic card; exports and hand-offs carry a banner; the evidence panel states the source. Synthetic records never appear in the same list as public records, in the back-test, in bench results, or in any number on the results page.
+12. **Student personas are synthetic, labelled, canary-tagged, and built from invented text only, like persona-1.**
 
 ## Engineering conventions
 

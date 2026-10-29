@@ -11,9 +11,9 @@ This plan is organised by **session**, not by day. A session is a goal set sized
 | Sat 31 Oct | Checkup 1 (one page; Dakshitha writes it) | nothing from the code; S1–S2 helpful for a real example |
 | Tue 3 Nov | Checkup 2: prototype draft, screenshots, tests run, tools used | S0–S7 |
 | Thu 5 Nov 12:00 | Code freeze | everything kept in the cut order |
-| Fri 6 Nov 12:00 | Submission ZIP + links; 3:00 pm demo | S17 |
+| Fri 6 Nov 12:00 | Submission ZIP + links; 3:00 pm demo | S23 |
 
-**Cut order if time runs short:** S16 monitoring → private mode (S13) narrows to its floor (paste-only input, private threads, session records, self-hosted-endpoint gate, session isolation, no-logs paths, canary test; drops upload parsing, CV eligibility unlock, obfuscated export, MCP private tools) → the Ollama demo moment inside S14 (keep the MCP server) → Route B (S11) narrows to one signal. Never cut: the pipeline (S1–S4), the validator (S5), the web demo (S6–S7), the back-test (S8), Scout's approve mode (S10).
+**Cut order if time runs short:** S22 rebuild narrows to the S21 must-fix list → S16 monitoring (done) → student mode narrows to its floor (S17 corpus and personas, S18 eligibility by rule and the two tabs, S19 scoring; drops the Scout tool and the hand-off) → private mode (S13) narrows to its floor (paste-only input, private threads, session records, self-hosted-endpoint gate, session isolation, no-logs paths, canary test; drops upload parsing, CV eligibility unlock, obfuscated export, MCP private tools) → the Ollama demo moment inside S14 (keep the MCP server) → Route B (S11) narrows to one signal. Never cut: the pipeline (S1–S4), the validator (S5), the web demo (S6–S7), the back-test (S8), Scout's approve mode (S10).
 
 **Context budget guidance:** a session should finish with room to spare. If the context is past roughly two-thirds and the definition of done is not close, stop at a clean commit, write `docs/HANDOFF.md`, and mark the session "continued" in the tracker rather than pushing through.
 
@@ -219,12 +219,82 @@ Goal: Perch tells you before you need it.
 
 Done when: the job runs on the demo personas and produces a draft.
 
-## S17 — QA, freeze, package
+## S17 — Synthetic scholarship corpus and student personas
 
-Goal: ship.
+Goal: a labelled sample scholarship database shaped like the real feeds, plus three student personas with a planted answer key (Dakshitha, 2026-10-29). Standing rules 11 and 12 apply to every synthetic record and persona.
 
-1. Work the fix list from the QA log a teammate keeps; accessibility checklist pass; privacy audit of private mode against the design's write-path inventory, canary test rerun on the frozen build.
-2. Rerun the Scout bench on the frozen build with the demo model. Final numbers (back-test, validator rate, cost per brief, Scout completion and wrong-tool rate) into `docs/TRACKER.md` and `docs/RESULTS.md` for the deck. When this last test run is done, free the dev test servers: `make decide-down` stops the dev Clef-flash and Clef units, and the demo's own servers stay up. Then tell the other session sharing the node that those GPUs are free (details in the local notes). The Clef rows of `make bench` need `make decide-up` again after this.
+1. Schema `Scholarship` in `perch/schemas.py`: name, sponsor, purpose, level_of_study (high school / associate / bachelor's / graduate / professional), field_of_study, award_type (scholarship / fellowship / grant / prize), amount_min, amount_max, deadline, eligibility (gpa_min, residency_state, citizenship, class_year, major, enrolment_status, targeted_criterion as free text or null), application_requirements (list: transcript, essay, letters_count, portfolio, interview, FAFSA), source, source_url, fetched_at. Same provenance fields as every other record.
+2. `scripts/make_sample_scholarships.py`: generate 400 to 600 records from hand-written templates. The local chat model fills purpose text and application requirements from the template. A deterministic pass then sets every structured field, enforces internal consistency (deadline in the future, amount_min ≤ amount_max, level matches eligibility), injects the canary and assigns `sample:sch-NNNN` ids. The distribution of levels, award types, amounts and deadlines should look like a real database; no record is copied from any site. Output `data/synthetic/scholarships.jsonl` with a README stating it is invented.
+3. Real public records beside them, kept separate: fellowship-type opportunities already in the store (Grants.gov fellowship category; NIH F, K and T activity codes), and Temple's public pages for Scholar Development and Fellowships Advising (SDFA) and college scholarship listings, fetched with attribution and stored as ordinary public records. Verify live; fixtures; SOURCES.md rows. If an office page or its terms cannot be verified live, write `UNVERIFIED` and a question rather than naming it.
+4. Three student personas in `data/synthetic/`: undergraduate (3rd year), master's, PhD candidate. Each has a CV (degree year, GPA stated or not, honours, activities, posters, employment), an interests note, three achievements, and a planted answer key: which sample scholarships they are eligible for, which they are not and why, and the gap list expected per eligible lead. Canary tokens in every file.
+
+Done when: the corpus loads into the store under `source: synthetic` with zero overlap with public records; `make test` green; a test asserts no real-organisation name appears in any sample sponsor (checked against a small list of well-known sponsors and against OpenAlex institution names in the store).
+
+## S18 — Student mode
+
+Goal: a student can paste a CV, interests and achievements in private mode and get fellowships (public) and scholarships (sample) with eligibility by rule, a gap list, and a hand-off.
+
+1. Private-mode CV parse extended for students: level of study, expected graduation, degree year, GPA if stated, major, honours, activities, posters and talks, employment. The interests note becomes a query thread (reuse the direction thread at its existing weight); achievements become session records `private:achievement-N` that explanations may cite.
+2. Eligibility by rule from parsed fields against `Scholarship.eligibility`: level, class year, graduation window, GPA minimum, enrolment status, deadline not passed. Missing information yields "may be eligible", never "eligible". Targeted criteria are shown quoted from the record with a "you decide if this applies" label; the app never asks for or stores them.
+3. Gap list per lead: application requirements the CV does not evidence (letters, transcript, essay, portfolio, GPA), copied from the record.
+4. Retrieval and rerank as in Route A; the skill 2 explanation cites both the student's records and the scholarship record; both validator layers; the fit sentence stays labelled inference.
+5. UI: a Student switch on Find (private mode only). Routes shows "Fellowships (public)" and "Scholarships (sample)" as separate tabs; the sample tab title and every card carry the badge. Compare and keep work as now. Hand-off office by level: SDFA for fellowships, Student Financial Services for scholarships, both with their public URLs as verified in S17 (`UNVERIFIED` otherwise) and the To field empty. Exports carry the sample banner. Help page (`web/help.js`) and the tracker's UI preview gain the student flow.
+6. Scout: a `search_scholarships` tool with the same allowlist, validator, budgets and private-session rules.
+
+Done when: each of the three personas gets eligible leads on both tabs in a private session on the public URL; the canary test extended to student mode passes; no sample record is reachable outside student mode.
+
+## S19 — Planted-case scoring and docs
+
+Goal: the only numbers we will state about student mode, and the documentation.
+
+1. `bench/student_mode.py`: for each persona, compare the eligibility verdicts and gap lists to the planted answer key. Report eligibility precision and recall, gap-list exact-match rate, and leakage (any sample record outside student mode, any synthetic text in logs or exports). Write `bench/results/STUDENT_MODE.md`, which states plainly that the corpus is synthetic and the numbers test the mechanism only.
+2. Record the numbers in TRACKER.md key numbers as "Student mode (synthetic, mechanism test)".
+3. README: a Student mode section with the badge visible in its screenshot, and one paragraph on what real data would replace the sample corpus (Temple's ScholarshipUniverse feed under its contract, or a licensed scholarship database) and who would own it.
+4. Roadmap note in `docs/SPEC.md` Phase 3.
+
+Done when: STUDENT_MODE.md exists with the three metrics; README updated; tracker updated.
+
+## S20 — QA and privacy audit
+
+Goal: every feature correct and private before the UX audit looks at it. Moved out of the freeze session so the audit and any redesign start from a fixed app (Dakshitha, 2026-10-29).
+
+1. Work the fix list from the QA log a teammate keeps, across every feature including student mode.
+2. Privacy audit of private mode and student mode against the design's write-path inventory: the monitor, Scout, MCP, exports and hand-offs. Rerun the canary test, extended to student mode in S18.
+3. Leakage check: no sample record outside student mode, in the back-test, in bench results or in any number on the results page (standing rule 11).
+4. Known gaps from HANDOFF triaged: fix, or record as a known limit in the README.
+
+Done when: the QA log has no open item marked must-fix, the canary and leakage checks pass, `make test` green.
+
+## S21 — UI/UX audit for three audiences
+
+Goal: a comprehensive audit of the whole app for undergraduates, graduate students and PIs, and a recommendation Dakshitha can choose from, up to a full redesign and rebuild (Dakshitha, 2026-10-29).
+
+1. Task walkthroughs on the public URL, phone and laptop, for each audience: the three student personas from S17 (undergraduate, master's, PhD) and the PI demo personas. Cover every screen: Find, Profile, Routes (grants, industry, fellowships, scholarships), evidence panel, Compare, hand-off, export, Ask Scout, What changed, Help, private mode. Record where each audience stalls, misreads a label, or cannot tell public records from sample or inferred ones.
+2. Accessibility pass against a written checklist (keyboard paths, focus order, contrast in light and dark, screen-reader labels, motion, touch targets). This is the accessibility pass for the release; S23 reruns only the checklist on the frozen build.
+3. Information architecture review: whether one app with a mode switch serves all three audiences, or whether entry points, vocabulary and defaults should differ by audience. The standing rules hold in every option: provenance visible, sample data badged, numbers copied from records, nothing sent.
+4. Findings report `docs/design/UX_AUDIT.md` with screenshots, ranked by severity, plus a UX tab on the tracker. It ends with two or three options, each with a session-cost estimate: targeted fixes; a redesign of the core screens; a full redesign and rebuild. Each estimate counts refilming the README clips and screenshots, the Help page and the tracker's UI preview.
+5. Write the choice to `bridge/QUESTIONS.md` with a recommended default.
+
+Done when: UX_AUDIT.md and the tracker tab exist, every screen has been walked by every audience, and the redesign question is in QUESTIONS.md.
+
+## S22 — Redesign and rebuild
+
+Goal: build the option Dakshitha chose in S21.
+
+1. Design doc first (`docs/design/`), as in S7: the screens, the flows per audience, the vocabulary, and what each standing rule looks like on screen.
+2. Build in priority order so the session can stop at a clean commit at any point: Find, Profile and Routes first; then the evidence panel and student mode; then Compare, hand-off, Scout and What changed. Anything not reached keeps the current UI and still works.
+3. Keep the app no-build (Node 12 on the node, no npm) unless Dakshitha decides otherwise in S21.
+4. Adversarial review with fixes, as in S7; the canary test and every existing UI test still pass.
+5. Help page, tracker UI preview, `docs/screenshots/`, the README clips (S15 pipeline) and the S19 student-mode screenshot refilmed against the new UI; the README tab reviewed by Dakshitha.
+
+Done when: the chosen option is live on the public URL for all three audiences, `make test` green, the README media match the app.
+
+## S23 — Freeze and package
+
+Goal: ship. The QA fix list and privacy audit moved to S20, and the full accessibility pass to S21 (Dakshitha, 2026-10-29).
+
+1. Regression pass on the frozen build: any QA-log items opened after S20 or by the S22 rebuild; the S21 accessibility checklist rerun; the canary and leakage checks rerun.
+2. Rerun the Scout bench on the frozen build with the demo model. Final numbers (back-test, validator rate, cost per brief, Scout completion and wrong-tool rate, student mode as a synthetic mechanism test) into `docs/TRACKER.md` and `docs/RESULTS.md` for the deck. When this last test run is done, free the dev test servers: `make decide-down` stops the dev Clef-flash and Clef units, and the demo's own servers stay up. Then tell the other session sharing the node that those GPUs are free (details in the local notes). The Clef rows of `make bench` need `make decide-up` again after this.
 3. README final; `make package` → submission ZIP with how-to-run.
 4. Freeze: tag `v0.1-demo`; nothing on `main` after that except README typos.
 
@@ -256,3 +326,6 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S12 | Worked in the order 1 to 4, 7, 6, 5: the demo was rebuilt last so it carried every change. Task 7 is done but not wired in, because it adds 0 leads under the two-signal rule (Q20) | Tasks 1 to 5 are the definition of done; one demo rebuild instead of two | Perch-dev |
 | 2026-10-29 | after S12 | S16 task 2: after the last test run, stop the dev decision servers (`make decide-down`) and tell the other session on the node that their GPUs are free | The app needs only the demo's two GPUs; the dev copies exist for testing | Dakshitha |
 | 2026-10-29 | S15 to S17 | New S15, README and public release (README with filmed clips and the architecture, a README tab on the tracker, a public-readiness audit, then make the repo public). Monitoring moves to S16, and QA, freeze and package to S17. Older notes that say "S16 task 2" mean what is now S17 task 2 | Dakshitha asked for an attractive README, reviewed on the tracker, as the next step before the repo goes public | Dakshitha |
+| 2026-10-29 | S17 to S20 | student mode with synthetic scholarship data; freeze moved to S20. New S17 synthetic scholarship corpus and student personas, S18 student mode, S19 planted-case scoring and docs. Standing rules 11 and 12 added for synthetic records and student personas | Dakshitha's planning edit | Dakshitha |
+| 2026-10-29 | S20 to S23 | QA split out of the freeze session into S20 (fix list, privacy audit, canary and leakage checks), after student mode is built. New S21 UI/UX audit for undergraduates, graduate students and PIs, ending with a redesign question; new S22 redesign and rebuild. Freeze and package is now S23, with a regression pass on the frozen build. Older notes that say "S17 task 2" mean S23 task 2 | Dakshitha asked for a full UI/UX audit once the student-facing work is built, with a redesign on the table, and for QA to move to a fitting place | Dakshitha |
+| 2026-10-29 | cut order | S22 rebuild cut first, down to the audit's must-fix list; student mode next, down to its floor | Freeze is 5 Nov; a rebuild is the largest and least tested piece of work. Placed by Perch-dev; Dakshitha may reorder | Perch-dev |

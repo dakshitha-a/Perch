@@ -39,13 +39,19 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
   - Replay mode has no compare, hand-off or watch.
   - Scout on Gemma sometimes states a count that the validator withholds.
 
-## Next session: S17 — QA, freeze, package
-1. Read S17 in `docs/PLAN.md`. Code freeze is Thu 5 Nov 12:00.
-2. Rerun the Scout bench on the frozen build. `make bench --render-only` is now safe for RESULTS.md.
-3. After the last test run:
-   - Run `make decide-down`.
-   - Tell the uracil session that GPUs 1 and 2 are free (see the local notes).
-4. The privacy audit should include the monitor. It never runs on private sessions, and it writes only public digests.
+## Plan edit after S16 (2026-10-29, Dakshitha)
+- **Student mode added:** S17 corpus and personas, S18 student mode, S19 scoring and docs.
+- **New standing rules:** 11 and 12 in CLAUDE.md govern synthetic records and student personas.
+- **QA moved:** S20 is QA and the privacy audit, after student mode is built.
+- **UX audit:** S21 audits the app for undergraduates, graduate students and PIs. It ends with a redesign question for Dakshitha.
+- **Rebuild:** S22 builds the option Dakshitha picks.
+- **Freeze:** S23 is freeze and package. Old notes that say "S17 task 2" mean S23 task 2.
+
+## Next session: S17 — Synthetic scholarship corpus and student personas
+1. Read S17 in `docs/PLAN.md` and standing rules 11 and 12 in CLAUDE.md. Code freeze is still Thu 5 Nov 12:00.
+2. Sponsor names must be fictional. Build the real-name check against well-known sponsors and OpenAlex institutions.
+3. Temple's SDFA and scholarship pages must be verified live, with fixtures and SOURCES.md rows. Write `UNVERIFIED` for anything that cannot be checked.
+4. The dev Clef servers on GPUs 1 and 2 stay up until S23 task 2.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 - None. Q21, Q24 and Q25 were answered on 2026-10-29 with their defaults.
