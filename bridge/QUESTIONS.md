@@ -4,7 +4,12 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
-None.
+29. **Which S22 option (raised S21, 2026-10-29).** The S21 audit is in `docs/design/UX_AUDIT.md` and on the tracker's UX tab. It found 6 must-fix defects, 12 should-fix items and 4 could-fix items. The options are:
+- **A. Targeted fixes:** the must-fix list and the accessibility items. About 1 session, including refilming.
+- **B. Redesign the core screens:** A, plus two equal doors on Find (researcher and student), student vocabulary, compact cards, a two-column laptop layout and an explained order. The visual style and the API stay. About 2 sessions.
+- **C. Full redesign and rebuild:** new visual system and new screens per audience. About 4 sessions, against a freeze on Thu 5 Nov.
+
+**Default: B.** You asked for S21 and S22 in one run, so S22 started on B. B is built screen by screen, with a clean commit after each, and A is its first step. Say if you want A only (S22 stops after the must-fix commit) or C (a new session plan). Either way, the README clips, screenshots, Help, the tracker's UI preview and the artifacts are redone after the rebuild.
 
 ## Answered
 

@@ -15,6 +15,7 @@ Views, switched by plain hash links (#current, #master, #archive, #decisions, #s
   Archive    finished sessions (done or cut), collapsed, newest first
   Decisions  the decision log and the plan change log, newest first
   Bench      the bench results summary, when bench/results/SUMMARY.md exists
+  UX         the S21 UI/UX audit, when docs/design/UX_AUDIT.md exists
   Architecture  docs/ARCHITECTURE.md with its diagrams, when it exists
 
 Standard library only. Output is deterministic so re-running does not dirty the
@@ -103,6 +104,9 @@ figure.diagram { margin: 0; padding: 16px; display: grid; gap: 12px; justify-ite
   overflow-x: auto; }
 @media (max-width: 600px) { figure.diagram { justify-items: start; } }
 figure.diagram svg { width: 100%; min-width: 560px; max-width: 720px; height: auto; color: var(--fg); }
+figure.shot { margin: 0; padding: 12px; display: grid; gap: 8px; justify-items: center; }
+figure.shot img { max-width: 100%; max-height: 640px; height: auto; border-radius: 6px; }
+figure.shot figcaption { font-size: 13px; color: var(--muted); justify-self: start; }
 figure.diagram figcaption { font-size: 13px; color: var(--muted); justify-self: start;
   max-width: min(72ch, calc(100vw - 66px)); }
 svg.arch .k-local { fill: var(--accent-soft); stroke: var(--accent); }
@@ -568,6 +572,21 @@ def view_persona(files: dict[str, str]) -> str:
     return "\n".join(out)
 
 
+def view_ux(ux_md: str) -> str:
+    """docs/design/UX_AUDIT.md; each ![caption](file.png) is an image beside tracker.html."""
+    doc = parse(ux_md)
+    out = ['<div><div class="eyebrow">S21 audit, for choosing the S22 option</div>'
+           f"<h1>{inline(doc.title or 'UX audit')}</h1></div>"]
+    for b in doc.blocks:
+        if b[0] == "fig":
+            src = html.escape("design/" + b[2])
+            out.append(f'<figure class="panel shot"><img src="{src}" alt="{html.escape(b[1])}" loading="lazy">'
+                       f"<figcaption>{inline(b[1])}</figcaption></figure>")
+        else:
+            out += render_blocks([b])
+    return "\n".join(out)
+
+
 def view_readme(src: str) -> str:
     s = html.escape(src)
     return f"""<h2>README for review</h2>
@@ -597,7 +616,8 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
                 page_title: str = "Perch Build Tracker", decisions_md: str = "",
                 plan_md: str = "", ui: str | None = None, bench_md: str = "",
                 arch_md: str = "", arch_root: Path = Path("docs"),
-                persona: dict[str, str] | None = None, readme: str | None = None) -> str:
+                persona: dict[str, str] | None = None, readme: str | None = None,
+                ux_md: str = "") -> str:
     master = parse(master_md)
     sessions = build_sessions(master, session_files)
     current = pick_current(sessions)
@@ -613,6 +633,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
         ("ui", "UI", lambda: view_ui(ui), ui),
         ("architecture", "Architecture", lambda: view_architecture(arch_md, arch_root), arch_md),
         ("bench", "Bench", lambda: view_bench(bench_md), bench_md),
+        ("ux", "UX", lambda: view_ux(ux_md), ux_md),
         ("current", "Current", lambda: view_current(current), True),
         ("master", "Master", lambda: view_master(master, sessions, current), True),
         ("archive", f'Archive<span class="count">{archived}</span>',
@@ -682,7 +703,8 @@ def main(argv: list[str]) -> int:
     page = render_page(src.read_text(encoding="utf-8"), sessions, args.artifact, args.title,
                        read("DECISIONS.md"), read("PLAN.md"), args.ui,
                        read("../bench/results/SUMMARY.md"), read("ARCHITECTURE.md"), src.parent,
-                       load_persona(src.parent.parent / "data/synthetic/persona-1"), args.readme)
+                       load_persona(src.parent.parent / "data/synthetic/persona-1"), args.readme,
+                       read("design/UX_AUDIT.md"))
     dest.write_text(page, encoding="utf-8")
     print(f"wrote {dest}")
     return 0

@@ -65,6 +65,9 @@ figure.diagram { margin: 0; padding: 16px; display: grid; gap: 12px; justify-ite
   overflow-x: auto; }
 @media (max-width: 600px) { figure.diagram { justify-items: start; } }
 figure.diagram svg { width: 100%; min-width: 560px; max-width: 720px; height: auto; color: var(--fg); }
+figure.shot { margin: 0; padding: 12px; display: grid; gap: 8px; justify-items: center; }
+figure.shot img { max-width: 100%; max-height: 640px; height: auto; border-radius: 6px; }
+figure.shot figcaption { font-size: 13px; color: var(--muted); justify-self: start; }
 figure.diagram figcaption { font-size: 13px; color: var(--muted); justify-self: start;
   max-width: min(72ch, calc(100vw - 66px)); }
 svg.arch .k-local { fill: var(--accent-soft); stroke: var(--accent); }
@@ -132,13 +135,14 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S21</code> <span class="badge s-todo">todo</span><span>21/24 sessions done</span></div>
+<div class="at-a-glance"><code>S22</code> <span class="badge s-todo">todo</span><span>22/24 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
+<a id="tab-ux" href="#ux">UX</a>
 <a id="tab-current" href="#current">Current</a>
 <a id="tab-master" href="#master">Master</a>
-<a id="tab-archive" href="#archive">Archive<span class="count">21</span></a>
+<a id="tab-archive" href="#archive">Archive<span class="count">22</span></a>
 <a id="tab-persona" href="#persona">Persona</a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
 </nav></div></header>
@@ -593,15 +597,86 @@ details .inner > * { min-width: 0; }
 <tr><td>gemma4:26b-a4b</td><td>minicheck</td><td>3</td><td>31291</td><td>31729</td><td>144.3</td><td>0.933</td><td>not measured</td></tr>
 </tbody></table></div>
 </section>
+<section id="view-ux" class="view" data-view="ux" hidden>
+<div><div class="eyebrow">S21 audit, for choosing the S22 option</div><h1>UX audit for three audiences (S21)</h1></div>
+<p>Perch-dev walked every screen of the live demo on 2026-10-29, on the public URL, as each audience. This is an expert walkthrough with automatic checks. It is not a study with real users; no undergraduate, graduate student or PI was observed.</p>
+<h2>How the walk was done</h2>
+<ul><li><strong>Runner:</strong> <code>scripts/ux_walk.py</code> drives the real app in headless Chromium. Each state is screenshotted and checked with axe-core 4.10.2, a touch-target probe, a sideways-scroll probe and a private-mode probe. The raw results are in <code>build/ux/report-*.json</code>, which is not committed.</li><li><strong>PI:</strong> the demo researcher PI-4 (A5026494099), found by OpenAlex id. Laptop (1280 px) and phone (390 px), each in light and dark. Screens: Find, candidate, Profile, Routes (grants and industry), why it fits, evidence panel, keep bar, Compare, hand-off, export links, Ask Scout, What changed, Help.</li><li><strong>Students:</strong> the three SYNTHETIC personas from S17: undergraduate (persona-ug), part-time master's (persona-masters) and PhD (persona-phd). Each was walked from Find through the Student button, the form, a live brief, Profile, Fellowships, Scholarships, the evidence panel on a sample record, Compare with the code-written draft, and ending the session. Each persona was captured on a phone and a laptop; the PhD walk was in dark mode.</li><li><strong>Private researcher:</strong> the SYNTHETIC persona-1 in private mode on a laptop: the header switch, three documents, a private-only brief, Profile, Routes and Help with the session on.</li><li><strong>Totals:</strong> 108 captured states across 14 screens; 2 steps failed in the automation, both on the phone hand-off (finding M1).</li></ul>
+<h2>Private mode at a glance</h2>
+<ul><li><strong>Result:</strong> every audience can tell when private mode is on. In all 54 student and private states, the header switch read "on", the frame line under the header showed, and the coloured edge was drawn. All three went off after the session ended.</li><li><strong>On a phone:</strong> the switch shows a lock and a toggle but no word. The frame line under it says "Private session on", so the state is still clear at a glance (screenshot 5).</li><li><strong>One gap:</strong> the frame line is part of the header, so it scrolls away with it on a long list. The coloured edge stays. This is a could-fix.</li></ul>
+<h2>Findings, ranked</h2>
+<p>Severity: <strong>Must-fix</strong> means broken, misleading, or a serious accessibility failure. <strong>Should-fix</strong> means an audience stalls or misreads. <strong>Could-fix</strong> means polish.</p>
+<h2>Must-fix</h2>
+<div class="panel scroll"><table>
+<thead><tr><th>#</th><th>Where</th><th>Audience</th><th>Finding</th></tr></thead>
+<tbody>
+<tr><td>M1</td><td>Compare, hand-off</td><td>PI</td><td>The office picker is broken. It lists the two student offices on a researcher's brief and labels them "no kept undefined". The radio cards render empty, with their labels outside the box. On a phone this pushes the page 149 px sideways, and the automated walk could not press Draft the email at 390 px. Cause: S18 added SDFA and SFS to the shared office list (<code>perch/compare.py</code> returns all four), and <code>web/handoff.js</code> has no words for the student routes.</td></tr>
+<tr><td>M2</td><td>Every screen</td><td>All</td><td>The owl ("Say hello to Scout") is a button inside an <code>aria-hidden</code> region on Find and in the progress branch. A screen reader skips it while the keyboard still lands on it; on Find it is reached twice. axe rates this serious, on 77 states.</td></tr>
+<tr><td>M3</td><td>Compare, evidence panel</td><td>All</td><td>The comparison table and the evidence panel scroll but cannot take keyboard focus, so a keyboard user cannot scroll them (axe <code>scrollable-region-focusable</code>, serious).</td></tr>
+<tr><td>M4</td><td>Routes</td><td>PI</td><td>The list is sorted "Best match" but shows "Fit estimate weak 0" on the 4th, 5th, 6th and 7th cards, above a "strong 85". The order is the pipeline order that the back-test measures, and the fit number is a separate model estimate. Nothing says so, so a PI reads it as the tool contradicting itself.</td></tr>
+<tr><td>M5</td><td>Student explanations</td><td>Students</td><td>The inference line calls the student "the researcher" ("The researcher's background in stream ecology...").</td></tr>
+<tr><td>M6</td><td>Contrast</td><td>All</td><td>Two misses: the Model tag on Help (4.07 to 1) and the small notes in Compare cells in dark mode (4.31 to 1).</td></tr>
+</tbody></table></div>
+<h2>Should-fix</h2>
+<div class="panel scroll"><table>
+<thead><tr><th>#</th><th>Where</th><th>Audience</th><th>Finding</th></tr></thead>
+<tbody>
+<tr><td>S1</td><td>Find</td><td>Students</td><td>The page speaks to researchers only: "fund your work", "a researcher's public papers", and the field label "Researcher". Student is a smaller second button under the hero, with no heading. An undergraduate has to read the hint to know they are welcome.</td></tr>
+<tr><td>S2</td><td>Vocabulary</td><td>Students</td><td>"Routes", "brief", "leads" and "New search" are researcher words. A student brief's back link says "New search" and goes to a researcher search. "Your CV" may stop an undergraduate who has a résumé, not a CV.</td></tr>
+<tr><td>S3</td><td>Profile</td><td>PI</td><td>The summary shows raw ids in brackets ("[W7166556526, W7154095651, ...]"). Elsewhere the same ids are readable chips.</td></tr>
+<tr><td>S4</td><td>Profile</td><td>PI</td><td>The same paper appears up to three times in a thread: the journal version and two arXiv copies.</td></tr>
+<tr><td>S5</td><td>Routes</td><td>PI</td><td>Three cards for one announcement family (R21, R03 and R01 of the same "Dissemination and Implementation Research in Health"). Each costs a phone screen.</td></tr>
+<tr><td>S6</td><td>Fellowship cards</td><td>Students</td><td>All 10 public fellowship cards show "Deadline: Not stated in the record" and "Amount: Not stated in the record" in two large boxes, the same rule line, and an expanded explanation. Ten leads fill 11,000 px on a phone.</td></tr>
+<tr><td>S7</td><td>Industry cards</td><td>PI</td><td>Each industry card is about 1,200 px tall on a phone, with three paper titles per signal shown in full. "Samsung Electronics (South Korea)" and "Samsung (South Korea)" are two separate leads.</td></tr>
+<tr><td>S8</td><td>Card actions</td><td>Mixed</td><td>Grant cards say "Evidence"; student cards say "Record" for the same action.</td></tr>
+<tr><td>S9</td><td>Student tabs</td><td>Students</td><td>"Scholarships (sample)" lists sample records named "Fellowship" (for example a sample "Graduate Fellowship in Systems Neuroscience"), next to a tab called Fellowships. The draft for those goes to Student Financial Services.</td></tr>
+<tr><td>S10</td><td>Laptop</td><td>All</td><td>The content is one 720 px column on a 1280 px screen. The evidence panel then covers the list it explains.</td></tr>
+<tr><td>S11</td><td>Touch targets</td><td>All</td><td>Paper chips under "Why it fits" are 28 px tall, and student record chips are 40 px. Both pass WCAG 2.2 (24 px) but miss the app's own 44 px rule. Inline company and paper links on industry cards are 23 px.</td></tr>
+<tr><td>S12</td><td>Headings</td><td>Students, private</td><td>The document cards jump from h1 to h3 (axe <code>heading-order</code>).</td></tr>
+</tbody></table></div>
+<h2>Could-fix</h2>
+<div class="panel scroll"><table>
+<thead><tr><th>#</th><th>Where</th><th>Finding</th></tr></thead>
+<tbody>
+<tr><td>C1</td><td>Phone tabs</td><td>"Ask Scout" wraps onto two lines at 390 px.</td></tr>
+<tr><td>C2</td><td>Header</td><td>The private frame line scrolls away with the header; only the coloured edge stays.</td></tr>
+<tr><td>C3</td><td>Evidence panel</td><td><code>&lt;aside role=&quot;dialog&quot;&gt;</code> is not an allowed role (axe, minor).</td></tr>
+<tr><td>C4</td><td>Steps</td><td>The "Steps (8 of 8 done)" summary is 36 px tall.</td></tr>
+</tbody></table></div>
+<h2>What worked</h2>
+<ul><li><strong>Provenance:</strong> every grant date and amount reads as copied ("Not stated in the record"), and the evidence panel opens the record on a phone as a bottom sheet.</li><li><strong>Sample data:</strong> every sample card, the Scholarships tab, the evidence panel on a sample record and the student Compare carry the Sample data badge or banner. No audience could take a sample record for a real one.</li><li><strong>Model text:</strong> model text is labelled on every card, and the student CV note says it is read by rule and never sent to a model.</li><li><strong>Keyboard:</strong> focus was visible on every step of both keyboard paths, and the tab order follows reading order apart from the owl (M2).</li><li><strong>Motion:</strong> with reduced motion, no animation loops at rest.</li></ul>
+<h2>Screenshots</h2>
+<figure class="panel shot"><img src="design/ux/01-handoff-offices-phone.png" alt="1. Phone, PI hand-off: student offices listed with &quot;undefined&quot;, radio cards empty, labels outside the box (M1)" loading="lazy"><figcaption>1. Phone, PI hand-off: student offices listed with "undefined", radio cards empty, labels outside the box (M1)</figcaption></figure>
+<figure class="panel shot"><img src="design/ux/02-routes-laptop.png" alt="2. Laptop, PI Routes: &quot;Best match&quot; order beside fit estimates; a 720 px column on a 1280 px screen (M4, S10)" loading="lazy"><figcaption>2. Laptop, PI Routes: "Best match" order beside fit estimates; a 720 px column on a 1280 px screen (M4, S10)</figcaption></figure>
+<figure class="panel shot"><img src="design/ux/03-profile-ids-duplicates.png" alt="3. Laptop, PI Profile: raw ids in the summary and the same paper three times (S3, S4)" loading="lazy"><figcaption>3. Laptop, PI Profile: raw ids in the summary and the same paper three times (S3, S4)</figcaption></figure>
+<figure class="panel shot"><img src="design/ux/04-find-phone.png" alt="4. Phone, Find: the page addresses researchers; Student is a second button (S1)" loading="lazy"><figcaption>4. Phone, Find: the page addresses researchers; Student is a second button (S1)</figcaption></figure>
+<figure class="panel shot"><img src="design/ux/05-student-form-phone.png" alt="5. Phone, student form with private mode on: switch, frame line and coloured edge" loading="lazy"><figcaption>5. Phone, student form with private mode on: switch, frame line and coloured edge</figcaption></figure>
+<figure class="panel shot"><img src="design/ux/06-scholarships-laptop.png" alt="6. Laptop, master&#x27;s persona, Scholarships (sample) with its badges" loading="lazy"><figcaption>6. Laptop, master's persona, Scholarships (sample) with its badges</figcaption></figure>
+<figure class="panel shot"><img src="design/ux/07-fellowship-card-phone.png" alt="7. Phone, undergraduate, a fellowship card: two &quot;Not stated&quot; boxes and &quot;the researcher&#x27;s background&quot; (S6, M5)" loading="lazy"><figcaption>7. Phone, undergraduate, a fellowship card: two "Not stated" boxes and "the researcher's background" (S6, M5)</figcaption></figure>
+<figure class="panel shot"><img src="design/ux/08-industry-card-phone.png" alt="8. Phone, PI industry card: three full paper titles per signal (S7)" loading="lazy"><figcaption>8. Phone, PI industry card: three full paper titles per signal (S7)</figcaption></figure>
+<figure class="panel shot"><img src="design/ux/09-student-dark-phone.png" alt="9. Phone, PhD persona in dark mode, Scholarships (sample)" loading="lazy"><figcaption>9. Phone, PhD persona in dark mode, Scholarships (sample)</figcaption></figure>
+<h2>Information architecture</h2>
+<ul><li><strong>One app or two:</strong> one app with a mode switch can serve all three audiences. The data, the evidence panel, the badges and the private session are shared, and splitting them would duplicate the code that enforces the standing rules.</li><li><strong>What should differ by audience:</strong> the entry point, the words and the defaults. Find should offer two equal doors, "I'm a researcher" and "I'm a student", each with its own one-line promise. A student brief should use student words: "Your options" for Routes, "Start over" for New search, "CV or résumé".</li><li><strong>Undergraduate and graduate students:</strong> the same flow serves both. The CV parse already reads the level, and the fellowship list already differs by level. No separate door is needed.</li><li><strong>Defaults:</strong> a student lead's explanation should start collapsed, as a PI's does. Fields a whole source never states (deadline and amount on the SDFA list) should fold into one line, not two boxes.</li><li><strong>What stays in every option:</strong> provenance on every claim, the Sample data badge on every sample record, numbers copied from records, and nothing sent.</li></ul>
+<h2>Options for S22</h2>
+<p>Each estimate counts the knock-on work Dakshitha asked for after any UI change. That means refilming the six README clips (<code>scripts/tour/film.py</code>), retaking <code>docs/screenshots/</code> and the README student screenshot, rebuilding the tracker's UI preview (S19 moved the student flow here), updating Help (<code>web/help.js</code>), and republishing the artifacts. Selector changes also break <code>scripts/tour/film.py</code>, <code>scripts/screenshots.py</code>, <code>scripts/build_ui_preview.py</code>, <code>scripts/ux_walk.py</code> and the Node tests in <code>tests/test_web.py</code>. A session here means one context window.</p>
+<div class="panel scroll"><table>
+<thead><tr><th>Option</th><th>What it covers</th><th>Sessions</th><th>Risk</th></tr></thead>
+<tbody>
+<tr><td>A. Targeted fixes</td><td>M1 to M6, S3, S4, S8, S11, S12, C1, C3, C4. No layout or wording change beyond these.</td><td>About 1: 0.5 build, 0.5 refilm and republish</td><td>Low</td></tr>
+<tr><td>B. Redesign the core screens (recommended)</td><td>Everything in A, plus the two-door Find (S1), student vocabulary (S2), compact cards for grants, fellowships and industry (S5, S6, S7), sample "fellowships" labelled as such (S9), a two-column laptop layout with the evidence panel beside the list (S10), and the order explained (M4). The visual style, the components and the API stay as they are.</td><td>About 2: 1.2 build, 0.8 refilm, Help and republish</td><td>Medium. Each screen is a clean commit, so it can stop part-way.</td></tr>
+<tr><td>C. Full redesign and rebuild</td><td>A new visual system and new screens for every flow, designed from scratch per audience.</td><td>About 4: 1 design, 2 build, 1 refilm and regression</td><td>High: freeze is Thu 5 Nov 12:00, and the cut order already names the rebuild first.</td></tr>
+</tbody></table></div>
+<ul><li><strong>Recommendation: B.</strong> The audit found defects and a vocabulary problem, not a broken structure. The structure that works (one app, a private state, shared evidence and badges) is exactly what C would throw away. B fixes what a student stalls on and what a PI misreads, and every step can stop at a clean commit.</li></ul>
+</section>
 <section id="view-current" class="view" data-view="current" hidden>
-<div id="s21"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S21 · UI/UX audit for three audiences</h1><span class="badge s-todo">todo</span></div>
+<div id="s22"><div class="eyebrow">Current session</div>
+<div class="title-row"><h1>S22 · Redesign and rebuild</h1><span class="badge s-todo">todo</span></div>
 <div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S21.md</code> when the session starts.</div>
+<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S22.md</code> when the session starts.</div>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="21 of 24 sessions done"><div class="counts"><span><b>21/24</b>sessions done</span><span class="s-done"><b>21</b>done</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="21 of 24 sessions done"><span class="s-done" style="width:87.50%" title="done: 21"></span><span class="s-todo" style="width:12.50%" title="todo: 3"></span></div></section>
+<section class="panel summary" aria-label="22 of 24 sessions done"><div class="counts"><span><b>22/24</b>sessions done</span><span class="s-done"><b>22</b>done</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="22 of 24 sessions done"><span class="s-done" style="width:91.67%" title="done: 22"></span><span class="s-todo" style="width:8.33%" title="todo: 2"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -626,8 +701,8 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s18">S18</a></td><td>Student mode</td><td><span class="badge s-done">done</span></td><td>2026-10-29 18:21 EDT</td><td>2026-10-29 18:41 EDT</td><td class="mono">see git log</td><td>245 tests green. Private mode is an app-wide state: a header switch, Student on Find, and a browser-only paste nudge, all opening a session before any text is sent (Node test; held in 4 live browser runs). Student brief in a private session: CV read by rule, eligibility by rule (24 of 24 planted cases match the hand-written keys), a gap list, fellowships from Temple SDFA and NIH F-series, and SYNTHETIC scholarships from their own store, with Sample data badges and an export banner. Live on the public URL: all three personas got leads on both tabs in 40 to 49 s. Live canary clean. The fit skill now maps a bare <code>achievement-a</code> back to its <code>private:</code> record (Gemma dropped the prefix). Scout tool and UI preview moved to S19.</td></tr>
 <tr class="is-finished"><td><a href="#s19">S19</a></td><td>Planted-case scoring and docs</td><td><span class="badge s-done">done</span></td><td>2026-10-29 18:43 EDT</td><td>2026-10-29 18:48 EDT</td><td class="mono">see git log</td><td>245 tests green. <code>bench/student_mode.py</code> scores the demo over HTTP on SYNTHETIC data (a mechanism test): rules matched all 19 planted records that reached a brief; retrieval missed 5 of 24, so 10 of 12 records a student may apply for reached the brief; no leakage. STUDENT_MODE.md says so plainly. README student section with a badged screenshot and the real-data note; SPEC Phase 3 updated. Scout tool cut to the floor (Q27); UI preview moved to S22.</td></tr>
 <tr class="is-finished"><td><a href="#s20">S20</a></td><td>QA and privacy audit</td><td><span class="badge s-done">done</span></td><td>2026-10-29 18:50 EDT</td><td>2026-10-29 18:53 EDT</td><td class="mono">see git log</td><td>246 tests green. Privacy audit with student mode: fixed CV-quoting lines leaving unwithheld in the JSON export, a missing sample banner there, and a research-office hand-off offered for a student brief. Live canary rerun clean; the private-only brief now explains 10 of 10 leads (8 of 10 in S13). Sample-store isolation test added. Flaky Scout test fixed (random test order). README Known limits section. Task 1 dropped: no QA log exists (Q28).</td></tr>
-<tr class="is-current"><td>S21</td><td>UI/UX audit for three audiences</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S22</td><td>Redesign and rebuild</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-finished"><td><a href="#s21">S21</a></td><td>UI/UX audit for three audiences</td><td><span class="badge s-done">done</span></td><td>2026-10-29 19:02 EDT</td><td>2026-10-29 19:19 EDT</td><td class="mono">see git log</td><td>Expert walkthrough on the public URL with <code>scripts/ux_walk.py</code> (axe-core 4.10.2): PI-4, three SYNTHETIC student personas and persona-1, phone and laptop, light and dark, 108 states. Private mode visible in all 54 private states. 6 must-fix (worst: the PI hand-off office picker lists student offices as \"undefined\"), 12 should-fix, 4 could-fix. Accessibility checklist in <code>docs/design/A11Y_CHECKLIST.md</code>. Options A (about 1 session), B (about 2), C (about 4); Q29 default B. UX tab on the tracker.</td></tr>
+<tr class="is-current"><td>S22</td><td>Redesign and rebuild</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S23</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
@@ -661,7 +736,22 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-archive" class="view" data-view="archive" hidden>
 <div><div class="eyebrow">Finished sessions</div><h1>Archive</h1></div>
-<div><details id="s20"><summary><span><span class="sid">S20</span> <span class="stitle">QA and privacy audit</span></span><span></span><span class="badge s-done">done</span><span class="smeta">3/3 tasks done · finished 2026-10-29 18:53 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: every feature correct and private before the UX audit looks at it. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<div><details id="s21"><summary><span><span class="sid">S21</span> <span class="stitle">UI/UX audit for three audiences</span></span><span></span><span class="badge s-done">done</span><span class="smeta">5/5 tasks done · finished 2026-10-29 19:19 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: a comprehensive audit of the whole app for undergraduates, graduate students and PIs, and a recommendation Dakshitha can choose from, up to a full redesign and rebuild. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="5 of 5 tasks done"><div class="counts"><span><b>5/5</b>tasks done</span><span class="s-done"><b>5</b>done</span></div><div class="bar" role="img" aria-label="5 of 5 tasks done"><span class="s-done" style="width:100.00%" title="done: 5"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Task walkthroughs on the public URL, phone and laptop, for the three student personas and the PI personas; every screen; where each audience stalls or misreads; private mode visible at a glance.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>scripts/ux_walk.py</code> walked the public URL: PI-4 on a laptop and a phone in light and dark; persona-ug, persona-masters and persona-phd from Find to the end of the session on a phone and a laptop; persona-1 in private mode. 108 states. Private mode showed in all 54 private and student states and cleared after each end. Worst finds: the PI hand-off office picker is broken (student offices with "undefined", empty radio cards, 149 px sideways scroll on a phone), and the order beside the fit estimates reads as a contradiction.</td></tr>
+<tr><td>2</td><td>Accessibility pass against a written checklist: keyboard paths, focus order, contrast in light and dark, screen-reader labels, motion, touch targets.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>docs/design/A11Y_CHECKLIST.md</code>, 13 items, run by <code>scripts/ux_walk.py</code> with axe-core 4.10.2. Serious: the owl is focusable inside <code>aria-hidden</code> (77 states), and two scroll regions cannot take focus. Two contrast misses (4.07 and 4.31 to 1). Focus visible on every step; no looping motion with reduced motion; no control under 24 px, several under the app's 44 px rule.</td></tr>
+<tr><td>3</td><td>Information architecture review: one app with a mode switch, or entry points, vocabulary and defaults by audience.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>One app stays; the entry point, the words and the defaults differ by audience. Find gets two equal doors; a student brief uses student words. Undergraduate and graduate students share one flow.</td></tr>
+<tr><td>4</td><td>Findings report <code>docs/design/UX_AUDIT.md</code> with screenshots, ranked by severity, plus a UX tab on the tracker; two or three options with session-cost estimates.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>6 must-fix, 12 should-fix, 4 could-fix; 9 screenshots (aliases only). Options: A targeted fixes (about 1 session), B core screens (about 2), C full rebuild (about 4); each counts the refilming. UX tab added to the tracker.</td></tr>
+<tr><td>5</td><td>The redesign choice in <code>bridge/QUESTIONS.md</code> with a recommended default.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Q29, default B. S22 starts on B, as Dakshitha asked for S21 and S22 in one run.</td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>UX_AUDIT.md and the tracker tab exist, every screen has been walked by every audience, and the redesign question is in QUESTIONS.md.</li></ul>
+<h2>Status at end</h2>
+<ul><li>All five tasks are done. The definition of done is met: UX_AUDIT.md and the UX tab exist, every screen was walked by every audience, and Q29 is in QUESTIONS.md.</li><li><strong>Not user testing:</strong> the walk is Perch-dev's expert walkthrough with automatic checks. No real student or PI was observed.</li><li><strong>Hygiene:</strong> the What changed screen named real researchers in the first walk; <code>ux_walk.py</code> now aliases <code>/watch</code> too, and those shots were deleted. The committed screenshots show aliases only.</li></ul></div></details>
+<details id="s20"><summary><span><span class="sid">S20</span> <span class="stitle">QA and privacy audit</span></span><span></span><span class="badge s-done">done</span><span class="smeta">3/3 tasks done · finished 2026-10-29 18:53 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: every feature correct and private before the UX audit looks at it. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
 <section class="panel summary" aria-label="3 of 3 tasks done"><div class="counts"><span><b>3/3</b>tasks done</span><span class="s-done"><b>3</b>done</span></div><div class="bar" role="img" aria-label="3 of 3 tasks done"><span class="s-done" style="width:100.00%" title="done: 3"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
@@ -1058,10 +1148,11 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (127)</h2>
+<h2>Decisions (128)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S21</td><td>S22 builds option B (redesign of the core screens), the recommended default in Q29, until Dakshitha answers</td><td>Dakshitha asked for S21 and S22 in one run; the audit found defects and a vocabulary problem, not a broken structure; B is a superset of A and stops at a clean commit after each screen</td><td>Perch-dev (default), Dakshitha to confirm</td></tr>
 <tr><td>2026-10-29</td><td>after S20</td><td>Q26: keep the generic scholarship schema and the ScholarshipUniverse seam until a real export arrives. Q27: no Scout in student mode. Q28: no QA log exists, so S20 task 1 is dropped</td><td>Dakshitha's answers</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S18</td><td>The paste nudge triggers on 280 or more characters, or on two CV markers (education, GPA, references, an email, a phone number, ...), in the browser only; search is held while the offer is open</td><td>A name, ORCID iD or OpenAlex id never triggers it; nothing is sent until the person chooses</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S18</td><td>The fit skill maps a bare id ("achievement-a") back to its <code>private:</code> record when only the prefixed one exists</td><td>Live: Gemma dropped the prefix on every student lead, so all 20 explanations were withheld</td><td>Perch-dev</td></tr>

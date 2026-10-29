@@ -1,0 +1,338 @@
+"""Walk every screen of the running app for each audience, with automatic checks (S21).
+
+  uv run --no-project --with playwright python scripts/ux_walk.py \\
+      [--base http://127.0.0.1:8090] [--axe PATH/axe.min.js (axe-core 4.10.2, cdnjs)] [--out build/ux] [--only pi student private]
+
+Audiences: the PI demo researcher (PI-4, by OpenAlex id), the three SYNTHETIC student
+personas (persona-ug, persona-masters, persona-phd) and the SYNTHETIC researcher
+persona-1 in private mode. Each flow is captured on a phone (390 px) and a laptop
+(1280 px); the PI flow also in dark mode. Researchers appear by alias only, as in the
+README clips (scripts/tour/film.py).
+
+At every captured state the script records, in <out>/report-<groups>.json:
+- axe-core violations (WCAG 2.0 to 2.2 A and AA), if --axe points at axe.min.js;
+- interactive elements smaller than 44 px (the design's target) and 24 px (WCAG 2.2 AA);
+- sideways scroll;
+- whether private mode shows (the header switch state, the frame line, the body class).
+It also tabs through Find and a brief and records the focus order and whether each focus
+is visible. S23 reruns this script on the frozen build.
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import glob
+import json
+import os
+import sys
+from collections.abc import Awaitable
+from pathlib import Path
+
+from playwright.async_api import Browser, BrowserContext, Page, Route, async_playwright
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts/tour"))
+from film import alias_responses, aliases  # noqa: E402
+
+SYN = ROOT / "data/synthetic"
+AUTHOR = "A5026494099"  # PI-4, the demo researcher
+PHONE = {"width": 390, "height": 844}
+LAPTOP = {"width": 1280, "height": 860}
+STUDENTS = ("persona-ug", "persona-masters", "persona-phd")
+
+PROBE = """() => {
+  const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; };
+  const name = (el) => (el.getAttribute('aria-label') || el.innerText || el.value || el.id || el.tagName)
+    .trim().replace(/\\s+/g, ' ').slice(0, 50);
+  const small = [];
+  for (const el of document.querySelectorAll('a[href], button, input, select, textarea, summary, [role=switch], [role=tab], label.btn')) {
+    if (!vis(el) || el.closest('[hidden]')) continue;
+    if (el.type === 'checkbox' || el.type === 'radio') continue;  // the label is the target
+    const r = el.getBoundingClientRect();
+    const inline = el.tagName === 'A' && !el.classList.contains('btn') && getComputedStyle(el).display === 'inline';
+    if (r.width < 44 || r.height < 44) small.push({ el: name(el), tag: el.tagName.toLowerCase(),
+      w: Math.round(r.width), h: Math.round(r.height), inline, under24: r.width < 24 || r.height < 24 });
+  }
+  const sw = document.querySelector('#private-switch');
+  const frame = document.querySelector('#private-frame');
+  return { small, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    private: { switch: sw && sw.getAttribute('aria-checked'), frame: frame && !frame.hidden,
+      body: document.body.classList.contains('private-on') },
+    title: document.title, hash: location.hash };
+}"""
+
+FOCUS = """() => {
+  const el = document.activeElement; if (!el || el === document.body) return null;
+  const s = getComputedStyle(el);
+  const shown = (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0) || s.boxShadow !== 'none';
+  const r = el.getBoundingClientRect();
+  return { el: (el.getAttribute('aria-label') || el.innerText || el.placeholder || el.id || el.tagName)
+    .trim().replace(/\\s+/g, ' ').slice(0, 40), tag: el.tagName.toLowerCase(), role: el.getAttribute('role'),
+    visible: shown, onscreen: r.bottom > 0 && r.top < innerHeight };
+}"""
+
+
+class Walk:
+    def __init__(self, out: Path, axe: str | None) -> None:
+        self.out = out
+        self.axe = axe
+        self.states: list[dict] = []
+        self.errors: list[str] = []
+        self.focus: dict[str, list] = {}
+
+    async def snap(self, page: Page, tag: str, name: str, full: bool = False) -> None:
+        await page.wait_for_timeout(250)
+        path = self.out / f"{tag}-{len([s for s in self.states if s['tag'] == tag]) + 1:02d}-{name}.png"
+        await page.screenshot(path=str(path), full_page=full)
+        probe = await page.evaluate(PROBE)
+        state = {"tag": tag, "name": name, "shot": path.name, **probe}
+        if self.axe:
+            if not await page.evaluate("() => Boolean(window.axe)"):
+                await page.add_script_tag(path=self.axe)
+            res = await page.evaluate("""async () => {
+              const r = await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] });
+              return r.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help, n: v.nodes.length,
+                targets: v.nodes.slice(0, 4).map(x => x.target.join(' ')),
+                summary: v.nodes[0] && v.nodes[0].failureSummary.slice(0, 240) })); }""")
+            state["axe"] = res
+        self.states.append(state)
+
+    async def step(self, tag: str, what: str, coro: Awaitable) -> bool:
+        try:
+            await coro
+            return True
+        except Exception as e:  # noqa: BLE001 - a failed step is a finding, the walk goes on
+            self.errors.append(f"{tag}: {what}: {type(e).__name__}: {str(e).splitlines()[0][:200]}")
+            return False
+
+    async def tab_through(self, page: Page, key: str, n: int = 30) -> None:
+        await page.evaluate("() => { document.activeElement && document.activeElement.blur(); window.scrollTo(0, 0); }")
+        seq = []
+        for _ in range(n):
+            await page.keyboard.press("Tab")
+            seq.append(await page.evaluate(FOCUS))
+        self.focus[key] = seq
+
+
+async def new_page(browser: Browser, view: dict, names: dict, scheme: str = "light",
+                   motion: str = "no-preference") -> tuple[BrowserContext, Page]:
+    ctx = await browser.new_context(viewport=view, color_scheme=scheme, reduced_motion=motion,
+                                    device_scale_factor=1, has_touch=view is PHONE, is_mobile=view is PHONE)
+    page = await ctx.new_page()
+    await alias_responses(page, names)
+    await page.route("**/watch**", lambda route: alias_watch(route, names))
+    return ctx, page
+
+
+async def alias_watch(route: Route, names: dict) -> None:
+    """The What changed screen names watched researchers; film.py's filter does not cover it."""
+    try:
+        r = await route.fetch()
+    except Exception:  # noqa: BLE001 - the page closed mid-request
+        return
+    body = await r.text()
+    for real, alias in names.items():
+        body = body.replace(real, alias)
+    await route.fulfill(response=r, body=body)
+
+
+async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".hero")
+    await w.snap(page, tag, "find")
+    if tag == "pi-laptop":
+        await w.tab_through(page, "find")
+    await page.fill("#q", AUTHOR)
+    await page.click("button:has-text('Find researcher')")
+    await w.step(tag, "candidate", page.wait_for_selector(".candidate", timeout=20000))
+    await w.snap(page, tag, "candidate")
+    await page.locator(".candidate button:has-text('Build brief')").first.click()
+    await page.wait_for_selector("#tab-routes", timeout=60000)
+    await page.wait_for_timeout(1500)
+    await page.click("#tab-profile")
+    await w.snap(page, tag, "profile", full=True)
+    await page.click("#tab-routes")
+    await page.wait_for_timeout(800)
+    await w.snap(page, tag, "routes-grants")
+    await w.snap(page, tag, "routes-grants-full", full=True)
+    lead = page.locator(".leads > li").first
+    await w.step(tag, "why", lead.locator("summary[data-key=why]").click())
+    await lead.scroll_into_view_if_needed()
+    await w.snap(page, tag, "lead-why")
+    if await w.step(tag, "evidence", lead.locator(".title-btn").click()):
+        await page.wait_for_selector(".rec-title")
+        await w.snap(page, tag, "evidence-opportunity")
+        await page.keyboard.press("Escape")
+    if tag == "pi-laptop":
+        await w.tab_through(page, "routes", 40)
+    await w.step(tag, "industry", page.click("[data-key=route-B]"))
+    await page.wait_for_timeout(600)
+    await w.snap(page, tag, "routes-industry", full=True)
+    await page.click("[data-key=route-A]")
+    await page.wait_for_timeout(400)
+    leads = page.locator(".leads > li")
+    for i in (0, 1):
+        await w.step(tag, f"keep {i}", leads.nth(i).locator(".btn.keep").click())
+        await page.wait_for_timeout(300)
+    await w.snap(page, tag, "keep-bar")
+    await page.click("#tab-compare")
+    await page.wait_for_timeout(1200)
+    await w.snap(page, tag, "compare", full=True)
+    if await w.step(tag, "handoff", page.locator("[data-key=handoff-make]").click()):
+        await w.step(tag, "handoff draft", page.wait_for_selector("#handoff-body", timeout=90000))
+        await w.snap(page, tag, "handoff", full=True)
+    await page.click("#tab-scout")
+    await page.wait_for_timeout(800)
+    await w.snap(page, tag, "scout", full=True)
+    # leave no keeps behind on the shared demo brief
+    await page.click("#tab-routes")
+    await page.wait_for_timeout(400)
+    for _ in range(await page.locator(".lead.kept .btn.keep").count()):
+        await w.step(tag, "unkeep", page.locator(".lead.kept .btn.keep").first.click())
+        await page.wait_for_timeout(250)
+    await page.goto(base + "/#/changes")
+    await page.wait_for_timeout(1500)
+    await w.snap(page, tag, "changes", full=True)
+    await page.goto(base + "/#/help")
+    await page.wait_for_timeout(800)
+    await w.snap(page, tag, "help", full=True)
+
+
+async def wait_built(page: Page, timeout: int = 300_000) -> None:
+    await page.wait_for_function("""() => { const p = document.querySelector('#progress');
+      return p && /ready|finished|failed/i.test(p.innerText) && !/Building|Searching/i.test(p.innerText.split('\\n')[0]); }""",
+                                 timeout=timeout)
+
+
+async def student_flow(w: Walk, page: Page, base: str, persona: str, views: list[tuple[str, dict]]) -> None:
+    tag = f"{persona}"
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".hero")
+    await page.click(".audience button:has-text('Student')")
+    await page.wait_for_selector("#st-cv", timeout=20000)
+    await w.snap(page, tag, "student-form", full=True)
+    for kind in ("cv", "interests", "achievements"):
+        await page.fill(f"#st-{kind}", (SYN / persona / f"{kind}.md").read_text())
+        await page.locator(f"#st-{kind} ~ .doc-actions button:has-text('Add text')").click()
+        await page.wait_for_timeout(500)
+    await w.snap(page, tag, "student-added", full=True)
+    await page.click("button:has-text('Find fellowships and scholarships')")
+    await page.wait_for_selector("#progress", timeout=20000)
+    await page.wait_for_timeout(4000)
+    await w.snap(page, tag, "student-building")
+    await w.step(tag, "built", wait_built(page))
+    await page.wait_for_timeout(1000)
+    for vtag, view in views:
+        await page.set_viewport_size(view)
+        t = f"{tag}-{vtag}"
+        await page.click("#tab-profile")
+        await w.snap(page, t, "profile", full=True)
+        await page.click("#tab-routes")
+        await page.wait_for_timeout(500)
+        await w.snap(page, t, "fellowships", full=True)
+        await page.click("[data-key=route-S]")
+        await page.wait_for_timeout(500)
+        await w.snap(page, t, "scholarships")
+        await w.snap(page, t, "scholarships-full", full=True)
+        if await w.step(t, "evidence", page.locator(".leads > li .title-btn").first.click()):
+            await page.wait_for_selector("#evidence:not([hidden])")
+            await page.wait_for_timeout(400)
+            await w.snap(page, t, "evidence-sample")
+            await page.keyboard.press("Escape")
+        if vtag == views[0][0]:
+            for i in (0, 1):
+                await w.step(t, f"keep {i}", page.locator(".leads > li").nth(i).locator(".btn.keep").click())
+                await page.wait_for_timeout(300)
+        await page.click("#tab-compare")
+        await page.wait_for_timeout(800)
+        await w.snap(page, t, "compare", full=True)
+        if vtag == views[0][0]:
+            await w.tab_through(page, f"{persona}-compare", 25)
+    page.once("dialog", lambda d: asyncio.ensure_future(d.accept()))
+    await page.click("#private-switch")
+    await page.wait_for_timeout(1200)
+    await w.snap(page, tag, "after-end")
+
+
+async def private_flow(w: Walk, page: Page, base: str) -> None:
+    tag = "persona-1"
+    files = {"cv": "cv.md", "proposal": "specific_aims_draft.md", "manuscript": "unpublished_manuscript.md"}
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".hero")
+    await page.click("#private-switch")
+    await page.wait_for_timeout(1000)
+    await w.snap(page, tag, "private-start", full=True)
+    for kind, name in files.items():
+        await page.fill(f"#doc-{kind}", (SYN / "persona-1" / name).read_text())
+        await page.locator(f"#doc-{kind} ~ .doc-actions button:has-text('Add text')").click()
+        await page.wait_for_timeout(500)
+    await w.snap(page, tag, "private-added", full=True)
+    await page.click("button:has-text('Build private brief')")
+    await page.wait_for_timeout(5000)
+    await w.snap(page, tag, "private-building")
+    await w.step(tag, "built", wait_built(page))
+    await page.click("#tab-profile")
+    await w.snap(page, tag, "private-profile", full=True)
+    await page.click("#tab-routes")
+    await page.wait_for_timeout(500)
+    await w.snap(page, tag, "private-routes", full=True)
+    await page.goto(base + "/#/help")
+    await page.wait_for_timeout(600)
+    await w.snap(page, tag, "private-on-help")
+    page.once("dialog", lambda d: asyncio.ensure_future(d.accept()))
+    await page.click("#private-switch")
+    await page.wait_for_timeout(1000)
+
+
+async def main(base: str, axe: str | None, out: Path, only: list[str]) -> None:
+    out.mkdir(parents=True, exist_ok=True)
+    names = aliases()
+    exe = sorted(glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome")))[-1]
+    w = Walk(out, axe)
+    async with async_playwright() as p:
+        b = await p.chromium.launch(executable_path=exe, args=["--no-sandbox"])
+        if "pi" in only:
+            for tag, view, scheme in (("pi-laptop", LAPTOP, "light"), ("pi-phone", PHONE, "light"),
+                                      ("pi-laptop-dark", LAPTOP, "dark"), ("pi-phone-dark", PHONE, "dark")):
+                ctx, page = await new_page(b, view, names, scheme)
+                page.on("pageerror", lambda e, t=tag: w.errors.append(f"{t}: page error: {e}"))
+                await w.step(tag, "flow", pi_flow(w, page, base, tag))
+                await ctx.close()
+            ctx, page = await new_page(b, PHONE, names, motion="reduce")
+            await page.goto(base + "/#/")
+            await page.wait_for_selector(".hero")
+            w.focus["reduced-motion-animations"] = await page.evaluate("""() => [...document.querySelectorAll('*')]
+              .map(el => getComputedStyle(el)).filter(s => s.animationName !== 'none' && parseFloat(s.animationDuration) > 0.01
+              && s.animationIterationCount !== '1').length""")
+            await ctx.close()
+        if "student" in only:
+            for i, persona in enumerate(STUDENTS):
+                first = ("phone", PHONE) if i != 1 else ("laptop", LAPTOP)
+                second = ("laptop", LAPTOP) if i != 1 else ("phone", PHONE)
+                ctx, page = await new_page(b, first[1], names, "dark" if i == 2 else "light")
+                page.on("pageerror", lambda e, t=persona: w.errors.append(f"{t}: page error: {e}"))
+                await w.step(persona, "flow", student_flow(w, page, base, persona, [first, second]))
+                await ctx.close()
+        if "private" in only:
+            ctx, page = await new_page(b, LAPTOP, names)
+            page.on("pageerror", lambda e: w.errors.append(f"persona-1: page error: {e}"))
+            await w.step("persona-1", "flow", private_flow(w, page, base))
+            await ctx.close()
+        await b.close()
+    report = out / f"report-{'-'.join(only)}.json"
+    report.write_text(json.dumps({"states": w.states, "errors": w.errors, "focus": w.focus}, indent=1))
+    print(f"{len(w.states)} states, {len(w.errors)} errors -> {report}")
+    for e in w.errors:
+        print(" ", e)
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--base", default="http://127.0.0.1:8090")
+    ap.add_argument("--axe", default=None)
+    ap.add_argument("--out", type=Path, default=ROOT / "build/ux")
+    ap.add_argument("--only", nargs="+", default=["pi", "student", "private"])
+    a = ap.parse_args()
+    asyncio.run(main(a.base, a.axe, a.out, a.only))
