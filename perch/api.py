@@ -28,7 +28,9 @@ from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -126,6 +128,20 @@ def create_app(service: BriefService, runner: JobRunner,
                web_dir: Path | None = WEB_DIR) -> FastAPI:
     app = FastAPI(title="Perch API", description="See every route to fund your work. "
                   + grants_gov.ATTRIBUTION, version="0.1.0")
+    @app.exception_handler(RequestValidationError)
+    def invalid(request: Request, exc: RequestValidationError) -> JSONResponse:
+        # FastAPI's default answer echoes the submitted input; this one names fields only,
+        # so no request body ever comes back in a response or a proxy log.
+        errors = [{"loc": list(e.get("loc", ())), "msg": e.get("msg", "invalid")}
+                  for e in exc.errors()]
+        return JSONResponse({"detail": errors}, status_code=422)
+
+    @app.exception_handler(Exception)
+    def crashed(request: Request, exc: Exception) -> JSONResponse:
+        # Exception type only: messages can quote request text.
+        return JSONResponse({"detail": f"internal error ({type(exc).__name__})"},
+                            status_code=500)
+
     origins = [o.strip() for o in (env("PERCH_CORS_ORIGINS") or "").split(",") if o.strip()]
     if origins:  # the web app is same-origin; other origins only when listed
         app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"],

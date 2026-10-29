@@ -320,7 +320,16 @@ def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     data = Path(args.db).parent
     service = BriefService(args.db, default_models(args.models == "fake", data, args.llm),
                            Clients(openalex=default_client), Path(args.overrides))
-    uvicorn.run(create_app(service, InProcessRunner()), host=args.host, port=args.port)
+    from perch.privacy import PrivateSettings, harden_process
+
+    private = PrivateSettings.from_env()
+    if private.enabled and (problems := private.problems()):
+        print("perch serve: private mode cannot start:\n  " + "\n  ".join(problems))
+        return 2
+    harden_process()
+    # Warning level: no access log, so no request paths or addresses are written.
+    uvicorn.run(create_app(service, InProcessRunner()), host=args.host, port=args.port,
+                log_level=args.log_level)
     return 0
 
 
@@ -368,6 +377,8 @@ def build_parser() -> argparse.ArgumentParser:
     sv.add_argument("--port", type=int, default=8100)
     sv.add_argument("--models", choices=["local", "fake"], default="local")
     sv.add_argument("--llm", default=None, help="provider spec for both skills")
+    sv.add_argument("--log-level", default="warning",
+                    choices=["critical", "error", "warning", "info", "debug"])
     return p
 
 
