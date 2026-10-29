@@ -91,3 +91,14 @@ def test_list_fields_are_order_independent():
     d2 = json.loads(json.dumps(d1))
     d2["synopsis"]["applicantTypes"].reverse()
     assert gg.parse_opportunity(d1, T) == gg.parse_opportunity(d2, T)
+
+
+def test_title_entities_and_two_letter_codes():
+    d = load("fetch_opportunity.json")["data"]
+    d["opportunityTitle"] = "High Priority HIV Research (RM1 Clinical Trial Optional) and&nbsp;more"
+    o = gg.parse_opportunity(d, T)
+    assert o.activity_code == "RM1" and o.title.endswith("and more")
+    d["opportunityTitle"] = "Avant Garde Awards (DP1 Clinical Trial Optional)"
+    assert gg.parse_opportunity(d, T).activity_code == "DP1"
+    d["opportunityTitle"] = "Institutional Network Award (U2C - Clinical Trial Not Allowed)"
+    assert gg.parse_opportunity(d, T).activity_code == "U2C"

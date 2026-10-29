@@ -35,7 +35,8 @@ CONTACT_FIELDS = ("agencyContactEmail", "agencyContactPhone", "agencyContactName
                   "agencyContactDesc", "agencyContactEmailDesc", "agencyPhone")
 Json = dict[str, "Json"] | list["Json"] | str | int | float | bool | None
 # NIH-style activity codes in a title, e.g. "(R01 Clinical Trial Required)".
-ACTIVITY_RE = re.compile(r"\((?:Parent )?([A-Z]\d{2})\b")
+# NIH codes: letter + two digits (R01), two letters + digit (DP1, UG3), letter digit letter (U2C).
+ACTIVITY_RE = re.compile(r"\((?:Parent )?([A-Z]\d{2}|[A-Z]{2}\d|[A-Z]\d[A-Z])\b")
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 
 
@@ -84,7 +85,7 @@ def redact_contacts(data: Json) -> Json:
 def parse_opportunity(detail: dict[str, Any], fetched_at: datetime,
                       status: str | None = None) -> Opportunity:
     syn = detail.get("synopsis") or {}
-    title = detail.get("opportunityTitle") or ""
+    title = html.unescape(detail.get("opportunityTitle") or "").replace("\xa0", " ")
     activity = ACTIVITY_RE.search(title)
     return Opportunity(
         id=f"{SOURCE}:{detail['opportunityNumber']}",

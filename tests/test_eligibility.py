@@ -55,3 +55,11 @@ def test_split_keeps_order_and_reasons():
     a, b = opp(id="a"), opp(id="b", close_date=date(2020, 1, 1))
     ok, rejected = split([a, b], C)
     assert [o.id for o in ok] == ["a"] and list(rejected) == ["b"]
+
+
+def test_title_restrictions():
+    lim = opp(title="Limited Competition: Small Grant Program for K01 Recipients (R03)")
+    assert check(lim, C) == ["limited competition: only named applicants may apply"]
+    early = opp(title="Supporting Talented Early Career Researchers in Genomics (R01)")
+    assert check(early, C) == ["restricted by career stage, which public records cannot confirm"]
+    assert check(lim, Constraints(as_of=C.as_of, include_restricted=True)) == []

@@ -5,6 +5,7 @@
   perch fetch awards <author id>      NIH RePORTER and NSF awards at Temple, by name
   perch fetch opportunities           Grants.gov opportunities (nightly refresh: upsert by number)
   perch profile <author id>           key papers, awards and the public award horizon
+  perch brief <author id> --route A   ranked, eligible Route A leads (record fields only)
 """
 
 from __future__ import annotations
@@ -184,6 +185,65 @@ def cmd_profile(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     return 0
 
 
+def money(v: float | None) -> str:
+    return f"${v:,.0f}" if v is not None else "not stated in the record"
+
+
+def cmd_brief(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
+    from datetime import date
+
+    from perch.brief import route_a
+    from perch.eligibility import Constraints
+    from perch.embed import get_embedder
+    from perch.rerank import CrossEncoderReranker, FakeReranker, RerankCache
+    from perch.store.lance import LanceIndex
+
+    if args.route != "A":
+        print("Only --route A exists so far (Route B is S11).", file=sys.stderr)
+        return 2
+    aid = oa.parse_author_id(args.author_id)
+    fake = args.models == "fake"
+    with SQLiteRepository(args.db) as repo:
+        r = repo.get(Researcher, f"https://openalex.org/{aid}") if aid else None
+        if not r:
+            print(f"{args.author_id} is not in the store. Run `perch fetch openalex "
+                  f"{args.author_id}` first.", file=sys.stderr)
+            return 1
+        cache_dir = Path(args.db).parent / "cache"
+        embedder = get_embedder("fake-256" if fake else args.embedder,
+                                cache=cache_dir / "embeddings.db")
+        reranker = FakeReranker() if fake else CrossEncoderReranker(args.reranker)
+        index = LanceIndex(Path(args.db).parent / ("lance-fake" if fake else "lance"))
+        as_of = date.fromisoformat(args.as_of) if args.as_of else date.today()
+        c = Constraints(as_of=as_of, min_amount=args.min_amount, agencies=args.agency,
+                        include_forecasted=args.include_forecasted,
+                        include_restricted=args.include_restricted)
+        b = route_a(r, repo, index, embedder, reranker, c, RerankCache(cache_dir / "rerank.db"),
+                    top=args.top, timings_log=Path(args.db).parent / "logs/brief_timings.jsonl")
+    print(describe(r))
+    print(f"As of {as_of.isoformat()}. {len(b.profile.work_ids)} papers, "
+          f"{len(b.profile.threads)} research threads:")
+    for t in b.profile.threads:
+        print(f"  thread {t.index + 1} ({t.weight:.0%} of recent work): {t.label}")
+    print(f"\nRoute A: {b.retrieved} retrieved, {len(b.rejected)} ineligible removed, "
+          f"top {len(b.leads)} after rerank:")
+    for i, lead in enumerate(b.leads, 1):
+        o = lead.opportunity
+        print(f"\n{i:2}. {o.opportunity_number}  {o.title}")
+        print(f"    {o.agency}; activity code {o.activity_code or 'not in record'}; "
+              f"status {o.status}")
+        print(f"    opens {fmt_date(o.open_date)}; closes {fmt_date(o.close_date)}; "
+              f"award ceiling {money(o.award_ceiling)}")
+        print(f"    matched thread {lead.candidate.best_thread + 1}; rerank "
+              f"{lead.rerank_score:.3f}; {o.source_url}")
+    ms = b.timings_ms
+    print("\nTimings (ms): " + ", ".join(f"{k} {v:,.0f}" for k, v in ms.items()
+                                         if not k.startswith("retrieve_")) +
+          f"; rerank cache hits {b.rerank_cache_hits}")
+    print(grants_gov.ATTRIBUTION)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="perch", description="See every route to fund your work.")
     p.add_argument("--db", default=None, help=f"SQLite store (default $PERCH_DB or {DEFAULT_DB})")
@@ -203,6 +263,20 @@ def build_parser() -> argparse.ArgumentParser:
     pr = sub.add_parser("profile", help="key papers, awards and the public award horizon")
     pr.add_argument("author_id", help="OpenAlex author id")
     pr.add_argument("--papers", type=int, default=10, help="key papers to show (default 10)")
+    b = sub.add_parser("brief", help="ranked Route A leads")
+    b.add_argument("author_id", help="OpenAlex author id")
+    b.add_argument("--route", default="A", help="A (grants and foundations)")
+    b.add_argument("--top", type=int, default=10)
+    b.add_argument("--as-of", default=None, help="date, YYYY-MM-DD (default today)")
+    b.add_argument("--min-amount", type=float, default=None, help="drop if ceiling is below")
+    b.add_argument("--agency", action="append", default=[], help="keep only this agency")
+    b.add_argument("--include-forecasted", action="store_true")
+    b.add_argument("--include-restricted", action="store_true",
+                   help="keep limited-competition and career-stage-restricted opportunities")
+    b.add_argument("--models", choices=["local", "fake"], default="local",
+                   help="fake: no model downloads (tests)")
+    b.add_argument("--embedder", default="Qwen/Qwen3-Embedding-0.6B")
+    b.add_argument("--reranker", default="Qwen/Qwen3-Reranker-0.6B")
     return p
 
 
@@ -216,7 +290,8 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
     args.db = args.db or env("PERCH_DB", DEFAULT_DB)
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory
     args.grants_factory = grants_factory
-    commands = {"resolve": cmd_resolve, "fetch": cmd_fetch, "profile": cmd_profile}
+    commands = {"resolve": cmd_resolve, "fetch": cmd_fetch, "profile": cmd_profile,
+                "brief": cmd_brief}
     with (client_factory or default_client)() as client:
         return commands[args.command](args, client)
 

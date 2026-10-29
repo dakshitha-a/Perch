@@ -29,6 +29,15 @@ EXCLUDED_ACTIVITY = {
 }
 
 
+# Restrictions the title states outright. Excluded by default because Perch cannot
+# confirm them from public records (career stage needs the CV: private context, S13).
+TITLE_RESTRICTIONS = {
+    r"\blimited competition\b": "limited competition: only named applicants may apply",
+    r"\bearly[- ]career\b|\bearly[- ]stage investigator|\bnew investigator": (
+        "restricted by career stage, which public records cannot confirm"),
+}
+
+
 @dataclass
 class Constraints:
     as_of: date
@@ -37,6 +46,7 @@ class Constraints:
     agencies: list[str] = field(default_factory=list)  # keep only these (substring match)
     exclude_agencies: list[str] = field(default_factory=list)
     exclude_activity: list[str] = field(default_factory=list)  # extra codes, exact
+    include_restricted: bool = False  # keep title-restricted opportunities
 
 
 def check(o: Opportunity, c: Constraints) -> list[str]:
@@ -60,6 +70,10 @@ def check(o: Opportunity, c: Constraints) -> list[str]:
             reasons.append(f"activity code {code}: {why}")
     if code and code in c.exclude_activity:
         reasons.append(f"activity code {code} excluded by the user")
+    if not c.include_restricted:
+        for pattern, why in TITLE_RESTRICTIONS.items():
+            if re.search(pattern, o.title, re.IGNORECASE):
+                reasons.append(why)
     if c.min_amount is not None and o.award_ceiling is not None and o.award_ceiling < c.min_amount:
         reasons.append(f"award ceiling {o.award_ceiling:,.0f} is below {c.min_amount:,.0f}")
     if c.agencies and not any(a.lower() in o.agency.lower() for a in c.agencies):

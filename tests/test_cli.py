@@ -123,3 +123,22 @@ def test_fetch_opportunities_upserts_by_number(tmp_path, capsys):
     with SQLiteRepository(db) as repo:
         got = repo.get(Opportunity, "grants_gov:PA-11-260")
         assert got.status == "archived" and got.source_url.startswith("https://www.grants.gov/")
+
+
+def test_brief_route_a_with_fake_models(tmp_path, capsys):
+    db = str(tmp_path / "p.db")
+    common = ["--db", db]
+    assert cli.main([*common, "fetch", "openalex", "A5026494099"], factory) == 0
+    assert cli.main([*common, "fetch", "opportunities", "--agencies", "HHS-NIH11", "--limit", "2"],
+                    factory, grants_factory=grants_factory()) == 0
+    capsys.readouterr()
+    argv = [*common, "brief", "A5026494099", "--models", "fake", "--as-of", "2026-10-28"]
+    assert cli.main(argv, factory) == 0
+    out = capsys.readouterr().out
+    assert "1 retrieved, 0 ineligible removed, top 1 after rerank" in out
+    assert "PAR-25-268" in out and "award ceiling not stated in the record" in out
+    assert "Timings (ms): threads" in out and "not endorsed or certified" in out
+    assert (tmp_path / "logs" / "brief_timings.jsonl").read_text().count("\n") == 1
+    late = [*common, "brief", "A5026494099", "--models", "fake", "--as-of", "2027-01-01"]
+    assert cli.main(late, factory) == 0
+    assert "1 ineligible removed, top 0" in capsys.readouterr().out  # closed by then
