@@ -2,9 +2,9 @@
 
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
-## Last session: S20 — QA and privacy audit (done; task 1 blocked)
+## Last session: S20 — QA and privacy audit (done)
 - Dakshitha asked for S17 to S20 in one run; all four are done. 246 tests pass. No API spend; the ledger is still $2.05 of $100.
-- **Task 1 is blocked:** no QA log is in the repo (Q28). S23's regression pass can work it once it exists.
+- **Task 1 dropped:** no QA log exists (Q28, answered by Dakshitha).
 
 ## What S20 changed
 - **Privacy fixes:** the JSON export now withholds rule lines that quote the CV and carries the sample banner. `POST /private/handoff` refuses a student brief (422); student drafts live on the Compare tab.
@@ -19,7 +19,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 ## Next session: S21 — UI/UX audit for three audiences
 1. Walk every screen on the public URL for the three student personas and the PI personas, on a phone and a laptop. The Playwright walk used in S18 is a starting point.
 2. Check that every audience can tell at a glance whether private mode is on (the header switch, the frame line, the coloured edge).
-3. Q27 (Scout in student mode) fits the audit.
+3. Scout stays out of student mode (Q27, answered).
 
 ## Known gaps
 - **Student retrieval:** 2 of 12 planted positives never reached a brief (top 40 of 500 by the interests note).
@@ -34,6 +34,4 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 4. The dev Clef servers on GPUs 1 and 2 stay up until S23 task 2.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- Q28: where is the teammate's QA log? Default: S23 works it once it exists.
-- Q27: Scout in student mode. Default: leave it out for Demo Day; revisit in S21.
-- Q26: ScholarshipUniverse schema. Can Temple SFS or the vendor share a sample export? Default: keep the generic schema and the seam.
+- None. Q26, Q27 and Q28 were answered on 2026-10-29: keep the ScholarshipUniverse seam; no Scout in student mode; no QA log exists.
