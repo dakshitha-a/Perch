@@ -45,7 +45,6 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 ## Next session: S12 — Compare, hand-off, export
 1. Read S12 in `docs/PLAN.md`. Compare needs to handle Route B leads (no money or deadline fields; evidence strength from signals).
 2. `compare` and `draft_handoff` in `perch/scout/tools.py` still return "not built" (`NOT_BUILT`).
-
 3. Task 7 is new: the SBIR.gov bulk file for Route B (Q19 answered). It is 368 MB and was last modified on 2026-01-01. It holds contact emails and phones, which must never be read. Keep it only if it beats RePORTER-only.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
