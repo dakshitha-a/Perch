@@ -74,3 +74,24 @@ def test_deterministic_and_session_order(tmp_path):
     for name in ("S2.md", "S10.md", "S1.md", "notes.md"):
         (tmp_path / name).write_text("# x\n")
     assert list(rt.load_sessions(tmp_path)) == ["S1", "S2", "S10"]
+
+
+def test_decisions_tab_newest_first():
+    dec = ("| Date | Session | Decision | Reason | Decided by |\n|---|---|---|---|---|\n"
+           "| d1 | S0 | DEC-ONE | r | x |\n| d2 | S1 | DEC-TWO | r | y |\n")
+    plan = ("# Plan\n\n| a | b |\n|---|---|\n| not | this |\n\n## Change log\n\n"
+            "| Date | Session | Change | Reason | Asked by |\n|---|---|---|---|---|\n"
+            "| d1 | S0 | old change | r | x |\n| d2 | S8 | new change | r | y |\n")
+    p = rt.render_page(MASTER, {}, decisions_md=dec, plan_md=plan)
+    assert '<a id="tab-decisions" href="#decisions">Decisions</a>' in p
+    assert '<section id="view-decisions" class="view" data-view="decisions" hidden>' in p
+    assert "Decisions (2)" in p and "Plan change log (2)" in p
+    assert p.index("DEC-TWO") < p.index("DEC-ONE") and p.index("new change") < p.index("old change")
+    assert "not" not in p.split("Plan change log")[1].split("</table>")[0]
+
+
+def test_real_decisions_and_change_log_render():
+    real = rt.render_page((ROOT / "docs/TRACKER.md").read_text(encoding="utf-8"), {},
+                          decisions_md=(ROOT / "docs/DECISIONS.md").read_text(encoding="utf-8"),
+                          plan_md=(ROOT / "docs/PLAN.md").read_text(encoding="utf-8"))
+    assert "Plan change log (0)" not in real and "Decisions (0)" not in real

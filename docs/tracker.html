@@ -113,6 +113,7 @@ details .inner > * { min-width: 0; }
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
 <a id="tab-archive" href="#archive">Archive<span class="count">4</span></a>
+<a id="tab-decisions" href="#decisions">Decisions</a>
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
@@ -232,12 +233,51 @@ details .inner > * { min-width: 0; }
 <h2>Definition of done</h2>
 <ul class="panel done-list"><li>Private repo on GitHub.</li><li><code>make test</code> green on <code>main</code>.</li><li>Tracker shows S0 done.</li></ul></div></details></div>
 </section>
-<p class="foot">Generated from docs/TRACKER.md and docs/sessions/ by scripts/render_tracker.py.
+<section id="view-decisions" class="view" data-view="decisions" hidden>
+<div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
+<h2>Decisions (21)</h2>
+<div class="panel scroll"><table>
+<thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
+<tbody>
+<tr><td>2026-10-28</td><td>S4</td><td>Torch must be a CUDA 12.x build on this node</td><td>Default torch 2.15 wheel is CUDA 13.2; the driver (565.57.01) supports CUDA 12.7 and torch reported "driver too old"</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S4</td><td>Torch and sentence-transformers live in an optional <code>ml</code> extra; tests use a fake embedder</td><td>Keeps <code>make test</code> light and offline</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>after S3</td><td>Clef server install stopped at the failed CUDA probe and handed to Dakshitha (Q3)</td><td>Instruction: stop on any build, download or CUDA failure</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>after S3</td><td>Deployment target is one 32 GB GPU, two at most; profiles deploy-1gpu, deploy-2gpu, dev</td><td>Realistic deployment footprint</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>after S3</td><td><code>decide</code> primitive added; Clef-flash default local decision model, Clef challenger, Jev hosted, Strands Decider 2B CPU fallback, LLM-logprobs fallback</td><td>Calibrated decision models as challengers at two decision points</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>S3</td><td>Grants.gov list fields sorted at parse time</td><td>Order varies between calls, so refresh reported false changes</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S3</td><td>Activity code read from NIH-style titles such as "(R01 ...)" or "(Parent R01)"</td><td>Grants.gov has no activity-code field</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S3</td><td>Grants.gov attribution notice shown wherever its data appears (README, CLI, web app in S7)</td><td>Required by the Grants.gov API terms</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S3</td><td>NIH Guide archive not scraped; Grants.gov archived listings are the back-test source</td><td>No documented structured archive; standing rule 2</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S2</td><td><code>data/*</code> gitignored except <code>data/overrides/</code> (interim answer to Q1)</td><td>The override table must be committed; the rest of Q1 is still open</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S2</td><td>Key papers skip works with more than 30 authors unless fewer than 5 remain</td><td>Consortium papers crowded out the researcher's own work</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S2</td><td>Back-test awards should start in FY 2012 or later</td><td><code>opportunity_number</code> is mostly empty before FY 2012</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S2</td><td>RePORTER agency shown as the record's own abbreviation, no "NIH" prefix</td><td>RePORTER also lists AHRQ, which is not NIH</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S2</td><td>Award horizon = latest <code>end_date</code> across all fiscal-year records of linked awards</td><td>End dates move between fiscal years with extensions</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S2</td><td>OpenAlex works page by number, not cursor</td><td>Cursor paging past page 1 returns 401 without a key</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S1</td><td>Name resolution filters on <code>last_known_institutions</code> = Temple</td><td>Spec asks for Temple researchers; misses people who left (recorded in SOURCES)</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S1</td><td>OpenAlex key optional, sent as a Bearer header, never in URLs</td><td>OpenAlex now meters a daily dollar budget; keys must not leak into logs</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S1</td><td>One tracker artifact with Current, Master and Archive views, republished each session and task</td><td>Dakshitha follows progress from the browser</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>S0</td><td>History rewritten once to remove session links, a local path and teammate names; names replaced with roles</td><td>Clean history before anything is shared</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
+</tbody></table></div>
+<h2>Plan change log (5)</h2>
+<div class="panel scroll"><table>
+<thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
+<tbody>
+<tr><td>2026-10-28</td><td>S8, S9</td><td>Single-GPU deployment target with deploy-1gpu, deploy-2gpu and dev profiles (SPEC §11); S8 task 5 single-card validation with gates; S9 deploys the chosen profile via <code>PERCH_PROFILE</code> and adds <code>make gpus</code>. Clef server install attempted and blocked (Q3)</td><td>Single-GPU deployment target, validation gates, Clef installed</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>S5, S8</td><td>Laya removed; Clef-flash (default local) and Clef (accuracy challenger) added through the Jev-compatible adapter, Jev kept as hosted option, Strands Decider 2B added as CPU-only fallback; SPEC §7 and §8 updated to match</td><td>Laya replaced by Clef-flash/Clef on published Decision Index and independent tests</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>S5, S8</td><td>Added the <code>decide</code> primitive with LLM-logprobs fallback (S5 task 7) and Jev and Laya bench rows for validator layer 2 and rerank (S8 task 4); SPEC §6, §7 and §8 updated to match</td><td>Calibrated decision models as challenger at decision points</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>S0</td><td>Teammate names replaced with roles (S8 back-test set, S8 cost notes, S15 QA log); history rewritten so no version holds them</td><td>Repo will be made public; only Dakshitha's name and Temple affiliation may appear</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>—</td><td>Plan reorganised from days into sessions</td><td>Fit one session per context window</td><td>Dakshitha</td></tr>
+</tbody></table></div>
+</section>
+<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md and the PLAN.md change log by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>
 <script>
 (function () {
-  var views = ["current", "master", "archive"];
+  var views = ["current", "master", "archive", "decisions"];
   function route() {
     var h = (location.hash || "#current").slice(1).toLowerCase();
     var target = null;

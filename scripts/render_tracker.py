@@ -4,10 +4,14 @@ Sources (Markdown is the source of truth):
   docs/TRACKER.md          master tracker: sessions, milestones, key numbers
   docs/sessions/S<n>.md    one task file per session
 
-Views, switched by plain hash links (#current, #master, #archive, #s<n>):
-  Current  the session marked in progress or continued, else the first todo
-  Master   every session, milestones and key numbers
-  Archive  finished sessions (done or cut), collapsed, newest first
+  docs/DECISIONS.md        decision log
+  docs/PLAN.md             only its "## Change log" table
+
+Views, switched by plain hash links (#current, #master, #archive, #decisions, #s<n>):
+  Current    the session marked in progress or continued, else the first todo
+  Master     every session, milestones and key numbers
+  Archive    finished sessions (done or cut), collapsed, newest first
+  Decisions  the decision log and the plan change log, newest first
 
 Standard library only. Output is deterministic so re-running does not dirty the
 tree. Two outputs: a complete standalone document with no external requests
@@ -138,7 +142,7 @@ details .inner > * { min-width: 0; }
 
 SCRIPT = """
 (function () {
-  var views = ["current", "master", "archive"];
+  var views = ["current", "master", "archive", "decisions"];
   function route() {
     var h = (location.hash || "#current").slice(1).toLowerCase();
     var target = null;
@@ -455,8 +459,39 @@ def view_archive(sessions: list[Session]) -> str:
     return "\n".join(out)
 
 
+def change_log(plan_md: str) -> Table | None:
+    """The table under PLAN.md's '## Change log' heading."""
+    doc = parse(plan_md)
+    after = False
+    for b in doc.blocks:
+        if b[0] == "h":
+            after = b[2].strip().lower() == "change log"
+        elif b[0] == "table" and after:
+            return b[1]
+    return None
+
+
+def newest_first(t: Table) -> Table:
+    return Table(t.head, list(reversed(t.rows)))
+
+
+def view_decisions(decisions_md: str, plan_md: str) -> str:
+    out = ['<div><div class="eyebrow">Why things are the way they are</div>'
+           "<h1>Decisions and plan changes</h1></div>"]
+    dec = parse(decisions_md).tables() if decisions_md else []
+    out.append(f"<h2>Decisions ({len(dec[0].rows) if dec else 0})</h2>")
+    out.append(render_table(newest_first(dec[0])) if dec else
+               '<div class="panel empty">No decisions logged yet in docs/DECISIONS.md.</div>')
+    log = change_log(plan_md) if plan_md else None
+    out.append(f"<h2>Plan change log ({len(log.rows) if log else 0})</h2>")
+    out.append(render_table(newest_first(log)) if log else
+               '<div class="panel empty">No plan changes logged yet in docs/PLAN.md.</div>')
+    return "\n".join(out)
+
+
 def render_page(master_md: str, session_files: dict[str, str], artifact: bool = False,
-                page_title: str = "Perch Build Tracker") -> str:
+                page_title: str = "Perch Build Tracker", decisions_md: str = "",
+                plan_md: str = "") -> str:
     master = parse(master_md)
     sessions = build_sessions(master, session_files)
     current = pick_current(sessions)
@@ -473,6 +508,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
 <a id="tab-archive" href="#archive">Archive<span class="count">{archived}</span></a>
+<a id="tab-decisions" href="#decisions">Decisions</a>
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
@@ -484,7 +520,10 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 <section id="view-archive" class="view" data-view="archive" hidden>
 {view_archive(sessions)}
 </section>
-<p class="foot">Generated from docs/TRACKER.md and docs/sessions/ by scripts/render_tracker.py.
+<section id="view-decisions" class="view" data-view="decisions" hidden>
+{view_decisions(decisions_md, plan_md)}
+</section>
+<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md and the PLAN.md change log by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>
 <script>{SCRIPT}</script>
@@ -516,7 +555,13 @@ def main(argv: list[str]) -> int:
     dest = Path(args.dest) if args.dest else src.with_name("tracker.html")
     dest.parent.mkdir(parents=True, exist_ok=True)
     sessions = load_sessions(src.parent / "sessions")
-    page = render_page(src.read_text(encoding="utf-8"), sessions, args.artifact, args.title)
+
+    def read(name: str) -> str:
+        f = src.parent / name
+        return f.read_text(encoding="utf-8") if f.is_file() else ""
+
+    page = render_page(src.read_text(encoding="utf-8"), sessions, args.artifact, args.title,
+                       read("DECISIONS.md"), read("PLAN.md"))
     dest.write_text(page, encoding="utf-8")
     print(f"wrote {dest}")
     return 0
