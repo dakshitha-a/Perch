@@ -10,7 +10,8 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 ## What exists now (one line per subsystem)
 - Pipeline: sources, profile and threads, embeddings, LanceDB, retrieval, eligibility, rerank (S1 to S4); skills 1 and 2, validator layers 1 and 2, `decide`, audit log (S5).
 - API `perch/api.py` (`perch serve`, port 8100): resolve, briefs, keep/dismiss/restore, export, records, health. `GET /briefs/{id}` also returns `papers` (key papers per thread plus cited works) and each award's `record_id`. CORS off unless `PERCH_CORS_ORIGINS` is set.
-- Web app `web/` (plain ES modules and CSS, no npm, no build): served at `/` by `perch serve`. Find, Profile, Routes, evidence panel, Scout the owl. Design and review in `docs/design/UI.md`.
+- Web app `web/` (plain ES modules and CSS, no npm, no build): served at `/` by `perch serve`. Find, Profile, Routes, evidence panel, Help page (`web/help.js`, `#/help`), Scout the owl (reacts when tapped). Design and reviews in `docs/design/UI.md`.
+- Help page grows with the app: every session that ships UI updates `web/help.js` and checks its claims against the code (Dakshitha, after S7).
 - Replay mode: `scripts/export_replay.py <brief_id>` writes `build/replay/<id>.json` (alias only); `scripts/build_ui_preview.py` bundles one page to `build/artifacts/ui.html`; `make tracker` builds it and adds the tracker's UI tab.
 - Screenshots: `uv run --no-project --with playwright python scripts/screenshots.py` (Playwright is dev-only; uses the cached Chromium) writes `docs/screenshots/` and checks keep, dismiss and sideways scroll.
 - Hosted tier: Anthropic adapter verified; cap $100 in `perch/llm/budget.py`; spend $0.08.
