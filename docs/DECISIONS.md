@@ -25,3 +25,5 @@ Perch-dev appends one row per decision as it is made, newest at the bottom. Plan
 | 2026-10-28 | after S3 | Clef server install stopped at the failed CUDA probe and handed to Dakshitha (Q3) | Instruction: stop on any build, download or CUDA failure | Dakshitha |
 | 2026-10-28 | S4 | Torch and sentence-transformers live in an optional `ml` extra; tests use a fake embedder | Keeps `make test` light and offline | Perch-dev |
 | 2026-10-28 | S4 | Torch must be a CUDA 12.x build on this node | Default torch 2.15 wheel is CUDA 13.2; the driver (565.57.01) supports CUDA 12.7 and torch reported "driver too old" | Perch-dev |
+| 2026-10-28 | S4 | Threads and key papers use research work types only (article, review, preprint, chapter, conference paper or abstract, dissertation, letter) | OpenAlex lists supplement files and "Data from" records as works; 170 of 710 stored works were not research | Perch-dev |
+| 2026-10-28 | S4 | A research thread needs at least 3 papers; k with a smaller cluster is rejected | A 1-paper thread appeared in live data |  Perch-dev |
