@@ -125,6 +125,23 @@ def lead_json(lead: Lead, opp: Opportunity | None) -> dict:
             "opportunity": opp.model_dump(mode="json", exclude={"description"}) if opp else None}
 
 
+def student_json(lead: Lead, r: Repository) -> dict:
+    """A student-mode lead (route F or S) with its record: a Scholarship, or the NIH
+    Opportunity behind a fellowship. Every value is copied from the record."""
+    from perch.schemas import Scholarship
+
+    rec = r.get(Scholarship, lead.record_id) or r.get(Opportunity, lead.record_id)
+    out = {**lead.model_dump(mode="json"), "record": None}
+    if isinstance(rec, Scholarship):
+        out["record"] = {"kind": "scholarship", **rec.model_dump(mode="json")}
+        if rec.application_requirements:
+            out["record"]["requirements"] = rec.application_requirements.items()
+    elif rec is not None:
+        out["record"] = {"kind": "opportunity",
+                         **rec.model_dump(mode="json", exclude={"description"})}
+    return out
+
+
 SIGNAL_RECORDS = 3  # evidence records shown per Route B signal; the rest are counted
 
 
@@ -297,7 +314,8 @@ def create_app(service: BriefService, runner: JobRunner,
             res = r.get(Researcher, b.researcher_id)
             opps = {x.record_id: r.get(Opportunity, x.record_id) for x in leads
                     if x.route == "A"}
-            out = [lead_json(x, opps.get(x.record_id)) if x.route == "A" else route_b_json(x, r)
+            out = [lead_json(x, opps.get(x.record_id)) if x.route == "A"
+                   else route_b_json(x, r) if x.route == "B" else student_json(x, r)
                    for x in leads]
             ov = aw.load_overrides(res.id, svc.overrides) if res else None
             linked = aw.link_awards(res, r.list(Award), ov) if res and ov else []
@@ -364,6 +382,14 @@ def create_app(service: BriefService, runner: JobRunner,
         b, leads = load(brief_id, svc)
         if status:
             leads = [x for x in leads if x.status == status]
+        if b.options.get("student"):
+            from perch.schemas import Scholarship
+
+            with svc.repo() as r:
+                recs = {x.record_id: r.get(Scholarship, x.record_id)
+                        or r.get(Opportunity, x.record_id) for x in leads}
+            return (ex.student_blocks(b, leads, recs, masker=masker),
+                    "Perch student brief (private)")
         with svc.repo() as r:
             res = r.get(Researcher, b.researcher_id)
             opps = {x.record_id: o for x in leads if x.route == "A"

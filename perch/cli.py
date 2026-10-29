@@ -131,9 +131,11 @@ def cmd_fetch(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
         return fetch_awards(args, client)
     if args.source == "opportunities":
         return fetch_opportunities(args)
+    if args.source == "temple":
+        return fetch_temple(args)
     if args.source != "openalex":
-        print(f"Unknown source {args.source!r}. Available: openalex, awards, opportunities.",
-              file=sys.stderr)
+        print(f"Unknown source {args.source!r}. Available: openalex, awards, opportunities, "
+              "temple.", file=sys.stderr)
         return 2
     if not args.author_id:
         print("perch fetch openalex needs an author id.", file=sys.stderr)
@@ -148,6 +150,27 @@ def cmd_fetch(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     print(f"{describe(author)}")
     print(f"Fetched {len(works)} works ({with_abstract} with abstracts); "
           f"{stored} stored for this author in {args.db}.")
+    return 0
+
+
+def fetch_temple(args: argparse.Namespace) -> int:
+    """Temple SDFA's public fellowship list into the public store (student mode, S18).
+    One page, read live; the sample scholarships never go here (perch.scholarships)."""
+    from perch.sources import temple
+
+    recs = temple.parse_listing(temple.fetch(temple.SDFA_LIST))
+    with SQLiteRepository(args.db) as repo:
+        repo.upsert(recs)
+    print(f"Stored {len(recs)} awards from {temple.SDFA_NAME} ({temple.SDFA_LIST}) in "
+          f"{args.db}. The page states no amounts or deadlines.")
+    return 0
+
+
+def cmd_samples(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
+    from perch.scholarships import ensure_samples, sample_db
+
+    n = ensure_samples()
+    print(f"Sample store {sample_db()}: {n} SYNTHETIC records (student mode only).")
     return 0
 
 
@@ -481,7 +504,7 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser("resolve", help="find a Temple researcher in OpenAlex")
     r.add_argument("query", help="name, ORCID iD or OpenAlex author id")
     f = sub.add_parser("fetch", help="fetch records from a source into the store")
-    f.add_argument("source", help="openalex, awards or opportunities")
+    f.add_argument("source", help="openalex, awards, opportunities or temple")
     f.add_argument("author_id", nargs="?", help="OpenAlex author id, e.g. A5026494099")
     f.add_argument("--statuses", default=grants_gov.OPEN_STATUSES,
                    help="opportunities: Grants.gov statuses (default forecasted|posted)")
@@ -540,6 +563,8 @@ def build_parser() -> argparse.ArgumentParser:
     mo.add_argument("--no-explain", action="store_true", help="briefs without explanations")
     mo.add_argument("--models", choices=["local", "fake"], default="local")
     mo.add_argument("--llm", default=None, help="provider spec for the skills")
+    sub.add_parser("samples", help="load the SYNTHETIC sample scholarships into their own "
+                   "store (student mode)")
     sv = sub.add_parser("serve", help="run the HTTP API")
     sv.add_argument("--host", default="127.0.0.1")
     sv.add_argument("--port", type=int, default=8100)
@@ -560,7 +585,8 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
     args.db = args.db or env("PERCH_DB", DEFAULT_DB)
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory
     args.grants_factory = grants_factory
-    commands = {"resolve": cmd_resolve, "fetch": cmd_fetch, "profile": cmd_profile,
+    commands = {"resolve": cmd_resolve, "samples": cmd_samples,
+                "fetch": cmd_fetch, "profile": cmd_profile,
                 "brief": cmd_brief, "serve": cmd_serve, "monitor": cmd_monitor, "scout": cmd_scout,
                 "mcp": cmd_mcp}
     with (client_factory or default_client)() as client:

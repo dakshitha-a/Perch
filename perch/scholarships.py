@@ -43,14 +43,32 @@ def load_samples(repo: Repository, path: Path = SAMPLE_JSONL) -> int:
     return repo.upsert(read_samples(path))
 
 
-def open_samples() -> SQLiteRepository:
-    """The sample store, loaded from the committed file on first use."""
+def ensure_samples() -> int:
+    """Create or refresh the sample store from the committed file. Called at app start
+    and by `perch samples`, never from inside a private session."""
+    want = read_samples()
+    with SQLiteRepository(sample_db()) as repo:
+        have = {s.id: s for s in repo.list(Scholarship)}
+        if have != {s.id: s for s in want}:
+            repo.conn.execute("DELETE FROM records WHERE kind = 'scholarship'")
+            repo.conn.commit()
+            repo.upsert(want)
+    return len(want)
+
+
+def sample_records() -> list[Scholarship]:
+    """Every sample record, read through a read-only connection (student mode only)."""
+    import sqlite3
+
     p = sample_db()
-    fresh = not p.exists()
-    repo = SQLiteRepository(p)
-    if fresh or not repo.list(Scholarship):
-        load_samples(repo)
-    return repo
+    if not p.exists():
+        raise RuntimeError("the sample store is not loaded; run `perch samples`")
+    con = sqlite3.connect(f"file:{p.resolve()}?mode=ro", uri=True)
+    try:
+        rows = con.execute("SELECT data FROM records WHERE kind = 'scholarship' ORDER BY id")
+        return [Scholarship.model_validate_json(r[0]) for r in rows]
+    finally:
+        con.close()
 
 
 # --- real-name check (rule 11: a sample sponsor must not be confusable with a real one) ---

@@ -48,11 +48,12 @@ from perch.private.session import (
 )
 from perch.schemas import Opportunity, Record, Work
 
+STUDENT_KINDS = ("interests", "achievements")
 SESSION_HEADER = "X-Perch-Private"  # the header that carries the session id
 
 
 class DocumentRequest(BaseModel):
-    kind: Literal["cv", "proposal", "direction", "manuscript"]
+    kind: Literal["cv", "proposal", "direction", "manuscript", "interests", "achievements"]
     text: str | None = Field(None, max_length=MAX_CHARS * 2)
     filename: str | None = Field(None, max_length=200)
     data: str | None = Field(None, max_length=MAX_BYTES * 4 // 3 + 8)  # base64
@@ -91,6 +92,16 @@ def private_record_json(d: Work) -> dict:
             "private": True}
 
 
+def session_records(s: PrivateSession) -> dict[str, Work]:
+    """The session's documents and, in student mode, one record per achievement."""
+    from perch.private.student import achievement_docs
+
+    out: dict[str, Work] = {d.id: d for d in s.docs.values()}
+    if ach := s.docs.get("achievements"):
+        out.update({d.id: d for d in achievement_docs(ach.abstract or "")})
+    return out
+
+
 def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                        scout_runner: JobRunner, *, brief_view: Callable, export_json: Callable,
                        export_blocks: Callable, load: Callable, limiter: type,
@@ -100,13 +111,19 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     problems = settings.problems()
     on = settings.enabled and not problems
     sessions = PrivateSessions(service, settings)
+    if on:  # student mode reads the sample store; load it now, outside any session
+        from perch.scholarships import ensure_samples
+
+        ensure_samples()
     open_limit = limiter(20)  # new sessions an hour per visitor
     app.state.private_sessions = sessions
 
     @app.get("/private")
     def private_info() -> dict:
         return {"enabled": on, "statement": settings.statement() if on else None,
-                "kinds": KINDS, "formats": list(FORMATS), "max_bytes": MAX_BYTES,
+                "kinds": {k: v for k, v in KINDS.items() if k not in STUDENT_KINDS},
+                "student_kinds": {k: KINDS[k] for k in ("cv", *STUDENT_KINDS)},
+                "formats": list(FORMATS), "max_bytes": MAX_BYTES,
                 "max_chars": MAX_CHARS, "max_total_chars": MAX_TOTAL_CHARS,
                 "idle_minutes": IDLE_SECONDS // 60}
 
@@ -185,6 +202,21 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         runner.submit(f"private-{b.id}", lambda: s.service.run(b.id))
         return {"id": b.id, "status": b.status}
 
+    @app.post("/private/student/brief", status_code=202)
+    def start_student(req: PrivateBriefRequest, x_perch_private: str | None = Header(None)
+                      ) -> dict:
+        s = session(x_perch_private)
+        if "cv" not in s.docs:
+            raise HTTPException(422, "Add your CV first.")
+        if "interests" not in s.docs and "achievements" not in s.docs:
+            raise HTTPException(422, "Add your interests or achievements too.")
+        if s.briefs_run >= BRIEFS_PER_SESSION:
+            raise HTTPException(429, f"A session runs at most {BRIEFS_PER_SESSION} briefs.")
+        b = s.service.create_student(as_of=req.as_of, top=req.top, explain=req.explain)
+        s.briefs_run += 1
+        runner.submit(f"private-{b.id}", lambda: s.service.run(b.id))
+        return {"id": b.id, "status": b.status}
+
     def brief_id(s: PrivateSession) -> str:
         if not s.brief_id:
             raise HTTPException(404, "No private brief yet.")
@@ -194,7 +226,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     def get_brief(x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
         out = brief_view(brief_id(s), s.service)
-        out["papers"].update({d.id: private_record_json(d) for d in s.docs.values()})
+        out["papers"].update({i: private_record_json(d) for i, d in session_records(s).items()})
         out["private"] = True
         return out
 
@@ -211,7 +243,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     @app.get("/private/records/{record_id:path}")
     def get_record(record_id: str, x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
-        d = next((d for d in s.docs.values() if d.id == record_id), None)
+        d = session_records(s).get(record_id)
         if d:
             return private_record_json(d)
         with s.service.repo() as r:

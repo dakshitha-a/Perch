@@ -230,9 +230,10 @@ class BriefService:
         if b is None:
             return
         b.status = "running"
-        current = "researcher"
+        names = [s.name for s in b.stages] or list(STAGES)  # a student brief has its own
+        current = names[0]
         try:
-            for current in STAGES:
+            for current in names:
                 self._stage(b, current, "running")
                 detail, skipped = getattr(self, f"_run_{current}")(b)
                 self._stage(b, current, "skipped" if skipped else "done", detail)

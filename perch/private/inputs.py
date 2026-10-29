@@ -21,6 +21,10 @@ KINDS = {
     "proposal": "Draft proposal",
     "direction": "Research direction",
     "manuscript": "Unpublished work",
+    # Student mode (S18): the CV is parsed by rule; interests become the query thread;
+    # each achievement becomes a record an explanation may cite.
+    "interests": "Your interests",
+    "achievements": "Your achievements",
 }
 MAX_BYTES = 5_000_000  # one uploaded file
 MAX_CHARS = 60_000  # one document's text after parsing

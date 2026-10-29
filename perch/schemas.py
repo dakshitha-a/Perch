@@ -147,8 +147,10 @@ class Lead(Record):
     kind: ClassVar[str] = "lead"
 
     brief_id: str
-    route: Literal["A", "B"]
-    record_id: str = Field(description="Opportunity (route A) or Organisation (route B) id")
+    route: Literal["A", "B", "F", "S"] = Field(
+        description="A grants, B industry; student mode: F fellowships, S scholarships")
+    record_id: str = Field(description="Opportunity (A, F), Organisation (B) or Scholarship "
+                                       "(F, S) id")
     rank: int | None = None
     rerank_score: float | None = None
     matched_thread: int | None = None
@@ -165,6 +167,13 @@ class Lead(Record):
     confidence: str | None = Field(default=None, description="Route B: label from signal count")
     notes: list[str] = Field(default_factory=list,
                              description="Rule notes written by code, e.g. a career-stage unlock")
+    # Student mode (S18): eligibility by rule and the gap list, written by code.
+    verdict: Literal["eligible", "may be eligible", "not eligible"] | None = None
+    verdict_reason: str | None = None
+    verdict_lines: list[str] = Field(default_factory=list)
+    gaps: list[str] = Field(default_factory=list, description="Requirements the CV lacks")
+    gap_keys: list[str] = Field(default_factory=list)
+    sample: bool = Field(default=False, description="Points at a SYNTHETIC sample record")
 
 
 class Stage(BaseModel):

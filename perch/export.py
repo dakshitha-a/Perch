@@ -17,7 +17,7 @@ from datetime import date
 from perch import egress
 from perch.compare import COLUMNS, Row
 from perch.offices import for_route
-from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Work
+from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
 from perch.sources import grants_gov
 
 
@@ -130,6 +130,76 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     out.append(Block("h2", "About this export"))
     out.append(Block("p", f"{len(kept)} kept, {len(shown)} shown. Text marked Model was "
                      "written by a language model and checked against the records it cites."))
+    out.append(Block("p", grants_gov.ATTRIBUTION))
+    return out
+
+
+SAMPLE_BANNER = ("SAMPLE DATA: the Scholarships section lists invented records from a "
+                 "SYNTHETIC test corpus. They are not real scholarships. Do not apply to them.")
+
+
+def _amount(s: Scholarship) -> str:
+    if s.amount_min is not None and s.amount_max is not None and s.amount_min != s.amount_max:
+        return f"${s.amount_min:,.0f} to ${s.amount_max:,.0f}"
+    if s.amount_max is not None:
+        return f"${s.amount_max:,.0f}"
+    return "Not in the record"
+
+
+def _cv_line(text: str, masker: egress.Masker | None) -> str:
+    """A rule line that quotes the CV ("your CV says 3.40") is private; others are not."""
+    return egress.release(text, ["private:cv"] if "your cv" in text.lower() else [],
+                          masker) or ""
+
+
+def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
+                   masker: egress.Masker | None = None) -> list[Block]:
+    """A student brief (S18). Verdicts and gaps are code-written; the sample section
+    carries the banner. Text drawn from the student's documents is withheld unless
+    masked, as for every private export."""
+    as_of = brief.options.get("as_of") or date.today().isoformat()
+    shown = [x for x in leads if x.status != "dismissed"]
+    out = [Block("h1", "Perch student brief (private)"),
+           Block("p", f"Brief as of {as_of}. Eligibility is checked by rule from your CV; "
+                      "\"may be eligible\" means Perch could not check everything. A brief is "
+                      "a starting point, not advice.")]
+    if any(x.sample for x in shown):
+        out.append(Block("note", SAMPLE_BANNER))
+    for route, title, office in (("F", "Fellowships (public)", for_route("F")),
+                                 ("S", "Scholarships (sample)", for_route("S"))):
+        xs = [x for x in shown if x.route == route]
+        out.append(Block("h2", f"{title} ({len(xs)})"))
+        if route == "S":
+            out.append(Block("note", SAMPLE_BANNER))
+        for x in xs:
+            rec = records.get(x.record_id)
+            name = getattr(rec, "name", None) or getattr(rec, "title", x.record_id)
+            mark = " (kept)" if x.status == "kept" else ""
+            badge = " [SAMPLE]" if x.sample else ""
+            out.append(Block("h3", f"{x.rank}. {name}{badge}{mark}"))
+            items = [f"Verdict: {x.verdict}"]
+            items += [_cv_line(v, masker) for v in x.verdict_lines]
+            if isinstance(rec, Scholarship):
+                items.append(f"Sponsor: {rec.sponsor or 'Not in the record'}")
+                dl = rec.deadline.isoformat() if rec.deadline else "Not in the record"
+                items.append(f"Deadline: {dl}")
+                items.append(f"Amount: {_amount(rec)}")
+            elif isinstance(rec, Opportunity):
+                cl = rec.close_date.isoformat() if rec.close_date else "Not in the record"
+                items.append(f"Closes: {cl}")
+            items += [f"Still needed: {_cv_line(g, masker)}" for g in x.gaps]
+            items.append(f"Office: {office.name}")
+            out.append(Block("list", items=[i for i in items if i]))
+            if x.explanation and not x.flagged:
+                out.append(Block("model", egress.release(x.explanation, x.cited_ids, masker)))
+            url = getattr(rec, "source_url", None)
+            if url and not x.sample:
+                out.append(Block("link", f"Record: {url}", href=url))
+            elif x.sample:
+                out.append(Block("p", f"Record: {x.record_id} (SYNTHETIC sample, no web page)"))
+    out.append(Block("h2", "About this export"))
+    out.append(Block("p", f"{len(shown)} shown. Text marked Model was written by a language "
+                     "model and checked against the records it cites."))
     out.append(Block("p", grants_gov.ATTRIBUTION))
     return out
 

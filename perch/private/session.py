@@ -222,7 +222,134 @@ class PrivateService(BriefService):
 
     def _works(self, r: OverlayRepository, b: Brief) -> dict[str, Work]:  # type: ignore[override]
         out = {} if self._alone(b) else super()._works(r, b)
+        ach = self.session.docs.get("achievements")
+        if ach and b.options.get("student"):
+            from perch.private.student import achievement_docs
+
+            out.update({d.id: d for d in achievement_docs(ach.abstract or "")})
         return {**out, **{d.id: d for d in self.session.docs.values()}}
+
+    # --- student brief (S18, perch/private/student.py) ---
+
+    def create_student(self, *, as_of: date | None = None, top: int = 10,
+                       explain: bool = True) -> Brief:
+        from perch.private.student import STUDENT_STAGES
+
+        if "cv" not in self.session.docs:
+            raise ValueError("student mode needs a CV")
+        bid = secrets.token_urlsafe(9)
+        options = {**brief_options(as_of, top, explain), "private": True, "student": True,
+                   "documents": sorted(self.session.docs)}
+        b = Brief(id=bid, source="private", source_url="private://session", fetched_at=utcnow(),
+                  researcher_id=YOU, stages=[Stage(name=n) for n in STUDENT_STAGES],
+                  options=options)
+        with self.repo() as r:
+            r.upsert([b, Researcher(id=YOU, source="private", source_url="private://session",
+                                    fetched_at=utcnow(), display_name="You (private)")])
+        self.session.brief_id = bid
+        return b
+
+    def _student_docs(self) -> tuple[PrivateDoc | None, list[PrivateDoc]]:
+        from perch.private.student import achievement_docs
+
+        ach = self.session.docs.get("achievements")
+        return (self.session.docs.get("interests"),
+                achievement_docs(ach.abstract or "") if ach else [])
+
+    def _run_student_profile(self, b: Brief) -> tuple[str, bool]:
+        from perch.private.student import student_profile
+        from perch.student import parse_student_cv
+
+        facts = parse_student_cv(self.session.docs["cv"].abstract or "")
+        interests, achieved = self._student_docs()
+        if not interests and not achieved:
+            raise ValueError("add your interests or achievements")
+        p = student_profile(facts, interests, achieved, self.models.get("embedder"),
+                            date.fromisoformat(b.options["as_of"]))
+        self._ctx.setdefault(b.id, {}).update(profile=p, facts=facts, achieved=achieved)
+        b.threads = [{"index": t.index, "label": t.label, "weight": 1.0,
+                      "work_ids": t.work_ids, "private": True} for t in p.threads]
+        b.work_ids = p.work_ids
+        return (f"{facts.level or 'level not stated'}, {len(achieved)} achievements"), False
+
+    def _student_route(self, b: Brief, route: str, records: list,
+                       nih: dict | None = None) -> tuple[list[Lead], int]:
+        from perch.private.student import choose, judge_for, rank, to_leads
+
+        ctx = self._ctx[b.id]
+        as_of = date.fromisoformat(b.options["as_of"])
+        nih = nih or {}
+        scored = rank(records, ctx["profile"], self.models.get("embedder"),
+                      self.models.get("reranker"),
+                      judge_for(ctx["facts"], as_of, {k: o for k, (_, o) in nih.items()}))
+        for x in scored:
+            x.opp = nih[x.record.id][1] if x.record.id in nih else None
+        chosen = choose(scored, b.options.get("top", 10))
+        leads = to_leads(b.id, route, chosen, ctx["facts"])
+        ok = sum(x.verdict.verdict != "not eligible" for x in chosen)
+        return leads, ok
+
+    def _run_fellowships(self, b: Brief) -> tuple[str, bool]:
+        from perch.private.student import nih_records
+        from perch.schemas import Scholarship
+
+        with self.repo() as r:
+            sdfa = [s for s in r.list(Scholarship) if not s.synthetic]
+            nih = nih_records(r)
+            leads, ok = self._student_route(b, "F", sdfa + [s for s, _ in nih.values()], nih)
+            r.upsert(leads)
+        b.lead_ids = [x.id for x in leads]
+        return (f"{len(sdfa)} Temple-listed and {len(nih)} NIH fellowships searched, "
+                f"{ok} you may apply for"), False
+
+    def _run_scholarships(self, b: Brief) -> tuple[str, bool]:
+        from perch.private.student import samples
+
+        pool = samples()
+        leads, ok = self._student_route(b, "S", pool)
+        chosen = {x.record_id for x in leads}
+        with self.repo() as r:  # the shown sample records, in this session's memory only
+            r.upsert([s for s in pool if s.id in chosen] + leads)
+        b.lead_ids = [*b.lead_ids, *(x.id for x in leads)]
+        return f"{len(pool)} sample scholarships searched, {ok} you may apply for", False
+
+    def _run_student_explanations(self, b: Brief) -> tuple[str, bool]:
+        import threading as th
+
+        from perch.private.student import as_opportunity
+        from perch.schemas import Opportunity, Scholarship
+        from perch.skills.fit import explain_leads
+
+        if not b.options.get("explain"):
+            return "explanations off", True
+        ctx = self._ctx[b.id]
+        works = {d.id: d for d in ctx["achieved"]}
+        if d := self.session.docs.get("interests"):
+            works[d.id] = d
+        with self.repo() as r:
+            leads = [x for x in (r.get(Lead, i) for i in b.lead_ids)
+                     if x and x.verdict != "not eligible"]
+            opps = [r.get(Opportunity, x.record_id)
+                    or as_opportunity(r.get(Scholarship, x.record_id)) for x in leads]
+        lock = th.Lock()
+
+        def save(i: int, v: object) -> None:
+            lead = leads[i]
+            if v.value:
+                f = v.value
+                upd = {"fit_score": f.fit, "inference": f.link_sentence or None,
+                       "explanation": f"{f.opportunity_sentence} {f.research_sentence}",
+                       "unsupported": f.unsupported, "cited_ids": f.cited_ids}
+            else:
+                upd = {"flagged": True}
+            with lock, self.repo() as r:
+                r.upsert([lead.model_copy(update=upd)])
+
+        results = explain_leads(opps, ctx["profile"], works,
+                                self._audited("fit_explainer", self.models.fit_spec),
+                                grounder=self.models.get("grounder"), on_result=save)
+        flagged = sum(v.flagged for v in results)
+        return f"{len(results) - flagged} explained, {flagged} withheld", False
 
     def private_records(self) -> dict[str, PrivateDoc]:
         return {d.id: d for d in self.session.docs.values()}
