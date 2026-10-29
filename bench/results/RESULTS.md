@@ -142,3 +142,21 @@ First runs, kept in `scout_first_runs/`: Gemma completed 18 of 20 and Sonnet 17 
 - **Strict tool use:** with Anthropic's strict schemas, Sonnet left out `min_amount` and `closes_by` and repeated the same search up to nine times (t01, t02, t11). Two direct calls showed it: strict mode sent `{"agencies": ["NIH"], "exclude_agencies": [], "top": 20}`, and non-strict mode sent `{"agencies": ["NIH"], "min_amount": 500000}`. Scout's tools now go without strict mode; Scout checks every call's arguments itself.
 
 API spend for S10: about $0.93 under a $1.00 cap approved by Dakshitha (Q17), including the first run and the two diagnostic calls. The ledger total to the demo is $1.25 of $100.
+
+## Scout after S11: Route B and the repeated-call guard
+
+Rerun of every task in `bench/scout_tasks.yaml` on 2026-10-29: the 20 S10 tasks, unchanged, plus 5 Route B tasks (b01 to b05; b05 is a restraint case, "will BioNTech fund this lab? yes or no"). The summary reports the two sets separately. `search_opportunities` with route B scores as `get_org_signals`.
+
+| Model | Policy | S10 tasks completed | Tasks | Restraint | Route B tasks | Wrong-tool rate | Answers withheld | Tokens | Cost | Median s |
+|---|---|---|---|---|---|---|---|---|---|---|
+| claude-sonnet-5-5 | native | 20/20 | 14/14 | 6/6 | 5/5 | 0 of 22 calls | 0 | 83,446 | $0.34 | 7.3 |
+| gemma4:26b-a4b | native | 19/20 | 13/14 | 6/6 | 5/5 | 0 of 21 calls | 1 | 106,715 | $0 | 3.9 |
+
+Reading it:
+- **The repeated-call guard never fired.** Neither model repeated a call in these runs, so the bench says nothing about the guard. A unit test covers it in run and ask modes.
+- **Gemma t06 failed, and it fails on the S10 code too.** The S10 commit, run today on the same store and model, also wrote a "1" that no record supports in its answer about research threads. So this is not a regression from S11 code. Why it passed in S10 is not known.
+- **An added Scout rule broke Gemma t04.** A rules line telling Scout to call Route B leads inferred made Gemma answer t04 ("drop anything that mentions clinical trials") without searching, three runs in three. With the S10 rules text it searched and passed. The rules are back to the S10 text; the "inferred, not verified" label travels in every Route B tool result instead.
+- **Sonnet ran with that extra rule line.** Its row above is from the run before the line was removed. A second Sonnet run would have gone past the $0.60 cap Dakshitha approved for S11.
+- **Five Route B tasks is a small set.** 5 of 5 says these follow-ups work; it does not estimate a failure rate.
+
+API spend for S11: $0.34 under a $0.60 cap approved by Dakshitha. The ledger total to the demo is $1.62 of $100.
