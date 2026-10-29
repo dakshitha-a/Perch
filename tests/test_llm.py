@@ -84,9 +84,14 @@ def anthropic_response(stop="end_turn"):
                               cache_creation_input_tokens=0))
 
 
-def test_anthropic_request_shape_caching_fallback_and_cost():
+def budget(tmp_path, limit=100.0):
+    from perch.llm.budget import Budget
+    return Budget(limit, tmp_path / "ledger.jsonl")
+
+
+def test_anthropic_request_shape_caching_fallback_and_cost(tmp_path):
     client = FakeAnthropicClient(anthropic_response())
-    p = AnthropicProvider(client=client)
+    p = AnthropicProvider(client=client, budget=budget(tmp_path))
     r = p.chat([Message("user", "q")], system="stable prefix", schema=SCHEMA, tools=[TOOL],
                cache_system=True)
     kw = client.kw
@@ -100,8 +105,9 @@ def test_anthropic_request_shape_caching_fallback_and_cost():
     assert "logprobs" not in p.capabilities
 
 
-def test_anthropic_refusal_raises():
-    p = AnthropicProvider(client=FakeAnthropicClient(anthropic_response("refusal")))
+def test_anthropic_refusal_raises(tmp_path):
+    p = AnthropicProvider(client=FakeAnthropicClient(anthropic_response("refusal")),
+                          budget=budget(tmp_path))
     with pytest.raises(Refusal):
         p.chat([Message("user", "q")])
 
@@ -126,3 +132,21 @@ def test_unknown_price_is_nan_not_guessed():
 
     from perch.llm.base import ChatResult
     assert math.isnan(cost_usd(ChatResult("x", "unknown-model", "anthropic")))
+
+
+def test_budget_records_every_call_and_refuses_at_the_cap(tmp_path, capsys):
+    from perch.llm.budget import BudgetExceeded, spent_usd
+    b = budget(tmp_path, limit=0.005)  # one call costs 0.004
+    p = AnthropicProvider(client=FakeAnthropicClient(anthropic_response()), budget=b)
+    p.chat([Message("user", "q")])
+    assert spent_usd(b.path) == pytest.approx(0.004)
+    p.chat([Message("user", "q")])  # 0.004 < 0.005: allowed, and warns past 80%
+    assert "warning: Anthropic spend" in capsys.readouterr().err
+    with pytest.raises(BudgetExceeded):
+        p.chat([Message("user", "q")])  # 0.008 >= 0.005: refused before calling
+
+
+def test_unknown_model_priced_at_the_most_expensive():
+    from perch.llm.base import Usage
+    from perch.llm.budget import call_cost
+    assert call_cost("claude-unknown", Usage(1_000_000, 0)) == 4.00

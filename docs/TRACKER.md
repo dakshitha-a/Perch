@@ -40,3 +40,4 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | Warm-cache brief time | 0.7 to 1.1 s (Route A: embed + rerank, no LLM calls; 3 PIs) | data/logs/brief_timings.jsonl | 2026-10-28 |
 | Route B hand-judged precision | | | |
 | Deployment profile and peak VRAM | | S8 single-card validation | |
+| Anthropic API spend / budget to demo | $0.00 of $100 (key returned 401; nothing billed) | data/logs/anthropic_spend.jsonl | 2026-10-28 |

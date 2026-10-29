@@ -28,6 +28,7 @@ from perch.llm.base import (
     ToolCall,
     Usage,
 )
+from perch.llm.budget import Budget
 
 DEFAULT_MODEL = "claude-sonnet-5-5"  # SPEC section 7: skill 2 default is Claude Sonnet via API
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
@@ -38,8 +39,8 @@ class AnthropicProvider(Provider):
     capabilities = frozenset({"tools", "schema", "prompt_cache"})
 
     def __init__(self, model: str = DEFAULT_MODEL, api_key: str | None = None,
-                 fallbacks: bool = True, effort: str | None = None, client: object = None
-                 ) -> None:
+                 fallbacks: bool = True, effort: str | None = None, client: object = None,
+                 budget: Budget | None = None) -> None:
         if client is None:
             import anthropic  # vendor SDK, imported only inside perch/llm
 
@@ -48,6 +49,7 @@ class AnthropicProvider(Provider):
         self.model = model
         self.fallbacks = fallbacks
         self.effort = effort
+        self.budget = budget or Budget()  # hard cap to the demo; see perch/llm/budget.py
 
     def chat(self, messages: list[Message], *, system: str | None = None,
              tools: list[Tool] | None = None, schema: JsonSchema | None = None,
@@ -73,9 +75,13 @@ class AnthropicProvider(Provider):
         if self.fallbacks:
             kw["betas"] = [FALLBACK_BETA]
             kw["fallbacks"] = "default"
+        self.budget.check()
         t0 = time.perf_counter()
         resp = self.client.beta.messages.create(**kw)
         latency = (time.perf_counter() - t0) * 1000
+        if resp.stop_reason == "refusal" and resp.usage is not None:
+            self.budget.record(resp.model, Usage(resp.usage.input_tokens or 0,
+                                                 resp.usage.output_tokens or 0))
         if resp.stop_reason == "refusal":
             cat = getattr(getattr(resp, "stop_details", None), "category", None)
             raise Refusal(f"anthropic refused ({cat})")
@@ -89,6 +95,9 @@ class AnthropicProvider(Provider):
         u = resp.usage
         if u is None:
             raise ProviderError("anthropic: response without usage")
+        self.budget.record(resp.model, Usage(u.input_tokens or 0, u.output_tokens or 0,
+                                             getattr(u, "cache_read_input_tokens", 0) or 0,
+                                             getattr(u, "cache_creation_input_tokens", 0) or 0))
         return ChatResult(
             text=text, model=resp.model, provider=self.name,
             usage=Usage(u.input_tokens or 0, u.output_tokens or 0,

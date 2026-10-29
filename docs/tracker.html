@@ -164,6 +164,7 @@ details .inner > * { min-width: 0; }
 <tr><td>Warm-cache brief time</td><td>0.7 to 1.1 s (Route A: embed + rerank, no LLM calls; 3 PIs)</td><td>data/logs/brief_timings.jsonl</td><td>2026-10-28</td></tr>
 <tr><td>Route B hand-judged precision</td><td></td><td></td><td></td></tr>
 <tr><td>Deployment profile and peak VRAM</td><td></td><td>S8 single-card validation</td><td></td></tr>
+<tr><td>Anthropic API spend / budget to demo</td><td>$0.00 of $100 (key returned 401; nothing billed)</td><td>data/logs/anthropic_spend.jsonl</td><td>2026-10-28</td></tr>
 </tbody></table></div>
 <p class="meta">Perch-dev updates this file at the end of every session (and at any stop mid-session). <code>make tracker</code> renders it to <code>docs/tracker.html</code> for reading in a browser; the Markdown is the source of truth. Status values: <code>todo</code> · <code>in progress</code> · <code>continued</code> (stopped mid-session, see HANDOFF) · <code>done</code> · <code>cut</code>.</p>
 </section>
@@ -253,10 +254,13 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (28)</h2>
+<h2>Decisions (31)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-28</td><td>after S5</td><td>Anthropic API spend capped at $100 to the demo, enforced in the adapter from its own ledger (<code>PERCH_ANTHROPIC_BUDGET_USD</code>); warns at 80%, refuses at the cap; unknown prices billed at the most expensive model; local models for development, API only to verify, measure and demo</td><td>Fixed job budget</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>after S5</td><td>Temple counts as either higher-education applicant category on Grants.gov (Q4)</td><td>Classification unverified; nothing is wrongly dropped</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>after S5</td><td><code>data/</code>: commit curated inputs (overrides, backtest, synthetic), ignore generated files (Q1)</td><td>Back-test PI list and synthetic persona must be versioned; databases and caches must not</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S5</td><td>Validator layer 2 is MiniCheck-RoBERTa-Large on CPU via transformers, not the <code>minicheck</code> package</td><td>The package installs from an unpinned GitHub branch; the direct call reproduces the model card's example scores exactly (0.958, 0.031)</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-28</td><td>S5</td><td>Fit explanation is three sentences: a factual opportunity sentence and a factual research sentence, both checked by validator layer 2, plus a link sentence shown as an inference and checked by layer 1 only</td><td>MiniCheck scores fit judgments ("aligns with", "matches") at 0.02 to 0.16 even when both facts are in the records, but factual sentences at 0.95 to 0.98</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-28</td><td>after S4</td><td>Researchers are named by alias and OpenAlex id in docs, the tracker, the README and questions; names only in <code>data/overrides/pi_aliases.csv</code> and real fixtures; a test enforces it</td><td>The tracker artifact may be shown to the team or judges</td><td>Dakshitha</td></tr>
