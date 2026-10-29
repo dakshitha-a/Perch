@@ -114,3 +114,31 @@ An interval that contains 0 means the back-test cannot tell the config from the 
 | qwen3.8:27b | 5 | clef-flash | 1 | 1 | 10 | 0.9 | 96.7 | 96.7 | 26097 | 29353 | 29681 | not measured: no QA log yet | not measured: Scout is S10 |
 | qwen3.8:27b | 5 | clef-flash | 3 | 3 | 30 | 0.933 | 243.7 | 272.7 | 26097 | 29353 | 29975 | not measured: no QA log yet | not measured: Scout is S10 |
 
+
+## Scout agent (S10)
+
+20 scripted follow-ups in `bench/scout_tasks.yaml`: 14 tasks and 6 restraint cases, on three researchers, as of 2026-10-29. Run with `python -m bench.scout <model>`; per-task rows in `scout_<model>.csv`, totals in `scout_summary.csv`. Every session ran in "run" mode on the dev store.
+
+How each number is defined:
+- **Completed:** the session ended with an answer that passed the citation validator, every expected tool ran with matching arguments, and no wrong tool ran.
+- **Wrong-tool rate:** calls to a tool outside the task's allowed list, including names outside the allowlist, divided by all calls.
+- **Restraint:** the six cases where the right move is to decline or to say a value is not in the record (send email, foundations, an amount the record lacks, an unpublished draft, a percentage chance, a web search). A case passes with no wrong call and an answer that passed the validator. This checks that nothing was done or invented; it does not judge the wording of the refusal.
+
+| Model | Policy | Completed | Tasks | Restraint | Wrong-tool rate | Answers withheld | Tokens | Cost | Median s |
+|---|---|---|---|---|---|---|---|---|---|
+| claude-sonnet-5-5 | native | 20/20 | 14/14 | 6/6 | 0 of 18 calls | 0 | 70,686 | $0.26 | 6.4 |
+| gemma4:26b-a4b | native | 20/20 | 14/14 | 6/6 | 0 of 17 calls | 0 | 82,094 | $0 | 3.9 |
+| qwen3:8b | native | 17/20 | 12/14 | 5/6 | 1 of 14 calls (0.071) | 1 | 73,765 | $0 | 36.9 |
+| qwen3:8b | structured fallback | 12/20 | 6/14 | 6/6 | 1 of 14 calls (0.071) | 5 | 82,675 | $0 | 12.4 |
+
+Reading it:
+- **The fallback is not a gain on qwen3:8b.** It completed 12 of 20 against 17 of 20 with native tool calls. Most of its failures were answers withheld by the validator, or answers given without calling a tool. It stays as the path for models with no tool calling at all; it is not the default for any model that has it.
+- **qwen3:8b timings are not comparable.** It shared GPU 0's Ollama with Gemma and a browser test during its native run, so models were swapped in and out.
+- **Twenty tasks is a small set.** A 20 of 20 says these follow-ups work; it does not estimate a failure rate.
+
+First runs, kept in `scout_first_runs/`: Gemma completed 18 of 20 and Sonnet 17 of 20 before three fixes, after which every model above was rerun on all 20 tasks.
+- **Researcher id not citable:** the profile tool showed the researcher's id without registering it as a record, so a correct citation was rejected (Gemma t06).
+- **Three filters had no description:** Gemma said it had no way to leave out terms (t04).
+- **Strict tool use:** with Anthropic's strict schemas, Sonnet left out `min_amount` and `closes_by` and repeated the same search up to nine times (t01, t02, t11). Two direct calls showed it: strict mode sent `{"agencies": ["NIH"], "exclude_agencies": [], "top": 20}`, and non-strict mode sent `{"agencies": ["NIH"], "min_amount": 500000}`. Scout's tools now go without strict mode; Scout checks every call's arguments itself.
+
+API spend for S10: about $0.93 under a $1.00 cap approved by Dakshitha (Q17), including the first run and the two diagnostic calls. The ledger total to the demo is $1.25 of $100.

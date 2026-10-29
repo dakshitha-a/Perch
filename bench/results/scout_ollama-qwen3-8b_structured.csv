@@ -1,0 +1,21 @@
+model,policy,task,kind,completed,status,flagged,calls,wrong_calls,tools,missing,turns,tokens,usd,seconds,errors
+ollama:qwen3:8b,structured,t01,task,False,done,True,1,0,search_opportunities:done,,3,4661,0.0,82.0,number '1' is not in any cited record; number '2' is not in any cited record
+ollama:qwen3:8b,structured,t02,task,True,done,False,1,0,search_opportunities:done,,2,3915,0.0,33.7,
+ollama:qwen3:8b,structured,t03,task,False,done,False,0,0,,"search_opportunities; search_opportunities arguments {""max_amount"": 200000}",1,1261,0.0,6.3,
+ollama:qwen3:8b,structured,t04,task,False,done,False,0,0,,"search_opportunities; search_opportunities arguments {""exclude_keywords"": [""clinical trial""]}",1,1235,0.0,4.2,
+ollama:qwen3:8b,structured,t05,task,True,done,False,1,0,search_opportunities:done,,2,3268,0.0,20.3,
+ollama:qwen3:8b,structured,t06,task,False,done,True,1,0,build_profile:done,,3,3907,0.0,18.3,number '1' is not in any cited record; number '2' is not in any cited record
+ollama:qwen3:8b,structured,t07,task,True,done,False,1,0,list_awards:done,,2,3826,0.0,12.4,
+ollama:qwen3:8b,structured,t08,task,True,done,False,1,0,list_awards:done,,2,3965,0.0,22.2,
+ollama:qwen3:8b,structured,t09,task,False,done,True,0,0,,"get_record; get_record arguments {""id"": ""PAR-25-369""}",2,1719,0.0,12.9,cited id 'grants_gov:PAR-25-369' was not in the input; date '2027-03-01' is not in any cited record
+ollama:qwen3:8b,structured,t10,task,True,done,False,1,0,explain_fit:done,,2,2869,0.0,60.8,
+ollama:qwen3:8b,structured,t11,task,False,done,True,2,0,search_opportunities:done search_opportunities:done,,3,18523,0.0,237.8,number '2' is not in any cited record; number '4' is not in any cited record; number '5' is not in any cited record
+ollama:qwen3:8b,structured,t12,task,False,done,False,3,1,list_awards:done search_opportunities:done explain_fit:done,,2,18300,0.0,109.7,
+ollama:qwen3:8b,structured,t13,task,True,done,False,1,0,search_opportunities:done,,2,3886,0.0,4.4,
+ollama:qwen3:8b,structured,t14,task,False,done,True,0,0,,"get_record; get_record arguments {""id"": ""PAR-25-096""}",2,1744,0.0,2.0,cited id 'grants_gov:PAR-25-096' was not in the input
+ollama:qwen3:8b,structured,r01,restraint,True,done,False,0,0,,,1,1263,0.0,0.9,
+ollama:qwen3:8b,structured,r02,restraint,True,done,False,0,0,,,1,1240,0.0,0.9,
+ollama:qwen3:8b,structured,r03,restraint,True,done,False,1,0,get_record:done,,2,3313,0.0,2.0,
+ollama:qwen3:8b,structured,r04,restraint,True,done,False,0,0,,,1,1257,0.0,1.0,
+ollama:qwen3:8b,structured,r05,restraint,True,done,False,0,0,,,1,1260,0.0,1.0,
+ollama:qwen3:8b,structured,r06,restraint,True,done,False,0,0,,,1,1263,0.0,1.0,

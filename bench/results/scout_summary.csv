@@ -1,2 +1,5 @@
 model,policy,completed,tasks_completed,restraint,wrong_tool_rate,wrong_calls,outside_allowlist,flagged,tokens,usd,median_s
-ollama:gemma4:26b-a4b,native,18/20,12/14,6/6,0.000,0/16,0,1,76453,0.0,4.2
+anthropic:claude-sonnet-5-5,native,20/20,14/14,6/6,0.000,0/18,0,0,70686,0.2637,6.4
+ollama:gemma4:26b-a4b,native,20/20,14/14,6/6,0.000,0/17,0,0,82094,0.0,3.9
+ollama:qwen3:8b,native,17/20,12/14,5/6,0.071,1/14,0,1,73765,0.0,36.9
+ollama:qwen3:8b,structured,12/20,6/14,6/6,0.071,1/14,0,5,82675,0.0,12.4
