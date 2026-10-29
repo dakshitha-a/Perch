@@ -4,12 +4,14 @@
 import { liveApi, replayApi } from "./api.js";
 import { add, fill, h, icon } from "./dom.js";
 import { renderHelp } from "./help.js";
+import { loadCompare, renderCompare } from "./compare.js";
 import { renderScout } from "./scout.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
 
 const api = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
 const POLL_MS = 1500;
+const TABS = ["profile", "routes", "compare", "scout"];
 const SOURCES = { openalex: "OpenAlex", grants_gov: "Grants.gov", nih_reporter: "NIH RePORTER",
   nsf: "NSF Award Search", perch: "Perch" };
 const KINDS = { opportunity: "Funding opportunity", work: "Paper", award: "Public award",
@@ -66,7 +68,7 @@ function route() {
   S.lastHash = location.hash || "#/";
   if (parts[0] === "brief" && parts[1]) {
     const id = decodeURIComponent(parts[1]);
-    S.tab = ["profile", "routes", "scout"].includes(parts[2]) ? parts[2] : S.tab;
+    S.tab = TABS.includes(parts[2]) ? parts[2] : S.tab;
     if (id !== S.briefId) openBrief(id);
     else renderPanel();
     return;
@@ -324,7 +326,8 @@ function renderBrief() {
       h("span", { text: (r.institutions || []).join(", ") || "Institution not stated in the record" }),
       h("span", { text: `Brief as of ${f.formatDate(d.brief.options.as_of)}` })));
   const tabs = h("div", { class: "tabs", role: "tablist", "aria-label": "Brief sections" },
-    tabButton("profile", "Profile"), tabButton("routes", "Routes"), tabButton("scout", "Ask Scout"));
+    tabButton("profile", "Profile"), tabButton("routes", "Routes"), tabButton("compare", "Compare"),
+    tabButton("scout", "Ask Scout"));
   fill(main(), h("div", { class: "brief" }, head,
     h("div", { id: "progress" }),
     h("div", { class: "tabs-wrap" }, tabs),
@@ -350,16 +353,15 @@ function tabButton(key, label) {
     onclick: () => go(`#/brief/${encodeURIComponent(S.briefId)}/${key}`),
     onkeydown: (e) => {
       if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-        const keys = ["profile", "routes", "scout"];
-        const other = keys[(keys.indexOf(key) + (e.key === "ArrowRight" ? 1 : 2)) % 3];
+        const other = TABS[(TABS.indexOf(key) + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
         go(`#/brief/${encodeURIComponent(S.briefId)}/${other}`);
         setTimeout(() => $(`#tab-${other}`).focus(), 0);
       }
-    } }, h("span", { text: label }), key === "routes" ? h("span", { class: "tab-count", hidden: true }) : null);
+    } }, h("span", { text: label }), ["routes", "compare"].includes(key) ? h("span", { class: "tab-count", hidden: true }) : null);
 }
 
 function renderTabs() {
-  for (const key of ["profile", "routes", "scout"]) {
+  for (const key of TABS) {
     const t = $(`#tab-${key}`);
     if (!t) continue;
     const on = S.tab === key;
@@ -371,6 +373,11 @@ function renderTabs() {
   c.textContent = isDone("route_a") ? String(n) : "";
   if (isDone("route_a")) c.append(h("span", { class: "sr-only", text: n === 1 ? " lead" : " leads" }));
   c.hidden = !isDone("route_a");
+  const kept = leadsOf().filter((l) => l.status === "kept").length;
+  const k = $("#tab-compare .tab-count");
+  k.textContent = kept ? String(kept) : "";
+  if (kept) k.append(h("span", { class: "sr-only", text: " kept" }));
+  k.hidden = !kept;
   $("#panel").setAttribute("aria-labelledby", `tab-${S.tab}`);
 }
 
@@ -508,6 +515,7 @@ function renderPanel() {
     panel.replaceChildren();
   }
   if (S.tab === "profile") renderProfile(panel);
+  else if (S.tab === "compare") drawCompare();
   else if (S.tab === "scout") {
     const sig = `scout:${S.brief.brief.status}`;
     if (panel.dataset.sig !== sig) {  // brief polls do not redraw Scout; Scout redraws itself
@@ -515,6 +523,20 @@ function renderPanel() {
       drawScout();
     }
   } else renderRoutes(panel);
+}
+
+// ----- Compare -----
+
+const keptIds = () => leadsOf().filter((l) => l.status === "kept").map((l) => l.id).sort();
+
+function drawCompare(focusKey) {
+  const panel = $("#panel");
+  if (!panel || S.tab !== "compare" || !S.brief) return;
+  const kept = keptIds();
+  renderCompare(panel, { keptCount: kept.length, openEvidence, redraw: drawCompare,
+    goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) });
+  if (kept.length) loadCompare(api, S.briefId, kept, () => drawCompare());
+  if (focusKey) panelFocus(focusKey);
 }
 
 function drawScout() {
@@ -859,21 +881,18 @@ function orgCard(l) {
   signals, yours, h("div", { class: "actions" }, actions));
 }
 
-// Keep bar: once a lead is kept, how many and what comes next. Until the hand-off
-// is built (S12), its button downloads the kept leads with their records.
+// Keep bar: once a lead is kept, how many and what comes next: the Compare tab.
 function renderKeepBar(box, kept) {
   if (!kept) { box.replaceChildren(); return; }
   const sig = `keep:${kept}`;
   if (box.dataset.sig === sig) return;
   box.dataset.sig = sig;
-  const link = h("a", { class: "btn primary", href: "#", "data-key": "keep-download",
-    download: `perch-kept-${S.briefId}.json`,
-    onclick: (e) => { e.currentTarget.href = api.keptUrl(S.briefId); } },
-  icon("download"), h("span", { text: `Download ${kept === 1 ? "it" : "them"}` }));
+  const link = h("a", { class: "btn primary", href: `#/brief/${encodeURIComponent(S.briefId)}/compare`,
+    "data-key": "keep-compare" }, h("span", { text: `Compare ${kept === 1 ? "it" : "them"}` }));
   fill(box, h("section", { class: "keep-bar", "aria-label": "Kept leads" },
     h("div", {}, h("p", { class: "keep-count", text: `${f.plural(kept, "lead", "leads")} kept` }),
-      h("p", { class: "hint", text: "Next: a hand-off draft to the right Temple office. That step "
-        + "is not built yet. For now, download the kept leads with their records." })),
+      h("p", { class: "hint", text: "Next: compare them side by side, then draft a hand-off "
+        + "to the right Temple office." })),
     link));
 }
 
@@ -1082,7 +1101,7 @@ async function setLead(leadId, action) {
   renderPanel();
   renderTabs();
   if (action === "dismiss") announce("Dismissed. It is in the Dismissed list at the bottom, where you can restore it.");
-  if (action === "keep") announce("Kept. The bar at the bottom of the list downloads your kept leads.");
+  if (action === "keep") announce("Kept. The bar at the bottom of the list opens the comparison.");
   try {
     await api.setLead(S.briefId, l.id, action);
   } catch (e) {

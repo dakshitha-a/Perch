@@ -228,3 +228,37 @@ def test_route_b_lead_carries_organisation_signals_and_records(tmp_path):
     assert item["records"][0]["title"] == "SYNTHETIC company paper" and item["more"] == 3
     exported = c.get(f"/briefs/{bid}/export.json").json()
     assert w.id in {r["id"] for r in exported["records"]}
+
+
+def test_compare_shows_kept_leads_with_a_record_behind_every_cell(tmp_path):
+    from perch.schemas import Brief, Lead, Organisation, Signal
+
+    c, service = make(tmp_path)
+    bid = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28",
+                                  "explain": False}).json()["id"]
+    assert c.get(f"/briefs/{bid}/compare").json()["rows"] == []
+    a = c.get(f"/briefs/{bid}").json()["brief"]["lead_ids"][0]
+    c.post(f"/briefs/{bid}/leads/{a}/keep")
+    with service.repo() as r:  # a SYNTHETIC Route B lead, kept
+        b = r.get(Brief, bid)
+        org = Organisation(id="https://openalex.org/I1", source="openalex", source_url="u",
+                           fetched_at=b.fetched_at, name="SYNTHETIC Co")
+        lead = Lead(id=f"{bid}:B1", source="openalex", source_url="u", fetched_at=b.fetched_at,
+                    brief_id=bid, route="B", record_id=org.id, rank=1, inferred=True,
+                    status="kept", relationship="Collaboration", confidence="moderate",
+                    signals=[Signal(kind="citing_works"), Signal(kind="topic_works")])
+        r.upsert([org, lead, b.model_copy(update={"lead_ids": [*b.lead_ids, lead.id]})])
+    got = c.get(f"/briefs/{bid}/compare").json()
+    assert [x["key"] for x in got["columns"]] == ["money", "closes", "code", "kind",
+                                                  "evidence", "office"]
+    ra, rb = got["rows"]
+    assert ra["route"] == "A" and ra["title"].startswith("PAR-25-268")
+    assert ra["cells"]["office"]["text"] == "Research Development"
+    assert ra["cells"]["closes"]["record_id"] == ra["record_id"]
+    assert rb["title"] == "SYNTHETIC Co"
+    assert rb["cells"]["money"]["text"] == "Not in the record"
+    assert rb["cells"]["evidence"]["text"] == "2 kinds of public signal"
+    assert "inferred" in rb["cells"]["evidence"]["note"]
+    assert rb["cells"]["office"]["text"] == "Innovation and Technology Commercialization"
+    assert len(c.get(f"/briefs/{bid}/compare", params={"status": "all"}).json()["rows"]) == 2
+    assert c.get(f"/briefs/{bid}/compare", params={"status": "x"}).status_code == 422

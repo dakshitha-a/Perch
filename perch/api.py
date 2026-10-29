@@ -9,6 +9,7 @@
   GET  /briefs/{id}                             status, stages, profile, leads with records
   POST /briefs/{id}/leads/{lead_id}/keep        and /dismiss, /restore
   GET  /briefs/{id}/export.json[?status=kept]   brief, leads and every record they cite
+  GET  /briefs/{id}/compare[?status=kept|all]   kept leads side by side, each cell with its record
   GET  /records/{id}                            any stored record, with provenance
   POST /briefs/{id}/scout                       {"question", "mode": "ask"|"run"}: a Scout
                                                 session about the brief (S10)
@@ -41,6 +42,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from perch import awards as aw
+from perch import compare as cmp
 from perch.config import env
 from perch.jobs import JobRunner
 from perch.schemas import (
@@ -308,6 +310,13 @@ def create_app(service: BriefService, runner: JobRunner,
         return {"brief": b.model_dump(mode="json"),
                 "leads": [x.model_dump(mode="json") for x in leads], "records": records,
                 "notice": grants_gov.ATTRIBUTION}
+
+    @app.get("/briefs/{brief_id}/compare")
+    def compare_view(brief_id: str, status: Literal["kept", "all"] = "kept") -> dict:
+        b, leads = load(brief_id)
+        with service.repo() as r:
+            rows = cmp.compare(b, leads, r, None if status == "all" else status)
+        return cmp.rows_json(rows)
 
     @app.get("/records/{record_id:path}")
     def get_record(record_id: str) -> dict:
