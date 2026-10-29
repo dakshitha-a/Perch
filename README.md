@@ -17,7 +17,7 @@ make tracker   # render docs/TRACKER.md to docs/tracker.html
 Find a researcher and fetch their works into `data/perch.db`:
 
 ```sh
-uv run perch resolve "Axel Kohlmeyer"          # or an ORCID iD, or an OpenAlex author id
+uv run perch resolve 0000-0001-6204-6475     # an ORCID iD, a name, or an OpenAlex author id
 uv run perch fetch openalex A5026494099
 uv run perch fetch awards A5026494099          # NIH RePORTER and NSF, matched by name
 uv run perch profile A5026494099               # key papers, awards, public award horizon

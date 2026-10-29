@@ -30,3 +30,20 @@ def test_allows_normal_text():
     assert check_public.scan_text(f"ANTHROPIC_API_KEY=\n{trailer}") == []
     assert check_public.scan_text("1+dakshitha-a@users.noreply.github.com") == []
     assert check_public.scan_text("see data/backtest/pis.csv and docs/SPEC.md") == []
+
+
+def test_researcher_names_stay_out_of_shareable_docs():
+    """Docs, the tracker and the README use aliases (PI-1 ...); names live only in
+    data/overrides/pi_aliases.csv."""
+    import csv
+    import unicodedata
+
+    def fold(s):
+        return unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode().lower()
+
+    with (ROOT / "data/overrides/pi_aliases.csv").open(newline="", encoding="utf-8") as f:
+        last_names = {fold(row["name"].split()[-1]) for row in csv.DictReader(f)}
+    shareable = [ROOT / "README.md", *ROOT.glob("docs/**/*.md"), *ROOT.glob("docs/**/*.html"),
+                 ROOT / "bridge/QUESTIONS.md"]
+    hits = [(p.name, n) for p in shareable for n in last_names if n in fold(p.read_text("utf-8"))]
+    assert hits == []
