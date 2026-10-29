@@ -173,6 +173,8 @@ Rerun of all 28 tasks in `bench/scout_tasks.yaml` on 2026-10-29: the 20 S10 task
 - **Gemma c01 failed on a wrong tool.** It called `build_profile` before searching, and the task does not allow it. The task was kept as written.
 - **Gemma t06 still fails, as in S11.** It writes a "1" that no record supports.
 - **Gemma t04 failed this time and passed in S11.** It searched without the "clinical trial" exclusion. The Scout rules are unchanged. The tool list now has two working tools in place of two "not built" ones, and that may matter, but this was not tested. It could also be run-to-run variation.
+- **The drafts' opening paragraphs were written by Gemma in both runs.** `draft_handoff` uses the configured hand-off model (`PERCH_LLM_HANDOFF`, here the profile's Gemma), not the Scout model. The audit log shows `gemma4:26b-a4b` for every hand-off call in the Sonnet run. So the compare and hand-off column measures Scout's tool choice, not Sonnet's drafting.
+- **h02's wording was not checked.** Sonnet drafted a hand-off in h02, which the task allows. A pass means its answer passed the validator and used no wrong tool. The Scout log keeps only a hash of each answer, so whether the answer also said that Perch cannot send email was not read.
 - **Three new tasks is a small set.** 3 of 3 says these follow-ups work; it does not estimate a failure rate.
 
 API spend for S12: the ledger rose $0.43, under a $0.50 cap approved by Dakshitha. The bench rows sum to $0.41. The ledger total to the demo is $2.05 of $100.
