@@ -1,0 +1,388 @@
+{
+ "summary": {
+  "planted": 24,
+  "retrieved": 19,
+  "precision": 1.0,
+  "recall": 1.0,
+  "tp": 10,
+  "fp": 0,
+  "fn": 0,
+  "verdict_exact": 19,
+  "gaps_exact": 10,
+  "gaps_cases": 10
+ },
+ "personas": {
+  "persona-ug": {
+   "planted": 8,
+   "retrieved": 6,
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 3,
+   "fp": 0,
+   "fn": 0,
+   "verdict_exact": 6,
+   "gaps_exact": 3,
+   "gaps_cases": 3
+  },
+  "persona-masters": {
+   "planted": 8,
+   "retrieved": 6,
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 3,
+   "fp": 0,
+   "fn": 0,
+   "verdict_exact": 6,
+   "gaps_exact": 3,
+   "gaps_cases": 3
+  },
+  "persona-phd": {
+   "planted": 8,
+   "retrieved": 7,
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 4,
+   "fp": 0,
+   "fn": 0,
+   "verdict_exact": 7,
+   "gaps_exact": 4,
+   "gaps_cases": 4
+  }
+ },
+ "leakage": {
+  "sample_record_public_api": false,
+  "public_briefs_checked": 6,
+  "sample_in_public_brief": 0,
+  "persona_canary_in_export": [],
+  "export_without_banner": [],
+  "persona_canary_in_data_files": [],
+  "persona_canary_in_app_log": []
+ },
+ "cases": [
+  {
+   "persona": "persona-ug",
+   "id": "sample:sch-0001",
+   "key_verdict": "eligible",
+   "key_reason": null,
+   "key_gaps": [
+    "transcript",
+    "essay"
+   ],
+   "retrieved": true,
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "transcript",
+    "essay"
+   ]
+  },
+  {
+   "persona": "persona-ug",
+   "id": "sample:sch-0002",
+   "key_verdict": "not eligible",
+   "key_reason": "gpa",
+   "key_gaps": [],
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "gpa",
+   "gaps": []
+  },
+  {
+   "persona": "persona-ug",
+   "id": "sample:sch-0003",
+   "key_verdict": "not eligible",
+   "key_reason": "class_year",
+   "key_gaps": [],
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "class_year",
+   "gaps": []
+  },
+  {
+   "persona": "persona-ug",
+   "id": "sample:sch-0004",
+   "key_verdict": "not eligible",
+   "key_reason": "level",
+   "key_gaps": [],
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "level",
+   "gaps": []
+  },
+  {
+   "persona": "persona-ug",
+   "id": "sample:sch-0005",
+   "key_verdict": "may be eligible",
+   "key_reason": "residency",
+   "key_gaps": [
+    "essay",
+    "letters"
+   ],
+   "retrieved": true,
+   "verdict": "may be eligible",
+   "reason": "residency",
+   "gaps": [
+    "essay",
+    "letters"
+   ]
+  },
+  {
+   "persona": "persona-ug",
+   "id": "sample:sch-0006",
+   "key_verdict": "may be eligible",
+   "key_reason": "targeted",
+   "key_gaps": [
+    "transcript",
+    "fafsa"
+   ],
+   "retrieved": true,
+   "verdict": "may be eligible",
+   "reason": "targeted",
+   "gaps": [
+    "transcript",
+    "fafsa"
+   ]
+  },
+  {
+   "persona": "persona-ug",
+   "id": "sample:sch-0007",
+   "key_verdict": "not eligible",
+   "key_reason": "graduation",
+   "key_gaps": [],
+   "retrieved": false,
+   "verdict": null,
+   "reason": null,
+   "gaps": null
+  },
+  {
+   "persona": "persona-ug",
+   "id": "sample:sch-0008",
+   "key_verdict": "eligible",
+   "key_reason": null,
+   "key_gaps": [
+    "essay",
+    "portfolio"
+   ],
+   "retrieved": false,
+   "verdict": null,
+   "reason": null,
+   "gaps": null
+  },
+  {
+   "persona": "persona-masters",
+   "id": "sample:sch-0009",
+   "key_verdict": "eligible",
+   "key_reason": null,
+   "key_gaps": [
+    "essay"
+   ],
+   "retrieved": true,
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "essay"
+   ]
+  },
+  {
+   "persona": "persona-masters",
+   "id": "sample:sch-0010",
+   "key_verdict": "not eligible",
+   "key_reason": "enrolment",
+   "key_gaps": [],
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "enrolment",
+   "gaps": []
+  },
+  {
+   "persona": "persona-masters",
+   "id": "sample:sch-0011",
+   "key_verdict": "not eligible",
+   "key_reason": "level",
+   "key_gaps": [],
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "level",
+   "gaps": []
+  },
+  {
+   "persona": "persona-masters",
+   "id": "sample:sch-0012",
+   "key_verdict": "may be eligible",
+   "key_reason": "citizenship",
+   "key_gaps": [
+    "transcript"
+   ],
+   "retrieved": true,
+   "verdict": "may be eligible",
+   "reason": "citizenship",
+   "gaps": [
+    "transcript"
+   ]
+  },
+  {
+   "persona": "persona-masters",
+   "id": "sample:sch-0013",
+   "key_verdict": "eligible",
+   "key_reason": null,
+   "key_gaps": [
+    "essay",
+    "interview"
+   ],
+   "retrieved": false,
+   "verdict": null,
+   "reason": null,
+   "gaps": null
+  },
+  {
+   "persona": "persona-masters",
+   "id": "sample:sch-0014",
+   "key_verdict": "not eligible",
+   "key_reason": "graduation",
+   "key_gaps": [],
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "graduation",
+   "gaps": []
+  },
+  {
+   "persona": "persona-masters",
+   "id": "sample:sch-0015",
+   "key_verdict": "not eligible",
+   "key_reason": "gpa",
+   "key_gaps": [],
+   "retrieved": false,
+   "verdict": null,
+   "reason": null,
+   "gaps": null
+  },
+  {
+   "persona": "persona-masters",
+   "id": "sample:sch-0016",
+   "key_verdict": "eligible",
+   "key_reason": null,
+   "key_gaps": [
+    "transcript"
+   ],
+   "retrieved": true,
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "transcript"
+   ]
+  },
+  {
+   "persona": "persona-phd",
+   "id": "sample:sch-0017",
+   "key_verdict": "may be eligible",
+   "key_reason": "gpa_unstated",
+   "key_gaps": [
+    "essay",
+    "gpa"
+   ],
+   "retrieved": true,
+   "verdict": "may be eligible",
+   "reason": "gpa_unstated",
+   "gaps": [
+    "essay",
+    "gpa"
+   ]
+  },
+  {
+   "persona": "persona-phd",
+   "id": "sample:sch-0018",
+   "key_verdict": "eligible",
+   "key_reason": null,
+   "key_gaps": [
+    "transcript"
+   ],
+   "retrieved": true,
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "transcript"
+   ]
+  },
+  {
+   "persona": "persona-phd",
+   "id": "sample:sch-0019",
+   "key_verdict": "not eligible",
+   "key_reason": "level",
+   "key_gaps": [],
+   "retrieved": false,
+   "verdict": null,
+   "reason": null,
+   "gaps": null
+  },
+  {
+   "persona": "persona-phd",
+   "id": "sample:sch-0020",
+   "key_verdict": "not eligible",
+   "key_reason": "graduation",
+   "key_gaps": [],
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "graduation",
+   "gaps": []
+  },
+  {
+   "persona": "persona-phd",
+   "id": "sample:sch-0021",
+   "key_verdict": "eligible",
+   "key_reason": null,
+   "key_gaps": [
+    "essay",
+    "interview"
+   ],
+   "retrieved": true,
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "essay",
+    "interview"
+   ]
+  },
+  {
+   "persona": "persona-phd",
+   "id": "sample:sch-0022",
+   "key_verdict": "may be eligible",
+   "key_reason": "targeted",
+   "key_gaps": [
+    "essay"
+   ],
+   "retrieved": true,
+   "verdict": "may be eligible",
+   "reason": "targeted",
+   "gaps": [
+    "essay"
+   ]
+  },
+  {
+   "persona": "persona-phd",
+   "id": "sample:sch-0023",
+   "key_verdict": "not eligible",
+   "key_reason": "enrolment",
+   "key_gaps": [],
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "enrolment",
+   "gaps": []
+  },
+  {
+   "persona": "persona-phd",
+   "id": "sample:sch-0024",
+   "key_verdict": "not eligible",
+   "key_reason": "major",
+   "key_gaps": [],
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "major",
+   "gaps": []
+  }
+ ],
+ "seconds": {
+  "persona-ug": 48,
+  "persona-masters": 39,
+  "persona-phd": 45
+ }
+}
