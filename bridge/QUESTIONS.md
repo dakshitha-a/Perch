@@ -4,6 +4,10 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
+None.
+
+## Answered
+
 25. **The demo watch produced no draft (raised S16, 2026-10-29).** S16's done-when asks for a draft on the demo personas. The weekly job ran live on PI-5, PI-4 and PI-2, and nothing fired:
 - **Awards:** none of their public awards ends within 12 months. Their latest end dates are 2028-07-31, 2016-06-30 and 2028-05-31.
 - **Opportunities:** Grants.gov had 3 new NIH listings since 29 Oct, and none entered their top 10.
@@ -14,14 +18,14 @@ Options:
 - (b) Add A5052363442 to `PERCH_WATCH`, so the public screen shows a real draft. This person is not one of your chosen demo researchers, and the draft names them, as briefs already do.
 - (c) Pick another Temple researcher you prefer whose award ends within 12 months.
 
-Perch-dev will not bend a trigger to make a draft appear. Default: (a).
+Perch-dev will not bend a trigger to make a draft appear. Default: (a). **Answered 2026-10-29 by Dakshitha:** (a), leave the demo watch as it is.
 
 24. **What counts as a "new opportunity above threshold" for monitoring? (raised S16, 2026-10-29).** The plan says the weekly job re-runs a brief when a new opportunity scores above a threshold. The reranker's scores are not on one scale across researchers. In the demo store, the top lead scores 0.015 for one researcher and 0.98 for another. A single score cut-off would fire for some people every week and never for others. Perch-dev built a position rule instead:
 - **The rule:** an opportunity that is in the fresh brief's top 10 and was not a lead in the last run.
 - **Other option:** a smaller window, such as the top 5, which fires less often.
 - **Other option:** use the model's 0 to 100 fit number. It is model output, so the trigger would no longer be fully deterministic (standing rule 5).
 
-Default: the top-10 position rule, as built.
+Default: the top-10 position rule, as built. **Answered 2026-10-29 by Dakshitha:** the default, the top-10 position rule as built.
 
 21. **How the private documents share the private weight (raised S13, 2026-10-29, asked by Dakshitha).** Private threads together get 0.6 of the thread weight (Q13). Inside that share, Perch-dev proposes:
 - **Draft proposal:** 0.5 of the private share. It is the closest thing to the work being funded.
@@ -29,9 +33,7 @@ Default: the top-10 position rule, as built.
 - **Unpublished manuscript:** 0.2. It is finished work, closer to the public papers.
 - **CV:** no search weight. It describes past work and holds contact details. It feeds only the career-stage check and the sponsor history.
 - **Missing documents:** the others split the missing share in the same proportions.
-These are starting defaults, not measurements. Default: as proposed, built in S13.
-
-## Answered
+These are starting defaults, not measurements. Default: as proposed, built in S13. **Answered 2026-10-29 by Dakshitha:** the default, as built in S13.
 
 20. **Temple's past STTR partners as Route B leads on their own? (raised S12, 2026-10-29).** S12 task 7 built the table of 41 Temple STTR awards (25 companies) from SBIR.gov's bulk file and a topic matcher. It matches one company each for PI-1, PI-2 and PI-4, and none for PI-3. Only PI-1's match is clearly right (Recombination Therapeutics, DNA repair). None of these companies has a second kind of signal, so under the two-signal rule they add 0 leads, and the table is not wired in. Option: show a matched past Temple STTR partner as its own industry lead, labelled "past STTR partner of Temple; one signal". That breaks the two-signal rule for this one kind of evidence. Details: `bench/results/route_b/STTR.md`. Default: leave it out. **Answered 2026-10-29: Dakshitha asked Perch-dev to choose, and Perch-dev chose the default, no.** Only 1 of 3 hand-checked matches was clearly right. The awards are mostly from 2015 to 2020, and the newest is from 2022. A lead on one weak signal would break the two-signal rule that keeps industry leads trustworthy. The table and matcher stay in the repo, unwired.
 

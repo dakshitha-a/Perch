@@ -26,7 +26,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - **Demo researchers:** PI-5, PI-4 and PI-2 had 0 changes, so there was no draft.
 - **Why nothing fired:** their awards end 2028-07-31, 2016-06-30 and 2028-05-31, and none of the new listings entered a top 10.
 - **A real draft elsewhere:** on a deleted copy of the store, A5052363442 (outside the alias table) got a real draft. Their NSF award 2303111 ends 2027-03-31.
-- **Q25:** asks whether to add a researcher with a real trigger to the demo watch.
+- **Q25 (answered):** the demo watch stays on the three demo researchers.
 
 ## Known gaps
 - **Awards are not refreshed weekly.** The awards stage fetches only when no award is linked, so a new or extended award is missed until the store is refreshed.
@@ -48,6 +48,4 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 4. The privacy audit should include the monitor. It never runs on private sessions, and it writes only public digests.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- Q21: private document shares. Default: proposal 0.5, direction 0.3, unpublished 0.2; the CV gets none.
-- Q24: the new-opportunity trigger is the top-10 position rule. Default: as built.
-- Q25: the demo watch has no draft yet. Default: leave it; the first scheduled run is Mon 2 Nov.
+- None. Q21, Q24 and Q25 were answered on 2026-10-29 with their defaults.
