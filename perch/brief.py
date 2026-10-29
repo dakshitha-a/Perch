@@ -40,7 +40,10 @@ class RouteABrief:
 def route_a(researcher: Researcher, repo: Repository, index: VectorIndex, embedder: Embedder,
             reranker: Reranker, constraints: Constraints | None = None,
             cache: RerankCache | None = None, top: int = 10,
-            timings_log: Path | None = TIMINGS_LOG) -> RouteABrief:
+            timings_log: Path | None = TIMINGS_LOG, profile: Profile | None = None,
+            index_new: bool = True) -> RouteABrief:
+    """`profile` replaces the threads built from the stored works (added threads);
+    `index_new=False` skips indexing, so a private session writes nothing."""
     c = constraints or Constraints(as_of=date.today())
     t: dict[str, float] = {}
 
@@ -50,9 +53,11 @@ def route_a(researcher: Researcher, repo: Repository, index: VectorIndex, embedd
         return now
 
     s = time.perf_counter()
-    profile = build_threads(researcher.id, repo.works_by_author(researcher.id), embedder, c.as_of)
+    profile = profile or build_threads(researcher.id, repo.works_by_author(researcher.id),
+                                       embedder, c.as_of)
     s = lap("threads", s)
-    index_opportunities(repo, index, embedder)
+    if index_new:
+        index_opportunities(repo, index, embedder)
     s = lap("index", s)
     r = retrieve(profile, index, k=RETRIEVE_K)
     t.update({f"retrieve_{k}": v for k, v in r.timings_ms.items()})

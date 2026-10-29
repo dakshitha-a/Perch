@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from perch.llm import ChatResult, Message, Provider, ToolCall, ToolResult, cost_usd
-from perch.privacy import PrivateSettings
+from perch.privacy import PrivateSettings, refuse_if_not_local
 from perch.scout.log import ScoutLog, digest
 from perch.scout.tools import ALLOWLIST, TOOLS, ScoutContext, ToolError, check_arguments
 from perch.skills import parse_json
@@ -31,7 +31,6 @@ from perch.validate import DATE_PATTERNS, NUM_RE, check, find_dates, norm_number
 
 Mode = Literal["ask", "run"]
 Policy = Literal["native", "structured"]
-LOCAL_ADAPTERS = ("ollama", "openai", "fake")
 
 RULES = """You are Scout, the agent inside Perch. Perch lays out routes to fund a Temple \
 University researcher's work, from public records only.
@@ -439,14 +438,3 @@ def summarise(tool: str, result: dict) -> str:
         return (f"draft to {result['office']}, not sent"
                 + ("; the model's opening was withheld" if result["opening_withheld"] else ""))
     return "done"
-
-
-def refuse_if_not_local(provider: Provider, private: PrivateSettings) -> None:
-    """Private sessions use self-hosted models on allowed endpoints only."""
-    if provider.name not in LOCAL_ADAPTERS:
-        raise PermissionError(f"private sessions cannot use {provider.name}: hosted API")
-    http = getattr(provider, "http", None)
-    url = str(http.base_url) if http is not None else ""
-    if http is not None and not private.endpoint_allowed(url):
-        raise PermissionError(f"private sessions cannot send to {url}: not an allowed endpoint")
-

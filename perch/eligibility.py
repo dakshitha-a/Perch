@@ -31,11 +31,15 @@ EXCLUDED_ACTIVITY = {
 
 # Restrictions the title states outright. Excluded by default because Perch cannot
 # confirm them from public records (career stage needs the CV: private context, S13).
+CAREER_STAGE = r"\bearly[- ]career\b|\bearly[- ]stage investigator|\bnew investigator"
 TITLE_RESTRICTIONS = {
     r"\blimited competition\b": "limited competition: only named applicants may apply",
-    r"\bearly[- ]career\b|\bearly[- ]stage investigator|\bnew investigator": (
-        "restricted by career stage, which public records cannot confirm"),
+    CAREER_STAGE: "restricted by career stage, which public records cannot confirm",
 }
+
+
+def career_stage_restricted(o: Opportunity) -> bool:
+    return bool(re.search(CAREER_STAGE, o.title, re.IGNORECASE))
 
 
 # Grants.gov names an agency by its full name in some records and by its code in others
@@ -68,6 +72,9 @@ class Constraints:
     exclude_agencies: list[str] = field(default_factory=list)
     exclude_activity: list[str] = field(default_factory=list)  # extra codes, exact
     include_restricted: bool = False  # keep title-restricted opportunities
+    # Keep career-stage-restricted ones only: the CV (private) or the user's own word
+    # suggests they may qualify. The lead is labelled by the caller.
+    career_stage_ok: bool = False
     check_dates: bool = True  # the back-test sets False and applies its own time window
 
 
@@ -101,6 +108,8 @@ def check(o: Opportunity, c: Constraints) -> list[str]:
         reasons.append(f"activity code {code} excluded by the user")
     if not c.include_restricted:
         for pattern, why in TITLE_RESTRICTIONS.items():
+            if pattern == CAREER_STAGE and c.career_stage_ok:
+                continue
             if re.search(pattern, o.title, re.IGNORECASE):
                 reasons.append(why)
     if c.min_amount is not None and o.award_ceiling is not None and o.award_ceiling < c.min_amount:

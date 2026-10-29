@@ -163,6 +163,8 @@ class Lead(Record):
     signals: list[Signal] = Field(default_factory=list, description="Route B only")
     relationship: str | None = Field(default=None, description="Route B: suggested type, by rule")
     confidence: str | None = Field(default=None, description="Route B: label from signal count")
+    notes: list[str] = Field(default_factory=list,
+                             description="Rule notes written by code, e.g. a career-stage unlock")
 
 
 class Stage(BaseModel):

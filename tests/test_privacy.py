@@ -32,9 +32,12 @@ def test_public_url_without_tls_location_is_refused():
     assert any('"server"' in x for x in settings(tls_at="tunnel:").problems())
 
 
-def test_private_mode_is_refused_until_built():
-    assert any("not built yet" in x for x in settings(tls_at="server").problems())
+def test_private_mode_needs_a_named_operator():
+    assert any("PERCH_PRIVATE_OPERATOR" in x for x in settings(tls_at="server").problems())
+    assert settings(tls_at="server", operator="Lab IT").problems() == []
     assert settings(enabled=False).problems() == []
+    assert "run by Lab IT" in settings(operator="Lab IT").statement()
+    assert "decrypted by example" in settings(operator="x", tls_at="tunnel:example").statement()
 
 
 def test_core_dumps_are_off_after_hardening():

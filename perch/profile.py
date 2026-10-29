@@ -87,11 +87,12 @@ class Profile:
     embedder: str
     threads: list[Thread]
     work_ids: list[str]
+    salt: str = ""  # hash of added text (direction, private documents), so caches split
 
     @property
     def hash(self) -> str:
         key = "|".join([self.researcher_id, self.as_of.isoformat(), self.embedder,
-                        *sorted(self.work_ids)])
+                        *sorted(self.work_ids), *([self.salt] if self.salt else [])])
         return hashlib.sha256(key.encode()).hexdigest()[:16]
 
 

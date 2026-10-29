@@ -103,6 +103,7 @@ class BriefService:
         self.rerank_cache = root / "cache/rerank.db"
         self.timings_log = root / "logs/brief_timings.jsonl"
         self._ctx: dict[str, dict] = {}  # per-run state (the profile), keyed by brief id
+        self.quiet_errors = False  # private sessions: exception type only, no traceback
 
     def repo(self) -> SQLiteRepository:
         return SQLiteRepository(self.db)
@@ -220,10 +221,11 @@ class BriefService:
                 self._stage(b, current, "skipped" if skipped else "done", detail)
             b.status = "done"
         except Exception as e:  # recorded on the brief; the job thread must not die silently
-            b.error = f"{type(e).__name__}: {e}"
+            b.error = type(e).__name__ if self.quiet_errors else f"{type(e).__name__}: {e}"
             self._stage(b, current, "failed", b.error)
             b.status = "failed"
-            traceback.print_exc()
+            if not self.quiet_errors:
+                traceback.print_exc()
         with self.repo() as r:
             r.upsert([b])
         self._ctx.pop(b.id, None)
@@ -334,11 +336,15 @@ class BriefService:
         return AuditedProvider(self.models.provider(spec or spec_for_role(role)), self.audit,
                                role)
 
+    def _works(self, r: SQLiteRepository, b: Brief) -> dict[str, Work]:
+        """Records the model skills may cite as research (a private session adds its own)."""
+        return {w.id: w for w in r.works_by_author(b.researcher_id)}
+
     def _run_summary(self, b: Brief) -> tuple[str, bool]:
         if not b.options.get("explain"):
             return "explanations off", True
         with self.repo() as r:
-            works = {w.id: w for w in r.works_by_author(b.researcher_id)}
+            works = self._works(r, b)
         v = summarise_profile(self._ctx[b.id]["profile"], works,
                               self._audited("profile_summary", self.models.summary_spec))
         if v.value:
@@ -351,7 +357,7 @@ class BriefService:
         if not b.options.get("explain"):
             return "explanations off", True
         with self.repo() as r:
-            works = {w.id: w for w in r.works_by_author(b.researcher_id)}
+            works = self._works(r, b)
             leads = [x for x in (r.get(Lead, i) for i in b.lead_ids) if x and x.route == "A"]
             opps = [r.get(Opportunity, x.record_id) for x in leads]
         lock = threading.Lock()
