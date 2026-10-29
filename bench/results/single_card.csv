@@ -1,0 +1,2 @@
+model,gpu,briefs,briefs_done,leads,explained,p50_brief_s,max_brief_s,idle_mib_chat_and_clef,all_loaded_mib,peak_mib,qa_agreement,scout_gates
+qwen3.8:27b,5,3,0,0,0.0,0.1,0.1,26653,30615,30615,not measured: no QA log yet,not measured: Scout is S10

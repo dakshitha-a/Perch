@@ -1,0 +1,5 @@
+model,summary_calls,summary_usd_per_call,fit_usd_per_10_lead_brief,brief_total_usd,all_calls_logged,all_usd_logged
+anthropic:claude-sonnet-5-5,2,0.0123,,,8,0.0842
+ollama:gemma4:26b-a4b,0,,0.0,,36,0.0
+ollama:qwen3.8:27b,8,0.0,,,88,0.0
+ollama:qwen3:8b,0,,0.0,,31,0.0

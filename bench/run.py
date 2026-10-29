@@ -104,6 +104,7 @@ def render() -> str:
                       *table(rows, list(rows[0]) if rows else []), ""]
     for name, title in (("skill2_summary.csv", "Fit explanation (skill 2)"),
                         ("grounders.csv", "Validator layer 2 (swapped-record proxy set)"),
+                        ("cost.csv", "Cost per brief (audit log)"),
                         ("single_card.csv", "Single-card validation")):
         p = RESULTS / name
         if p.exists():
