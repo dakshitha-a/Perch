@@ -132,7 +132,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S16</code> <span class="badge s-todo">todo</span><span>16/18 sessions done</span></div>
+<div class="at-a-glance"><code>S16</code> <span class="badge s-in-progress">in progress</span><span>16/18 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
@@ -147,13 +147,27 @@ details .inner > * { min-width: 0; }
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
 <div id="s16"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S16 · Monitoring (optional)</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S16.md</code> when the session starts.</div>
+<div class="title-row"><h1>S16 · Monitoring</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-29 16:34 EDT</div></div>
+<p>Goal: Perch tells you before you need it. Kept by Dakshitha on 2026-10-29. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 5 tasks done"><div class="counts"><span><b>0/5</b>tasks done</span><span class="s-todo"><b>5</b>todo</span></div><div class="bar" role="img" aria-label="0 of 5 tasks done"><span class="s-todo" style="width:100.00%" title="todo: 5"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Monitor core: a Grants.gov delta refresh, then a fresh brief per watched researcher that bypasses brief reuse, compared with the last run. Triggers: a public award ending within 12 months, or an opportunity new to the top 10. A code-written email draft, never sent, stored as a <code>digest</code> record. <code>perch monitor</code> on the CLI.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td>One screen, "What changed": the latest digest per watched researcher, with its changes and its draft. API routes and a Help section.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>Weekly timer: a systemd user unit runs <code>perch monitor</code> in the demo container for the demo researchers; <code>make demo</code> installs it.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td>Live run on the demo researchers; record what fired and show the draft on the public URL.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>5</td><td>Fix <code>make bench --render-only</code>, so it no longer overwrites the hand-written Scout sections of RESULTS.md (from the S15 handoff).</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>The job runs on the demo personas and produces a draft.</li></ul>
+<h2>Status at end</h2>
+<ul><li>In progress.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="16 of 18 sessions done"><div class="counts"><span><b>16/18</b>sessions done</span><span class="s-done"><b>16</b>done</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="16 of 18 sessions done"><span class="s-done" style="width:88.89%" title="done: 16"></span><span class="s-todo" style="width:11.11%" title="todo: 2"></span></div></section>
+<section class="panel summary" aria-label="16 of 18 sessions done"><div class="counts"><span><b>16/18</b>sessions done</span><span class="s-done"><b>16</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="16 of 18 sessions done"><span class="s-done" style="width:88.89%" title="done: 16"></span><span class="s-in-progress" style="width:5.56%" title="in progress: 1"></span><span class="s-todo" style="width:5.56%" title="todo: 1"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -173,7 +187,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s13">S13</a></td><td>Private mode</td><td><span class="badge s-done">done</span></td><td>2026-10-29 14:22 EDT</td><td>2026-10-29 15:00 EDT</td><td class="mono">see git log</td><td>208 tests green. Private mode built end to end: sessions in memory with the session id in a header, idle timeout and caps; paste or upload (text, Markdown, DOCX, PDF from bytes); a self-hosted gate on every model and endpoint; the store as an overlay on a read-only base, no cache, log or index writes. Private threads take 0.6 (proposal 0.5, direction 0.3, unpublished 0.2 of it; Q21). The CV parse unlocks career-stage calls as "may be eligible", using NIH's ESI definition and its smaller-grants list. Private-only briefs work. Exports and hand-offs withhold private text, or mask it with an in-memory key. Lock labels, Help and a private bar in the UI. Live canary on the dev node: no trace in data/, /tmp or six model-server journals; the private-only brief had 8 of 8 explained leads citing private documents. Normal-mode context fields with "You said". Stand-in proposal (funded abstract, an upper bound): 7 to 16 of 48 in the top 10. Persona tab on the tracker. Q21, Q22 open.</td></tr>
 <tr class="is-finished"><td><a href="#s14">S14</a></td><td>MCP server</td><td><span class="badge s-done">done</span></td><td>2026-10-29 15:01 EDT</td><td>2026-10-29 15:10 EDT</td><td class="mono">see git log</td><td>210 tests green. <code>perch mcp</code>: Scout's nine tools over stdio on the MCP Python SDK 2.3.0, with the same argument checks and validator, a provenance map in every result, and budgets of 60 calls (20 model-backed) per connection. <code>--private</code> runs on a private session behind the self-hosted gate. Live: the SDK client over stdio got 5 leads with provenance and a validated explanation citing three papers in 7 s. Claude Code 2.1.312 (print mode, haiku) got a cited brief. The local Ollama agent was not tested. The tracker's UI tab was rebuilt with every module, and the Bench tab gained Scout and the stand-in result. The demo was rebuilt.</td></tr>
 <tr class="is-finished"><td><a href="#s15">S15</a></td><td>README and public release</td><td><span class="badge s-done">done</span></td><td>2026-10-29 15:25 EDT</td><td>2026-10-29 16:13 EDT</td><td class="mono">see git log</td><td>New README in NextTex's style: a hero clip, five feature clips filmed in the real app with NextTex's camera and a Python port of its recorder, the as-built architecture figure in light and dark, measured results with the baseline, and docs split into running, deploy, private mode and MCP. A README tab on the tracker. History audit: no keys, paths, emails, session links or hostnames. Tests now read researcher names from their fixtures (Q23). Dakshitha approved the README, and the repository is public.</td></tr>
-<tr class="is-current"><td>S16</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s16">S16</a></td><td>Monitoring (optional)</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 16:34 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S17</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>

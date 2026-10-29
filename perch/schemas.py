@@ -198,6 +198,38 @@ class Brief(Record):
     timings_ms: dict[str, float] = Field(default_factory=dict)
 
 
+class Change(BaseModel):
+    """One thing that changed since the last monitoring run. before and after are copied
+    from record fields by code (an ISO date, or None); nothing here comes from a model."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["award_ending", "new_lead", "dropped_lead", "close_date", "new_industry_lead"]
+    record_id: str
+    title: str
+    source_url: str
+    before: str | None = None
+    after: str | None = None
+    trigger: bool = Field(default=False, description="Counts toward drafting an email")
+
+
+class Digest(Record):
+    """One monitoring run for one researcher (S16). source is 'perch'."""
+
+    kind: ClassVar[str] = "digest"
+
+    researcher_id: str
+    brief_id: str
+    baseline_brief_id: str | None = Field(default=None, description="The last run's brief")
+    as_of: date
+    changes: list[Change] = Field(default_factory=list)
+    snapshot: list[dict] = Field(default_factory=list,
+                                 description="Route A leads: record_id, rank, close_date")
+    draft_subject: str | None = Field(default=None, description="None: nothing fired")
+    draft_body: str | None = None
+    refresh: dict = Field(default_factory=dict, description="Grants.gov refresh counts")
+
+
 RECORD_TYPES: tuple[type[Record], ...] = (
-    Researcher, Work, Award, Opportunity, Organisation, Lead, Brief,
+    Researcher, Work, Award, Opportunity, Organisation, Lead, Brief, Digest,
 )

@@ -68,6 +68,11 @@ def _text(value: str | None) -> str | None:
     return html.unescape(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", value))).strip() or None
 
 
+def hit_close_date(hit: dict[str, Any]) -> date | None:
+    """A search2 hit's close date ("MM/DD/YYYY" or empty)."""
+    return _date(hit.get("closeDate"))
+
+
 def redact_contacts(data: Json) -> Json:
     """Replace contact fields anywhere in a response (they also appear in history),
     and any email address inside other text."""
