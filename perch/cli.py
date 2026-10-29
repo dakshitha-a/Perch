@@ -330,7 +330,11 @@ def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
         return 2
     harden_process()
     # Warning level: no access log, so no request paths or addresses are written.
-    uvicorn.run(create_app(service, InProcessRunner()), host=args.host, port=args.port,
+    from perch.scout.log import ScoutLog
+
+    app = create_app(service, InProcessRunner(), scout_runner=InProcessRunner(workers=2),
+                     scout_log=ScoutLog(data / "logs/scout.jsonl"))
+    uvicorn.run(app, host=args.host, port=args.port,
                 log_level=args.log_level)
     return 0
 

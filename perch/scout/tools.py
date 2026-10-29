@@ -110,7 +110,7 @@ def build_profile(ctx: ScoutContext, author_id: str | None = None) -> dict:
                   for w in t.work_ids[:3] if w in works]
         threads.append({"thread": t.index + 1, "label": t.label,
                         "share_of_recent_work": f"{t.weight:.0%}", "top_papers": papers})
-    return {"researcher": short_id(_researcher(ctx, author_id)), "papers": len(p.work_ids),
+    return {"researcher": ctx.see(_researcher(ctx, author_id)), "papers": len(p.work_ids),
             "threads": threads}
 
 
@@ -128,7 +128,8 @@ def list_awards(ctx: ScoutContext, author_id: str | None = None) -> dict:
                     "agency": s.agency, "activity_code": s.activity_code,
                     "start_date": s.start_date and s.start_date.isoformat(),
                     "end_date": s.end_date and s.end_date.isoformat()})
-    return {"awards": out, "horizon_award": h and ctx.see(h.end_record or linked[0]),
+    return {"researcher": ctx.see(res), "awards": out,
+            "horizon_award": h and ctx.see(h.end_record or linked[0]),
             "note": "Public NIH and NSF records only; other funding is not visible."}
 
 
@@ -263,10 +264,12 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
               "min_amount": {"type": "number", "description": "drop if the ceiling is below"},
               "max_amount": {"type": "number", "description": "drop if the ceiling is above"},
               "agencies": {**STRS, "description": "keep only these agencies, e.g. NIH, NSF"},
-              "exclude_agencies": STRS, "closes_by": STR,
+              "exclude_agencies": {**STRS, "description": "drop these agencies"},
+              "closes_by": {**STR, "description": "drop if it closes after this date"},
               "activity_codes": {**STRS, "description": "keep only these, e.g. R21, R01"},
               "keywords": {**STRS, "description": "keep if any is in the title or text"},
-              "exclude_keywords": STRS,
+              "exclude_keywords": {**STRS, "description": "drop if any is in the title or "
+                                   "text, e.g. clinical trial"},
               "top": {"type": "integer", "description": "how many leads, 1 to 20"}},
              ["route"])), search_opportunities),
     "get_org_signals": (Tool("get_org_signals", "Industry signals for route B (not built "

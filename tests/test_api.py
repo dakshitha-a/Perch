@@ -155,3 +155,31 @@ def test_deep_health_names_each_model_service(tmp_path, monkeypatch):
     deep = c.get("/health?deep=true").json()
     assert deep["status"] == "degraded"
     assert deep["services"] == {"ollama": False, "clef": False}
+
+
+def test_scout_session_over_the_api(tmp_path, monkeypatch):
+    from perch.llm import ToolCall
+    from perch.llm.fake import FakeProvider
+
+    c, service = make(tmp_path)
+    bid = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28",
+                                  "explain": False}).json()["id"]
+    fake = FakeProvider([[ToolCall("c1", "get_record", {"id": "grants_gov:PAR-25-268"})],
+                         "It closes 2026-11-17 [grants_gov:PAR-25-268].", "Thanks."])
+    service.models.provider = lambda spec: fake
+    r = c.post(f"/briefs/{bid}/scout", json={"question": "When does it close?"})
+    assert r.status_code == 202
+    s = r.json()
+    assert s["status"] == "awaiting_approval" and s["mode"] == "ask" and not s["busy"]
+    card = s["exchanges"][0]["cards"][0]
+    assert card["tool"] == "get_record" and card["status"] == "proposed"
+    s = c.post(f"/scout/{s['id']}/approve", json={"card_id": card["id"]}).json()
+    x = s["exchanges"][0]
+    assert x["status"] == "done" and x["answer"].startswith("It closes 2026-11-17")
+    assert x["cards"][0]["status"] == "done" and "grants_gov:PAR-25-268" in x["cards"][0]["records"]
+    s = c.post(f"/scout/{s['id']}/ask", json={"question": "Thanks"}).json()
+    assert len(s["exchanges"]) == 2 and c.get(f"/scout/{s['id']}").json()["id"] == s["id"]
+    assert c.post(f"/scout/{s['id']}/ask", json={"question": " "}).status_code == 422
+    assert c.get("/scout/nope").status_code == 404
+    assert c.post(f"/scout/{s['id']}/delete", json={}).status_code == 422
+    assert c.post("/briefs/nope/scout", json={"question": "x"}).status_code == 404

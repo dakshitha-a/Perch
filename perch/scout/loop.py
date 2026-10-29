@@ -107,6 +107,9 @@ class Session:
     tokens: int = 0
     usd: float = 0.0
     user_numbers: set[str] = field(default_factory=set)
+    # One entry per question: its text, the first card it made, and how it ended. Held in
+    # memory for the web app; the log keeps a hash of the question only.
+    exchanges: list[dict] = field(default_factory=list)
 
     def pending(self) -> list[Card]:
         return [c for c in self.cards if c.status == "proposed"]
@@ -179,6 +182,9 @@ class Scout:
     # --- public API ---
 
     def start(self, question: str) -> Session:
+        return self.ask(self.open(), question)
+
+    def open(self) -> Session:
         s = Session(id=secrets.token_urlsafe(9), mode=self.mode, policy=self.policy,
                     model=self.provider.spec, private=self.private)
         if self.log:
@@ -186,13 +192,15 @@ class Scout:
                             "mode": s.mode, "policy": s.policy,
                             "researcher": self.ctx.researcher_id,
                             "as_of": self.ctx.as_of.isoformat()})
-        return self.ask(s, question)
+        return s
 
     def ask(self, s: Session, question: str) -> Session:
         """A question, or a follow-up in the same session."""
         s.messages.append(Message("user", question))
         s.user_numbers |= stated_numbers(question)
         s.status, s.answer, s.flagged, s.errors, s.turns = "running", None, False, [], 0
+        s.exchanges.append({"question": question, "cards_from": len(s.cards), "answer": None,
+                            "flagged": False, "errors": [], "status": "running"})
         if self.log:
             self.log.write({"kind": "question", "session": s.id, "hash": digest(question)})
         return self.advance(s)
@@ -315,6 +323,7 @@ class Scout:
     def _stop(self, s: Session, why: str, failed: bool = False) -> Session:
         s.status = "failed" if failed else "stopped"
         s.errors = [why]
+        s.exchanges[-1].update(status=s.status, errors=s.errors)
         self._log_answer(s, passed=False, attempts=0)
         return s
 
@@ -344,6 +353,8 @@ class Scout:
         else:
             s.answer, s.cited_ids = text, cited(text)
         s.status = "done"
+        s.exchanges[-1].update(status="done", answer=s.answer, flagged=s.flagged,
+                               errors=s.errors)
         self._log_answer(s, passed=not errs, attempts=attempts)
         return s
 

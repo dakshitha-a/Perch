@@ -10,6 +10,11 @@
   POST /briefs/{id}/leads/{lead_id}/keep        and /dismiss, /restore
   GET  /briefs/{id}/export.json[?status=kept]   brief, leads and every record they cite
   GET  /records/{id}                            any stored record, with provenance
+  POST /briefs/{id}/scout                       {"question", "mode": "ask"|"run"}: a Scout
+                                                session about the brief (S10)
+  GET  /scout/{session}                         its questions, tool cards and answers
+  POST /scout/{session}/{action}                approve or skip {"card_id"?}, ask
+                                                {"question"}, or mode (toggle)
 
   GET  /                                       the web app (web/), when present
 
@@ -25,6 +30,7 @@ from collections import defaultdict, deque
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
+from typing import Literal
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -38,12 +44,21 @@ from perch import awards as aw
 from perch.config import env
 from perch.jobs import JobRunner
 from perch.schemas import Award, Brief, Lead, Opportunity, Record, Researcher, Work
+from perch.scout.hub import Busy, ScoutHub
+from perch.scout.hub import view as scout_view
+from perch.scout.log import ScoutLog
 from perch.service import BriefService, brief_options
 from perch.sources import grants_gov
 from perch.sources import openalex as oa
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 KEY_PAPERS = 5  # per thread, most recent-weighted first (thread order from perch.profile)
+
+
+class ScoutRequest(BaseModel):
+    question: str = Field("", max_length=1000)
+    mode: Literal["ask", "run"] = "ask"
+    card_id: str | None = None
 
 
 class BriefRequest(BaseModel):
@@ -125,7 +140,8 @@ def up(url: str) -> bool:
 
 def create_app(service: BriefService, runner: JobRunner,
                resolver: type[oa.OpenAlexClient] | None = None,
-               web_dir: Path | None = WEB_DIR) -> FastAPI:
+               web_dir: Path | None = WEB_DIR, scout_runner: JobRunner | None = None,
+               scout_log: ScoutLog | None = None) -> FastAPI:
     app = FastAPI(title="Perch API", description="See every route to fund your work. "
                   + grants_gov.ATTRIBUTION, version="0.1.0")
     @app.exception_handler(RequestValidationError)
@@ -262,6 +278,52 @@ def create_app(service: BriefService, runner: JobRunner,
         if x is None:
             raise HTTPException(404, f"no record {record_id!r}")
         return record_json(x)
+
+    # --- Scout (S10) ---
+    hub = ScoutHub(service, scout_runner or runner, scout_log)
+    scout_limiter = RateLimiter(int(env("PERCH_SCOUT_PER_HOUR") or 30))
+
+    def ask_allowed(request: Request) -> None:
+        wait = scout_limiter.take(client_key(request))
+        if wait:
+            raise HTTPException(429, f"Limit of {scout_limiter.per_hour} Scout questions an "
+                                f"hour reached. Try again in {wait // 60 + 1} minutes.",
+                                headers={"Retry-After": str(wait)})
+
+    @app.post("/briefs/{brief_id}/scout", status_code=202)
+    def scout_start(brief_id: str, req: ScoutRequest, request: Request) -> dict:
+        b, _ = load(brief_id)
+        if b.status != "done":
+            raise HTTPException(409, "Scout can start once the brief has finished.")
+        if not req.question.strip():
+            raise HTTPException(422, "Ask Scout a question.")
+        ask_allowed(request)
+        return scout_view(hub.start(brief_id, b.researcher_id, req.question.strip(), req.mode))
+
+    def entry(sid: str):  # noqa: ANN202 - an Entry
+        e = hub.get(sid)
+        if e is None:
+            raise HTTPException(404, "No such Scout session. Sessions end when the server "
+                                "restarts.")
+        return e
+
+    @app.get("/scout/{sid}")
+    def scout_get(sid: str) -> dict:
+        return scout_view(entry(sid))
+
+    @app.post("/scout/{sid}/{action}", status_code=202)
+    def scout_act(sid: str, action: Literal["approve", "skip", "ask", "mode"],
+                  req: ScoutRequest, request: Request) -> dict:
+        e = entry(sid)
+        if action == "ask":
+            if not req.question.strip():
+                raise HTTPException(422, "Ask Scout a question.")
+            ask_allowed(request)
+        try:
+            hub.act(e, action, req.card_id, req.question.strip())
+        except Busy as err:
+            raise HTTPException(409, str(err)) from err
+        return scout_view(e)
 
     if web_dir and (web_dir / "index.html").is_file():  # after every API route
         app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")

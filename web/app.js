@@ -4,6 +4,7 @@
 import { liveApi, replayApi } from "./api.js";
 import { add, fill, h, icon } from "./dom.js";
 import { renderHelp } from "./help.js";
+import { renderScout } from "./scout.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
 
@@ -62,7 +63,7 @@ function route() {
   S.lastHash = location.hash || "#/";
   if (parts[0] === "brief" && parts[1]) {
     const id = decodeURIComponent(parts[1]);
-    S.tab = parts[2] === "routes" ? "routes" : parts[2] === "profile" ? "profile" : S.tab;
+    S.tab = ["profile", "routes", "scout"].includes(parts[2]) ? parts[2] : S.tab;
     if (id !== S.briefId) openBrief(id);
     else renderPanel();
     return;
@@ -319,7 +320,7 @@ function renderBrief() {
       h("span", { text: (r.institutions || []).join(", ") || "Institution not stated in the record" }),
       h("span", { text: `Brief as of ${f.formatDate(d.brief.options.as_of)}` })));
   const tabs = h("div", { class: "tabs", role: "tablist", "aria-label": "Brief sections" },
-    tabButton("profile", "Profile"), tabButton("routes", "Routes"));
+    tabButton("profile", "Profile"), tabButton("routes", "Routes"), tabButton("scout", "Ask Scout"));
   fill(main(), h("div", { class: "brief" }, head,
     h("div", { id: "progress" }),
     h("div", { class: "tabs-wrap" }, tabs),
@@ -345,7 +346,8 @@ function tabButton(key, label) {
     onclick: () => go(`#/brief/${encodeURIComponent(S.briefId)}/${key}`),
     onkeydown: (e) => {
       if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-        const other = key === "profile" ? "routes" : "profile";
+        const keys = ["profile", "routes", "scout"];
+        const other = keys[(keys.indexOf(key) + (e.key === "ArrowRight" ? 1 : 2)) % 3];
         go(`#/brief/${encodeURIComponent(S.briefId)}/${other}`);
         setTimeout(() => $(`#tab-${other}`).focus(), 0);
       }
@@ -353,7 +355,7 @@ function tabButton(key, label) {
 }
 
 function renderTabs() {
-  for (const key of ["profile", "routes"]) {
+  for (const key of ["profile", "routes", "scout"]) {
     const t = $(`#tab-${key}`);
     if (!t) continue;
     const on = S.tab === key;
@@ -502,7 +504,20 @@ function renderPanel() {
     panel.replaceChildren();
   }
   if (S.tab === "profile") renderProfile(panel);
-  else renderRoutes(panel);
+  else if (S.tab === "scout") {
+    const sig = `scout:${S.brief.brief.status}`;
+    if (panel.dataset.sig !== sig) {  // brief polls do not redraw Scout; Scout redraws itself
+      panel.dataset.sig = sig;
+      drawScout();
+    }
+  } else renderRoutes(panel);
+}
+
+function drawScout() {
+  const panel = $("#panel");
+  if (!panel || S.tab !== "scout" || !S.brief) return;
+  renderScout(panel, { api, briefId: S.briefId, done: S.brief.brief.status === "done",
+    openEvidence, announce, rerender: drawScout });
 }
 
 // ----- Profile -----

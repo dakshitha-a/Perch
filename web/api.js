@@ -33,6 +33,11 @@ export function liveApi(base = "") {
     record: (id) => call(base, `/records/${encodeURIComponent(id)}`),
     exportUrl: (id) => `${base}/briefs/${encodeURIComponent(id)}/export.json`,
     keptUrl: (id) => `${base}/briefs/${encodeURIComponent(id)}/export.json?status=kept`,
+    scoutStart: (id, body) => call(base, `/briefs/${encodeURIComponent(id)}/scout`,
+      { method: "POST", body: JSON.stringify(body) }),
+    scoutGet: (sid) => call(base, `/scout/${encodeURIComponent(sid)}`),
+    scoutAct: (sid, action, body) => call(base, `/scout/${encodeURIComponent(sid)}/${action}`,
+      { method: "POST", body: JSON.stringify(body) }),
   };
 }
 

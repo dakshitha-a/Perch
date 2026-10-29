@@ -1,4 +1,4 @@
-// Help: how to use Perch (four steps with small pictures built from the app's own
+// Help: how to use Perch (six steps with small pictures built from the app's own
 // parts) and how it works (the pipeline, marking which steps are rules and which are
 // models). Every claim here describes code in this repo; see docs/design/UI.md §7.
 
@@ -63,6 +63,14 @@ function picKeep() {
       h("span", { class: "pic-btn" }, icon("download"), h("span", { text: "Download them" }))));
 }
 
+function picScout() {
+  return example(
+    h("div", { class: "pic-card" },
+      h("div", { class: "pic-row between" }, h("b", { text: "Search opportunities" }), h("span", { class: "tag", text: "Waiting for you" })),
+      h("div", { class: "pic-row" }, h("span", { class: "chip", text: "Activity codes: R21" }), h("span", { class: "chip", text: "Closes by: 2027-03-01" })),
+      h("div", { class: "pic-row" }, h("span", { class: "pic-btn", text: "Approve" }), h("span", { class: "pic-btn", text: "Skip" }))));
+}
+
 // ----- sections -----
 
 function steps() {
@@ -76,6 +84,8 @@ function steps() {
     ["Read the routes and decide", picLead(), null],
     ["Take the kept leads with you", picKeep(),
       "Once you keep a lead, a bar at the bottom of Routes shows how many you kept. Its button downloads the kept leads with their records as a JSON file. The next step will be a hand-off draft to the right Temple office; it is not built yet."],
+    ["Ask Scout a follow-up", picScout(),
+      "Once a brief has finished, the Ask Scout tab takes plain questions, such as “only R21s that close by March” or “why does the top lead fit?”. Scout picks one of Perch’s own tools: a search with filters for agency, award ceiling, close date, activity code and words to include or leave out; a record; the public awards; the research profile; or a fit explanation. Each tool is a card. By default Scout asks before every step, and you approve or skip it; switch to “Run and show me” to let the steps run while you watch. Scout’s answer cites records, and a date or amount that is not in a cited record gets the answer rewritten once, then withheld. Scout stops after eight model calls for one question. It cannot browse the web, send anything or change a record. Conversations are not saved: a server restart ends them."],
   ];
   const legend = h("ol", { class: "callouts" },
     h("li", { text: "The fit estimate is a model’s judgment of how well the opportunity matches the papers. It is not the odds of funding." }),

@@ -1,0 +1,2 @@
+model,policy,completed,tasks_completed,restraint,wrong_tool_rate,wrong_calls,outside_allowlist,flagged,tokens,usd,median_s
+ollama:gemma4:26b-a4b,native,18/20,12/14,6/6,0.000,0/16,0,1,76453,0.0,4.2

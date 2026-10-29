@@ -197,7 +197,7 @@ details[open] > summary::before { transform: rotate(45deg); }
 .who { font: 600 clamp(26px, 6.4vw, 34px)/1.15 var(--serif); letter-spacing: -.01em; }
 .who-meta { display: flex; flex-wrap: wrap; gap: 2px 16px; color: var(--ink-2); margin-top: 4px; }
 .tabs-wrap { position: sticky; top: var(--bar-h, 56px); z-index: 5; background: var(--paper); padding: 6px 0 8px; border-bottom: 1px solid var(--line); margin: 0 -16px; padding-left: 16px; padding-right: 16px; }
-.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; background: var(--sunk); border-radius: 12px; padding: 4px; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; background: var(--sunk); border-radius: 12px; padding: 4px; }
 .tab { min-height: 44px; border: 0; border-radius: 9px; background: transparent; font-weight: 650; font-size: 16px; color: var(--ink-2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 .tab[aria-selected="true"] { background: var(--raised); color: var(--ink); box-shadow: inset 0 -3px 0 var(--moss), var(--shadow); }
 .tab-count { min-width: 24px; height: 22px; padding: 0 7px; border-radius: 999px; background: var(--moss); color: var(--moss-ink); font-size: 13px; line-height: 22px; }
@@ -591,3 +591,39 @@ body.on-help .banner { display: none; }
 .keep-bar .keep-count { font-weight: 600; margin: 0; }
 .keep-bar .hint { margin: 2px 0 0; }
 .keep-bar .btn { flex: 0 0 auto; }
+
+/* ---------- Ask Scout (S10) ---------- */
+.scout { display: grid; gap: 16px; padding-top: 12px; }
+.scout-intro .lede { margin: 0 0 4px; }
+.scout-intro .hint { margin: 0; }
+.scout-mode { border: 1px solid var(--line); border-radius: var(--r-card); padding: 8px 14px 12px; margin: 0; display: grid; gap: 8px; background: var(--leaf); }
+.scout-mode legend { padding: 0 4px; margin: 0; }
+.scout-mode-opt { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; min-height: 44px; }
+.scout-mode-opt input { margin-top: 4px; width: 18px; height: 18px; accent-color: var(--moss); }
+.scout-mode-opt > span { display: grid; }
+.scout-log { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
+.scout-x { display: grid; gap: 10px; }
+.scout-q { justify-self: end; max-width: 85%; margin: 0; padding: 8px 14px; border-radius: 14px 14px 4px 14px; background: var(--moss-soft); overflow-wrap: anywhere; }
+.scout-cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.scout-card { background: var(--leaf); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; display: grid; gap: 6px; }
+.scout-card.s-proposed { border-left-color: var(--ember-fill); background: var(--ember-soft); }
+.scout-card.s-done { border-left-color: var(--moss); }
+.scout-card.s-refused, .scout-card.s-error { border-left-color: var(--brick); }
+.scout-card .chips { margin: 0; }
+.scout-card .hint { margin: 0; }
+.scout-card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.scout-tool { font-weight: 650; }
+.scout-tool-name { font-size: 13px; color: var(--ink-3); }
+.scout-status { margin-left: auto; font-size: 13px; color: var(--ink-2); }
+.scout-records { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.scout-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.scout-answer { padding: 12px 14px; border-left: 3px dashed var(--model); background: var(--model-soft); border-radius: 0 10px 10px 0; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
+.scout-wait { display: flex; gap: 10px; align-items: center; color: var(--ink-2); margin: 0; }
+.scout-ask { display: grid; gap: 6px; }
+.scout-ask .mini { margin: 0; }
+.scout-ask-row { display: flex; gap: 8px; }
+.scout-ask-row input { flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; font: inherit; color: var(--ink); background: var(--leaf); border: 1px solid var(--line); border-radius: var(--r-ctl); }
+.scout-ask .chips { margin: 4px 0 0; }
+.scout-ask .chip { cursor: pointer; font: inherit; font-size: 14px; }
+.scout-ask .chip:hover { border-color: var(--moss); }
+.scout-meta { margin: 0; }
