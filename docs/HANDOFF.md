@@ -3,37 +3,35 @@
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
 ## Last session
-- Session: S5 — Provider layer, skills 1 and 2, validator, `decide`
+- Session: S6 — API
 - Status (done / continued): done
-- Last commit: ce34844 (task work); the ritual commit follows it on `main`
+- Last commit: b3ccdf6 (task work); the ritual commit follows it on `main`
 
 ## What exists now (one line per subsystem)
-- Pipeline (S1 to S4): sources, profile and threads, embeddings, LanceDB, retrieval, eligibility, rerank, `perch brief --route A`.
-- Provider layer `perch/llm/`: `Provider` interface (chat, tools, schema, logprobs, prompt caching) in `base.py`; adapters `ollama.py`, `openai_compat.py`, `anthropic_provider.py` (official SDK, extra `anthropic`), `fake.py`. Spec strings like `ollama:qwen3.8:27b`; role config via `PERCH_LLM_<ROLE>` / `PERCH_LLM_DEFAULT`.
-- Audit log `perch/llm/audit.py`: every call to `data/logs/model_calls.jsonl` (prompt hash only, model served, tokens, cost, latency) plus validation events per layer.
-- `decide` `perch/llm/decide.py`: Choice, YesNo, Score; `LogprobDecider` (single label token, reads top logprobs); schema answer with confidence None where no logprobs.
-- Validator layer 1 `perch/validate.py`: cited ids, dates, numbers; `generate_validated` regenerates once, then flags; unparseable output counts as a rejection.
-- Validator layer 2 `perch/grounding.py`: MiniCheck-RoBERTa-Large on CPU (transformers, model-card scores reproduced).
-- Skills `perch/skills/`: `summary.py` (3 to 6 topics + two sentences), `fit.py` (opportunity sentence, 1 to 3 per-paper findings joined by code, link sentence shown as an inference; profile is the cacheable system prefix; parallel).
-- CLI: `perch brief <id> --explain [--llm SPEC] [--grounder minicheck|fake|none]` prints rejection rates, tokens, cost.
-- Tests: 105 green, all with fake providers; rule-6 test blocks vendor SDK imports outside `perch/llm/`.
+- Pipeline: sources, profile and threads, embeddings, LanceDB, retrieval, eligibility, rerank (S1 to S4); skills 1 and 2, validator layers 1 and 2, `decide`, audit log (S5).
+- API `perch/api.py` (run `perch serve`, port 8100): `GET /health`, `GET /authors/resolve?q=`, `POST /briefs`, `GET /briefs/{id}`, `POST /briefs/{id}/leads/{lead_id}/keep|dismiss`, `GET /briefs/{id}/export.json`, `GET /records/{id}` (full or short ids, opportunity numbers). CORS open. Every response carries the Grants.gov notice where its data appears.
+- Service `perch/service.py`: seven saved stages (researcher, works, awards, profile, route_a, summary, explanations); fetch stages skip when data exists; explanations saved one by one; failure recorded on the stage and brief.
+- Jobs `perch/jobs.py`: `JobRunner` interface; `InProcessRunner` (one worker); `InlineRunner` for tests.
+- Schemas: Brief has stages, options, threads, topics, summary, timings; Lead has rerank score, explanation, inference, layer 2 flags, keep or dismiss status.
+- Hosted tier: Anthropic adapter verified; spend cap $100 enforced in `perch/llm/budget.py`; spend $0.08.
+- Decision servers: Clef-flash GPU 1 :8097 and Clef GPU 2 :8098 as systemd user units (`make decide-up`, `make decide-status`); both answer `/v1/systemone`.
+- Tests: 112 green, all offline (fake models, fixture-backed clients).
 
-## Live results (S5)
-- 3 PIs on `qwen3.8:27b` (GPU 0, Ollama): layer 1 rejected 0 of 33; layer 2 flagged 1 of 30, a false flag on a title-supported sentence (score 0.14).
-- About 20k input and 5k output tokens per brief; 70 to 79 s for 10 explanations; $0.
+## How to run the API with real models
+- `CUDA_VISIBLE_DEVICES=3 uv run --extra ml perch serve --llm ollama:qwen3.8:27b` from the repo root (it reads `.env` and relative data paths from there).
+- Live result: PI-2 brief with explanations in about 95 s; PI-5 (A5034175589) fetched from scratch in under a minute without explanations.
 
 ## What is half-done (exact file, exact next step)
-- Anthropic adapter verified live after S5 (claude-sonnet-5-5, PI-3, 3 leads): schemas go through the SDK's `transform_schema` (the API rejects minimum/maximum and minItems > 1); the first lead runs alone so the rest read the cached profile prefix (about $0.0066 per lead). Spend $0.08 of the $100 cap (`perch/llm/budget.py`).
-- Clef servers running (Q3 answered): Clef-flash GPU 1 :8097, Clef GPU 2 :8098, systemd user units via `make decide-up`; `make decide-status` checks them. Next: the Jev-compatible `decide` adapter for `/v1/systemone` (S8).
+- Nothing in S6.
+- Not built yet: `POST /briefs/{id}/handoff` (S12); Route B leads (S11); rate limit 10 briefs per hour (S9).
 
 ## Decisions made this session (all in docs/DECISIONS.md)
-- Fit explanation is three parts so layer 2 checks facts, not judgments.
-- MiniCheck called directly through transformers, not the unpinned `minicheck` package.
-- Anthropic: official SDK only inside `perch/llm/`; refusal fallback on by default; no logprobs, so `decide` gives no confidence there.
+- Briefs run one at a time in-process; fetch stages skip when data exists.
+- PI-5 alias added in `data/overrides/pi_aliases.csv`.
 
 ## Open questions (mirror of bridge/QUESTIONS.md, numbered)
-- Q1, Q2, Q3, Q4, Q5 answered after S5; none open.
+- None open.
 
 ## Next session
-- Session to start: S6 — API (FastAPI, async jobs, stage reporting)
+- Session to start: S7 — Web app, first three screens (Find, Profile, Routes), evidence panel, Grants.gov notice
 - First command to run: `git pull && make hooks && make test`
