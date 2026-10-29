@@ -311,10 +311,11 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (54)</h2>
+<h2>Decisions (55)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S8</td><td>UI accepted as it stands (Q6); Scout's tap reactions are random among eight, never the same twice in a row</td><td>Dakshitha's review</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>"Validator pass rate" counts a lead only when it passes both layers (explained, no unsupported statement)</td><td>Layer 1 alone hid qwen3:8b's 20% unsupported rate</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>Models per profile in <code>perch/profiles.py</code>: dev and deploy-2gpu chat gemma4:26b-a4b (runner-up qwen3.8:27b), grounder Clef (runner-up Clef-flash); deploy-1gpu chat qwen3:14b (runner-up qwen3:8b), grounder Clef-flash (runner-up MiniCheck); a decision server that is down falls back to MiniCheck</td><td>S8 bench: Gemma ties the 27B on both validator layers (28 of 30) at about twice the speed; no chat model passed every one-card gate, qwen3:14b fits with a 22.7 GB peak and misses the pass-rate gate by 2 leads of 30; Clef had the best grounder AUC (0.998 on 40 pairs)</td><td>Perch-dev (Dakshitha asked for the best performers)</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>Private mode is built in full (back end and front end) in S13 but not demoed; local models per role are chosen from the S8 benchmarks</td><td>Dakshitha's direction</td><td>Dakshitha</td></tr>

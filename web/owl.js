@@ -61,17 +61,24 @@ export function hop(el) {
   setTimeout(() => el.classList.remove("hop"), 700);
 }
 
-// Tapping Scout: a different small reaction each time, a heart after a run of taps.
-// Pure play; it never changes app state and says nothing about the brief.
-const POKES = ["wink", "spin", "flap", "hoot"];
-let pokeN = 0, lastPoke = 0, streak = 0;
+// Tapping Scout: a random small reaction each time (never the same twice in a row),
+// a heart after a run of taps. Pure play; it never changes app state and says
+// nothing about the brief.
+export const POKES = ["wink", "spin", "flap", "hoot", "tilt", "shuffle", "dart", "blink"];
+let lastKind = null, lastPoke = 0, streak = 0;
+
+export function nextPoke(last, rand = Math.random) {
+  const pool = POKES.filter((k) => k !== last);
+  return pool[Math.floor(rand() * pool.length)];
+}
 
 export function poke(el) {
   if (!el) return;
   const now = Date.now();
   streak = now - lastPoke < 900 ? streak + 1 : 1;
   lastPoke = now;
-  const kind = streak >= 5 ? "love" : POKES[pokeN++ % POKES.length];
+  const kind = streak >= 5 ? "love" : nextPoke(lastKind);
+  lastKind = kind;
   if (kind === "love") streak = 0;
   for (const k of [...POKES, "love"]) el.classList.remove(`poke-${k}`);
   void el.offsetWidth;

@@ -37,4 +37,4 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - Private mode: built in S13 (back end and front end), allowed on the public URL when every model is self-hosted; S13 split, later sessions renumbered (S16 is QA, freeze, package).
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- Q6: review the web app in the tracker's UI tab (not blocking).
+- None. (Q6 answered: UI accepted; Scout has eight random tap reactions.)

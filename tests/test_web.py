@@ -89,3 +89,26 @@ def test_award_rows_open_their_record_and_cors_is_off_by_default(tmp_path):
         assert c.get(f"/records/{a['record_id']}").json()["kind"] == "award"
     r = c.get("/health", headers={"Origin": "https://elsewhere.example"})
     assert "access-control-allow-origin" not in r.headers
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
+def test_scout_tap_reactions_are_random_and_never_repeat():
+    script = """
+import { POKES, nextPoke } from "MODULE";
+let last = null, repeats = 0;
+const seen = new Set();
+for (let i = 0; i < 400; i++) {
+  const k = nextPoke(last);
+  if (k === last) repeats++;
+  seen.add(k);
+  last = k;
+}
+console.log(JSON.stringify({ repeats, seen: seen.size, total: POKES.length,
+  low: nextPoke("wink", () => 0), high: nextPoke("wink", () => 0.999) }));
+""".replace("MODULE", (WEB_DIR / "owl.js").as_uri())
+    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
+                       text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["repeats"] == 0 and out["seen"] == out["total"] == 8
+    assert out["low"] == "spin" and out["high"] == "blink"
