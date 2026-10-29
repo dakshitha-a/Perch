@@ -17,16 +17,17 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S10 | Scout agent | todo | | | | |
 | S11 | Route B | todo | | | | |
 | S12 | Compare, hand-off, export | todo | | | | |
-| S13 | MCP server, private context | todo | | | | |
-| S14 | Monitoring (optional) | todo | | | | |
-| S15 | QA, freeze, package | todo | | | | |
+| S13 | Private mode | todo | | | | |
+| S14 | MCP server | todo | | | | |
+| S15 | Monitoring (optional) | todo | | | | |
+| S16 | QA, freeze, package | todo | | | | |
 
 ## Milestone readiness
 
 | Milestone | Date | Needs | Ready? |
 |---|---|---|---|
 | Checkup 2 | Tue 3 Nov | S0–S7 | |
-| Code freeze | Thu 5 Nov 12:00 | S15 | |
+| Code freeze | Thu 5 Nov 12:00 | S16 | |
 | Submission | Fri 6 Nov 12:00 | ZIP + links | |
 
 ## Key numbers (keep current)

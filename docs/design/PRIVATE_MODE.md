@@ -1,20 +1,22 @@
 # Private mode — design
 
 Asked for by Dakshitha on 2026-10-29 (S8). Extends SPEC §4. Built in S13, with
-pieces in S9, S10, S12, S14 and QA (see PLAN.md). Synthetic test persona:
+pieces in S9, S10, S12, S14 (MCP) and S16 (QA) (see PLAN.md). Synthetic test persona:
 `data/synthetic/persona-1/`.
 
 ## What it is
 
 - **Purpose:** a researcher can add sensitive material and get routes tailored to it. Examples are a current CV, an ongoing research summary, an unfinished grant proposal or an unpublished manuscript.
-- **Promise, in the UI:** "Private mode uses only models on this machine. What you add is held in memory for this session and is never saved, logged or sent."
 - **Measured, not asserted:** the promise counts as kept only when the canary test below passes (standing rule 9).
 
-## Who can turn it on
+## Where it runs (trust boundary: the Perch server)
 
-- **Local only:** private mode works only when the request comes from the same machine (loopback), or when `PERCH_PRIVATE_MODE=1` is set on a local deployment. The public demo URL refuses it (S9).
-- **Local models only:** the provider layer refuses any non-loopback endpoint while a private session is open. This covers the Anthropic adapter, OpenAI-compatible adapters on remote hosts, and hosted Jev. The refusal is an error, not a fallback.
-- **No downloads mid-session:** model hubs run offline (`HF_HUB_OFFLINE=1`), so no model fetch can carry a request.
+- **Self-hosted models:** private mode is served wherever every model runs on the deployer's own hardware. That can be the lab node, a laptop, or a university server. A public URL is allowed (Dakshitha, Q12, 2026-10-29).
+- **Self-hosted endpoints only:** while a private session is open, the provider layer refuses any model endpoint that is not on the deployment's own allowlist (`PERCH_PRIVATE_ENDPOINTS`, default loopback). That covers the Anthropic adapter, remote OpenAI-compatible hosts and hosted Jev. The refusal is an error, not a fallback.
+- **The secure connection:** many quick tunnels decrypt traffic at the provider's edge, which would expose private text to the tunnel provider. Verify this for the chosen tunnel in S9. On a public URL, private mode requires `PERCH_TLS_AT=server`, meaning the connection is decrypted on the Perch server. If the deployer sets `PERCH_TLS_AT=tunnel:<provider>`, the privacy statement names that provider.
+- **Many users:** each private session is isolated. It has a random session token, memory and size caps, a 30-minute idle timeout, and a rate limit of its own.
+- **The promise, in the UI:** "Private mode uses only models running on the Perch server, run by <operator>. What you add is held in memory for this session and is never saved, logged or sent elsewhere." The operator could still read server memory in principle, so the page names who runs the server.
+- **No downloads mid-session:** model hubs run offline (`HF_HUB_OFFLINE=1`).
 
 ## Inputs
 
@@ -68,13 +70,14 @@ pieces in S9, S10, S12, S14 and QA (see PLAN.md). Synthetic test persona:
 ## Tests that define done
 
 - **Canary test:** each synthetic file holds a unique token. After a full private brief, export and session end, no token appears in any file under `data/`, in any log, in `/tmp`, in browser storage or in an outbound request. Outbound requests are captured through a mock transport plus a proxy log.
-- **Refusal test:** opening a private session with a hosted or remote provider raises an error.
+- **Refusal test:** opening a private session with a hosted provider, or an endpoint off the allowlist, raises an error. A public URL without `PERCH_TLS_AT` refuses private mode.
+- **Isolation test:** two concurrent private sessions cannot read each other's documents or results.
 - **Masking test:** identifiers built at test time are masked consistently. Unmasking restores them.
-- **Mechanism, measured (S13 or QA):** NIH RePORTER carries each funded project's abstract. Using it as a stand-in for the "unfinished proposal" on the back-test rows shows whether private context raises hit rate. Report it as an upper bound, because the funded abstract is closer to the award than a real draft. The abstract field must be verified live first (rule 2).
+- **Mechanism, measured (S13, if time):** NIH RePORTER carries each funded project's abstract. Using it as a stand-in for the "unfinished proposal" on the back-test rows shows whether private context raises hit rate. Report it as an upper bound, because the funded abstract is closer to the award than a real draft. The abstract field must be verified live first (rule 2).
 
 ## Floor if time runs short (cut order)
 
 - **Paste-only input:** no upload parsing.
 - **Core mechanics:** private threads and session records.
-- **Safety:** the local-only gate, the no-logs paths and the canary test.
+- **Safety:** the self-hosted-endpoint gate, session isolation, the no-logs paths and the canary test.
 - **Dropped:** CV-based eligibility unlock, obfuscated export, MCP private tools.

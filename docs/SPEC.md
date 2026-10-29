@@ -53,7 +53,7 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 
 **Private mode** (expanded 2026-10-29 at Dakshitha's request; full design in `docs/design/PRIVATE_MODE.md`). A researcher adds a current CV, a research summary, an unfinished proposal or unpublished work, and the routes are tailored to it.
 
-- Local only: available from the same machine, never on the public URL; every model is local and the provider layer refuses hosted or remote endpoints while a private session is open.
+- Self-hosted only: served wherever every model runs on the deployer's own hardware, a public URL included (Q12); the provider layer refuses endpoints off the deployment's allowlist; on a public URL the connection must be decrypted on the Perch server, or the tunnel provider is named; sessions are isolated.
 - No logs: nothing from the session is written to the store, audit log, caches, timings or browser storage; the inventory of write paths and what private mode does with each is in the design doc.
 - Tailoring: private documents become private threads with a larger share of the weight (default proposed, Q13); a deterministic CV parse can unlock career-stage-restricted calls and raise prior sponsors' programmes; a private-only brief needs no public profile.
 - Citations: private documents are session-only records the validator accepts in the session; numbers and dates still come from a cited record.

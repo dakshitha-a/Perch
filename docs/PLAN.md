@@ -11,9 +11,9 @@ This plan is organised by **session**, not by day. A session is a goal set sized
 | Sat 31 Oct | Checkup 1 (one page; Dakshitha writes it) | nothing from the code; S1–S2 helpful for a real example |
 | Tue 3 Nov | Checkup 2: prototype draft, screenshots, tests run, tools used | S0–S7 |
 | Thu 5 Nov 12:00 | Code freeze | everything kept in the cut order |
-| Fri 6 Nov 12:00 | Submission ZIP + links; 3:00 pm demo | S15 |
+| Fri 6 Nov 12:00 | Submission ZIP + links; 3:00 pm demo | S16 |
 
-**Cut order if time runs short:** S14 monitoring → private mode narrows to its floor (paste-only input, private threads, session records, local-only gate, no-logs paths, canary test; drops upload parsing, CV eligibility unlock, obfuscated export, MCP private tools) → the Ollama demo moment inside S13 (keep the MCP server) → Route B (S11) narrows to one signal. Never cut: the pipeline (S1–S4), the validator (S5), the web demo (S6–S7), the back-test (S8), Scout's approve mode (S10).
+**Cut order if time runs short:** S15 monitoring → private mode (S13) narrows to its floor (paste-only input, private threads, session records, self-hosted-endpoint gate, session isolation, no-logs paths, canary test; drops upload parsing, CV eligibility unlock, obfuscated export, MCP private tools) → the Ollama demo moment inside S14 (keep the MCP server) → Route B (S11) narrows to one signal. Never cut: the pipeline (S1–S4), the validator (S5), the web demo (S6–S7), the back-test (S8), Scout's approve mode (S10).
 
 **Context budget guidance:** a session should finish with room to spare. If the context is past roughly two-thirds and the definition of done is not close, stop at a clean commit, write `docs/HANDOFF.md`, and mark the session "continued" in the tracker rather than pushing through.
 
@@ -133,7 +133,7 @@ Goal: a public URL that survives Demo Day.
 1. Docker Compose (`web`, `api`, `worker`, `db`), `make demo` one command. Deploy with the GPU profile chosen in S8; `make demo` selects it through `PERCH_PROFILE` (deploy-1gpu, deploy-2gpu or dev). Add `make gpus`: nvidia-smi memory per service.
 2. Outbound tunnel from the lab node (check network policy first; if blocked, document the laptop + hotspot path as primary).
 3. Anonymous rate limit 10 briefs/hour; demo personas precomputed and cached; health endpoint.
-4. Private-mode groundwork (`docs/design/PRIVATE_MODE.md`): `PERCH_PRIVATE_MODE` and a loopback check so the public URL refuses private sessions; uvicorn at warning level; error handler that never echoes request bodies; core dumps off in the server process.
+4. Private-mode groundwork (`docs/design/PRIVATE_MODE.md`): check whether the chosen tunnel decrypts traffic at its edge; `PERCH_PRIVATE_MODE`, `PERCH_PRIVATE_ENDPOINTS` and `PERCH_TLS_AT` settings; uvicorn at warning level; error handler that never echoes request bodies; core dumps off in the server process.
 
 Done when: the URL serves a cached brief from a phone; fallback path documented in README.
 
@@ -170,21 +170,28 @@ Goal: the decision and the hand-off.
 
 Done when: Find → Routes → Compare → Hand off works on the public URL.
 
-## S13 — Private mode and MCP server
+## S13 — Private mode
 
-Goal: private, local-only tailoring that leaves no trace; any platform, including local. Proposed split into S13 (private mode) and S14 (MCP server), with later sessions renumbered (Q11).
+Goal: private tailoring on self-hosted models that leaves no trace, on the public URL too.
 
 1. Verify first: whether the Ollama and llama.cpp servers log prompts by default, and NIH's early-stage investigator definition from the NIH page (both UNVERIFIED in the design).
-2. Private session in memory: inputs by paste or upload (parsed from bytes; text, Markdown, DOCX, PDF), idle timeout, "End private session"; local-provider gate that refuses hosted or remote endpoints; every write path in the design's inventory switched off.
-3. Tailoring: private threads with the private weight (Q13); deterministic CV parse (degree year, rank, appointments, prior sponsors) for the career-stage unlock and sponsor history; private-only brief with no OpenAlex id.
-4. Session records (`source: private`) cited in explanations and accepted by the validator in session only; lock label in the UI; Help page section.
-5. Tests: canary test over files, logs, `/tmp`, browser storage and outbound requests; refusal test; masking test. Persona: `data/synthetic/persona-1/`.
-6. MCP server: `perch/mcp_server.py` on the official Python SDK (verify version): same allowlisted tools, same validator and budgets; private tools only over stdio on the local machine. Test from Claude Code and from a local Ollama agent on the laptop; write the exact commands into README.
-7. Mechanism measured (if time): RePORTER project abstract as stand-in for the unfinished proposal on the back-test rows (verify the field live), reported as an upper bound beside the public-only numbers.
+2. Private session in memory: random session token, isolation between sessions, memory and size caps, idle timeout, "End private session"; inputs by paste or upload (parsed from bytes; text, Markdown, DOCX, PDF); self-hosted-endpoint gate; `PERCH_TLS_AT` rule on public URLs; every write path in the design's inventory switched off.
+3. Tailoring: private threads at 0.6 of the thread weight (Q13 default); deterministic CV parse (degree year, rank, appointments, prior sponsors) for the career-stage unlock and sponsor history; private-only brief with no OpenAlex id.
+4. Session records (`source: private`) cited in explanations and accepted by the validator in session only; lock label and the operator-named privacy statement in the UI; Help page section.
+5. Tests: canary test over files, logs, `/tmp`, browser storage and outbound requests; refusal test; isolation test; masking test. Persona: `data/synthetic/persona-1/`.
+6. Mechanism measured (if time): RePORTER project abstract as stand-in for the unfinished proposal on the back-test rows (verify the field live), reported as an upper bound beside the public-only numbers.
 
-Done when: the canary test passes after a full private brief with persona-1 on a local model; a private-only brief returns cited routes; an MCP client gets a cited brief.
+Done when: the canary and isolation tests pass after full private briefs with persona-1 on a local model; a private-only brief returns cited routes.
 
-## S14 — Monitoring (optional; first to cut)
+## S14 — MCP server
+
+Goal: any platform, including local.
+
+1. `perch/mcp_server.py` on the official Python SDK (verify version): same allowlisted tools, same validator and budgets. Private tools only when the MCP client and every model are self-hosted (stdio on the server, or an authenticated local transport). Test from Claude Code and from a local Ollama agent on the laptop; write the exact commands into README.
+
+Done when: an MCP client gets a cited brief.
+
+## S15 — Monitoring (optional; first to cut)
 
 Goal: Perch tells you before you need it.
 
@@ -193,7 +200,7 @@ Goal: Perch tells you before you need it.
 
 Done when: the job runs on the demo personas and produces a draft.
 
-## S15 — QA, freeze, package
+## S16 — QA, freeze, package
 
 Goal: ship.
 
@@ -219,3 +226,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-28 | S7, S10–S14 | Help page added in S7 (`web/help.js`); every later session that ships UI adds its feature to the Help page, with claims checked against the code | Keep the in-app tutorial current as the app grows | Dakshitha |
 | 2026-10-29 | S8 | Back-test PI set built from NIH RePORTER (Q7) instead of a teammate's list; task 6 Keep bar added (Q10) | Dakshitha's answers at S8 start | Dakshitha |
 | 2026-10-29 | S9, S10, S12, S13, S15 | Private mode added (design in `docs/design/PRIVATE_MODE.md`): local-only gate and logging groundwork in S9; Scout rules in S10; egress filter in S12; S13 becomes "Private mode and MCP server" (split proposed, Q11); privacy audit in S15; floor added to the cut order | Dakshitha asked for a high-privacy mode that takes a CV, unpublished work and draft proposals, runs only on local models, leaves no logs and masks anything that leaves | Dakshitha |
+| 2026-10-29 | S13 to S16 | S13 split: S13 Private mode, S14 MCP server, S15 Monitoring, S16 QA, freeze, package (Q11). Private mode allowed on the public URL when every model is self-hosted, with session isolation and a server-side TLS rule (Q12 revised) | Dakshitha: split S13; a university deployment hosts its own models, so public hosting does not by itself break the privacy promise | Dakshitha |

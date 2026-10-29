@@ -6,17 +6,17 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 6. **Review the web app (raised S7, 2026-10-28; not blocking; still open).** The UI is in the tracker's UI tab: a saved brief played back on a phone or laptop frame. Product choices you may want to change: the owl is named Scout, the same as the S10 agent layer; the palette is evergreen with an amber accent, not Temple cherry; a finished brief opens on Routes, a new one on Profile; leads sort by best match by default; fit shows as a band plus the model's 0 to 100 number. Reply with any changes; S8 will not touch the UI unless you ask.
 
-11. **Split S13 for private mode (raised S8, 2026-10-29).** Private mode is about one session of work on its own. Proposal: S13 becomes Private mode, the MCP server moves to S14, Monitoring to S15 and QA/freeze to S16. Today is 29 Oct and the demo is 6 Nov, with S9 to S15 already ahead; private mode has a floor in the cut order if time runs short. Default until you answer: S13 holds both, private mode first.
-
-12. **Private mode only from the same machine (raised S8, 2026-10-29).** Proposal: the public demo URL refuses private sessions; private mode runs only when the browser is on the machine running Perch (or `PERCH_PRIVATE_MODE=1` on a local deployment). The Demo Day private-mode moment is then shown on the laptop. Default: as proposed.
-
-13. **How strongly private documents steer results (raised S8, 2026-10-29).** Proposal: private threads take 0.6 of the thread weight, public threads 0.4, with a slider later. This is a starting default, not a measured value; the RePORTER-abstract back-test (S13 task 7) could tune it. Default: 0.6.
-
-14. **"Leaves no logs": zero writes or counts only? (raised S8, 2026-10-29).** Proposal: zero writes from a private session, not even token counts or timings, so nothing shows that a private session happened. The cost is no audit trail for private runs. Default: zero writes.
-
-15. **Two additions inside private mode (raised S8, 2026-10-29).** (a) A private-only brief with no public profile, for new faculty with nothing published. (b) A measured back-test variant using RePORTER project abstracts as stand-ins for unfinished proposals, reported as an upper bound. Both are in the S13 plan; say if either should go. Default: keep both, (b) only if time allows.
-
 ## Answered
+
+11. **Split S13 for private mode (raised S8, 2026-10-29).** Private mode is about one session of work on its own. Proposal: S13 becomes Private mode, the MCP server moves to S14, Monitoring to S15 and QA/freeze to S16. Today is 29 Oct and the demo is 6 Nov, with S9 to S15 already ahead; private mode has a floor in the cut order if time runs short. Default until you answer: S13 holds both, private mode first. **Answered 2026-10-29 by Dakshitha:** split. S13 Private mode, S14 MCP server, S15 Monitoring, S16 QA, freeze, package.
+
+12. **Private mode only from the same machine (raised S8, 2026-10-29).** Proposal: the public demo URL refuses private sessions; private mode runs only when the browser is on the machine running Perch (or `PERCH_PRIVATE_MODE=1` on a local deployment). The Demo Day private-mode moment is then shown on the laptop. Default: as proposed. **Answered 2026-10-29 by Dakshitha (revised):** serve private mode on the public URL too; a university deployment hosts its own models, so the boundary is the Perch server, not the user's machine. Conditions added to the design: every model endpoint self-hosted, session isolation, and the connection decrypted on the Perch server (or the tunnel provider named).
+
+13. **How strongly private documents steer results (raised S8, 2026-10-29).** Proposal: private threads take 0.6 of the thread weight, public threads 0.4, with a slider later. This is a starting default, not a measured value; the RePORTER-abstract back-test (S13 task 7) could tune it. Default: 0.6. **Answered 2026-10-29 by Dakshitha:** default, 0.6.
+
+14. **"Leaves no logs": zero writes or counts only? (raised S8, 2026-10-29).** Proposal: zero writes from a private session, not even token counts or timings, so nothing shows that a private session happened. The cost is no audit trail for private runs. Default: zero writes. **Answered 2026-10-29 by Dakshitha:** default, zero writes.
+
+15. **Two additions inside private mode (raised S8, 2026-10-29).** (a) A private-only brief with no public profile, for new faculty with nothing published. (b) A measured back-test variant using RePORTER project abstracts as stand-ins for unfinished proposals, reported as an upper bound. Both are in the S13 plan; say if either should go. Default: keep both, (b) only if time allows. **Answered 2026-10-29 by Dakshitha:** default, keep both; (b) only if time allows.
 
 7. **Back-test PI set (raised S8 start, 2026-10-29).** `data/backtest/pis.csv` did not exist. **Answered 2026-10-29 by Dakshitha:** build it from public NIH RePORTER records: Temple NIH awards from FY2015 on that name a funding opportunity; papers before the award start. Dakshitha reviews the list.
 

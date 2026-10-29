@@ -119,7 +119,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S8</code> <span class="badge s-todo">todo</span><span>8/16 sessions done</span></div>
+<div class="at-a-glance"><code>S8</code> <span class="badge s-in-progress">in progress</span><span>8/17 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
@@ -130,13 +130,26 @@ details .inner > * { min-width: 0; }
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
 <div id="s8"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S8 · Back-test and bench</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S8.md</code> when the session starts.</div>
+<div class="title-row"><h1>S8 · Back-test and bench</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-29 00:04 EDT</div></div>
+<p>Goal: the numbers for the results slide. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 6 tasks done"><div class="counts"><span><b>0/6</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>5</b>todo</span></div><div class="bar" role="img" aria-label="0 of 6 tasks done"><span class="s-in-progress" style="width:16.67%" title="in progress: 1"></span><span class="s-todo" style="width:83.33%" title="todo: 5"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Back-test set from RePORTER; <code>bench/backtest.py</code> with date cut-off and keyword baseline</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono">aa5746b</td><td>Set: 160 rows (69 targeted, 91 parent) from 345 candidate awards; 128 PIs matched, 33 ambiguous, 23 not found. Window 18 months. Corpus fetch of 11,218 NIH announcements running (about 3 h at 1 per second).</td></tr>
+<tr><td>2</td><td><code>make bench</code>: embeddings, retrieval and rerank matrix; skill-2 LLM rows</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>Cost per brief from the audit log</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td>Decision-model rows for validator layer 2 and rerank</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>5</td><td>Single-card validation of qwen3 14b, 8b and 30b against qwen3.8:27b</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>6</td><td>Keep bar in the web app; Help page</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>A results table with the keyword baseline exists in <code>bench/results/</code>.</li><li>Winners are written into config, with the runner-up one line away.</li><li><code>make test</code> is green.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="8 of 16 sessions done"><div class="counts"><span><b>8/16</b>sessions done</span><span class="s-done"><b>8</b>done</span><span class="s-todo"><b>8</b>todo</span></div><div class="bar" role="img" aria-label="8 of 16 sessions done"><span class="s-done" style="width:50.00%" title="done: 8"></span><span class="s-todo" style="width:50.00%" title="todo: 8"></span></div></section>
+<section class="panel summary" aria-label="8 of 17 sessions done"><div class="counts"><span><b>8/17</b>sessions done</span><span class="s-done"><b>8</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>8</b>todo</span></div><div class="bar" role="img" aria-label="8 of 17 sessions done"><span class="s-done" style="width:47.06%" title="done: 8"></span><span class="s-in-progress" style="width:5.88%" title="in progress: 1"></span><span class="s-todo" style="width:47.06%" title="todo: 8"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -148,21 +161,22 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s5">S5</a></td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-done">done</span></td><td>2026-10-28 21:04 EDT</td><td>2026-10-28 21:29 EDT</td><td class="mono">ce34844</td><td>105 tests green. <code>perch brief --explain</code> live for 3 PIs on qwen3.8:27b: layer 1 rejected 0 of 33, layer 2 flagged 1 of 30 (a false flag). 70 to 79 s per brief, $0. <code>decide</code> primitive with logprobs fallback. Anthropic adapter built on the SDK but not live-verified (Q5).</td></tr>
 <tr class="is-finished"><td><a href="#s6">S6</a></td><td>API</td><td><span class="badge s-done">done</span></td><td>2026-10-28 22:07 EDT</td><td>2026-10-28 22:13 EDT</td><td class="mono">b3ccdf6</td><td>112 tests green. FastAPI + in-process jobs; briefs end to end via curl for 2 PIs (one fetched from scratch); stages and partial results pollable; export with provenance.</td></tr>
 <tr class="is-finished"><td><a href="#s7">S7</a></td><td>Web app, first three screens</td><td><span class="badge s-done">done</span></td><td>2026-10-28 22:40 EDT</td><td>2026-10-28 23:14 EDT</td><td class="mono">5da4e7e</td><td>116 tests green. No-build web app in <code>web/</code> served by <code>perch serve</code> at <code>/</code>: Find, Profile, Routes, evidence panel, Scout the owl on the progress branch. Live brief in the browser in 90 s. Adversarial review: 32 findings fixed. Screenshots in <code>docs/screenshots/</code>; UI tab in the tracker.</td></tr>
-<tr class="is-current"><td>S8</td><td>Back-test and bench</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s8">S8</a></td><td>Back-test and bench</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 00:04 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S9</td><td>Deploy</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S10</td><td>Scout agent</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S11</td><td>Route B</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S12</td><td>Compare, hand-off, export</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S13</td><td>MCP server, private context</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S14</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S15</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S13</td><td>Private mode</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S14</td><td>MCP server</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S15</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S16</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Milestone</th><th>Date</th><th>Needs</th><th>Ready?</th></tr></thead>
 <tbody>
 <tr><td>Checkup 2</td><td>Tue 3 Nov</td><td>S0–S7</td><td></td></tr>
-<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S15</td><td></td></tr>
+<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S16</td><td></td></tr>
 <tr><td>Submission</td><td>Fri 6 Nov 12:00</td><td>ZIP + links</td><td></td></tr>
 </tbody></table></div>
 <h2>Key numbers (keep current)</h2>
@@ -295,10 +309,22 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (39)</h2>
+<h2>Decisions (51)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S8</td><td>Private threads 0.6 of the thread weight; zero writes from a private session; private-only brief and the abstract back-test kept (Q13 to Q15 defaults)</td><td>Dakshitha accepted the defaults</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Private mode may run on the public URL when every model is self-hosted; requires session isolation and the connection decrypted on the Perch server, or the tunnel provider named in the privacy statement (Q12)</td><td>A university deployment hosts its own models; the trust boundary is the Perch server, not the user's machine</td><td>Dakshitha (direction), Perch-dev (conditions)</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>S13 split into S13 Private mode and S14 MCP server; Monitoring becomes S15, QA, freeze and package S16 (Q11)</td><td>Private mode is a session of work on its own</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Synthetic persona-1 (fictional researcher, wearable gait sensing for early Parkinson's; topic from arXiv 2404.15335 and 2405.13082, no text copied) with one canary token per file</td><td>Standing rule 1; the canary test makes "no logs" measurable</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Private mode refuses hosted models outright rather than sending obfuscated text; masking applies only to exports and hand-off drafts, opt-in, with a warning that the research direction stays visible</td><td>Masking hides identifiers but not ideas; local-only is the only honest guarantee</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Private mode added to the plan (design in <code>docs/design/PRIVATE_MODE.md</code>; built mainly in S13 with pieces in S9, S10, S12, S15)</td><td>High-privacy mode for CVs, unpublished work and draft proposals on local models only</td><td>Dakshitha (feature), Perch-dev (design)</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>SPECTER2 benched as <code>specter2_base</code> without the proximity adapter</td><td>The <code>adapters</code> library pins transformers 4.57; sentence-transformers 6.2 needs transformers 5</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Back-test corpus lives in a separate bench store (<code>data/bench/</code>), never the demo store</td><td>11,000 closed announcements would swamp a live brief's retrieval</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Back-test set is 160 rows (69 targeted, 91 parent) rather than the spec's 10 PIs</td><td>Ten rows make hit rates move in steps of 10 points; OpenAlex cost is small</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>PIs are matched to OpenAlex among authors ever affiliated with Temple, and only when exactly one name-matching author is found; 33 ambiguous and 23 not-found PIs are left out</td><td>No guessing between people with the same name</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Back-test reported in two strata: targeted announcements (PAR, RFA, non-parent PA) and parent announcements (title contains "Parent"); one award per PI and stratum, earliest start</td><td>Parent R01s are generic; ranking them says little about fit and they dominate the raw set (248 of 345 under PA numbers)</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Back-test window: papers before the award start; the pool is NIH announcements that opened on or before the start and closed no earlier than 18 months before it. Date rules are off in the back-test; the window replaces them</td><td>39 of 69 targeted announcements closed before the award started, so "open at the start date" would drop the true answer. 18 months is the shortest window that keeps every targeted truth (longest gap 16.2 months); 6 parent truths fall outside and are counted</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>Keep bar added in S8; until S12 it downloads the kept leads with their records</td><td>Keep had no visible next step</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>Bench downloads approved: Qwen3-Embedding-4B, SPECTER2, BGE-M3, Gemma 4 26B-A4B; S8 API spend capped at $3</td><td>Needed for the config matrix in PLAN S8</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>Back-test PI set built from public NIH RePORTER records (Temple, FY2015 on, awards naming a funding opportunity), not a teammate's list</td><td>No list existed; RePORTER makes the set reproducible</td><td>Dakshitha</td></tr>
@@ -339,10 +365,12 @@ details .inner > * { min-width: 0; }
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (8)</h2>
+<h2>Plan change log (10)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S13 to S16</td><td>S13 split: S13 Private mode, S14 MCP server, S15 Monitoring, S16 QA, freeze, package (Q11). Private mode allowed on the public URL when every model is self-hosted, with session isolation and a server-side TLS rule (Q12 revised)</td><td>Dakshitha: split S13; a university deployment hosts its own models, so public hosting does not by itself break the privacy promise</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-29</td><td>S9, S10, S12, S13, S15</td><td>Private mode added (design in <code>docs/design/PRIVATE_MODE.md</code>): local-only gate and logging groundwork in S9; Scout rules in S10; egress filter in S12; S13 becomes "Private mode and MCP server" (split proposed, Q11); privacy audit in S15; floor added to the cut order</td><td>Dakshitha asked for a high-privacy mode that takes a CV, unpublished work and draft proposals, runs only on local models, leaves no logs and masks anything that leaves</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>Back-test PI set built from NIH RePORTER (Q7) instead of a teammate's list; task 6 Keep bar added (Q10)</td><td>Dakshitha's answers at S8 start</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S7, S10–S14</td><td>Help page added in S7 (<code>web/help.js</code>); every later session that ships UI adds its feature to the Help page, with claims checked against the code</td><td>Keep the in-app tutorial current as the app grows</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S7</td><td>S7 rewritten into six tasks: interaction audit and design doc first, a no-build web app instead of React + Vite, replay mode, an adversarial review with fixes, and a UI tab in the tracker artifact</td><td>The node has Node 12 and no npm; a no-build app keeps <code>make demo</code> and the ZIP one step. Audit and review asked for by Dakshitha</td><td>Dakshitha</td></tr>
