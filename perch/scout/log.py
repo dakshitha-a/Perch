@@ -66,6 +66,8 @@ def replay(log: ScoutLog, session: str, ctx_factory: Callable[[str, str], object
             except ToolError as err:
                 result = {"error": str(err)}
             row["match"] = digest(result) == e["result_hash"]
+        elif e["status"] == "repeated":
+            row["note"] = "a repeat, answered from the earlier call"
         else:
             row["note"] = "not run in the session"
         rows.append(row)

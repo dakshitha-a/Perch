@@ -19,7 +19,7 @@ const ARGS = {
   top: "How many", id: "Record", opportunity_id: "Opportunity", opportunity_ids: "Opportunities",
   name: "Name",
 };
-const STATUS = { proposed: "Waiting for you", done: "Done", skipped: "Skipped", refused: "Refused", error: "Failed" };
+const STATUS = { proposed: "Waiting for you", done: "Done", skipped: "Skipped", refused: "Refused", error: "Failed", repeated: "Repeat, not run again" };
 const EXAMPLES = ["Only R21 grants that close by 2027-03-01", "Small grants only: a ceiling of $200k or less",
   "Drop anything that mentions clinical trials", "Why does the top lead fit?"];
 

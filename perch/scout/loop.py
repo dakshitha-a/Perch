@@ -84,7 +84,7 @@ class Card:
     turn: int
     tool: str
     arguments: dict
-    status: Literal["proposed", "done", "skipped", "refused", "error"] = "proposed"
+    status: Literal["proposed", "done", "skipped", "refused", "error", "repeated"] = "proposed"
     detail: str = ""
     result: dict | None = None
     ms: float = 0.0
@@ -239,8 +239,11 @@ class Scout:
                 return self._stop(s, f"model output could not be used: {e}", failed=True)
             if r.tool_calls:
                 s.messages.append(Message("assistant", r.text, tool_calls=r.tool_calls))
-                s.cards += [Card(c.id or secrets.token_hex(4), s.turns, c.name, c.arguments)
-                            for c in r.tool_calls]
+                new = [Card(c.id or secrets.token_hex(4), s.turns, c.name, c.arguments)
+                       for c in r.tool_calls]
+                s.cards += new
+                for c in new:
+                    self._answer_repeat(s, c)
                 continue
             return self._finish(s, r.text)
 
@@ -276,6 +279,24 @@ class Scout:
         else:
             r.text = str(d.get("answer") or "")
         return r
+
+    def _answer_repeat(self, s: Session, c: Card) -> None:
+        """A call identical to one already run for this question is not run again: it gets
+        the earlier result back with a note, and is never put to the user for approval.
+        (In S10's first bench run, Sonnet repeated one search up to nine times.)"""
+        key = (c.tool, digest(_canonical(c.arguments)))
+        start = s.exchanges[-1]["cards_from"] if s.exchanges else 0
+        for e in s.cards[start:]:
+            if e is c:
+                break
+            if e.status in ("done", "error") and (e.tool, digest(_canonical(e.arguments))) == key:
+                c.status = "repeated"
+                c.detail = "same call as an earlier step; its result was reused"
+                c.result = {"repeat_of": e.id, "note": "This exact call already ran for this "
+                            "question. Its result is below. Do not call it again; answer from "
+                            "it or call a different tool.", "result": e.result}
+                self._log_tool(s, c)
+                return
 
     def _execute(self, s: Session, c: Card) -> None:
         t0 = time.perf_counter()
@@ -373,6 +394,10 @@ class Scout:
                             "cited": s.cited_ids, "turns": s.turns, "tokens": s.tokens,
                             "usd": round(s.usd, 5),
                             "answer_hash": digest(s.answer) if s.answer else None})
+
+
+def _canonical(args: dict) -> dict:
+    return {k: v for k, v in sorted(args.items()) if v is not None}
 
 
 def render(m: Message) -> str:

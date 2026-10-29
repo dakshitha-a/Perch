@@ -246,3 +246,27 @@ def test_bench_scoring_rules():
     rb = {"expect": ["get_org_signals"], "allowed": ["get_org_signals"]}
     assert score(rb, s)["completed"] is True
     assert s.cards[0].tool == "search_opportunities"  # scoring does not rename the card
+
+
+def test_a_repeated_call_is_answered_from_the_earlier_result(service, monkeypatch):
+    runs = []
+    real = TOOLS["get_record"]
+    monkeypatch.setitem(TOOLS, "get_record",
+                        (real[0], lambda c, **a: runs.append(a) or real[1](c, **a)))
+    answer = f"It closes 2026-11-17 [{OPP}]."
+    fake = FakeProvider([call("get_record", id=OPP), call("get_record", id=OPP), answer])
+    scout = Scout(fake, ctx(service), mode="run")
+    s = scout.start("When does it close?")
+    assert [c.status for c in s.cards] == ["done", "repeated"] and s.status == "done"
+    assert len(runs) == 1 and s.cards[1].result["repeat_of"] == s.cards[0].id
+    # a new question may run the same call again
+    fake.replies = [call("get_record", id=OPP), answer]
+    s = scout.ask(s, "And again?")
+    assert s.cards[-1].status == "done" and len(runs) == 2
+    # ask mode: the user approves the first call; the repeat is never put to them
+    fake.replies = [call("get_record", id=OPP), call("get_record", id=OPP), answer]
+    ask = Scout(fake, ctx(service), mode="ask")
+    s = ask.start("When does it close?")
+    assert s.status == "awaiting_approval"
+    s = ask.approve(s)
+    assert s.status == "done" and [c.status for c in s.cards] == ["done", "repeated"]
