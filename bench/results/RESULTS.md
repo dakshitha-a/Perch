@@ -1,6 +1,6 @@
 # Bench results
 
-Rendered 2026-10-29 13:38 UTC by `make bench`. Numbers are copied from the CSVs in this folder; nothing here is estimated.
+Rendered 2026-10-29 20:50 UTC by `make bench`. Numbers are copied from the CSVs in this folder; nothing here is estimated.
 
 ## Back-test (NIH, Temple, date cut-off)
 
@@ -114,6 +114,8 @@ An interval that contains 0 means the back-test cannot tell the config from the 
 | qwen3.8:27b | 5 | clef-flash | 1 | 1 | 10 | 0.9 | 96.7 | 96.7 | 26097 | 29353 | 29681 | not measured: no QA log yet | not measured: Scout is S10 |
 | qwen3.8:27b | 5 | clef-flash | 3 | 3 | 30 | 0.933 | 243.7 | 272.7 | 26097 | 29353 | 29975 | not measured: no QA log yet | not measured: Scout is S10 |
 
+
+<!-- Written by hand below this line; make bench keeps it. -->
 
 ## Scout agent (S10)
 

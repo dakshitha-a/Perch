@@ -1,6 +1,6 @@
 # Bench results, summary
 
-Rendered 2026-10-29 19:08 UTC by `make bench` from the CSVs in `bench/results/`. Full tables: `bench/results/RESULTS.md`.
+Rendered 2026-10-29 20:50 UTC by `make bench` from the CSVs in `bench/results/`. Full tables: `bench/results/RESULTS.md`.
 
 ## Back-test (NIH, Temple, date cut-off)
 

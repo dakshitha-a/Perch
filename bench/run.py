@@ -18,6 +18,7 @@ import argparse
 import csv
 from dataclasses import asdict
 from datetime import UTC, datetime
+from pathlib import Path
 
 from bench.backtest import RESULTS, Row, run, summarise
 
@@ -173,6 +174,17 @@ def render() -> str:
     return "\n".join(lines) + "\n"
 
 
+# RESULTS.md keeps everything from this line on: the Scout sections are written by hand.
+KEEP = "<!-- Written by hand below this line; make bench keeps it. -->"
+
+
+def write_report(path: Path = REPORT) -> None:
+    """render(), then the hand-written part of the old file, if it has the KEEP line."""
+    old = path.read_text(encoding="utf-8") if path.exists() else ""
+    kept = old[old.index(KEEP):] if KEEP in old else ""
+    path.write_text(render() + ("\n" + kept if kept else ""), encoding="utf-8")
+
+
 SUMMARY = RESULTS / "SUMMARY.md"
 
 
@@ -323,7 +335,7 @@ def main(argv: list[str] | None = None) -> None:
     a = ap.parse_args(argv)
     if not a.render_only:
         run_matrix(a.device)
-    REPORT.write_text(render(), encoding="utf-8")
+    write_report()
     SUMMARY.write_text(summary(), encoding="utf-8")
     print(f"wrote {REPORT} and {SUMMARY}")
 

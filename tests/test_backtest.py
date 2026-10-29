@@ -109,3 +109,18 @@ def test_profile_reranker_keys_build_cross_encoder_or_decision_server():
     from perch.rerank import DecisionReranker, make_reranker
 
     assert isinstance(make_reranker("systemone:clef-flash"), DecisionReranker)
+
+
+def test_render_keeps_the_hand_written_part_of_results(tmp_path, monkeypatch):
+    import bench.run as br
+
+    monkeypatch.setattr(br, "render", lambda: "# Bench results\n\nnew tables\n")
+    p = tmp_path / "RESULTS.md"
+    p.write_text(f"# Bench results\n\nold tables\n\n{br.KEEP}\n\n## Scout agent (S10)\n\nby hand\n")
+    br.write_report(p)
+    out = p.read_text()
+    assert "new tables" in out and "old tables" not in out
+    assert out.endswith(f"{br.KEEP}\n\n## Scout agent (S10)\n\nby hand\n")
+    p.write_text("no marker\n")
+    br.write_report(p)
+    assert p.read_text() == "# Bench results\n\nnew tables\n"
