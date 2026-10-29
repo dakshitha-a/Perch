@@ -45,6 +45,8 @@ def snapshot(root: Path) -> dict[str, tuple[int, int]]:
 def files_with(root: Path, since: float | None = None) -> list[str]:
     hits = []
     for p in root.rglob("*"):
+        if PERSONA in p.parents:  # the inputs themselves
+            continue
         try:
             if not p.is_file() or p.is_symlink() or p.stat().st_size > 200_000_000:
                 continue

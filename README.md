@@ -75,6 +75,24 @@ If the lab node or its network is down on Demo Day:
 2. **Or run Perch on the laptop:** `uv run perch serve --models fake` serves the full app with fake models. With a hotspot and an `ANTHROPIC_API_KEY` in `.env`, `PERCH_LLM_DEFAULT=anthropic:claude-sonnet-5-5 uv run --extra ml perch serve` runs real briefs with search on the laptop's CPU. This path is UNVERIFIED on a laptop.
 3. **Share it from the laptop:** a phone on the same hotspot opens `http://<laptop address>:8100` after `perch serve --host 0.0.0.0`.
 
+## Private mode
+
+Private mode tailors a brief to a CV, a draft proposal, a research direction or unpublished work. It runs only on self-hosted models, and what a user adds stays in memory for the session (design and limits: `docs/design/PRIVATE_MODE.md`). It is off by default. To turn it on, set these in `.env`:
+
+```
+PERCH_PRIVATE_MODE=1
+PERCH_PRIVATE_OPERATOR=<who runs this server, as users should read it>
+PERCH_TLS_AT=server          # needed on a public URL; or tunnel:<provider>
+PERCH_PRIVATE_ENDPOINTS=     # model hosts a session may call; default loopback
+```
+
+Every chat model must be an Ollama or OpenAI-compatible server on an allowed host, or a session will not open. Keep `OLLAMA_DEBUG` unset and do not pass `-v` to llama.cpp. To check that a session leaves no trace on the real store and models, run the live canary:
+
+```
+PERCH_PRIVATE_MODE=1 PERCH_TLS_AT=server PERCH_PRIVATE_OPERATOR="..." \
+  uv run python scripts/private_canary.py
+```
+
 ## Secrets
 
 API keys go in `.env`, which is gitignored. Copy `.env.example` to start. `make hooks` installs git hooks that refuse commits containing keys, tokens, local paths or emails.
