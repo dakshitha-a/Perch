@@ -11,7 +11,7 @@ Written before the build. The source is `docs/design/UX_AUDIT.md`; finding numbe
 | Tabs | Profile, Routes, Compare, Ask Scout | What Perch read, Your options, Compare |
 | Routes list | Order explained in one line under the title. Sort labelled "Perch's order". | Lead count says "options you may apply for". |
 | Cards | Grant cards unchanged in shape. Industry cards show the newest record per signal; the rest fold under "Show N more". | When a record states neither deadline nor amount, one line says so. "Why it may fit" starts folded, as on grant cards. The action is "Evidence", as on grant cards. |
-| Evidence panel | On a laptop wider than 1200 px, the list moves left so the panel sits beside it, not over it. | Same. |
+| Evidence panel | Unchanged. From 960 px up it already sits beside the list (the audit's S10 was wrong about this). | Same. |
 | Compare and hand-off | Only the two research offices are offered. | Unchanged; browser-only drafts to SDFA or SFS. |
 
 ## Vocabulary

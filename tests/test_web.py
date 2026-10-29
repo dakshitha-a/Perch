@@ -164,7 +164,7 @@ console.log(JSON.stringify({ calls, afterMove, kept, ended, refused, drafts: m.s
 def test_personal_fields_exist_only_inside_private_mode():
     """No personal-text field (CV, interests, achievements) is on a public screen."""
     app = (WEB_DIR / "app.js").read_text()
-    find = app[app.index("function renderFind()"):app.index("function audienceSwitch()")]
+    find = app[app.index("function renderFind()"):app.index("function pasted(")]
     fields = re.findall(r'h\("(?:textarea|input)", \{[^}]*\}', find)
     labels = re.findall(r'class: "field-label"[^)]*text: "([^"]+)"', find)
     assert fields and labels

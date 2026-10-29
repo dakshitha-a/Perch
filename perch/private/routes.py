@@ -122,7 +122,9 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     def private_info() -> dict:
         return {"enabled": on, "statement": settings.statement() if on else None,
                 "kinds": {k: v for k, v in KINDS.items() if k not in STUDENT_KINDS},
-                "student_kinds": {k: KINDS[k] for k in ("cv", *STUDENT_KINDS)},
+                # A student may have a résumé rather than a CV (S22, audit S2).
+                "student_kinds": {**{k: KINDS[k] for k in ("cv", *STUDENT_KINDS)},
+                                  "cv": "Your CV or résumé"},
                 "formats": list(FORMATS), "max_bytes": MAX_BYTES,
                 "max_chars": MAX_CHARS, "max_total_chars": MAX_TOTAL_CHARS,
                 "idle_minutes": IDLE_SECONDS // 60}

@@ -96,7 +96,8 @@ function route() {
     S.brief = null;
     api = publicApi;
     barOwl("idle");
-    renderStudentStart(main(), { api: privApi, mode, go, announce, info: privateInfo() || {} });
+    renderStudentStart(main(), { api: privApi, mode, go, announce, info: privateInfo() || {},
+      hasBrief: Boolean(S.brief && S.briefId === PRIVATE_ID && isStudent(S.brief)) });
     return;
   }
   if (parts[0] === "changes") {
@@ -157,7 +158,7 @@ function renderFind() {
     onpaste: (e) => pasted(e, "q", "cv") });
   const form = h("form", { class: "search", role: "search", onsubmit: (e) => {
     e.preventDefault(); search(); } },
-  h("label", { for: "q", class: "field-label", text: "Researcher" }),
+  h("label", { for: "q", class: "field-label", text: "Find a Temple researcher" }),
   h("div", { class: "search-row" }, input,
     h("button", { class: "btn primary", type: "submit", disabled: F.busy || Boolean(F.nudge),
       "aria-busy": F.busy ? "true" : null }, icon("search"),
@@ -221,13 +222,12 @@ function renderFind() {
       h("div", { class: "hero-text" },
         h("h1", { text: "See every route to fund your work." }),
         h("p", { class: "lede", text:
-          "Perch reads a researcher’s public papers and lists open funding that fits. Every claim links to the public record behind it." }),
-        h("p", { class: "hero-help" }, h("a", { href: "#/help" }, icon("help"), h("span", { text: "New here? See how Perch works" }))),
-        h("p", { class: "hero-help" }, h("a", { href: "#/changes" }, icon("search"), h("span", { text: "What changed this week" }))))),
-    audienceSwitch(),
-    form,
+          "Perch reads public records and lists funding that fits. Every claim links to the record behind it." }))),
+    doors(form),
     nudgeBox(),
     h("div", { class: "results" }, results),
+    h("p", { class: "hero-help" }, h("a", { href: "#/help" }, icon("help"), h("span", { text: "New here? See how Perch works" })),
+      h("a", { href: "#/changes" }, icon("search"), h("span", { text: "What changed this week" }))),
     recent.length ? h("section", { class: "recent" },
       h("div", { class: "recent-head" },
         h("h2", { class: "section-title", text: "Recent briefs on this device" }),
@@ -238,20 +238,25 @@ function renderFind() {
   fill(main(), page);
 }
 
-// Researcher or Student. Student starts a private session first (S18): a student's input
-// is always personal, so there is no public student path.
-function audienceSwitch() {
+// Two equal doors (S22, audit S1): a researcher searches public records; a student
+// starts a private session first (S18), because a student's input is always personal.
+function doors(form) {
   const ok = mode.state.available;
-  return h("div", { class: "audience", role: "group", "aria-label": "I am a" },
-    h("button", { class: "route-btn", type: "button", "aria-pressed": "true", text: "Researcher" }),
-    h("button", { class: "route-btn", type: "button", "aria-pressed": "false", disabled: !ok,
-      "aria-describedby": "aud-hint",
-      onclick: async () => {
-        try { await mode.enable(); go("#/student"); } catch (e) { S.find.error = e.message; renderFind(); }
-      } }, icon("lock"), h("span", { text: " Student" })),
-    h("p", { id: "aud-hint", class: "hint", text: ok
-      ? "Student opens a private session first: fellowships and sample scholarships checked against your CV."
-      : `Student mode needs private mode. ${mode.state.reason || "It is not available on this server."}` }));
+  return h("div", { class: "doors" },
+    h("section", { class: "card door", "aria-labelledby": "door-r" },
+      h("h2", { id: "door-r", class: "door-title", text: "I’m a researcher" }),
+      h("p", { class: "hint", text: "Grants and industry leads from your public papers." }),
+      form),
+    h("section", { class: "card door", "aria-labelledby": "door-s" },
+      h("h2", { id: "door-s", class: "door-title" }, icon("lock"), h("span", { text: " I’m a student" })),
+      h("p", { class: "hint", id: "aud-hint", text: ok
+        ? "Paste your CV or résumé in a private session. Fellowships and sample scholarships are checked against it by rule."
+        : `Student mode needs private mode. ${mode.state.reason || "It is not available on this server."}` }),
+      h("button", { class: "btn primary", type: "button", disabled: !ok, "aria-describedby": "aud-hint",
+        "data-key": "student",
+        onclick: async () => {
+          try { await mode.enable(); go("#/student"); } catch (e) { S.find.error = e.message; renderFind(); }
+        } }, icon("lock"), h("span", { text: "Start as a student" }))));
 }
 
 // The paste nudge: a check in this browser only. Long or CV-like text pasted into a
@@ -485,15 +490,18 @@ function renderBrief() {
   if (student && !["F", "S"].includes(S.route)) S.route = "F";
   if (!student && !["A", "B"].includes(S.route)) S.route = "A";
   const head = h("header", { class: "brief-head" },
-    h("a", { class: "back", href: "#/", "aria-label": "New search" }, icon("back"),
-      h("span", { text: "New search" })),
+    // A student goes back to their documents; the session stays open (S22, audit S2).
+    student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Your documents" }))
+      : h("a", { class: "back", href: "#/", "aria-label": "New search" }, icon("back"),
+        h("span", { text: "New search" })),
     h("h1", { class: "who", text: name }),
     h("p", { class: "who-meta" },
       h("span", { text: student ? "Private session: fellowships and sample scholarships"
         : (r.institutions || []).join(", ") || "Institution not stated in the record" }),
       h("span", { text: `Brief as of ${f.formatDate(d.brief.options.as_of)}` })));
   const tabs = h("div", { class: "tabs", role: "tablist", "aria-label": "Brief sections" },
-    tabButton("profile", "Profile"), tabButton("routes", "Routes"), tabButton("compare", "Compare"),
+    tabButton("profile", student ? "What Perch read" : "Profile"),
+    tabButton("routes", student ? "Your options" : "Routes"), tabButton("compare", "Compare"),
     student ? null : tabButton("scout", "Ask Scout"));
   fill(main(), h("div", { class: "brief" }, head,
     h("div", { id: "progress" }),
@@ -1080,6 +1088,12 @@ function renderIndustry(panel) {
   syncList(det.querySelector("ol"), dismissed);
 }
 
+function sigRec(r) {
+  return h("li", {}, h("button", { class: "paper-ref", "data-key": `rec-${r.id}`, onclick: (e) => openEvidence(r.id, e.currentTarget) },
+    h("span", { class: "paper-ref-title", text: r.title || r.id }),
+    h("span", { class: "paper-meta", text: [r.date ? f.formatDate(r.date) : null, r.venue].filter(Boolean).join(", ") })));
+}
+
 function orgCard(l) {
   const o = l.organisation || {};
   const name = o.name || l.record_id;
@@ -1093,10 +1107,11 @@ function orgCard(l) {
   const signals = h("ul", { class: "signals" }, (l.signal_items || []).map((s) => h("li", {},
     h("h4", { class: "mini", text: SIGNALS[s.kind] || s.kind }),
     h("p", { text: s.text }),
-    s.records.length ? h("ul", { class: "sig-recs" }, s.records.map((r) => h("li", {},
-      h("button", { class: "paper-ref", "data-key": `rec-${r.id}`, onclick: (e) => openEvidence(r.id, e.currentTarget) },
-        h("span", { class: "paper-ref-title", text: r.title || r.id }),
-        h("span", { class: "paper-meta", text: [r.date ? f.formatDate(r.date) : null, r.venue].filter(Boolean).join(", ") }))))) : null,
+    // The newest record shows; the rest fold, so a card fits a phone screen (S22, audit S7).
+    s.records.length ? h("ul", { class: "sig-recs" }, sigRec(s.records[0])) : null,
+    s.records.length > 1 ? h("details", { class: "sig-more" },
+      h("summary", { text: `Show ${s.records.length - 1} more` }),
+      h("ul", { class: "sig-recs" }, s.records.slice(1).map(sigRec))) : null,
     s.more ? h("p", { class: "hint", text: `and ${s.more} more in the export` }) : null)));
   const cited = (l.cited_ids || []).filter((c) => c.startsWith("W"));
   const yours = cited.length ? h("details", { class: "why" },

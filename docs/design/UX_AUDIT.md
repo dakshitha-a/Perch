@@ -44,7 +44,7 @@ Severity: **Must-fix** means broken, misleading, or a serious accessibility fail
 | S7 | Industry cards | PI | Each industry card is about 1,200 px tall on a phone, with three paper titles per signal shown in full. "Samsung Electronics (South Korea)" and "Samsung (South Korea)" are two separate leads. |
 | S8 | Card actions | Mixed | Grant cards say "Evidence"; student cards say "Record" for the same action. |
 | S9 | Student tabs | Students | "Scholarships (sample)" lists sample records named "Fellowship" (for example a sample "Graduate Fellowship in Systems Neuroscience"), next to a tab called Fellowships. The draft for those goes to Student Financial Services. |
-| S10 | Laptop | All | The content is one 720 px column on a 1280 px screen. The evidence panel then covers the list it explains. |
+| S10 | Laptop | All | The content is one 720 px column on a 1280 px screen. **Corrected in S22:** the evidence panel does not cover the list. From 960 px up the page makes room for it, as screenshot 7 of the walk shows. The narrow column keeps lines readable, so S22 leaves it. |
 | S11 | Touch targets | All | Paper chips under "Why it fits" are 28 px tall, and student record chips are 40 px. Both pass WCAG 2.2 (24 px) but miss the app's own 44 px rule. Inline company and paper links on industry cards are 23 px. |
 | S12 | Headings | Students, private | The document cards jump from h1 to h3 (axe `heading-order`). |
 
@@ -69,7 +69,7 @@ Severity: **Must-fix** means broken, misleading, or a serious accessibility fail
 
 ![1. Phone, PI hand-off: student offices listed with "undefined", radio cards empty, labels outside the box (M1)](ux/01-handoff-offices-phone.png)
 
-![2. Laptop, PI Routes: "Best match" order beside fit estimates; a 720 px column on a 1280 px screen (M4, S10)](ux/02-routes-laptop.png)
+![2. Laptop, PI Routes: "Best match" order beside fit estimates (M4)](ux/02-routes-laptop.png)
 
 ![3. Laptop, PI Profile: raw ids in the summary and the same paper three times (S3, S4)](ux/03-profile-ids-duplicates.png)
 
@@ -100,7 +100,7 @@ Each estimate counts the knock-on work Dakshitha asked for after any UI change. 
 | Option | What it covers | Sessions | Risk |
 |---|---|---|---|
 | A. Targeted fixes | M1 to M6, S3, S4, S8, S11, S12, C1, C3, C4. No layout or wording change beyond these. | About 1: 0.5 build, 0.5 refilm and republish | Low |
-| B. Redesign the core screens (recommended) | Everything in A, plus the two-door Find (S1), student vocabulary (S2), compact cards for grants, fellowships and industry (S5, S6, S7), sample "fellowships" labelled as such (S9), a two-column laptop layout with the evidence panel beside the list (S10), and the order explained (M4). The visual style, the components and the API stay as they are. | About 2: 1.2 build, 0.8 refilm, Help and republish | Medium. Each screen is a clean commit, so it can stop part-way. |
+| B. Redesign the core screens (recommended) | Everything in A, plus the two-door Find (S1), student vocabulary (S2), compact cards for grants, fellowships and industry (S5, S6, S7), sample "fellowships" labelled as such (S9), and the order explained (M4). The visual style, the components and the API stay as they are. | About 2: 1.2 build, 0.8 refilm, Help and republish | Medium. Each screen is a clean commit, so it can stop part-way. |
 | C. Full redesign and rebuild | A new visual system and new screens for every flow, designed from scratch per audience. | About 4: 1 design, 2 build, 1 refilm and regression | High: freeze is Thu 5 Nov 12:00, and the cut order already names the rebuild first. |
 
 - **Recommendation: B.** The audit found defects and a vocabulary problem, not a broken structure. The structure that works (one app, a private state, shared evidence and badges) is exactly what C would throw away. B fixes what a student stalls on and what a PI misreads, and every step can stop at a clean commit.

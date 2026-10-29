@@ -166,7 +166,7 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
     if any(x.sample for x in shown):
         out.append(Block("note", SAMPLE_BANNER))
     for route, title, office in (("F", "Fellowships (public)", for_route("F")),
-                                 ("S", "Scholarships (sample)", for_route("S"))):
+                                 ("S", "Scholarships and awards (sample)", for_route("S"))):
         xs = [x for x in shown if x.route == route]
         out.append(Block("h2", f"{title} ({len(xs)})"))
         if route == "S":

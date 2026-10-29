@@ -741,8 +741,6 @@ body.private-on .bar { border-bottom: 3px solid var(--model); }
 .tag.amber { background: var(--ember-soft); color: var(--ember); }
 .card.lead.is-sample { border-style: dashed; border-color: var(--brick); }
 .sample-note { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
-.audience { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 12px; }
-.audience .hint { flex-basis: 100%; margin: 0; }
 .nudge { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--model); background: var(--model-soft); }
 .gaps ul, .lead .notes { margin: 4px 0 8px; padding-left: 20px; }
 .lead .notes li { color: var(--ink-2); }
@@ -766,3 +764,14 @@ table.compare th, table.compare td { border-bottom: 1px solid var(--line); paddi
   .paper-ref, .cites .paper-ref { min-height: 44px; }
   .sig-recs .paper-ref { min-height: 44px; }
 }
+
+/* S22 (audit S1): two equal doors on Find. */
+.doors { display: grid; gap: 14px; }
+.door { display: grid; gap: 8px; align-content: start; padding: 16px; }
+.door-title { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 6px; }
+.door .hint { margin: 0; }
+.door .search { margin: 0; }
+.door .btn.primary { justify-self: start; }
+@media (min-width: 860px) { .doors { grid-template-columns: 3fr 2fr; } }
+.hero-help { display: flex; flex-wrap: wrap; gap: 4px 20px; }
+.sig-more > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; font-size: 14px; color: var(--moss); }

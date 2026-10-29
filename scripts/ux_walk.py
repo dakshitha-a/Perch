@@ -210,7 +210,7 @@ async def student_flow(w: Walk, page: Page, base: str, persona: str, views: list
     tag = f"{persona}"
     await page.goto(base + "/#/")
     await page.wait_for_selector(".hero")
-    await page.click(".audience button:has-text('Student')")
+    await page.click("[data-key=student]")
     await page.wait_for_selector("#st-cv", timeout=20000)
     await w.snap(page, tag, "student-form", full=True)
     for kind in ("cv", "interests", "achievements"):

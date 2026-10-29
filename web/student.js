@@ -7,7 +7,8 @@
 import { fill, h, icon } from "./dom.js";
 import * as f from "./format.js";
 
-export const STUDENT_ROUTES = { F: "Fellowships (public)", S: "Scholarships (sample)" };
+// The sample tab holds fellowships and prizes as well as scholarships (S22, audit S9).
+export const STUDENT_ROUTES = { F: "Fellowships (public)", S: "Scholarships and awards (sample)" };
 const SAMPLE = "Sample data";
 const SAMPLE_NOTE = "These are invented records from a test corpus. They show how student mode works with a real scholarship feed; they are not real scholarships. Do not apply to them.";
 const VERDICT_CLASS = { eligible: "moss", "may be eligible": "amber", "not eligible": "ember" };
@@ -21,6 +22,8 @@ const HINTS = {
   achievements: "Up to five, one per line or numbered. Explanations may cite them.",
 };
 const D = { drafts: {}, busy: false, error: null };
+const NOT_STATED = "Not stated in the record";
+const OPEN = new Set(); // cards whose "Why it may fit" is open; kept across redraws
 
 export function isStudent(brief) {
   return Boolean(brief && brief.brief && brief.brief.options && brief.brief.options.student);
@@ -28,9 +31,9 @@ export function isStudent(brief) {
 
 // ----- start: CV, interests, achievements -----
 
-export async function renderStudentStart(root, { api, mode, go, announce, info }) {
+export async function renderStudentStart(root, { api, mode, go, announce, info, hasBrief = false }) {
   document.title = "Student — Perch";
-  const draw = () => renderStudentStart(root, { api, mode, go, announce, info });
+  const draw = () => renderStudentStart(root, { api, mode, go, announce, info, hasBrief });
   if (!mode.state.available) {
     fill(root, h("div", { class: "private" }, h("h1", { text: "Student mode" }),
       h("p", { class: "notice", text: `Student mode needs private mode, which is not available here. ${mode.state.reason}` }),
@@ -47,7 +50,7 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
   for (const [k, v] of Object.entries(mode.state.drafts)) if (v && !D.drafts[k]) D.drafts[k] = v;
   const docs = (await api.session()).documents;
   const have = new Set(docs.map((d) => d.kind));
-  const kinds = info.student_kinds || { cv: "Your CV", interests: "Your interests", achievements: "Your achievements" };
+  const kinds = info.student_kinds || { cv: "Your CV or résumé", interests: "Your interests", achievements: "Your achievements" };
 
   async function add(kind, body) {
     D.busy = true; D.error = null; draw();
@@ -69,7 +72,8 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
   const ready = have.has("cv") && (have.has("interests") || have.has("achievements"));
   fill(root, h("div", { class: "private student" },
     h("h1", {}, icon("lock"), h("span", { text: " Student mode" })),
-    h("p", { class: "lede", text: "Paste your CV, a note on your interests and a few achievements. Perch lists fellowships from public records and scholarships from a sample database, checks each one against your CV by rule, and lists what you would still need." }),
+    hasBrief ? h("p", {}, h("a", { class: "btn", href: "#/brief/private/routes" }, h("span", { text: "Back to your options" }))) : null,
+    h("p", { class: "lede", text: "Paste your CV or résumé, a note on your interests and a few achievements. Perch lists fellowships from public records and scholarships from a sample database, checks each one against your CV by rule, and lists what you would still need." }),
     h("p", { class: "notice sample-note" }, h("span", { class: "tag sample", text: SAMPLE }),
       h("span", { text: " The scholarships tab uses invented sample records. Fellowships are real public listings." })),
     D.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null,
@@ -137,7 +141,7 @@ export function studentRoutes(panel, ctx) {
   fill(panel, sw,
     route === "S" ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }), h("span", { text: ` ${SAMPLE_NOTE}` })) : null,
     h("h2", { class: "section-title", id: "routes-title",
-      text: `${f.plural(ok.length, "lead")} you may apply for` }),
+      text: `${f.plural(ok.length, "option")} you may apply for` }),
     h("p", { class: "hint", text: route === "F"
       ? "Public listings: Temple's Scholar Development and Fellowships Advising list and NIH fellowships. Their own pages set the full rules, so the best verdict here is “may be eligible”."
       : "Checked against your CV by rule. “May be eligible” means the record asks for something your CV does not show." }),
@@ -165,14 +169,19 @@ function card(l, { openEvidence, setLead, papers }) {
     h("h3", { class: "lead-title" }, h("button", { class: "title-btn", onclick: (e) => openEvidence(l.record_id, e.currentTarget) },
       h("span", { text: name || l.record_id }))),
     sch && r.sponsor ? h("p", { class: "opp-num", text: r.sponsor }) : null,
-    h("dl", { class: "facts" },
-      h("div", { class: "fact" }, h("dt", { text: "Deadline" }), h("dd", { text: deadline ? f.formatDate(deadline) : "Not stated in the record" })),
-      sch ? h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", { text: amount })) : null),
+    // A listing that states neither field gets one line, not two empty boxes (S22, audit S6).
+    !deadline && (!sch || amount === NOT_STATED)
+      ? h("p", { class: "hint no-size", text: sch ? "Deadline and amount: not stated in the record." : "Deadline: not stated in the record." })
+      : h("dl", { class: "facts" },
+        h("div", { class: "fact" }, h("dt", { text: "Deadline" }), h("dd", { text: deadline ? f.formatDate(deadline) : NOT_STATED })),
+        sch ? h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", { text: amount })) : null),
     h("ul", { class: "notes" }, l.verdict_lines.map((x) => h("li", { text: x }))),
     l.gaps.length ? h("div", { class: "gaps" }, h("h4", { class: "mini", text: "Still needed" }),
       h("ul", {}, l.gaps.map((g) => h("li", { text: g })))) : null,
     l.flagged ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "The explanation was withheld because it failed the citation checks twice." }))
-      : parsed ? h("div", { class: "explain" }, h("p", { class: "hint", text: "Why it may fit (a model wrote this; each part cites a record)" }),
+      : parsed ? h("details", { class: "why explain", open: OPEN.has(l.id),
+        ontoggle: (e) => { if (e.target.open) OPEN.add(l.id); else OPEN.delete(l.id); } },
+        h("summary", {}, h("span", { text: "Why it may fit" }), h("span", { class: "hint", text: " a model wrote this; each part cites a record" })),
         h("p", { text: plainExplanation(l.explanation) }),
         l.inference ? h("p", { class: "inference" }, h("span", { class: "tag", text: "Inference" }), h("span", { text: ` ${plainExplanation(l.inference)}` })) : null,
         h("p", { class: "cites" }, l.cited_ids.filter((c) => papers[c]).map((c) => h("button", { class: "paper-ref",
@@ -198,7 +207,7 @@ function plainExplanation(text) {
 function amountText(r) {
   if (r.amount_min != null && r.amount_max != null && r.amount_min !== r.amount_max) return `${f.money(r.amount_min)} to ${f.money(r.amount_max)}`;
   if (r.amount_max != null) return f.money(r.amount_max);
-  return "Not stated in the record";
+  return NOT_STATED;
 }
 
 // ----- compare and hand-off (code-written; nothing is sent) -----
