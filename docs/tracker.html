@@ -130,11 +130,11 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S9</code> <span class="badge s-in-progress">in progress</span><span>9/17 sessions done</span></div>
+<div class="at-a-glance"><code>S10</code> <span class="badge s-todo">todo</span><span>10/17 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
-<a id="tab-archive" href="#archive">Archive<span class="count">9</span></a>
+<a id="tab-archive" href="#archive">Archive<span class="count">10</span></a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
 <a id="tab-bench" href="#bench">Bench</a>
 <a id="tab-architecture" href="#architecture">Architecture</a>
@@ -142,25 +142,14 @@ details .inner > * { min-width: 0; }
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
-<div id="s9"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S9 · Deploy</h1><span class="badge s-in-progress">in progress</span></div>
-<div class="meta">Started 2026-10-29 10:16 EDT</div></div>
-<p>Goal: a public URL that survives Demo Day. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="3 of 4 tasks done"><div class="counts"><span><b>3/4</b>tasks done</span><span class="s-done"><b>3</b>done</span><span class="s-in-progress"><b>1</b>in progress</span></div><div class="bar" role="img" aria-label="3 of 4 tasks done"><span class="s-done" style="width:75.00%" title="done: 3"></span><span class="s-in-progress" style="width:25.00%" title="in progress: 1"></span></div></section>
-<div class="panel scroll"><table>
-<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
-<tbody>
-<tr><td>1</td><td>Docker Compose, <code>make demo</code> with <code>PERCH_PROFILE=deploy-2gpu</code>, <code>make gpus</code></td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Hybrid (Dakshitha): the app runs in Docker without GPU access; Ollama with Gemma, Clef-flash, Clef and a new model server for the embedder and reranker run as systemd user units on GPUs 6 and 7. Live brief on the demo stack: 61 s, 9 of 10 explained. <code>make gpus</code>: GPU A 26,706 MiB (Gemma 19,290, Clef-flash 7,416); GPU B 21,808 MiB (Clef 18,986, model server 2,822).</td></tr>
-<tr><td>2</td><td>Outbound tunnel from the lab node; laptop and hotspot fallback in the README</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono">see git log</td><td>Tailscale Funnel on (address in the local notes, not the repo). From outside: health, web page and a reused demo brief answer. Funnel sets X-Forwarded-For to the visitor's address and overwrites any sent value (Tailscale source), so the limit is per visitor. Fallback in the README: the self-contained replay page (opens from a file with no errors), or Perch on the laptop. Waiting for the phone check.</td></tr>
-<tr><td>3</td><td>Rate limit of 10 briefs an hour; demo personas cached; health endpoint</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>10 new briefs an hour per visitor, keyed on the tunnel's forwarded address. A finished brief with the same options from the last 24 h is reused as a copy with fresh keep and dismiss state, and does not count. <code>make demo-warm</code> plus a 05:30 timer build the three demo briefs: 48 s and 42 s, then instant. <code>/health?deep=true</code> checks each model service.</td></tr>
-<tr><td>4</td><td>Private-mode groundwork: tunnel decryption check, settings, quiet logs, safe errors, core dumps off</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Funnel's docs: the relay cannot decrypt; TLS ends on this node (<code>PERCH_TLS_AT=server</code>). <code>perch/privacy.py</code>: settings, endpoint allowlist, refusals; private mode refuses to start until S13. Uvicorn at warning level (no access log). Errors name fields or the exception type only. Core dumps off, checked in the container (limit 0).</td></tr>
-</tbody></table></div>
-<h2>Definition of done</h2>
-<ul class="panel done-list"><li>The URL serves a cached brief from a phone.</li><li>The fallback path is documented in the README.</li></ul>
+<div id="s10"><div class="eyebrow">Current session</div>
+<div class="title-row"><h1>S10 · Scout agent</h1><span class="badge s-todo">todo</span></div>
+<div class="meta">Not started</div></div>
+<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S10.md</code> when the session starts.</div>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="9 of 17 sessions done"><div class="counts"><span><b>9/17</b>sessions done</span><span class="s-done"><b>9</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>7</b>todo</span></div><div class="bar" role="img" aria-label="9 of 17 sessions done"><span class="s-done" style="width:52.94%" title="done: 9"></span><span class="s-in-progress" style="width:5.88%" title="in progress: 1"></span><span class="s-todo" style="width:41.18%" title="todo: 7"></span></div></section>
+<section class="panel summary" aria-label="10 of 17 sessions done"><div class="counts"><span><b>10/17</b>sessions done</span><span class="s-done"><b>10</b>done</span><span class="s-todo"><b>7</b>todo</span></div><div class="bar" role="img" aria-label="10 of 17 sessions done"><span class="s-done" style="width:58.82%" title="done: 10"></span><span class="s-todo" style="width:41.18%" title="todo: 7"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -173,8 +162,8 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s6">S6</a></td><td>API</td><td><span class="badge s-done">done</span></td><td>2026-10-28 22:07 EDT</td><td>2026-10-28 22:13 EDT</td><td class="mono">b3ccdf6</td><td>112 tests green. FastAPI + in-process jobs; briefs end to end via curl for 2 PIs (one fetched from scratch); stages and partial results pollable; export with provenance.</td></tr>
 <tr class="is-finished"><td><a href="#s7">S7</a></td><td>Web app, first three screens</td><td><span class="badge s-done">done</span></td><td>2026-10-28 22:40 EDT</td><td>2026-10-28 23:14 EDT</td><td class="mono">5da4e7e</td><td>116 tests green. No-build web app in <code>web/</code> served by <code>perch serve</code> at <code>/</code>: Find, Profile, Routes, evidence panel, Scout the owl on the progress branch. Live brief in the browser in 90 s. Adversarial review: 32 findings fixed. Screenshots in <code>docs/screenshots/</code>; UI tab in the tracker.</td></tr>
 <tr class="is-finished"><td><a href="#s8">S8</a></td><td>Back-test and bench</td><td><span class="badge s-done">done</span></td><td>2026-10-29 00:04 EDT</td><td>2026-10-29 04:50 EDT</td><td class="mono">see git log</td><td>129 tests green. Back-test on 126 of 160 rows with a fully fetched window (48 targeted, 78 parent; corpus 11,202 NIH announcements). Default config, targeted: 7 of 48 in the top 10 against 1 of 48 for keyword-only. Parent announcements: 0 or 1 of 78 under every config. No embedder separated from the default; Clef as reranker was worse. Skill 2 passed both validator layers: Gemma 28 of 30, qwen3.8:27b 28, qwen3:14b 26, Sonnet 24, qwen3:8b 23. Models per profile in <code>perch/profiles.py</code>. Keep bar shipped. Private mode designed (S13). Two concurrency bugs fixed.</td></tr>
-<tr class="is-current"><td><a href="#s9">S9</a></td><td>Deploy</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 10:16 EDT</td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S10</td><td>Scout agent</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-finished"><td><a href="#s9">S9</a></td><td>Deploy</td><td><span class="badge s-done">done</span></td><td>2026-10-29 10:16 EDT</td><td>2026-10-29 11:34 EDT</td><td class="mono">see git log</td><td>144 tests green. Public URL through Tailscale Funnel (address in local notes); opened on a phone and a laptop. <code>make demo</code>: app in Docker, models as systemd user units on GPUs 6 and 7. Live brief 61 s, 9 of 10 explained; demo briefs reused at once. GPU A 26,706 MiB, GPU B 21,808 MiB. 10 new briefs an hour per visitor. Private-mode groundwork: Funnel decrypts only on the node; quiet logs, safe errors, no core dumps.</td></tr>
+<tr class="is-current"><td>S10</td><td>Scout agent</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S11</td><td>Route B</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S12</td><td>Compare, hand-off, export</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S13</td><td>Private mode</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
@@ -200,14 +189,28 @@ details .inner > * { min-width: 0; }
 <tr><td>Cost per brief (API model)</td><td>$0.091 for a 10-lead brief on claude-sonnet-5-5 ($0.079 explanations, $0.012 summary); local models $0</td><td>bench/results/cost.csv</td><td>2026-10-29</td></tr>
 <tr><td>Warm-cache brief time</td><td>0.7 to 1.1 s (Route A: embed + rerank, no LLM calls; 3 PIs)</td><td>data/logs/brief_timings.jsonl</td><td>2026-10-28</td></tr>
 <tr><td>Route B hand-judged precision</td><td></td><td></td><td></td></tr>
-<tr><td>Deployment profile and peak VRAM</td><td>dev and deploy-2gpu: Gemma 4 26B-A4B + Clef. deploy-1gpu: qwen3:14b + Clef-flash, peak 22.7 GB with 3 concurrent briefs (Gemma 31.7 GB, qwen3.8:27b 31.1 GB on one card)</td><td>bench/results/single_card.csv</td><td>2026-10-29</td></tr>
+<tr><td>Deployment profile and peak VRAM</td><td>Demo: deploy-2gpu. GPU A 26,706 MiB (Gemma 19,290, Clef-flash 7,416); GPU B 21,808 MiB (Clef 18,986, model server 2,822), idle after a brief. One card: no chat model fits under 28 GB with Clef-flash; Gemma peaks at 30,259 MiB with one brief</td><td><code>make gpus</code>, bench/results/single_card.csv</td><td>2026-10-29</td></tr>
 <tr><td>Anthropic API spend / budget to demo</td><td>$0.32 of $100 (S8: $0.24 of its $3)</td><td>data/logs/anthropic_spend.jsonl</td><td>2026-10-29</td></tr>
 </tbody></table></div>
 <p class="meta">Perch-dev updates this file at the end of every session (and at any stop mid-session). <code>make tracker</code> renders it to <code>docs/tracker.html</code> for reading in a browser; the Markdown is the source of truth. Status values: <code>todo</code> · <code>in progress</code> · <code>continued</code> (stopped mid-session, see HANDOFF) · <code>done</code> · <code>cut</code>.</p>
 </section>
 <section id="view-archive" class="view" data-view="archive" hidden>
 <div><div class="eyebrow">Finished sessions</div><h1>Archive</h1></div>
-<div><details id="s8"><summary><span><span class="sid">S8</span> <span class="stitle">Back-test and bench</span></span><span></span><span class="badge s-done">done</span><span class="smeta">6/6 tasks done · finished 2026-10-29 04:50 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: the numbers for the results slide. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<div><details id="s9"><summary><span><span class="sid">S9</span> <span class="stitle">Deploy</span></span><span></span><span class="badge s-done">done</span><span class="smeta">4/4 tasks done · finished 2026-10-29 11:34 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: a public URL that survives Demo Day. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="4 of 4 tasks done"><div class="counts"><span><b>4/4</b>tasks done</span><span class="s-done"><b>4</b>done</span></div><div class="bar" role="img" aria-label="4 of 4 tasks done"><span class="s-done" style="width:100.00%" title="done: 4"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Docker Compose, <code>make demo</code> with <code>PERCH_PROFILE=deploy-2gpu</code>, <code>make gpus</code></td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Hybrid (Dakshitha): the app runs in Docker without GPU access; Ollama with Gemma, Clef-flash, Clef and a new model server for the embedder and reranker run as systemd user units on GPUs 6 and 7. Live brief on the demo stack: 61 s, 9 of 10 explained. <code>make gpus</code>: GPU A 26,706 MiB (Gemma 19,290, Clef-flash 7,416); GPU B 21,808 MiB (Clef 18,986, model server 2,822).</td></tr>
+<tr><td>2</td><td>Outbound tunnel from the lab node; laptop and hotspot fallback in the README</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Tailscale Funnel on (address in the local notes, not the repo). From outside: health, web page and a reused demo brief answer. Funnel sets X-Forwarded-For to the visitor's address and overwrites any sent value (Tailscale source), so the limit is per visitor. Fallback in the README: the self-contained replay page (opens from a file with no errors), or Perch on the laptop. Dakshitha opened it on a phone and a laptop: it works.</td></tr>
+<tr><td>3</td><td>Rate limit of 10 briefs an hour; demo personas cached; health endpoint</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>10 new briefs an hour per visitor, keyed on the tunnel's forwarded address. A finished brief with the same options from the last 24 h is reused as a copy with fresh keep and dismiss state, and does not count. <code>make demo-warm</code> plus a 05:30 timer build the three demo briefs: 48 s and 42 s, then instant. <code>/health?deep=true</code> checks each model service.</td></tr>
+<tr><td>4</td><td>Private-mode groundwork: tunnel decryption check, settings, quiet logs, safe errors, core dumps off</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Funnel's docs: the relay cannot decrypt; TLS ends on this node (<code>PERCH_TLS_AT=server</code>). <code>perch/privacy.py</code>: settings, endpoint allowlist, refusals; private mode refuses to start until S13. Uvicorn at warning level (no access log). Errors name fields or the exception type only. Core dumps off, checked in the container (limit 0).</td></tr>
+</tbody></table></div>
+<h2>Status at end</h2>
+<ul><li>All four tasks done. The definition of done is met: Dakshitha opened the public URL on a phone and got a cached brief.</li></ul>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>The URL serves a cached brief from a phone.</li><li>The fallback path is documented in the README.</li></ul></div></details>
+<details id="s8"><summary><span><span class="sid">S8</span> <span class="stitle">Back-test and bench</span></span><span></span><span class="badge s-done">done</span><span class="smeta">6/6 tasks done · finished 2026-10-29 04:50 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: the numbers for the results slide. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
 <section class="panel summary" aria-label="6 of 6 tasks done"><div class="counts"><span><b>6/6</b>tasks done</span><span class="s-done"><b>6</b>done</span></div><div class="bar" role="img" aria-label="6 of 6 tasks done"><span class="s-done" style="width:100.00%" title="done: 6"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>

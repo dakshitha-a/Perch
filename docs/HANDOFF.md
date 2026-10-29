@@ -3,37 +3,39 @@
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
 ## Last session
-- Session: S8 — Back-test and bench
+- Session: S9 — Deploy (S8 finished earlier in the same context)
 - Status: done
 - Last commit: see `git log`; the ritual commit is last on `main`
 
-## What exists now
-- Back-test: `bench/build_set.py` (160 rows in `data/backtest/pis.csv`; names only in `data/overrides/pi_aliases.csv`), `bench/corpus.py` (11,202 NIH announcements in the separate bench store `data/bench/perch.db`), `bench/backtest.py`, `bench/run.py` (`make bench`).
-- Results: `bench/results/RESULTS.md`. Both strata, the keyword baseline on every row, and a paired table of each config against the default on the same awards.
-- Back-test numbers: 126 of 160 rows scored. Targeted, default config: 7 of 48 in the top 10; keyword-only 1 of 48. Parent: 0 or 1 of 78 under every config.
-- Models per profile: `perch/profiles.py` (`PERCH_PROFILE`, default dev). Chat gemma4:26b-a4b (dev, deploy-2gpu) or qwen3:14b (deploy-1gpu). Grounder Clef or Clef-flash. Embedder Qwen3-Embedding-0.6B and reranker Qwen3-Reranker-0.6B in every profile.
-- Runner-ups are one line away. specter2_base as embedder needs `data/lance` removed first, because the index has one table for every model. `systemone:clef-flash` as reranker now works through `perch.rerank.make_reranker`.
-- Other bench rows: skill 2, layer-2 grounders, cost, single card. All in RESULTS.md.
-- Web: Keep bar and Help step 5. Scout has eight random tap reactions.
-- Private mode: designed only (`docs/design/PRIVATE_MODE.md`, synthetic persona with canaries). Built in S13.
-- Tests: 129 green, offline.
+## The demo is live
+- Public URL through Tailscale Funnel; the address is in `CLAUDE.local.md`, not the repo. Dakshitha opened it on a phone and a laptop.
+- `make demo` brings everything up: Ollama with Gemma and Clef-flash on GPU 6, Clef and the model server on GPU 7 (systemd user units from `deploy/systemd/demo/`), and the app in Docker on 127.0.0.1:8090.
+- The app container has no GPU (no NVIDIA runtime on the node), so the embedder, reranker and MiniCheck fallback run in `perch/model_server.py`. The app reaches them through `perch/remote_models.py` when `PERCH_MODEL_SERVER` is set.
+- The demo store is `data/demo/`, seeded once from `data/`. A 05:30 timer runs `make demo-warm` so the three demo briefs answer at once.
+- `make gpus` names GPU memory per service. `make demo-status` and `make demo-down` exist.
+- After a code change: `docker compose up -d --build` with `PERCH_UID` and `PERCH_GID` set, or simply `make demo`.
 
-## Honest limits for the results slide
-- The back-test cannot separate the embedders: every MRR-difference interval contains 0 at 48 awards.
-- The measured gains are the default over keyword-only, and the Qwen3 reranker over Clef as reranker.
-- Parent announcements are almost never ranked in the top 10. Say so on the slide.
+## What S9 added to the app
+- **Brief reuse:** POST /briefs reuses a finished brief with the same options from the last 24 h, as a copy whose leads start as new.
+- **Rate limit:** 10 new briefs an hour per visitor, keyed on X-Forwarded-For from the local proxy.
+- **Health:** `/health?deep=true` checks every model service.
+- **Private-mode groundwork:** `perch/privacy.py` holds the settings and refusals. Private mode refuses to start until S13.
+- **Hardening:** uvicorn runs at warning level, errors never echo request bodies, and core dumps are off.
+- **Tests:** 144 green, offline.
 
-## Note for the dev node
-- The dev profile sends chat to gemma4:26b-a4b on the primary Ollama (GPU 0). The first brief there evicts qwen3.8:27b. Set `PERCH_LLM_DEFAULT=ollama:qwen3.8:27b` to keep the old model.
+## Notes
+- Clef and Clef-flash URLs come from `PERCH_CLEF_URL` and `PERCH_CLEF_FLASH_URL`, defaulting to the dev ports.
+- Funnel decrypts only on this node (`PERCH_TLS_AT=server` when private mode is built).
+- The dev servers on GPUs 0 to 2 are untouched. The dev profile still sends chat to Gemma on GPU 0.
 
-## Next session: S9 — Deploy
-1. Read S9 in `docs/PLAN.md`. Deploy the demo with `PERCH_PROFILE=deploy-2gpu` (Dakshitha, 29 Oct); add `make gpus`.
-2. Private-mode groundwork in S9: check whether the chosen tunnel decrypts traffic at its edge (design doc, "The secure connection").
+## Next session: S10 — Scout agent
+1. Read S10 in `docs/PLAN.md`. Scout's own loop over the allowlisted tools, two modes, follow-ups, a fallback for small local models, and private-mode rules.
+2. Done when Scout completes 20 scripted follow-ups in `bench/scout_tasks.yaml` with the API model and at least one local model, with wrong-tool and restraint rates logged.
+3. Clef-flash answers `decide` on GPU 6 at :8095 in the demo, and at :8097 in dev.
+4. Any API spend for Scout needs Dakshitha's approval first; total spend so far is $0.32 of $100.
 
-## Decisions made this session (all in docs/DECISIONS.md)
-- Back-test: 18-month window, two strata, 160 rows, unique OpenAlex match only, separate bench store.
-- Validator pass rate counts both layers. Models per profile as above; embedder and reranker kept because nothing beat them measurably.
-- Private mode built in S13; normal mode gets optional direction, keywords and career stage (Q16).
+## Decisions this session (all in docs/DECISIONS.md)
+- Hybrid deployment; Tailscale Funnel; a separate demo store; brief reuse with fresh lead state.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 - None.
