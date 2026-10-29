@@ -1,0 +1,7 @@
+grounder,pairs,false_flag_rate,miss_rate,auc,s_per_claim,note
+"MiniCheck-RoBERTa-Large (default, CPU)",40,0.0,0.1,0.925,0.268,
+Clef-flash (systemone),40,0.0,0.1,0.948,0.063,
+Clef (systemone),40,0.0,0.1,0.998,0.194,
+"LLM-logprobs fallback, qwen3.8:27b",40,0.0,0.1,0.985,0.898,
+Jev (hosted),0,,,,,no access to the hosted Jev API on this node; not benched
+Strands Decider 2B,0,,,,,weights and licence not verified on this node; not benched

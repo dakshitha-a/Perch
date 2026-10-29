@@ -77,9 +77,9 @@ def main(argv: list[str] | None = None) -> None:
         firsts = set(first_numbers(a.first))
         keep = [h for h in hits if h["number"] in firsts
                 or (_date(h.get("closeDate")) or date.max) >= MIN_CLOSE]
-        # Ground truth first, then newest close date first.
-        keep.sort(key=lambda h: (h["number"] in firsts, h.get("closeDate", "")[-4:]),
-                  reverse=True)
+        # Ground truth first, then no close date (open in every window), then newest close.
+        keep.sort(key=lambda h: (h["number"] in firsts, not h.get("closeDate"),
+                                 h.get("closeDate", "")[-4:]), reverse=True)
         todo = [h for h in keep if h["number"] not in have][: a.limit]
         print(f"{len(hits)} hits, {len(keep)} in range, {len(have)} stored, {len(todo)} to fetch",
               flush=True)
