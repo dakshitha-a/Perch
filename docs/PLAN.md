@@ -172,6 +172,7 @@ Goal: the decision and the hand-off.
 4. Scout: `compare` and `draft_handoff` call the new compare view and skill 3 (they say "not built yet" until now, Q18). The hand-off draft stays a draft. Add a compare and a hand-off task to the Scout bench.
 5. Rebuild the demo (`make demo`).
 6. Private mode egress filter: exports and hand-off drafts exclude private-derived text by default; opt-in masking of identifiers and novel phrases with typed placeholders, an in-memory key to unmask on screen, and a warning that the research direction stays visible.
+7. Temple STTR partners for Route B (Q19, revised). Take the 41 awards that name Temple as research partner from SBIR.gov's bulk file. The file is in `data/cache/sbir/`, last modified 2026-01-01; use the column `RI Name`. Commit only a derived table with company, title, agency, programme, year and award date. Never read the contact columns. Add a SOURCES row. Show a company as a Route B signal ("past STTR partner of Temple") when its award text matches the researcher's main topics. Hand-check the matches on the 3 S11 PIs. Keep it only if it adds correct leads.
 
 Done when: Find → Routes → Compare → Hand off works on the public URL.
 
@@ -240,3 +241,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S11 to S14, S16 | Scout's follow-ups cascaded: S11 fills `get_org_signals` and Route B search, adds a repeated-call guard and Route B bench tasks; S12 fills `compare` and `draft_handoff`; S11 and S12 rebuild the demo; S13 routes private Scout's cache and store writes to memory and adds Scout to the canary test; S14 reuses Scout's tool table; S16 reruns the Scout bench | Gaps found in S10; Q18 answered with the default | Dakshitha |
 | 2026-10-29 | S12 | Task 7 added: SBIR.gov bulk award file for Route B signal 2, kept only if it adds signal over RePORTER | Q19: the SBIR.gov API is down; Dakshitha asked to integrate the bulk file if it is beneficial | Dakshitha |
 | 2026-10-29 | S12 | Task 7 (SBIR.gov bulk file) removed again; Route B stays NIH-only | Dakshitha: leave it while the SBIR.gov API is down | Dakshitha |
+| 2026-10-29 | S12 | Task 7 added back, narrowed: Temple STTR partners (41 awards) from the SBIR.gov bulk file's research-partner column | Dakshitha: worth doing if useful; companies that already partnered with Temple are concrete leads | Dakshitha |

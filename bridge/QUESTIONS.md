@@ -17,6 +17,7 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 - **Terms of use:** the page states none.
 - **Plan:** added to S12 as task 7. Keep it only if it adds signal over RePORTER on the 3 hand-checked PIs.
 - **Revised 2026-10-29 by Dakshitha:** leave it for now, while the API is down. Route B stays NIH-only through RePORTER. The task was taken out of S12.
+- **Revised again 2026-10-29 by Dakshitha:** use the research-partner column if it is worth it. Measured that day: 41 of 207,731 awards name Temple as research partner, mostly 2015 to 2020, newest 2022. Added to S12 as task 7, narrowed to Temple's partners only.
 
 18. **Scout tools that belong to later sessions (raised S10, 2026-10-29).** Three of the nine allowlisted tools are built later: `get_org_signals` in S11, and `compare` and `draft_handoff` in S12. Proposal: keep all nine in Scout's tool list. Each of the three returns a plain "not built yet" result and does nothing else. A call to one counts as an allowlisted call, not a wrong tool. Default: as proposed. **Answered 2026-10-29 by Dakshitha:** default. S11 and S12 fill the three tools (PLAN change log).
 

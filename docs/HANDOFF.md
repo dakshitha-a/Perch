@@ -45,6 +45,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 ## Next session: S12 — Compare, hand-off, export
 1. Read S12 in `docs/PLAN.md`. Compare needs to handle Route B leads (no money or deadline fields; evidence strength from signals).
 2. `compare` and `draft_handoff` in `perch/scout/tools.py` still return "not built" (`NOT_BUILT`).
+3. Task 7: Temple STTR partners. The bulk file is already in `data/cache/sbir/award_data.csv` (368 MB, gitignored). 41 rows name Temple in `RI Name`. Never read its contact columns.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- None. Q19 answered: Route B stays NIH-only while the SBIR.gov API is down.
+- None. Q19 answered: Route B's SBIR signal stays NIH-only; Temple's past STTR partners come from the bulk file in S12 task 7.
