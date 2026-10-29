@@ -3,7 +3,7 @@
 
 import { liveApi, replayApi } from "./api.js";
 import * as f from "./format.js";
-import { hop, owl, setOwl } from "./owl.js";
+import { hop, owl, poke, setOwl } from "./owl.js";
 
 const api = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
 const POLL_MS = 1500;
@@ -209,7 +209,7 @@ function heroArt() {
     <path class="leaf" d="M60 116 c-4 -12 2 -20 8 -22 c4 10 0 18 -8 22z"/>
     <path class="leaf" d="M240 104 c6 -9 16 -9 20 -6 c-6 7 -15 9 -20 6z"/>
   </svg>`;
-  wrap.append(owl("idle", "owl-hero"));
+  wrap.append(owl("idle", "owl-hero", { button: true }));
   return wrap;
 }
 
@@ -456,7 +456,7 @@ function renderProgress() {
     branch = h("div", { class: "branch", "aria-hidden": "true" },
       h("div", { class: "branch-line" }), h("div", { class: "branch-fill" }),
       h("div", { class: "knots" }, stages.map((s) => h("span", { class: "knot" }))),
-      h("div", { class: "rider" }, owl(state, "owl-rider")));
+      h("div", { class: "rider" }, owl(state, "owl-rider", { button: true })));
     fill(box, h("section", { class: "progress", "aria-label": "Building the brief" },
       branch, h("div", { class: "progress-text" }), h("div", { class: "progress-steps" })));
   }
@@ -1107,7 +1107,11 @@ function initTheme() {
 // ---------- start ----------
 
 function init() {
-  $("#bar-owl-slot").replaceWith(Object.assign(owl("idle", "owl-bar"), { id: "bar-owl" }));
+  $("#bar-owl-slot").replaceWith(Object.assign(owl("idle", "owl-bar", { button: true }), { id: "bar-owl" }));
+  document.addEventListener("click", (e) => {
+    const o = e.target.closest(".owl");
+    if (o && !o.classList.contains("owl-xs")) poke(o);
+  });
   initTheme();
   $("#evidence-close").addEventListener("click", closeEvidence);
   $("#evidence-scrim").addEventListener("click", closeEvidence);

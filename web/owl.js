@@ -37,8 +37,12 @@ const SVG = `
   </g>
 </svg>`;
 
-export function owl(state = "idle", extra = "") {
-  const el = document.createElement("span");
+export function owl(state = "idle", extra = "", { button = false } = {}) {
+  const el = document.createElement(button ? "button" : "span");
+  if (button) {
+    el.type = "button";
+    el.setAttribute("aria-label", "Say hello to Scout");
+  }
   el.className = `owl ${extra}`.trim();
   el.dataset.state = state;
   el.innerHTML = SVG; // static markup, no data
@@ -55,4 +59,31 @@ export function hop(el) {
   void el.offsetWidth; // restart the animation
   el.classList.add("hop");
   setTimeout(() => el.classList.remove("hop"), 700);
+}
+
+// Tapping Scout: a different small reaction each time, a heart after a run of taps.
+// Pure play; it never changes app state and says nothing about the brief.
+const POKES = ["wink", "spin", "flap", "hoot"];
+let pokeN = 0, lastPoke = 0, streak = 0;
+
+export function poke(el) {
+  if (!el) return;
+  const now = Date.now();
+  streak = now - lastPoke < 900 ? streak + 1 : 1;
+  lastPoke = now;
+  const kind = streak >= 5 ? "love" : POKES[pokeN++ % POKES.length];
+  if (kind === "love") streak = 0;
+  for (const k of [...POKES, "love"]) el.classList.remove(`poke-${k}`);
+  void el.offsetWidth;
+  el.classList.add(`poke-${kind}`);
+  if (kind === "hoot" || kind === "love") {
+    const b = document.createElement("span");
+    b.className = `owl-bubble ${kind}`;
+    b.setAttribute("aria-hidden", "true");
+    b.textContent = kind === "love" ? "\u2665" : "hoo!";
+    el.append(b);
+    setTimeout(() => b.remove(), 1300);
+  }
+  clearTimeout(el._poke);
+  el._poke = setTimeout(() => el.classList.remove(`poke-${kind}`), 1300);
 }

@@ -115,6 +115,7 @@ Left-aligned throughout. One reading column of at most 720 px. Cards only for le
 | done | brief finished | eyes close in a smile |
 | worry | a statement is flagged, or nothing was found | head tilts |
 | droop | a stage failed | eyes half shut, feathers down |
+| tapped | someone taps or clicks Scout | in turn: a wink, a 270° head turn, a wing flap, a "hoo!"; five quick taps give a heart. Play only: no app state changes and nothing about the brief |
 
 Scout never speaks. Words beside Scout come from stage details or fixed labels, never a verdict such as "great match".
 
