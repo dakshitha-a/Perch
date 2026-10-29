@@ -66,6 +66,10 @@ def summarise_profile(profile: Profile, works: dict[str, Work], provider: Audite
 
     attempts = [0]
 
+    def unparseable(errors: list[str]) -> None:
+        attempts[0] += 1
+        provider.log.validation(provider.last_call_id, SKILL, False, errors, attempts[0])
+
     def validate(s: Summary) -> Check:
         attempts[0] += 1
         ids = sorted({*s.cited_ids, *(i for _, ws in s.topics for i in ws)})
@@ -77,4 +81,4 @@ def summarise_profile(profile: Profile, works: dict[str, Work], provider: Audite
         provider.log.validation(provider.last_call_id, SKILL, not errors, errors, attempts[0])
         return Check(not errors, errors)
 
-    return generate_validated(generate, validate)
+    return generate_validated(generate, validate, unparseable)

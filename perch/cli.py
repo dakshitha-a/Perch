@@ -6,6 +6,7 @@
   perch fetch opportunities           Grants.gov opportunities (nightly refresh: upsert by number)
   perch profile <author id>           key papers, awards and the public award horizon
   perch brief <author id> --route A   ranked, eligible Route A leads (record fields only)
+  perch brief <author id> --explain   plus profile summary and validated fit explanations
 """
 
 from __future__ import annotations
@@ -236,12 +237,72 @@ def cmd_brief(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
               f"award ceiling {money(o.award_ceiling)}")
         print(f"    matched thread {lead.candidate.best_thread + 1}; rerank "
               f"{lead.rerank_score:.3f}; {o.source_url}")
+    if args.explain:
+        explain_brief(b, args)
     ms = b.timings_ms
     print("\nTimings (ms): " + ", ".join(f"{k} {v:,.0f}" for k, v in ms.items()
                                          if not k.startswith("retrieve_")) +
           f"; rerank cache hits {b.rerank_cache_hits}")
     print(grants_gov.ATTRIBUTION)
     return 0
+
+
+def explain_brief(b: object, args: argparse.Namespace) -> None:
+    """Skills 1 and 2 with validator layers 1 and 2; prints rejection rates and spend."""
+    import time
+
+    from perch.grounding import FakeGrounder, MiniCheckGrounder
+    from perch.llm import get_provider, spec_for_role
+    from perch.llm.audit import AuditedProvider, AuditLog
+    from perch.skills.fit import explain_leads
+    from perch.skills.summary import summarise_profile
+
+    fake = args.models == "fake"
+    log = AuditLog(Path(args.db).parent / "logs/model_calls.jsonl")
+    summ_spec = "fake:fake-1" if fake else (args.llm or spec_for_role("profile_summary"))
+    fit_spec = "fake:fake-1" if fake else (args.llm or spec_for_role("fit_explainer"))
+    grounder = None if args.grounder == "none" else (
+        FakeGrounder() if fake or args.grounder == "fake" else MiniCheckGrounder(device="cpu"))
+    with SQLiteRepository(args.db) as repo:
+        works = {w.id: w for w in repo.works_by_author(b.researcher.id)}
+    t0 = time.perf_counter()
+    summary = summarise_profile(b.profile, works,
+                                AuditedProvider(get_provider(summ_spec), log, "profile_summary"))
+    t1 = time.perf_counter()
+    fits = explain_leads([lead.opportunity for lead in b.leads], b.profile, works,
+                         AuditedProvider(get_provider(fit_spec), log, "fit_explainer"),
+                         grounder=grounder)
+    t2 = time.perf_counter()
+    print(f"\n== Explanations (models: summary {summ_spec}; fit {fit_spec}; "
+          f"grounding {grounder.name if grounder else 'off'})")
+    if summary.value:
+        print("Research profile: " + "; ".join(t for t, _ in summary.value.topics))
+        print("  " + summary.value.summary)
+    else:
+        print("Research profile summary withheld: it failed validation twice.")
+    for i, (lead, v) in enumerate(zip(b.leads, fits, strict=True), 1):
+        o = lead.opportunity
+        if not v.value:
+            print(f"\n{i:2}. {o.opportunity_number}: explanation withheld (failed validation "
+                  "twice; flagged for review)")
+            continue
+        f = v.value
+        print(f"\n{i:2}. {o.opportunity_number}  fit {f.fit}/100  (cites {', '.join(f.cited_ids)})")
+        for sent in (f.opportunity_sentence, f.research_sentence):
+            mark = "  [not supported by the cited record]" if sent in f.unsupported else ""
+            print(f"    {sent}{mark}")
+        if f.link_sentence:
+            print(f"    Inference: {f.link_sentence}")
+    rej1, n1 = log.rejection_rate(layer=1)
+    rej2, n2 = log.rejection_rate(layer=2)
+    flagged = sum(v.flagged for v in fits) + summary.flagged
+    tin, tout, cost = log.spend()
+    print(f"\nValidator layer 1: {rej1} of {n1} outputs rejected; {flagged} withheld after "
+          f"a second failure. Layer 2: {rej2} of {n2} explanations have an unsupported "
+          f"factual sentence.")
+    print(f"Model calls: {sum(e['kind'] == 'call' for e in log.events)}; tokens in {tin:,}, "
+          f"out {tout:,}; cost ${cost:.4f}; summary {t1 - t0:.1f} s, explanations "
+          f"{t2 - t1:.1f} s.")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -277,6 +338,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="fake: no model downloads (tests)")
     b.add_argument("--embedder", default="Qwen/Qwen3-Embedding-0.6B")
     b.add_argument("--reranker", default="Qwen/Qwen3-Reranker-0.6B")
+    b.add_argument("--explain", action="store_true",
+                   help="add the profile summary and fit explanations (model calls)")
+    b.add_argument("--llm", default=None, help="provider spec for both skills, e.g. "
+                   "ollama:qwen3.8:27b (default: PERCH_LLM_<ROLE>)")
+    b.add_argument("--grounder", choices=["minicheck", "fake", "none"], default="minicheck",
+                   help="validator layer 2")
     return p
 
 

@@ -35,7 +35,9 @@ def audited(replies):
 
 
 def fit_reply(explanation, cited=("PAR-1", "W1")):
-    return json.dumps({"reasoning": "r", "fit": 80, "explanation": explanation,
+    first, _, rest = explanation.partition(". ")
+    return json.dumps({"reasoning": "r", "fit": 80, "opportunity_sentence": first + ".",
+                       "research_sentence": rest, "link_sentence": "Both concern donation.",
                        "cited_ids": list(cited)})
 
 
@@ -79,3 +81,17 @@ def test_summary_skill_validates_topics_and_two_sentences():
     one_sentence["summary"] = "Only one sentence."
     p, log = audited([json.dumps(one_sentence)] * 2)
     assert summarise_profile(PROFILE, WORKS, p).flagged
+
+
+def test_layer2_flags_unsupported_factual_sentence_only():
+    from perch.grounding import FakeGrounder
+
+    reply = json.dumps({"reasoning": "r", "fit": 70,
+                        "opportunity_sentence": "PAR-1 funds deep ocean volcano drilling.",
+                        "research_sentence": "W1 studies living kidney donor communication.",
+                        "link_sentence": "The fit is weak overall.", "cited_ids": ["PAR-1", "W1"]})
+    p, log = audited([reply])
+    (v,) = explain_leads([OPP], PROFILE, WORKS, p, grounder=FakeGrounder())
+    assert v.value.unsupported == ["PAR-1 funds deep ocean volcano drilling."]
+    assert set(v.value.support) == {"opportunity_sentence", "research_sentence"}
+    assert log.rejection_rate("fit_explainer", layer=2) == (1, 1)

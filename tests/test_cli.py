@@ -142,3 +142,22 @@ def test_brief_route_a_with_fake_models(tmp_path, capsys):
     late = [*common, "brief", "A5026494099", "--models", "fake", "--as-of", "2027-01-01"]
     assert cli.main(late, factory) == 0
     assert "1 ineligible removed, top 0" in capsys.readouterr().out  # closed by then
+
+
+
+def test_brief_explain_with_fake_models(tmp_path, capsys):
+    db = str(tmp_path / "p.db")
+    assert cli.main(["--db", db, "fetch", "openalex", "A5026494099"], factory) == 0
+    assert cli.main(["--db", db, "fetch", "opportunities", "--limit", "1"], factory,
+                    grants_factory=grants_factory()) == 0
+    capsys.readouterr()
+    argv = ["--db", db, "brief", "A5026494099", "--models", "fake", "--as-of", "2026-10-28",
+            "--explain"]
+    assert cli.main(argv, factory) == 0
+    out = capsys.readouterr().out
+    # the fake model returns empty replies, so both outputs fail twice and are withheld
+    assert "Research profile summary withheld" in out
+    assert "explanation withheld (failed validation twice" in out
+    assert "Validator layer 1: 4 of 4 outputs rejected; 2 withheld" in out
+    log = (tmp_path / "logs" / "model_calls.jsonl").read_text()
+    assert log.count('"kind": "call"') == 4

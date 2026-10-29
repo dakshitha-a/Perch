@@ -144,14 +144,21 @@ class Validated[T]:
 
 
 def generate_validated[T](generate: Callable[[list[str]], T],
-                          validate: Callable[[T], Check]) -> Validated[T]:
-    """Run generate(feedback); on failure regenerate once with the errors; then flag."""
+                          validate: Callable[[T], Check],
+                          on_unparseable: Callable[[list[str]], None] | None = None
+                          ) -> Validated[T]:
+    """Run generate(feedback); on failure regenerate once with the errors; then flag.
+
+    An unparseable output is a failed attempt; `on_unparseable` lets the caller log it
+    so it counts in the rejection rate."""
     feedback: list[str] = []
     for attempt in (1, 2):
         try:
             value = generate(feedback)
-        except ValueError as e:  # unparseable output counts as a failed attempt
+        except ValueError as e:
             feedback = [f"output could not be parsed: {e}"]
+            if on_unparseable:
+                on_unparseable(feedback)
             continue
         c = validate(value)
         if c.ok:
