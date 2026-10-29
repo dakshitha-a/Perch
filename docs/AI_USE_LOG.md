@@ -24,6 +24,8 @@ Required for the final deck's "AI use declaration" slide. One row per tool per p
 | 2026-10-29 | qwen3:8b, qwen3.8:27b (Ollama, already on the node) | Ollama digests 500a1f067a9f, 22130167c4c2 | S8 skill-2 bench and single-card validation, local | Perch-dev for Dakshitha |
 | 2026-10-29 | Clef-flash (`ggml-org/Clef-Flash-GGUF`) and Clef through llama.cpp b11941 `/v1/systemone` | as served by `make decide-up` | S8 bench rows for validator layer 2 and rerank via `decide` | Perch-dev for Dakshitha |
 | 2026-10-29 | Claude Code CLI (Claude Opus 5.5), session Perch-dev | 2.1.312 (Claude Code) | S8: back-test set builder, corpus fetcher, back-test, bench matrix, decision-model adapter, Keep bar | Dakshitha (directing Perch-dev) |
+| 2026-10-29 | Claude Code CLI (Claude Opus 5.5), session Perch-dev | 2.1.312 (Claude Code) | S10: Scout agent loop, tools, log and replay, Scout API and Ask Scout tab, Scout bench | Dakshitha (directing Perch-dev) |
+| 2026-10-29 | gemma4:26b-a4b and qwen3:8b (Ollama, already on the node) | Ollama digests 001e5dafc3c7, 500a1f067a9f | S10 Scout bench: 20 scripted follow-ups on public records, native tool calling and the structured fallback, local | Perch-dev for Dakshitha |
 
 Reminders:
 - Record Claude Code's version (`claude --version`) the first time it writes project code.
