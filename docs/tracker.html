@@ -119,7 +119,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S8</code> <span class="badge s-in-progress">in progress</span><span>8/17 sessions done</span></div>
+<div class="at-a-glance"><code>S8</code> <span class="badge s-continued">continued</span><span>8/17 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
@@ -130,26 +130,28 @@ details .inner > * { min-width: 0; }
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
 <div id="s8"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S8 · Back-test and bench</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="title-row"><h1>S8 · Back-test and bench</h1><span class="badge s-continued">continued</span></div>
 <div class="meta">Started 2026-10-29 00:04 EDT</div></div>
 <p>Goal: the numbers for the results slide. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="0 of 6 tasks done"><div class="counts"><span><b>0/6</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>5</b>todo</span></div><div class="bar" role="img" aria-label="0 of 6 tasks done"><span class="s-in-progress" style="width:16.67%" title="in progress: 1"></span><span class="s-todo" style="width:83.33%" title="todo: 5"></span></div></section>
+<section class="panel summary" aria-label="2 of 6 tasks done"><div class="counts"><span><b>2/6</b>tasks done</span><span class="s-done"><b>2</b>done</span><span class="s-in-progress"><b>3</b>in progress</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="2 of 6 tasks done"><span class="s-done" style="width:33.33%" title="done: 2"></span><span class="s-in-progress" style="width:50.00%" title="in progress: 3"></span><span class="s-todo" style="width:16.67%" title="todo: 1"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
 <tbody>
 <tr><td>1</td><td>Back-test set from RePORTER; <code>bench/backtest.py</code> with date cut-off and keyword baseline</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono">aa5746b</td><td>Set: 160 rows (69 targeted, 91 parent) from 345 candidate awards; 128 PIs matched, 33 ambiguous, 23 not found. Window 18 months. Corpus fetch of 11,218 NIH announcements running (about 3 h at 1 per second).</td></tr>
-<tr><td>2</td><td><code>make bench</code>: embeddings, retrieval and rerank matrix; skill-2 LLM rows</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>3</td><td>Cost per brief from the audit log</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>4</td><td>Decision-model rows for validator layer 2 and rerank</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>5</td><td>Single-card validation of qwen3 14b, 8b and 30b against qwen3.8:27b</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td><code>make bench</code>: embeddings, retrieval and rerank matrix; skill-2 LLM rows</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono">a2ddd35</td><td>Skill 2 on 30 leads, passed both validator layers: Gemma 4 26B-A4B 28, qwen3.8:27b 28, qwen3:14b 26, claude-sonnet-5-5 24, qwen3:8b 23. Chat winners in <code>perch/profiles.py</code>. Embedding and rerank matrix waits for the corpus.</td></tr>
+<tr><td>3</td><td>Cost per brief from the audit log</td><td><span class="badge s-done">done</span></td><td class="mono">a2ddd35</td><td>claude-sonnet-5-5: $0.079 per 10-lead brief for explanations plus $0.012 for the summary, $0.091 total. Local models $0. S8 spend $0.24 of $3; total $0.32 of $100.</td></tr>
+<tr><td>4</td><td>Decision-model rows for validator layer 2 and rerank</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono">116c5be</td><td><code>/v1/systemone</code> adapter verified live. Layer 2 on 40 swapped-record pairs: all tie at 0.5 (0 false flags, 2 of 20 misses); AUC Clef 0.998, logprobs 0.985, Clef-flash 0.948, MiniCheck 0.925. Jev and Strands not benched (access, weights). Rerank rows wait for the corpus.</td></tr>
+<tr><td>5</td><td>Single-card validation of qwen3 14b, 8b and 30b against qwen3.8:27b</td><td><span class="badge s-done">done</span></td><td class="mono">a2ddd35</td><td>3 concurrent briefs on one clean GPU. Peaks: qwen3:8b 19.1 GB, qwen3:14b 22.7 GB, qwen3.8:27b 31.1 GB, qwen3:30b 31.5 GB, Gemma 31.7 GB. p50: 161, 268, 272, 332, 144 s. No model passed every gate; deploy-1gpu uses qwen3:14b. Fixed two concurrency bugs on the way.</td></tr>
 <tr><td>6</td><td>Keep bar in the web app; Help page</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
+<h2>Status at stop (01:10 EDT)</h2>
+<ul><li>Tasks 3, 5 and 6 done. Tasks 1, 2 and 4 wait for the back-test matrix, which runs unattended after the corpus fetch (see HANDOFF).</li></ul>
 <h2>Definition of done</h2>
 <ul class="panel done-list"><li>A results table with the keyword baseline exists in <code>bench/results/</code>.</li><li>Winners are written into config, with the runner-up one line away.</li><li><code>make test</code> is green.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="8 of 17 sessions done"><div class="counts"><span><b>8/17</b>sessions done</span><span class="s-done"><b>8</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>8</b>todo</span></div><div class="bar" role="img" aria-label="8 of 17 sessions done"><span class="s-done" style="width:47.06%" title="done: 8"></span><span class="s-in-progress" style="width:5.88%" title="in progress: 1"></span><span class="s-todo" style="width:47.06%" title="todo: 8"></span></div></section>
+<section class="panel summary" aria-label="8 of 17 sessions done"><div class="counts"><span><b>8/17</b>sessions done</span><span class="s-done"><b>8</b>done</span><span class="s-continued"><b>1</b>continued</span><span class="s-todo"><b>8</b>todo</span></div><div class="bar" role="img" aria-label="8 of 17 sessions done"><span class="s-done" style="width:47.06%" title="done: 8"></span><span class="s-continued" style="width:5.88%" title="continued: 1"></span><span class="s-todo" style="width:47.06%" title="todo: 8"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -161,7 +163,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s5">S5</a></td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-done">done</span></td><td>2026-10-28 21:04 EDT</td><td>2026-10-28 21:29 EDT</td><td class="mono">ce34844</td><td>105 tests green. <code>perch brief --explain</code> live for 3 PIs on qwen3.8:27b: layer 1 rejected 0 of 33, layer 2 flagged 1 of 30 (a false flag). 70 to 79 s per brief, $0. <code>decide</code> primitive with logprobs fallback. Anthropic adapter built on the SDK but not live-verified (Q5).</td></tr>
 <tr class="is-finished"><td><a href="#s6">S6</a></td><td>API</td><td><span class="badge s-done">done</span></td><td>2026-10-28 22:07 EDT</td><td>2026-10-28 22:13 EDT</td><td class="mono">b3ccdf6</td><td>112 tests green. FastAPI + in-process jobs; briefs end to end via curl for 2 PIs (one fetched from scratch); stages and partial results pollable; export with provenance.</td></tr>
 <tr class="is-finished"><td><a href="#s7">S7</a></td><td>Web app, first three screens</td><td><span class="badge s-done">done</span></td><td>2026-10-28 22:40 EDT</td><td>2026-10-28 23:14 EDT</td><td class="mono">5da4e7e</td><td>116 tests green. No-build web app in <code>web/</code> served by <code>perch serve</code> at <code>/</code>: Find, Profile, Routes, evidence panel, Scout the owl on the progress branch. Live brief in the browser in 90 s. Adversarial review: 32 findings fixed. Screenshots in <code>docs/screenshots/</code>; UI tab in the tracker.</td></tr>
-<tr class="is-current"><td><a href="#s8">S8</a></td><td>Back-test and bench</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 00:04 EDT</td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s8">S8</a></td><td>Back-test and bench</td><td><span class="badge s-continued">continued</span></td><td>2026-10-29 00:04 EDT</td><td>2026-10-29 01:10 EDT</td><td class="mono">see git log</td><td>126 tests green. Back-test set 160 rows (69 targeted, 91 parent) from RePORTER; 18-month window. Corpus fetch and <code>make bench</code> matrix running unattended (ends after about 03:30). Skill 2 passed both validator layers: Gemma 28 of 30, qwen3.8:27b 28, qwen3:14b 26, Sonnet 24, qwen3:8b 23. Models per profile in <code>perch/profiles.py</code>. Keep bar shipped. Private mode designed (S13). Two concurrency bugs fixed.</td></tr>
 <tr><td>S9</td><td>Deploy</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S10</td><td>Scout agent</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S11</td><td>Route B</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
@@ -185,12 +187,12 @@ details .inner > * { min-width: 0; }
 <tbody>
 <tr><td>Back-test hit@5 / hit@10 / MRR (best config)</td><td></td><td>bench/results/</td><td></td></tr>
 <tr><td>Keyword-only baseline hit@5 / hit@10 / MRR</td><td></td><td>bench/results/</td><td></td></tr>
-<tr><td>Validator rejection rate (API model / local)</td><td>API claude-sonnet-5-5: layer 1 0 of 8, layer 2 0 of 6 (2 small runs) / local qwen3.8:27b: layer 1 0 of 33, layer 2 1 of 30 (false flag)</td><td>data/logs/model_calls.jsonl</td><td>2026-10-28</td></tr>
-<tr><td>Cost per brief (API model)</td><td>about $0.0066 per explained lead with the cached profile prefix, plus about $0.012 for the profile summary (claude-sonnet-5-5, PI-3, 3 leads)</td><td>data/logs/model_calls.jsonl</td><td>2026-10-28</td></tr>
+<tr><td>Validator pass rate, both layers (30 leads)</td><td>Gemma 4 26B-A4B 28 of 30, qwen3.8:27b 28, qwen3:14b 26, claude-sonnet-5-5 24, qwen3:8b 23</td><td>bench/results/RESULTS.md</td><td>2026-10-29</td></tr>
+<tr><td>Cost per brief (API model)</td><td>$0.091 for a 10-lead brief on claude-sonnet-5-5 ($0.079 explanations, $0.012 summary); local models $0</td><td>bench/results/cost.csv</td><td>2026-10-29</td></tr>
 <tr><td>Warm-cache brief time</td><td>0.7 to 1.1 s (Route A: embed + rerank, no LLM calls; 3 PIs)</td><td>data/logs/brief_timings.jsonl</td><td>2026-10-28</td></tr>
 <tr><td>Route B hand-judged precision</td><td></td><td></td><td></td></tr>
-<tr><td>Deployment profile and peak VRAM</td><td></td><td>S8 single-card validation</td><td></td></tr>
-<tr><td>Anthropic API spend / budget to demo</td><td>$0.08 of $100 (adapter verification, 8 calls)</td><td>data/logs/anthropic_spend.jsonl</td><td>2026-10-28</td></tr>
+<tr><td>Deployment profile and peak VRAM</td><td>dev and deploy-2gpu: Gemma 4 26B-A4B + Clef. deploy-1gpu: qwen3:14b + Clef-flash, peak 22.7 GB with 3 concurrent briefs (Gemma 31.7 GB, qwen3.8:27b 31.1 GB on one card)</td><td>bench/results/single_card.csv</td><td>2026-10-29</td></tr>
+<tr><td>Anthropic API spend / budget to demo</td><td>$0.32 of $100 (S8: $0.24 of its $3)</td><td>data/logs/anthropic_spend.jsonl</td><td>2026-10-29</td></tr>
 </tbody></table></div>
 <p class="meta">Perch-dev updates this file at the end of every session (and at any stop mid-session). <code>make tracker</code> renders it to <code>docs/tracker.html</code> for reading in a browser; the Markdown is the source of truth. Status values: <code>todo</code> · <code>in progress</code> · <code>continued</code> (stopped mid-session, see HANDOFF) · <code>done</code> · <code>cut</code>.</p>
 </section>
@@ -309,10 +311,13 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (51)</h2>
+<h2>Decisions (54)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S8</td><td>"Validator pass rate" counts a lead only when it passes both layers (explained, no unsupported statement)</td><td>Layer 1 alone hid qwen3:8b's 20% unsupported rate</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Models per profile in <code>perch/profiles.py</code>: dev and deploy-2gpu chat gemma4:26b-a4b (runner-up qwen3.8:27b), grounder Clef (runner-up Clef-flash); deploy-1gpu chat qwen3:14b (runner-up qwen3:8b), grounder Clef-flash (runner-up MiniCheck); a decision server that is down falls back to MiniCheck</td><td>S8 bench: Gemma ties the 27B on both validator layers (28 of 30) at about twice the speed; no chat model passed every one-card gate, qwen3:14b fits with a 22.7 GB peak and misses the pass-rate gate by 2 leads of 30; Clef had the best grounder AUC (0.998 on 40 pairs)</td><td>Perch-dev (Dakshitha asked for the best performers)</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Private mode is built in full (back end and front end) in S13 but not demoed; local models per role are chosen from the S8 benchmarks</td><td>Dakshitha's direction</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>Private threads 0.6 of the thread weight; zero writes from a private session; private-only brief and the abstract back-test kept (Q13 to Q15 defaults)</td><td>Dakshitha accepted the defaults</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>Private mode may run on the public URL when every model is self-hosted; requires session isolation and the connection decrypted on the Perch server, or the tunnel provider named in the privacy statement (Q12)</td><td>A university deployment hosts its own models; the trust boundary is the Perch server, not the user's machine</td><td>Dakshitha (direction), Perch-dev (conditions)</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>S13 split into S13 Private mode and S14 MCP server; Monitoring becomes S15, QA, freeze and package S16 (Q11)</td><td>Private mode is a session of work on its own</td><td>Dakshitha</td></tr>
@@ -365,10 +370,11 @@ details .inner > * { min-width: 0; }
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (10)</h2>
+<h2>Plan change log (11)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S13</td><td>Private mode: full back end and front end built in S13; no Demo Day demo</td><td>Dakshitha's direction</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S13 to S16</td><td>S13 split: S13 Private mode, S14 MCP server, S15 Monitoring, S16 QA, freeze, package (Q11). Private mode allowed on the public URL when every model is self-hosted, with session isolation and a server-side TLS rule (Q12 revised)</td><td>Dakshitha: split S13; a university deployment hosts its own models, so public hosting does not by itself break the privacy promise</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S9, S10, S12, S13, S15</td><td>Private mode added (design in <code>docs/design/PRIVATE_MODE.md</code>): local-only gate and logging groundwork in S9; Scout rules in S10; egress filter in S12; S13 becomes "Private mode and MCP server" (split proposed, Q11); privacy audit in S15; floor added to the cut order</td><td>Dakshitha asked for a high-privacy mode that takes a CV, unpublished work and draft proposals, runs only on local models, leaves no logs and masks anything that leaves</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>Back-test PI set built from NIH RePORTER (Q7) instead of a teammate's list; task 6 Keep bar added (Q10)</td><td>Dakshitha's answers at S8 start</td><td>Dakshitha</td></tr>
