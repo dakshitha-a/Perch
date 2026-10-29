@@ -157,7 +157,7 @@ def test_argument_check():
     assert check_arguments(t, "route=A") == ["arguments must be an object"]
 
 
-def test_private_sessions_are_local_only_and_write_nothing(service, tmp_path):
+def test_private_sessions_are_local_only_and_keep_no_scout_log(service, tmp_path):
     private = PrivateSettings(enabled=True, endpoints=("127.0.0.1",), tls_at="server",
                               public_url=None)
     api = FakeProvider()

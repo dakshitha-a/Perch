@@ -3,7 +3,7 @@
 Tool calls are logged with their arguments and with hashes of the arguments and the
 result, so a session can be replayed: `perch scout replay <session>` re-runs each
 logged call and compares result hashes. Questions and answers are stored as hashes
-only. Private sessions write nothing (Q14).
+only. Private sessions write no Scout log (Q14).
 """
 
 from __future__ import annotations

@@ -168,7 +168,7 @@ class Scout:
                  brief_note: str = "") -> None:
         if private is not None:
             refuse_if_not_local(provider, private)
-            log = None  # private sessions write nothing (Q14)
+            log = None  # no Scout log (Q14); the tools' caches are S13's job
         self.provider, self.ctx, self.mode = provider, ctx, mode
         self.policy: Policy = policy or ("native" if "tools" in provider.capabilities
                                          else "structured")

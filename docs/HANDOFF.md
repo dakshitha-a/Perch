@@ -27,6 +27,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - Repeated identical calls: Sonnet's first run looped the same search up to nine times. A guard that answers a repeat call from the earlier result would stop this. It is not built, so the bench numbers describe the current code.
 - The structured fallback rejects inline list numbers ("1. … 2. …" on one line). Only line-start list markers are ignored.
 - The demo stack has not been rebuilt with S10. Run `make demo`, or `docker compose up -d --build` with `PERCH_UID` and `PERCH_GID` set. The demo Scout model is the profile's chat model, Gemma.
+- Private Scout sessions skip the Scout log and keep the audit log in memory, but the tools still write the rerank cache, the embedding cache (`CachedEmbedder`) and store upserts. S13 must bypass these before private text reaches a tool.
 
 ## Next session: S11 — Route B
 1. Read S11 in `docs/PLAN.md`.
