@@ -1,4 +1,4 @@
-// Help: how to use Perch (eight steps with small pictures built from the app's own
+// Help: how to use Perch (numbered steps, some with small pictures built from the app's own
 // parts) and how it works (the pipeline, marking which steps are rules and which are
 // models). Every claim here describes code in this repo; see docs/design/UI.md §7.
 
