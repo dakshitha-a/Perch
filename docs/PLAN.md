@@ -213,7 +213,7 @@ Done when: the job runs on the demo personas and produces a draft.
 Goal: ship.
 
 1. Work the fix list from the QA log a teammate keeps; accessibility checklist pass; privacy audit of private mode against the design's write-path inventory, canary test rerun on the frozen build.
-2. Rerun the Scout bench on the frozen build with the demo model. Final numbers (back-test, validator rate, cost per brief, Scout completion and wrong-tool rate) into `docs/TRACKER.md` and `docs/RESULTS.md` for the deck.
+2. Rerun the Scout bench on the frozen build with the demo model. Final numbers (back-test, validator rate, cost per brief, Scout completion and wrong-tool rate) into `docs/TRACKER.md` and `docs/RESULTS.md` for the deck. When this last test run is done, free the dev test servers: `make decide-down` stops the dev Clef-flash and Clef units, and the demo's own servers stay up. Then tell the other session sharing the node that those GPUs are free (details in the local notes). The Clef rows of `make bench` need `make decide-up` again after this.
 3. README final; `make package` → submission ZIP with how-to-run; confirm with Dakshitha before changing repo visibility.
 4. Freeze: tag `v0.1-demo`; nothing on `main` after that except README typos.
 
@@ -243,3 +243,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S12 | Task 7 (SBIR.gov bulk file) removed again; Route B stays NIH-only | Dakshitha: leave it while the SBIR.gov API is down | Dakshitha |
 | 2026-10-29 | S12 | Task 7 added back, narrowed: Temple STTR partners (41 awards) from the SBIR.gov bulk file's research-partner column | Dakshitha: worth doing if useful; companies that already partnered with Temple are concrete leads | Dakshitha |
 | 2026-10-29 | S12 | Worked in the order 1 to 4, 7, 6, 5: the demo was rebuilt last so it carried every change. Task 7 is done but not wired in, because it adds 0 leads under the two-signal rule (Q20) | Tasks 1 to 5 are the definition of done; one demo rebuild instead of two | Perch-dev |
+| 2026-10-29 | after S12 | S16 task 2: after the last test run, stop the dev decision servers (`make decide-down`) and tell the other session on the node that their GPUs are free | The app needs only the demo's two GPUs; the dev copies exist for testing | Dakshitha |
