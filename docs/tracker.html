@@ -146,7 +146,7 @@ details .inner > * { min-width: 0; }
 <div class="title-row"><h1>S12 · Compare, hand-off, export</h1><span class="badge s-in-progress">in progress</span></div>
 <div class="meta">Started 2026-10-29 13:38 EDT</div></div>
 <p>Goal: the decision and the hand-off. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="3 of 7 tasks done"><div class="counts"><span><b>3/7</b>tasks done</span><span class="s-done"><b>3</b>done</span><span class="s-todo"><b>4</b>todo</span></div><div class="bar" role="img" aria-label="3 of 7 tasks done"><span class="s-done" style="width:42.86%" title="done: 3"></span><span class="s-todo" style="width:57.14%" title="todo: 4"></span></div></section>
+<section class="panel summary" aria-label="3 of 6 tasks done"><div class="counts"><span><b>3/6</b>tasks done</span><span class="s-done"><b>3</b>done</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="3 of 6 tasks done"><span class="s-done" style="width:50.00%" title="done: 3"></span><span class="s-todo" style="width:50.00%" title="todo: 3"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
 <tbody>
@@ -156,7 +156,7 @@ details .inner > * { min-width: 0; }
 <tr><td>4</td><td>Scout: <code>compare</code> and <code>draft_handoff</code> call the compare view and skill 3; compare and hand-off tasks in the Scout bench</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
 <tr><td>5</td><td>Rebuild the demo (<code>make demo</code>)</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
 <tr><td>6</td><td>Private mode egress filter: exports and hand-off drafts exclude private-derived text by default; opt-in masking with typed placeholders and an in-memory key</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>7</td><td>Temple STTR partners for Route B from the SBIR.gov bulk file; kept only if it adds correct leads</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>7</td><td>Temple STTR partners for Route B from the SBIR.gov bulk file; kept only if it adds correct leads</td><td>done, not wired in</td><td class="mono">a69f78a</td><td><code>scripts/sbir_temple.py</code> reads only named columns, never the contact ones, and writes <code>data/sbir/temple_sttr_partners.csv</code>: 41 STTR awards, 25 companies. <code>perch/sttr.py</code> matches award titles to a researcher's three main topics. Matches: PI-1 Recombination Therapeutics (yes), PI-2 Onconova (thin, FY 2007), PI-4 Intelligent Fusion Technology (thin), PI-3 none. None of these companies has a second kind of signal in the live data, so under the two-signal rule it adds 0 leads. By the task's gate it is not wired in. Q20 asks whether a past Temple STTR partner should be a lead on its own. Hand check in <code>bench/results/route_b/STTR.md</code>.</td></tr>
 </tbody></table></div>
 <h2>Definition of done</h2>
 <ul class="panel done-list"><li>Find → Routes → Compare → Hand off works on the public URL.</li></ul>
