@@ -3,8 +3,10 @@
 For one chat model at a time, everything the deploy-1gpu profile puts on GPU 0 is
 started on a bench GPU instead: a private Ollama instance (8k context) with the chat
 model, Clef-flash on llama.cpp, and in this process the embedder, the reranker and
-the grounding model. Three briefs with explanations then run at once for the three
-demo PIs, from a copy of the demo store with empty caches, while nvidia-smi is
+the grounding model (MiniCheck on the GPU, or with --grounder clef-flash the bench
+Clef-flash server, as deploy-1gpu does). Up to three briefs with explanations
+(--briefs, default 3) then run at once for the demo PIs, from a copy of the demo
+store with empty caches, while nvidia-smi is
 polled for that GPU's memory. Recorded: the peak, the p50 brief time, and the share
 of leads explained. The validator pass rate on a fixed lead set comes from
 bench/skill2.py; QA agreement and the Scout gates cannot be measured before a QA
@@ -102,6 +104,11 @@ def start_servers(log_dir: Path) -> list[subprocess.Popen]:
 def main(argv: list[str] | None = None) -> None:
     ap = argparse.ArgumentParser(description="single-card validation, one chat model")
     ap.add_argument("model", help="Ollama model, e.g. qwen3:14b")
+    ap.add_argument("--briefs", type=int, default=len(PIS), choices=range(1, len(PIS) + 1),
+                    help="briefs at once (the first N demo researchers)")
+    ap.add_argument("--grounder", choices=("minicheck", "clef-flash"), default="minicheck",
+                    help="layer 2: MiniCheck on the GPU, or the bench Clef-flash server "
+                         "(what deploy-1gpu uses)")
     a = ap.parse_args(argv)
     gpu = physical_gpu()
     work = WORK / a.model.replace(":", "-")
@@ -116,9 +123,15 @@ def main(argv: list[str] | None = None) -> None:
                    json={"model": a.model, "prompt": "", "keep_alive": "30m"}, timeout=300)
         idle = used_mib(gpu)
         models = default_models(data_dir=work, llm=f"ollama:{a.model}")
-        from perch.grounding import MiniCheckGrounder
+        from perch.grounding import DecisionGrounder, MiniCheckGrounder
+        from perch.llm.systemone import SystemOneClient, SystemOneDecider
 
-        models.grounder = lambda: MiniCheckGrounder(device="cuda")
+        if a.grounder == "clef-flash":
+            models.grounder = lambda: DecisionGrounder(SystemOneDecider(
+                SystemOneClient(f"http://127.0.0.1:{CLEF_PORT}"), "clef-flash"),
+                "systemone:clef-flash")
+        else:
+            models.grounder = lambda: MiniCheckGrounder(device="cuda")
         svc = BriefService(work / "perch.db", models, Clients(openalex=oa.OpenAlexClient))
         for name in ("embedder", "reranker", "index", "grounder"):
             models.get(name)
@@ -130,7 +143,7 @@ def main(argv: list[str] | None = None) -> None:
         loaded = used_mib(gpu)
         mon = PeakMonitor(gpu)
         mon.start()
-        briefs = [svc.create(pid, as_of=AS_OF) for pid in PIS]
+        briefs = [svc.create(pid, as_of=AS_OF) for pid in PIS[:a.briefs]]
 
         def one(b: Brief) -> float:
             t = time.perf_counter()
@@ -144,7 +157,7 @@ def main(argv: list[str] | None = None) -> None:
         with svc.repo() as r:
             done = [r.get(Brief, b.id) for b in briefs]
             leads = [r.get(Lead, i) for b in done for i in b.lead_ids]
-        row = {"model": a.model, "gpu": gpu, "briefs": len(briefs),
+        row = {"model": a.model, "gpu": gpu, "grounder": a.grounder, "briefs": len(briefs),
                "briefs_done": sum(b.status == "done" for b in done),
                "leads": len(leads),
                "explained": round(sum(bool(x.explanation) for x in leads) / max(len(leads), 1), 3),

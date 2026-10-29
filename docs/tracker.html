@@ -394,7 +394,7 @@ details .inner > * { min-width: 0; }
 </tbody></table></div>
 </section>
 <section id="view-bench" class="view" data-view="bench" hidden><div><div class="eyebrow">Measured in S8, copied from bench/results/</div><h1>Bench results, summary</h1></div>
-<p>Rendered 2026-10-29 13:14 UTC by <code>make bench</code> from the CSVs in <code>bench/results/</code>. Full tables: <code>bench/results/RESULTS.md</code>.</p>
+<p>Rendered 2026-10-29 13:38 UTC by <code>make bench</code> from the CSVs in <code>bench/results/</code>. Full tables: <code>bench/results/RESULTS.md</code>.</p>
 <h2>Back-test (NIH, Temple, date cut-off)</h2>
 <p>Rank of the announcement each award was funded under, from papers before the award start. Keyword-only is the baseline. Seconds are the median per award on the targeted rows.</p>
 <div class="panel scroll"><table>
@@ -440,16 +440,21 @@ details .inner > * { min-width: 0; }
 <tr><td>Jev (hosted)</td><td>0</td><td>not benched</td><td></td><td></td><td></td><td>no access to the hosted Jev API on this node; not benched</td></tr>
 <tr><td>Strands Decider 2B</td><td>0</td><td>not benched</td><td></td><td></td><td></td><td>weights and licence not verified on this node; not benched</td></tr>
 </tbody></table></div>
-<h2>One card, three briefs at once</h2>
-<p>Chat model, Clef-flash, embedder and reranker on one clean GPU. The gate is a peak under 28 GB.</p>
+<h2>One card, briefs at once</h2>
+<p>Chat model, Clef-flash, embedder and reranker on one clean GPU. The gate is a peak under 28 GB. MiniCheck rows also load MiniCheck on the GPU, which deploy-1gpu does not; the Clef-flash rows match deploy-1gpu.</p>
 <div class="panel scroll"><table>
-<thead><tr><th>Model</th><th>Peak MiB</th><th>p50 brief s</th><th>Explained</th><th>QA and Scout gates</th></tr></thead>
+<thead><tr><th>Model</th><th>Grounder</th><th>Briefs at once</th><th>Before briefs MiB</th><th>Peak MiB</th><th>p50 brief s</th><th>Explained</th><th>QA and Scout gates</th></tr></thead>
 <tbody>
-<tr><td>qwen3:8b</td><td>19083</td><td>160.8</td><td>0.967</td><td>not measured</td></tr>
-<tr><td>qwen3:14b</td><td>22679</td><td>267.9</td><td>0.967</td><td>not measured</td></tr>
-<tr><td>qwen3.8:27b</td><td>31149</td><td>271.8</td><td>0.933</td><td>not measured</td></tr>
-<tr><td>qwen3:30b</td><td>31471</td><td>332.0</td><td>0.033</td><td>not measured</td></tr>
-<tr><td>gemma4:26b-a4b</td><td>31729</td><td>144.3</td><td>0.933</td><td>not measured</td></tr>
+<tr><td>qwen3.8:27b</td><td>clef-flash</td><td>1</td><td>29353</td><td>29681</td><td>96.7</td><td>0.9</td><td>not measured</td></tr>
+<tr><td>qwen3.8:27b</td><td>clef-flash</td><td>3</td><td>29353</td><td>29975</td><td>243.7</td><td>0.933</td><td>not measured</td></tr>
+<tr><td>gemma4:26b-a4b</td><td>clef-flash</td><td>1</td><td>29939</td><td>30259</td><td>52.2</td><td>0.9</td><td>not measured</td></tr>
+<tr><td>gemma4:26b-a4b</td><td>clef-flash</td><td>2</td><td>29939</td><td>30271</td><td>83.9</td><td>0.95</td><td>not measured</td></tr>
+<tr><td>gemma4:26b-a4b</td><td>clef-flash</td><td>3</td><td>29939</td><td>30553</td><td>136.2</td><td>0.967</td><td>not measured</td></tr>
+<tr><td>qwen3:8b</td><td>minicheck</td><td>3</td><td>18393</td><td>19083</td><td>160.8</td><td>0.967</td><td>not measured</td></tr>
+<tr><td>qwen3:14b</td><td>minicheck</td><td>3</td><td>21731</td><td>22679</td><td>267.9</td><td>0.967</td><td>not measured</td></tr>
+<tr><td>qwen3.8:27b</td><td>minicheck</td><td>3</td><td>30705</td><td>31149</td><td>271.8</td><td>0.933</td><td>not measured</td></tr>
+<tr><td>qwen3:30b</td><td>minicheck</td><td>3</td><td>30873</td><td>31471</td><td>332.0</td><td>0.033</td><td>not measured</td></tr>
+<tr><td>gemma4:26b-a4b</td><td>minicheck</td><td>3</td><td>31291</td><td>31729</td><td>144.3</td><td>0.933</td><td>not measured</td></tr>
 </tbody></table></div></section>
 
 <p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log and bench/results/SUMMARY.md by scripts/render_tracker.py.

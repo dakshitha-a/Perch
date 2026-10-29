@@ -247,12 +247,16 @@ def summary() -> str:
                   "0.5 threshold.", "", *table(rows, list(rows[0])), ""]
     sc = read_csv("single_card.csv")
     if sc:
-        rows = [{"Model": r["model"], "Peak MiB": r["peak_mib"], "p50 brief s": r["p50_brief_s"],
+        rows = [{"Model": r["model"], "Grounder": r.get("grounder", "minicheck"),
+                 "Briefs at once": r["briefs"], "Before briefs MiB": r["all_loaded_mib"],
+                 "Peak MiB": r["peak_mib"], "p50 brief s": r["p50_brief_s"],
                  "Explained": r["explained"], "QA and Scout gates": "not measured"} for r in sc]
-        rows.sort(key=lambda r: int(r["Peak MiB"]))
-        lines += ["## One card, three briefs at once", "",
+        rows.sort(key=lambda r: (r["Grounder"], int(r["Peak MiB"])))
+        lines += ["## One card, briefs at once", "",
                   "Chat model, Clef-flash, embedder and reranker on one clean GPU. The gate is "
-                  "a peak under 28 GB.", "", *table(rows, list(rows[0])), ""]
+                  "a peak under 28 GB. MiniCheck rows also load MiniCheck on the GPU, which "
+                  "deploy-1gpu does not; the Clef-flash rows match deploy-1gpu.", "",
+                  *table(rows, list(rows[0])), ""]
     return "\n".join(lines) + "\n"
 
 

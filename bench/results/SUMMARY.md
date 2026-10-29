@@ -1,6 +1,6 @@
 # Bench results, summary
 
-Rendered 2026-10-29 13:14 UTC by `make bench` from the CSVs in `bench/results/`. Full tables: `bench/results/RESULTS.md`.
+Rendered 2026-10-29 13:38 UTC by `make bench` from the CSVs in `bench/results/`. Full tables: `bench/results/RESULTS.md`.
 
 ## Back-test (NIH, Temple, date cut-off)
 
@@ -53,15 +53,20 @@ Supported sentences against the same sentences with a swapped record. AUC is how
 | Jev (hosted) | 0 | not benched |  |  |  | no access to the hosted Jev API on this node; not benched |
 | Strands Decider 2B | 0 | not benched |  |  |  | weights and licence not verified on this node; not benched |
 
-## One card, three briefs at once
+## One card, briefs at once
 
-Chat model, Clef-flash, embedder and reranker on one clean GPU. The gate is a peak under 28 GB.
+Chat model, Clef-flash, embedder and reranker on one clean GPU. The gate is a peak under 28 GB. MiniCheck rows also load MiniCheck on the GPU, which deploy-1gpu does not; the Clef-flash rows match deploy-1gpu.
 
-| Model | Peak MiB | p50 brief s | Explained | QA and Scout gates |
-|---|---|---|---|---|
-| qwen3:8b | 19083 | 160.8 | 0.967 | not measured |
-| qwen3:14b | 22679 | 267.9 | 0.967 | not measured |
-| qwen3.8:27b | 31149 | 271.8 | 0.933 | not measured |
-| qwen3:30b | 31471 | 332.0 | 0.033 | not measured |
-| gemma4:26b-a4b | 31729 | 144.3 | 0.933 | not measured |
+| Model | Grounder | Briefs at once | Before briefs MiB | Peak MiB | p50 brief s | Explained | QA and Scout gates |
+|---|---|---|---|---|---|---|---|
+| qwen3.8:27b | clef-flash | 1 | 29353 | 29681 | 96.7 | 0.9 | not measured |
+| qwen3.8:27b | clef-flash | 3 | 29353 | 29975 | 243.7 | 0.933 | not measured |
+| gemma4:26b-a4b | clef-flash | 1 | 29939 | 30259 | 52.2 | 0.9 | not measured |
+| gemma4:26b-a4b | clef-flash | 2 | 29939 | 30271 | 83.9 | 0.95 | not measured |
+| gemma4:26b-a4b | clef-flash | 3 | 29939 | 30553 | 136.2 | 0.967 | not measured |
+| qwen3:8b | minicheck | 3 | 18393 | 19083 | 160.8 | 0.967 | not measured |
+| qwen3:14b | minicheck | 3 | 21731 | 22679 | 267.9 | 0.967 | not measured |
+| qwen3.8:27b | minicheck | 3 | 30705 | 31149 | 271.8 | 0.933 | not measured |
+| qwen3:30b | minicheck | 3 | 30873 | 31471 | 332.0 | 0.033 | not measured |
+| gemma4:26b-a4b | minicheck | 3 | 31291 | 31729 | 144.3 | 0.933 | not measured |
 

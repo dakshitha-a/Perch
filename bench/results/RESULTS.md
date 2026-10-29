@@ -1,6 +1,6 @@
 # Bench results
 
-Rendered 2026-10-29 13:14 UTC by `make bench`. Numbers are copied from the CSVs in this folder; nothing here is estimated.
+Rendered 2026-10-29 13:38 UTC by `make bench`. Numbers are copied from the CSVs in this folder; nothing here is estimated.
 
 ## Back-test (NIH, Temple, date cut-off)
 
@@ -101,11 +101,16 @@ An interval that contains 0 means the back-test cannot tell the config from the 
 
 ## Single-card validation
 
-| model | gpu | briefs | briefs_done | leads | explained | p50_brief_s | max_brief_s | idle_mib_chat_and_clef | all_loaded_mib | peak_mib | qa_agreement | scout_gates |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| qwen3:14b | 5 | 3 | 3 | 30 | 0.967 | 267.9 | 289.0 | 17769 | 21731 | 22679 | not measured: no QA log yet | not measured: Scout is S10 |
-| qwen3:30b | 5 | 3 | 3 | 30 | 0.033 | 332.0 | 335.6 | 26265 | 30873 | 31471 | not measured: no QA log yet | not measured: Scout is S10 |
-| qwen3.8:27b | 5 | 3 | 3 | 30 | 0.933 | 271.8 | 280.0 | 26097 | 30705 | 31149 | not measured: no QA log yet | not measured: Scout is S10 |
-| qwen3:8b | 5 | 3 | 3 | 30 | 0.967 | 160.8 | 174.3 | 13785 | 18393 | 19083 | not measured: no QA log yet | not measured: Scout is S10 |
-| gemma4:26b-a4b | 5 | 3 | 3 | 30 | 0.933 | 144.3 | 148.0 | 26683 | 31291 | 31729 | not measured: no QA log yet | not measured: Scout is S10 |
+| model | gpu | grounder | briefs | briefs_done | leads | explained | p50_brief_s | max_brief_s | idle_mib_chat_and_clef | all_loaded_mib | peak_mib | qa_agreement | scout_gates |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| qwen3:14b | 5 | minicheck | 3 | 3 | 30 | 0.967 | 267.9 | 289.0 | 17769 | 21731 | 22679 | not measured: no QA log yet | not measured: Scout is S10 |
+| qwen3:30b | 5 | minicheck | 3 | 3 | 30 | 0.033 | 332.0 | 335.6 | 26265 | 30873 | 31471 | not measured: no QA log yet | not measured: Scout is S10 |
+| qwen3.8:27b | 5 | minicheck | 3 | 3 | 30 | 0.933 | 271.8 | 280.0 | 26097 | 30705 | 31149 | not measured: no QA log yet | not measured: Scout is S10 |
+| qwen3:8b | 5 | minicheck | 3 | 3 | 30 | 0.967 | 160.8 | 174.3 | 13785 | 18393 | 19083 | not measured: no QA log yet | not measured: Scout is S10 |
+| gemma4:26b-a4b | 5 | minicheck | 3 | 3 | 30 | 0.933 | 144.3 | 148.0 | 26683 | 31291 | 31729 | not measured: no QA log yet | not measured: Scout is S10 |
+| gemma4:26b-a4b | 5 | clef-flash | 1 | 1 | 10 | 0.9 | 52.2 | 52.2 | 26683 | 29939 | 30259 | not measured: no QA log yet | not measured: Scout is S10 |
+| gemma4:26b-a4b | 5 | clef-flash | 2 | 2 | 20 | 0.95 | 83.9 | 85.5 | 26683 | 29939 | 30271 | not measured: no QA log yet | not measured: Scout is S10 |
+| gemma4:26b-a4b | 5 | clef-flash | 3 | 3 | 30 | 0.967 | 136.2 | 139.9 | 26683 | 29939 | 30553 | not measured: no QA log yet | not measured: Scout is S10 |
+| qwen3.8:27b | 5 | clef-flash | 1 | 1 | 10 | 0.9 | 96.7 | 96.7 | 26097 | 29353 | 29681 | not measured: no QA log yet | not measured: Scout is S10 |
+| qwen3.8:27b | 5 | clef-flash | 3 | 3 | 30 | 0.933 | 243.7 | 272.7 | 26097 | 29353 | 29975 | not measured: no QA log yet | not measured: Scout is S10 |
 
