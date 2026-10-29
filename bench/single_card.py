@@ -81,6 +81,9 @@ def wait_up(url: str, seconds: float = 300) -> None:
     raise RuntimeError(f"{url} did not come up")
 
 
+# Clef-flash: the whole prompt must fit one micro-batch (a 1,502-token prompt fails at
+# -ub 512). 2048 covers Perch's longest decide prompt (about 1,100 tokens) and uses
+# 7.44 GB against 7.99 GB at the dev units' 4096 (measured 2026-10-29, same answers).
 def start_servers(log_dir: Path) -> list[subprocess.Popen]:
     env = {**os.environ, "OLLAMA_HOST": f"127.0.0.1:{OLLAMA_PORT}",
            "OLLAMA_MODELS": "/usr/share/ollama/.ollama/models", "OLLAMA_NOPRUNE": "1",
@@ -88,7 +91,7 @@ def start_servers(log_dir: Path) -> list[subprocess.Popen]:
     ollama = subprocess.Popen(["/usr/local/bin/ollama", "serve"], env=env,
                               stdout=(log_dir / "ollama.log").open("w"), stderr=subprocess.STDOUT)
     clef = subprocess.Popen([str(LLAMA), "serve", "-hf", "ggml-org/Clef-Flash-GGUF", "--port",
-                             str(CLEF_PORT), "-ngl", "99", "-ub", "4096", "-b", "4096",
+                             str(CLEF_PORT), "-ngl", "99", "-ub", "2048", "-b", "2048",
                              "--host", "127.0.0.1"], env=os.environ,
                             stdout=(log_dir / "clef.log").open("w"), stderr=subprocess.STDOUT)
     wait_up(f"http://127.0.0.1:{OLLAMA_PORT}/api/tags")

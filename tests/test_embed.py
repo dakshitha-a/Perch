@@ -26,3 +26,14 @@ def test_cache_hits_on_second_call_and_keeps_kinds_apart(tmp_path):
 def test_get_embedder_fake_without_cache():
     e = get_embedder("fake-32", cache=None)
     assert e.dim == 32 and e.embed_queries(["a"]).shape == (1, 32)
+
+
+def test_cached_embedder_is_shared_safely_across_threads(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from perch.embed import CachedEmbedder, FakeEmbedder
+
+    e = CachedEmbedder(FakeEmbedder(32), tmp_path / "emb.db")
+    with ThreadPoolExecutor(4) as pool:
+        out = list(pool.map(lambda i: e.embed_documents([f"SYNTHETIC text {i % 3}"]), range(12)))
+    assert all(v.shape == (1, 32) for v in out) and e.misses == 3

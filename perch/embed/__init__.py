@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import re
 import sqlite3
+import threading
 from abc import ABC, abstractmethod
 from pathlib import Path
 
@@ -137,18 +138,26 @@ def content_hash(text: str) -> str:
 
 
 class CachedEmbedder(Embedder):
-    """Wraps an embedder; caches vectors in SQLite by (model, kind, sha256 of text)."""
+    """Wraps an embedder; caches vectors in SQLite by (model, kind, sha256 of text).
+
+    Shared across brief jobs: one lock serialises cache access and model calls, so
+    concurrent briefs can use the same instance."""
 
     def __init__(self, inner: Embedder, path: str | Path = "data/cache/embeddings.db") -> None:
         self.inner, self.name, self.dim = inner, inner.name, inner.dim
         if str(path) != ":memory:":
             Path(path).parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(str(path))
+        self.conn = sqlite3.connect(str(path), check_same_thread=False)
+        self.lock = threading.Lock()
         self.conn.execute("CREATE TABLE IF NOT EXISTS vectors (model TEXT, kind TEXT, hash TEXT, "
                           "vec BLOB, PRIMARY KEY (model, kind, hash))")
         self.hits = self.misses = 0
 
     def _get(self, texts: list[str], kind: str) -> np.ndarray:
+        with self.lock:
+            return self._get_locked(texts, kind)
+
+    def _get_locked(self, texts: list[str], kind: str) -> np.ndarray:
         hashes = [content_hash(t) for t in texts]
         out = np.zeros((len(texts), self.dim), dtype=np.float32)
         missing: list[int] = []
