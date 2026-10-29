@@ -1,0 +1,9 @@
+# Perch demo: build the demo researchers' briefs for today (scripts/demo_warm.py).
+# Started by perch-demo-warm.timer; rendered and installed by `make demo`.
+[Unit]
+Description=Perch demo: warm today's demo briefs
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO@
+ExecStart=@UV@ run python scripts/demo_warm.py

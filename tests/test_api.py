@@ -105,3 +105,53 @@ def test_failed_stage_is_recorded(tmp_path):
     b = c.get(f"/briefs/{bid}").json()["brief"]
     assert b["status"] == "failed" and "OpenAlex unreachable" in b["error"]
     assert b["stages"][0]["status"] == "failed"
+
+
+def test_a_finished_brief_is_reused_with_fresh_lead_state(tmp_path):
+    c, _ = make(tmp_path)
+    req = {"author_id": "A5026494099", "as_of": "2026-10-28"}
+    first = c.post("/briefs", json=req).json()["id"]
+    lead = c.get(f"/briefs/{first}").json()["leads"][0]["id"]
+    c.post(f"/briefs/{first}/leads/{lead}/keep")
+    r = c.post("/briefs", json=req)
+    assert r.status_code == 200 and r.json()["reused"] is True
+    again = c.get(f"/briefs/{r.json()['id']}").json()
+    assert again["brief"]["status"] == "done" and r.json()["id"] != first
+    assert [x["status"] for x in again["leads"]] == ["new"]  # the first visitor's keep stays
+    assert c.post("/briefs", json={**req, "top": 5}).status_code == 202  # other options: new
+
+
+def test_rate_limit_counts_new_briefs_per_forwarded_visitor(tmp_path, monkeypatch):
+    monkeypatch.setenv("PERCH_BRIEFS_PER_HOUR", "2")
+    monkeypatch.setenv("PERCH_BRIEF_REUSE_HOURS", "0")
+    c, _ = make(tmp_path)
+    c = TestClient(c.app, client=("127.0.0.1", 50000))  # as the tunnel's local proxy
+    req = {"author_id": "A5026494099", "as_of": "2026-10-28"}
+    one = {"x-forwarded-for": "198.51.100.7"}
+    assert [c.post("/briefs", json=req, headers=one).status_code for _ in range(3)] == \
+        [202, 202, 429]
+    r = c.post("/briefs", json=req, headers=one)
+    assert "2 new briefs an hour" in r.json()["detail"] and int(r.headers["retry-after"]) > 0
+    assert c.post("/briefs", json=req, headers={"x-forwarded-for": "198.51.100.8"}) \
+        .status_code == 202
+
+
+def test_rate_limiter_window_slides():
+    from perch.api import RateLimiter
+
+    t = [0.0]
+    lim = RateLimiter(1, clock=lambda: t[0])
+    assert lim.take("a") == 0 and lim.take("a") == 3601
+    t[0] = 3600.5
+    assert lim.take("a") == 0
+
+
+def test_deep_health_names_each_model_service(tmp_path, monkeypatch):
+    monkeypatch.setenv("PERCH_PROFILE", "deploy-2gpu")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:9")
+    monkeypatch.setenv("PERCH_CLEF_URL", "http://127.0.0.1:9")
+    c, _ = make(tmp_path)
+    assert c.get("/health").json() == {"status": "ok"}
+    deep = c.get("/health?deep=true").json()
+    assert deep["status"] == "degraded"
+    assert deep["services"] == {"ollama": False, "clef": False}

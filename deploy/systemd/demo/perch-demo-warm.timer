@@ -1,0 +1,10 @@
+# Perch demo: warm the demo briefs every morning at 05:30 local time.
+[Unit]
+Description=Perch demo: warm today's demo briefs every morning
+
+[Timer]
+OnCalendar=*-*-* 05:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

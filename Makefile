@@ -1,6 +1,6 @@
 UV ?= uv
 
-.PHONY: test demo demo-units demo-seed demo-down demo-status gpus bench tracker package hooks \
+.PHONY: test demo demo-units demo-seed demo-warm demo-down demo-status gpus bench tracker package hooks \
 	decide-up decide-down decide-status
 
 test:
@@ -19,10 +19,16 @@ demo: demo-units demo-seed
 	PERCH_UID=$$(id -u) PERCH_GID=$$(id -g) docker compose up -d --build
 	@for i in $$(seq 1 60); do curl -sf 127.0.0.1:8090/health >/dev/null && break; sleep 2; done
 	@curl -sf 127.0.0.1:8090/health && echo && echo "Perch demo: http://127.0.0.1:8090"
+	systemctl --user enable --now perch-demo-warm.timer
+	$(MAKE) demo-warm
+
+# Today's briefs for the demo researchers, so visitors get them at once (also daily, 05:30).
+demo-warm:
+	$(UV) run python scripts/demo_warm.py
 
 demo-units:
 	mkdir -p $(HOME)/.config/systemd/user
-	for u in $(DEMO_UNITS); do sed -e "s|@GPU_A@|$(DEMO_GPU_A)|g" -e "s|@GPU_B@|$(DEMO_GPU_B)|g" \
+	for u in $(DEMO_UNITS) perch-demo-warm.service perch-demo-warm.timer; do sed -e "s|@GPU_A@|$(DEMO_GPU_A)|g" -e "s|@GPU_B@|$(DEMO_GPU_B)|g" \
 	  -e "s|@REPO@|$(CURDIR)|g" -e "s|@UV@|$$(command -v $(UV))|g" deploy/systemd/demo/$$u \
 	  > $(HOME)/.config/systemd/user/$$u; done
 	systemctl --user daemon-reload
@@ -39,7 +45,7 @@ demo-seed:
 
 demo-down:
 	docker compose down
-	systemctl --user disable --now $(DEMO_UNITS)
+	systemctl --user disable --now perch-demo-warm.timer $(DEMO_UNITS)
 
 demo-status:
 	@systemctl --user --no-pager status $(DEMO_UNITS) | grep -E 'Loaded|Active|service -' || true

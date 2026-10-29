@@ -1,8 +1,11 @@
 """HTTP API (SPEC section 6). Run with `perch serve`.
 
-  GET  /health
+  GET  /health[?deep=true]                     liveness; deep: each model service up or down
   GET  /authors/resolve?q=<name|orcid|id>      candidates for the Find screen
   POST /briefs                                  {"author_id", "as_of"?, "top"?, "explain"?, ...}
+                                                a finished brief with the same options from the
+                                                last 24 h is reused (200); else a job (202),
+                                                limited to 10 new briefs an hour per visitor
   GET  /briefs/{id}                             status, stages, profile, leads with records
   POST /briefs/{id}/leads/{lead_id}/keep        and /dismiss, /restore
   GET  /briefs/{id}/export.json[?status=kept]   brief, leads and every record they cite
@@ -16,10 +19,15 @@ Briefs run as background jobs; poll GET /briefs/{id}. Nothing is sent anywhere.
 from __future__ import annotations
 
 import re
+import threading
+import time
+from collections import defaultdict, deque
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+import httpx
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -28,7 +36,7 @@ from perch import awards as aw
 from perch.config import env
 from perch.jobs import JobRunner
 from perch.schemas import Award, Brief, Lead, Opportunity, Record, Researcher, Work
-from perch.service import BriefService
+from perch.service import BriefService, brief_options
 from perch.sources import grants_gov
 from perch.sources import openalex as oa
 
@@ -60,6 +68,59 @@ def paper_json(w: Work) -> dict:
                                               "fetched_at"})
 
 
+class RateLimiter:
+    """New briefs per client in a sliding hour. In memory: a restart clears it."""
+
+    def __init__(self, per_hour: int, clock: Callable[[], float] = time.monotonic) -> None:
+        self.per_hour, self.clock = per_hour, clock
+        self.seen: dict[str, deque[float]] = defaultdict(deque)
+        self.lock = threading.Lock()
+
+    def take(self, key: str) -> int:
+        """0 and the request is counted, or the seconds until one is allowed."""
+        with self.lock:
+            t, q = self.clock(), self.seen[key]
+            while q and q[0] <= t - 3600:
+                q.popleft()
+            if len(q) >= self.per_hour:
+                return int(q[0] + 3600 - t) + 1
+            q.append(t)
+            return 0
+
+
+def client_key(request: Request) -> str:
+    """The visitor's address. Behind the tunnel every request comes from 127.0.0.1, so a
+    local request is keyed on the first X-Forwarded-For address the proxy adds."""
+    host = request.client.host if request.client else "unknown"
+    fwd = request.headers.get("x-forwarded-for", "")
+    if host in ("127.0.0.1", "::1") and fwd:
+        return fwd.split(",")[0].strip()
+    return host
+
+
+def dependencies() -> dict[str, str]:
+    """Health URLs of the model services the current setup calls."""
+    from perch.llm.systemone import server_url
+    from perch.profiles import current
+
+    p, out = current(), {}
+    out["ollama"] = (env("OLLAMA_BASE_URL") or "http://127.0.0.1:11434") + "/api/tags"
+    for key in (p.grounder, p.reranker):
+        if key.startswith("systemone:"):
+            name = key.split(":", 1)[1]
+            out[name] = server_url(name) + "/health"
+    if server := env("PERCH_MODEL_SERVER"):
+        out["model_server"] = server + "/health"
+    return out
+
+
+def up(url: str) -> bool:
+    try:
+        return httpx.get(url, timeout=3).status_code == 200
+    except httpx.HTTPError:
+        return False
+
+
 def create_app(service: BriefService, runner: JobRunner,
                resolver: type[oa.OpenAlexClient] | None = None,
                web_dir: Path | None = WEB_DIR) -> FastAPI:
@@ -71,8 +132,12 @@ def create_app(service: BriefService, runner: JobRunner,
                            allow_headers=["*"])
 
     @app.get("/health")
-    def health() -> dict:
-        return {"status": "ok"}
+    def health(deep: bool = False) -> dict:
+        """Liveness; with ?deep=true, each model service the profile uses as up or down."""
+        if not deep:
+            return {"status": "ok"}
+        checks = {name: up(url) for name, url in dependencies().items()}
+        return {"status": "ok" if all(checks.values()) else "degraded", "services": checks}
 
     @app.get("/authors/resolve")
     def resolve(q: str) -> dict:
@@ -87,13 +152,24 @@ def create_app(service: BriefService, runner: JobRunner,
             r.upsert(found)
         return {"candidates": [record_json(x) for x in found]}
 
+    limiter = RateLimiter(int(env("PERCH_BRIEFS_PER_HOUR") or 10))
+    reuse_hours = float(env("PERCH_BRIEF_REUSE_HOURS") or 24)
+
     @app.post("/briefs", status_code=202)
-    def create_brief(req: BriefRequest) -> dict:
-        try:
-            b = service.create(req.author_id, as_of=req.as_of, top=req.top, explain=req.explain,
-                               min_amount=req.min_amount, agencies=req.agencies)
-        except ValueError as e:
-            raise HTTPException(422, str(e)) from e
+    def create_brief(req: BriefRequest, request: Request, response: Response) -> dict:
+        if not oa.parse_author_id(req.author_id):
+            raise HTTPException(422, f"not an OpenAlex author id: {req.author_id!r}")
+        options = brief_options(req.as_of, req.top, req.explain, req.min_amount, req.agencies)
+        if reuse_hours > 0 and (b := service.reuse(req.author_id, options, reuse_hours)):
+            response.status_code = 200  # a finished brief: no job, not counted in the limit
+            return {"id": b.id, "status": b.status, "poll": f"/briefs/{b.id}", "reused": True}
+        wait = limiter.take(client_key(request))
+        if wait:
+            raise HTTPException(429, f"Limit of {limiter.per_hour} new briefs an hour reached. "
+                                f"Try again in {wait // 60 + 1} minutes.",
+                                headers={"Retry-After": str(wait)})
+        b = service.create(req.author_id, as_of=req.as_of, top=req.top, explain=req.explain,
+                           min_amount=req.min_amount, agencies=req.agencies)
         runner.submit(b.id, lambda: service.run(b.id))
         return {"id": b.id, "status": b.status, "poll": f"/briefs/{b.id}"}
 

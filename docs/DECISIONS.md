@@ -65,3 +65,4 @@ Perch-dev appends one row per decision as it is made, newest at the bottom. Plan
 | 2026-10-29 | S9 | Hybrid deployment: the app runs in Docker Compose; the models run as systemd user units on demo GPUs 6 and 7, with the embedder and reranker behind a new model server (`perch.model_server`) | Docker on the node has no NVIDIA runtime and installing one needs sudo | Dakshitha |
 | 2026-10-29 | S9 | Public URL through Tailscale Funnel | Gives HTTPS without opening ports; whether it decrypts at its edge is checked for private mode (task 4) | Dakshitha |
 | 2026-10-29 | S9 | The demo uses its own store, `data/demo/`, seeded once from the dev store | Demo visitors' briefs must not mix with development data | Perch-dev |
+| 2026-10-29 | S9 | A finished brief with the same options from the last 24 hours is reused for the next visitor, as a copy whose leads start as new | Demo briefs answer at once; visitors never see each other's keep and dismiss choices | Perch-dev |
