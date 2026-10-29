@@ -2,26 +2,24 @@
 
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
-## Last session: S18 — Student mode (done)
-- Tasks 1 to 6 are done; task 7 (Scout `search_scholarships`) moved to S19. 245 tests pass. No API spend.
-- S17 (scholarship corpus and personas) finished earlier in the same run.
+## Last session: S19 — Planted-case scoring and docs (done)
+- Tasks 1 to 4 are done. Task 5 (Scout tool) is cut (Q27); task 6 (UI preview) moved to S22. 245 tests pass. No API spend.
+- S17 and S18 finished earlier in the same run (student corpus, personas, student mode live).
 
-## What S18 built
-- **Private mode as a state:** `web/mode.js`, the header switch `#private-switch`, Student on Find, and the paste nudge. `mode.send()` and `mode.move()` open the session first.
-- **Student brief:** `perch/student.py` (CV parse, rules, gaps) and `perch/private/student.py` (stages). `POST /private/student/brief`. The brief's stages are `student_profile`, `fellowships`, `scholarships`, `student_explanations`.
-- **Stores:** the sample store is loaded at app start (`ensure_samples`) and read read-only. `perch samples` loads it by hand, and `perch fetch temple` stores the SDFA list (76 records; done on the dev and demo stores). The demo uses `PERCH_SAMPLE_DB=/app/data/demo/sample.db`.
-- **Screens:** `web/student.js` holds the start form, the profile, both tabs, compare and a code-written hand-off. The evidence panel shows scholarships. Help has the new steps.
-- **Fit skill:** a bare id such as `achievement-a` is mapped back to `private:achievement-a`.
-- **Live:** the demo was rebuilt; all three personas work on the public URL. The canary check is clean.
+## What S19 built
+- **Scoring:** `bench/student_mode.py` drives the running app over HTTP (default the demo, 127.0.0.1:8090). It writes `bench/results/STUDENT_MODE.md` and `student_mode.json`.
+- **Numbers (SYNTHETIC, a mechanism test):** the rules matched all 19 planted records that reached a brief. Retrieval missed 5 of 24, so 10 of 12 records a student may apply for reached the brief. Leakage: none.
+- **Docs:** README student section with `docs/tour/student.webp`; SPEC Phase 3; a key-numbers row. The README results table has no synthetic number (rule 11).
 
-## Next session: S19 — Planted-case scoring and docs
-1. Run `bench/student_mode.py` against the demo (already written, not yet run). It drives the app over HTTP and writes `bench/results/STUDENT_MODE.md`.
-2. Add the key-numbers row "Student mode (synthetic, mechanism test)".
-3. README student section with a screenshot showing the badge. SPEC Phase 3 is already edited (uncommitted at S18's close).
-4. Also from S18: the Scout `search_scholarships` tool, and the tracker's UI preview of the student flow.
+## Next session: S20 — QA and privacy audit
+1. **Task 1 needs a QA log a teammate keeps; none is in the repo.** Ask Dakshitha (a question), and meanwhile work tasks 2 to 4.
+2. Privacy audit against the write-path inventory, now including student mode: monitor, Scout, MCP, exports, hand-offs, the sample store, the student brief.
+3. Leakage check (rule 11): no sample record outside student mode, in the back-test, bench results, or results page.
+4. Known gaps below: fix, or record as a README known limit. Include the flaky Scout test.
 
 ## Known gaps
-- **Flaky test:** `test_route_b_answer_counts_and_dates_pass_the_validator` failed once in five runs.
+- **Flaky test:** `test_route_b_answer_counts_and_dates_pass_the_validator` failed once in five runs (S17), and `make test` failed once more in S18 without a saved trace.
+- **Student retrieval:** 2 of 12 planted positives never reached a brief (top 40 of 500 by the interests note).
 - **Shared Ollama:** the dev Ollama on 11434 reloaded gemma several times during generation, likely because another client asks for a different context size.
 - **From earlier sessions:** awards are not refreshed weekly; the monitor shares brief state; two-process LanceDB writes are untested; the MCP server was not tested with Ollama; a private brief does not index new opportunities; the hand-off opening has no layer-2 check; replay has no compare, hand-off or watch; Scout on Gemma sometimes states a count the validator withholds.
 
@@ -32,4 +30,5 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 4. The dev Clef servers on GPUs 1 and 2 stay up until S23 task 2.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
+- Q27: Scout in student mode. Default: leave it out for Demo Day; revisit in S21.
 - Q26: ScholarshipUniverse schema. Can Temple SFS or the vendor share a sample export? Default: keep the generic schema and the seam.
