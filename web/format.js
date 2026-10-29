@@ -7,6 +7,7 @@ export const STAGES = {
   awards: "Finding public awards",
   profile: "Mapping research threads",
   route_a: "Searching open opportunities",
+  route_b: "Finding industry leads",
   summary: "Summarising the profile",
   explanations: "Explaining each lead",
 };

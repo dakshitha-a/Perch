@@ -13,7 +13,9 @@ const POLL_MS = 1500;
 const SOURCES = { openalex: "OpenAlex", grants_gov: "Grants.gov", nih_reporter: "NIH RePORTER",
   nsf: "NSF Award Search", perch: "Perch" };
 const KINDS = { opportunity: "Funding opportunity", work: "Paper", award: "Public award",
-  researcher: "Researcher" };
+  researcher: "Researcher", organisation: "Organisation" };
+const SIGNALS = { citing_works: "They cite your papers", sbir_sttr: "NIH SBIR/STTR awards",
+  topic_works: "They publish in your topics" };
 
 const S = {
   find: { q: "", busy: false, error: null, candidates: null, searched: "", explain: true,
@@ -22,6 +24,7 @@ const S = {
   briefId: null,
   tab: "profile",
   sort: "order",
+  route: "A", // Routes tab: "A" grants, "B" industry
   open: new Set(), // lead ids whose "Why it fits" is open
   stepsOpen: false,
   pollTimer: null,
@@ -305,7 +308,8 @@ function renderMissing(id, msg) {
 const leadsOf = () => (S.brief ? S.brief.leads : []);
 const stage = (name) => S.brief.brief.stages.find((s) => s.name === name) || { status: "pending" };
 const isDone = (name) => ["done", "skipped"].includes(stage(name).status);
-const explainedCount = () => leadsOf().filter((l) => l.explanation || l.flagged).length;
+const routeLeads = (r) => leadsOf().filter((l) => (l.route || "A") === r);
+const explainedCount = () => routeLeads("A").filter((l) => l.explanation || l.flagged).length;
 
 function renderBrief() {
   const d = S.brief;
@@ -410,7 +414,7 @@ function renderProgress() {
     const s = stages[runningIdx] || stages.find((x) => x.status === "pending") || stages[0];
     headline = `${f.STAGES[s.name] || s.name}`;
     if (s.name === "explanations" && isDone("route_a")) {
-      sub = `${explainedCount()} of ${leadsOf().length} explained`;
+      sub = `${explainedCount()} of ${routeLeads("A").length} explained`;
     } else sub = b.status === "queued" ? "Waiting for the previous brief to finish" : "Working";
   }
   barOwl(state === "done" ? "done" : state);
@@ -651,7 +655,8 @@ function skeleton(lines) {
 // ----- Routes -----
 
 function sortedLeads() {
-  const leads = [...leadsOf()];
+  const leads = [...routeLeads(S.route)];
+  if (S.route === "B") return leads.sort((a, b) => a.rank - b.rank);
   const close = (l) => (l.opportunity && l.opportunity.close_date) || "9999";
   if (S.sort === "closing") leads.sort((a, b) => close(a).localeCompare(close(b)) || a.rank - b.rank);
   else if (S.sort === "fit") leads.sort((a, b) => (b.fit_score ?? -1) - (a.fit_score ?? -1) || a.rank - b.rank);
@@ -659,13 +664,39 @@ function sortedLeads() {
   return leads;
 }
 
+// Grants and industry leads sit side by side as two equal routes; a switch picks one.
+function routeSwitch() {
+  const n = (r) => routeLeads(r).filter((l) => l.status !== "dismissed").length;
+  const btn = (r, label) => {
+    const ready = isDone(r === "A" ? "route_a" : "route_b");
+    return h("button", { class: "route-btn", "data-key": `route-${r}`, "aria-pressed": String(S.route === r),
+      onclick: () => { S.route = r; renderPanel(); panelFocus(`route-${r}`); } },
+    h("span", { text: label }), ready ? h("span", { class: "route-n", text: String(n(r)) }) : null);
+  };
+  return h("div", { class: "route-switch", role: "group", "aria-label": "Route" },
+    btn("A", "Grants"), btn("B", "Industry"));
+}
+
+function updateSwitch(panel) {
+  for (const r of ["A", "B"]) {
+    const el = panel.querySelector(`[data-key="route-${r}"] .route-n`);
+    if (el) el.textContent = String(routeLeads(r).filter((l) => l.status !== "dismissed").length);
+  }
+}
+
+function panelFocus(key) {
+  const el = document.querySelector(`#panel [data-key="${key}"]`);
+  if (el) el.focus();
+}
+
 function renderRoutes(panel) {
+  if (S.route === "B") { renderIndustry(panel); return; }
   if (!isDone("route_a")) {
     const failed = S.brief.brief.status === "failed";
     const sig = `wait:${failed}`;
     if (panel.dataset.sig === sig) return;
     panel.dataset.sig = sig;
-    fill(panel, h("div", { class: "empty" }, owl(failed ? "droop" : "look", "owl-md"),
+    fill(panel, routeSwitch(), h("div", { class: "empty" }, owl(failed ? "droop" : "look", "owl-md"),
       h("div", {}, h("p", { class: "lede", text: failed ? "The search for leads did not run."
         : "Leads appear here when the search finishes." }),
       h("p", { class: "hint", text: failed ? "See the steps above for what stopped."
@@ -675,12 +706,13 @@ function renderRoutes(panel) {
   const leads = sortedLeads();
   const active = leads.filter((l) => l.status !== "dismissed");
   const dismissed = leads.filter((l) => l.status === "dismissed");
-  const kept = leads.filter((l) => l.status === "kept").length;
+  const kept = leadsOf().filter((l) => l.status === "kept").length;
   const explaining = stage("explanations").status === "running" || stage("explanations").status === "pending";
 
-  if (panel.dataset.sig !== "routes") {
-    panel.dataset.sig = "routes";
-    fill(panel, 
+  const sig = `routes:${isDone("route_b")}`;
+  if (panel.dataset.sig !== sig) {
+    panel.dataset.sig = sig;
+    fill(panel, routeSwitch(),
       h("div", { class: "routes-bar" },
         h("div", {}, h("h2", { class: "section-title", id: "routes-title" }),
           h("p", { class: "hint routes-sub" })),
@@ -694,11 +726,12 @@ function renderRoutes(panel) {
       h("div", { class: "keep-bar-box" }));
   }
   renderKeepBar(panel.querySelector(".keep-bar-box"), kept);
+  updateSwitch(panel);
   panel.querySelector("select").value = S.sort;
   panel.querySelector("#routes-title").textContent = `${f.plural(active.length, "open opportunity", "open opportunities")}`;
   const subBits = [];
   if (kept) subBits.push(`${kept} kept`);
-  if (explaining && S.brief.brief.options.explain) subBits.push(`${explainedCount()} of ${leadsOf().length} explained so far`);
+  if (explaining && S.brief.brief.options.explain) subBits.push(`${explainedCount()} of ${routeLeads("A").length} explained so far`);
   subBits.push("Fit is a model’s estimate, not the odds of funding");
   panel.querySelector(".routes-sub").textContent = `${subBits.join(". ")}.`;
 
@@ -718,6 +751,104 @@ function renderRoutes(panel) {
   }
   det.querySelector("summary").textContent = `Dismissed (${dismissed.length})`;
   syncList(det.querySelector("ol"), dismissed);
+}
+
+// Route B: companies with two or more kinds of public signal. Every sentence and count
+// is written by code from the records; the card says it is an inference.
+function renderIndustry(panel) {
+  const st = stage("route_b");
+  if (!isDone("route_b")) {
+    const failed = st.status === "failed" || S.brief.brief.status === "failed";
+    const sig = `waitB:${failed}`;
+    if (panel.dataset.sig === sig) return;
+    panel.dataset.sig = sig;
+    fill(panel, routeSwitch(), h("div", { class: "empty" }, owl(failed ? "droop" : "look", "owl-md"),
+      h("div", {}, h("p", { class: "lede", text: failed ? "The search for industry leads did not run."
+        : "Industry leads appear here when that step finishes." }),
+      h("p", { class: "hint", text: failed ? (st.detail || "See the steps above for what stopped.")
+        : "Grant leads come first." }))), skeleton(3));
+    return;
+  }
+  const leads = sortedLeads();
+  const active = leads.filter((l) => l.status !== "dismissed");
+  const dismissed = leads.filter((l) => l.status === "dismissed");
+  const kept = leadsOf().filter((l) => l.status === "kept").length;
+  if (panel.dataset.sig !== "industry") {
+    panel.dataset.sig = "industry";
+    fill(panel, routeSwitch(),
+      h("div", { class: "routes-bar" }, h("div", {}, h("h2", { class: "section-title", id: "routes-title" }),
+        h("p", { class: "notice warn infer-note" }, icon("warn"), h("span", {
+          text: "Inferred from public signals; not verified. A company that cites or works near your "
+            + "research may have no interest in funding it. SBIR/STTR covers NIH awards only." })))),
+      h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
+      h("div", { class: "dismissed-box" }),
+      h("div", { class: "keep-bar-box" }));
+  }
+  renderKeepBar(panel.querySelector(".keep-bar-box"), kept);
+  updateSwitch(panel);
+  panel.querySelector("#routes-title").textContent = f.plural(active.length, "industry lead");
+  if (!leads.length) {
+    fill(panel.querySelector(".leads"), h("li", { class: "empty" }, owl("worry", "owl-md"),
+      h("div", {}, h("p", { class: "lede", text: "No company showed two kinds of public signal." }),
+        h("p", { class: "hint", text: st.detail || "" }))));
+    return;
+  }
+  syncList(panel.querySelector(".leads"), active);
+  const box = panel.querySelector(".dismissed-box");
+  if (!dismissed.length) { box.replaceChildren(); return; }
+  let det = box.querySelector("details");
+  if (!det) {
+    det = h("details", { class: "dismissed" }, h("summary"), h("ol", { class: "leads" }));
+    fill(box, det);
+  }
+  det.querySelector("summary").textContent = `Dismissed (${dismissed.length})`;
+  syncList(det.querySelector("ol"), dismissed);
+}
+
+function orgCard(l) {
+  const o = l.organisation || {};
+  const name = o.name || l.record_id;
+  const papers = S.brief.papers || {};
+  const head = h("div", { class: "lead-head" },
+    h("span", { class: "tags" },
+      l.relationship ? h("span", { class: "tag", text: l.relationship }) : null,
+      l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null),
+    h("span", { class: `evidence-level ${l.confidence || ""}`, text: l.confidence === "stronger"
+      ? "Three kinds of signal" : "Two kinds of signal" }));
+  const signals = h("ul", { class: "signals" }, (l.signal_items || []).map((s) => h("li", {},
+    h("h4", { class: "mini", text: SIGNALS[s.kind] || s.kind }),
+    h("p", { text: s.text }),
+    s.records.length ? h("ul", { class: "sig-recs" }, s.records.map((r) => h("li", {},
+      h("button", { class: "paper-ref", "data-key": `rec-${r.id}`, onclick: (e) => openEvidence(r.id, e.currentTarget) },
+        h("span", { class: "paper-ref-title", text: r.title || r.id }),
+        h("span", { class: "paper-meta", text: [r.date ? f.formatDate(r.date) : null, r.venue].filter(Boolean).join(", ") }))))) : null,
+    s.more ? h("p", { class: "hint", text: `and ${s.more} more in the export` }) : null)));
+  const cited = (l.cited_ids || []).filter((c) => c.startsWith("W"));
+  const yours = cited.length ? h("details", { class: "why" },
+    h("summary", { "data-key": "why" }, h("span", { text: "Your papers they cite" }),
+      h("span", { class: "hint", text: ` ${cited.length}` })),
+    h("ul", { class: "findings" }, cited.map((c) => h("li", {}, paperRef(c, papers))))) : null;
+  const evid = h("button", { class: "btn quiet", "data-key": "evidence",
+    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { class: "narrow-hide", text: "Evidence" }));
+  const actions = l.status === "dismissed"
+    ? [h("button", { class: "btn", "data-key": "restore", onclick: () => setLead(l.id, "restore") },
+      icon("restore"), h("span", { text: "Restore" })), evid]
+    : [h("button", { class: `btn keep${l.status === "kept" ? " on" : ""}`, "data-key": "keep",
+      "aria-pressed": String(l.status === "kept"),
+      onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") },
+    icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
+    h("button", { class: "btn", "data-key": "dismiss", onclick: () => setLead(l.id, "dismiss") },
+      icon("dismiss"), h("span", { text: "Dismiss" })), evid];
+  for (const b of actions) b.setAttribute("aria-describedby", `t-${cssId(l.id)}`);
+  return h("li", { class: `card lead org${l.status === "kept" ? " kept" : ""}${l.status === "dismissed" ? " gone" : ""}`,
+    "data-id": l.id },
+  head,
+  h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
+    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: name }))),
+  o.aliases && o.aliases.length > 1 ? h("p", { class: "opp-num", text: `Counts ${o.aliases.length} records under this name` }) : null,
+  h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Inference" }),
+    h("span", { text: l.inference || "Inferred from public signals; not verified." })),
+  signals, yours, h("div", { class: "actions" }, actions));
 }
 
 // Keep bar: once a lead is kept, how many and what comes next. Until the hand-off
@@ -751,7 +882,7 @@ function syncList(ol, leads) {
     if (!el || el.dataset.sig !== sig) {
       const focusKey = el && el.contains(document.activeElement)
         ? document.activeElement.dataset.key : null;
-      const fresh = leadCard(l);
+      const fresh = l.route === "B" ? orgCard(l) : leadCard(l);
       fresh.dataset.sig = sig;
       if (el) el.replaceWith(fresh); else ol.append(fresh);
       if (el && l.explanation && !el.querySelector(".why")) fresh.classList.add("landed");
@@ -1044,6 +1175,12 @@ function recordView(r) {
         field("Amount", r.amount ? `${f.money(r.amount)}${r.amount_basis ? ` (${r.amount_basis})` : ""}` : "Not stated in the record"),
         field("Fiscal year", r.fiscal_year), field("Activity code", r.activity_code),
         field("Funding opportunity", r.opportunity_number), field("Institution", r.institution)));
+  } else if (r.kind === "organisation") {
+    out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.name }),
+      h("dl", { class: "fields" }, field("Type", r.type), field("Country", r.country),
+        field("Names merged", (r.aliases || []).length > 1 ? r.aliases.join("; ") : null)),
+      h("p", { class: "hint", text: "Perch counts a company's signals under one name when the source "
+        + "names match exactly, apart from case, punctuation, a country in brackets and a legal form such as Inc." }));
   } else if (r.kind === "researcher") {
     out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.display_name }),
       h("dl", { class: "fields" }, field("Institutions", (r.institutions || []).join(", ")),

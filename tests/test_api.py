@@ -183,3 +183,36 @@ def test_scout_session_over_the_api(tmp_path, monkeypatch):
     assert c.get("/scout/nope").status_code == 404
     assert c.post(f"/scout/{s['id']}/delete", json={}).status_code == 422
     assert c.post("/briefs/nope/scout", json={"question": "x"}).status_code == 404
+
+
+def test_route_b_lead_carries_organisation_signals_and_records(tmp_path):
+    """SYNTHETIC Route B records added to a finished brief."""
+    from datetime import UTC, date, datetime
+
+    from perch.schemas import Brief, Lead, Organisation, Signal, Work
+
+    c, service = make(tmp_path)
+    bid = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28"}).json()["id"]
+    t = datetime(2026, 10, 29, tzinfo=UTC)
+    org = Organisation(id="https://openalex.org/I1", source="openalex",
+                       source_url="https://api.openalex.org/institutions/I1", fetched_at=t,
+                       name="SYNTHETIC Co", type="company", aliases=["SYNTHETIC Co"])
+    w = Work(id="https://openalex.org/W77", source="openalex", source_url="u", fetched_at=t,
+             title="SYNTHETIC company paper", publication_date=date(2026, 1, 2))
+    lead = Lead(id=f"{bid}:B1", source="openalex", source_url=org.source_url, fetched_at=t,
+                brief_id=bid, route="B", record_id=org.id, rank=1, inferred=True,
+                inference="Inferred from public signals; not verified.", cited_ids=["W1"],
+                signals=[Signal(kind="citing_works", record_ids=[w.id], count=4,
+                                latest=date(2026, 1, 2))])
+    with service.repo() as r:
+        b = r.get(Brief, bid)
+        r.upsert([org, w, lead, b.model_copy(update={"lead_ids": [*b.lead_ids, lead.id]})])
+    got = c.get(f"/briefs/{bid}").json()
+    x = next(x for x in got["leads"] if x["route"] == "B")
+    assert x["organisation"]["name"] == "SYNTHETIC Co"
+    item = x["signal_items"][0]
+    assert item["text"] == ("4 works with an author at SYNTHETIC Co cite 1 of your papers; the "
+                            "newest was published 2026-01-02.")
+    assert item["records"][0]["title"] == "SYNTHETIC company paper" and item["more"] == 3
+    exported = c.get(f"/briefs/{bid}/export.json").json()
+    assert w.id in {r["id"] for r in exported["records"]}

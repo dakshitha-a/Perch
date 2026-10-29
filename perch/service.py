@@ -287,16 +287,17 @@ class BriefService:
         keep += [a for a in g.sbir if a.id in evidence]
         leads = [Lead(id=f"{b.id}:B{i}", source=x.org.source, source_url=x.org.source_url,
                       fetched_at=x.org.fetched_at, brief_id=b.id, route="B",
-                      record_id=x.org.id, rank=i, fit_score=x.score,
+                      record_id=x.org.id, rank=i,
                       explanation=" ".join(x.sentences), inference=rb.LABEL,
-                      cited_ids=x.cited_works, inferred=True, signals=x.signals,
+                      cited_ids=[oa.short_id(w) for w in x.cited_works], inferred=True,
+                      signals=x.signals,
                       relationship=x.relationship, confidence=x.confidence)
                  for i, x in enumerate(found, 1)]
         with self.repo() as r:
             r.upsert([*{w.id: w for w in keep}.values(), *(x.org for x in found), *leads])
         b.lead_ids = [*b.lead_ids, *(x.id for x in leads)]
         return (f"{len(g.citing)} citing works, {len(g.topical)} topic works, {len(g.sbir)} "
-                f"SBIR/STTR records; {len(leads)} leads with two or more signals"), False
+                f"SBIR/STTR records; {len(leads)} leads with two or more kinds of signal"), False
 
     def _audited(self, role: str, spec: str | None) -> AuditedProvider:
         return AuditedProvider(self.models.provider(spec or spec_for_role(role)), self.audit,

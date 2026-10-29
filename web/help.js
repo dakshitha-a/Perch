@@ -1,4 +1,4 @@
-// Help: how to use Perch (six steps with small pictures built from the app's own
+// Help: how to use Perch (seven steps with small pictures built from the app's own
 // parts) and how it works (the pipeline, marking which steps are rules and which are
 // models). Every claim here describes code in this repo; see docs/design/UI.md §7.
 
@@ -56,6 +56,15 @@ function picLead() {
         h("span", { class: "pic-btn ghost" }, icon("evidence"), h("span", { text: "Evidence" })))));
 }
 
+function picIndustry() {
+  return example(
+    h("div", { class: "pic-card" },
+      h("div", { class: "pic-row" }, h("span", { class: "pic-btn ghost", text: "Grants" }), h("span", { class: "pic-btn", text: "Industry" })),
+      h("div", { class: "pic-row between" }, bar(46), h("span", { class: "evidence-level", text: "Two kinds of signal" })),
+      h("div", { class: "pic-row" }, h("span", { class: "tag model", text: "Inference" }), bar(56)),
+      h("div", { class: "pic-row" }, h("b", { text: "They cite your papers" }), bar(30))));
+}
+
 function picKeep() {
   return example(
     h("div", { class: "pic-card pic-row between" },
@@ -82,6 +91,8 @@ function steps() {
     ["Watch the brief build", picWatch(),
       "Scout moves along the branch as each step finishes. In tests on the local model, the profile was ready in about 10 seconds and a full brief with explanations took about a minute and a half."],
     ["Read the routes and decide", picLead(), null],
+    ["Look at industry leads", picIndustry(),
+      "Routes has two parts: Grants, and Industry. Industry lists up to five companies with at least two kinds of public signal: company authors whose papers cite yours; NIH SBIR or STTR awards to the company that match your main topics; and other company papers in your main topics. Each signal shows its count, its newest date and the records behind it. The relationship type, such as sponsored research or an STTR partner, comes from a fixed rule, not a model. Your papers with more than 30 authors are left out, because citations of large consortium papers say little about your own work. Every industry lead is an inference from public signals, not a verified interest in funding you. Small-business awards cover NIH only, because the SBIR.gov API was down when this was built."],
     ["Take the kept leads with you", picKeep(),
       "Once you keep a lead, a bar at the bottom of Routes shows how many you kept. Its button downloads the kept leads with their records as a JSON file. The next step will be a hand-off draft to the right Temple office; it is not built yet."],
     ["Ask Scout a follow-up", picScout(),
@@ -115,6 +126,8 @@ function pipeline() {
       "Rules drop anything closed, without a close date, or not open to universities. They also drop what this version leaves out: fellowships, postdoc and dissertation awards, small-business programs, limited competitions and calls restricted by career stage."],
     ["rank", "Rank the rest", ["model"],
       "A ranking model puts the closest matches to the papers first."],
+    ["search2", "Find industry leads", ["record", "code"],
+      "Perch looks up company-authored papers that cite the researcher’s papers or share their main topics (OpenAlex), and NIH small-business awards in those topics (NIH RePORTER). Code counts each company’s signals, weighs recent ones more, and keeps companies with at least two kinds of signal. No model is used."],
     ["threads", "Summarise the profile", ["model"],
       "A language model writes topic labels and a two-sentence summary of the papers."],
     ["pen", "Explain each lead", ["model"],
@@ -162,7 +175,8 @@ function limits() {
       h("li", { text: "It sends no email and writes to no outside system." }),
       h("li", { text: "It does not check your personal eligibility, such as career stage, citizenship or internal limited-submission rules. Read each record." }),
       h("li", { text: "It does not tell you to apply, or predict whether you would win. A brief is a starting point." }),
-      h("li", { text: "It covers federal opportunities posted on Grants.gov. Foundations and industry partners are being built." }),
+      h("li", { text: "It covers federal opportunities posted on Grants.gov, and industry leads from public papers and NIH small-business awards. Foundations are not covered yet." }),
+      h("li", { text: "It does not know whether a company wants to fund research. Industry leads are inferences from public signals." }),
       h("li", { text: "It reads public records only: papers, public federal awards and posted opportunities." })));
 }
 

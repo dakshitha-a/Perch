@@ -43,13 +43,23 @@ from pydantic import BaseModel, Field
 from perch import awards as aw
 from perch.config import env
 from perch.jobs import JobRunner
-from perch.schemas import Award, Brief, Lead, Opportunity, Record, Researcher, Work
+from perch.schemas import (
+    Award,
+    Brief,
+    Lead,
+    Opportunity,
+    Organisation,
+    Record,
+    Researcher,
+    Work,
+)
 from perch.scout.hub import Busy, ScoutHub
 from perch.scout.hub import view as scout_view
 from perch.scout.log import ScoutLog
 from perch.service import BriefService, brief_options
 from perch.sources import grants_gov
 from perch.sources import openalex as oa
+from perch.store.base import Repository
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 KEY_PAPERS = 5  # per thread, most recent-weighted first (thread order from perch.profile)
@@ -77,6 +87,34 @@ def record_json(r: Record) -> dict:
 def lead_json(lead: Lead, opp: Opportunity | None) -> dict:
     return {**lead.model_dump(mode="json"),
             "opportunity": opp.model_dump(mode="json", exclude={"description"}) if opp else None}
+
+
+SIGNAL_RECORDS = 3  # evidence records shown per Route B signal; the rest are counted
+
+
+def route_b_json(lead: Lead, r: Repository) -> dict:
+    """A Route B lead with its organisation and, per signal, the code-written sentence and
+    the newest few evidence records (title and date copied from each record)."""
+    from perch.route_b import sentence
+
+    org = r.get(Organisation, lead.record_id)
+    name = org.name if org else lead.record_id
+    items = []
+    for s in lead.signals:
+        recs = []
+        for i in s.record_ids[:SIGNAL_RECORDS]:
+            x = r.get_any(i)
+            if isinstance(x, Work):
+                recs.append({"id": x.id, "kind": "work", "title": x.title,
+                             "date": x.publication_date, "venue": x.venue})
+            elif isinstance(x, Award):
+                recs.append({"id": x.id, "kind": "award", "title": x.title,
+                             "date": x.start_date, "venue": x.award_number})
+        items.append({"kind": s.kind, "text": sentence(s, name, len(lead.cited_ids)),
+                      "records": recs, "more": max(s.count - len(recs), 0)})
+    return {**lead.model_dump(mode="json"), "opportunity": None,
+            "organisation": org.model_dump(mode="json") if org else None,
+            "signal_items": items}
 
 
 def paper_json(w: Work) -> dict:
@@ -216,7 +254,10 @@ def create_app(service: BriefService, runner: JobRunner,
         b, leads = load(brief_id)
         with service.repo() as r:
             res = r.get(Researcher, b.researcher_id)
-            opps = {x.record_id: r.get(Opportunity, x.record_id) for x in leads}
+            opps = {x.record_id: r.get(Opportunity, x.record_id) for x in leads
+                    if x.route == "A"}
+            out = [lead_json(x, opps.get(x.record_id)) if x.route == "A" else route_b_json(x, r)
+                   for x in leads]
             ov = aw.load_overrides(res.id, service.overrides) if res else None
             linked = aw.link_awards(res, r.list(Award), ov) if res and ov else []
             pids = {i for t in b.threads for i in t.get("work_ids", [])[:KEY_PAPERS]}
@@ -231,8 +272,7 @@ def create_app(service: BriefService, runner: JobRunner,
         return {"brief": b.model_dump(mode="json"),
                 "researcher": record_json(res) if res else None, "awards": awards,
                 "papers": papers,
-                "leads": [lead_json(x, opps.get(x.record_id)) for x in leads],
-                "notice": grants_gov.ATTRIBUTION}
+                "leads": out, "notice": grants_gov.ATTRIBUTION}
 
     def set_status(brief_id: str, lead_id: str, status: str) -> dict:
         lead = service.set_lead_status(brief_id, lead_id, status)
@@ -260,7 +300,9 @@ def create_app(service: BriefService, runner: JobRunner,
         ids = {b.researcher_id, *(x.record_id for x in leads)}
         ids |= {f"https://openalex.org/{c}" for x in leads for c in x.cited_ids
                 if c.startswith("W")}
-        ids |= {f"grants_gov:{c}" for x in leads for c in x.cited_ids if not c.startswith("W")}
+        ids |= {f"grants_gov:{c}" for x in leads if x.route == "A" for c in x.cited_ids
+                if not c.startswith("W")}
+        ids |= {i for x in leads for sig in x.signals for i in sig.record_ids}
         with service.repo() as r:
             records = [record_json(x) for x in (r.get_any(i) for i in sorted(ids)) if x]
         return {"brief": b.model_dump(mode="json"),
