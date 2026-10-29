@@ -51,11 +51,14 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 
 ## 4. Private context: CV and unpublished directions
 
-Adds eligibility (years since degree, rank, prior sponsors), direction (a two-sentence "where this is going" as one extra, up-weighted thread), and history (previously awarded programmes raise the sponsor prior).
+**Private mode** (expanded 2026-10-29 at Dakshitha's request; full design in `docs/design/PRIVATE_MODE.md`). A researcher adds a current CV, a research summary, an unfinished proposal or unpublished work, and the routes are tailored to it.
 
-Privacy rules: runs only on the local-model tier (refused on the hosted tier); held in memory for the session; never written to store, audit log, cache or evaluation; CV parsing is deterministic for dates, degree, rank, sponsors and discards everything else; every lead it influences still cites only public records (the note is a query, never a citation).
-
-Ten-day version: build the input and the tier gate; demo with a synthetic persona and an invented in-prep paragraph on Ollama on the laptop, with the UI stating "this never leaves this machine". Presented as a mechanism, not a measured gain.
+- Local only: available from the same machine, never on the public URL; every model is local and the provider layer refuses hosted or remote endpoints while a private session is open.
+- No logs: nothing from the session is written to the store, audit log, caches, timings or browser storage; the inventory of write paths and what private mode does with each is in the design doc.
+- Tailoring: private documents become private threads with a larger share of the weight (default proposed, Q13); a deterministic CV parse can unlock career-stage-restricted calls and raise prior sponsors' programmes; a private-only brief needs no public profile.
+- Citations: private documents are session-only records the validator accepts in the session; numbers and dates still come from a cited record.
+- Leaving the app: by default nothing private-derived leaves; an opt-in export masks identifiers and novel phrases, and says plainly that masking cannot hide the research direction.
+- Evidence: a canary-token test defines "no logs"; a RePORTER-abstract back-test variant measures the mechanism as an upper bound. Tested only with `data/synthetic/` personas.
 
 ## 5. Walkthrough
 
