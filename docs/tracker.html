@@ -119,37 +119,24 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S7</code> <span class="badge s-in-progress">in progress</span><span>7/16 sessions done</span></div>
+<div class="at-a-glance"><code>S8</code> <span class="badge s-todo">todo</span><span>8/16 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
-<a id="tab-archive" href="#archive">Archive<span class="count">7</span></a>
+<a id="tab-archive" href="#archive">Archive<span class="count">8</span></a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
 
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
-<div id="s7"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S7 · Web app, first three screens</h1><span class="badge s-in-progress">in progress</span></div>
-<div class="meta">Started 2026-10-28 22:40 EDT</div></div>
-<p>Goal: Find → Profile → Routes in the browser, with the evidence panel. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="5 of 6 tasks done"><div class="counts"><span><b>5/6</b>tasks done</span><span class="s-done"><b>5</b>done</span><span class="s-in-progress"><b>1</b>in progress</span></div><div class="bar" role="img" aria-label="5 of 6 tasks done"><span class="s-done" style="width:83.33%" title="done: 5"></span><span class="s-in-progress" style="width:16.67%" title="in progress: 1"></span></div></section>
-<div class="panel scroll"><table>
-<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
-<tbody>
-<tr><td>1</td><td>Interaction audit and UI/UX design doc</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td><code>docs/design/UI.md</code>: per-screen inputs, outputs, progress, required statements; tokens; Scout's states.</td></tr>
-<tr><td>2</td><td>No-build web app served by <code>perch serve</code>; Find, candidates, build, stage progress</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td><code>web/</code> (ES modules, no npm) mounted at <code>/</code> after the API routes. Progress branch with Scout riding it; stage details copied; elapsed time, no promised finish.</td></tr>
-<tr><td>3</td><td>Profile and Routes screens; evidence panel; keep and dismiss</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td><code>GET /briefs/{id}</code> now carries key papers; new <code>POST .../restore</code>. Citation ids render as paper titles; inference labelled on every card; missing amounts say so.</td></tr>
-<tr><td>4</td><td>Accessibility, touch, phone, themes; replay mode</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td>44 px targets, keyboard tabs, focus return, live region, reduced motion, light and dark. Replay: <code>scripts/export_replay.py</code> and <code>scripts/build_ui_preview.py</code> (output under <code>build/</code>, alias only).</td></tr>
-<tr><td>5</td><td>Adversarial review, then fixes</td><td><span class="badge s-done">done</span></td><td class="mono">b8607b4</td><td>Two independent reviewers (UX and accessibility; correctness and standing rules): 32 findings, all fixed or decided; list in <code>docs/design/UI.md</code> §6. Also live: a real brief built in the browser from <code>perch serve</code> in 90 s, 10 of 10 explained.</td></tr>
-<tr><td>6</td><td>Screenshots; UI tab in the tracker artifact</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
-</tbody></table></div>
-<h2>Definition of done</h2>
-<ul class="panel done-list"><li>A brief renders in the browser from the API.</li><li>Screenshots saved to <code>docs/screenshots/</code> for Checkup 2.</li><li><code>make test</code> is green.</li></ul>
+<div id="s8"><div class="eyebrow">Current session</div>
+<div class="title-row"><h1>S8 · Back-test and bench</h1><span class="badge s-todo">todo</span></div>
+<div class="meta">Not started</div></div>
+<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S8.md</code> when the session starts.</div>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="7 of 16 sessions done"><div class="counts"><span><b>7/16</b>sessions done</span><span class="s-done"><b>7</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>8</b>todo</span></div><div class="bar" role="img" aria-label="7 of 16 sessions done"><span class="s-done" style="width:43.75%" title="done: 7"></span><span class="s-in-progress" style="width:6.25%" title="in progress: 1"></span><span class="s-todo" style="width:50.00%" title="todo: 8"></span></div></section>
+<section class="panel summary" aria-label="8 of 16 sessions done"><div class="counts"><span><b>8/16</b>sessions done</span><span class="s-done"><b>8</b>done</span><span class="s-todo"><b>8</b>todo</span></div><div class="bar" role="img" aria-label="8 of 16 sessions done"><span class="s-done" style="width:50.00%" title="done: 8"></span><span class="s-todo" style="width:50.00%" title="todo: 8"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -160,8 +147,8 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s4">S4</a></td><td>Route A, deterministic</td><td><span class="badge s-done">done</span></td><td>2026-10-28 20:05 EDT</td><td>2026-10-28 20:40 EDT</td><td class="mono">f00e02c</td><td>76 tests green. Live Route A for 3 PIs; 0 ineligible of 30 by hand check against Grants.gov record text. Warm brief 0.7 to 1.1 s; retrieval 73 to 78 ms. Qwen3-Embedding-0.6B and Qwen3-Reranker-0.6B on GPU 3 (torch cu126). Added title-restriction rules; Q4 on Temple's applicant category.</td></tr>
 <tr class="is-finished"><td><a href="#s5">S5</a></td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-done">done</span></td><td>2026-10-28 21:04 EDT</td><td>2026-10-28 21:29 EDT</td><td class="mono">ce34844</td><td>105 tests green. <code>perch brief --explain</code> live for 3 PIs on qwen3.8:27b: layer 1 rejected 0 of 33, layer 2 flagged 1 of 30 (a false flag). 70 to 79 s per brief, $0. <code>decide</code> primitive with logprobs fallback. Anthropic adapter built on the SDK but not live-verified (Q5).</td></tr>
 <tr class="is-finished"><td><a href="#s6">S6</a></td><td>API</td><td><span class="badge s-done">done</span></td><td>2026-10-28 22:07 EDT</td><td>2026-10-28 22:13 EDT</td><td class="mono">b3ccdf6</td><td>112 tests green. FastAPI + in-process jobs; briefs end to end via curl for 2 PIs (one fetched from scratch); stages and partial results pollable; export with provenance.</td></tr>
-<tr class="is-current"><td><a href="#s7">S7</a></td><td>Web app, first three screens</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-28 22:40 EDT</td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S8</td><td>Back-test and bench</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-finished"><td><a href="#s7">S7</a></td><td>Web app, first three screens</td><td><span class="badge s-done">done</span></td><td>2026-10-28 22:40 EDT</td><td>2026-10-28 23:14 EDT</td><td class="mono">5da4e7e</td><td>116 tests green. No-build web app in <code>web/</code> served by <code>perch serve</code> at <code>/</code>: Find, Profile, Routes, evidence panel, Scout the owl on the progress branch. Live brief in the browser in 90 s. Adversarial review: 32 findings fixed. Screenshots in <code>docs/screenshots/</code>; UI tab in the tracker.</td></tr>
+<tr class="is-current"><td>S8</td><td>Back-test and bench</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S9</td><td>Deploy</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S10</td><td>Scout agent</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S11</td><td>Route B</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
@@ -195,7 +182,23 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-archive" class="view" data-view="archive" hidden>
 <div><div class="eyebrow">Finished sessions</div><h1>Archive</h1></div>
-<div><details id="s6"><summary><span><span class="sid">S6</span> <span class="stitle">API</span></span><span></span><span class="badge s-done">done</span><span class="smeta">3/3 tasks done · finished 2026-10-28 22:13 EDT · commit <code>b3ccdf6</code></span></summary><div class="inner"><p>Goal: the pipeline behind HTTP with async jobs. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<div><details id="s7"><summary><span><span class="sid">S7</span> <span class="stitle">Web app, first three screens</span></span><span></span><span class="badge s-done">done</span><span class="smeta">6/6 tasks done · finished 2026-10-28 23:14 EDT · commit <code>5da4e7e</code></span></summary><div class="inner"><p>Goal: Find → Profile → Routes in the browser, with the evidence panel. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="6 of 6 tasks done"><div class="counts"><span><b>6/6</b>tasks done</span><span class="s-done"><b>6</b>done</span></div><div class="bar" role="img" aria-label="6 of 6 tasks done"><span class="s-done" style="width:100.00%" title="done: 6"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Interaction audit and UI/UX design doc</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td><code>docs/design/UI.md</code>: per-screen inputs, outputs, progress, required statements; tokens; Scout's states.</td></tr>
+<tr><td>2</td><td>No-build web app served by <code>perch serve</code>; Find, candidates, build, stage progress</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td><code>web/</code> (ES modules, no npm) mounted at <code>/</code> after the API routes. Progress branch with Scout riding it; stage details copied; elapsed time, no promised finish.</td></tr>
+<tr><td>3</td><td>Profile and Routes screens; evidence panel; keep and dismiss</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td><code>GET /briefs/{id}</code> now carries key papers; new <code>POST .../restore</code>. Citation ids render as paper titles; inference labelled on every card; missing amounts say so.</td></tr>
+<tr><td>4</td><td>Accessibility, touch, phone, themes; replay mode</td><td><span class="badge s-done">done</span></td><td class="mono">47e2ad7</td><td>44 px targets, keyboard tabs, focus return, live region, reduced motion, light and dark. Replay: <code>scripts/export_replay.py</code> and <code>scripts/build_ui_preview.py</code> (output under <code>build/</code>, alias only).</td></tr>
+<tr><td>5</td><td>Adversarial review, then fixes</td><td><span class="badge s-done">done</span></td><td class="mono">b8607b4</td><td>Two independent reviewers (UX and accessibility; correctness and standing rules): 32 findings, all fixed or decided; list in <code>docs/design/UI.md</code> §6. Also live: a real brief built in the browser from <code>perch serve</code> in 90 s, 10 of 10 explained.</td></tr>
+<tr><td>6</td><td>Screenshots; UI tab in the tracker artifact</td><td><span class="badge s-done">done</span></td><td class="mono">5da4e7e</td><td>24 screenshots in <code>docs/screenshots/</code> (phone, laptop, dark), alias only. The tracker's UI tab embeds the replay preview in a phone or laptop frame.</td></tr>
+</tbody></table></div>
+<h2>Result</h2>
+<ul><li>A real brief built in the browser from <code>perch serve</code> for PI-4 (A5026494099): 90 s with explanations, 10 of 10 explained, no page errors.</li><li>Replay preview plays a saved PI-2 (A5057472361) brief in about 16 s; keep and dismiss work; no sideways scroll at 320, 390 or 1280 px.</li><li>116 tests green, including the web app served by the API, Node checks of the formatting helpers, award record links and CORS off by default.</li></ul>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>A brief renders in the browser from the API.</li><li>Screenshots saved to <code>docs/screenshots/</code> for Checkup 2.</li><li><code>make test</code> is green.</li></ul></div></details>
+<details id="s6"><summary><span><span class="sid">S6</span> <span class="stitle">API</span></span><span></span><span class="badge s-done">done</span><span class="smeta">3/3 tasks done · finished 2026-10-28 22:13 EDT · commit <code>b3ccdf6</code></span></summary><div class="inner"><p>Goal: the pipeline behind HTTP with async jobs. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
 <section class="panel summary" aria-label="3 of 3 tasks done"><div class="counts"><span><b>3/3</b>tasks done</span><span class="s-done"><b>3</b>done</span></div><div class="bar" role="img" aria-label="3 of 3 tasks done"><span class="s-done" style="width:100.00%" title="done: 3"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
