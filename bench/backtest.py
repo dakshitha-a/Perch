@@ -162,18 +162,29 @@ def summarise(rows: list[Row]) -> dict[str, float | int]:
             "truth_eligible": sum(x.truth_eligible for x in rows)}
 
 
-def run(embedder_name: str, configs: list[tuple[str, str, bool]], months: int = WINDOW_MONTHS,
-        device: str | None = None, reranker_name: str | None = None,
-        rows_path: Path = PIS) -> dict[str, list[Row]]:
-    """configs: (label, retrieval mode, rerank on). Returns rows per config label."""
-    load_dotenv()
-    rows = load_rows(rows_path)
-    embedder = get_embedder(embedder_name, cache=Path("data/cache/embeddings.db"), device=device)
-    reranker = None
-    if any(rr for _, _, rr in configs):
+RERANKERS = ("qwen3-reranker-0.6b", "clef-flash", "clef")
+
+
+def make_reranker(key: str, device: str | None) -> Reranker:
+    if key == "qwen3-reranker-0.6b":
         from perch.rerank import DEFAULT_MODEL, CrossEncoderReranker
 
-        reranker = CrossEncoderReranker(reranker_name or DEFAULT_MODEL, device=device)
+        return CrossEncoderReranker(DEFAULT_MODEL, device=device)
+    from perch.llm.systemone import CLEF_FLASH_URL, CLEF_URL, SystemOneClient, SystemOneDecider
+    from perch.rerank import DecisionReranker
+
+    url = {"clef-flash": CLEF_FLASH_URL, "clef": CLEF_URL}[key]
+    return DecisionReranker(SystemOneDecider(SystemOneClient(url), key), f"systemone:{key}")
+
+
+def run(embedder_name: str, configs: list[tuple[str, str, str | None]],
+        months: int = WINDOW_MONTHS, device: str | None = None, rows_path: Path = PIS,
+        strata: tuple[str, ...] = ("targeted", "parent")) -> dict[str, list[Row]]:
+    """configs: (label, retrieval mode, reranker key or None). Returns rows per label."""
+    load_dotenv()
+    rows = [r for r in load_rows(rows_path) if r["stratum"] in strata]
+    embedder = get_embedder(embedder_name, cache=Path("data/cache/embeddings.db"), device=device)
+    rerankers = {k: make_reranker(k, device) for k in {rr for _, _, rr in configs if rr}}
     cache = RerankCache(Path("data/bench/cache/rerank.db"))
     with SQLiteRepository(BENCH_DB) as repo, OpenAlexClient(env("OPENALEX_API_KEY")) as oa:
         opps = {o.id: o for o in repo.list(Opportunity)}
@@ -191,7 +202,8 @@ def run(embedder_name: str, configs: list[tuple[str, str, bool]], months: int = 
             works = works_for(repo, r["openalex_id"], oa)
             for label, mode, rr in configs:
                 out[label].append(rank_one(r, works, opps, index, embedder,
-                                           reranker if rr else None, cache, mode, months, label))
+                                           rerankers[rr] if rr else None, cache, mode, months,
+                                           label))
     return out
 
 
@@ -212,8 +224,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--device")
     ap.add_argument("--months", type=int, default=WINDOW_MONTHS)
     a = ap.parse_args(argv)
-    configs = [("keyword-only", "bm25", False), ("hybrid", "hybrid", False),
-               ("hybrid+rerank", "hybrid", True)]
+    configs = [("keyword-only", "bm25", None), ("hybrid", "hybrid", None),
+               ("hybrid+rerank", "hybrid", "qwen3-reranker-0.6b")]
     res = run(a.embedder, configs, a.months, a.device)
     print(write(res, slug(a.embedder)), datetime.now(UTC).isoformat())
     for label, rows in res.items():

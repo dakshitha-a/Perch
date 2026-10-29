@@ -99,3 +99,26 @@ class MiniCheckGrounder(Grounder):
                 for (i, _), p in zip(batch, probs, strict=True):
                     best[i] = max(best[i], float(p))
         return best
+
+
+class DecisionGrounder(Grounder):
+    """Layer 2 through `decide` (SPEC section 7): one yes/no judgment per claim, "does
+    the record support this sentence?", with the probability of yes as support. Works
+    with a decision model (SystemOneDecider) or the LLM-logprobs fallback."""
+
+    QUESTION = "Does the document support every statement in the claim?"
+
+    def __init__(self, decider: object, name: str) -> None:
+        from perch.llm.decide import Decider
+
+        assert isinstance(decider, Decider)
+        self.decider, self.name = decider, name
+
+    def support(self, document: str, claims: list[str]) -> list[float]:
+        from perch.llm.decide import YesNo
+
+        out = []
+        for c in claims:
+            d = self.decider.decide(YesNo(self.QUESTION), f"DOCUMENT:\n{document}\n\nCLAIM:\n{c}")
+            out.append(d.probs.get("yes", 1.0 if d.value else 0.0))
+        return out

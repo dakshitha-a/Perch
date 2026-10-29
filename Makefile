@@ -9,8 +9,10 @@ test:
 demo:
 	@echo "make demo: not built yet (S9, see docs/PLAN.md)"
 
+# Back-test matrix and results table (bench/run.py). Needs the bench corpus
+# (python -m bench.corpus) and, for the Clef rows, `make decide-up`.
 bench:
-	@echo "make bench: not built yet (S8, see docs/PLAN.md)"
+	$(UV) run --extra ml python -m bench.run
 
 # docs/tracker.html for the browser; build/artifacts/tracker.html is the page published as
 # the claude.ai tracker artifact (gitignored), with a UI tab when a replay preview exists

@@ -1,0 +1,1 @@
+{"model":"ggml-org/Clef-Flash-GGUF","answers":{"q":{"type":"choice","choice":"refund","probabilities":{"cancel":0.009096733612778076,"other":0.006644734102398148,"refund":0.9842585322848239},"confidence":0.9763877984272358}},"usage":{"input_tokens":149,"output_tokens":0}}

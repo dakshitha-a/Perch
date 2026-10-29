@@ -111,3 +111,26 @@ def rerank(cands: list[Candidate], opps: dict[str, Opportunity], profile: Profil
     order = {c.record_id: i for i, c in enumerate(cands)}
     best = sorted(cands, key=lambda c: (-scores[c.record_id], order[c.record_id]))[:top]
     return [Ranked(opps[c.record_id], c, scores[c.record_id]) for c in best], hits
+
+
+class DecisionReranker(Reranker):
+    """Rerank through `decide` (SPEC section 7): the probability of yes to "does this
+    opportunity fit this line of work?". Decision model or LLM-logprobs fallback."""
+
+    QUESTION = "Does this funding opportunity fit the researcher's line of work?"
+
+    def __init__(self, decider: object, name: str) -> None:
+        from perch.llm.decide import Decider
+
+        assert isinstance(decider, Decider)
+        self.decider, self.name = decider, name
+
+    def score(self, query: str, docs: list[str]) -> list[float]:
+        from perch.llm.decide import YesNo
+
+        out = []
+        for d in docs:
+            r = self.decider.decide(YesNo(self.QUESTION),
+                                    f"RESEARCH:\n{query}\n\nOPPORTUNITY:\n{d}")
+            out.append(r.probs.get("yes", 1.0 if r.value else 0.0))
+        return out
