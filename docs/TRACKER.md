@@ -40,6 +40,6 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | Cost per brief (API model) | $0.091 for a 10-lead brief on claude-sonnet-5-5 ($0.079 explanations, $0.012 summary); local models $0 | bench/results/cost.csv | 2026-10-29 |
 | Warm-cache brief time | 0.7 to 1.1 s (Route A: embed + rerank, no LLM calls; 3 PIs) | data/logs/brief_timings.jsonl | 2026-10-28 |
 | Scout bench, 20 follow-ups (completed / wrong-tool rate / restraint) | claude-sonnet-5-5 20/20, 0 of 18 calls, 6/6; gemma4:26b-a4b 20/20, 0 of 17, 6/6; qwen3:8b native 17/20, 1 of 14, 5/6; qwen3:8b structured 12/20, 1 of 14, 6/6 | bench/results/scout_summary.csv | 2026-10-29 |
-| Route B hand-judged precision | | | |
+| Route B hand-judged precision | 8 yes, 6 thin, 0 wrong of 14 leads for 3 PIs (judged by Perch-dev, to be spot-checked by Dakshitha). First run before the 30-author cap: 7 yes, 3 thin, 5 wrong of 15 | bench/results/route_b/JUDGMENTS.md | 2026-10-29 |
 | Deployment profile and peak VRAM | Demo: deploy-2gpu. GPU A 26,706 MiB (Gemma 19,290, Clef-flash 7,416); GPU B 21,808 MiB (Clef 18,986, model server 2,822), idle after a brief. One card: no chat model fits under 28 GB with Clef-flash; Gemma peaks at 30,259 MiB with one brief | `make gpus`, bench/results/single_card.csv | 2026-10-29 |
 | Anthropic API spend / budget to demo | $1.25 of $100 (S8: $0.24 of its $3; S10: about $0.93 of its $1.00) | data/logs/anthropic_spend.jsonl | 2026-10-29 |
