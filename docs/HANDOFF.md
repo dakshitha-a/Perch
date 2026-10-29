@@ -36,6 +36,12 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 ## Open questions (mirror of bridge/QUESTIONS.md, numbered)
 - Q6: review the web app in the tracker's UI tab (not blocking).
 
+## Answers to carry into S8 (bridge/QUESTIONS.md Q7 to Q10)
+- Back-test PIs: build `data/backtest/pis.csv` from NIH RePORTER (Temple, FY2015 on, awards naming a funding opportunity); Dakshitha reviews the list.
+- Downloads approved: Qwen3-Embedding-4B, SPECTER2, BGE-M3 (Hugging Face), Gemma 4 26B-A4B (new Ollama pull). Log each in AI_USE_LOG. Do not re-pull existing Ollama models.
+- API spend for S8: up to $3 on claude-sonnet-5-5; state the cost before each run.
+- S8 task 6: Keep bar (count and next step; downloads kept leads until S12); add to the Help page.
+
 ## Next session
 - Session to start: S8 — Back-test and bench
 - First command to run: `git pull && make hooks && make test`

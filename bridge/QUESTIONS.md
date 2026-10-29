@@ -4,9 +4,18 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
-6. **Review the web app (raised S7, 2026-10-28; not blocking).** The UI is in the tracker's UI tab: a saved brief played back on a phone or laptop frame. Product choices you may want to change: the owl is named Scout, the same as the S10 agent layer; the palette is evergreen with an amber accent, not Temple cherry; a finished brief opens on Routes, a new one on Profile; leads sort by best match by default; fit shows as a band plus the model's 0 to 100 number. Reply with any changes; S8 will not touch the UI unless you ask.
+6. **Review the web app (raised S7, 2026-10-28; not blocking; still open).** The UI is in the tracker's UI tab: a saved brief played back on a phone or laptop frame. Product choices you may want to change: the owl is named Scout, the same as the S10 agent layer; the palette is evergreen with an amber accent, not Temple cherry; a finished brief opens on Routes, a new one on Profile; leads sort by best match by default; fit shows as a band plus the model's 0 to 100 number. Reply with any changes; S8 will not touch the UI unless you ask.
 
 ## Answered
+
+7. **Back-test PI set (raised S8 start, 2026-10-29).** `data/backtest/pis.csv` did not exist. **Answered 2026-10-29 by Dakshitha:** build it from public NIH RePORTER records: Temple NIH awards from FY2015 on that name a funding opportunity; papers before the award start. Dakshitha reviews the list.
+
+8. **Bench model downloads (raised S8 start, 2026-10-29).** **Answered 2026-10-29 by Dakshitha:** download all: Qwen3-Embedding-4B, SPECTER2 and BGE-M3 from Hugging Face, and Gemma 4 26B-A4B through a new Ollama pull. Existing Ollama models are not re-pulled. Every install goes in AI_USE_LOG.
+
+9. **API spend for S8 (raised S8 start, 2026-10-29).** **Answered 2026-10-29 by Dakshitha:** up to $3 of the $100 budget for the skill-2 rows on claude-sonnet-5-5; report cost before and after.
+
+10. **After Keep (raised end of S7, 2026-10-28).** **Answered 2026-10-29 by Dakshitha:** add a Keep bar in S8: once a lead is kept, a bar says how many are kept and what comes next; until S12 its button downloads the kept leads with their records. Add it to the Help page.
+
 
 
 1. **`data/` in `.gitignore` (raised S0, 2026-10-28).** PLAN S0 says to gitignore `data/`, and S0 does that. Later sessions put files there that belong in the repo: `data/overrides/` in S2, `data/backtest/pis.csv` in S8 and `data/synthetic/` in S13. Proposal: ignore only generated data, such as `data/cache/`, `data/*.db` and `*.lance`, and commit the rest. Needed by S2. **Interim (S2):** `.gitignore` now ignores `data/*` except `data/overrides/`, so the override table is committed. `data/backtest/` (S8) and `data/synthetic/` (S13) still need your call. **Answered 2026-10-28 by Dakshitha:** commit curated, ignore generated. `.gitignore` now keeps `data/overrides/`, `data/backtest/` and `data/synthetic/`; `perch.db`, `cache/`, `lance/` and `logs/` stay local.

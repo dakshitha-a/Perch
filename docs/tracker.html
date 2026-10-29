@@ -295,10 +295,13 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (36)</h2>
+<h2>Decisions (39)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S8</td><td>Keep bar added in S8; until S12 it downloads the kept leads with their records</td><td>Keep had no visible next step</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Bench downloads approved: Qwen3-Embedding-4B, SPECTER2, BGE-M3, Gemma 4 26B-A4B; S8 API spend capped at $3</td><td>Needed for the config matrix in PLAN S8</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-29</td><td>S8</td><td>Back-test PI set built from public NIH RePORTER records (Temple, FY2015 on, awards naming a funding opportunity), not a teammate's list</td><td>No list existed; RePORTER makes the set reproducible</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S7</td><td><code>perch serve</code> sends no CORS headers unless <code>PERCH_CORS_ORIGINS</code> lists origins</td><td>The web app is same-origin; open CORS let any page start briefs that spend the model budget (adversarial review)</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-28</td><td>S7</td><td>The app's owl mascot is Scout, the same name as the S10 agent layer; it animates only from real stage status and never speaks a verdict</td><td>Dakshitha asked for an animated owl with personality; one name keeps the agent and its face together</td><td>Dakshitha (mascot), Perch-dev (name)</td></tr>
 <tr><td>2026-10-28</td><td>S7</td><td>The web app is plain ES modules and CSS in <code>web/</code>, with no build step and no npm dependencies, served by <code>perch serve</code> at <code>/</code></td><td>Node 12 and no npm on the node; nothing to install for <code>make demo</code> or the ZIP; the app is small</td><td>Perch-dev</td></tr>
@@ -336,10 +339,12 @@ details .inner > * { min-width: 0; }
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (6)</h2>
+<h2>Plan change log (8)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S8</td><td>Back-test PI set built from NIH RePORTER (Q7) instead of a teammate's list; task 6 Keep bar added (Q10)</td><td>Dakshitha's answers at S8 start</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-28</td><td>S7, S10–S14</td><td>Help page added in S7 (<code>web/help.js</code>); every later session that ships UI adds its feature to the Help page, with claims checked against the code</td><td>Keep the in-app tutorial current as the app grows</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S7</td><td>S7 rewritten into six tasks: interaction audit and design doc first, a no-build web app instead of React + Vite, replay mode, an adversarial review with fixes, and a UI tab in the tracker artifact</td><td>The node has Node 12 and no npm; a no-build app keeps <code>make demo</code> and the ZIP one step. Audit and review asked for by Dakshitha</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S8, S9</td><td>Single-GPU deployment target with deploy-1gpu, deploy-2gpu and dev profiles (SPEC §11); S8 task 5 single-card validation with gates; S9 deploys the chosen profile via <code>PERCH_PROFILE</code> and adds <code>make gpus</code>. Clef server install attempted and blocked (Q3)</td><td>Single-GPU deployment target, validation gates, Clef installed</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S5, S8</td><td>Laya removed; Clef-flash (default local) and Clef (accuracy challenger) added through the Jev-compatible adapter, Jev kept as hosted option, Strands Decider 2B added as CPU-only fallback; SPEC §7 and §8 updated to match</td><td>Laya replaced by Clef-flash/Clef on published Decision Index and independent tests</td><td>Dakshitha</td></tr>
