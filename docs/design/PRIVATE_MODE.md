@@ -1,7 +1,7 @@
 # Private mode — design
 
 Asked for by Dakshitha on 2026-10-29 (S8). Extends SPEC §4. Built in S13, with
-pieces in S9, S10, S12, S14 (MCP) and S16 (QA) (see PLAN.md). Synthetic test persona:
+pieces in S9, S10, S12, S14 (MCP) and S17 (QA) (see PLAN.md). Synthetic test persona:
 `data/synthetic/persona-1/`.
 
 ## What it is

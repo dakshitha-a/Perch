@@ -11,9 +11,9 @@ This plan is organised by **session**, not by day. A session is a goal set sized
 | Sat 31 Oct | Checkup 1 (one page; Dakshitha writes it) | nothing from the code; S1–S2 helpful for a real example |
 | Tue 3 Nov | Checkup 2: prototype draft, screenshots, tests run, tools used | S0–S7 |
 | Thu 5 Nov 12:00 | Code freeze | everything kept in the cut order |
-| Fri 6 Nov 12:00 | Submission ZIP + links; 3:00 pm demo | S16 |
+| Fri 6 Nov 12:00 | Submission ZIP + links; 3:00 pm demo | S17 |
 
-**Cut order if time runs short:** S15 monitoring → private mode (S13) narrows to its floor (paste-only input, private threads, session records, self-hosted-endpoint gate, session isolation, no-logs paths, canary test; drops upload parsing, CV eligibility unlock, obfuscated export, MCP private tools) → the Ollama demo moment inside S14 (keep the MCP server) → Route B (S11) narrows to one signal. Never cut: the pipeline (S1–S4), the validator (S5), the web demo (S6–S7), the back-test (S8), Scout's approve mode (S10).
+**Cut order if time runs short:** S16 monitoring → private mode (S13) narrows to its floor (paste-only input, private threads, session records, self-hosted-endpoint gate, session isolation, no-logs paths, canary test; drops upload parsing, CV eligibility unlock, obfuscated export, MCP private tools) → the Ollama demo moment inside S14 (keep the MCP server) → Route B (S11) narrows to one signal. Never cut: the pipeline (S1–S4), the validator (S5), the web demo (S6–S7), the back-test (S8), Scout's approve mode (S10).
 
 **Context budget guidance:** a session should finish with room to spare. If the context is past roughly two-thirds and the definition of done is not close, stop at a clean commit, write `docs/HANDOFF.md`, and mark the session "continued" in the tracker rather than pushing through.
 
@@ -199,7 +199,18 @@ Goal: any platform, including local.
 
 Done when: an MCP client gets a cited brief.
 
-## S15 — Monitoring (optional; first to cut)
+## S15 — README and public release
+
+Goal: a README that shows Perch at a glance, then the repo made public (Dakshitha, 2026-10-29).
+
+1. README in the style of Dakshitha's NextTex repo: a hero animation, a feature tour with animated WebP clips filmed in the real app, the architecture figure, and short sections that link to separate docs (running, deployment, private mode, MCP, evaluation). Film with NextTex's pipeline: the camera script `animate.py`, credited, and its recorder ported to Python. Researchers appear by alias only.
+2. A README tab on the build tracker, so Dakshitha can review it with its images.
+3. Public-readiness audit: `scripts/check_public.py` and the hygiene test over every tracked file and the whole history; no local paths, machine names, emails or session links.
+4. Push and make the repository public, after Dakshitha approves the README. Confirm with Dakshitha immediately before changing visibility.
+
+Done when: Dakshitha has approved the README, and the repository is public.
+
+## S16 — Monitoring (optional; first to cut)
 
 Goal: Perch tells you before you need it.
 
@@ -208,13 +219,13 @@ Goal: Perch tells you before you need it.
 
 Done when: the job runs on the demo personas and produces a draft.
 
-## S16 — QA, freeze, package
+## S17 — QA, freeze, package
 
 Goal: ship.
 
 1. Work the fix list from the QA log a teammate keeps; accessibility checklist pass; privacy audit of private mode against the design's write-path inventory, canary test rerun on the frozen build.
 2. Rerun the Scout bench on the frozen build with the demo model. Final numbers (back-test, validator rate, cost per brief, Scout completion and wrong-tool rate) into `docs/TRACKER.md` and `docs/RESULTS.md` for the deck. When this last test run is done, free the dev test servers: `make decide-down` stops the dev Clef-flash and Clef units, and the demo's own servers stay up. Then tell the other session sharing the node that those GPUs are free (details in the local notes). The Clef rows of `make bench` need `make decide-up` again after this.
-3. README final; `make package` → submission ZIP with how-to-run; confirm with Dakshitha before changing repo visibility.
+3. README final; `make package` → submission ZIP with how-to-run.
 4. Freeze: tag `v0.1-demo`; nothing on `main` after that except README typos.
 
 Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
@@ -244,3 +255,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S12 | Task 7 added back, narrowed: Temple STTR partners (41 awards) from the SBIR.gov bulk file's research-partner column | Dakshitha: worth doing if useful; companies that already partnered with Temple are concrete leads | Dakshitha |
 | 2026-10-29 | S12 | Worked in the order 1 to 4, 7, 6, 5: the demo was rebuilt last so it carried every change. Task 7 is done but not wired in, because it adds 0 leads under the two-signal rule (Q20) | Tasks 1 to 5 are the definition of done; one demo rebuild instead of two | Perch-dev |
 | 2026-10-29 | after S12 | S16 task 2: after the last test run, stop the dev decision servers (`make decide-down`) and tell the other session on the node that their GPUs are free | The app needs only the demo's two GPUs; the dev copies exist for testing | Dakshitha |
+| 2026-10-29 | S15 to S17 | New S15, README and public release (README with filmed clips and the architecture, a README tab on the tracker, a public-readiness audit, then make the repo public). Monitoring moves to S16, and QA, freeze and package to S17. Older notes that say "S16 task 2" mean what is now S17 task 2 | Dakshitha asked for an attractive README, reviewed on the tracker, as the next step before the repo goes public | Dakshitha |

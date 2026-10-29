@@ -19,15 +19,16 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S12 | Compare, hand-off, export | done | 2026-10-29 13:38 EDT | 2026-10-29 14:10 EDT | see git log | 194 tests green. Compare tab: kept leads side by side, every cell copied from or counted from a record, each opening its record; no effort, IP or likelihood column, because no record states them. Hand off: skill 3 writes a 2 to 4 sentence opening, code writes the rest, To left empty, office names from research.temple.edu; copy and open in mail; never sent or stored. Markdown export and a print page the browser saves as PDF. Scout `compare` and `draft_handoff` built. Bench: Sonnet 20/20, 5/5, 3/3 ($0.41); Gemma 18/20, 5/5, 2/3. Egress filter for private mode. Temple STTR table (41 awards) adds 0 leads, so not wired in (Q20). Done-when met on the public URL. |
 | S13 | Private mode | done | 2026-10-29 14:22 EDT | 2026-10-29 15:00 EDT | see git log | 208 tests green. Private mode built end to end: sessions in memory with the session id in a header, idle timeout and caps; paste or upload (text, Markdown, DOCX, PDF from bytes); a self-hosted gate on every model and endpoint; the store as an overlay on a read-only base, no cache, log or index writes. Private threads take 0.6 (proposal 0.5, direction 0.3, unpublished 0.2 of it; Q21). The CV parse unlocks career-stage calls as "may be eligible", using NIH's ESI definition and its smaller-grants list. Private-only briefs work. Exports and hand-offs withhold private text, or mask it with an in-memory key. Lock labels, Help and a private bar in the UI. Live canary on the dev node: no trace in data/, /tmp or six model-server journals; the private-only brief had 8 of 8 explained leads citing private documents. Normal-mode context fields with "You said". Stand-in proposal (funded abstract, an upper bound): 7 to 16 of 48 in the top 10. Persona tab on the tracker. Q21, Q22 open. |
 | S14 | MCP server | done | 2026-10-29 15:01 EDT | 2026-10-29 15:10 EDT | see git log | 210 tests green. `perch mcp`: Scout's nine tools over stdio on the MCP Python SDK 2.3.0, with the same argument checks and validator, a provenance map in every result, and budgets of 60 calls (20 model-backed) per connection. `--private` runs on a private session behind the self-hosted gate. Live: the SDK client over stdio got 5 leads with provenance and a validated explanation citing three papers in 7 s. Claude Code 2.1.312 (print mode, haiku) got a cited brief. The local Ollama agent was not tested. The tracker's UI tab was rebuilt with every module, and the Bench tab gained Scout and the stand-in result. The demo was rebuilt. |
-| S15 | Monitoring (optional) | todo | | | | |
-| S16 | QA, freeze, package | todo | | | | |
+| S15 | README and public release | in progress | 2026-10-29 15:25 EDT | | | |
+| S16 | Monitoring (optional) | todo | | | | |
+| S17 | QA, freeze, package | todo | | | | |
 
 ## Milestone readiness
 
 | Milestone | Date | Needs | Ready? |
 |---|---|---|---|
 | Checkup 2 | Tue 3 Nov | S0–S7 | |
-| Code freeze | Thu 5 Nov 12:00 | S16 | |
+| Code freeze | Thu 5 Nov 12:00 | S17 | |
 | Submission | Fri 6 Nov 12:00 | ZIP + links | |
 
 ## Key numbers (keep current)
