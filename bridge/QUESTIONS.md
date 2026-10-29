@@ -4,11 +4,11 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
-17. **API spend for the Scout bench (raised S10, 2026-10-29).** The definition of done needs Scout's 20 scripted follow-ups on the API model, claude-sonnet-5-5. Measured on the local model: Gemma used 76,453 tokens for all 20 tasks, almost all of it input. Sonnet counts tokens differently, so I allow 1.5 times that: about 115,000 input tokens at $2 per million is $0.23, and about 8,000 output tokens at $10 per million is $0.08. Three tasks also call the fit explainer, at about $0.008 each. **Estimate: about $0.35. I ask for a cap of $1.00**, enforced per session by Scout's budget and overall by the adapter's spend ledger (now $0.32 of $100). The first call checks that Anthropic accepts Scout's tool schemas. Default until you answer: no API calls; S10 ends as `continued` if the API half is still missing.
-
 18. **Scout tools that belong to later sessions (raised S10, 2026-10-29).** Three of the nine allowlisted tools are built later: `get_org_signals` in S11, and `compare` and `draft_handoff` in S12. Proposal: keep all nine in Scout's tool list. Each of the three returns a plain "not built yet" result and does nothing else. A call to one counts as an allowlisted call, not a wrong tool. Default: as proposed.
 
 ## Answered
+
+17. **API spend for the Scout bench (raised S10, 2026-10-29).** The definition of done needs Scout's 20 scripted follow-ups on the API model, claude-sonnet-5-5. Measured on the local model: Gemma used 76,453 tokens for all 20 tasks, almost all of it input. Sonnet counts tokens differently, so I allow 1.5 times that: about 115,000 input tokens at $2 per million is $0.23, and about 8,000 output tokens at $10 per million is $0.08. Three tasks also call the fit explainer, at about $0.008 each. **Estimate: about $0.35. I ask for a cap of $1.00**, enforced per session by Scout's budget and overall by the adapter's spend ledger (now $0.32 of $100). The first call checks that Anthropic accepts Scout's tool schemas. Default until you answer: no API calls; S10 ends as `continued` if the API half is still missing. **Answered 2026-10-29 by Dakshitha:** yes, with a hard cap of $1.00.
 
 16. **Information you add in normal mode (raised S8, 2026-10-29).** Normal mode read public records only; any user input went through private mode. **Answered 2026-10-29 by Dakshitha:** add optional fields: a research direction, include and exclude keywords and a self-reported career stage to normal mode; a CV stays private-mode only. Build in S13 with private mode (same mechanism).
 

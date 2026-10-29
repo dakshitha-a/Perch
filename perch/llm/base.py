@@ -17,6 +17,10 @@ class Tool:
     name: str
     description: str
     parameters: JsonSchema
+    # Anthropic strict tool use (constrained arguments). Off for Scout's tools: with ten
+    # optional parameters, strict mode made claude-sonnet-5-5 drop min_amount and
+    # closes_by (live, S10), and Scout checks every call's arguments itself.
+    strict: bool = True
 
 
 @dataclass

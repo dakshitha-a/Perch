@@ -63,7 +63,7 @@ def score(task: dict, s: Session) -> dict:
             "wrong_calls": len(wrong), "missing": "; ".join(missing)}
 
 
-def run(spec: str, policy: str | None, only: list[str]) -> Path:
+def run(spec: str, policy: str | None, only: list[str], max_usd: float = 1.0) -> Path:
     from perch.cli import default_client
     from perch.service import BriefService, Clients, default_models
 
@@ -77,8 +77,14 @@ def run(spec: str, policy: str | None, only: list[str]) -> Path:
     for task in plan["tasks"]:
         if only and task["id"] not in only:
             continue
+        spent = sum(r["usd"] for r in rows)
+        if spent >= max_usd:
+            print(f"stopped: ${spent:.4f} spent, cap ${max_usd:.2f}")
+            break
+        # Each session may spend what is left under the cap, and at most $0.25.
         scout = make_scout(service, task["researcher"], as_of=as_of, llm=spec, mode="run",
-                           policy=policy, log=log, budget=ScoutBudget(max_usd=0.50))
+                           policy=policy, log=log,
+                           budget=ScoutBudget(max_usd=min(0.25, max_usd - spent)))
         t0 = time.perf_counter()
         s = scout.start(task["questions"][0])
         for q in task["questions"][1:]:
@@ -138,10 +144,11 @@ def main() -> None:
     ap.add_argument("spec", nargs="?", help="provider spec, e.g. ollama:gemma4:26b-a4b")
     ap.add_argument("--policy", choices=["native", "structured"], default=None)
     ap.add_argument("--only", nargs="*", default=[], help="task ids")
+    ap.add_argument("--max-usd", type=float, default=1.0, help="stop the run at this spend")
     ap.add_argument("--summary", action="store_true")
     a = ap.parse_args()
     if a.spec:
-        print("wrote", run(a.spec, a.policy, a.only))
+        print("wrote", run(a.spec, a.policy, a.only, a.max_usd))
     if a.summary:
         print("wrote", summary())
 

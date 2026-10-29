@@ -290,6 +290,8 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
                         _obj({"id": STR}, ["id"])), get_record),
 }
 assert tuple(TOOLS) == ALLOWLIST
+for _tool, _ in TOOLS.values():
+    _tool.strict = False  # see perch.llm.base.Tool; check_arguments() runs on every call
 
 
 def check_arguments(tool: Tool, args: object) -> list[str]:

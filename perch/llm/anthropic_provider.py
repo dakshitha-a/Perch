@@ -86,7 +86,7 @@ class AnthropicProvider(Provider):
             kw["system"] = [block]
         if tools:
             kw["tools"] = [{"name": t.name, "description": t.description,
-                            "input_schema": self.transform(t.parameters), "strict": True}
+                            "input_schema": self.transform(t.parameters), "strict": t.strict}
                            for t in tools]
         output_config: dict = {}
         if schema:
