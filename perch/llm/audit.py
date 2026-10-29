@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 import uuid
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -32,8 +33,13 @@ class AuditLog:
     def __init__(self, path: Path | None = AUDIT_LOG) -> None:
         self.path = path
         self.events: list[dict] = []  # kept in memory too, for per-run summaries
+        self._lock = threading.Lock()
 
     def write(self, event: dict) -> None:
+        with self._lock:
+            self._write(event)
+
+    def _write(self, event: dict) -> None:
         self.events.append(event)
         if self.path:
             self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -59,13 +65,17 @@ class AuditLog:
 
 
 class AuditedProvider(Provider):
-    """Wraps a provider; every chat() appends a "call" event. `last_call_id` links the
-    validation event that follows."""
+    """Wraps a provider; every chat() appends a "call" event. `last_call_id` (per thread,
+    since skills call in parallel) links the validation event that follows."""
 
     def __init__(self, inner: Provider, log: AuditLog, role: str) -> None:
         self.inner, self.log, self.role = inner, log, role
         self.name, self.model, self.capabilities = inner.name, inner.model, inner.capabilities
-        self.last_call_id = ""
+        self._local = threading.local()
+
+    @property
+    def last_call_id(self) -> str:
+        return getattr(self._local, "call_id", "")
 
     def chat(self, messages: list[Message], *, system: str | None = None,
              tools: list[Tool] | None = None, schema: JsonSchema | None = None,
@@ -73,7 +83,7 @@ class AuditedProvider(Provider):
              cache_system: bool = False) -> ChatResult:
         r = self.inner.chat(messages, system=system, tools=tools, schema=schema,
                             max_tokens=max_tokens, logprobs=logprobs, cache_system=cache_system)
-        self.last_call_id = uuid.uuid4().hex[:12]
+        self._local.call_id = uuid.uuid4().hex[:12]
         self.log.write({
             "kind": "call", "at": datetime.now(UTC).isoformat(), "call_id": self.last_call_id,
             "role": self.role, "provider": r.provider, "requested_model": self.inner.model,
