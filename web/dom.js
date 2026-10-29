@@ -51,6 +51,7 @@ export function icon(name) {
     person: "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20.5c1-3.8 4-5.5 7.5-5.5s6.5 1.7 7.5 5.5",
     theme: "M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z",
     download: "M12 4v11M7 10.5l5 5 5-5M5 19.5h14",
+    lock: "M6.5 10.5h11v9h-11zM8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5M12 14v2",
   };
   const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   s.setAttribute("viewBox", "0 0 24 24");

@@ -22,6 +22,10 @@ PRIVATE_SHARE = 0.6
 DOC_SHARES = {"proposal": 0.5, "direction": 0.3, "manuscript": 0.2}
 CHUNK_CHARS = 1500
 MAX_CHUNKS = 24
+# Words too common in proposals to name a thread.
+LABEL_STOP = set("""not also may will can could would should more most other than then these those
+which while when where what who how aim aims specific year years week weeks month months data
+work draft section""".split())
 QUERY_CHARS = 600  # opening text used as the thread's keyword and rerank query
 
 
@@ -42,6 +46,7 @@ def chunks(text: str) -> list[str]:
 
 
 def kind_of(doc: Work) -> str:
+    """"private:proposal" -> "proposal"; the normal-mode "said:direction" -> "direction"."""
     return doc.id.split(":", 1)[1]
 
 
@@ -69,7 +74,7 @@ def add_threads(profile: Profile, docs: list[Work], embedder: Embedder,
 
 def label(text: str, n: int = 4) -> str:
     """The most frequent content words, ties by first appearance."""
-    ws = [w for w in words(text) if not w.isdigit()]
+    ws = [w for w in words(text) if not w.isdigit() and w not in LABEL_STOP]
     c = Counter(ws)
     first = {w: i for i, w in reversed(list(enumerate(ws)))}
     return ", ".join(sorted(c, key=lambda w: (-c[w], first[w]))[:n]) or "untitled"

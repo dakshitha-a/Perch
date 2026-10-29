@@ -107,6 +107,10 @@ function steps() {
       "Once you keep a lead, a bar at the bottom of Routes shows how many you kept, and its button opens the Compare tab. Compare puts your kept grants and industry leads in one table: money, close date, activity code, the funding instrument or the suggested relationship, and the evidence. Under each lead is the Temple office that handles its route. Each cell is copied from its record or counted from it by code, and pressing it opens that record. Press a column name to sort; cells with nothing in the record sort last. There is no effort or intellectual-property column, because no public record states either. Industry leads have no amount or deadline in their records."],
     ["Hand off to a Temple office", picHandoff(),
       "Under the table, pick an office: Research Development for grants, or Innovation and Technology Commercialization for industry leads, as research.temple.edu names them. Draft the email, and a model writes a short opening paragraph about your papers and the kept leads. Code writes the rest: the list of leads with dates and amounts copied from their records, your papers, and a note that industry leads are inferences. The opening is checked like every model text, and it may not say you should apply or that a company wants to fund you. If it fails twice, the draft opens with a plain sentence instead. The To line is left empty; a link opens the office’s page on research.temple.edu. Edit the draft, then copy it or open it in your mail app. Perch never sends it and does not save it. To take the whole brief with you, use the links at the bottom of a brief: Print or save as PDF opens the brief as a plain page, and your browser’s print dialog saves it as a PDF; Markdown downloads the same text; Records as JSON downloads every record behind it."],
+    ["Tell Perch more (optional)", null,
+      "Under Options on the Find screen you can add a sentence on where your research is going, keywords to search for or leave out, and a career stage. Your sentence and keywords become one more search thread with 30% of the weight; your papers share the other 70%. Left-out keywords drop any opportunity that mentions one in its title or description. Choosing early-stage investigator keeps opportunities limited to early-stage or new investigators, marked “You said”, so you can check NIH’s definition. These fields are saved with the brief, shown on its Profile as “You said”, and may be read by the configured model. They steer the search; no explanation cites them as a fact."],
+    ["Use private mode", null,
+      "Where the server offers it, the Private mode link on the Find screen takes a CV, a draft proposal, a research direction or unpublished work, pasted or uploaded as plain text, Markdown, Word (.docx) or PDF. It runs only when every model is on the Perch server; the page names who runs that server. What you add is held in memory for the session. It is not saved to the database, logs or caches, and Perch sends it to no outside service. Ending the session, 30 minutes idle, or a server restart drops it all. Your documents become search threads with 60% of the weight: the draft proposal takes half of that, the direction 30% and unpublished work 20%. Your public papers, if you give your OpenAlex ID, share the other 40%; without one, the brief runs on your documents alone. The CV does not steer the search. Code reads it for your doctoral degree year and any NIH awards: if the degree is within 10 years and no NIH award outside NIH’s list of smaller grants is listed, opportunities limited to early-stage investigators stay in, marked “may be eligible” for you to check. Past sponsors named on the CV move their own programmes up. Explanations may cite your documents, shown with a lock. Exports and hand-off drafts leave out text drawn from your documents, unless you choose to mask it. Masking replaces names, contact details, identifiers and phrases found only in your documents with labels such as [PERSON-1], and the key to undo it stays in the session. Masking cannot hide what your research is about."],
     ["Ask Scout a follow-up", picScout(),
       "Once a brief has finished, the Ask Scout tab takes plain questions, such as “only R21s that close by March” or “why does the top lead fit?”. Scout picks one of Perch’s own tools: a search with filters for agency, award ceiling, close date, activity code and words to include or leave out; the industry leads, with their signals and records; a record; the public awards; the research profile; a fit explanation; a comparison of chosen or kept leads; or a hand-off draft, shown in full on its card to copy. Each tool is a card. By default Scout asks before every step, and you approve or skip it; switch to “Run and show me” to let the steps run while you watch. Scout’s answer cites records, and a date or amount that is not in a cited record gets the answer rewritten once, then withheld. Scout stops after eight model calls for one question. It cannot browse the web, send anything or change a record; a hand-off draft from Scout is only text for you to copy. Conversations are not saved: a server restart ends them."],
   ];
@@ -135,7 +139,7 @@ function pipeline() {
     ["search2", "Search open funding", ["code", "model"],
       "Each thread is matched against opportunities posted on Grants.gov, by meaning and by shared words. Forecasted calls are not shown yet."],
     ["filter", "Drop what a university cannot apply to", ["rules"],
-      "Rules drop anything closed, without a close date, or not open to universities. They also drop what this version leaves out: fellowships, postdoc and dissertation awards, small-business programs, limited competitions and calls restricted by career stage."],
+      "Rules drop anything closed, without a close date, or not open to universities. They also drop what this version leaves out: fellowships, postdoc and dissertation awards, small-business programs and limited competitions. Calls restricted by career stage are dropped too, unless you say you are an early-stage investigator or your CV in private mode suggests it."],
     ["rank", "Rank the rest", ["model"],
       "A ranking model puts the closest matches to the papers first."],
     ["search2", "Find industry leads", ["record", "code"],
@@ -165,6 +169,24 @@ function pipeline() {
         h("p", { text }))))));
 }
 
+// The big picture of how a lead's place in the list is decided. Numbers are the constants
+// in perch/profile.py, perch/retrieve.py, perch/brief.py, perch/private/ and perch/service.py.
+function scoring() {
+  const steps = [
+    ["Threads", "Each paper counts for half as much every 5 years since it came out. Papers that are about the same thing form a thread: one to four in all, and one when there are fewer than 8 papers. A thread’s weight is its share of that recency-weighted work."],
+    ["Search", "For each thread, Perch takes the 100 closest opportunities by meaning and the 100 best by shared words. The two lists are merged by rank, and each thread’s results count in proportion to its weight. The top 200 go on."],
+    ["Rules", "Anything a university cannot apply to, or that is closed, is removed. Rules never score; they only remove."],
+    ["Rank", "The best 50 left are scored by a ranking model, each against the thread it matched best, from 0 to 1. The top 10 by that score are the leads, in that order. This is the “Best match” order."],
+    ["Fit estimate", "A language model then gives each lead a fit estimate from 0 to 100. It is shown, and you can sort by it, but it does not change the default order."],
+    ["What you add", "A sentence or keywords you give on Find are one more thread with 30% of the weight. Private documents are threads with 60% (all of it when there are no public papers): proposal half, direction 30%, unpublished work 20%. A past sponsor on your CV adds 0.05 to its programmes’ ranking score when the leads are put in order. These shares are starting values, not measured ones."],
+    ["Industry", "Industry leads are not scored by a model. Code counts each company’s signals, weighs recent ones more, and keeps up to five companies with at least two kinds of signal."],
+  ];
+  return h("section", { class: "help-block", "aria-labelledby": "h-score" },
+    h("h2", { id: "h-score", class: "section-title", text: "How leads are ordered" }),
+    h("p", { class: "lede", text: "The big picture: your papers decide what to look for, the search finds candidates, rules remove what does not apply, and a ranking model orders the rest." }),
+    h("ol", { class: "plain-list score-steps" }, steps.map(([k, t]) => h("li", {}, h("b", { text: `${k}. ` }), h("span", { text: t })))));
+}
+
 function labels() {
   const row = (sample, text) => h("li", {}, h("div", { class: "sample", "aria-hidden": "true" }, sample), h("p", { text }));
   return h("section", { class: "help-block", "aria-labelledby": "h-labels" },
@@ -178,6 +200,8 @@ function labels() {
         "The source leaves this blank. Perch never fills a gap with a guess."),
       row(h("span", { class: "notice warn sample-warn" }, icon("warn"), h("span", { text: "Withheld" })),
         "An explanation failed the citation check twice and is withheld, or a statement could not be matched to its source and is flagged. The record fields still show."),
+      row(h("span", { class: "tag lock" }, icon("lock"), h("span", { text: "From your private document" })),
+        "Private mode only. The text cites a document you added in this session. It never leaves Perch unless you mask it."),
       row(h("span", { class: "big-date", text: "Award horizon" }),
         "The end date of the last public NIH or NSF award found. Perch infers nothing about lab finances.")));
 }
@@ -187,7 +211,7 @@ function limits() {
     h("h2", { id: "h-limits", class: "section-title", text: "What Perch does not do" }),
     h("ul", { class: "plain-list" },
       h("li", { text: "It sends no email and writes to no outside system." }),
-      h("li", { text: "It does not check your personal eligibility, such as career stage, citizenship or internal limited-submission rules. Read each record." }),
+      h("li", { text: "It does not confirm your personal eligibility, such as career stage, citizenship or internal limited-submission rules. When it keeps a call limited by career stage, it marks it for you to check. Read each record." }),
       h("li", { text: "It does not tell you to apply, or predict whether you would win. A brief is a starting point." }),
       h("li", { text: "It covers federal opportunities posted on Grants.gov, and industry leads from public papers and NIH small-business awards. Foundations are not covered yet." }),
       h("li", { text: "It does not know whether a company wants to fund research. Industry leads are inferences from public signals." }),
@@ -205,6 +229,6 @@ export function renderHelp(container, { back }) {
         h("h1", { class: "who", text: "Help" }),
         h("p", { class: "lede", text: "Perch reads a researcher’s public papers, finds open federal funding that fits, and shows the record behind every claim." })),
       hello),
-    steps(), pipeline(), labels(), limits(),
+    steps(), pipeline(), scoring(), labels(), limits(),
     h("p", { class: "help-scout" }, h("span", { text: "Scout the owl moves while Perch works. Tap Scout to say hello." }))));
 }

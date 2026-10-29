@@ -104,7 +104,7 @@ export function shortId(id) {
 
 // Split text into plain strings and citation ids. Ids are [BRACKETED] tokens or bare
 // OpenAlex work ids (W followed by digits).
-const ID = "[A-Za-z0-9][A-Za-z0-9.\\-]*";
+const ID = "[A-Za-z0-9][A-Za-z0-9.:\\-]*"; // private ids carry a colon (private:proposal)
 const TOKEN = new RegExp(`\\[(${ID}(?:,\\s*${ID})*)\\]|\\b(W\\d{5,})\\b`, "g");
 
 export function segments(text, known = null) {
@@ -147,7 +147,7 @@ export function parseExplanation(text, citedIds = []) {
   const body = s.slice(at + "Cited work: ".length).trim().replace(/\.$/, "");
   const findings = [];
   for (const part of body.split(/;\s+/)) {
-    const m = part.match(/^(W\d+)\s+([\s\S]*?)(?:\s*\[W\d+\])?$/);
+    const m = part.match(/^(W\d+|private:[a-z]+)\s+([\s\S]*?)(?:\s*\[(?:W\d+|private:[a-z]+)\])?$/);
     if (!m || !m[2].trim()) return { raw: segments(s, known) };
     findings.push({ paper: m[1], text: m[2].trim().replace(/\.$/, "") });
   }

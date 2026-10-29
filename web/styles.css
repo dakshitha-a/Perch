@@ -147,7 +147,7 @@ button, input, select, summary { font: inherit; color: inherit; }
 .search { display: grid; gap: 8px; }
 .field-label { font-weight: 650; font-size: 15px; }
 .search-row { display: flex; gap: 8px; }
-input[type="search"], input[type="number"], select {
+input[type="search"], input[type="number"], input[type="text"], textarea, select {
   min-height: 48px; border-radius: var(--r-ctl); border: 1px solid var(--line); background: var(--leaf);
   padding: 0 14px; font-size: 17px; width: 100%; color: var(--ink); }
 input:focus-visible, select:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
@@ -686,3 +686,31 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 .scout-draft { margin-top: 8px; }
 .scout-draft summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .draft-text { white-space: pre-wrap; word-break: break-word; font: 14px/1.5 var(--sans); background: var(--leaf); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; margin: 8px 0; max-height: 360px; overflow: auto; }
+
+/* Private mode (S13) */
+.private { display: grid; gap: 14px; max-width: 46rem; }
+.private h1 { display: flex; align-items: center; gap: 6px; }
+.private-statement { display: flex; gap: 8px; align-items: flex-start; }
+.private-docs { display: grid; gap: 12px; padding-left: 1.4rem; }
+.private-docs .card { padding: 14px 16px; display: grid; gap: 6px; }
+.doc-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.doc-head h3 { margin: 0; }
+.doc-in { display: grid; gap: 6px; }
+.private textarea, .options textarea, .unmask textarea, .options select {
+  width: 100%; box-sizing: border-box; font: inherit; padding: 8px 10px;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--leaf); color: inherit; }
+.private input[type=text] { width: 100%; box-sizing: border-box; }
+.doc-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn.file { cursor: pointer; }
+.tag.lock { display: inline-flex; align-items: center; gap: 4px; background: var(--moss-soft); color: var(--ink); }
+.tag.lock .icon { width: 14px; height: 14px; }
+.cite.private { display: inline-flex; align-items: center; gap: 4px; }
+.cite.private .icon { width: 13px; height: 13px; }
+.private-bar { padding: 14px 16px; display: grid; gap: 8px; margin: 16px 0; }
+.private-bar-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; }
+.mask-warn { color: var(--ink); border-left: 3px solid var(--line); padding-left: 8px; }
+.unmasked { white-space: pre-wrap; overflow-wrap: anywhere; }
+.lead-notes { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 4px; font-size: 0.92em; }
+.private-link { margin-top: 12px; }
+.private-link a { display: inline-flex; align-items: center; gap: 6px; }
+.thread.private .hint, .thread.said .hint { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }

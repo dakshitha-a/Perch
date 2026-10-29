@@ -99,6 +99,18 @@ class BriefRequest(BaseModel):
     explain: bool = True
     min_amount: float | None = None
     agencies: list[str] = Field(default_factory=list)
+    # Normal-mode context (Q16), all optional; saved with the brief, used as a query only.
+    direction: str | None = Field(None, max_length=1000)
+    include_keywords: list[str] = Field(default_factory=list, max_length=20)
+    exclude_keywords: list[str] = Field(default_factory=list, max_length=20)
+    career_stage: Literal["early_stage", "established"] | None = None
+
+    def context(self) -> dict:
+        clean = lambda xs: [x.strip()[:60] for x in xs if x.strip()]  # noqa: E731
+        return {"direction": (self.direction or "").strip(),
+                "include_keywords": clean(self.include_keywords),
+                "exclude_keywords": clean(self.exclude_keywords),
+                "career_stage": self.career_stage}
 
 
 def record_json(r: Record) -> dict:
@@ -250,7 +262,8 @@ def create_app(service: BriefService, runner: JobRunner,
     def create_brief(req: BriefRequest, request: Request, response: Response) -> dict:
         if not oa.parse_author_id(req.author_id):
             raise HTTPException(422, f"not an OpenAlex author id: {req.author_id!r}")
-        options = brief_options(req.as_of, req.top, req.explain, req.min_amount, req.agencies)
+        options = brief_options(req.as_of, req.top, req.explain, req.min_amount, req.agencies,
+                                req.context())
         if reuse_hours > 0 and (b := service.reuse(req.author_id, options, reuse_hours)):
             response.status_code = 200  # a finished brief: no job, not counted in the limit
             return {"id": b.id, "status": b.status, "poll": f"/briefs/{b.id}", "reused": True}
@@ -260,7 +273,8 @@ def create_app(service: BriefService, runner: JobRunner,
                                 f"Try again in {wait // 60 + 1} minutes.",
                                 headers={"Retry-After": str(wait)})
         b = service.create(req.author_id, as_of=req.as_of, top=req.top, explain=req.explain,
-                           min_amount=req.min_amount, agencies=req.agencies)
+                           min_amount=req.min_amount, agencies=req.agencies,
+                           context=req.context())
         runner.submit(b.id, lambda: service.run(b.id))
         return {"id": b.id, "status": b.status, "poll": f"/briefs/{b.id}"}
 

@@ -2,6 +2,7 @@
 // /briefs/{id}/handoff). A model writes the opening paragraph; code writes the list with
 // dates and amounts copied from the records. Perch never sends it and does not save it.
 
+import { maskOn } from "./private.js";
 import { h, fill, icon } from "./dom.js";
 
 const WHAT = { A: "grants", B: "industry leads" };
@@ -71,7 +72,8 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     onclick: async () => {
       H.busy = office.key; H.error = null; redraw("handoff-make");
       try {
-        const d = await api.handoff(briefId, { office: office.key });
+        const d = await api.handoff(briefId, { office: office.key,
+          ...(api.mode === "private" ? { mask: maskOn() } : {}) });
         H.drafts[office.key] = { subject: d.subject, body: d.body, flagged: d.flagged, model: d.model,
           n: d.lead_ids.length };
         announce("The draft is ready below. You can edit it.");

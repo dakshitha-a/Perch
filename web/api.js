@@ -135,3 +135,38 @@ export function replayApi(data) {
     briefId: final.brief.id,
   };
 }
+
+// Private mode (S13): the same shape as liveApi, scoped to one private session. The session
+// id travels in a header, lives only in this object, and is never written to storage.
+export function privateApi(base = "") {
+  let token = null;
+  const hdr = () => ({ "Content-Type": "application/json", "X-Perch-Private": token || "" });
+  const p = (path, opts = {}) => call(base, path, { ...opts, headers: hdr() });
+  const post = (path, body = {}) => p(path, { method: "POST", body: JSON.stringify(body) });
+  return {
+    mode: "private",
+    get open() { return Boolean(token); },
+    info: () => call(base, "/private"),
+    start: async () => { const r = await call(base, "/private/session", { method: "POST" }); token = r.token; return r; },
+    session: () => p("/private/session"),
+    addDocument: (body) => post("/private/documents", body),
+    removeDocument: (kind) => post(`/private/documents/${encodeURIComponent(kind)}/remove`),
+    create: (req) => post("/private/brief", req),
+    end: async () => { try { await post("/private/end"); } finally { token = null; } },
+    brief: () => p("/private/brief"),
+    setLead: (_id, leadId, action) => post(`/private/leads/${encodeURIComponent(leadId)}/${action}`),
+    record: (id) => p(`/private/records/${encodeURIComponent(id)}`),
+    exportUrl: () => null, // downloads go through fetch with the header (exportFile)
+    exportFile: async (kind, mask) => {
+      const r = await fetch(`${base}/private/export.${kind}?mask=${mask ? "true" : "false"}`, { headers: hdr() });
+      if (!r.ok) throw new ApiError(`The server answered ${r.status}.`, r.status);
+      return r.blob();
+    },
+    unmask: (text) => post("/private/unmask", { text }),
+    compare: () => p("/private/compare"),
+    handoff: (_id, body) => post("/private/handoff", body),
+    scoutStart: (_id, body) => post("/private/scout", body),
+    scoutGet: (sid) => p(`/private/scout/${encodeURIComponent(sid)}`),
+    scoutAct: (sid, action, body) => post(`/private/scout/${encodeURIComponent(sid)}/${action}`, body),
+  };
+}

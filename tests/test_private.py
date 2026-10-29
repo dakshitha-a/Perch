@@ -299,3 +299,49 @@ def test_upload_as_base64_and_caps(tmp_path, monkeypatch):
     assert r.status_code == 422 and "aims" not in r.text
     assert c.post("/private/documents", headers=h,
                   json={"kind": "proposal", "data": "!!"}).status_code == 422
+
+
+# --- normal-mode context (task 7, Q16) ---
+
+def test_normal_mode_context_steers_and_is_saved(tmp_path):
+    from perch.service import brief_options
+
+    c, _ = make(tmp_path)
+    assert set(brief_options()) == {"as_of", "top", "explain", "min_amount", "agencies"}
+    r = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28",
+                                "explain": False, "direction": "SYNTHETIC home gait sensing",
+                                "include_keywords": ["gait", " "],
+                                "exclude_keywords": ["zebrafish"],
+                                "career_stage": "early_stage"})
+    bid = r.json()["id"]
+    b = c.get(f"/briefs/{bid}").json()["brief"]
+    assert b["status"] == "done", b["error"]
+    o = b["options"]
+    assert o["direction"] == "SYNTHETIC home gait sensing" and o["include_keywords"] == ["gait"]
+    assert o["exclude_keywords"] == ["zebrafish"] and o["career_stage"] == "early_stage"
+    said = [t for t in b["threads"] if t.get("said")]
+    assert len(said) == 1 and abs(said[0]["weight"] - 0.3) < 1e-3
+    # A brief without the fields is a different brief, not a reuse of this one.
+    r2 = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28",
+                                 "explain": False})
+    assert r2.json()["id"] != bid and not r2.json().get("reused")
+    plain = c.get(f"/briefs/{r2.json()['id']}").json()["brief"]
+    assert not any(t.get("said") for t in plain["threads"])
+    assert "direction" not in plain["options"]
+
+
+def test_exclude_keyword_and_self_reported_stage_rules():
+    from perch.eligibility import Constraints, check
+    from perch.schemas import Opportunity, utcnow
+
+    o = Opportunity(id="grants_gov:x", source="grants_gov", source_url="u", fetched_at=utcnow(),
+                    opportunity_number="PAR-00-000", title="SYNTHETIC Early-Stage Investigator "
+                    "award (R01)", agency="National Institutes of Health",
+                    close_date=date(2027, 1, 1),
+                    eligible_applicants=["Private institutions of higher education"],
+                    description="Zebrafish models")
+    base = Constraints(as_of=date(2026, 10, 28))
+    assert any("career stage" in x for x in check(o, base))
+    assert check(o, Constraints(as_of=date(2026, 10, 28), career_stage_ok=True)) == []
+    assert any("zebrafish" in x for x in check(o, Constraints(
+        as_of=date(2026, 10, 28), career_stage_ok=True, exclude_keywords=["zebrafish"])))

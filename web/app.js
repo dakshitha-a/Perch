@@ -1,7 +1,7 @@
 // Perch web app: Find -> Profile -> Routes, with the evidence panel (docs/design/UI.md).
 // Plain DOM, no build step. Every value from a record goes in through textContent.
 
-import { liveApi, replayApi } from "./api.js";
+import { liveApi, privateApi, replayApi } from "./api.js";
 import { add, fill, h, icon } from "./dom.js";
 import { renderHelp } from "./help.js";
 import { compareOffices, loadCompare, renderCompare } from "./compare.js";
@@ -9,20 +9,26 @@ import { renderHandoff } from "./handoff.js";
 import { renderScout } from "./scout.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
+import { lockLabel, privateAvailable, privateBar, renderPrivate } from "./private.js";
 
-const api = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
+const publicApi = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
+const privApi = privateApi(window.PERCH_API || "");
+let api = publicApi; // privApi while a private brief (#/brief/private) is on screen
+const PRIVATE_ID = "private";
 const POLL_MS = 1500;
 const TABS = ["profile", "routes", "compare", "scout"];
 const SOURCES = { openalex: "OpenAlex", grants_gov: "Grants.gov", nih_reporter: "NIH RePORTER",
-  nsf: "NSF Award Search", perch: "Perch" };
+  nsf: "NSF Award Search", perch: "Perch", private: "Your private document (this session only)" };
 const KINDS = { opportunity: "Funding opportunity", work: "Paper", award: "Public award",
-  researcher: "Researcher", organisation: "Organisation", lead: "Industry lead" };
+  researcher: "Researcher", organisation: "Organisation", lead: "Industry lead",
+  private: "Your private document" };
 const SIGNALS = { citing_works: "They cite your papers", sbir_sttr: "NIH SBIR/STTR awards",
   topic_works: "They publish in your topics" };
 
 const S = {
   find: { q: "", busy: false, error: null, candidates: null, searched: "", explain: true,
-    minAmount: "" },
+    minAmount: "", direction: "", include: "", exclude: "", stage: "" },
+  privateOn: false, // the server offers private mode
   brief: null, // last GET /briefs payload
   briefId: null,
   tab: "profile",
@@ -67,8 +73,19 @@ function route() {
     return;
   }
   S.lastHash = location.hash || "#/";
+  if (parts[0] === "private") {
+    stopPolling();
+    S.briefId = null;
+    S.brief = null;
+    api = publicApi;
+    barOwl("idle");
+    renderPrivate(main(), { api: privApi, go, announce });
+    return;
+  }
   if (parts[0] === "brief" && parts[1]) {
     const id = decodeURIComponent(parts[1]);
+    if (id === PRIVATE_ID && !privApi.open) { go("#/private"); return; }
+    api = id === PRIVATE_ID ? privApi : publicApi;
     S.tab = TABS.includes(parts[2]) ? parts[2] : S.tab;
     if (id !== S.briefId) openBrief(id);
     else renderPanel();
@@ -77,6 +94,7 @@ function route() {
   stopPolling();
   S.briefId = null;
   S.brief = null;
+  api = publicApi;
   renderFind();
 }
 
@@ -132,7 +150,26 @@ function renderFind() {
       placeholder: "Any", value: F.minAmount, "aria-describedby": "min-hint",
       oninput: (e) => { F.minAmount = e.target.value; } }),
     h("p", { id: "min-hint", class: "hint", text:
-      "Leaves out opportunities whose record states a lower ceiling. Records that state no amount stay in." })));
+      "Leaves out opportunities whose record states a lower ceiling. Records that state no amount stay in." }),
+    h("h3", { class: "mini", text: "Tell Perch more (optional)" }),
+    h("p", { class: "hint", text: "Saved with the brief and shown on its Profile as “You said”. Used to search, never as a fact. The configured model may read it. For a CV or unpublished work, use private mode." }),
+    h("label", { class: "field-label", for: "dir", text: "Where your research is going" }),
+    h("textarea", { id: "dir", rows: 3, maxlength: 1000, value: F.direction,
+      placeholder: "A sentence or two", oninput: (e) => { F.direction = e.target.value; } }),
+    h("label", { class: "field-label", for: "inc", text: "Keywords to search for" }),
+    h("input", { id: "inc", type: "text", value: F.include, placeholder: "Comma-separated",
+      oninput: (e) => { F.include = e.target.value; } }),
+    h("label", { class: "field-label", for: "exc", text: "Keywords to leave out" }),
+    h("input", { id: "exc", type: "text", value: F.exclude, placeholder: "Comma-separated",
+      "aria-describedby": "exc-hint", oninput: (e) => { F.exclude = e.target.value; } }),
+    h("p", { id: "exc-hint", class: "hint", text: "Opportunities that mention one of these in the title or description are left out." }),
+    h("label", { class: "field-label", for: "stage", text: "Career stage" }),
+    h("select", { id: "stage", "aria-describedby": "stage-hint", onchange: (e) => { F.stage = e.target.value; } },
+      [["", "Not stated"], ["early_stage", "Early-stage investigator (NIH)"], ["established", "Established investigator"]]
+        .map(([v, t]) => h("option", { value: v, selected: F.stage === v, text: t }))),
+    h("p", { id: "stage-hint", class: "hint", text: "Early-stage keeps opportunities limited to early-stage or new investigators, marked “You said”. Check NIH’s definition before applying." })),
+  S.privateOn ? h("p", { class: "private-link" }, h("a", { href: "#/private" }, icon("lock"),
+    h("span", { text: "Private mode: add a CV, a draft proposal or unpublished work" }))) : null);
 
   const results = [];
   if (F.error) {
@@ -230,6 +267,11 @@ async function search() {
 async function build(c) {
   const F = S.find;
   const req = { author_id: f.shortId(c.id), explain: F.explain };
+  const words = (x) => x.split(",").map((w) => w.trim()).filter(Boolean);
+  if (F.direction.trim()) req.direction = F.direction.trim();
+  if (words(F.include).length) req.include_keywords = words(F.include);
+  if (words(F.exclude).length) req.exclude_keywords = words(F.exclude);
+  if (F.stage) req.career_stage = F.stage;
   const min = parseFloat(F.minAmount);
   if (Number.isFinite(min) && min > 0) req.min_amount = min;
   try {
@@ -344,6 +386,7 @@ function renderBrief() {
 }
 
 function exportLink() {
+  if (api.mode === "private") return privateBar(api, go);
   const url = api.exportUrl(S.briefId);
   if (!url) return null;
   return h("p", { class: "export" },
@@ -498,6 +541,7 @@ setInterval(() => {
 
 async function rebuild() {
   const b = S.brief.brief;
+  if (api.mode === "private") { go("#/private"); return; }
   try {
     const r = await api.create({ author_id: f.shortId(b.researcher_id), ...b.options });
     remember(r.id, (S.brief.researcher || {}).display_name || f.shortId(b.researcher_id));
@@ -563,11 +607,27 @@ function renderProfile(panel) {
     Object.keys(d.papers || {}).length, b.stages.map((s) => s.status)]);
   if (panel.dataset.sig === sig) return;
   panel.dataset.sig = sig;
-  keepFocus(() => fill(panel, 
-    summarySection(), horizonSection(), threadsSection(),
+  keepFocus(() => fill(panel,
+    youSaidSection(), summarySection(), horizonSection(), threadsSection(),
     isDone("route_a") ? h("p", { class: "next" },
       h("a", { class: "btn primary", href: `#/brief/${encodeURIComponent(S.briefId)}/routes` },
         h("span", { text: `See ${f.plural(leadsOf().filter((l) => l.status !== "dismissed").length, "route")}` }))) : null));
+}
+
+// Normal-mode context (Q16): what the user typed on Find, shown as theirs, never as a fact.
+function youSaidSection() {
+  const o = S.brief.brief.options;
+  const rows = [
+    o.direction ? ["Direction", o.direction] : null,
+    o.include_keywords && o.include_keywords.length ? ["Search for", o.include_keywords.join(", ")] : null,
+    o.exclude_keywords && o.exclude_keywords.length ? ["Leave out", o.exclude_keywords.join(", ")] : null,
+    o.career_stage ? ["Career stage", o.career_stage === "early_stage" ? "Early-stage investigator (NIH)" : "Established investigator"] : null,
+  ].filter(Boolean);
+  if (!rows.length) return null;
+  return h("section", { class: "block you-said" },
+    h("h2", { class: "section-title", text: "You said" }),
+    h("p", { class: "hint", text: "These steer the search. Perch does not check them, and no explanation cites them." }),
+    h("dl", { class: "fields" }, rows.map(([k, v]) => field(k, v))));
 }
 
 function summarySection() {
@@ -600,6 +660,7 @@ function openAlexTopics() {
 }
 
 function horizonSection() {
+  if (String(S.brief.brief.researcher_id).startsWith("private:")) return null; // no public profile
   const d = S.brief, b = d.brief;
   const title = h("h2", { class: "section-title", text: "Public award horizon" });
   if (!isDone("awards")) return h("section", { class: "block" }, title, skeleton(1));
@@ -658,15 +719,28 @@ function threadsSection() {
   const title = h("h2", { class: "section-title", text: "Research threads" });
   if (!isDone("profile")) return h("section", { class: "block" }, title, skeleton(3));
   return h("section", { class: "block" }, title,
-    h("p", { class: "hint", text: `${f.plural(b.work_ids.length, "paper")} grouped by what they are about. Labels are the words that set each group apart.` }),
+    h("p", { class: "hint", text: b.work_ids.length
+      ? `${f.plural(b.work_ids.length, "paper")} grouped by what they are about. Labels are the words that set each group apart.`
+      : "No public papers: each private document is one thread. Labels are its most frequent words." }),
     h("ol", { class: "threads" }, b.threads.map((t) => {
       const papers = (t.work_ids || []).slice(0, 5).map((id) => d.papers[id]).filter(Boolean);
+      const meter = h("span", { class: "meter", "aria-hidden": "true" },
+        h("span", { style: `width:${Math.max(t.weight * 100, 2)}%` }));
+      if (t.private || t.said) {
+        return h("li", { class: `thread${t.private ? " private" : " said"}` },
+          h("div", { class: "thread-head" },
+            h("h3", { text: t.label }),
+            h("span", { class: "share", text: `${Math.round(t.weight * 100)}% of the search` })),
+          meter,
+          h("p", { class: "hint", text: t.private ? "From your private document. Used as a search query only."
+            : "From what you said. Used as a search query, never as a fact." }),
+          h("ul", { class: "papers" }, papers.map(paperRow)));
+      }
       return h("li", { class: "thread" },
         h("div", { class: "thread-head" },
           h("h3", { text: t.label }),
           h("span", { class: "share", text: `${Math.round(t.weight * 100)}% of recent work` })),
-        h("span", { class: "meter", "aria-hidden": "true" },
-          h("span", { style: `width:${Math.max(t.weight * 100, 2)}%` })),
+        meter,
         h("p", { class: "hint", text: `${f.plural(t.work_ids.length, "paper")}. Most recent first:` }),
         h("ul", { class: "papers" }, papers.map(paperRow)));
     })));
@@ -674,6 +748,7 @@ function threadsSection() {
 
 function paperRow(w) {
   return h("li", {}, h("button", { class: "paper", "data-key": `paper-${w.id}`, onclick: (e) => openEvidence(w.id, e.currentTarget) },
+    w.private ? lockLabel() : null,
     h("span", { class: "paper-title", text: w.title }),
     h("span", { class: "paper-meta", text: [w.publication_year, w.venue].filter(Boolean).join(", ") })));
 }
@@ -1006,7 +1081,15 @@ function leadCard(l) {
   h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
     onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: o.title || l.record_id }))),
   h("p", { class: "opp-num", text: o.opportunity_number || "" }),
-  facts, noSize, explain, h("div", { class: "actions" }, actions));
+  facts, noSize, leadNotes(l), explain, h("div", { class: "actions" }, actions));
+}
+
+// Rule notes written by code: a career-stage unlock, a past sponsor, what the user said.
+function leadNotes(l) {
+  if (!l.notes || !l.notes.length) return null;
+  return h("ul", { class: "lead-notes" }, l.notes.map((n) => h("li", {},
+    /\(private\)/.test(n) ? lockLabel("Private") : h("span", { class: "tag", text: "Rule" }),
+    h("span", { text: ` ${n}` }))));
 }
 
 function explanationBlock(l, parsed, o) {
@@ -1077,16 +1160,22 @@ function renderSegs(segs, skip = new Set()) {
 }
 
 function paperRef(id, papers) {
-  const w = papers[`https://openalex.org/${id}`];
-  return h("button", { class: "paper-ref", "data-key": `cite-${id}`,
+  const w = papers[`https://openalex.org/${id}`] || papers[id];
+  return h("button", { class: `paper-ref${w && w.private ? " private" : ""}`, "data-key": `cite-${id}`,
     onclick: (e) => openEvidence(id, e.currentTarget) },
+  w && w.private ? lockLabel() : null,
   h("span", { class: "paper-ref-title", text: w ? w.title : id }),
   w && w.publication_year ? h("span", { class: "paper-meta", text: [w.publication_year, w.venue].filter(Boolean).join(", ") }) : null);
 }
 
 function cite(id, papers) {
-  const w = papers[`https://openalex.org/${id}`];
+  const w = papers[`https://openalex.org/${id}`] || papers[id];
   let label = id;
+  if (w && w.private) {
+    return h("button", { class: "cite private", "data-key": `cite-${id}`,
+      "aria-label": `Evidence: ${w.title}, from your private document`,
+      onclick: (e) => openEvidence(id, e.currentTarget) }, icon("lock"), h("span", { text: w.title }));
+  }
   if (w) {
     const t = w.title.length > 34 ? `${w.title.slice(0, 32).trimEnd()}…` : w.title;
     label = `${t}${w.publication_year ? `, ${w.publication_year}` : ""}`;
@@ -1197,6 +1286,9 @@ function recordView(r) {
     }
     if (r.eligibility_notes) out.push(h("h3", { class: "mini", text: "Eligibility notes" }), longText(r.eligibility_notes));
     if (r.description) out.push(h("h3", { class: "mini", text: "Description" }), longText(r.description));
+  } else if (r.kind === "private") {
+    out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.title }),
+      h("p", {}, lockLabel("Held in this session's memory only")), longText(r.text || ""));
   } else if (r.kind === "work") {
     out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.title }),
       h("dl", { class: "fields" }, field("Year", r.publication_year), field("Venue", r.venue),
@@ -1239,7 +1331,7 @@ function recordView(r) {
   }
   out.push(h("div", { class: "source" },
     h("p", {}, h("span", { class: "hint", text: "Source " }), h("b", { text: SOURCES[r.source] || r.source })),
-    h("p", { class: "hint", text: `Fetched ${fetched(r.fetched_at)}` }),
+    h("p", { class: "hint", text: `${r.source === "private" ? "Added" : "Fetched"} ${fetched(r.fetched_at)}` }),
     url ? h("a", { href: url, target: "_blank", rel: "noopener", text: url }) : null,
     r.source === "grants_gov" ? h("p", { class: "attrib", text: S.brief ? S.brief.notice : GRANTS_NOTICE }) : null));
   return out;
@@ -1315,6 +1407,12 @@ function init() {
     S.find.q = (window.PERCH_REPLAY.candidates[0] || {}).display_name || "";
   }
   $(".skip").addEventListener("click", (e) => { e.preventDefault(); main().focus(); });
+  if (api.mode === "live") {
+    privateAvailable(privApi).then((on) => {
+      S.privateOn = on;
+      if (on && !S.briefId && !location.hash.startsWith("#/private") && !location.hash.startsWith("#/help")) renderFind();
+    });
+  }
   const setBar = () => document.documentElement.style.setProperty("--bar-h", `${$(".bar").offsetHeight}px`);
   setBar();
   window.addEventListener("resize", setBar);

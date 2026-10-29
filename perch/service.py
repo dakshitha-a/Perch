@@ -22,7 +22,7 @@ from perch import awards as aw
 from perch import egress
 from perch.brief import route_a
 from perch.config import env
-from perch.eligibility import Constraints
+from perch.eligibility import Constraints, career_stage_restricted
 from perch.embed import Embedder
 from perch.grounding import Grounder
 from perch.llm import Provider, get_provider, spec_for_role
@@ -54,9 +54,20 @@ STAGES = ("researcher", "works", "awards", "profile", "route_a", "route_b", "sum
 
 
 def brief_options(as_of: date | None = None, top: int = 10, explain: bool = True,
-                  min_amount: float | None = None, agencies: list[str] | None = None) -> dict:
-    return {"as_of": (as_of or date.today()).isoformat(), "top": top, "explain": explain,
-            "min_amount": min_amount, "agencies": agencies or []}
+                  min_amount: float | None = None, agencies: list[str] | None = None,
+                  context: dict | None = None) -> dict:
+    """`context`: the optional normal-mode fields (Q16), kept only when set, so a brief
+    without them has the same options, and is reused the same way, as before S13."""
+    out = {"as_of": (as_of or date.today()).isoformat(), "top": top, "explain": explain,
+           "min_amount": min_amount, "agencies": agencies or []}
+    return {**out, **{k: v for k, v in (context or {}).items() if v}}
+
+
+SAID_SHARE = 0.3  # the normal-mode direction thread's share of the weight; a default
+SAID_ID = "said:direction"
+ESI_SAID = ("You said you are an early-stage investigator, so this opportunity, limited by "
+            "career stage, is kept. Check NIH's definition: "
+            "https://grants.nih.gov/policy-and-compliance/policy-topics/early-stage-investigators")
 
 
 def now() -> datetime:
@@ -113,7 +124,7 @@ class BriefService:
 
     def create(self, author_id: str, *, as_of: date | None = None, top: int = 10,
                explain: bool = True, min_amount: float | None = None,
-               agencies: list[str] | None = None) -> Brief:
+               agencies: list[str] | None = None, context: dict | None = None) -> Brief:
         aid = oa.parse_author_id(author_id)
         if not aid:
             raise ValueError(f"not an OpenAlex author id: {author_id!r}")
@@ -121,7 +132,7 @@ class BriefService:
         b = Brief(id=bid, source="perch", source_url=f"perch://briefs/{bid}", fetched_at=now(),
                   researcher_id=f"https://openalex.org/{aid}",
                   stages=[Stage(name=n) for n in STAGES],
-                  options=brief_options(as_of, top, explain, min_amount, agencies))
+                  options=brief_options(as_of, top, explain, min_amount, agencies, context))
         with self.repo() as r:
             r.upsert([b])
         return b
@@ -293,27 +304,40 @@ class BriefService:
             works = r.works_by_author(b.researcher_id)
         as_of = date.fromisoformat(b.options["as_of"])
         p = build_threads(b.researcher_id, works, self.models.get("embedder"), as_of)
+        said = said_text(b.options)
+        if said:  # normal-mode context: a query thread, never a citable record
+            from perch.private.threads import add_threads
+
+            p = add_threads(p, [Work(id=SAID_ID, source="user", source_url="perch://said",
+                                     fetched_at=now(), title="You said", abstract=said)],
+                            self.models.get("embedder"), share=SAID_SHARE)
         self._ctx.setdefault(b.id, {})["profile"] = p
         b.work_ids = p.work_ids
         b.threads = [{"index": t.index, "label": t.label, "weight": round(t.weight, 4),
-                      "work_ids": t.work_ids} for t in p.threads]
+                      "work_ids": t.work_ids, **({"said": True} if t.work_ids == [SAID_ID]
+                                                 else {})} for t in p.threads]
         return f"{len(p.work_ids)} papers, {len(p.threads)} threads", False
 
     def _run_route_a(self, b: Brief) -> tuple[str, bool]:
         o = b.options
+        esi = o.get("career_stage") == "early_stage"
         c = Constraints(as_of=date.fromisoformat(o["as_of"]), min_amount=o.get("min_amount"),
-                        agencies=o.get("agencies") or [])
+                        agencies=o.get("agencies") or [],
+                        exclude_keywords=o.get("exclude_keywords") or [], career_stage_ok=esi)
         with self.repo() as r:
             res = self._researcher(r, b)
             brief = route_a(res, r, self.models.get("index"), self.models.get("embedder"),
                             self.models.get("reranker"), c, RerankCache(self.rerank_cache),
-                            top=o.get("top", 10), timings_log=self.timings_log)
+                            top=o.get("top", 10), timings_log=self.timings_log,
+                            profile=self._ctx.get(b.id, {}).get("profile"))
             leads = [Lead(id=f"{b.id}:{i}", source=x.opportunity.source,
                           source_url=x.opportunity.source_url,
                           fetched_at=x.opportunity.fetched_at, brief_id=b.id, route="A",
                           record_id=x.opportunity.id, rank=i,
                           rerank_score=round(x.rerank_score, 4),
-                          matched_thread=x.candidate.best_thread)
+                          matched_thread=x.candidate.best_thread,
+                          notes=[ESI_SAID] if esi and career_stage_restricted(x.opportunity)
+                          else [])
                      for i, x in enumerate(brief.leads, 1)]
             r.upsert(leads)
         b.lead_ids = [x.id for x in leads]
@@ -387,6 +411,12 @@ class BriefService:
         unsupported = sum(bool(v.value and v.value.unsupported) for v in results)
         return (f"{len(results) - flagged} explained, {flagged} withheld, {unsupported} with an "
                 "unsupported statement"), False
+
+
+def said_text(options: dict) -> str:
+    """The query text from the normal-mode direction and include keywords."""
+    return " ".join(x for x in (options.get("direction") or "",
+                                ", ".join(options.get("include_keywords") or [])) if x).strip()
 
 
 def _temple(a: Award) -> bool:
