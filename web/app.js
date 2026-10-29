@@ -96,8 +96,7 @@ function route() {
     S.brief = null;
     api = publicApi;
     barOwl("idle");
-    renderStudentStart(main(), { api: privApi, mode, go, announce, info: privateInfo() || {},
-      hasBrief: Boolean(S.brief && S.briefId === PRIVATE_ID && isStudent(S.brief)) });
+    renderStudentStart(main(), { api: privApi, mode, go, announce, info: privateInfo() || {} });
     return;
   }
   if (parts[0] === "changes") {
@@ -499,7 +498,7 @@ function renderBrief() {
       h("span", { text: student ? "Private session: fellowships and sample scholarships"
         : (r.institutions || []).join(", ") || "Institution not stated in the record" }),
       h("span", { text: `Brief as of ${f.formatDate(d.brief.options.as_of)}` })));
-  const tabs = h("div", { class: "tabs", role: "tablist", "aria-label": "Brief sections" },
+  const tabs = h("div", { class: `tabs${student ? " student" : ""}`, role: "tablist", "aria-label": "Brief sections" },
     tabButton("profile", student ? "What Perch read" : "Profile"),
     tabButton("routes", student ? "Your options" : "Routes"), tabButton("compare", "Compare"),
     student ? null : tabButton("scout", "Ask Scout"));
@@ -786,7 +785,7 @@ function summarySection() {
   const st = stage("summary");
   let body;
   if (b.summary) {
-    body = [h("p", { class: "summary" }, renderSegs(f.segments(b.summary))),
+    body = [h("p", { class: "summary" }, renderSegs(citedOnly(f.segments(b.summary)))),
       b.topics.length ? h("ul", { class: "chips", "aria-label": "Topics" },
         b.topics.map((t) => h("li", { class: "chip", text: t }))) : null,
       h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
@@ -801,6 +800,14 @@ function summarySection() {
     body = [skeleton(2), h("p", { class: "hint", text: "The summary is written after the search for leads." })];
   }
   return h("section", { class: "block" }, h("h2", { class: "section-title", text: "Research profile" }), body);
+}
+
+// A chip only for a paper in this brief; any other token stays plain text, so the summary
+// never offers a record that cannot be opened (S22 review).
+function citedOnly(segs) {
+  const papers = S.brief.papers || {};
+  return segs.map((x) => (typeof x === "string" || papers[x.cite] || papers[`https://openalex.org/${x.cite}`]
+    ? x : x.cite));
 }
 
 function openAlexTopics() {
@@ -900,7 +907,9 @@ function threadsSection() {
 // One row per paper title: OpenAlex often lists a journal article and its preprints as
 // separate works. The journal version wins over an arXiv copy (S22, audit S4).
 function distinctPapers(works) {
-  const key = (w) => String(w.title || w.id).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const norm = (w) => String(w.title || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  // Short generic titles ("Correction", "Editorial") are different works: never merged.
+  const key = (w) => (norm(w).split(" ").length >= 4 ? norm(w) : w.id);
   const preprint = (w) => /arxiv|biorxiv|medrxiv|preprint/i.test(w.venue || "");
   const seen = new Map();
   for (const w of works) {
@@ -1604,7 +1613,7 @@ function init() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeEvidence();
     if (e.key === "Tab" && !$("#evidence").hidden && window.matchMedia("(max-width: 959px)").matches) {
-      const items = [...$("#evidence").querySelectorAll("button, a[href], summary")].filter((x) => x.offsetParent);
+      const items = [...$("#evidence").querySelectorAll("button, a[href], summary, [tabindex='0']")].filter((x) => x.offsetParent);
       if (!items.length) return;
       const first = items[0], last = items[items.length - 1];
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }

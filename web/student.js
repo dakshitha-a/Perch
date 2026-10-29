@@ -31,9 +31,9 @@ export function isStudent(brief) {
 
 // ----- start: CV, interests, achievements -----
 
-export async function renderStudentStart(root, { api, mode, go, announce, info, hasBrief = false }) {
+export async function renderStudentStart(root, { api, mode, go, announce, info }) {
   document.title = "Student — Perch";
-  const draw = () => renderStudentStart(root, { api, mode, go, announce, info, hasBrief });
+  const draw = () => renderStudentStart(root, { api, mode, go, announce, info });
   if (!mode.state.available) {
     fill(root, h("div", { class: "private" }, h("h1", { text: "Student mode" }),
       h("p", { class: "notice", text: `Student mode needs private mode, which is not available here. ${mode.state.reason}` }),
@@ -48,7 +48,9 @@ export async function renderStudentStart(root, { api, mode, go, announce, info, 
     return;
   }
   for (const [k, v] of Object.entries(mode.state.drafts)) if (v && !D.drafts[k]) D.drafts[k] = v;
-  const docs = (await api.session()).documents;
+  const sess = await api.session();
+  const docs = sess.documents;
+  const hasBrief = Boolean(sess.brief_id); // the session's brief, kept when going back here
   const have = new Set(docs.map((d) => d.kind));
   const kinds = info.student_kinds || { cv: "Your CV or résumé", interests: "Your interests", achievements: "Your achievements" };
 
@@ -181,18 +183,18 @@ function card(l, { openEvidence, setLead, papers }) {
     l.flagged ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "The explanation was withheld because it failed the citation checks twice." }))
       : parsed ? h("details", { class: "why explain", open: OPEN.has(l.id),
         ontoggle: (e) => { if (e.target.open) OPEN.add(l.id); else OPEN.delete(l.id); } },
-        h("summary", {}, h("span", { text: "Why it may fit" }), h("span", { class: "hint", text: " a model wrote this; each part cites a record" })),
+        h("summary", { "data-key": `why-${l.id}` }, h("span", { text: "Why it may fit" }), h("span", { class: "hint", text: " a model wrote this; each part cites a record" })),
         h("p", { text: plainExplanation(l.explanation) }),
         l.inference ? h("p", { class: "inference" }, h("span", { class: "tag", text: "Inference" }), h("span", { text: ` ${plainExplanation(l.inference)}` })) : null,
         h("p", { class: "cites" }, l.cited_ids.filter((c) => papers[c]).map((c) => h("button", { class: "paper-ref",
           onclick: (e) => openEvidence(c, e.currentTarget) }, icon("lock"), h("span", { text: papers[c].title }))))) : null,
     h("div", { class: "actions" },
       l.status === "dismissed"
-        ? h("button", { class: "btn", onclick: () => setLead(l.id, "restore") }, icon("restore"), h("span", { text: "Restore" }))
-        : [h("button", { class: `btn keep${l.status === "kept" ? " on" : ""}`, "aria-pressed": String(l.status === "kept"),
+        ? h("button", { class: "btn", "data-key": `restore-${l.id}`, onclick: () => setLead(l.id, "restore") }, icon("restore"), h("span", { text: "Restore" }))
+        : [h("button", { class: `btn keep${l.status === "kept" ? " on" : ""}`, "data-key": `keep-${l.id}`, "aria-pressed": String(l.status === "kept"),
           onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") }, icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
-        l.verdict !== "not eligible" ? h("button", { class: "btn", onclick: () => setLead(l.id, "dismiss") }, icon("dismiss"), h("span", { text: "Dismiss" })) : null],
-      h("button", { class: "btn quiet", onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { text: "Evidence" }))));
+        l.verdict !== "not eligible" ? h("button", { class: "btn", "data-key": `dismiss-${l.id}`, onclick: () => setLead(l.id, "dismiss") }, icon("dismiss"), h("span", { text: "Dismiss" })) : null],
+      h("button", { class: "btn quiet", "data-key": `evidence-${l.id}`, onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { text: "Evidence" }))));
 }
 
 // Citation brackets go; a session record's id reads as "your achievement A".
@@ -216,8 +218,8 @@ export function studentCompare(panel, { brief, goRoutes, announce }) {
   const kept = brief.leads.filter((l) => l.status === "kept");
   if (!kept.length) {
     fill(panel, h("div", { class: "empty" }, h("div", {}, h("p", { class: "lede", text: "Nothing kept yet." }),
-      h("p", { class: "hint", text: "Keep fellowships or scholarships on the Routes tab to compare them here." }),
-      h("button", { class: "btn", onclick: goRoutes }, h("span", { text: "Go to Routes" })))));
+      h("p", { class: "hint", text: "Keep fellowships or scholarships under Your options to compare them here." }),
+      h("button", { class: "btn", onclick: goRoutes }, h("span", { text: "Go to Your options" })))));
     return;
   }
   const rows = kept.map((l) => {
