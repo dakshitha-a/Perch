@@ -2,28 +2,26 @@
 
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
-## Last session: S17 — Synthetic scholarship corpus and student personas (done)
-- All four tasks are done. 234 tests pass. No API spend; the ledger is still $2.05 of $100.
-- Dakshitha asked for S17 to S20 in one run, without stopping unless blocked.
+## Last session: S18 — Student mode (done)
+- Tasks 1 to 6 are done; task 7 (Scout `search_scholarships`) moved to S19. 245 tests pass. No API spend.
+- S17 (scholarship corpus and personas) finished earlier in the same run.
 
-## What S17 built
-- **Schema:** `Scholarship` in `perch/schemas.py`, with `ScholarshipEligibility` and `ScholarshipRequirements`. A synthetic record must carry a `sample:` id and a canary.
-- **Corpus:** `data/synthetic/scholarships.jsonl`, 500 SYNTHETIC records from `scripts/make_sample_scholarships.py` (seed 1729). The model wrote purpose sentences only; code set every field.
-- **Its own store:** `perch/scholarships.py` loads the corpus into `data/sample.db` (`PERCH_SAMPLE_DB`), never the public store. It also holds the real-name check and the NIH F-series filter.
-- **Temple pages:** `perch/sources/temple.py` parses SDFA's "Find a Fellowship" list into 76 public `Scholarship` records (source `temple_sdfa`). Fixtures in `tests/fixtures/temple/` keep `<main>` only.
-- **Offices:** SDFA (`undergraduate.temple.edu/fellowships`, route F) and SFS (`sfs.temple.edu`, route S) are in `perch/offices.py`.
-- **Personas:** `data/synthetic/persona-ug`, `persona-masters`, `persona-phd`. Each has a CV, interests, achievements and a hand-written `answer_key.json` for 8 planted records. The rules the keys follow are in `data/synthetic/README.md`.
-- **ScholarshipUniverse:** no public schema exists. `perch/sources/scholarshipuniverse.py` is the documented seam for a real feed (Q26).
+## What S18 built
+- **Private mode as a state:** `web/mode.js`, the header switch `#private-switch`, Student on Find, and the paste nudge. `mode.send()` and `mode.move()` open the session first.
+- **Student brief:** `perch/student.py` (CV parse, rules, gaps) and `perch/private/student.py` (stages). `POST /private/student/brief`. The brief's stages are `student_profile`, `fellowships`, `scholarships`, `student_explanations`.
+- **Stores:** the sample store is loaded at app start (`ensure_samples`) and read read-only. `perch samples` loads it by hand, and `perch fetch temple` stores the SDFA list (76 records; done on the dev and demo stores). The demo uses `PERCH_SAMPLE_DB=/app/data/demo/sample.db`.
+- **Screens:** `web/student.js` holds the start form, the profile, both tabs, compare and a code-written hand-off. The evidence panel shows scholarships. Help has the new steps.
+- **Fit skill:** a bare id such as `achievement-a` is mapped back to `private:achievement-a`.
+- **Live:** the demo was rebuilt; all three personas work on the public URL. The canary check is clean.
 
-## Already started for S18 (uncommitted at S17's close, committed in S18)
-- `perch/student.py`: the student CV parse, eligibility by rule and the gap list. It matches all 24 planted cases in the answer keys.
-- `perch/private/student.py` and new `PrivateService` stages: a student brief with routes F (fellowships) and S (scholarships).
-- The `Lead` schema gained `verdict`, `verdict_lines`, `gaps` and `sample`; routes F and S.
-- `POST /private/student/brief`; `/private` now lists `student_kinds`.
+## Next session: S19 — Planted-case scoring and docs
+1. Run `bench/student_mode.py` against the demo (already written, not yet run). It drives the app over HTTP and writes `bench/results/STUDENT_MODE.md`.
+2. Add the key-numbers row "Student mode (synthetic, mechanism test)".
+3. README student section with a screenshot showing the badge. SPEC Phase 3 is already edited (uncommitted at S18's close).
+4. Also from S18: the Scout `search_scholarships` tool, and the tracker's UI preview of the student flow.
 
 ## Known gaps
 - **Flaky test:** `test_route_b_answer_counts_and_dates_pass_the_validator` failed once in five runs.
-- **SDFA records are not in a store yet.** S18 must store them in the public store (a CLI step) so the fellowships route finds them.
 - **Shared Ollama:** the dev Ollama on 11434 reloaded gemma several times during generation, likely because another client asks for a different context size.
 - **From earlier sessions:** awards are not refreshed weekly; the monitor shares brief state; two-process LanceDB writes are untested; the MCP server was not tested with Ollama; a private brief does not index new opportunities; the hand-off opening has no layer-2 check; replay has no compare, hand-off or watch; Scout on Gemma sometimes states a count the validator withholds.
 

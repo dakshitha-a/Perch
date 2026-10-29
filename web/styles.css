@@ -752,3 +752,9 @@ table.compare th, table.compare td { border-bottom: 1px solid var(--line); paddi
 .table-wrap { overflow-x: auto; max-width: 100%; }
 .cites { display: flex; flex-wrap: wrap; gap: 6px; }
 .cites .paper-ref { display: inline-flex; gap: 6px; align-items: center; }
+.private-frame[hidden] { display: none; }
+@media (max-width: 479px) {
+  .switch .switch-word { display: none; }
+  .bar-tools { gap: 2px; }
+  .bar-tools .btn { padding: 0 8px; }
+}
