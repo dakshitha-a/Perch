@@ -4,6 +4,13 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
+24. **What counts as a "new opportunity above threshold" for monitoring? (raised S16, 2026-10-29).** The plan says the weekly job re-runs a brief when a new opportunity scores above a threshold. The reranker's scores are not on one scale across researchers. In the demo store, the top lead scores 0.015 for one researcher and 0.98 for another. A single score cut-off would fire for some people every week and never for others. Perch-dev built a position rule instead:
+- **The rule:** an opportunity that is in the fresh brief's top 10 and was not a lead in the last run.
+- **Other option:** a smaller window, such as the top 5, which fires less often.
+- **Other option:** use the model's 0 to 100 fit number. It is model output, so the trigger would no longer be fully deterministic (standing rule 5).
+
+Default: the top-10 position rule, as built.
+
 21. **How the private documents share the private weight (raised S13, 2026-10-29, asked by Dakshitha).** Private threads together get 0.6 of the thread weight (Q13). Inside that share, Perch-dev proposes:
 - **Draft proposal:** 0.5 of the private share. It is the closest thing to the work being funded.
 - **Research direction:** 0.3. It is short and looks forward.
