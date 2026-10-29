@@ -18,7 +18,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - **Tracker:**
   - The UI tab is rebuilt. `scripts/build_ui_preview.py` now bundles every web module.
   - The Bench tab shows the Scout bench and the S13 stand-in, rendered by `bench/run.py` `summary()`.
-- **Demo:** rebuilt with `make demo`. The public URL has the S13 Find fields and Help sections. Private mode is off there.
+- **Demo:** rebuilt with `make demo`. The public URL has the S13 Find fields, the Help sections and a Clear history button on Find. Private mode is on there (Q22 answered), with the operator "Dakshitha, Temple University". It was tested on the public URL with persona-1.
 
 ## S13 in one paragraph
 Private mode is built end to end:
@@ -52,4 +52,3 @@ Private mode is built end to end:
 ## Open questions (mirror of bridge/QUESTIONS.md)
 - Q20: should a past Temple STTR partner count as an industry lead on its own? Default: no.
 - Q21: private document shares. Default: proposal 0.5, direction 0.3, unpublished 0.2; the CV gets none.
-- Q22: turn private mode on at the public demo URL? Default: off.

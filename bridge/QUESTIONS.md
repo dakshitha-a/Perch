@@ -4,8 +4,6 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
-22. **Turn private mode on at the public demo URL? (raised S13, 2026-10-29).** Private mode is built and tested, and every demo model runs on this node behind loopback. Tailscale Funnel decrypts on the node, so `PERCH_TLS_AT=server` holds. Turning it on means setting `PERCH_PRIVATE_MODE=1` and `PERCH_PRIVATE_OPERATOR` in the demo's environment, then running `make demo`. The Find screen would then show a Private mode link to every visitor. You said it is not demoed on Demo Day. Default: leave it off on the public URL. Please say how the operator should be named, if you want it on.
-
 21. **How the private documents share the private weight (raised S13, 2026-10-29, asked by Dakshitha).** Private threads together get 0.6 of the thread weight (Q13). Inside that share, Perch-dev proposes:
 - **Draft proposal:** 0.5 of the private share. It is the closest thing to the work being funded.
 - **Research direction:** 0.3. It is short and looks forward.
@@ -18,6 +16,8 @@ These are starting defaults, not measurements. Default: as proposed, built in S1
 
 
 ## Answered
+
+22. **Turn private mode on at the public demo URL? (raised S13, 2026-10-29).** Private mode is built and tested, and every demo model runs on this node behind loopback. Tailscale Funnel decrypts on the node, so `PERCH_TLS_AT=server` holds. Turning it on means setting `PERCH_PRIVATE_MODE=1` and `PERCH_PRIVATE_OPERATOR` in the demo's environment, then running `make demo`. The Find screen would then show a Private mode link to every visitor. You said it is not demoed on Demo Day. Default: leave it off on the public URL. Please say how the operator should be named, if you want it on. **Answered 2026-10-29 by Dakshitha:** turn it on; operator "Dakshitha, Temple University". Done the same day: the settings are in `docker-compose.yml` and the demo was rebuilt. A private-only brief with persona-1 was run in Chromium at 390 px on the public URL and the session was ended. No canary was found in the container log, the four demo model journals, `data/demo` or `data/logs`, and nothing was written to browser storage.
 
 19. **SBIR/STTR source for Route B (raised S11, 2026-10-29).** The SBIR.gov API returns 403 for every request. Its page says the APIs are under maintenance. Proposal: signal 2 reads NIH SBIR/STTR awards from NIH RePORTER, which is already a verified source. It covers NIH only, and every Route B screen and note says so. SBIR.gov also offers a monthly bulk download of all agencies' awards. I have not tried it. It would mean a large file kept on the node and refreshed by hand. Default: RePORTER only, NIH-only label. Say if you want the bulk file tried in a later session. **Answered 2026-10-29 by Dakshitha:** integrate it if it is beneficial. Checked the same day:
 - **The file:** `https://data.www.sbir.gov/awarddatapublic/award_data.csv` returns 200. It is a 368 MB CSV covering every agency, with abstracts.

@@ -424,10 +424,11 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (100)</h2>
+<h2>Decisions (101)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>after S14</td><td>Private mode on at the public demo URL; operator "Dakshitha, Temple University"; settings in <code>docker-compose.yml</code></td><td>Dakshitha wants to test it there (Q22)</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S14</td><td>Private documents are not added through MCP yet; <code>--private</code> gives the no-trace mode and the gate only</td><td>The design's floor drops MCP private tools first; documents stay in the web app</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S14</td><td><code>mcp</code> 2.3.0 added as a main dependency</td><td><code>perch mcp</code> is part of the app; FastAPI already brings Starlette, which the SDK uses</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S14</td><td>MCP over stdio only, with Scout's tool table unchanged; budgets of 60 tool calls and 20 model-backed calls per connection; a provenance map in every result</td><td>Stdio runs on the machine that starts it, which keeps private mode's boundary; the client's own model writes the answer, so Perch hands it the records to cite</td><td>Perch-dev</td></tr>
