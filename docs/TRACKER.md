@@ -13,7 +13,7 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S6 | API | done | 2026-10-28 22:07 EDT | 2026-10-28 22:13 EDT | b3ccdf6 | 112 tests green. FastAPI + in-process jobs; briefs end to end via curl for 2 PIs (one fetched from scratch); stages and partial results pollable; export with provenance. |
 | S7 | Web app, first three screens | done | 2026-10-28 22:40 EDT | 2026-10-28 23:14 EDT | 5da4e7e | 116 tests green. No-build web app in `web/` served by `perch serve` at `/`: Find, Profile, Routes, evidence panel, Scout the owl on the progress branch. Live brief in the browser in 90 s. Adversarial review: 32 findings fixed. Screenshots in `docs/screenshots/`; UI tab in the tracker. |
 | S8 | Back-test and bench | done | 2026-10-29 00:04 EDT | 2026-10-29 04:50 EDT | see git log | 129 tests green. Back-test on 126 of 160 rows with a fully fetched window (48 targeted, 78 parent; corpus 11,202 NIH announcements). Default config, targeted: 7 of 48 in the top 10 against 1 of 48 for keyword-only. Parent announcements: 0 or 1 of 78 under every config. No embedder separated from the default; Clef as reranker was worse. Skill 2 passed both validator layers: Gemma 28 of 30, qwen3.8:27b 28, qwen3:14b 26, Sonnet 24, qwen3:8b 23. Models per profile in `perch/profiles.py`. Keep bar shipped. Private mode designed (S13). Two concurrency bugs fixed. |
-| S9 | Deploy | todo | | | | |
+| S9 | Deploy | in progress | 2026-10-29 10:16 EDT | | | |
 | S10 | Scout agent | todo | | | | |
 | S11 | Route B | todo | | | | |
 | S12 | Compare, hand-off, export | todo | | | | |
