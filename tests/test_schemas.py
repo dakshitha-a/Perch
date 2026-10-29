@@ -40,3 +40,19 @@ def test_unknown_fields_are_rejected():
 def test_lead_route_is_constrained():
     with pytest.raises(ValidationError):
         Lead(id="L1", brief_id="B1", route="C", record_id="O1", **PROV)
+
+
+def test_scholarship_rules():
+    from perch.schemas import Scholarship
+
+    prov = {**PROV, "source": "synthetic", "source_url": "synthetic://sample"}
+    ok = Scholarship(id="sample:sch-0001", name="SYNTHETIC award", canary="PERCH-CANARY-X",
+                     amount_min=500, amount_max=1000, **prov)
+    assert ok.synthetic
+    with pytest.raises(ValidationError):  # synthetic needs a canary
+        Scholarship(id="sample:sch-0002", name="SYNTHETIC", **prov)
+    with pytest.raises(ValidationError):  # sample ids only for synthetic records
+        Scholarship(id="sample:sch-0003", name="x", canary="c", **PROV)
+    with pytest.raises(ValidationError):
+        Scholarship(id="sample:sch-0004", name="SYNTHETIC", canary="c", amount_min=2,
+                    amount_max=1, **prov)

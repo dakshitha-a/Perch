@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from typing import ClassVar, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 def utcnow() -> datetime:
@@ -230,6 +230,101 @@ class Digest(Record):
     refresh: dict = Field(default_factory=dict, description="Grants.gov refresh counts")
 
 
+Level = Literal["high school", "associate", "bachelor's", "graduate", "professional"]
+Requirement = Literal["transcript", "essay", "letters", "portfolio", "interview", "FAFSA"]
+
+
+class ScholarshipEligibility(BaseModel):
+    """Who may apply, as the record states it. None means the record does not say."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    gpa_min: float | None = None
+    residency_state: str | None = Field(default=None, description="Two-letter state code")
+    citizenship: str | None = Field(default=None, description="As written, e.g. 'U.S. citizen'")
+    class_year: list[int] = Field(default_factory=list,
+                                  description="Undergraduate years 1 to 4; empty means any")
+    major: list[str] = Field(default_factory=list, description="Empty means any major")
+    enrolment_status: Literal["full-time", "part-time", "any"] | None = None
+    graduation_by: date | None = Field(default=None,
+                                       description="Must graduate on or before this date")
+    graduation_after: date | None = Field(default=None,
+                                          description="Must graduate on or after this date")
+    targeted_criterion: str | None = Field(
+        default=None, description="Free text the student judges for themselves; never asked")
+    notes: str | None = Field(default=None, description="Eligibility text copied from a page")
+
+
+class ScholarshipRequirements(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    transcript: bool = False
+    essay: bool = False
+    letters_count: int = 0
+    portfolio: bool = False
+    interview: bool = False
+    fafsa: bool = False
+
+    def items(self) -> list[str]:
+        """Each requirement as one line, in a fixed order. Written by code."""
+        out = []
+        if self.transcript:
+            out.append("transcript")
+        if self.essay:
+            out.append("essay")
+        if self.letters_count:
+            n = self.letters_count
+            out.append(f"{n} letter{'s' if n > 1 else ''} of recommendation")
+        if self.portfolio:
+            out.append("portfolio")
+        if self.interview:
+            out.append("interview")
+        if self.fafsa:
+            out.append("FAFSA")
+        return out
+
+
+class Scholarship(Record):
+    """A scholarship, fellowship, grant or prize for a student (S17).
+
+    Two kinds live under this type and never mix in a list (standing rule 11):
+    public records copied from a public page (source e.g. 'temple_sdfa'), and synthetic
+    sample records (source 'synthetic', id 'sample:sch-NNNN'), kept in their own store.
+    """
+
+    kind: ClassVar[str] = "scholarship"
+
+    name: str
+    sponsor: str | None = None
+    purpose: str | None = None
+    level_of_study: list[Level] = Field(default_factory=list, description="Empty: not stated")
+    field_of_study: list[str] = Field(default_factory=list, description="Empty: any field")
+    award_type: Literal["scholarship", "fellowship", "grant", "prize"] | None = None
+    amount_min: float | None = None
+    amount_max: float | None = None
+    deadline: date | None = None
+    eligibility: ScholarshipEligibility = Field(default_factory=ScholarshipEligibility)
+    application_requirements: ScholarshipRequirements | None = Field(
+        default=None, description="None: the record does not list them")
+    international_ok: bool | None = Field(default=None, description="None: not stated")
+    canary: str | None = Field(default=None, description="Synthetic records only")
+
+    @property
+    def synthetic(self) -> bool:
+        return self.source == "synthetic"
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Scholarship:
+        if self.source == "synthetic" and not (self.id.startswith("sample:") and self.canary):
+            raise ValueError("a synthetic record needs a sample: id and a canary")
+        if self.id.startswith("sample:") and self.source != "synthetic":
+            raise ValueError("sample: ids are for synthetic records only")
+        if (self.amount_min is not None and self.amount_max is not None
+                and self.amount_min > self.amount_max):
+            raise ValueError("amount_min is above amount_max")
+        return self
+
+
 RECORD_TYPES: tuple[type[Record], ...] = (
-    Researcher, Work, Award, Opportunity, Organisation, Lead, Brief, Digest,
+    Researcher, Work, Award, Opportunity, Organisation, Lead, Brief, Digest, Scholarship,
 )

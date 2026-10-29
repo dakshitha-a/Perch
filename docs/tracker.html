@@ -132,7 +132,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S17</code> <span class="badge s-todo">todo</span><span>17/24 sessions done</span></div>
+<div class="at-a-glance"><code>S17</code> <span class="badge s-in-progress">in progress</span><span>17/24 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -595,13 +595,24 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-current" class="view" data-view="current" hidden>
 <div id="s17"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S17 · Synthetic scholarship corpus, student personas</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S17.md</code> when the session starts.</div>
+<div class="title-row"><h1>S17 · Synthetic scholarship corpus and student personas</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-29 17:58 EDT</div></div>
+<p>Goal: a labelled sample scholarship database shaped like the real feeds, plus three student personas with a planted answer key. Standing rules 11 and 12 apply to every synthetic record and persona. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 4 tasks done"><div class="counts"><span><b>0/4</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="0 of 4 tasks done"><span class="s-in-progress" style="width:25.00%" title="in progress: 1"></span><span class="s-todo" style="width:75.00%" title="todo: 3"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>Scholarship</code> schema in <code>perch/schemas.py</code>, with nested eligibility and requirements and the usual provenance fields.</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td><code>scripts/make_sample_scholarships.py</code>: 400 to 600 sample records from hand-written templates. The local model writes purpose text only; code sets every structured field, checks consistency, adds the canary and the <code>sample:sch-NNNN</code> id. Output <code>data/synthetic/scholarships.jsonl</code> with a README.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>Real public records beside them: NIH fellowship-type listings already in the store, and Temple's SDFA fellowship list and SFS scholarship page, verified live with fixtures and SOURCES.md rows.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td>Three student personas (undergraduate, master's, PhD) with CVs, interests, achievements, canaries and a hand-written planted answer key.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>The corpus loads into the store under <code>source: synthetic</code> with zero overlap with public records.</li><li><code>make test</code> green.</li><li>A test asserts no real-organisation name appears in any sample sponsor, checked against well-known sponsors and OpenAlex institution names in the store.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="17 of 24 sessions done"><div class="counts"><span><b>17/24</b>sessions done</span><span class="s-done"><b>17</b>done</span><span class="s-todo"><b>7</b>todo</span></div><div class="bar" role="img" aria-label="17 of 24 sessions done"><span class="s-done" style="width:70.83%" title="done: 17"></span><span class="s-todo" style="width:29.17%" title="todo: 7"></span></div></section>
+<section class="panel summary" aria-label="17 of 24 sessions done"><div class="counts"><span><b>17/24</b>sessions done</span><span class="s-done"><b>17</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>6</b>todo</span></div><div class="bar" role="img" aria-label="17 of 24 sessions done"><span class="s-done" style="width:70.83%" title="done: 17"></span><span class="s-in-progress" style="width:4.17%" title="in progress: 1"></span><span class="s-todo" style="width:25.00%" title="todo: 6"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -622,7 +633,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s14">S14</a></td><td>MCP server</td><td><span class="badge s-done">done</span></td><td>2026-10-29 15:01 EDT</td><td>2026-10-29 15:10 EDT</td><td class="mono">see git log</td><td>210 tests green. <code>perch mcp</code>: Scout's nine tools over stdio on the MCP Python SDK 2.3.0, with the same argument checks and validator, a provenance map in every result, and budgets of 60 calls (20 model-backed) per connection. <code>--private</code> runs on a private session behind the self-hosted gate. Live: the SDK client over stdio got 5 leads with provenance and a validated explanation citing three papers in 7 s. Claude Code 2.1.312 (print mode, haiku) got a cited brief. The local Ollama agent was not tested. The tracker's UI tab was rebuilt with every module, and the Bench tab gained Scout and the stand-in result. The demo was rebuilt.</td></tr>
 <tr class="is-finished"><td><a href="#s15">S15</a></td><td>README and public release</td><td><span class="badge s-done">done</span></td><td>2026-10-29 15:25 EDT</td><td>2026-10-29 16:13 EDT</td><td class="mono">see git log</td><td>New README in NextTex's style: a hero clip, five feature clips filmed in the real app with NextTex's camera and a Python port of its recorder, the as-built architecture figure in light and dark, measured results with the baseline, and docs split into running, deploy, private mode and MCP. A README tab on the tracker. History audit: no keys, paths, emails, session links or hostnames. Tests now read researcher names from their fixtures (Q23). Dakshitha approved the README, and the repository is public.</td></tr>
 <tr class="is-finished"><td><a href="#s16">S16</a></td><td>Monitoring (optional)</td><td><span class="badge s-done">done</span></td><td>2026-10-29 16:34 EDT</td><td>2026-10-29 16:54 EDT</td><td class="mono">see git log</td><td>219 tests green. Weekly watch: <code>perch monitor</code> refreshes open NIH listings from Grants.gov as a delta, runs a fresh brief per watched researcher (never a reused copy), compares it with the last run and stores a digest. Triggers: a public award ending within 12 months (once per award), or an opportunity new to the top 10, a position rule because rerank scores are not on one scale (Q24). The email draft is written by code only and never sent. What changed screen at <code>#/changes</code>, <code>GET /watch</code>, a Help step. Monday 06:00 timer on the demo. Live on the demo: 660 listed, 3 new; PI-5, PI-4 and PI-2 had 0 changes, so no draft (Q25). On a copy of the store, a researcher whose NSF award ends 2027-03-31 got a real draft in 51 s. <code>make bench --render-only</code> now keeps the hand-written Scout sections.</td></tr>
-<tr class="is-current"><td>S17</td><td>Synthetic scholarship corpus, student personas</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s17">S17</a></td><td>Synthetic scholarship corpus, student personas</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 17:58 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S18</td><td>Student mode</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S19</td><td>Planted-case scoring and docs</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S20</td><td>QA and privacy audit</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
