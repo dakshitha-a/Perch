@@ -38,3 +38,27 @@ class Repository(ABC):
 
     def __exit__(self, *exc: object) -> None:
         self.close()
+
+
+class VectorIndex(ABC):
+    """Dense and BM25 search over one kind of record (e.g. opportunities).
+
+    Rows hold a record id, the text that was embedded, and its vector. Records
+    themselves (and their provenance) stay in the Repository.
+    """
+
+    @abstractmethod
+    def upsert(self, ids: list[str], texts: list[str], vectors: list[list[float]]) -> int:
+        """Insert or replace rows by id; return how many were written."""
+
+    @abstractmethod
+    def dense(self, vector: list[float], k: int) -> list[tuple[str, float]]:
+        """(id, cosine similarity), best first."""
+
+    @abstractmethod
+    def bm25(self, query: str, k: int) -> list[tuple[str, float]]:
+        """(id, BM25 score), best first."""
+
+    @abstractmethod
+    def ids(self) -> set[str]:
+        """Every id in the index."""
