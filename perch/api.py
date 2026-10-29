@@ -10,6 +10,9 @@
   POST /briefs/{id}/leads/{lead_id}/keep        and /dismiss, /restore
   GET  /briefs/{id}/export.json[?status=kept]   brief, leads and every record they cite
   GET  /briefs/{id}/compare[?status=kept|all]   kept leads side by side, each cell with its record
+  POST /briefs/{id}/handoff                     {"office", "lead_ids"?}: a hand-off draft to one
+                                                Temple office about the kept leads (skill 3);
+                                                returned, never stored or sent
   GET  /records/{id}                            any stored record, with provenance
   POST /briefs/{id}/scout                       {"question", "mode": "ask"|"run"}: a Scout
                                                 session about the brief (S10)
@@ -59,6 +62,7 @@ from perch.scout.hub import Busy, ScoutHub
 from perch.scout.hub import view as scout_view
 from perch.scout.log import ScoutLog
 from perch.service import BriefService, brief_options
+from perch.skills.handoff import Draft
 from perch.sources import grants_gov
 from perch.sources import openalex as oa
 from perch.store.base import Repository
@@ -71,6 +75,17 @@ class ScoutRequest(BaseModel):
     question: str = Field("", max_length=1000)
     mode: Literal["ask", "run"] = "ask"
     card_id: str | None = None
+
+
+class HandoffRequest(BaseModel):
+    office: Literal["research_development", "technology_commercialization"]
+    lead_ids: list[str] = Field(default_factory=list, max_length=25)
+
+
+def draft_json(d: Draft) -> dict:
+    return {"office": {"key": d.office.key, "name": d.office.name, "url": d.office.url},
+            "to": "", "subject": d.subject, "body": d.body, "lead_ids": d.lead_ids,
+            "cited_ids": d.cited_ids, "flagged": d.flagged, "model": d.model}
 
 
 class BriefRequest(BaseModel):
@@ -317,6 +332,20 @@ def create_app(service: BriefService, runner: JobRunner,
         with service.repo() as r:
             rows = cmp.compare(b, leads, r, None if status == "all" else status)
         return cmp.rows_json(rows)
+
+    handoff_limiter = RateLimiter(int(env("PERCH_HANDOFF_PER_HOUR") or 30))
+
+    @app.post("/briefs/{brief_id}/handoff")
+    def handoff(brief_id: str, req: HandoffRequest, request: Request) -> dict:
+        load(brief_id)
+        wait = handoff_limiter.take(client_key(request))
+        if wait:
+            raise HTTPException(429, f"Too many drafts this hour. Try again in {wait // 60 + 1} "
+                                "minutes.", headers={"Retry-After": str(wait)})
+        d = service.handoff(brief_id, req.office, req.lead_ids or None)
+        if d is None:
+            raise HTTPException(404, f"no brief {brief_id!r}")
+        return draft_json(d)
 
     @app.get("/records/{record_id:path}")
     def get_record(record_id: str) -> dict:

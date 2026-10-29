@@ -105,3 +105,49 @@ def test_finding_must_name_a_given_and_cited_paper():
     (v,) = explain_leads([OPP], PROFILE, WORKS, p)
     assert v.flagged
     assert any("W9" in e for e in log.events[1]["errors"])
+
+
+# --- skill 3, hand-off drafter (SYNTHETIC records) ---
+
+def _handoff_inputs():
+    from perch.schemas import Lead, Researcher
+    res = Researcher(id="https://openalex.org/A1", display_name="SYNTHETIC Researcher",
+                     source="openalex", source_url="u", fetched_at=T)
+    opp = OPP.model_copy(update={"award_ceiling": 250000.0})
+    lead = Lead(id="b:1", source="grants_gov", source_url="u", fetched_at=T, brief_id="b",
+                route="A", record_id=opp.id, rank=1, cited_ids=["PAR-1", "W1"], status="kept")
+    return res, [(lead, opp)], [WORKS["https://openalex.org/W1"]]
+
+
+def handoff_reply(paragraph, cited=("PAR-1", "W1")):
+    return json.dumps({"paragraph": paragraph, "cited_ids": list(cited)})
+
+
+def test_handoff_model_writes_the_paragraph_and_code_writes_the_numbers():
+    from perch.offices import OFFICES
+    from perch.skills.handoff import draft_handoff
+    res, items, papers = _handoff_inputs()
+    p, log = audited([handoff_reply(
+        "My work studies living kidney donor communication [W1]. I would like to discuss "
+        "SYNTHETIC ELSI [PAR-1], which funds research on these questions.")])
+    d = draft_handoff(OFFICES["research_development"], res, items, papers, p)
+    assert not d.flagged and d.cited_ids == ["PAR-1", "W1"]
+    assert d.body.startswith("Dear Research Development team,\n\nMy work studies")
+    assert "PAR-1: SYNTHETIC ELSI (R01). NIH; closes 2026-11-18; award ceiling $250,000." \
+        in d.body
+    assert d.body.endswith("Best regards,\nSYNTHETIC Researcher")
+    assert d.subject == "Request to discuss 1 funding opportunity"
+    assert [e["passed"] for e in log.events if e["kind"] == "validation"] == [True]
+
+
+def test_handoff_advice_or_invented_numbers_fall_back_to_code_text():
+    from perch.offices import OFFICES
+    from perch.skills.handoff import FALLBACK, draft_handoff
+    res, items, papers = _handoff_inputs()
+    p, _ = audited([
+        handoff_reply("My work studies donors [W1]. I should apply to SYNTHETIC ELSI [PAR-1]."),
+        handoff_reply("My work studies donors [W1]. SYNTHETIC ELSI [PAR-1] gives $900,000."),
+    ])
+    d = draft_handoff(OFFICES["research_development"], res, items, papers, p)
+    assert d.flagged and FALLBACK in d.body and "$900,000" not in d.body
+    assert any("900000" in e for e in d.errors)

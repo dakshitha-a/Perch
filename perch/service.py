@@ -27,8 +27,20 @@ from perch.grounding import Grounder
 from perch.llm import Provider, get_provider, spec_for_role
 from perch.llm.audit import AuditedProvider, AuditLog
 from perch.rerank import RerankCache, Reranker
-from perch.schemas import Award, Brief, Lead, Opportunity, Researcher, Stage
+from perch.offices import OFFICES
+from perch.schemas import (
+    Award,
+    Brief,
+    Lead,
+    Opportunity,
+    Organisation,
+    Record,
+    Researcher,
+    Stage,
+    Work,
+)
 from perch.skills.fit import Fit, explain_leads
+from perch.skills.handoff import Draft, draft_handoff
 from perch.skills.summary import summarise_profile
 from perch.sources import nih_reporter, nsf
 from perch.sources import openalex as oa
@@ -61,6 +73,7 @@ class Models:
     provider: Callable[[str], Provider] = get_provider
     summary_spec: str | None = None  # None: PERCH_LLM_PROFILE_SUMMARY / default
     fit_spec: str | None = None
+    handoff_spec: str | None = None
     _built: dict = field(default_factory=dict)
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
@@ -150,6 +163,33 @@ class BriefService:
             lead = lead.model_copy(update={"status": status})
             r.upsert([lead])
         return lead
+
+    # --- hand-off (skill 3; on request, not a pipeline stage) ---
+
+    def handoff(self, brief_id: str, office_key: str, lead_ids: list[str] | None = None,
+                spec: str | None = None, use_model: bool = True) -> Draft | None:
+        """A draft to one office about the brief's kept leads on that office's route (or
+        the given lead ids). None if the brief does not exist. Nothing is stored or sent."""
+        office = OFFICES[office_key]
+        got = self.get(brief_id)
+        if not got:
+            return None
+        b, leads = got
+        chosen = [x for x in leads if (x.id in lead_ids if lead_ids else
+                                       x.status == "kept" and x.route == office.route)]
+        with self.repo() as r:
+            res = r.get(Researcher, b.researcher_id)
+            items: list[tuple[Lead, Record | None]] = [
+                (x, r.get(Opportunity if x.route == "A" else Organisation, x.record_id))
+                for x in chosen]
+            wids = list(dict.fromkeys(f"https://openalex.org/{c}" for x in chosen
+                                      for c in x.cited_ids if c.startswith("W")))
+            papers = [w for w in (r.get(Work, i) for i in wids) if w]
+        if res is None:
+            return None
+        provider = (self._audited("handoff", spec or self.models.handoff_spec)
+                    if use_model and chosen else None)
+        return draft_handoff(office, res, items, papers, provider)
 
     # --- run ---
 
@@ -351,7 +391,8 @@ def default_models(fake: bool = False, data_dir: Path = Path("data"),
     if fake:
         return Models(embedder=lambda: get_embedder("fake-256", data_dir / "cache/emb.db"),
                       reranker=FakeReranker, index=lambda: LanceIndex(data_dir / "lance-fake"),
-                      grounder=FakeGrounder, summary_spec="fake:fake-1", fit_spec="fake:fake-1")
+                      grounder=FakeGrounder, summary_spec=llm or "fake:fake-1",
+                      fit_spec=llm or "fake:fake-1", handoff_spec=llm or "fake:fake-1")
     from perch.grounding import make_grounder
     from perch.profiles import current
 
@@ -368,8 +409,9 @@ def default_models(fake: bool = False, data_dir: Path = Path("data"),
                               else RemoteReranker(server, p.reranker)),
             index=lambda: LanceIndex(data_dir / "lance"),
             grounder=lambda: make_grounder(p.grounder, fallback=lambda: RemoteGrounder(server)),
-            summary_spec=llm, fit_spec=llm)
+            summary_spec=llm, fit_spec=llm, handoff_spec=llm)
     return Models(embedder=lambda: get_embedder(p.embedder, cache=emb_cache),
                   reranker=lambda: make_reranker(p.reranker),
                   index=lambda: LanceIndex(data_dir / "lance"),
-                  grounder=lambda: make_grounder(p.grounder), summary_spec=llm, fit_spec=llm)
+                  grounder=lambda: make_grounder(p.grounder), summary_spec=llm, fit_spec=llm,
+                  handoff_spec=llm)

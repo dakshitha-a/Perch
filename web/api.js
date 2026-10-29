@@ -34,6 +34,8 @@ export function liveApi(base = "") {
     exportUrl: (id) => `${base}/briefs/${encodeURIComponent(id)}/export.json`,
     keptUrl: (id) => `${base}/briefs/${encodeURIComponent(id)}/export.json?status=kept`,
     compare: (id) => call(base, `/briefs/${encodeURIComponent(id)}/compare`),
+    handoff: (id, body) => call(base, `/briefs/${encodeURIComponent(id)}/handoff`,
+      { method: "POST", body: JSON.stringify(body) }),
     scoutStart: (id, body) => call(base, `/briefs/${encodeURIComponent(id)}/scout`,
       { method: "POST", body: JSON.stringify(body) }),
     scoutGet: (sid) => call(base, `/scout/${encodeURIComponent(sid)}`),
@@ -119,6 +121,7 @@ export function replayApi(data) {
     },
     exportUrl: () => null,
     compare: () => Promise.reject(new ApiError("The comparison needs the live app.", 0)),
+    handoff: () => Promise.reject(new ApiError("Hand-off drafts need the live app.", 0)),
     // Same shape as the live export with ?status=kept, built from the saved records.
     keptUrl: () => {
       const leads = leadsIn().filter((l) => l.status === "kept");

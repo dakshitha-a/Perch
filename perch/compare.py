@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import date
 
-from perch.offices import for_route
+from perch.offices import OFFICES, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation
 from perch.store.base import Repository
 
@@ -133,4 +133,5 @@ def compare(brief: Brief, leads: list[Lead], r: Repository, status: str | None =
 
 def rows_json(rows: list[Row]) -> dict:
     return {"columns": [{"key": k, "label": lbl} for k, lbl in COLUMNS],
-            "rows": [asdict(x) for x in rows], "none": NONE}
+            "rows": [asdict(x) for x in rows], "none": NONE,
+            "offices": [asdict(o) for o in OFFICES.values()]}

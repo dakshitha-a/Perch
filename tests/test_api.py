@@ -262,3 +262,25 @@ def test_compare_shows_kept_leads_with_a_record_behind_every_cell(tmp_path):
     assert rb["cells"]["office"]["text"] == "Innovation and Technology Commercialization"
     assert len(c.get(f"/briefs/{bid}/compare", params={"status": "all"}).json()["rows"]) == 2
     assert c.get(f"/briefs/{bid}/compare", params={"status": "x"}).status_code == 422
+
+
+def test_handoff_draft_is_returned_not_stored(tmp_path):
+    c, service = make(tmp_path)
+    bid = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28",
+                                  "explain": False}).json()["id"]
+    a = c.get(f"/briefs/{bid}").json()["brief"]["lead_ids"][0]
+    c.post(f"/briefs/{bid}/leads/{a}/keep")
+    with service.repo() as r:
+        before = len(r.list(__import__("perch.schemas", fromlist=["Lead"]).Lead))
+    d = c.post(f"/briefs/{bid}/handoff", json={"office": "research_development"}).json()
+    assert d["to"] == "" and d["office"]["name"] == "Research Development"
+    assert d["office"]["url"].startswith("https://research.temple.edu/")
+    assert d["lead_ids"] == [a] and "PAR-25-268" in d["body"]
+    assert d["flagged"] is True  # the fake model returns nothing usable: code text only
+    empty = c.post(f"/briefs/{bid}/handoff", json={"office": "technology_commercialization"})
+    assert empty.json()["lead_ids"] == []
+    assert c.post(f"/briefs/{bid}/handoff", json={"office": "dean"}).status_code == 422
+    assert c.post("/briefs/nope/handoff", json={"office": "research_development"}) \
+        .status_code == 404
+    with service.repo() as r:
+        assert len(r.list(__import__("perch.schemas", fromlist=["Lead"]).Lead)) == before

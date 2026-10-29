@@ -102,6 +102,6 @@ export function renderCompare(panel, { keptCount, openEvidence, goRoutes, redraw
     handoff ? h("div", { class: "handoff-box" }) : null);
 }
 
-export function compareRows() {
-  return C.data ? C.data.rows : [];
+export function compareOffices() {
+  return C.data ? C.data.offices : null;
 }

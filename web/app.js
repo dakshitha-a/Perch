@@ -4,7 +4,8 @@
 import { liveApi, replayApi } from "./api.js";
 import { add, fill, h, icon } from "./dom.js";
 import { renderHelp } from "./help.js";
-import { loadCompare, renderCompare } from "./compare.js";
+import { compareOffices, loadCompare, renderCompare } from "./compare.js";
+import { renderHandoff } from "./handoff.js";
 import { renderScout } from "./scout.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
@@ -533,8 +534,10 @@ function drawCompare(focusKey) {
   const panel = $("#panel");
   if (!panel || S.tab !== "compare" || !S.brief) return;
   const kept = keptIds();
-  renderCompare(panel, { keptCount: kept.length, openEvidence, redraw: drawCompare,
+  renderCompare(panel, { keptCount: kept.length, openEvidence, redraw: drawCompare, handoff: true,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) });
+  renderHandoff(panel.querySelector(".handoff-box"), { api, briefId: S.briefId, announce,
+    kept: leadsOf().filter((l) => l.status === "kept"), offices: compareOffices(), redraw: drawCompare });
   if (kept.length) loadCompare(api, S.briefId, kept, () => drawCompare());
   if (focusKey) panelFocus(focusKey);
 }

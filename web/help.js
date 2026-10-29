@@ -1,4 +1,4 @@
-// Help: how to use Perch (seven steps with small pictures built from the app's own
+// Help: how to use Perch (eight steps with small pictures built from the app's own
 // parts) and how it works (the pipeline, marking which steps are rules and which are
 // models). Every claim here describes code in this repo; see docs/design/UI.md §7.
 
@@ -69,7 +69,17 @@ function picKeep() {
   return example(
     h("div", { class: "pic-card pic-row between" },
       h("span", {}, h("b", { text: "2 leads kept" }), bar(60)),
-      h("span", { class: "pic-btn" }, icon("download"), h("span", { text: "Download them" }))));
+      h("span", { class: "pic-btn" }, h("span", { text: "Compare them" }))));
+}
+
+function picHandoff() {
+  return example(
+    h("div", { class: "pic-card" },
+      h("div", { class: "pic-row" }, h("b", { text: "Dear Research Development team," })),
+      h("div", { class: "pic-row" }, h("span", { class: "tag model", text: "Model" }), bar(70)),
+      h("div", { class: "pic-row" }, bar(85)),
+      h("div", { class: "pic-row" }, h("span", { class: "pic-btn", text: "Copy the draft" }),
+        h("span", { class: "pic-btn", text: "Open in my mail app" }))));
 }
 
 function picScout() {
@@ -95,6 +105,8 @@ function steps() {
       "Routes has two parts: Grants, and Industry. Industry lists up to five companies with at least two kinds of public signal: company authors whose papers cite yours; NIH SBIR or STTR awards to the company that match your main topics; and other company papers in your main topics. Each signal shows its count, its newest date and the records behind it. The relationship type, such as sponsored research or an STTR partner, comes from a fixed rule, not a model. Your papers with more than 30 authors are left out, because citations of large consortium papers say little about your own work. Every industry lead is an inference from public signals, not a verified interest in funding you. Small-business awards cover NIH only, because the SBIR.gov API was down when this was built."],
     ["Compare the kept leads", picKeep(),
       "Once you keep a lead, a bar at the bottom of Routes shows how many you kept, and its button opens the Compare tab. Compare puts your kept grants and industry leads in one table: money, close date, activity code, the funding instrument or the suggested relationship, and the evidence. Under each lead is the Temple office that handles its route. Each cell is copied from its record or counted from it by code, and pressing it opens that record. Press a column name to sort; cells with nothing in the record sort last. There is no effort or intellectual-property column, because no public record states either. Industry leads have no amount or deadline in their records."],
+    ["Hand off to a Temple office", picHandoff(),
+      "Under the table, pick an office: Research Development for grants, or Innovation and Technology Commercialization for industry leads, as research.temple.edu names them. Draft the email, and a model writes a short opening paragraph about your papers and the kept leads. Code writes the rest: the list of leads with dates and amounts copied from their records, your papers, and a note that industry leads are inferences. The opening is checked like every model text, and it may not say you should apply or that a company wants to fund you. If it fails twice, the draft opens with a plain sentence instead. The To line is left empty; a link opens the office’s page on research.temple.edu. Edit the draft, then copy it or open it in your mail app. Perch never sends it and does not save it."],
     ["Ask Scout a follow-up", picScout(),
       "Once a brief has finished, the Ask Scout tab takes plain questions, such as “only R21s that close by March” or “why does the top lead fit?”. Scout picks one of Perch’s own tools: a search with filters for agency, award ceiling, close date, activity code and words to include or leave out; the industry leads, with their signals and records; a record; the public awards; the research profile; or a fit explanation. Each tool is a card. By default Scout asks before every step, and you approve or skip it; switch to “Run and show me” to let the steps run while you watch. Scout’s answer cites records, and a date or amount that is not in a cited record gets the answer rewritten once, then withheld. Scout stops after eight model calls for one question. It cannot browse the web, send anything or change a record. Conversations are not saved: a server restart ends them."],
   ];
@@ -135,7 +147,9 @@ function pipeline() {
     ["check", "Check every claim", ["rules", "model"],
       "Code checks that each citation, date and number is in a cited record; text that fails is rewritten once, then withheld. A second model checks each statement against its source; one it cannot match is shown with a warning."],
     ["person", "You decide", ["you"],
-      "You keep or dismiss leads and open any record. Perch sends no email and writes to no outside system."],
+      "You keep or dismiss leads, compare them and open any record."],
+    ["pen", "Draft the hand-off", ["model", "code"],
+      "On request, a language model writes the opening paragraph of an email to a Temple office; code writes the list of leads, dates, amounts and papers. The paragraph is checked like every other model text. You edit and send it; Perch sends no email and writes to no outside system."],
   ];
   const kinds = { record: "Public records", code: "Code", rules: "Rules", model: "Model", you: "You" };
   return h("section", { class: "help-block", "aria-labelledby": "h-how" },
