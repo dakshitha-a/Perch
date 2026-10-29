@@ -397,8 +397,9 @@ def summarise(tool: str, result: dict) -> str:
     if result.get("status") == "not_built":
         return result["detail"]
     if tool == "search_opportunities":
-        return (f"{len(result['leads'])} leads; {result['removed_by_filters']} removed by "
-                "filters")
+        n = len(result["leads"])
+        return (f"{n} lead{'' if n == 1 else 's'}; {result['removed_by_filters']} removed by "
+                "the eligibility rules and filters")
     if tool == "build_profile":
         return f"{result['papers']} papers in {len(result['threads'])} threads"
     if tool == "list_awards":
