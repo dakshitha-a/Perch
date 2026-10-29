@@ -18,7 +18,7 @@ class Office:
     key: str
     name: str  # as the about-us page writes it
     url: str  # the office's public page (final URL after redirects)
-    route: str  # the route it owns by default: A grants, B industry
+    route: str  # the route it owns: A grants, B industry, F fellowships, S scholarships
 
 
 OFFICES: dict[str, Office] = {
@@ -28,6 +28,14 @@ OFFICES: dict[str, Office] = {
     "technology_commercialization": Office(
         "technology_commercialization", "Innovation and Technology Commercialization",
         "https://research.temple.edu/innovation/technology-commercialization", "B"),
+    # Student mode (S17, checked 2026-10-29 on the pages themselves, not on about-us):
+    # the office name is the SDFA home page's title; SFS is linked from SDFA's list for
+    # "financial aid and need-based awards".
+    "sdfa": Office(
+        "sdfa", "Scholar Development and Fellowships Advising",
+        "https://undergraduate.temple.edu/fellowships", "F"),
+    "sfs": Office(
+        "sfs", "Student Financial Services", "https://sfs.temple.edu/", "S"),
 }
 
 
