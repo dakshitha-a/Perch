@@ -3,42 +3,41 @@
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
 ## Last session
-- Session: S4 — Route A, deterministic
+- Session: S5 — Provider layer, skills 1 and 2, validator, `decide`
 - Status (done / continued): done
-- Last commit: f00e02c (task work); later commits on `main` are tracker and ritual updates
+- Last commit: ce34844 (task work); the ritual commit follows it on `main`
 
 ## What exists now (one line per subsystem)
-- Sources: OpenAlex, NIH RePORTER, NSF, Grants.gov fetchers; `perch fetch openalex|awards|opportunities`.
-- Profile: `perch/profile.py` key papers and research threads (research work types only; recency half-life 5 y; spherical k-means, k 2 to 4 by silhouette; at least 3 papers per thread; `as_of` cut-off).
-- Embeddings: `perch/embed/` (Qwen3-Embedding-0.6B default, fake for tests, SQLite cache `data/cache/embeddings.db`).
-- Vector store: `perch/store/lance.py` LanceIndex (cosine + stemmed BM25) behind `VectorIndex` in `perch/store/base.py`; data in `data/lance/`.
-- Retrieval: `perch/retrieve.py` per-thread dense + BM25, RRF k=60, weighted merge; stage timings.
-- Eligibility: `perch/eligibility.py` dates, applicant types, excluded activity codes, title-stated restrictions, user constraints; reasons kept.
-- Rerank: `perch/rerank.py` Qwen3-Reranker-0.6B CrossEncoder, cache by (model, profile hash, record) in `data/cache/rerank.db`.
-- Brief: `perch/brief.py` + `perch brief <id> --route A` (retrieve 200, filter, rerank 50 to 10). Timings appended to `data/logs/brief_timings.jsonl`.
-- Store: 676 opportunities (660 open or forecasted NIH, 16 archived), 710 works, 3 PIs with awards.
-- Tests: 76 green; `--models fake` runs the brief with no downloads.
+- Pipeline (S1 to S4): sources, profile and threads, embeddings, LanceDB, retrieval, eligibility, rerank, `perch brief --route A`.
+- Provider layer `perch/llm/`: `Provider` interface (chat, tools, schema, logprobs, prompt caching) in `base.py`; adapters `ollama.py`, `openai_compat.py`, `anthropic_provider.py` (official SDK, extra `anthropic`), `fake.py`. Spec strings like `ollama:qwen3.8:27b`; role config via `PERCH_LLM_<ROLE>` / `PERCH_LLM_DEFAULT`.
+- Audit log `perch/llm/audit.py`: every call to `data/logs/model_calls.jsonl` (prompt hash only, model served, tokens, cost, latency) plus validation events per layer.
+- `decide` `perch/llm/decide.py`: Choice, YesNo, Score; `LogprobDecider` (single label token, reads top logprobs); schema answer with confidence None where no logprobs.
+- Validator layer 1 `perch/validate.py`: cited ids, dates, numbers; `generate_validated` regenerates once, then flags; unparseable output counts as a rejection.
+- Validator layer 2 `perch/grounding.py`: MiniCheck-RoBERTa-Large on CPU (transformers, model-card scores reproduced).
+- Skills `perch/skills/`: `summary.py` (3 to 6 topics + two sentences), `fit.py` (opportunity sentence, 1 to 3 per-paper findings joined by code, link sentence shown as an inference; profile is the cacheable system prefix; parallel).
+- CLI: `perch brief <id> --explain [--llm SPEC] [--grounder minicheck|fake|none]` prints rejection rates, tokens, cost.
+- Tests: 105 green, all with fake providers; rule-6 test blocks vendor SDK imports outside `perch/llm/`.
 
-## How to run the real models
-- `uv sync --extra ml`, then `CUDA_VISIBLE_DEVICES=3 uv run --extra ml perch brief A5057472361`.
-- torch is pinned to 2.14.1+cu126 from the PyTorch cu126 index: the node's driver (565.57.01, CUDA 12.7) rejects the default CUDA 13 wheel.
-- GPU 0 holds Ollama with `qwen3.8:27b` resident. Never unload it.
+## Live results (S5)
+- 3 PIs on `qwen3.8:27b` (GPU 0, Ollama): layer 1 rejected 0 of 33; layer 2 flagged 1 of 30, a false flag on a title-supported sentence (score 0.14).
+- About 20k input and 5k output tokens per brief; 70 to 79 s for 10 explanations; $0.
 
 ## What is half-done (exact file, exact next step)
-- Nothing in S4.
-- Clef decision servers (setup task): blocked on the llama.cpp CUDA build (Q3). The torch result suggests the `cuda/120` llama.cpp build will work.
+- Anthropic adapter not live-verified (Q5): with a key in `.env`, run `uv run --extra anthropic perch brief A5023080104 --explain --llm anthropic:claude-sonnet-5-5`; check `cache_read_tokens` > 0 on the second lead in the audit log.
+- Clef servers still blocked (Q3). Jev-compatible decide adapter lands with S8.
 
 ## Decisions made this session (all in docs/DECISIONS.md)
-- Research work types only for threads and key papers; minimum 3 papers per thread.
-- Route A excludes forecasted, no close date, no applicant types, codes F, K99/R00, R36, SBIR/STTR, and titles stating limited competition or career stage.
-- Tracker gained a Decisions tab; decisions are logged in `docs/DECISIONS.md` as they are made.
+- Fit explanation is three parts so layer 2 checks facts, not judgments.
+- MiniCheck called directly through transformers, not the unpinned `minicheck` package.
+- Anthropic: official SDK only inside `perch/llm/`; refusal fallback on by default; no logprobs, so `decide` gives no confidence there.
 
 ## Open questions (mirror of bridge/QUESTIONS.md, numbered)
 - Q1: `data/backtest/` (S8) and `data/synthetic/` (S13) gitignore decision.
-- Q2: OpenAlex API key. Dakshitha has offered one; needed at the start of S8.
-- Q3: llama.cpp CUDA build failed (probe exit 4); Clef servers need a hand install.
-- Q4: Temple's Grants.gov applicant category, and the v1 activity-code exclusions.
+- Q2: OpenAlex API key; needed at the start of S8.
+- Q3: llama.cpp CUDA build failed; Clef servers need a hand install (try the `cuda/120` build).
+- Q4: Temple's Grants.gov applicant category; v1 activity-code exclusions.
+- Q5: Anthropic API key in `.env` to verify the hosted tier.
 
 ## Next session
-- Session to start: S5 — Provider layer, skills 1 and 2, validator, `decide` primitive
+- Session to start: S6 — API (FastAPI, async jobs, stage reporting)
 - First command to run: `git pull && make hooks && make test`

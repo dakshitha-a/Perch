@@ -12,4 +12,6 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 4. **Temple's applicant category on Grants.gov (raised S4, 2026-10-28).** Eligibility checks the record's applicant types. Temple is a state-related university, and I could not verify whether it applies as "Public and State controlled institutions of higher education" or "Private institutions of higher education". Interim rule: either category counts, so no opportunity is wrongly dropped, but one open only to the other category could slip through. Please confirm which one, ideally with a link to a Temple Research Administration page. Also confirm the v1 activity-code exclusions: F (fellowships), K99/R00, R36, and SBIR/STTR (R41 to R44, U43, U44).
 
+5. **Anthropic API key for the hosted tier (raised S5, 2026-10-28).** The Anthropic adapter is built on the official SDK (`uv sync --extra anthropic`) with prompt caching, strict tools, structured output and server-side refusal fallback (`fallbacks: "default"`), but it is not live-verified: there is no key on the node. You said you would use a Claude API key for testing. Please put it in `.env` as `ANTHROPIC_API_KEY` (gitignored; the hooks block keys in commits). Then `uv run perch brief <id> --explain --llm anthropic:claude-sonnet-5-5` verifies it and gives the API-model rejection rate and cost per brief for S8.
+
 ## Answered
