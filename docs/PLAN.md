@@ -117,6 +117,7 @@ Goal: the numbers for the results slide.
 2. `make bench`: config matrix — embeddings (Qwen3-0.6B, Qwen3-4B, SPECTER2, BGE-M3), retrieval (hybrid/dense/BM25), rerank on/off, three LLMs for skill 2 (API model, Qwen3-8B local, Gemma 4 26B-A4B local). One table to `bench/results/`.
 3. Cost per brief (tokens × price from the audit log) written to `docs/TRACKER.md` notes for the team.
 4. Decision-model rows in `make bench` for validator layer 2 and rerank: Clef-flash (default local), Clef (accuracy challenger), Jev (hosted) through one Jev-compatible adapter, Strands Decider 2B (CPU-only fallback) and the LLM-logprobs fallback. For validator layer 2, always run Clef alongside Clef-flash. Skip any model whose access or weights are unverified, and record why in `bench/results/`.
+5. Single-card validation. Bench `qwen3:14b`, `qwen3:8b` and `qwen3:30b` against the `qwen3.8:27b` baseline on validator pass rate, QA agreement, Scout task completion and wrong-tool rate. Measure each candidate on its own clean GPU from the bench pool (GPU 4 or 5) with the full deploy-1gpu stack beside it, so the nvidia-smi peak reflects what one card would carry in deployment. Use a second Ollama instance on that GPU (`CUDA_VISIBLE_DEVICES=4 OLLAMA_HOST=127.0.0.1:11435 ollama serve`) pointing at the same model store; never touch the primary service on GPU 0, where `qwen3.8:27b` stays resident. Record the nvidia-smi peak under 3 concurrent briefs and the p50 brief time. Gates: pass rate within 3 points of the baseline, QA agreement within 5 points, Scout completion within 10 points and wrong-tool rate not higher, peak VRAM under 28 GB, p50 brief time within 1.5 times the baseline. The smallest model that passes every gate becomes the deploy-1gpu default. If none passes, ship deploy-2gpu with the 27B and record why.
 
 Done when: a results table with baseline exists; winners written into config; runner-up one line away.
 
@@ -124,7 +125,7 @@ Done when: a results table with baseline exists; winners written into config; ru
 
 Goal: a public URL that survives Demo Day.
 
-1. Docker Compose (`web`, `api`, `worker`, `db`), `make demo` one command.
+1. Docker Compose (`web`, `api`, `worker`, `db`), `make demo` one command. Deploy with the GPU profile chosen in S8; `make demo` selects it through `PERCH_PROFILE` (deploy-1gpu, deploy-2gpu or dev). Add `make gpus`: nvidia-smi memory per service.
 2. Outbound tunnel from the lab node (check network policy first; if blocked, document the laptop + hotspot path as primary).
 3. Anonymous rate limit 10 briefs/hour; demo personas precomputed and cached; health endpoint.
 
@@ -200,3 +201,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-28 | S0 | Teammate names replaced with roles (S8 back-test set, S8 cost notes, S15 QA log); history rewritten so no version holds them | Repo will be made public; only Dakshitha's name and Temple affiliation may appear | Dakshitha |
 | 2026-10-28 | S5, S8 | Added the `decide` primitive with LLM-logprobs fallback (S5 task 7) and Jev and Laya bench rows for validator layer 2 and rerank (S8 task 4); SPEC §6, §7 and §8 updated to match | Calibrated decision models as challenger at decision points | Dakshitha |
 | 2026-10-28 | S5, S8 | Laya removed; Clef-flash (default local) and Clef (accuracy challenger) added through the Jev-compatible adapter, Jev kept as hosted option, Strands Decider 2B added as CPU-only fallback; SPEC §7 and §8 updated to match | Laya replaced by Clef-flash/Clef on published Decision Index and independent tests | Dakshitha |
+| 2026-10-28 | S8, S9 | Single-GPU deployment target with deploy-1gpu, deploy-2gpu and dev profiles (SPEC §11); S8 task 5 single-card validation with gates; S9 deploys the chosen profile via `PERCH_PROFILE` and adds `make gpus`. Clef server install attempted and blocked (Q3) | Single-GPU deployment target, validation gates, Clef installed | Dakshitha |

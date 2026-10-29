@@ -26,9 +26,16 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - A full refresh of open NIH opportunities is about 660 detail requests, about 11 minutes. Nightly scheduling is S9.
 - SPEC and PLAN gained the `decide` primitive (S5 task 7) and decision-model bench rows (S8 task 4): Clef-flash default local, Clef challenger, Jev hosted, Strands Decider 2B CPU fallback, LLM-logprobs fallback. All vendor facts marked [verify].
 
+## Setup task: Clef decision servers (asked by Dakshitha after S3)
+- llama.cpp b11941 installed via llama.app, but **CPU build only**: the CUDA probe exits 4 with no message (driver 565.57.01, CUDA 12.7). Stopped there as instructed; details in Q3.
+- Not done: Clef-flash on GPU 1 port 8097, the bartowski Q4_K_M pulls, Clef on GPU 2 port 8098, `/v1/systemone` checks, `make decide-up` or systemd unit.
+- GPU 0 Ollama has `qwen3.8:27b` resident (about 22 GB in use); never unload it. GPUs 1 to 7 were idle.
+- Docs updated: SPEC section 11 GPU profiles and VRAM budget; PLAN S8 task 5 single-card validation gates; PLAN S9 `PERCH_PROFILE` and `make gpus`; `.env.example` endpoint variables; tracker key-number row for deployment profile.
+
 ## Open questions (mirror of bridge/QUESTIONS.md, numbered)
 - Q1: `data/backtest/` (S8) and `data/synthetic/` (S13) gitignore decision. `data/overrides/` is handled.
 - Q2: OpenAlex API key in `.env`.
+- Q3: llama.cpp CUDA build failed (probe exit 4); Clef servers need a hand install.
 
 ## Next session
 - Session to start: S4 — Route A, deterministic (embeddings, LanceDB, threads, retrieval, eligibility, rerank)

@@ -164,6 +164,26 @@ Dropped: SEC filings, job postings, press releases.
 
 **Demo Day:** Docker Compose on the lab node; SQLite + LanceDB; API key server-side only; public HTTPS via an outbound tunnel **[check lab network policy]**; fallback 1 laptop + phone hotspot, fallback 2 recorded video; demo personas precomputed with one live stage; anonymous rate limit 10 briefs/hour.
 
+**GPU profiles.** The deployment target is one 32 GB GPU, two at most. The 8-GPU layout is for development and `make bench` only. `PERCH_PROFILE` selects the profile.
+
+- **deploy-1gpu** (default target): everything on GPU 0. One chat model from the Ollama list (default `qwen3:14b`, 8k context), Clef-flash Q4_K_M as the decision model, Qwen3-Embedding-0.6B, Qwen3-Reranker-0.6B and the grounding model. Peak must stay under 28 GB.
+- **deploy-2gpu**: chat model on GPU 0, everything else on GPU 1. This profile permits `qwen3.8:27b` as the chat model.
+- **dev**: the 8-GPU development layout. Ollama on GPU 0 (port 11434, `qwen3.8:27b` stays resident), Clef-flash on GPU 1 (port 8097), Clef on GPU 2 (port 8098), the embed, rerank and grounding service on GPU 3 (port 8099), GPUs 4 and 5 as the bench pool.
+
+Chat-model candidates are the models already in Ollama on the lab node: `qwen3:8b` (5.2 GB), `qwen3:14b` (9.3 GB), `qwen3:30b` (18 GB, mixture-of-experts: cheap to run, large weights) and `qwen3.8:27b` (17 GB), with `qwen3-coder:30b` also present. Sizes are as `ollama list` reports them. `nomic-embed-text` is a benchmark baseline only; the retrieval embedder is still chosen by `make bench`.
+
+deploy-1gpu VRAM budget. The budget column is an allocation target, not a measurement. The measured column is filled by the S8 single-card validation.
+
+| Component | Weights on disk | Budget | Measured peak (S8) |
+|---|---|---|---|
+| Chat model, `qwen3:14b`, 8k context | 9.3 GB (`ollama list`) | 13 GB including KV cache | |
+| Decision model, Clef-flash Q4_K_M | UNVERIFIED | 7 GB | |
+| Embedder, Qwen3-Embedding-0.6B | UNVERIFIED | 1.5 GB | |
+| Reranker, Qwen3-Reranker-0.6B | UNVERIFIED | 1.5 GB | |
+| Grounding model (validator layer 2) | UNVERIFIED | 2 GB | |
+| CUDA contexts and headroom | — | 2 GB | |
+| **Total** | | **27 GB, under the 28 GB target** | |
+
 **Temple (proposed):** hosted inside Temple; single sign-on **[verify system]**; Postgres + pgvector; nightly refresh; two model tiers from one codebase — tier 1 hosted API under an enterprise agreement with no training on inputs for public-work briefs; tier 2 local model (vLLM on a Temple GPU node) for anything confidential, never leaving the network. Owners: Research Development (Route A), Technology Commercialization (Route B). Pilot with one college.
 
 ## 12. Responsible design

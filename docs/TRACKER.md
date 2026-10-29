@@ -39,3 +39,4 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | Cost per brief (API model) | | audit log | |
 | Warm-cache brief time | | | |
 | Route B hand-judged precision | | | |
+| Deployment profile and peak VRAM | | S8 single-card validation | |
