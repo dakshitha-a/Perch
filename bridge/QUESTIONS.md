@@ -4,6 +4,14 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
+21. **How the private documents share the private weight (raised S13, 2026-10-29, asked by Dakshitha).** Private threads together get 0.6 of the thread weight (Q13). Inside that share, Perch-dev proposes:
+- **Draft proposal:** 0.5 of the private share. It is the closest thing to the work being funded.
+- **Research direction:** 0.3. It is short and looks forward.
+- **Unpublished manuscript:** 0.2. It is finished work, closer to the public papers.
+- **CV:** no search weight. It describes past work and holds contact details. It feeds only the career-stage check and the sponsor history.
+- **Missing documents:** the others split the missing share in the same proportions.
+These are starting defaults, not measurements. Default: as proposed, built in S13.
+
 20. **Temple's past STTR partners as Route B leads on their own? (raised S12, 2026-10-29).** S12 task 7 built the table of 41 Temple STTR awards (25 companies) from SBIR.gov's bulk file and a topic matcher. It matches one company each for PI-1, PI-2 and PI-4, and none for PI-3. Only PI-1's match is clearly right (Recombination Therapeutics, DNA repair). None of these companies has a second kind of signal, so under the two-signal rule they add 0 leads, and the table is not wired in. Option: show a matched past Temple STTR partner as its own industry lead, labelled "past STTR partner of Temple; one signal". That breaks the two-signal rule for this one kind of evidence. Details: `bench/results/route_b/STTR.md`. Default: leave it out.
 
 

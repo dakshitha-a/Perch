@@ -79,6 +79,7 @@ svg.arch .k-private, svg.arch .k-private-x { stroke: var(--cut); }
 .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--raised); }
 .bar span { display: block; height: 100%; }
 .scroll { overflow-x: auto; }
+pre.doc { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 13px; line-height: 1.5; padding: 14px 16px; margin: 0 0 18px; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { border-bottom: 1px solid var(--line); padding: 8px 12px; text-align: left;
   vertical-align: top; }
@@ -139,6 +140,7 @@ details .inner > * { min-width: 0; }
 <a id="tab-bench" href="#bench">Bench</a>
 <a id="tab-architecture" href="#architecture">Architecture</a>
 
+<a id="tab-persona" href="#persona">Persona</a>
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
@@ -146,11 +148,11 @@ details .inner > * { min-width: 0; }
 <div class="title-row"><h1>S13 · Private mode</h1><span class="badge s-in-progress">in progress</span></div>
 <div class="meta">Started 2026-10-29 14:22 EDT</div></div>
 <p>Goal: private tailoring on self-hosted models that leaves no trace, on the public URL too. Built in full, back end and front end; not demoed on Demo Day. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="0 of 8 tasks done"><div class="counts"><span><b>0/8</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>7</b>todo</span></div><div class="bar" role="img" aria-label="0 of 8 tasks done"><span class="s-in-progress" style="width:12.50%" title="in progress: 1"></span><span class="s-todo" style="width:87.50%" title="todo: 7"></span></div></section>
+<section class="panel summary" aria-label="1 of 8 tasks done"><div class="counts"><span><b>1/8</b>tasks done</span><span class="s-done"><b>1</b>done</span><span class="s-todo"><b>7</b>todo</span></div><div class="bar" role="img" aria-label="1 of 8 tasks done"><span class="s-done" style="width:12.50%" title="done: 1"></span><span class="s-todo" style="width:87.50%" title="todo: 7"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
 <tbody>
-<tr><td>1</td><td>Verify first: Ollama and llama.cpp prompt logging; NIH early-stage investigator definition from the NIH page</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
+<tr><td>1</td><td>Verify first: Ollama and llama.cpp prompt logging; NIH early-stage investigator definition from the NIH page</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>A unique canary sent in a prompt to the demo Ollama (0.32.13) and to both dev llama.cpp decision servers (b11941) did not appear in any unit's journal or under <code>~/.ollama</code>. Default logs hold method, path, status and token counts only. Debug modes were not tested and stay off. NIH's early-stage investigator definition was read from the NIH page and added to SOURCES and the design.</td></tr>
 <tr><td>2</td><td>Private session in memory: token, isolation, caps, idle timeout, End; paste or upload (text, Markdown, DOCX, PDF from bytes); self-hosted-endpoint gate; <code>PERCH_TLS_AT</code> rule; every write path off</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
 <tr><td>3</td><td>Tailoring: private threads at 0.6 of the thread weight; deterministic CV parse; career-stage unlock and sponsor history; private-only brief with no OpenAlex id</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
 <tr><td>4</td><td>Session records cited in explanations and accepted by the validator in session only; lock label and privacy statement in the UI; Help section</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
@@ -948,7 +950,89 @@ details .inner > * { min-width: 0; }
 </svg><figcaption>The two-GPU demo layout. GPU A holds the writing and agent models; each of their roles can move to the Anthropic API with one line in .env. GPU B holds the grounding check and search, which have no cloud path. Private mode refuses the path to the API.</figcaption></figure>
 <ul><li><strong>The swap:</strong> set <code>PERCH_LLM_&lt;ROLE&gt;=anthropic:claude-sonnet-5-5</code> for one role, or <code>PERCH_LLM_DEFAULT</code> for all of them. Roles are profile summary, fit explainer, hand-off, Scout and decide.</li><li><strong>What Sonnet measured:</strong> a typical brief took 26 s and cost about $0.09. It passed both checks on 24 of 30 leads, against 28 for Gemma.</li><li><strong>Decide on Sonnet:</strong> it works, but the Anthropic API returns no token probabilities, so the answer comes without a confidence score.</li><li><strong>What stays local:</strong> Anthropic offers no embedding or rerank API, and Perch has no adapter for another provider of them. Clef's job needs token scores.</li><li><strong>The GPU saving:</strong> if every chat role moves to the API, GPU A no longer needs Gemma. Only Clef-flash would stay there, at about 7.4 GB.</li><li><strong>The layout is planned:</strong> S9 deploys it and measures the two cards together. The memory figures here were measured in separate S8 runs.</li><li><strong>Private mode:</strong> it is designed and is built in S13. It refuses any model that is not on this server.</li></ul></section>
 
-<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log, bench/results/SUMMARY.md and docs/ARCHITECTURE.md by scripts/render_tracker.py.
+<section id="view-persona" class="view" data-view="persona" hidden><div><div class="eyebrow">Synthetic test input for private mode, for team review</div><h1>SYNTHETIC persona 1 — test input for private mode (S13)</h1></div>
+<p>Everything in this folder is invented. The person, department, dates, awards and results do not exist. Do not attach these files to a real researcher's OpenAlex profile: that would state false facts about a real person. Use them only for a private-only brief or with a synthetic profile.</p>
+<ul><li>Topic inspiration (public preprints, cited only for the topic; no text copied):</li></ul>
+<p>arXiv 2404.15335 (gait cycle data from shoe-worn sensors for early Parkinson's detection) and arXiv 2405.13082 (survey of AI in gait-based neurodegenerative disease diagnosis).</p>
+<ul><li>Each file holds a unique canary token (<code>PERCH-CANARY-…</code>). The S13 leak test runs a</li></ul>
+<p>full private brief and then checks that no canary appears in any file under <code>data/</code>, any log, browser storage, <code>/tmp</code>, an export, or an outbound request.</p>
+<div class="panel scroll"><table>
+<thead><tr><th>File</th><th>Stands in for</th><th>Canary</th></tr></thead>
+<tbody>
+<tr><td><code>cv.md</code></td><td>a current CV</td><td>PERCH-CANARY-CV-7Q4X</td></tr>
+<tr><td><code>specific_aims_draft.md</code></td><td>an unfinished grant proposal</td><td>PERCH-CANARY-AIMS-K2M9</td></tr>
+<tr><td><code>unpublished_manuscript.md</code></td><td>unpublished work in preparation</td><td>PERCH-CANARY-MS-T8V3</td></tr>
+</tbody></table></div>
+<h2><code>cv.md</code></h2><pre class="panel doc"># SYNTHETIC CV — Dr. Rowan Vale (fictional person)
+
+SYNTHETIC test document for Perch private mode. Canary: PERCH-CANARY-CV-7Q4X
+
+## Contact
+SYNTHETIC Department of Bioengineering, SYNTHETIC University
+rowan.vale [at] example [dot] invalid · +1 555 0100 · ORCID 0000-0000-0000-000X (invalid on purpose)
+
+## Education
+- PhD, Biomedical Engineering, SYNTHETIC Institute of Technology, 2021
+- BS, Electrical Engineering, SYNTHETIC State University, 2015
+
+## Appointments
+- Assistant Professor, SYNTHETIC Department of Bioengineering, 2023 to present
+- Postdoctoral Fellow, SYNTHETIC Movement Disorders Lab, 2021 to 2023
+
+## Funding
+- Current: SYNTHETIC internal seed grant SEED-0000-01, &quot;Shoe-worn force sensing for
+  early gait change&quot;, 2024 to 2025, $40,000 (invented)
+- Prior: SYNTHETIC foundation fellowship FND-0000-02, 2021 to 2023 (invented)
+- No NIH research project grant as PI.
+
+## Selected work (all invented)
+1. Vale R, et al. Stride-to-stride force variability in a SYNTHETIC cohort. 2024.
+2. Vale R, et al. Low-cost insole sensors for home gait monitoring. 2023.
+3. Vale R. Graph models of the gait cycle. Doctoral thesis, 2021.
+
+## Mentoring and service
+- Mentors 2 PhD students and 3 undergraduates (invented).
+- Reviewer for SYNTHETIC journals.
+</pre>
+<h2><code>specific_aims_draft.md</code></h2><pre class="panel doc"># SYNTHETIC unfinished proposal — Specific Aims (draft, fictional)
+
+SYNTHETIC test document for Perch private mode. Canary: PERCH-CANARY-AIMS-K2M9
+Working title: &quot;Home insole sensing to detect prodromal Parkinson&#x27;s gait change&quot;
+
+Parkinson&#x27;s disease is usually diagnosed after substantial neuron loss, when motor
+signs are already clear. Subtle changes in how force moves through the foot during
+walking may appear years earlier, but clinic visits capture only a few strides.
+Our preliminary SYNTHETIC data suggest that stride-to-stride force variability,
+measured at home over weeks, separates people with REM sleep behaviour disorder
+from age-matched controls. [Draft note: confirm the effect size before submission.]
+
+**Aim 1.** Build and validate a low-cost insole system that records ground reaction
+force at home for 8 weeks, with on-device processing so raw data stay with the
+participant.
+
+**Aim 2.** Test whether a graph model of the gait cycle distinguishes prodromal
+participants from controls, and whether its output tracks change over 12 months.
+
+**Aim 3.** Establish a shared, de-identified reference dataset and analysis code for
+other groups.
+
+Unfinished: budget, letters of support, and the human subjects section are not
+written. Target mechanism undecided (R21 or R01).
+</pre>
+<h2><code>unpublished_manuscript.md</code></h2><pre class="panel doc"># SYNTHETIC manuscript in preparation (fictional, not submitted)
+
+SYNTHETIC test document for Perch private mode. Canary: PERCH-CANARY-MS-T8V3
+Title: &quot;Weeks, not minutes: home insole recordings reveal early gait instability&quot;
+
+Abstract (draft). We recorded plantar force with instrumented insoles in a SYNTHETIC
+cohort of older adults during daily life for up to eight weeks. A graph
+representation of each gait cycle, with sensors as nodes and force transfer as
+edges, captured variability that short laboratory walks missed. Participants with
+probable REM sleep behaviour disorder showed higher cycle-to-cycle variability than
+controls. These invented results motivate a longitudinal study of home gait as an
+early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-authors.
+</pre></section>
+<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log, bench/results/SUMMARY.md, docs/ARCHITECTURE.md and data/synthetic/persona-1/ by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>
 <script>

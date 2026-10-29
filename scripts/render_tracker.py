@@ -117,6 +117,7 @@ svg.arch .k-private, svg.arch .k-private-x { stroke: var(--cut); }
 .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--raised); }
 .bar span { display: block; height: 100%; }
 .scroll { overflow-x: auto; }
+pre.doc { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 13px; line-height: 1.5; padding: 14px 16px; margin: 0 0 18px; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { border-bottom: 1px solid var(--line); padding: 8px 12px; text-align: left;
   vertical-align: top; }
@@ -553,6 +554,19 @@ def view_architecture(arch_md: str, root: Path) -> str:
     return "\n".join(out)
 
 
+def view_persona(files: dict[str, str]) -> str:
+    """The synthetic private-mode test persona: README rendered, each document shown as is."""
+    readme = parse(files.get("README.md", ""))
+    out = ['<div><div class="eyebrow">Synthetic test input for private mode, for team review'
+           f"</div><h1>{inline(readme.title or 'Persona 1')}</h1></div>"]
+    out += render_blocks(readme.blocks)
+    for name, text in files.items():
+        if name != "README.md":
+            out.append(f"<h2><code>{html.escape(name)}</code></h2>"
+                       f'<pre class="panel doc">{html.escape(text)}</pre>')
+    return "\n".join(out)
+
+
 def view_ui(src: str) -> str:
     s = html.escape(src)
     return f"""<h2>UI preview</h2>
@@ -572,7 +586,8 @@ title="Perch web app preview"></iframe></div>"""
 def render_page(master_md: str, session_files: dict[str, str], artifact: bool = False,
                 page_title: str = "Perch Build Tracker", decisions_md: str = "",
                 plan_md: str = "", ui: str | None = None, bench_md: str = "",
-                arch_md: str = "", arch_root: Path = Path("docs")) -> str:
+                arch_md: str = "", arch_root: Path = Path("docs"),
+                persona: dict[str, str] | None = None) -> str:
     master = parse(master_md)
     sessions = build_sessions(master, session_files)
     current = pick_current(sessions)
@@ -593,6 +608,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 {'<a id="tab-bench" href="#bench">Bench</a>' if bench_md else ""}
 {'<a id="tab-architecture" href="#architecture">Architecture</a>' if arch_md else ""}
 {'<a id="tab-ui" href="#ui">UI</a>' if ui else ""}
+{'<a id="tab-persona" href="#persona">Persona</a>' if persona else ""}
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
@@ -610,7 +626,8 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 {f'<section id="view-bench" class="view" data-view="bench" hidden>{view_bench(bench_md)}</section>' if bench_md else ""}
 {f'<section id="view-architecture" class="view" data-view="architecture" hidden>{view_architecture(arch_md, arch_root)}</section>' if arch_md else ""}
 {f'<section id="view-ui" class="view" data-view="ui" hidden>{view_ui(ui)}</section>' if ui else ""}
-<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log, bench/results/SUMMARY.md and docs/ARCHITECTURE.md by scripts/render_tracker.py.
+{f'<section id="view-persona" class="view" data-view="persona" hidden>{view_persona(persona)}</section>' if persona else ""}
+<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log, bench/results/SUMMARY.md, docs/ARCHITECTURE.md and data/synthetic/persona-1/ by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>
 <script>{SCRIPT}</script>
@@ -629,6 +646,12 @@ def load_sessions(sessions_dir: Path) -> dict[str, str]:
     files = [f for f in sessions_dir.glob("S*.md") if re.fullmatch(r"S\d+", f.stem)]
     files.sort(key=lambda f: int(f.stem[1:]))
     return {f.stem: f.read_text(encoding="utf-8") for f in files}
+
+
+def load_persona(folder: Path) -> dict[str, str]:
+    """README first, then the documents in name order."""
+    files = sorted(folder.glob("*.md"), key=lambda f: (f.name != "README.md", f.name))
+    return {f.name: f.read_text(encoding="utf-8") for f in files}
 
 
 def main(argv: list[str]) -> int:
@@ -650,7 +673,8 @@ def main(argv: list[str]) -> int:
 
     page = render_page(src.read_text(encoding="utf-8"), sessions, args.artifact, args.title,
                        read("DECISIONS.md"), read("PLAN.md"), args.ui,
-                       read("../bench/results/SUMMARY.md"), read("ARCHITECTURE.md"), src.parent)
+                       read("../bench/results/SUMMARY.md"), read("ARCHITECTURE.md"), src.parent,
+                       load_persona(src.parent.parent / "data/synthetic/persona-1"))
     dest.write_text(page, encoding="utf-8")
     print(f"wrote {dest}")
     return 0
