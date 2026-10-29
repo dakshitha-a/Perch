@@ -372,10 +372,11 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (77)</h2>
+<h2>Decisions (78)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S11</td><td>Route B signal 2 stays NIH SBIR/STTR from RePORTER; the SBIR.gov bulk file is not used for now</td><td>The SBIR.gov API is down; Dakshitha chose to wait rather than use the bulk file (Q19)</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S11</td><td>A brief is reused only if it has the current stage list</td><td>Briefs from before S11 have no Route B; a visitor would get no industry leads</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S11</td><td>Scout repeated-call guard: within one question, a call with the same tool and arguments as one already run (done or failed) is answered from the earlier result with a note, is never run again and is never put to the user for approval. A new question may repeat it</td><td>S10's first Sonnet run repeated one search up to nine times</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S11</td><td>Scout's <code>get_org_signals</code> uses the brief's stored Route B leads when the session is on a brief; otherwise it finds them and keeps the leads in memory, storing only organisations and evidence records. <code>search_opportunities(route=&quot;B&quot;)</code> returns the same leads</td><td>Citations in the web app must open stored records; a lead record carries the code-written sentences, so it supports the counts and dates Scout repeats</td><td>Perch-dev</td></tr>
@@ -454,10 +455,11 @@ details .inner > * { min-width: 0; }
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (15)</h2>
+<h2>Plan change log (16)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S12</td><td>Task 7 (SBIR.gov bulk file) removed again; Route B stays NIH-only</td><td>Dakshitha: leave it while the SBIR.gov API is down</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S12</td><td>Task 7 added: SBIR.gov bulk award file for Route B signal 2, kept only if it adds signal over RePORTER</td><td>Q19: the SBIR.gov API is down; Dakshitha asked to integrate the bulk file if it is beneficial</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S11 to S14, S16</td><td>Scout's follow-ups cascaded: S11 fills <code>get_org_signals</code> and Route B search, adds a repeated-call guard and Route B bench tasks; S12 fills <code>compare</code> and <code>draft_handoff</code>; S11 and S12 rebuild the demo; S13 routes private Scout's cache and store writes to memory and adds Scout to the canary test; S14 reuses Scout's tool table; S16 reruns the Scout bench</td><td>Gaps found in S10; Q18 answered with the default</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S9</td><td>Task 1: Compose runs one app service (API, web app and in-process jobs, as built in S6) instead of four containers; the GPU models run as systemd user units</td><td>No GPU access in Docker on the node; the S6 design has no separate worker or database server</td><td>Dakshitha</td></tr>

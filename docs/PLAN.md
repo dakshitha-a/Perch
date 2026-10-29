@@ -172,7 +172,6 @@ Goal: the decision and the hand-off.
 4. Scout: `compare` and `draft_handoff` call the new compare view and skill 3 (they say "not built yet" until now, Q18). The hand-off draft stays a draft. Add a compare and a hand-off task to the Scout bench.
 5. Rebuild the demo (`make demo`).
 6. Private mode egress filter: exports and hand-off drafts exclude private-derived text by default; opt-in masking of identifiers and novel phrases with typed placeholders, an in-memory key to unmask on screen, and a warning that the research direction stays visible.
-7. SBIR.gov bulk awards for Route B signal 2 (Q19). Download the all-agency CSV, last modified 2026-01-01, to `data/cache/`. Parse only the needed columns, and never read the contact name, email or phone columns. Save a redacted fixture and add a SOURCES row. Match firms by topic text, as with RePORTER, and also read `RI Name` for STTR partners. Keep it only if it adds signal over RePORTER on the 3 hand-checked PIs: more leads with an SBIR/STTR signal, at the same precision. Report the numbers either way.
 
 Done when: Find → Routes → Compare → Hand off works on the public URL.
 
@@ -240,3 +239,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S9 | Task 1: Compose runs one app service (API, web app and in-process jobs, as built in S6) instead of four containers; the GPU models run as systemd user units | No GPU access in Docker on the node; the S6 design has no separate worker or database server | Dakshitha |
 | 2026-10-29 | S11 to S14, S16 | Scout's follow-ups cascaded: S11 fills `get_org_signals` and Route B search, adds a repeated-call guard and Route B bench tasks; S12 fills `compare` and `draft_handoff`; S11 and S12 rebuild the demo; S13 routes private Scout's cache and store writes to memory and adds Scout to the canary test; S14 reuses Scout's tool table; S16 reruns the Scout bench | Gaps found in S10; Q18 answered with the default | Dakshitha |
 | 2026-10-29 | S12 | Task 7 added: SBIR.gov bulk award file for Route B signal 2, kept only if it adds signal over RePORTER | Q19: the SBIR.gov API is down; Dakshitha asked to integrate the bulk file if it is beneficial | Dakshitha |
+| 2026-10-29 | S12 | Task 7 (SBIR.gov bulk file) removed again; Route B stays NIH-only | Dakshitha: leave it while the SBIR.gov API is down | Dakshitha |
