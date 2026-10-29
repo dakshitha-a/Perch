@@ -172,7 +172,7 @@ Done when: Find → Routes → Compare → Hand off works on the public URL.
 
 ## S13 — Private mode
 
-Goal: private tailoring on self-hosted models that leaves no trace, on the public URL too.
+Goal: private tailoring on self-hosted models that leaves no trace, on the public URL too. Build the full architecture, back end and front end (private session API, inputs, private threads, session records, egress filter hooks, the private-mode screens and Help section). It is not demoed on Demo Day (Dakshitha, 2026-10-29).
 
 1. Verify first: whether the Ollama and llama.cpp servers log prompts by default, and NIH's early-stage investigator definition from the NIH page (both UNVERIFIED in the design).
 2. Private session in memory: random session token, isolation between sessions, memory and size caps, idle timeout, "End private session"; inputs by paste or upload (parsed from bytes; text, Markdown, DOCX, PDF); self-hosted-endpoint gate; `PERCH_TLS_AT` rule on public URLs; every write path in the design's inventory switched off.
@@ -227,3 +227,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S8 | Back-test PI set built from NIH RePORTER (Q7) instead of a teammate's list; task 6 Keep bar added (Q10) | Dakshitha's answers at S8 start | Dakshitha |
 | 2026-10-29 | S9, S10, S12, S13, S15 | Private mode added (design in `docs/design/PRIVATE_MODE.md`): local-only gate and logging groundwork in S9; Scout rules in S10; egress filter in S12; S13 becomes "Private mode and MCP server" (split proposed, Q11); privacy audit in S15; floor added to the cut order | Dakshitha asked for a high-privacy mode that takes a CV, unpublished work and draft proposals, runs only on local models, leaves no logs and masks anything that leaves | Dakshitha |
 | 2026-10-29 | S13 to S16 | S13 split: S13 Private mode, S14 MCP server, S15 Monitoring, S16 QA, freeze, package (Q11). Private mode allowed on the public URL when every model is self-hosted, with session isolation and a server-side TLS rule (Q12 revised) | Dakshitha: split S13; a university deployment hosts its own models, so public hosting does not by itself break the privacy promise | Dakshitha |
+| 2026-10-29 | S13 | Private mode: full back end and front end built in S13; no Demo Day demo | Dakshitha's direction | Dakshitha |
