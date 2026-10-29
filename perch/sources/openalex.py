@@ -26,7 +26,7 @@ MAX_CANDIDATES = 3
 # OpenAlex refuses more than 100 values in one OR filter (live 400, 2026-10-29).
 MAX_OR_VALUES = 100
 COMPANY_SELECT = ("id,title,publication_year,publication_date,doi,type,primary_location,"
-                  "authorships,topics,primary_topic,cited_by_count")
+                  "authorships,topics,primary_topic,cited_by_count,referenced_works")
 
 ORCID_RE = re.compile(r"(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$")
 AUTHOR_RE = re.compile(r"(A\d+)$")

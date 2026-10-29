@@ -1,0 +1,35 @@
+PI-3 (A5023080104) — name in data/overrides/pi_aliases.csv
+As of 2026-10-29. Main topics: Organ Donation and Transplantation; Ethics in Clinical Research; Mental Health and Patient Involvement
+Read 5 company works citing these papers, 300 company works in these topics and 200 NIH SBIR/STTR records.
+
+Route B: 4 companies with two or more kinds of signal. Inferred from public signals; not verified.
+
+1. Innovation Research and Training  (STTR or SBIR partner; moderate; score 1.37)
+   merged: Innovation Research and Training; INNOVATION RESEARCH AND TRAINING, INC.
+   - 1 NIH SBIR/STTR project awarded to Innovation Research and Training matches your main topics; the newest started 2026-09-01.
+     records: nih:11313524
+   - 1 other work with an author at Innovation Research and Training shares one of your main topics; the newest was published 2025-05-01.
+     records: W4410193983
+   https://api.openalex.org/institutions/I4210147992
+
+2. Leidos Biomedical Research Inc. (United States)  (Sponsored research or collaboration; moderate; score 1.11)
+   - 1 work with an author at Leidos Biomedical Research Inc. (United States) cites 1 of your papers; the newest was published 2024-05-26.
+     records: W4399034220
+   - 1 other work with an author at Leidos Biomedical Research Inc. (United States) shares one of your main topics; the newest was published 2026-04-03.
+     records: W7148849641
+   https://api.openalex.org/institutions/I4396570585
+
+3. AbbVie (United States)  (Sponsored research or collaboration; moderate; score 1.06)
+   - 1 work with an author at AbbVie (United States) cites 1 of your papers; the newest was published 2024-03-14.
+     records: W4392802315
+   - 1 other work with an author at AbbVie (United States) shares one of your main topics; the newest was published 2025-07-15.
+     records: W4412451331
+   https://api.openalex.org/institutions/I2948539688
+
+4. Abbott  (Sponsored research or collaboration; moderate; score 0.93)
+   merged: Abbott (Singapore); Abbott (United States)
+   - 1 work with an author at Abbott cites 1 of your papers; the newest was published 2021-12-01.
+     records: W4200390820
+   - 2 other works with an author at Abbott share one of your main topics; the newest was published 2025-12-01.
+     records: W4417479821, W4414590879
+   https://api.openalex.org/institutions/I4210088555

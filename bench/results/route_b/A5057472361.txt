@@ -1,0 +1,41 @@
+PI-2 (A5057472361) — name in data/overrides/pi_aliases.csv
+As of 2026-10-29. Main topics: HIV Research and Treatment; Barrier Structure and Function Studies; Cannabis and Cannabinoid Research
+Read 250 company works citing these papers, 300 company works in these topics and 200 NIH SBIR/STTR records.
+
+Route B: 5 companies with two or more kinds of signal. Inferred from public signals; not verified.
+
+1. Acuitas Therapeutics (Canada)  (Sponsored research or collaboration; moderate; score 4.42)
+   - 6 works with an author at Acuitas Therapeutics (Canada) cite 2 of your papers; the newest was published 2025-03-13.
+     records: W4408392635, W4392907550, W4392554488, W4385298686, W4212899432 ...
+   - 4 other works with an author at Acuitas Therapeutics (Canada) share one of your main topics; the newest was published 2026-07-28.
+     records: W7171516213, W7166721103, W7162859095, W4417102757
+   https://api.openalex.org/institutions/I4210149081
+
+2. F. Hoffmann-La Roche AG  (Sponsored research or collaboration; moderate; score 4.21)
+   - 9 works with an author at F. Hoffmann-La Roche AG cite 8 of your papers; the newest was published 2025-12-08.
+     records: W4417144922, W4400594786, W3047250357, W3009465414, W2972745012 ...
+   - 10 other works with an author at F. Hoffmann-La Roche AG share one of your main topics; the newest was published 2026-09-08.
+     records: W7211941728, W7165634378, W7163804307, W7140207377, W4417075922 ...
+   https://api.openalex.org/institutions/I118019719
+
+3. BioNTech  (Sponsored research or collaboration; moderate; score 3.86)
+   merged: BioNTech (Germany); BioNTech (United States)
+   - 2 works with an author at BioNTech cite 3 of your papers; the newest was published 2025-05-12.
+     records: W4410302308, W3163563420
+   - 3 other works with an author at BioNTech share one of your main topics; the newest was published 2026-09-19.
+     records: W7213764045, W7213501213, W7164416607
+   https://api.openalex.org/institutions/I4210134778
+
+4. BGI Group (China)  (Sponsored research or collaboration; moderate; score 2.97)
+   - 2 works with an author at BGI Group (China) cite 2 of your papers; the newest was published 2026-02-26.
+     records: W7131639934, W4408168492
+   - 2 other works with an author at BGI Group (China) share one of your main topics; the newest was published 2026-05-23.
+     records: W7162260280, W7155228465
+   https://api.openalex.org/institutions/I100135526
+
+5. Regeneron (United States)  (Sponsored research or collaboration; moderate; score 2.91)
+   - 2 works with an author at Regeneron (United States) cite 4 of your papers; the newest was published 2025-03-19.
+     records: W4408635676, W4295424041
+   - 2 other works with an author at Regeneron (United States) share one of your main topics; the newest was published 2026-06-30.
+     records: W7166642904, W7164907428
+   https://api.openalex.org/institutions/I186523950

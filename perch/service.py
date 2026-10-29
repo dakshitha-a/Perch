@@ -1,6 +1,7 @@
 """Brief service: the pipeline as a job with saved, pollable stages.
 
-Stages, in order: researcher, works, awards, profile, route_a, summary, explanations.
+Stages, in order: researcher, works, awards, profile, route_a, route_b, summary,
+explanations.
 Each is saved when it starts and finishes, so `GET /briefs/{id}` shows progress and
 partial results (leads appear after route_a; explanations fill in one by one). Fetch
 stages are skipped when the store already holds the data. A failure marks the stage
@@ -35,7 +36,8 @@ from perch.store.base import VectorIndex
 from perch.store.sqlite import SQLiteRepository
 from perch.validate import Validated
 
-STAGES = ("researcher", "works", "awards", "profile", "route_a", "summary", "explanations")
+STAGES = ("researcher", "works", "awards", "profile", "route_a", "route_b", "summary",
+          "explanations")
 
 
 def brief_options(as_of: date | None = None, top: int = 10, explain: bool = True,
@@ -215,7 +217,9 @@ class BriefService:
         with self.repo() as r:
             res = self._researcher(r, b)
             ov = aw.load_overrides(res.id, self.overrides)
-            linked = aw.link_awards(res, r.list(Award), ov)
+            # Only Temple awards: the store also holds companies' SBIR/STTR awards
+            # (Route B), whose PIs could share the researcher's name.
+            linked = aw.link_awards(res, [a for a in r.list(Award) if _temple(a)], ov)
             skipped = bool(linked)
             if not linked:
                 fetched: list[Award] = []
@@ -268,6 +272,32 @@ class BriefService:
         return (f"{brief.retrieved} retrieved, {len(brief.rejected)} ineligible removed, "
                 f"{len(leads)} leads"), False
 
+    def _run_route_b(self, b: Brief) -> tuple[str, bool]:
+        from perch import route_b as rb
+
+        as_of = date.fromisoformat(b.options["as_of"])
+        with self.repo() as r:
+            works = r.works_by_author(b.researcher_id)
+        with self.clients.openalex() as oc, self.clients.nih() as nc:
+            g = rb.gather(oc, nc, works, as_of)
+        found = rb.score_leads(b.researcher_id, g.seeds, g.citing, g.topical, g.sbir, g.topics,
+                               as_of)
+        evidence = {x for lead in found for s in lead.signals for x in s.record_ids}
+        keep = [w for w, _ in g.citing + g.topical if w.id in evidence]
+        keep += [a for a in g.sbir if a.id in evidence]
+        leads = [Lead(id=f"{b.id}:B{i}", source=x.org.source, source_url=x.org.source_url,
+                      fetched_at=x.org.fetched_at, brief_id=b.id, route="B",
+                      record_id=x.org.id, rank=i, fit_score=x.score,
+                      explanation=" ".join(x.sentences), inference=rb.LABEL,
+                      cited_ids=x.cited_works, inferred=True, signals=x.signals,
+                      relationship=x.relationship, confidence=x.confidence)
+                 for i, x in enumerate(found, 1)]
+        with self.repo() as r:
+            r.upsert([*{w.id: w for w in keep}.values(), *(x.org for x in found), *leads])
+        b.lead_ids = [*b.lead_ids, *(x.id for x in leads)]
+        return (f"{len(g.citing)} citing works, {len(g.topical)} topic works, {len(g.sbir)} "
+                f"SBIR/STTR records; {len(leads)} leads with two or more signals"), False
+
     def _audited(self, role: str, spec: str | None) -> AuditedProvider:
         return AuditedProvider(self.models.provider(spec or spec_for_role(role)), self.audit,
                                role)
@@ -290,8 +320,8 @@ class BriefService:
             return "explanations off", True
         with self.repo() as r:
             works = {w.id: w for w in r.works_by_author(b.researcher_id)}
-            leads = [r.get(Lead, i) for i in b.lead_ids]
-            opps = [r.get(Opportunity, x.record_id) for x in leads if x]
+            leads = [x for x in (r.get(Lead, i) for i in b.lead_ids) if x and x.route == "A"]
+            opps = [r.get(Opportunity, x.record_id) for x in leads]
         lock = threading.Lock()
 
         def save(i: int, v: Validated[Fit]) -> None:
@@ -313,6 +343,10 @@ class BriefService:
         unsupported = sum(bool(v.value and v.value.unsupported) for v in results)
         return (f"{len(results) - flagged} explained, {flagged} withheld, {unsupported} with an "
                 "unsupported statement"), False
+
+
+def _temple(a: Award) -> bool:
+    return "temple" in (a.institution or "").lower()
 
 
 def default_models(fake: bool = False, data_dir: Path = Path("data"),

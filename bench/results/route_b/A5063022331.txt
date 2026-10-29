@@ -1,0 +1,44 @@
+PI-1 (A5063022331) — name in data/overrides/pi_aliases.csv
+As of 2026-10-29. Main topics: Chronic Myeloid Leukemia Treatments; PARP inhibition in cancer therapy; DNA Repair Mechanisms
+Read 68 company works citing these papers, 300 company works in these topics and 200 NIH SBIR/STTR records.
+
+Route B: 5 companies with two or more kinds of signal. Inferred from public signals; not verified.
+
+1. Artios Pharma Limited (United Kingdom)  (Sponsored research or collaboration; moderate; score 6.58)
+   - 5 works with an author at Artios Pharma Limited (United Kingdom) cite 7 of your papers; the newest was published 2026-07-13.
+     records: W7168173868, W7164532430, W4412077674, W4409727254, W4389881830
+   - 6 other works with an author at Artios Pharma Limited (United Kingdom) share one of your main topics; the newest was published 2026-05-28.
+     records: W7162630133, W7162688155, W7148632265, W7148727170, W4417122486 ...
+   https://api.openalex.org/institutions/I4405267740
+
+2. AstraZeneca  (Sponsored research or collaboration; moderate; score 5.30)
+   merged: AstraZeneca (Sweden); AstraZeneca (United Kingdom); AstraZeneca (United States); AstraZeneca (France); AstraZeneca (Canada); AstraZeneca (Japan)
+   - 3 works with an author at AstraZeneca cite 3 of your papers; the newest was published 2026-06-30.
+     records: W7166735236, W4407508221, W4385810274
+   - 46 other works with an author at AstraZeneca share one of your main topics; the newest was published 2026-09-30.
+     records: W7214894050, W7214962482, W7214972237, W7214048000, W7213916673 ...
+   https://api.openalex.org/institutions/I105036370
+
+3. Pharmaron  (Sponsored research or collaboration; moderate; score 3.67)
+   merged: Pharmaron (China); Pharmaron (United Kingdom)
+   - 1 work with an author at Pharmaron cites 2 of your papers; the newest was published 2026-10-02.
+     records: W7220850138
+   - 3 other works with an author at Pharmaron share one of your main topics; the newest was published 2026-10-17.
+     records: W7222841272, W7148700931, W4415950120
+   https://api.openalex.org/institutions/I4405279148
+
+4. Boehringer Ingelheim  (Sponsored research or collaboration; moderate; score 3.24)
+   merged: Boehringer Ingelheim (Germany); Boehringer Ingelheim (Austria)
+   - 2 works with an author at Boehringer Ingelheim cite 2 of your papers; the newest was published 2026-08-07.
+     records: W7202251713, W4414715975
+   - 2 other works with an author at Boehringer Ingelheim share one of your main topics; the newest was published 2026-09-30.
+     records: W7214962482, W7202271083
+   https://api.openalex.org/institutions/I1330995197
+
+5. Novartis  (Sponsored research or collaboration; moderate; score 2.96)
+   merged: Novartis (Switzerland); Novartis (United States); Novartis (India); Novartis (Italy); Novartis (China); Novartis (United Kingdom); Novartis (Ireland); Novartis (Japan); Novartis (South Korea); Novartis (Sweden)
+   - 1 work with an author at Novartis cites 1 of your papers; the newest was published 2022-08-11.
+     records: W4291011829
+   - 51 other works with an author at Novartis share one of your main topics; the newest was published 2026-09-13.
+     records: W7212418462, W7203770154, W7204689443, W7204697223, W7204705012 ...
+   https://api.openalex.org/institutions/I1283582996

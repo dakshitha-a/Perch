@@ -51,7 +51,7 @@ def test_brief_end_to_end_reports_stages_and_leads(tmp_path):
     b = got["brief"]
     assert b["status"] == "done", b["error"]
     assert [s["name"] for s in b["stages"]] == ["researcher", "works", "awards", "profile",
-                                                "route_a", "summary", "explanations"]
+                                                "route_a", "route_b", "summary", "explanations"]
     assert all(s["status"] in ("done", "skipped") for s in b["stages"])
     assert b["stages"][1]["detail"] == "5 works fetched from OpenAlex"
     assert b["award_horizon"] == "2016-06-30"

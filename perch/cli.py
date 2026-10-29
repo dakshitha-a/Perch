@@ -6,6 +6,7 @@
   perch fetch opportunities           Grants.gov opportunities (nightly refresh: upsert by number)
   perch profile <author id>           key papers, awards and the public award horizon
   perch brief <author id> --route A   ranked, eligible Route A leads (record fields only)
+  perch brief <author id> --route B   industry leads from public signals (inferred)
   perch brief <author id> --explain   plus profile summary and validated fit explanations
   perch serve                         the HTTP API (briefs as background jobs)
 """
@@ -202,8 +203,10 @@ def cmd_brief(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     from perch.rerank import CrossEncoderReranker, FakeReranker, RerankCache
     from perch.store.lance import LanceIndex
 
+    if args.route == "B":
+        return cmd_route_b(args, client)
     if args.route != "A":
-        print("Only --route A exists so far (Route B is S11).", file=sys.stderr)
+        print("--route is A or B.", file=sys.stderr)
         return 2
     aid = oa.parse_author_id(args.author_id)
     fake = args.models == "fake"
@@ -247,6 +250,42 @@ def cmd_brief(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
                                          if not k.startswith("retrieve_")) +
           f"; rerank cache hits {b.rerank_cache_hits}")
     print(grants_gov.ATTRIBUTION)
+    return 0
+
+
+def cmd_route_b(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
+    from datetime import date
+
+    from perch import route_b as rb
+    from perch.sources import nih_reporter
+
+    aid = oa.parse_author_id(args.author_id)
+    with SQLiteRepository(args.db) as repo:
+        r = repo.get(Researcher, f"https://openalex.org/{aid}") if aid else None
+        if not r:
+            print(f"{args.author_id} is not in the store. Run `perch fetch openalex "
+                  f"{args.author_id}` first.", file=sys.stderr)
+            return 1
+        works = repo.works_by_author(r.id)
+    as_of = date.fromisoformat(args.as_of) if args.as_of else date.today()
+    with nih_reporter.NIHReporterClient() as nc:
+        g = rb.gather(client, nc, works, as_of)
+    leads = rb.score_leads(r.id, g.seeds, g.citing, g.topical, g.sbir, g.topics, as_of)
+    print(describe(r))
+    print(f"As of {as_of.isoformat()}. Main topics: "
+          + "; ".join(name for name, _ in g.topics.values()))
+    print(f"Read {len(g.citing)} company works citing these papers, {len(g.topical)} company "
+          f"works in these topics and {len(g.sbir)} NIH SBIR/STTR records.")
+    print(f"\nRoute B: {len(leads)} companies with two or more kinds of signal. {rb.LABEL}")
+    for i, x in enumerate(leads, 1):
+        print(f"\n{i}. {x.org.name}  ({x.relationship}; {x.confidence}; score {x.score:.2f})")
+        if len(x.org.aliases) > 1:
+            print(f"   merged: {'; '.join(x.org.aliases)}")
+        for s, text in zip(x.signals, x.sentences, strict=True):
+            print(f"   - {text}")
+            print(f"     records: {', '.join(oa.short_id(i) for i in s.record_ids[:5])}"
+                  + (" ..." if len(s.record_ids) > 5 else ""))
+        print(f"   {x.org.source_url}")
     return 0
 
 
@@ -389,7 +428,8 @@ def build_parser() -> argparse.ArgumentParser:
     pr.add_argument("--papers", type=int, default=10, help="key papers to show (default 10)")
     b = sub.add_parser("brief", help="ranked Route A leads")
     b.add_argument("author_id", help="OpenAlex author id")
-    b.add_argument("--route", default="A", help="A (grants and foundations)")
+    b.add_argument("--route", default="A",
+                   help="A (grants and foundations) or B (industry leads, public signals)")
     b.add_argument("--top", type=int, default=10)
     b.add_argument("--as-of", default=None, help="date, YYYY-MM-DD (default today)")
     b.add_argument("--min-amount", type=float, default=None, help="drop if ceiling is below")
