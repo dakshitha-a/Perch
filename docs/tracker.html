@@ -146,11 +146,11 @@ details .inner > * { min-width: 0; }
 <div class="title-row"><h1>S12 · Compare, hand-off, export</h1><span class="badge s-in-progress">in progress</span></div>
 <div class="meta">Started 2026-10-29 13:38 EDT</div></div>
 <p>Goal: the decision and the hand-off. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="0 of 7 tasks done"><div class="counts"><span><b>0/7</b>tasks done</span><span class="s-todo"><b>7</b>todo</span></div><div class="bar" role="img" aria-label="0 of 7 tasks done"><span class="s-todo" style="width:100.00%" title="todo: 7"></span></div></section>
+<section class="panel summary" aria-label="1 of 7 tasks done"><div class="counts"><span><b>1/7</b>tasks done</span><span class="s-done"><b>1</b>done</span><span class="s-todo"><b>6</b>todo</span></div><div class="bar" role="img" aria-label="1 of 7 tasks done"><span class="s-done" style="width:14.29%" title="done: 1"></span><span class="s-todo" style="width:85.71%" title="todo: 6"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
 <tbody>
-<tr><td>1</td><td>Compare screen: kept leads on money, time, effort, IP, evidence; sortable; evidence panel from any cell</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>1</td><td>Compare screen: kept leads on money, time, effort, IP, evidence; sortable; evidence panel from any cell</td><td><span class="badge s-done">done</span></td><td class="mono">7f57ce7</td><td>A Compare tab after Routes, with a count of kept leads. The Keep bar's button now opens it. Columns hold only record fields or counts made by code: money, close date with days from the brief date, activity code, funding instrument or the rule-based relationship, and evidence. No record has an effort or IP field, so there are no such columns. An empty cell reads "Not in the record" and sorts last. Each lead names its Temple office, as written on research.temple.edu/about-us. Every cell opens its record. Checked in Chromium at 390 px and 1280 px: no console errors and no sideways page scroll.</td></tr>
 <tr><td>2</td><td>Skill 3 hand-off drafter: editable email to the chosen office; never sent; copy / open in mail</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
 <tr><td>3</td><td>PDF and Markdown export of the brief</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
 <tr><td>4</td><td>Scout: <code>compare</code> and <code>draft_handoff</code> call the compare view and skill 3; compare and hand-off tasks in the Scout bench</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
@@ -388,10 +388,14 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (78)</h2>
+<h2>Decisions (82)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S12</td><td>Session order: tasks 1 to 5 first, then 7, then 6</td><td>Tasks 1 to 5 make the definition of done; 6 prepares S13</td><td>Perch-dev (advisor)</td></tr>
+<tr><td>2026-10-29</td><td>S12</td><td>Hand-offs go to the two OVPR offices named on research.temple.edu/about-us: Research Development for grants and Innovation and Technology Commercialization for industry leads. The draft's To line is empty and the office page is linked</td><td>No email in tracked files; office names verified on the public page</td><td>Dakshitha (To line), Perch-dev (names)</td></tr>
+<tr><td>2026-10-29</td><td>S12</td><td>An empty compare cell reads "Not in the record" and sorts last</td><td>It states what Perch knows, not a claim about the world such as "no deadline"</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S12</td><td>Compare columns are named by what they hold: Money, Closes, Activity code, Instrument or relationship, Evidence, and the office under each lead. No "effort" or "IP" column, and no likelihood column</td><td>No record has an effort or IP field, so those cells would be invented (rule 3). The back-test measures Perch's ranking, not the chance of funding (rule 9)</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S11</td><td>Route B signal 2 stays NIH SBIR/STTR from RePORTER; the SBIR.gov bulk file is not used for now</td><td>The SBIR.gov API is down; Dakshitha chose to wait rather than use the bulk file (Q19)</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S11</td><td>A brief is reused only if it has the current stage list</td><td>Briefs from before S11 have no Route B; a visitor would get no industry leads</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S11</td><td>Scout repeated-call guard: within one question, a call with the same tool and arguments as one already run (done or failed) is answered from the earlier result with a note, is never run again and is never put to the user for approval. A new question may repeat it</td><td>S10's first Sonnet run repeated one search up to nine times</td><td>Perch-dev</td></tr>
