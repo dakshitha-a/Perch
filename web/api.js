@@ -53,7 +53,7 @@ const EXPLAIN_STEP = 0.9;
 export function replayApi(data) {
   const final = data.brief;
   const statuses = {};
-  let startedAt = null, startedWall = 0;
+  let startedAt = null, startedWall = 0, scoutMode = "ask";
   const clone = (x) => JSON.parse(JSON.stringify(x));
   const leadsIn = () => final.leads.map((l) => ({ ...l, status: statuses[l.id] || l.status }));
 
@@ -121,9 +121,42 @@ export function replayApi(data) {
       return r ? later(clone(r), 120) : Promise.reject(new ApiError(`No record ${id}.`, 404));
     },
     exportUrl: () => null,
-    watch: async () => ({ digests: [], replay: true }),
-    compare: () => Promise.reject(new ApiError("The comparison needs the live app.", 0)),
-    handoff: () => Promise.reject(new ApiError("Hand-off drafts need the live app.", 0)),
+    // Later steps, recorded by scripts/export_replay.py (version 2 files). The comparison
+    // is filtered to the kept leads; a hand-off draft and a Scout answer play back only
+    // for what was recorded, and say so otherwise.
+    watch: () => later(data.watch ? clone(data.watch) : { digests: [], replay: true }),
+    compare: () => {
+      if (!data.compare) return Promise.reject(new ApiError("The comparison needs the live app.", 0));
+      const kept = new Set(leadsIn().filter((l) => l.status === "kept").map((l) => l.id));
+      return later({ ...clone(data.compare), rows: data.compare.rows.filter((r) => kept.has(r.lead_id)) });
+    },
+    handoff: (id, body) => {
+      const rec = (data.handoffs || {})[body.office];
+      if (!rec) return Promise.reject(new ApiError("Hand-off drafts need the live app.", 0));
+      const route = (data.compare.offices.find((o) => o.key === body.office) || {}).route;
+      const kept = leadsIn().filter((l) => l.status === "kept" && (l.route || "A") === route)
+        .map((l) => l.id).sort();
+      if (kept.join(",") === [...rec.lead_ids].sort().join(",")) return later(clone(rec.draft), 600);
+      const names = rec.lead_ids.map((i) => final.leads.find((l) => l.id === i))
+        .map((l) => (l.opportunity ? l.opportunity.title : l.organisation ? l.organisation.name : l.record_id));
+      return Promise.reject(new ApiError("This preview holds the draft for these kept leads only: "
+        + `${names.join("; ")}. Keep exactly those to see it.`, 0));
+    },
+    recordedQuestion: data.scout ? data.scout.question : null,
+    scoutStart: data.scout ? (id, body) => {
+      const norm = (q) => q.trim().toLowerCase().replace(/[?.!]+$/, "");
+      if (norm(body.question) !== norm(data.scout.question)) {
+        return Promise.reject(new ApiError(`This preview holds one recorded question: “${data.scout.question}”`, 0));
+      }
+      scoutMode = body.mode;
+      return later({ ...clone(data.scout.session), mode: scoutMode }, 900);
+    } : undefined,
+    scoutGet: () => later({ ...clone(data.scout.session), mode: scoutMode }),
+    scoutAct: (sid, action) => {
+      if (action !== "mode") return Promise.reject(new ApiError("This preview holds one recorded answer. Ask follow-ups in the live app.", 0));
+      scoutMode = scoutMode === "run" ? "ask" : "run";
+      return later({ ...clone(data.scout.session), mode: scoutMode });
+    },
     // Same shape as the live export with ?status=kept, built from the saved records.
     keptUrl: () => {
       const leads = leadsIn().filter((l) => l.status === "kept");

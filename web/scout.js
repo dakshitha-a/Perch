@@ -173,7 +173,8 @@ function askForm(ctx, busy) {
         placeholder: "For example: only NIH, ceiling at least $500k", oninput: (e) => { T.draft = e.target.value; } }),
       h("button", { class: "btn primary", type: "submit", disabled: busy || waiting }, h("span", { text: "Ask" }))),
     waiting ? h("p", { class: "hint", text: "Approve or skip Scout’s step above first." }) : null,
-    !T.data ? h("ul", { class: "chips" }, ...EXAMPLES.map((q) => h("li", {},
+    !T.data && ctx.api.recordedQuestion ? h("p", { class: "hint", text: "This preview plays back one recorded question. Tap it below." }) : null,
+    !T.data ? h("ul", { class: "chips" }, ...(ctx.api.recordedQuestion ? [ctx.api.recordedQuestion] : EXAMPLES).map((q) => h("li", {},
       h("button", { class: "chip", type: "button", onclick: () => { T.draft = q; send(ctx); } }, q)))) : null);
 }
 
