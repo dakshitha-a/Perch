@@ -715,3 +715,11 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 .private-link { margin-top: 12px; }
 .private-link a { display: inline-flex; align-items: center; gap: 6px; }
 .thread.private .hint, .thread.said .hint { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+
+/* What changed (S16) */
+.watch-list { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 16px; }
+.changes { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 10px; }
+.change { display: grid; gap: 4px; justify-items: start; }
+.change a { color: var(--ink); overflow-wrap: anywhere; }
+.watch-draft { margin-top: 12px; }
+.watch-draft summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }

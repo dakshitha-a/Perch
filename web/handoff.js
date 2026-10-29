@@ -19,7 +19,7 @@ function draftText(d) {
   return `Subject: ${d.subject}\n\n${d.body}`;
 }
 
-async function copy(text, announce) {
+export async function copy(text, announce) {
   try {
     await navigator.clipboard.writeText(text);
     announce("The draft is copied. Paste it into your email.");

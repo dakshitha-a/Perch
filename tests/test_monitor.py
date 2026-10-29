@@ -122,3 +122,16 @@ def test_cli_needs_someone_to_watch(monkeypatch, capsys):
     monkeypatch.setattr("perch.cli.load_dotenv", lambda: None)
     assert main(["monitor", "--models", "fake"]) == 2
     assert "needs --author" in capsys.readouterr().err
+
+
+def test_watch_route_lists_the_latest_run_with_its_draft(tmp_path):
+    c, service = make(tmp_path)
+    assert c.get("/watch").json()["digests"] == []
+    monitor.watch(service, AID, as_of=date(2015, 7, 1))
+    d2 = monitor.watch(service, AID, as_of=date(2015, 7, 8))
+    got = c.get("/watch").json()
+    [w] = got["digests"]
+    assert w["id"] == d2.id and w["baseline"]["as_of"] == "2015-07-01"
+    assert w["researcher"]["name"] and w["award_horizon"] == "2016-06-30"
+    assert w["draft"] is None and w["changes"][0]["kind"] == "award_ending"
+    assert "not endorsed or certified" in got["notice"]

@@ -31,6 +31,7 @@ export function liveApi(base = "") {
       `/briefs/${encodeURIComponent(id)}/leads/${encodeURIComponent(leadId)}/${action}`,
       { method: "POST" }),
     record: (id) => call(base, `/records/${encodeURIComponent(id)}`),
+    watch: () => call(base, "/watch"),
     exportUrl: (id, kind = "json") => `${base}/briefs/${encodeURIComponent(id)}/export.${kind}`,
     keptUrl: (id) => `${base}/briefs/${encodeURIComponent(id)}/export.json?status=kept`,
     compare: (id) => call(base, `/briefs/${encodeURIComponent(id)}/compare`),
@@ -120,6 +121,7 @@ export function replayApi(data) {
       return r ? later(clone(r), 120) : Promise.reject(new ApiError(`No record ${id}.`, 404));
     },
     exportUrl: () => null,
+    watch: async () => ({ digests: [], replay: true }),
     compare: () => Promise.reject(new ApiError("The comparison needs the live app.", 0)),
     handoff: () => Promise.reject(new ApiError("Hand-off drafts need the live app.", 0)),
     // Same shape as the live export with ?status=kept, built from the saved records.

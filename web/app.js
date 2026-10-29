@@ -7,6 +7,7 @@ import { renderHelp } from "./help.js";
 import { compareOffices, loadCompare, renderCompare } from "./compare.js";
 import { renderHandoff } from "./handoff.js";
 import { renderScout } from "./scout.js";
+import { renderWatch } from "./watch.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
 import { lockLabel, privateAvailable, privateBar, renderPrivate } from "./private.js";
@@ -80,6 +81,15 @@ function route() {
     api = publicApi;
     barOwl("idle");
     renderPrivate(main(), { api: privApi, go, announce });
+    return;
+  }
+  if (parts[0] === "changes") {
+    stopPolling();
+    S.briefId = null;
+    S.brief = null;
+    api = publicApi;
+    barOwl("idle");
+    renderWatch(main(), { api: publicApi, announce });
     return;
   }
   if (parts[0] === "brief" && parts[1]) {
@@ -195,7 +205,8 @@ function renderFind() {
         h("h1", { text: "See every route to fund your work." }),
         h("p", { class: "lede", text:
           "Perch reads a researcher’s public papers and lists open funding that fits. Every claim links to the public record behind it." }),
-        h("p", { class: "hero-help" }, h("a", { href: "#/help" }, icon("help"), h("span", { text: "New here? See how Perch works" }))))),
+        h("p", { class: "hero-help" }, h("a", { href: "#/help" }, icon("help"), h("span", { text: "New here? See how Perch works" }))),
+        h("p", { class: "hero-help" }, h("a", { href: "#/changes" }, icon("search"), h("span", { text: "What changed this week" }))))),
     form,
     h("div", { class: "results" }, results),
     recent.length ? h("section", { class: "recent" },

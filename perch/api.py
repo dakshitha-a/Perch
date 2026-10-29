@@ -16,6 +16,9 @@
                                                 Temple office about the kept leads (skill 3);
                                                 returned, never stored or sent
   GET  /records/{id}                            any stored record, with provenance
+  GET  /watch                                   the latest monitoring run per watched
+                                                researcher: what changed and the email
+                                                draft (S16); drafts are never sent
   POST /briefs/{id}/scout                       {"question", "mode": "ask"|"run"}: a Scout
                                                 session about the brief (S10)
   GET  /scout/{session}                         its questions, tool cards and answers
@@ -419,6 +422,31 @@ def create_app(service: BriefService, runner: JobRunner,
         if x is None:
             raise HTTPException(404, f"no record {record_id!r}")
         return record_json(x)
+
+    @app.get("/watch")
+    def watch() -> dict:
+        from perch import monitor
+
+        out = []
+        with service.repo() as r:
+            for d in sorted(monitor.latest(r), key=lambda d: d.fetched_at, reverse=True):
+                res = r.get(Researcher, d.researcher_id)
+                base = r.get(Brief, d.baseline_brief_id) if d.baseline_brief_id else None
+                cur = r.get(Brief, d.brief_id)
+                out.append({
+                    "id": d.id, "run_at": d.fetched_at.isoformat(), "as_of": d.as_of.isoformat(),
+                    "researcher": {"id": d.researcher_id,
+                                   "name": res.display_name if res else None},
+                    "brief_id": d.brief_id,
+                    "award_horizon": (cur.award_horizon.isoformat()
+                                      if cur and cur.award_horizon else None),
+                    "baseline": ({"brief_id": base.id, "as_of": base.options.get("as_of")}
+                                 if base else None),
+                    "changes": [c.model_dump() for c in d.changes],
+                    "draft": ({"subject": d.draft_subject, "body": d.draft_body}
+                              if d.draft_subject else None),
+                    "refresh": d.refresh})
+        return {"digests": out, "notice": grants_gov.ATTRIBUTION}
 
     # --- Scout (S10) ---
     hub = ScoutHub(service, scout_runner or runner, scout_log)
