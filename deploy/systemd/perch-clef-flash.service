@@ -1,0 +1,14 @@
+# Perch decision model: Clef-flash (default local decision model), dev profile GPU 1, port 8097.
+# Installed by `make decide-up` as a systemd user unit; survives reboot with lingering enabled.
+[Unit]
+Description=Perch decision model Clef-flash (llama.cpp, GPU 1, port 8097)
+After=network-online.target
+
+[Service]
+Environment=CUDA_VISIBLE_DEVICES=1
+ExecStart=%h/.local/bin/llama serve -hf ggml-org/Clef-Flash-GGUF --port 8097 -ngl 99 -ub 4096 -b 4096 --host 127.0.0.1
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

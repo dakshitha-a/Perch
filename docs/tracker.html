@@ -254,10 +254,11 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (31)</h2>
+<h2>Decisions (32)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-28</td><td>after S5</td><td>Decision models served by llama.cpp's <code>cuda/89</code> build as systemd user units (<code>deploy/systemd/</code>, <code>make decide-up</code>)</td><td>Release folders are compute capabilities; the RTX 5000 Ada cards are 8.9; user units with lingering survive reboot without root</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>after S5</td><td>Anthropic API spend capped at $100 to the demo, enforced in the adapter from its own ledger (<code>PERCH_ANTHROPIC_BUDGET_USD</code>); warns at 80%, refuses at the cap; unknown prices billed at the most expensive model; local models for development, API only to verify, measure and demo</td><td>Fixed job budget</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>after S5</td><td>Temple counts as either higher-education applicant category on Grants.gov (Q4)</td><td>Classification unverified; nothing is wrongly dropped</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>after S5</td><td><code>data/</code>: commit curated inputs (overrides, backtest, synthetic), ignore generated files (Q1)</td><td>Back-test PI list and synthetic persona must be versioned; databases and caches must not</td><td>Dakshitha</td></tr>

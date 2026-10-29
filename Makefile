@@ -1,6 +1,6 @@
 UV ?= uv
 
-.PHONY: test demo bench tracker package hooks
+.PHONY: test demo bench tracker package hooks decide-up decide-down decide-status
 
 test:
 	$(UV) run ruff check .
@@ -23,3 +23,19 @@ package:
 
 hooks:
 	git config core.hooksPath scripts/git-hooks
+
+# Decision-model servers (dev profile): Clef-flash on GPU 1 :8097, Clef on GPU 2 :8098.
+# Needs llama.cpp's CUDA build at ~/.local/bin/llama (see docs/HANDOFF.md).
+DECIDE_UNITS = perch-clef-flash.service perch-clef.service
+decide-up:
+	mkdir -p $(HOME)/.config/systemd/user
+	cp deploy/systemd/perch-clef-flash.service deploy/systemd/perch-clef.service $(HOME)/.config/systemd/user/
+	systemctl --user daemon-reload
+	systemctl --user enable --now $(DECIDE_UNITS)
+
+decide-down:
+	systemctl --user disable --now $(DECIDE_UNITS)
+
+decide-status:
+	@systemctl --user --no-pager status $(DECIDE_UNITS) | grep -E 'Loaded|Active|service -' || true
+	@for p in 8097 8098; do printf "port $$p health: "; curl -s 127.0.0.1:$$p/health || echo down; echo; done

@@ -1,0 +1,14 @@
+# Perch decision model: Clef (accuracy challenger), dev profile GPU 2, port 8098.
+# Installed by `make decide-up` as a systemd user unit; survives reboot with lingering enabled.
+[Unit]
+Description=Perch decision model Clef (llama.cpp, GPU 2, port 8098)
+After=network-online.target
+
+[Service]
+Environment=CUDA_VISIBLE_DEVICES=2
+ExecStart=%h/.local/bin/llama serve -hf bartowski/Cloudflare_clef-GGUF:Q4_K_M --port 8098 -ngl 99 -ub 4096 -b 4096 --host 127.0.0.1
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -177,7 +177,7 @@ deploy-1gpu VRAM budget. The budget column is an allocation target, not a measur
 | Component | Weights on disk | Budget | Measured peak (S8) |
 |---|---|---|---|
 | Chat model, `qwen3:14b`, 8k context | 9.3 GB (`ollama list`) | 13 GB including KV cache | |
-| Decision model, Clef-flash Q4_K_M | UNVERIFIED | 7 GB | |
+| Decision model, Clef-flash Q4_K_M | 6.73 GB (`ggml-org/Clef-Flash-GGUF`); 8.0 GB VRAM idle on its own GPU in dev | 7 GB (over by about 1 GB at default context; S8 to size `-c`) | |
 | Embedder, Qwen3-Embedding-0.6B | UNVERIFIED | 1.5 GB | |
 | Reranker, Qwen3-Reranker-0.6B | UNVERIFIED | 1.5 GB | |
 | Grounding model (validator layer 2) | UNVERIFIED | 2 GB | |

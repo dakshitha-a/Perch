@@ -24,7 +24,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 
 ## What is half-done (exact file, exact next step)
 - Anthropic adapter verified live after S5 (claude-sonnet-5-5, PI-3, 3 leads): schemas go through the SDK's `transform_schema` (the API rejects minimum/maximum and minItems > 1); the first lead runs alone so the rest read the cached profile prefix (about $0.0066 per lead). Spend $0.08 of the $100 cap (`perch/llm/budget.py`).
-- Clef servers still blocked (Q3). Jev-compatible decide adapter lands with S8.
+- Clef servers running (Q3 answered): Clef-flash GPU 1 :8097, Clef GPU 2 :8098, systemd user units via `make decide-up`; `make decide-status` checks them. Next: the Jev-compatible `decide` adapter for `/v1/systemone` (S8).
 
 ## Decisions made this session (all in docs/DECISIONS.md)
 - Fit explanation is three parts so layer 2 checks facts, not judgments.
@@ -32,11 +32,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - Anthropic: official SDK only inside `perch/llm/`; refusal fallback on by default; no logprobs, so `decide` gives no confidence there.
 
 ## Open questions (mirror of bridge/QUESTIONS.md, numbered)
-- Q1: `data/backtest/` (S8) and `data/synthetic/` (S13) gitignore decision.
-- Q2: OpenAlex API key; needed at the start of S8.
-- Q3: llama.cpp CUDA build failed; Clef servers need a hand install (try the `cuda/120` build).
-- Q4: Temple's Grants.gov applicant category; v1 activity-code exclusions.
-- Q5: Anthropic API key in `.env` to verify the hosted tier.
+- Q1, Q2, Q3, Q4, Q5 answered after S5; none open.
 
 ## Next session
 - Session to start: S6 — API (FastAPI, async jobs, stage reporting)
