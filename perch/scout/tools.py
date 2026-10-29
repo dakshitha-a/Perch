@@ -3,7 +3,7 @@
 Scout can call these nine names and nothing else (SPEC section 8). Each returns a JSON
 object; every record it mentions is added to `ScoutContext.seen` under its short id,
 so the validator can check Scout's answer against exactly what the tools returned.
-Three tools belong to later sessions and say so instead of doing anything (Q18).
+Two tools belong to S12 and say so instead of doing anything (Q18).
 """
 
 from __future__ import annotations
@@ -20,12 +20,12 @@ from perch.llm import Tool
 from perch.llm.audit import AuditedProvider
 from perch.profile import Profile, build_threads
 from perch.rerank import RerankCache
-from perch.schemas import Award, Opportunity, Record, Researcher
+from perch.schemas import Award, Lead, Opportunity, Organisation, Record, Researcher
 from perch.sources import openalex as oa
 
 ALLOWLIST = ("resolve_author", "build_profile", "list_awards", "search_opportunities",
              "get_org_signals", "explain_fit", "compare", "draft_handoff", "get_record")
-NOT_BUILT = {"get_org_signals": "S11", "compare": "S12", "draft_handoff": "S12"}
+NOT_BUILT = {"compare": "S12", "draft_handoff": "S12"}
 DESCRIPTION_CHARS = 1200
 
 
@@ -46,7 +46,9 @@ class ScoutContext:
     as_of: date
     researcher_id: str | None = None
     explainer: AuditedProvider | None = None
+    brief_id: str | None = None  # the brief the user is looking at, if any
     profile: Profile | None = None
+    route_b: list[Lead] | None = None  # this session's Route B leads, once found
     seen: dict[str, Record] = field(default_factory=dict)
 
     def see(self, r: Record) -> str:
@@ -140,8 +142,10 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                          closes_by: str | None = None, activity_codes: list[str] | None = None,
                          keywords: list[str] | None = None,
                          exclude_keywords: list[str] | None = None, top: int = 10) -> dict:
-    if route != "A":
-        return {"status": "not_built", "detail": "Route B (industry leads) is built in S11."}
+    if route == "B":
+        out = get_org_signals(ctx, author_id, top=top)
+        return {**out, "note": out["note"] + " Grant filters (agency, amount, dates, codes, "
+                "keywords) do not apply to route B."}
     try:
         by = date.fromisoformat(closes_by) if closes_by else None
     except ValueError as e:
@@ -174,6 +178,71 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
     return {"source": "Grants.gov federal opportunities in the store", "as_of":
             ctx.as_of.isoformat(), "retrieved": b.retrieved, "removed_by_filters":
             len(b.rejected), "top_removal_reasons": top_reasons, "leads": leads}
+
+
+def _route_b_leads(ctx: ScoutContext, author_id: str | None) -> list[Lead]:
+    """The brief's stored Route B leads when the session is on a brief for this researcher;
+    otherwise found now. Found leads stay in memory; their organisations and evidence
+    records go to the store so get_record can open them."""
+    from perch import route_b as rb
+
+    res = _researcher(ctx, author_id)
+    if ctx.route_b is not None and ctx.researcher_id == res.id:
+        return ctx.route_b
+    leads: list[Lead] = []
+    if ctx.brief_id and (got := ctx.service.get(ctx.brief_id)) and \
+            got[0].researcher_id == res.id and _stage_done(got[0], "route_b"):
+        leads = sorted((x for x in got[1] if x.route == "B"), key=lambda x: x.rank or 0)
+    else:
+        _profile(ctx, res.id)
+        with ctx.service.repo() as r:
+            works = r.works_by_author(res.id)
+        with ctx.service.clients.openalex() as oc, ctx.service.clients.nih() as nc:
+            g = rb.gather(oc, nc, works, ctx.as_of)
+        found = rb.score_leads(res.id, g.seeds, g.citing, g.topical, g.sbir, g.topics, ctx.as_of)
+        with ctx.service.repo() as r:
+            r.upsert([*rb.evidence_records(found, g), *(x.org for x in found)])
+        leads = rb.make_leads(found, f"scout-{oa.short_id(res.id)}")
+    ctx.researcher_id, ctx.route_b = res.id, leads
+    return leads
+
+
+def _stage_done(b: object, name: str) -> bool:
+    return any(s.name == name and s.status in ("done", "skipped") for s in b.stages)
+
+
+def get_org_signals(ctx: ScoutContext, author_id: str | None = None,
+                    organisation: str | None = None, top: int = 5) -> dict:
+    from perch.route_b import LABEL, sentence
+
+    leads = _route_b_leads(ctx, author_id)
+    with ctx.service.repo() as r:
+        orgs = {x.record_id: r.get(Organisation, x.record_id) for x in leads}
+        out = []
+        for x in leads:
+            org = orgs.get(x.record_id)
+            name = org.name if org else x.record_id
+            if organisation and organisation.lower() not in " ".join(
+                    [name, *(org.aliases if org else [])]).lower():
+                continue
+            signals = []
+            for sig in x.signals:
+                ev = [r.get_any(i) for i in sig.record_ids[:3]]
+                signals.append({"kind": sig.kind, "count": sig.count,
+                                "latest": sig.latest and sig.latest.isoformat(),
+                                "sentence": sentence(sig, name, len(x.cited_ids)),
+                                "records": [ctx.see(e) for e in ev if e]})
+            out.append({"lead": ctx.see(x), "rank": x.rank, "organisation": name,
+                        "organisation_id": ctx.see(org) if org else x.record_id,
+                        "relationship": x.relationship, "confidence": x.confidence,
+                        "signals": signals, "researcher_papers_cited": x.cited_ids[:10]})
+            for c in x.cited_ids[:10]:
+                if (w := r.get_any(f"https://openalex.org/{c}")) is not None:
+                    ctx.see(w)
+    return {"route": "B", "label": LABEL, "leads": out[:max(1, min(int(top), 5))],
+            "note": "Companies with at least two kinds of public signal: company works citing "
+            "the researcher, NIH SBIR/STTR awards in their topics (NIH only), and company "
+            "works in their topics. Cite the lead id for its counts and dates."}
 
 
 def explain_fit(ctx: ScoutContext, opportunity_id: str) -> dict:
@@ -258,8 +327,9 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
     "search_opportunities": (Tool(
         "search_opportunities",
         "Re-run the funding search with filters. Route A is federal grants (Grants.gov); "
-        "route B is industry and is not built yet. Amounts are US dollars; closes_by is a date "
-        "like 2027-03-01. Only eligible, open opportunities are returned.",
+        "route B is industry leads (the same as get_org_signals; the filters below apply to "
+        "route A only). Amounts are US dollars; closes_by is a date like 2027-03-01. Only "
+        "eligible, open opportunities are returned.",
         _obj({"route": {"type": "string", "enum": ["A", "B"]}, "author_id": AUTHOR,
               "min_amount": {"type": "number", "description": "drop if the ceiling is below"},
               "max_amount": {"type": "number", "description": "drop if the ceiling is above"},
@@ -272,9 +342,16 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
                                    "text, e.g. clinical trial"},
               "top": {"type": "integer", "description": "how many leads, 1 to 20"}},
              ["route"])), search_opportunities),
-    "get_org_signals": (Tool("get_org_signals", "Industry signals for route B (not built "
-                             "yet).", _obj({"author_id": AUTHOR}, [])),
-                        not_built("get_org_signals")),
+    "get_org_signals": (Tool(
+        "get_org_signals",
+        "Route B industry leads: companies with at least two kinds of public signal (their "
+        "works cite the researcher's papers; NIH SBIR/STTR awards in the researcher's topics; "
+        "their works in those topics), each with counts, newest dates and evidence records. "
+        "Leads are inferred, not verified. Optionally one company by name.",
+        _obj({"author_id": AUTHOR,
+              "organisation": {**STR, "description": "a company name, e.g. AstraZeneca"},
+              "top": {"type": "integer", "description": "how many leads, 1 to 5"}}, [])),
+        get_org_signals),
     "explain_fit": (Tool("explain_fit", "Why one opportunity fits the researcher, from the "
                          "opportunity record and their papers, checked by the citation "
                          "validator.", _obj({"opportunity_id": OPP}, ["opportunity_id"])),

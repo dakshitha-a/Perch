@@ -13,7 +13,7 @@ const POLL_MS = 1500;
 const SOURCES = { openalex: "OpenAlex", grants_gov: "Grants.gov", nih_reporter: "NIH RePORTER",
   nsf: "NSF Award Search", perch: "Perch" };
 const KINDS = { opportunity: "Funding opportunity", work: "Paper", award: "Public award",
-  researcher: "Researcher", organisation: "Organisation" };
+  researcher: "Researcher", organisation: "Organisation", lead: "Industry lead" };
 const SIGNALS = { citing_works: "They cite your papers", sbir_sttr: "NIH SBIR/STTR awards",
   topic_works: "They publish in your topics" };
 
@@ -1175,6 +1175,13 @@ function recordView(r) {
         field("Amount", r.amount ? `${f.money(r.amount)}${r.amount_basis ? ` (${r.amount_basis})` : ""}` : "Not stated in the record"),
         field("Fiscal year", r.fiscal_year), field("Activity code", r.activity_code),
         field("Funding opportunity", r.opportunity_number), field("Institution", r.institution)));
+  } else if (r.kind === "lead" && r.route === "B") {
+    out.push(h("h2", { class: "rec-title", id: "evidence-title", text: `Industry lead ${r.rank}` }),
+      h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Inference" }), h("span", { text: r.inference || "" })),
+      h("p", { text: r.explanation || "" }),
+      h("dl", { class: "fields" }, field("Suggested relationship", r.relationship),
+        field("Organisation", h("button", { class: "cite", onclick: (e) => openEvidence(r.record_id, e.currentTarget) },
+          h("span", { text: "Open the organisation record" })))));
   } else if (r.kind === "organisation") {
     out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.name }),
       h("dl", { class: "fields" }, field("Type", r.type), field("Country", r.country),

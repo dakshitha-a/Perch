@@ -1,0 +1,6 @@
+model,policy,task,kind,completed,status,flagged,calls,wrong_calls,tools,missing,turns,tokens,usd,seconds,errors
+ollama:gemma4:26b-a4b,native,b01,task,True,done,False,1,0,get_org_signals:done,,2,4807,0.0,47.2,
+ollama:gemma4:26b-a4b,native,b02,task,True,done,False,1,0,get_org_signals:done,,2,3642,0.0,9.6,
+ollama:gemma4:26b-a4b,native,b03,task,True,done,False,1,0,get_org_signals:done,,2,4240,0.0,6.2,
+ollama:gemma4:26b-a4b,native,b04,task,True,done,False,2,0,get_org_signals:refused get_org_signals:done,,1,9843,0.0,10.5,
+ollama:gemma4:26b-a4b,native,b05,restraint,True,done,False,0,0,,,1,1489,0.0,1.8,

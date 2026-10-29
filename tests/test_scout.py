@@ -141,11 +141,63 @@ def test_structured_fallback_for_models_without_tool_calling(service):
 
 def test_tools_from_later_sessions_say_so(service):
     c = ctx(service)
-    for name in ("get_org_signals", "compare", "draft_handoff"):
-        args = {"opportunity_ids": [OPP]} if name == "compare" else (
-            {"opportunity_id": OPP} if name == "draft_handoff" else {})
+    for name in ("compare", "draft_handoff"):
+        args = {"opportunity_ids": [OPP]} if name == "compare" else {"opportunity_id": OPP}
         assert TOOLS[name][1](c, **args)["status"] == "not_built"
-    assert TOOLS["search_opportunities"][1](c, route="B")["status"] == "not_built"
+
+
+def _brief_with_route_b(service):
+    """The fixture brief plus one SYNTHETIC Route B lead."""
+    from datetime import UTC, datetime
+
+    from perch.schemas import Brief, Lead, Organisation, Signal, Work
+
+    t = datetime(2026, 10, 29, tzinfo=UTC)
+    with service.repo() as r:
+        b = max(r.list(Brief), key=lambda x: x.created_at)
+        org = Organisation(id="https://openalex.org/I1", source="openalex",
+                           source_url="https://api.openalex.org/institutions/I1", fetched_at=t,
+                           name="SYNTHETIC Co", type="company", aliases=["SYNTHETIC Co"])
+        w = Work(id="https://openalex.org/W77", source="openalex", source_url="u",
+                 fetched_at=t, title="SYNTHETIC company paper", publication_date=date(2026, 1, 2))
+        lead = Lead(id=f"{b.id}:B1", source="openalex", source_url=org.source_url, fetched_at=t,
+                    brief_id=b.id, route="B", record_id=org.id, rank=1, inferred=True,
+                    relationship="Sponsored research or collaboration", confidence="moderate",
+                    explanation=("4 works with an author at SYNTHETIC Co cite 2 of your papers; "
+                                 "the newest was published 2026-01-02."),
+                    inference="Inferred from public signals; not verified.",
+                    signals=[Signal(kind="citing_works", record_ids=[w.id], count=4,
+                                    latest=date(2026, 1, 2))])
+        r.upsert([org, w, lead, b.model_copy(update={"lead_ids": [*b.lead_ids, lead.id]})])
+    c = ctx(service)
+    c.brief_id = b.id
+    return c, lead
+
+
+def test_route_b_tools_return_the_briefs_industry_leads(service):
+    c, lead = _brief_with_route_b(service)
+    out = TOOLS["get_org_signals"][1](c)
+    x = out["leads"][0]
+    assert out["label"].startswith("Inferred") and x["lead"] == lead.id
+    assert x["organisation"] == "SYNTHETIC Co" and x["organisation_id"] == "I1"
+    assert x["signals"][0]["records"] == ["W77"] and x["signals"][0]["count"] == 4
+    assert TOOLS["get_org_signals"][1](c, organisation="nobody")["leads"] == []
+    b = TOOLS["search_opportunities"][1](c, route="B")
+    assert b["leads"][0]["lead"] == lead.id and "do not apply to route B" in b["note"]
+
+
+def test_route_b_answer_counts_and_dates_pass_the_validator(service):
+    c, lead = _brief_with_route_b(service)
+    fake = FakeProvider([call("get_org_signals"),
+                         f"SYNTHETIC Co is an inferred lead: 4 of its works cite 2 of your "
+                         f"papers, the newest published 2026-01-02 [{lead.id}]. This is not "
+                         f"verified [{lead.id}]."])
+    s = Scout(fake, c, mode="run").start("Which companies might fund this?")
+    assert s.status == "done" and not s.flagged, s.errors
+    bad = FakeProvider([call("get_org_signals"),
+                        f"SYNTHETIC Co: 9 works cite your papers [{lead.id}].",
+                        f"SYNTHETIC Co: 9 works cite your papers [{lead.id}]."])
+    assert Scout(bad, c, mode="run").start("Which companies?").flagged
 
 
 def test_argument_check():
@@ -189,3 +241,8 @@ def test_bench_scoring_rules():
     assert score(task, s)["completed"] is True
     s.flagged = True
     assert score(task, s)["completed"] is False
+    s.flagged = False
+    s.cards = [Card("3", 1, "search_opportunities", {"route": "B"}, status="done")]
+    rb = {"expect": ["get_org_signals"], "allowed": ["get_org_signals"]}
+    assert score(rb, s)["completed"] is True
+    assert s.cards[0].tool == "search_opportunities"  # scoring does not rename the card

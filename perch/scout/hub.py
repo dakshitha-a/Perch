@@ -108,7 +108,7 @@ def record_ids(result: dict | None, cap: int = 12) -> list[str]:
     def walk(v: object) -> None:
         if isinstance(v, dict):
             for k, x in v.items():
-                if k in ("id", "opportunity") and isinstance(x, str) and x not in out:
+                if k in ("id", "opportunity", "lead") and isinstance(x, str) and x not in out:
                     out.append(x)
                 walk(x)
         elif isinstance(v, list):

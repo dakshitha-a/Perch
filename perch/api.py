@@ -313,7 +313,7 @@ def create_app(service: BriefService, runner: JobRunner,
     def get_record(record_id: str) -> dict:
         with service.repo() as r:
             x = r.get_any(record_id)
-            if x is None and re.fullmatch(r"[AW]\d+", record_id):  # short OpenAlex id
+            if x is None and re.fullmatch(r"[AWI]\d+", record_id):  # short OpenAlex id
                 x = r.get_any(f"https://openalex.org/{record_id}")
             if x is None:  # an opportunity number, as cited in explanations
                 x = r.get_any(f"grants_gov:{record_id}")

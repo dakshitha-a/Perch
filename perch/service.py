@@ -282,19 +282,9 @@ class BriefService:
             g = rb.gather(oc, nc, works, as_of)
         found = rb.score_leads(b.researcher_id, g.seeds, g.citing, g.topical, g.sbir, g.topics,
                                as_of)
-        evidence = {x for lead in found for s in lead.signals for x in s.record_ids}
-        keep = [w for w, _ in g.citing + g.topical if w.id in evidence]
-        keep += [a for a in g.sbir if a.id in evidence]
-        leads = [Lead(id=f"{b.id}:B{i}", source=x.org.source, source_url=x.org.source_url,
-                      fetched_at=x.org.fetched_at, brief_id=b.id, route="B",
-                      record_id=x.org.id, rank=i,
-                      explanation=" ".join(x.sentences), inference=rb.LABEL,
-                      cited_ids=[oa.short_id(w) for w in x.cited_works], inferred=True,
-                      signals=x.signals,
-                      relationship=x.relationship, confidence=x.confidence)
-                 for i, x in enumerate(found, 1)]
+        leads = rb.make_leads(found, b.id)
         with self.repo() as r:
-            r.upsert([*{w.id: w for w in keep}.values(), *(x.org for x in found), *leads])
+            r.upsert([*rb.evidence_records(found, g), *(x.org for x in found), *leads])
         b.lead_ids = [*b.lead_ids, *(x.id for x in leads)]
         return (f"{len(g.citing)} citing works, {len(g.topical)} topic works, {len(g.sbir)} "
                 f"SBIR/STTR records; {len(leads)} leads with two or more kinds of signal"), False

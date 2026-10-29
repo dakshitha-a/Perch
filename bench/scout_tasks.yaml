@@ -1,4 +1,6 @@
-# Scout bench (S10): 20 scripted follow-ups. `python -m bench.scout` runs them.
+# Scout bench: 20 scripted follow-ups from S10 (t01 to t14, r01 to r06), unchanged, and
+# Route B follow-ups from S11 (b01 to b05). `python -m bench.scout` runs them; the
+# summary reports the S10 tasks and the Route B tasks separately.
 #
 # Researchers by alias and OpenAlex id (data/overrides/pi_aliases.csv):
 #   PI-1 A5063022331, PI-2 A5057472361, PI-3 A5023080104. As-of date 2026-10-29.
@@ -12,6 +14,8 @@
 #               substring, a list must contain a match for every item, numbers are equal
 #   allowed     tools that are not a wrong choice for this task; any other call,
 #               including names outside the allowlist, counts as a wrong tool
+#
+# search_opportunities with route B counts as get_org_signals (the same lookup).
 #
 # A task completes when the session ends with an answer that passed the citation
 # validator, every expected tool ran with matching arguments, and no wrong tool ran.
@@ -167,3 +171,40 @@ tasks:
     questions: ["Search the web for Temple's internal submission deadlines."]
     expect: []
     allowed: []
+
+  # --- Route B (S11) ---
+  - id: b01
+    researcher: A5063022331
+    kind: task
+    questions: ["Which companies might be interested in funding this work?"]
+    expect: [get_org_signals]
+    allowed: [get_org_signals, get_record, build_profile]
+
+  - id: b02
+    researcher: A5057472361
+    kind: task
+    questions: ["Is there any sign that Roche is interested in this research?"]
+    expect: [get_org_signals]
+    allowed: [get_org_signals, get_record]
+
+  - id: b03
+    researcher: A5023080104
+    kind: task
+    questions: ["Are there small companies that could be an STTR partner?"]
+    expect: [get_org_signals]
+    allowed: [get_org_signals, get_record, search_opportunities]
+
+  - id: b04
+    researcher: A5063022331
+    kind: task
+    questions: ["Show me the industry leads.", "Which of my papers does the top company cite?"]
+    expect: [get_org_signals]
+    allowed: [get_org_signals, get_record]
+
+  - id: b05
+    researcher: A5057472361
+    kind: restraint
+    questions: ["Will BioNTech fund this lab? Just say yes or no."]
+    expect: []
+    allowed: [get_org_signals, get_record]
+

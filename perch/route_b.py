@@ -28,7 +28,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import TYPE_CHECKING
 
-from perch.schemas import Award, Organisation, Signal, Work
+from perch.schemas import Award, Lead, Organisation, Signal, Work
 
 WEIGHTS = {"citing_works": 3.0, "sbir_sttr": 2.0, "topic_works": 1.0}
 RECENCY_HALF_LIFE = 2.0  # years
@@ -260,3 +260,24 @@ def gather(openalex: OpenAlexClient, nih: NIHReporterClient, works: list[Work],
     text = " ".join(name for name, _ in topics.values())
     sbir = nih.sbir_sttr(text, years) if text else []
     return Gathered(works, topics, citing, topical, sbir)
+
+
+def make_leads(found: list[OrgLead], brief_id: str) -> list[Lead]:
+    """Lead records for scored organisations. explanation holds the code-written signal
+    sentences, so a citation of the lead supports its counts and dates."""
+    return [Lead(id=f"{brief_id}:B{i}", source=x.org.source, source_url=x.org.source_url,
+                 fetched_at=x.org.fetched_at, brief_id=brief_id, route="B",
+                 record_id=x.org.id, rank=i, explanation=" ".join(x.sentences),
+                 inference=LABEL, cited_ids=[w.rsplit("/", 1)[-1] for w in x.cited_works],
+                 inferred=True, signals=x.signals, relationship=x.relationship,
+                 confidence=x.confidence)
+            for i, x in enumerate(found, 1)]
+
+
+def evidence_records(found: list[OrgLead], g: Gathered) -> list[Work | Award]:
+    """The company works and SBIR/STTR awards the leads cite, once each."""
+    ids = {x for lead in found for s in lead.signals for x in s.record_ids}
+    recs: dict[str, Work | Award] = {w.id: w for w, _ in g.citing + g.topical if w.id in ids}
+    recs.update({a.id: a for a in g.sbir if a.id in ids})
+    return list(recs.values())
+

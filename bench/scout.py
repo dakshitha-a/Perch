@@ -43,16 +43,23 @@ def arg_match(want: object, got: object) -> bool:
     return isinstance(got, str) and str(want).lower() in got.lower()
 
 
+def tool_name(c: object) -> str:
+    """search_opportunities with route B is the same lookup as get_org_signals."""
+    if c.tool == "search_opportunities" and str(c.arguments.get("route", "")).upper() == "B":
+        return "get_org_signals"
+    return c.tool
+
+
 def score(task: dict, s: Session) -> dict:
     """Completion, wrong calls and what is missing, for one finished session."""
     allowed = set(task.get("allowed") or [])
     calls = s.cards
-    wrong = [c for c in calls if c.tool not in allowed]
+    wrong = [c for c in calls if tool_name(c) not in allowed]
     ran = [c for c in calls if c.status == "done"]
     missing = []
     for exp in task.get("expect") or []:
         names = exp["any_of"] if isinstance(exp, dict) else [exp]
-        if not any(c.tool in names for c in ran):
+        if not any(tool_name(c) in names for c in ran):
             missing.append("/".join(names))
     for tool, want in (task.get("args") or {}).items():
         if not any(c.tool == tool and all(arg_match(v, c.arguments.get(k))
@@ -63,7 +70,8 @@ def score(task: dict, s: Session) -> dict:
             "wrong_calls": len(wrong), "missing": "; ".join(missing)}
 
 
-def run(spec: str, policy: str | None, only: list[str], max_usd: float = 1.0) -> Path:
+def run(spec: str, policy: str | None, only: list[str], max_usd: float = 1.0,
+        tag: str | None = None) -> Path:
     from perch.cli import default_client
     from perch.service import BriefService, Clients, default_models
 
@@ -98,7 +106,10 @@ def run(spec: str, policy: str | None, only: list[str], max_usd: float = 1.0) ->
         rows.append(row)
         print(f"{task['id']} {'PASS' if row['completed'] else 'fail'} {row['tools']} "
               f"{row['missing']} {row['errors'][:120]}", flush=True)
-    out = RESULTS / f"scout_{slug(spec)}{'_structured' if policy == 'structured' else ''}.csv"
+    name = f"scout_{slug(spec)}{'_structured' if policy == 'structured' else ''}.csv"
+    # A tagged run (a subset, say) goes to its own folder and stays out of the summary.
+    out = RESULTS / f"scout_{tag}" / name if tag else RESULTS / name
+    out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", newline="") as f:
         w = csv.DictWriter(f, FIELDS)
         w.writeheader()
@@ -114,8 +125,10 @@ def summary() -> Path:
         rs = list(csv.DictReader(p.open()))
         if not rs:
             continue
-        task = [r for r in rs if r["kind"] == "task"]
-        rest = [r for r in rs if r["kind"] == "restraint"]
+        s10 = [r for r in rs if not r["task"].startswith("b")]  # the 20 S10 tasks
+        rb = [r for r in rs if r["task"].startswith("b")]  # Route B tasks, S11
+        task = [r for r in s10 if r["kind"] == "task"]
+        rest = [r for r in s10 if r["kind"] == "restraint"]
         calls = sum(int(r["calls"]) for r in rs)
         wrong = sum(int(r["wrong_calls"]) for r in rs)
         unknown = sum(t.split(":")[0] not in ALLOWLIST
@@ -123,8 +136,9 @@ def summary() -> Path:
         yes = lambda xs: sum(r["completed"] == "True" for r in xs)  # noqa: E731
         rows.append({
             "model": rs[0]["model"], "policy": rs[0]["policy"],
-            "completed": f"{yes(rs)}/{len(rs)}", "tasks_completed": f"{yes(task)}/{len(task)}",
+            "completed": f"{yes(s10)}/{len(s10)}", "tasks_completed": f"{yes(task)}/{len(task)}",
             "restraint": f"{yes(rest)}/{len(rest)}",
+            "route_b_completed": f"{yes(rb)}/{len(rb)}" if rb else "",
             "wrong_tool_rate": f"{wrong / calls:.3f}" if calls else "0",
             "wrong_calls": f"{wrong}/{calls}", "outside_allowlist": unknown,
             "flagged": sum(r["flagged"] == "True" for r in rs),
@@ -146,9 +160,10 @@ def main() -> None:
     ap.add_argument("--only", nargs="*", default=[], help="task ids")
     ap.add_argument("--max-usd", type=float, default=1.0, help="stop the run at this spend")
     ap.add_argument("--summary", action="store_true")
+    ap.add_argument("--tag", default=None, help="write to bench/results/scout_<tag>/")
     a = ap.parse_args()
     if a.spec:
-        print("wrote", run(a.spec, a.policy, a.only, a.max_usd))
+        print("wrote", run(a.spec, a.policy, a.only, a.max_usd, a.tag))
     if a.summary:
         print("wrote", summary())
 

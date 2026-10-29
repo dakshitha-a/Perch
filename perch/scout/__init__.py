@@ -37,6 +37,7 @@ def make_scout(service: object, author_id: str, *, as_of: date | None = None,
     if brief_id and (got := service.get(brief_id)):
         b, leads = got
         ctx.as_of = date.fromisoformat(b.options["as_of"])
+        ctx.brief_id = b.id
         note = brief_note(ctx, b, leads)
     return Scout(provider, ctx, mode=mode, policy=policy, log=None if private else log,
                  private=private, brief_note=note, budget=budget)

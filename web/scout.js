@@ -137,7 +137,13 @@ function withCites(text, ctx) {
 
 function citeBtn(id, ctx) {
   return h("button", { class: "cite", "aria-label": `Evidence: ${id}`, onclick: (e) => ctx.openEvidence(id, e.currentTarget) },
-    h("span", { text: id.replace(/^grants_gov:/, "") }));
+    h("span", { text: leadLabel(id) || id.replace(/^grants_gov:/, "") }));
+}
+
+// Route B lead ids look like "<brief>:B2"; show them as "Industry lead 2".
+function leadLabel(id) {
+  const m = id.match(/:B(\d+)$/);
+  return m ? `Industry lead ${m[1]}` : null;
 }
 
 function askForm(ctx, busy) {
