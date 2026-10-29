@@ -20,6 +20,9 @@ ml = [
     "sentence-transformers==6.2.0",
     "torch==2.14.1",
 ]
+anthropic = [
+    "anthropic==2.3.0",
+]
 
 [build-system]
 requires = ["hatchling==1.27.0"]
