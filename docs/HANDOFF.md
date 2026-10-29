@@ -45,6 +45,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - **QA moved:** S20 is QA and the privacy audit, after student mode is built.
 - **UX audit:** S21 audits the app for undergraduates, graduate students and PIs. It ends with a redesign question for Dakshitha.
 - **Rebuild:** S22 builds the option Dakshitha picks.
+- **Private mode as a state:** S18 task 1 replaces the Find link with a header switch. Personal-text fields and Student start a private session by construction. Design in `docs/design/PRIVATE_MODE.md`.
 - **Freeze:** S23 is freeze and package. Old notes that say "S17 task 2" mean S23 task 2.
 
 ## Next session: S17 — Synthetic scholarship corpus and student personas

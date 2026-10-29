@@ -84,6 +84,18 @@ pieces in S9, S10, S12, S14 (MCP) S18 (student mode) and S20 (QA) (see PLAN.md).
 - **Safety:** the self-hosted-endpoint gate, session isolation, the no-logs paths and the canary test.
 - **Dropped:** CV-based eligibility unlock, obfuscated export, MCP private tools.
 
+## Private mode as a state (decided 2026-10-29, built in S18)
+
+Dakshitha asked for private mode to be rethought, because student mode needs it, and left the design to Perch-dev.
+
+- **A switch, not a link:** a "Private" switch sits in the header of every screen. When it is on, the frame shows a lock, a label and a coloured edge.
+- **Why not detect and switch automatically:** a guess about content can be wrong in both directions. A false "public" sends private text to a path that logs. So the mode never turns on or off from a guess.
+- **On by construction instead:** every field that takes personal text exists only inside private mode. Opening one starts a private session before any text leaves the browser. Choosing Student does the same.
+- **A nudge for the public box:** Find's keyword box stays public. If someone pastes long or CV-like text there, a check that runs only in the browser offers to move it into private mode. Nothing is sent until they choose.
+- **Off means end:** turning the switch off ends the session, after a confirm that lists what will be discarded.
+- **Unavailable servers:** where any model is not self-hosted, the switch is shown disabled with the reason, and student mode is disabled with it.
+- **Every screen follows the mode:** Profile, Routes, Compare, hand-off, export and Scout. A public brief stays public; a private brief is a separate brief.
+
 ## As built (S13)
 
 - **Code:** `perch/private/` holds the inputs, the CV parse, the threads, the overlay store and the session service. `perch/private/routes.py` holds the HTTP routes, and `web/private.js` the screens. The gate is in `perch/privacy.py`.
