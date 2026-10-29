@@ -20,9 +20,12 @@ web/dist/
 *.key
 secrets/
 
-# Data and vector stores. data/overrides/ is hand-curated and committed (Q1 is open for the rest).
+# Data: curated inputs are committed (overrides, back-test PI list, synthetic persona);
+# everything generated (perch.db, cache/, lance/, logs/) stays local. Q1, answered 2026-10-28.
 data/*
 !data/overrides/
+!data/backtest/
+!data/synthetic/
 *.lance
 
 # Archives (input zips; the submission ZIP from `make package`)
