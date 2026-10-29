@@ -113,11 +113,16 @@ def explain_one(o: Opportunity, system: str, paper_records: dict[str, Record],
         r = provider.chat([Message("user", msg)], system=system, schema=SCHEMA, max_tokens=900,
                           cache_system=True)
         d = parse_json(r.text)
+        def known(i: str) -> str:
+            # Models often drop the "private:" prefix of a session record's id.
+            i = i.strip("[] ")
+            return f"private:{i}" if i not in records and f"private:{i}" in records else i
+
         try:
-            findings = [(x["paper_id"].strip("[] "), x["finding"].strip())
+            findings = [(known(x["paper_id"]), x["finding"].strip())
                         for x in d["research_findings"]]
             return Fit(int(d["fit"]), d["opportunity_sentence"].strip(), findings,
-                       d.get("link_sentence", "").strip(), list(d["cited_ids"]),
+                       d.get("link_sentence", "").strip(), [known(i) for i in d["cited_ids"]],
                        d.get("reasoning", ""))
         except (KeyError, TypeError, AttributeError) as e:
             raise ValueError(f"missing field: {e}") from e

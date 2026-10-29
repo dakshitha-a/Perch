@@ -20,6 +20,10 @@
       <a class="wordmark" href="#/" aria-label="Perch, home">Perch</a>
     </div>
     <div class="bar-tools">
+    <button id="private-switch" class="btn quiet switch" type="button" role="switch" aria-checked="false" disabled title="Checking whether private mode is available">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 10.5h11v9h-11zM8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5M12 14v2"/></svg>
+      <span class="switch-word">Private</span><span class="track" aria-hidden="true"></span>
+    </button>
     <a id="help" class="btn quiet theme" href="#/help">
       <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.7.3-1 .9-1 1.6v.6M12 17v.2"/></svg>
       <span class="theme-word">Help</span>
@@ -31,6 +35,10 @@
     </div>
   </div>
   <div class="branch-rule" aria-hidden="true"></div>
+  <p id="private-frame" class="private-frame" hidden>
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 10.5h11v9h-11zM8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5M12 14v2"/></svg>
+    <span>Private session on: what you add stays on this server, in memory, and ends with the session.</span>
+  </p>
 </header>
 <div id="banner" class="banner" hidden></div>
 <main id="main" tabindex="-1"></main>

@@ -112,3 +112,63 @@ console.log(JSON.stringify({ repeats, seen: seen.size, total: POKES.length,
     out = json.loads(r.stdout)
     assert out["repeats"] == 0 and out["seen"] == out["total"] == 8
     assert out["low"] == "spin" and out["high"] == "blink"
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
+def test_private_session_starts_before_personal_text_is_sent():
+    """S18: the header switch, the Student path and the paste nudge all open a private
+    session before any personal text leaves the browser; a content guess never switches
+    the mode, and turning it off ends the session only after a confirm."""
+    script = """
+import { createMode, looksPersonal } from './web/mode.js';
+const calls = [];
+const api = { open: false,
+  start: async () => { calls.push('start'); api.open = true; },
+  end: async () => { calls.push('end'); api.open = false; },
+  addDocument: async (b) => {
+    calls.push('add:' + b.kind + ':' + (api.open ? 'open' : 'CLOSED')); } };
+(async () => {
+const m = createMode(api);
+m.setAvailable(true);
+// Student path and personal fields: send() opens the session first.
+await m.send({ kind: 'cv', text: 'SYNTHETIC CV' });
+// The paste nudge: moving text opens the session and sends nothing.
+api.open = false;
+await m.move('cv', 'SYNTHETIC CV pasted');
+const afterMove = calls.slice();
+// The header switch: off ends only after a confirm; a refusal keeps it on.
+const kept = await m.disable(async () => false);
+const ended = await m.disable(async () => true);
+// Unavailable: nothing starts.
+const n = createMode({ open: false, start: async () => calls.push('BAD') });
+n.setAvailable(false, 'no self-hosted models');
+let refused = false;
+try { await n.send({ kind: 'cv', text: 'x' }); } catch (e) { refused = true; }
+console.log(JSON.stringify({ calls, afterMove, kept, ended, refused, drafts: m.state.drafts,
+  cv: looksPersonal('Education\\nB.S. Biology\\nGPA: 3.4\\nReferences'),
+  name: looksPersonal('Jane Smith'), orcid: looksPersonal('0000-0002-1825-0097') }));
+})().catch((e) => { console.error(e); process.exit(1); });
+"""
+    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
+                       text=True, cwd=ROOT, timeout=30)
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["calls"][:2] == ["start", "add:cv:open"]
+    assert out["afterMove"] == ["start", "add:cv:open", "start"]  # moved text is not sent
+    assert out["kept"] is False and out["ended"] is True and out["calls"][-1] == "end"
+    assert out["refused"] and "BAD" not in out["calls"]
+    assert out["drafts"] == {}
+    assert out["cv"] and not out["name"] and not out["orcid"]
+
+
+def test_personal_fields_exist_only_inside_private_mode():
+    """No personal-text field (CV, interests, achievements) is on a public screen."""
+    app = (WEB_DIR / "app.js").read_text()
+    find = app[app.index("function renderFind()"):app.index("function audienceSwitch()")]
+    fields = re.findall(r'h\("(?:textarea|input)", \{[^}]*\}', find)
+    labels = re.findall(r'class: "field-label"[^)]*text: "([^"]+)"', find)
+    assert fields and labels
+    assert not [x for x in fields + labels if re.search(r"\b(cv|interests|achievements)\b",
+                                                        x, re.I)]
+    student = (WEB_DIR / "student.js").read_text()
+    assert "if (!api.open)" in student  # the form shows only with a session open

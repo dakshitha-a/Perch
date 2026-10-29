@@ -10,6 +10,10 @@ export const STAGES = {
   route_b: "Finding industry leads",
   summary: "Summarising the profile",
   explanations: "Explaining each lead",
+  student_profile: "Reading your CV by rule",
+  fellowships: "Searching public fellowships",
+  scholarships: "Searching sample scholarships",
+  student_explanations: "Explaining each lead",
 };
 
 // Short names for agencies as Grants.gov spells them; anything else shows in full.

@@ -15,6 +15,11 @@ const WARNING = "Masking hides names, contact details and identifiers, and phras
 
 const P = { info: null, docs: [], authorId: "", busy: false, error: null, drafts: {} };
 
+let MODE = null; // the app's private-mode state (mode.js); set by app.js
+
+export function setMode(m) { MODE = m; }
+export function privateInfo() { return P.info; }
+
 export async function privateAvailable(api) {
   try { P.info = await api.info(); } catch { P.info = null; }
   return Boolean(P.info && P.info.enabled);
@@ -29,8 +34,9 @@ function statement() {
     h("p", { text: (P.info && P.info.statement) || "" }));
 }
 
-export async function renderPrivate(root, { api, go, announce }) {
+export async function renderPrivate(root, { api, go, announce, mode }) {
   document.title = "Private mode — Perch";
+  if (mode) MODE = mode;
   if (!P.info) await privateAvailable(api);
   if (!P.info || !P.info.enabled) {
     fill(root, h("div", { class: "private" }, h("h1", { text: "Private mode" }),
@@ -38,12 +44,20 @@ export async function renderPrivate(root, { api, go, announce }) {
       h("p", {}, h("a", { href: "#/", text: "Back to Find" }))));
     return;
   }
-  const draw = () => renderPrivate(root, { api, go, announce });
+  const draw = () => renderPrivate(root, { api, go, announce, mode });
+  if (MODE) {  // text moved here from a public field waits as an unsent draft
+    for (const [k, v] of Object.entries(MODE.state.drafts)) {
+      if (v && P.info.kinds[k] && !P.drafts[k]) { P.drafts[k] = v; delete MODE.state.drafts[k]; }
+    }
+  }
   const kinds = P.info.kinds;
 
   async function start() {
     P.busy = true; P.error = null; draw();
-    try { await api.start(); announce("Private session started."); } catch (e) { P.error = e.message; }
+    try {
+      if (MODE) await MODE.enable(); else await api.start();
+      announce("Private session started.");
+    } catch (e) { P.error = e.message; }
     P.busy = false; draw();
   }
 
@@ -134,7 +148,7 @@ export async function renderPrivate(root, { api, go, announce }) {
 
 export function endButton(api, go) {
   return h("button", { class: "btn", onclick: async () => {
-    await api.end();
+    if (MODE) await MODE.disable(null); else await api.end();
     Object.assign(P, { docs: [], authorId: "", drafts: {}, error: null, busy: false, unmasked: "" });
     go("#/private");
   } }, icon("dismiss"), h("span", { text: "End private session" }));

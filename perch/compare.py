@@ -120,7 +120,8 @@ def compare(brief: Brief, leads: list[Lead], r: Repository, status: str | None =
     """Rows for the brief's leads with that status (all leads if None), Route A first,
     each route in rank order."""
     as_of = date.fromisoformat(brief.options.get("as_of") or date.today().isoformat())
-    chosen = [x for x in leads if status is None or x.status == status]
+    chosen = [x for x in leads if (status is None or x.status == status)
+              and x.route in ("A", "B")]  # student leads compare in the browser (S18)
     chosen.sort(key=lambda x: (x.route, x.rank or 0))
     rows = []
     for x in chosen:

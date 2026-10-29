@@ -10,25 +10,32 @@ import { renderScout } from "./scout.js";
 import { renderWatch } from "./watch.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
-import { lockLabel, privateAvailable, privateBar, renderPrivate } from "./private.js";
+import { lockLabel, privateAvailable, privateBar, privateInfo, renderPrivate, setMode } from "./private.js";
+import { createMode, looksPersonal } from "./mode.js";
+import { isStudent, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
 
 const publicApi = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
 const privApi = privateApi(window.PERCH_API || "");
 let api = publicApi; // privApi while a private brief (#/brief/private) is on screen
+// Private mode is a state of the whole app (S18): the header switch shows and sets it.
+const mode = createMode(privApi, { onChange: () => drawSwitch() });
+setMode(mode);
 const PRIVATE_ID = "private";
 const POLL_MS = 1500;
 const TABS = ["profile", "routes", "compare", "scout"];
 const SOURCES = { openalex: "OpenAlex", grants_gov: "Grants.gov", nih_reporter: "NIH RePORTER",
-  nsf: "NSF Award Search", perch: "Perch", private: "Your private document (this session only)" };
+  nsf: "NSF Award Search", perch: "Perch", private: "Your private document (this session only)",
+  temple_sdfa: "Temple Scholar Development and Fellowships Advising (public list)",
+  synthetic: "SYNTHETIC sample corpus (invented, not a real scholarship)" };
 const KINDS = { opportunity: "Funding opportunity", work: "Paper", award: "Public award",
   researcher: "Researcher", organisation: "Organisation", lead: "Industry lead",
-  private: "Your private document" };
+  private: "Your private document", scholarship: "Scholarship or fellowship" };
 const SIGNALS = { citing_works: "They cite your papers", sbir_sttr: "NIH SBIR/STTR awards",
   topic_works: "They publish in your topics" };
 
 const S = {
   find: { q: "", busy: false, error: null, candidates: null, searched: "", explain: true,
-    minAmount: "", direction: "", include: "", exclude: "", stage: "" },
+    minAmount: "", direction: "", include: "", exclude: "", stage: "", nudge: null },
   privateOn: false, // the server offers private mode
   brief: null, // last GET /briefs payload
   briefId: null,
@@ -80,7 +87,16 @@ function route() {
     S.brief = null;
     api = publicApi;
     barOwl("idle");
-    renderPrivate(main(), { api: privApi, go, announce });
+    renderPrivate(main(), { api: privApi, go, announce, mode });
+    return;
+  }
+  if (parts[0] === "student") {
+    stopPolling();
+    S.briefId = null;
+    S.brief = null;
+    api = publicApi;
+    barOwl("idle");
+    renderStudentStart(main(), { api: privApi, mode, go, announce, info: privateInfo() || {} });
     return;
   }
   if (parts[0] === "changes") {
@@ -137,12 +153,13 @@ function renderFind() {
   const input = h("input", { id: "q", name: "q", type: "search", autocomplete: "off",
     enterkeyhint: "search", placeholder: "Name, ORCID iD or OpenAlex ID", required: true,
     "aria-describedby": "q-hint", value: F.q,
-    oninput: (e) => { F.q = e.target.value; } });
+    oninput: (e) => { F.q = e.target.value; },
+    onpaste: (e) => pasted(e, "q", "cv") });
   const form = h("form", { class: "search", role: "search", onsubmit: (e) => {
     e.preventDefault(); search(); } },
   h("label", { for: "q", class: "field-label", text: "Researcher" }),
   h("div", { class: "search-row" }, input,
-    h("button", { class: "btn primary", type: "submit", disabled: F.busy,
+    h("button", { class: "btn primary", type: "submit", disabled: F.busy || Boolean(F.nudge),
       "aria-busy": F.busy ? "true" : null }, icon("search"),
     h("span", { text: F.busy ? "Searching" : "Find researcher" }))),
   h("p", { id: "q-hint", class: "hint", text:
@@ -165,7 +182,8 @@ function renderFind() {
     h("p", { class: "hint", text: "Saved with the brief and shown on its Profile as “You said”. Used to search, never as a fact. The configured model may read it. For a CV or unpublished work, use private mode." }),
     h("label", { class: "field-label", for: "dir", text: "Where your research is going" }),
     h("textarea", { id: "dir", rows: 3, maxlength: 1000, value: F.direction,
-      placeholder: "A sentence or two", oninput: (e) => { F.direction = e.target.value; } }),
+      placeholder: "A sentence or two", oninput: (e) => { F.direction = e.target.value; },
+      onpaste: (e) => pasted(e, "dir", "direction") }),
     h("label", { class: "field-label", for: "inc", text: "Keywords to search for" }),
     h("input", { id: "inc", type: "text", value: F.include, placeholder: "Comma-separated",
       oninput: (e) => { F.include = e.target.value; } }),
@@ -178,8 +196,7 @@ function renderFind() {
       [["", "Not stated"], ["early_stage", "Early-stage investigator (NIH)"], ["established", "Established investigator"]]
         .map(([v, t]) => h("option", { value: v, selected: F.stage === v, text: t }))),
     h("p", { id: "stage-hint", class: "hint", text: "Early-stage keeps opportunities limited to early-stage or new investigators, marked “You said”. Check NIH’s definition before applying." })),
-  S.privateOn ? h("p", { class: "private-link" }, h("a", { href: "#/private" }, icon("lock"),
-    h("span", { text: "Private mode: add a CV, a draft proposal or unpublished work" }))) : null);
+  null);
 
   const results = [];
   if (F.error) {
@@ -207,7 +224,9 @@ function renderFind() {
           "Perch reads a researcher’s public papers and lists open funding that fits. Every claim links to the public record behind it." }),
         h("p", { class: "hero-help" }, h("a", { href: "#/help" }, icon("help"), h("span", { text: "New here? See how Perch works" }))),
         h("p", { class: "hero-help" }, h("a", { href: "#/changes" }, icon("search"), h("span", { text: "What changed this week" }))))),
+    audienceSwitch(),
     form,
+    nudgeBox(),
     h("div", { class: "results" }, results),
     recent.length ? h("section", { class: "recent" },
       h("div", { class: "recent-head" },
@@ -217,6 +236,85 @@ function renderFind() {
       h("ul", {}, recent.map((r) => h("li", {}, h("a", { href: `#/brief/${encodeURIComponent(r.id)}/routes` },
         h("span", { text: r.name }), h("span", { class: "hint", text: f.formatDate(r.at) })))))) : null);
   fill(main(), page);
+}
+
+// Researcher or Student. Student starts a private session first (S18): a student's input
+// is always personal, so there is no public student path.
+function audienceSwitch() {
+  const ok = mode.state.available;
+  return h("div", { class: "audience", role: "group", "aria-label": "I am a" },
+    h("button", { class: "route-btn", type: "button", "aria-pressed": "true", text: "Researcher" }),
+    h("button", { class: "route-btn", type: "button", "aria-pressed": "false", disabled: !ok,
+      "aria-describedby": "aud-hint",
+      onclick: async () => {
+        try { await mode.enable(); go("#/student"); } catch (e) { S.find.error = e.message; renderFind(); }
+      } }, icon("lock"), h("span", { text: " Student" })),
+    h("p", { id: "aud-hint", class: "hint", text: ok
+      ? "Student opens a private session first: fellowships and sample scholarships checked against your CV."
+      : `Student mode needs private mode. ${mode.state.reason || "It is not available on this server."}` }));
+}
+
+// The paste nudge: a check in this browser only. Long or CV-like text pasted into a
+// public field gets an offer to move it into private mode. Nothing is sent until the
+// person chooses; search is held back while the offer is open.
+function pasted(e, field, kind) {
+  const text = (e.clipboardData || window.clipboardData).getData("text");
+  if (!looksPersonal(text) || !mode.state.available) return;
+  S.find.nudge = { field, kind };
+  setTimeout(() => keepFocus(renderFind), 0);
+}
+
+function nudgeBox() {
+  const n = S.find.nudge;
+  if (!n) return null;
+  const F = S.find;
+  const value = () => (n.field === "q" ? F.q : F.direction);
+  const clear = () => { if (n.field === "q") F.q = ""; else F.direction = ""; };
+  return h("div", { class: "notice nudge", role: "alert" }, icon("lock"),
+    h("div", {}, h("p", { text: "This looks like personal text, such as a CV. Move it into private mode? Nothing has been sent." }),
+      h("div", { class: "doc-actions" },
+        h("button", { class: "btn primary", type: "button", onclick: async () => {
+          const text = value();
+          try {
+            await mode.move(n.kind, text);
+            clear();
+            F.nudge = null;
+            go(n.kind === "cv" ? "#/student" : "#/private");
+          } catch (err) { F.nudge = null; F.error = err.message; renderFind(); }
+        } }, icon("lock"), h("span", { text: "Move to private mode" })),
+        h("button", { class: "btn", type: "button", onclick: () => { F.nudge = null; renderFind(); } },
+          h("span", { text: "Keep it here" })))));
+}
+
+// ----- the Private switch in the header (S18) -----
+
+function drawSwitch() {
+  const b = $("#private-switch");
+  if (!b) return;
+  const st = mode.state;
+  const on = st.on || privApi.open;
+  b.setAttribute("aria-checked", String(on));
+  b.disabled = !st.available && !on;
+  b.title = st.available ? (on ? "Private session on. Turn off to end it." : "Turn on private mode")
+    : `Private mode is unavailable: ${st.reason || "this server does not offer it"}`;
+  b.querySelector(".switch-word").textContent = on ? "Private on" : "Private";
+  document.body.classList.toggle("private-on", on);
+  const label = $("#private-frame");
+  if (label) label.hidden = !on;
+}
+
+async function toggleSwitch() {
+  if (mode.state.on || privApi.open) {
+    let docs = [];
+    try { docs = (await privApi.session()).documents; } catch { /* already ended */ }
+    const list = mode.discards(docs, Boolean(S.briefId === PRIVATE_ID || S.brief && api.mode === "private"));
+    const ok = await mode.disable(() => window.confirm(
+      `Turn off private mode? This ends the session and discards:\n- ${list.length ? list.join("\n- ") : "nothing yet"}`));
+    if (ok) { announce("Private session ended. Everything in it was discarded."); go("#/"); }
+    return;
+  }
+  try { await mode.enable(); announce("Private session started."); go("#/private"); }
+  catch (e) { announce(e.message); }
 }
 
 function heroArt() {
@@ -381,18 +479,22 @@ const explainedCount = () => routeLeads("A").filter((l) => l.explanation || l.fl
 function renderBrief() {
   const d = S.brief;
   const r = d.researcher || {};
-  const name = r.display_name || "Researcher";
+  const student = isStudent(d);
+  const name = student ? "Your student brief" : r.display_name || "Researcher";
   document.title = `${name} — Perch`;
+  if (student && !["F", "S"].includes(S.route)) S.route = "F";
+  if (!student && !["A", "B"].includes(S.route)) S.route = "A";
   const head = h("header", { class: "brief-head" },
     h("a", { class: "back", href: "#/", "aria-label": "New search" }, icon("back"),
       h("span", { text: "New search" })),
     h("h1", { class: "who", text: name }),
     h("p", { class: "who-meta" },
-      h("span", { text: (r.institutions || []).join(", ") || "Institution not stated in the record" }),
+      h("span", { text: student ? "Private session: fellowships and sample scholarships"
+        : (r.institutions || []).join(", ") || "Institution not stated in the record" }),
       h("span", { text: `Brief as of ${f.formatDate(d.brief.options.as_of)}` })));
   const tabs = h("div", { class: "tabs", role: "tablist", "aria-label": "Brief sections" },
     tabButton("profile", "Profile"), tabButton("routes", "Routes"), tabButton("compare", "Compare"),
-    tabButton("scout", "Ask Scout"));
+    student ? null : tabButton("scout", "Ask Scout"));
   fill(main(), h("div", { class: "brief" }, head,
     h("div", { id: "progress" }),
     h("div", { class: "tabs-wrap" }, tabs),
@@ -425,7 +527,8 @@ function tabButton(key, label) {
     onclick: () => go(`#/brief/${encodeURIComponent(S.briefId)}/${key}`),
     onkeydown: (e) => {
       if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-        const other = TABS[(TABS.indexOf(key) + (e.key === "ArrowRight" ? 1 : TABS.length - 1)) % TABS.length];
+        const tabs = TABS.filter((k) => $(`#tab-${k}`));
+        const other = tabs[(tabs.indexOf(key) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
         go(`#/brief/${encodeURIComponent(S.briefId)}/${other}`);
         setTimeout(() => $(`#tab-${other}`).focus(), 0);
       }
@@ -440,11 +543,12 @@ function renderTabs() {
     t.setAttribute("aria-selected", String(on));
     t.tabIndex = on ? 0 : -1;
   }
-  const n = leadsOf().filter((l) => l.status !== "dismissed").length;
+  const n = leadsOf().filter((l) => l.status !== "dismissed" && l.verdict !== "not eligible").length;
   const c = $("#tab-routes .tab-count");
-  c.textContent = isDone("route_a") ? String(n) : "";
-  if (isDone("route_a")) c.append(h("span", { class: "sr-only", text: n === 1 ? " lead" : " leads" }));
-  c.hidden = !isDone("route_a");
+  const ready = isStudent(S.brief) ? isDone("fellowships") : isDone("route_a");
+  c.textContent = ready ? String(n) : "";
+  if (ready) c.append(h("span", { class: "sr-only", text: n === 1 ? " lead" : " leads" }));
+  c.hidden = !ready;
   const kept = leadsOf().filter((l) => l.status === "kept").length;
   const k = $("#tab-compare .tab-count");
   k.textContent = kept ? String(kept) : "";
@@ -587,6 +691,7 @@ function renderPanel() {
     panel.dataset.sig = "";
     panel.replaceChildren();
   }
+  if (isStudent(S.brief)) { renderStudentPanel(panel); return; }
   if (S.tab === "profile") renderProfile(panel);
   else if (S.tab === "compare") drawCompare();
   else if (S.tab === "scout") {
@@ -596,6 +701,22 @@ function renderPanel() {
       drawScout();
     }
   } else renderRoutes(panel);
+}
+
+// ----- Student brief (S18, student.js) -----
+
+function renderStudentPanel(panel) {
+  const d = S.brief;
+  const sig = JSON.stringify([S.tab, S.route, d.brief.stages.map((s) => s.status),
+    d.leads.map((l) => [l.status, Boolean(l.explanation), l.flagged])]);
+  if (panel.dataset.sig === sig) return;
+  panel.dataset.sig = sig;
+  const ctx = { brief: d, route: S.route, papers: d.papers || {}, openEvidence, setLead, announce,
+    briefId: S.briefId, setRoute: (r) => { S.route = r; renderPanel(); panelFocus(`route-${r}`); },
+    goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) };
+  if (S.tab === "profile") keepFocus(() => fill(panel, ...studentProfile(d, ctx)));
+  else if (S.tab === "compare") studentCompare(panel, ctx);
+  else keepFocus(() => studentRoutes(panel, ctx));
 }
 
 // ----- Compare -----
@@ -1284,6 +1405,43 @@ function field(label, value) {
 
 function recordView(r) {
   const out = [];
+  if (r.kind === "scholarship") {
+    const e = r.eligibility || {};
+    const req = r.application_requirements;
+    const items = [];
+    if (req) {
+      if (req.transcript) items.push("Transcript");
+      if (req.essay) items.push("Essay");
+      if (req.letters_count) items.push(`${req.letters_count} letter${req.letters_count > 1 ? "s" : ""} of recommendation`);
+      if (req.portfolio) items.push("Portfolio");
+      if (req.interview) items.push("Interview");
+      if (req.fafsa) items.push("FAFSA");
+    }
+    const amt = r.amount_max != null ? (r.amount_min != null && r.amount_min !== r.amount_max
+      ? `${f.money(r.amount_min)} to ${f.money(r.amount_max)}` : f.money(r.amount_max)) : "Not stated in the record";
+    out.push(r.source === "synthetic" ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: "Sample data" }),
+      h("span", { text: " An invented record from a test corpus. Not a real scholarship." })) : null,
+    h("h2", { class: "rec-title", id: "evidence-title", text: r.name }),
+    h("dl", { class: "fields" },
+      field("Sponsor", r.sponsor), field("Purpose", r.purpose), field("Type", r.award_type),
+      field("Level", (r.level_of_study || []).join(", ") || "Not stated in the record"),
+      field("Field", (r.field_of_study || []).join(", ")),
+      field("Amount", amt),
+      field("Deadline", f.formatDate(r.deadline) || "Not stated in the record"),
+      field("Minimum GPA", e.gpa_min != null ? e.gpa_min.toFixed(2) : null),
+      field("Undergraduate year", (e.class_year || []).join(", ")),
+      field("Majors", (e.major || []).join(", ")),
+      field("Enrolment", e.enrolment_status),
+      field("Residency", e.residency_state), field("Citizenship", e.citizenship),
+      field("Also asks (you decide)", e.targeted_criterion),
+      field("Listing notes", e.notes),
+      field("Application asks for", items.join(", ")),
+      field("May be open to international students", r.international_ok ? "Yes, per the listing" : null),
+      field("Source", SOURCES[r.source] || r.source),
+      field("Fetched", f.formatDate(r.fetched_at))),
+    r.source !== "synthetic" && f.safeUrl(r.source_url) ? h("p", {}, h("a", { href: f.safeUrl(r.source_url), target: "_blank", rel: "noopener", text: "Open the public page" })) : null);
+    return out.filter(Boolean);
+  }
   if (r.kind === "opportunity") {
     out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.title }),
       h("dl", { class: "fields" },
@@ -1429,11 +1587,16 @@ function init() {
     S.find.q = (window.PERCH_REPLAY.candidates[0] || {}).display_name || "";
   }
   $(".skip").addEventListener("click", (e) => { e.preventDefault(); main().focus(); });
+  $("#private-switch").addEventListener("click", toggleSwitch);
   if (api.mode === "live") {
     privateAvailable(privApi).then((on) => {
       S.privateOn = on;
-      if (on && !S.briefId && !location.hash.startsWith("#/private") && !location.hash.startsWith("#/help")) renderFind();
+      mode.setAvailable(on, on ? "" : "It needs every model to run on this server.");
+      if (!S.briefId && !location.hash.startsWith("#/private") && !location.hash.startsWith("#/help")
+        && !location.hash.startsWith("#/student")) route();
     });
+  } else {
+    mode.setAvailable(false, "The preview has no server.");
   }
   const setBar = () => document.documentElement.style.setProperty("--bar-h", `${$(".bar").offsetHeight}px`);
   setBar();

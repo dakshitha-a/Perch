@@ -34,7 +34,8 @@ def student_reply(messages, system, schema):
     """A valid fit explanation citing the record shown and the first achievement."""
     if schema and "fit" in schema.get("properties", {}):
         rid = re.search(r"Opportunity:\n\[([^\]]+)\]", messages[-1].content).group(1)
-        pid = re.search(r"\[(private:achievement-a)\]", system).group(1)
+        assert "[private:achievement-a]" in system
+        pid = "achievement-a"  # models drop the "private:" prefix; the skill maps it back
         return json.dumps({
             "reasoning": "r", "fit": 60,
             "opportunity_sentence": f"The award supports students in this field [{rid}].",

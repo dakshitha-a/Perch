@@ -228,6 +228,10 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         out = brief_view(brief_id(s), s.service)
         out["papers"].update({i: private_record_json(d) for i, d in session_records(s).items()})
         out["private"] = True
+        if out["brief"]["options"].get("student") and "cv" in s.docs:
+            from perch.student import parse_student_cv
+
+            out["student"] = parse_student_cv(s.docs["cv"].abstract or "").summary()
         return out
 
     @app.post("/private/leads/{lead_id}/{action}")

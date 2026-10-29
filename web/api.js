@@ -187,6 +187,7 @@ export function privateApi(base = "") {
     addDocument: (body) => post("/private/documents", body),
     removeDocument: (kind) => post(`/private/documents/${encodeURIComponent(kind)}/remove`),
     create: (req) => post("/private/brief", req),
+    createStudent: (req) => post("/private/student/brief", req),
     end: async () => { try { await post("/private/end"); } finally { token = null; } },
     brief: () => p("/private/brief"),
     setLead: (_id, leadId, action) => post(`/private/leads/${encodeURIComponent(leadId)}/${action}`),
