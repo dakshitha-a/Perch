@@ -116,7 +116,7 @@ export async function renderPrivate(root, { api, go, announce, mode }) {
       h("ol", { class: "private-docs" }, Object.entries(kinds).map(([kind, label]) => {
         const d = P.docs.find((x) => x.kind === kind);
         return h("li", { class: "card" },
-          h("div", { class: "doc-head" }, h("h3", { text: label }),
+          h("div", { class: "doc-head" }, h("h2", { class: "doc-title", text: label }),
             d ? h("span", { class: "tag moss", text: `Added, ${d.chars.toLocaleString("en-US")} characters` }) : null),
           h("p", { class: "hint", text: KIND_HINTS[kind] }),
           d ? h("button", { class: "btn quiet", onclick: () => remove(kind) }, icon("dismiss"), h("span", { text: "Remove" }))

@@ -40,7 +40,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --ink: #E4EAE6; --ink-2: #B5C1BC; --ink-3: #93A39D;
+    --ink: #E4EAE6; --ink-2: #B5C1BC; --ink-3: #A1B0AA;
     --paper: #111A1B; --leaf: #182325; --sunk: #1F2C2E; --raised: #2C3D3F; --line: #2B3A3B;
     --moss: #74C3A0; --moss-ink: #0E1A16; --moss-soft: #1E3A30;
     --ember: #F0B54A; --ember-fill: #F0B54A; --ember-soft: #3A2E16;
@@ -53,7 +53,7 @@
   }
 }
 :root[data-theme="dark"] {
-  --ink: #E4EAE6; --ink-2: #B5C1BC; --ink-3: #93A39D;
+  --ink: #E4EAE6; --ink-2: #B5C1BC; --ink-3: #A1B0AA;
   --paper: #111A1B; --leaf: #182325; --sunk: #1F2C2E; --raised: #2C3D3F; --line: #2B3A3B;
   --moss: #74C3A0; --moss-ink: #0E1A16; --moss-soft: #1E3A30;
   --ember: #F0B54A; --ember-fill: #F0B54A; --ember-soft: #3A2E16;
@@ -239,7 +239,7 @@ details[open] > summary::before { transform: rotate(45deg); }
 .progress.compact .progress-text { display: flex; flex-wrap: wrap; gap: 0 8px; align-items: baseline; padding-top: 6px; }
 .progress.compact .progress-head { font-size: 16px; }
 .progress.compact .progress-sub { font-size: 14px; }
-.progress.compact .steps summary { min-height: 36px; }
+.progress.compact .steps summary { min-height: 44px; }
 .progress.compact .branch { grid-row: span 2; position: relative; }
 .progress.compact .rider { left: 0 !important; bottom: auto; top: 0; }
 .progress.compact .owl-rider { width: 42px; height: 42px; left: 0; top: -2px; bottom: auto; }
@@ -530,7 +530,7 @@ body.on-help .banner { display: none; }
 .how-text h3 { font-size: 17px; font-weight: 650; }
 .how-text p { color: var(--ink-2); }
 .pic { margin: 0 0 0 44px; background: var(--sunk); border: 1.5px dashed var(--line); border-radius: var(--r-card); padding: 28px 14px 14px; display: grid; gap: 10px; position: relative; cursor: default; user-select: none; -webkit-user-select: none; }
-.pic > :not(.pic-label) { opacity: .88; filter: saturate(.7); pointer-events: none; }
+.pic > :not(.pic-label) { filter: saturate(.8); pointer-events: none; } /* no opacity: it cut the contrast of the pictured tags (S21 audit M6) */
 .pic-label { position: absolute; top: 6px; left: 12px; font-size: 12px; font-weight: 650; color: var(--ink-3); }
 .pic .fit-k, .sample .fit-k { display: inline !important; }
 .how-step > .callouts { margin-left: 44px; }
@@ -643,7 +643,7 @@ body.on-help .banner { display: none; }
 .scout-meta { margin: 0; }
 
 /* ---------- Compare (S12) ---------- */
-@media (max-width: 479px) { .tab { font-size: 14px; gap: 4px; padding: 0 2px; } }
+@media (max-width: 479px) { .tab { font-size: 14px; gap: 4px; padding: 0 2px; white-space: nowrap; } }
 .compare-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--raised); margin: 12px 0; }
 .compare-wrap:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 table.compare { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 15px; }
@@ -695,7 +695,7 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 .private-docs { display: grid; gap: 12px; padding-left: 1.4rem; }
 .private-docs .card { padding: 14px 16px; display: grid; gap: 6px; }
 .doc-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
-.doc-head h3 { margin: 0; }
+.doc-head h2.doc-title { margin: 0; font-size: 18px; }
 .doc-in { display: grid; gap: 6px; }
 .private textarea, .options textarea, .unmask textarea, .options select {
   width: 100%; box-sizing: border-box; font: inherit; padding: 8px 10px;
@@ -748,7 +748,7 @@ body.private-on .bar { border-bottom: 3px solid var(--model); }
 .lead .notes li { color: var(--ink-2); }
 table.compare { border-collapse: collapse; width: 100%; font-size: 14px; }
 table.compare th, table.compare td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
-.handoff textarea, .handoff input { width: 100%; }
+.handoff textarea, .handoff input:not([type=radio]) { width: 100%; }
 .table-wrap { overflow-x: auto; max-width: 100%; }
 .cites { display: flex; flex-wrap: wrap; gap: 6px; }
 .cites .paper-ref { display: inline-flex; gap: 6px; align-items: center; }
@@ -760,3 +760,9 @@ table.compare th, table.compare td { border-bottom: 1px solid var(--line); paddi
 }
 .route-switch .route-btn { min-width: 0; flex-wrap: wrap; justify-content: center; row-gap: 2px; }
 .route-switch .route-btn .tag.sample { height: 20px; font-size: 12px; }
+
+/* S22 (audit S11): record chips reach 44 px where the pointer is a finger. */
+@media (pointer: coarse) {
+  .paper-ref, .cites .paper-ref { min-height: 44px; }
+  .sig-recs .paper-ref { min-height: 44px; }
+}

@@ -331,7 +331,7 @@ function heroArt() {
     <path class="leaf" d="M60 116 c-4 -12 2 -20 8 -22 c4 10 0 18 -8 22z"/>
     <path class="leaf" d="M240 104 c6 -9 16 -9 20 -6 c-6 7 -15 9 -20 6z"/>
   </svg>`;
-  wrap.append(owl("idle", "owl-hero", { button: true }));
+  wrap.append(owl("idle", "owl-hero", { button: true, copy: true }));
   return wrap;
 }
 
@@ -611,7 +611,7 @@ function renderProgress() {
     branch = h("div", { class: "branch", "aria-hidden": "true" },
       h("div", { class: "branch-line" }), h("div", { class: "branch-fill" }),
       h("div", { class: "knots" }, stages.map((s) => h("span", { class: "knot" }))),
-      h("div", { class: "rider" }, owl(state, "owl-rider", { button: true })));
+      h("div", { class: "rider" }, owl(state, "owl-rider", { button: true, copy: true })));
     fill(box, h("section", { class: "progress", "aria-label": "Building the brief" },
       branch, h("div", { class: "progress-text" }), h("div", { class: "progress-steps" })));
   }
@@ -778,7 +778,7 @@ function summarySection() {
   const st = stage("summary");
   let body;
   if (b.summary) {
-    body = [h("p", { class: "summary", text: b.summary }),
+    body = [h("p", { class: "summary" }, renderSegs(f.segments(b.summary))),
       b.topics.length ? h("ul", { class: "chips", "aria-label": "Topics" },
         b.topics.map((t) => h("li", { class: "chip", text: t }))) : null,
       h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
@@ -866,7 +866,7 @@ function threadsSection() {
       ? `${f.plural(b.work_ids.length, "paper")} grouped by what they are about. Labels are the words that set each group apart.`
       : "No public papers: each private document is one thread. Labels are its most frequent words." }),
     h("ol", { class: "threads" }, b.threads.map((t) => {
-      const papers = (t.work_ids || []).slice(0, 5).map((id) => d.papers[id]).filter(Boolean);
+      const papers = distinctPapers((t.work_ids || []).map((id) => d.papers[id]).filter(Boolean)).slice(0, 5);
       const meter = h("span", { class: "meter", "aria-hidden": "true" },
         h("span", { style: `width:${Math.max(t.weight * 100, 2)}%` }));
       if (t.private || t.said) {
@@ -887,6 +887,20 @@ function threadsSection() {
         h("p", { class: "hint", text: `${f.plural(t.work_ids.length, "paper")}. Most recent first:` }),
         h("ul", { class: "papers" }, papers.map(paperRow)));
     })));
+}
+
+// One row per paper title: OpenAlex often lists a journal article and its preprints as
+// separate works. The journal version wins over an arXiv copy (S22, audit S4).
+function distinctPapers(works) {
+  const key = (w) => String(w.title || w.id).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const preprint = (w) => /arxiv|biorxiv|medrxiv|preprint/i.test(w.venue || "");
+  const seen = new Map();
+  for (const w of works) {
+    const k = key(w);
+    if (!seen.has(k)) seen.set(k, w);
+    else if (preprint(seen.get(k)) && !preprint(w)) seen.set(k, w);
+  }
+  return [...seen.values()];
 }
 
 function paperRow(w) {
@@ -967,7 +981,7 @@ function renderRoutes(panel) {
           h("p", { class: "hint routes-sub" })),
         h("label", { class: "sort" }, h("span", { class: "sr-only", text: "Sort leads by" }),
           h("select", { onchange: (e) => { S.sort = e.target.value; renderPanel(); } },
-            h("option", { value: "order", text: "Best match" }),
+            h("option", { value: "order", text: "Perch’s order" }),
             h("option", { value: "closing", text: "Closing soon" }),
             h("option", { value: "fit", text: "Fit estimate" })))),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
@@ -981,7 +995,11 @@ function renderRoutes(panel) {
   const subBits = [];
   if (kept) subBits.push(`${kept} kept`);
   if (explaining && S.brief.brief.options.explain) subBits.push(`${explainedCount()} of ${routeLeads("A").length} explained so far`);
-  subBits.push("Fit is a model’s estimate, not the odds of funding");
+  // The order is the pipeline's, which the back-test measures; the fit number is a
+  // separate model estimate, so the two can disagree (S22, audit M4).
+  subBits.push(S.sort === "fit" ? "Sorted by the model’s fit estimate, which is not the odds of funding"
+    : S.sort === "closing" ? "Sorted by closing date"
+      : "In Perch’s order: how closely each record’s text matches the papers. Fit is a separate model estimate, not the odds of funding, so the two can disagree");
   panel.querySelector(".routes-sub").textContent = `${subBits.join(". ")}.`;
 
   if (!leads.length) {

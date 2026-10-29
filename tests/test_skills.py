@@ -151,3 +151,13 @@ def test_handoff_advice_or_invented_numbers_fall_back_to_code_text():
     d = draft_handoff(OFFICES["research_development"], res, items, papers, p)
     assert d.flagged and FALLBACK in d.body and "$900,000" not in d.body
     assert any("900000" in e for e in d.errors)
+
+
+def test_student_fit_prompt_never_says_researcher() -> None:
+    """S22, audit M5: a student's explanation must not call them the researcher."""
+    from perch.skills.fit import INSTRUCTIONS, STUDENT_INSTRUCTIONS
+
+    assert STUDENT_INSTRUCTIONS != INSTRUCTIONS
+    assert "for the student" in STUDENT_INSTRUCTIONS
+    assert "a researcher's published work" not in STUDENT_INSTRUCTIONS
+    assert "never \"the researcher\"" in STUDENT_INSTRUCTIONS

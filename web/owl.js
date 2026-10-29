@@ -37,11 +37,14 @@ const SVG = `
   </g>
 </svg>`;
 
-export function owl(state = "idle", extra = "", { button = false } = {}) {
+// `copy`: a tappable owl inside a decorative (aria-hidden) picture. It stays out of the
+// tab order; the header owl is the one keyboard users reach (S22, audit M2).
+export function owl(state = "idle", extra = "", { button = false, copy = false } = {}) {
   const el = document.createElement(button ? "button" : "span");
   if (button) {
     el.type = "button";
     el.setAttribute("aria-label", "Say hello to Scout");
+    if (copy) el.tabIndex = -1;
   }
   el.className = `owl ${extra}`.trim();
   el.dataset.state = state;

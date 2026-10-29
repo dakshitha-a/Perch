@@ -347,7 +347,8 @@ class PrivateService(BriefService):
 
         results = explain_leads(opps, ctx["profile"], works,
                                 self._audited("fit_explainer", self.models.fit_spec),
-                                grounder=self.models.get("grounder"), on_result=save)
+                                grounder=self.models.get("grounder"), on_result=save,
+                                audience="student")
         flagged = sum(v.flagged for v in results)
         return f"{len(results) - flagged} explained, {flagged} withheld", False
 

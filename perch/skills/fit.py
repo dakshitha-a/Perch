@@ -87,8 +87,18 @@ class Fit:
                                     self.link_sentence) if x)
 
 
-def profile_prompt(profile: Profile, works: dict[str, Work], per_thread: int = 5) -> tuple[str,
-                                                                                         dict]:
+# Student mode (S22, audit M5): the same task, addressed to a student, so the link
+# sentence does not call them "the researcher". The record shapes are unchanged.
+STUDENT_INSTRUCTIONS = (
+    INSTRUCTIONS.replace("a researcher's published work", "a student's achievements and interests")
+    .replace("for the researcher", "for the student")
+    .replace("with the papers", "with the student's records")
+    + " The person is a student: call them \"you\" or \"the student\", never \"the researcher\"."
+)
+
+
+def profile_prompt(profile: Profile, works: dict[str, Work], per_thread: int = 5,
+                   audience: str = "researcher") -> tuple[str, dict]:
     lines, records = [], {}
     for t in profile.threads:
         lines.append(f"\nResearch thread {t.index + 1} ({t.weight:.0%} of recent work): "
@@ -98,6 +108,8 @@ def profile_prompt(profile: Profile, works: dict[str, Work], per_thread: int = 5
                 w = works[wid]
                 records[short_work_id(w)] = w
                 lines.append(work_view(w, abstract_chars=400))
+    if audience == "student":
+        return STUDENT_INSTRUCTIONS + "\n\nThe student's records:" + "\n".join(lines), records
     return INSTRUCTIONS + "\n\nThe researcher's papers:" + "\n".join(lines), records
 
 
@@ -188,10 +200,10 @@ def ground(f: Fit, o: Opportunity, paper_records: dict[str, Record], grounder: G
 def explain_leads(opps: list[Opportunity], profile: Profile, works: dict[str, Work],
                   provider: AuditedProvider, grounder: Grounder | None = None,
                   workers: int = 4,
-                  on_result: Callable[[int, Validated[Fit]], None] | None = None
-                  ) -> list[Validated[Fit]]:
+                  on_result: Callable[[int, Validated[Fit]], None] | None = None,
+                  audience: str = "researcher") -> list[Validated[Fit]]:
     """Explain every lead; `on_result(index, result)` is called as each one finishes."""
-    system, paper_records = profile_prompt(profile, works)
+    system, paper_records = profile_prompt(profile, works, audience=audience)
     results: list[Validated[Fit] | None] = [None] * len(opps)
 
     def one(i: int) -> None:

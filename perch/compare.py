@@ -135,4 +135,6 @@ def compare(brief: Brief, leads: list[Lead], r: Repository, status: str | None =
 def rows_json(rows: list[Row]) -> dict:
     return {"columns": [{"key": k, "label": lbl} for k, lbl in COLUMNS],
             "rows": [asdict(x) for x in rows], "none": NONE,
-            "offices": [asdict(o) for o in OFFICES.values()]}
+            # Research briefs only: the student offices (F, S) have their own browser-side
+            # drafts, and listing them here showed "no kept undefined" (S22, audit M1).
+            "offices": [asdict(o) for o in OFFICES.values() if o.route in ("A", "B")]}

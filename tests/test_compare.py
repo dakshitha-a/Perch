@@ -26,3 +26,11 @@ def test_closes_counts_days_from_the_brief_date():
         == "on or before the brief date"
     gone = closes(opp(status="forecasted"), date(2026, 10, 29))
     assert gone.text == NONE and gone.note == "listed as forecasted"
+
+
+def test_research_compare_offers_only_research_offices():
+    """S22, audit M1: the student offices showed on a PI's hand-off as "no kept undefined"."""
+    from perch.compare import rows_json
+
+    routes = {o["route"] for o in rows_json([])["offices"]}
+    assert routes == {"A", "B"}

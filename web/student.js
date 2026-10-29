@@ -76,7 +76,7 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
     h("ol", { class: "private-docs" }, Object.entries(kinds).map(([kind, label]) => {
       const d = docs.find((x) => x.kind === kind);
       return h("li", { class: "card" },
-        h("div", { class: "doc-head" }, h("h3", { text: label }),
+        h("div", { class: "doc-head" }, h("h2", { class: "doc-title", text: label }),
           d ? h("span", { class: "tag moss", text: `Added, ${d.chars.toLocaleString("en-US")} characters` }) : null),
         h("p", { class: "hint", text: HINTS[kind] }),
         d ? h("button", { class: "btn quiet", onclick: async () => { await api.removeDocument(kind); draw(); } },
@@ -183,7 +183,7 @@ function card(l, { openEvidence, setLead, papers }) {
         : [h("button", { class: `btn keep${l.status === "kept" ? " on" : ""}`, "aria-pressed": String(l.status === "kept"),
           onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") }, icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
         l.verdict !== "not eligible" ? h("button", { class: "btn", onclick: () => setLead(l.id, "dismiss") }, icon("dismiss"), h("span", { text: "Dismiss" })) : null],
-      h("button", { class: "btn quiet", onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { text: "Record" }))));
+      h("button", { class: "btn quiet", onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { text: "Evidence" }))));
 }
 
 // Citation brackets go; a session record's id reads as "your achievement A".
@@ -221,7 +221,7 @@ export function studentCompare(panel, { brief, goRoutes, announce }) {
   const byOffice = { F: kept.filter((l) => l.route === "F"), S: kept.filter((l) => l.route === "S") };
   fill(panel,
     kept.some((l) => l.sample) ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }), h("span", { text: ` ${SAMPLE_NOTE}` })) : null,
-    h("div", { class: "table-wrap" }, h("table", { class: "compare" },
+    h("div", { class: "table-wrap", role: "region", "aria-label": "Kept options, side by side", tabindex: "0" }, h("table", { class: "compare" },
       h("thead", {}, h("tr", {}, ["Lead", "Route", "Verdict", "Deadline", "Amount", "Still needed", "Office"].map((x) => h("th", { scope: "col", text: x })))),
       h("tbody", {}, rows.map((row) => h("tr", {}, row.map((x, i) => h(i ? "td" : "th", { scope: i ? null : "row", text: x }))))))),
     ["F", "S"].filter((r) => byOffice[r].length).map((r) => handoff(r, byOffice[r], announce)));
