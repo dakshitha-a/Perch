@@ -4,8 +4,9 @@ Changes one block at a time against the default (Qwen3-Embedding-0.6B, hybrid
 retrieval, Qwen3-Reranker-0.6B). The keyword-only baseline (BM25 on the thread
 terms, no dense, no rerank, threads from the default embedder) is computed once and
 shown beside every row. Results: bench/results/backtest_matrix.csv (one line per
-award and config) and bench/results/RESULTS.md (the table, plus the skill-2,
-validator layer-2 and single-card tables when their CSVs exist).
+award and config) and bench/results/RESULTS.md (the table, a paired comparison of
+each config against the default on the same awards, plus the skill-2, validator
+layer-2, cost and single-card tables when their CSVs exist).
 
   uv run --extra ml python -m bench.run [--render-only] [--device cuda]
 """
@@ -91,6 +92,42 @@ def short(name: str) -> str:
     return name.split("/")[-1]
 
 
+DEFAULT_CONFIG = "hybrid + Qwen3-Reranker-0.6B (default)"
+
+
+def paired(m: dict[tuple[str, str], list[Row]], stratum: str, draws: int = 2000) -> list[dict]:
+    """Each config against the default on the same awards: hit@10 count, awards it gets
+    into the top 10 that the default misses (+) and the reverse (-), a seeded bootstrap
+    95% interval for the MRR difference, and the p50 seconds per award."""
+    import random
+
+    def key(x: Row) -> tuple[str, str]:
+        return (x.alias, x.opportunity_number)
+
+    base = {key(x): x for x in m.get((DEFAULT_EMBEDDER, DEFAULT_CONFIG), [])
+            if x.stratum == stratum}
+    out = []
+    for (emb, label), xs in m.items():
+        pairs = [(x, base[key(x)]) for x in xs if x.stratum == stratum and key(x) in base]
+        if not pairs:
+            continue
+        top = [(x.rank is not None and x.rank <= 10, b.rank is not None and b.rank <= 10)
+               for x, b in pairs]
+        diffs = [x.reciprocal_rank - b.reciprocal_rank for x, b in pairs]
+        rng = random.Random(0)
+        means = sorted(sum(rng.choice(diffs) for _ in diffs) / len(diffs) for _ in range(draws))
+        secs = sorted(x.seconds for x, _ in pairs)
+        out.append({"embedder": short(emb), "config": label, "n": len(pairs),
+                    "hit@10 count": sum(a for a, _ in top),
+                    "default hit@10 count": sum(b for _, b in top),
+                    "+ / -": f"+{sum(a and not b for a, b in top)} / "
+                             f"-{sum(b and not a for a, b in top)}",
+                    "MRR difference, 95% interval":
+                        f"[{means[int(draws * .025)]:.3f}, {means[int(draws * .975) - 1]:.3f}]",
+                    "p50 s per award": secs[len(secs) // 2]})
+    return out
+
+
 def render() -> str:
     lines = ["# Bench results", "",
              f"Rendered {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')} by `make bench`. "
@@ -115,6 +152,11 @@ def render() -> str:
                                  f"{b.get('hit@5')} / {b.get('hit@10')} / {b.get('mrr')}"})
             lines += [f"### {s.capitalize()} announcements", "",
                       *table(rows, list(rows[0]) if rows else []), ""]
+        rows = paired(m, "targeted")
+        if rows:
+            lines += ["### Against the default, same awards (targeted)", "",
+                      "An interval that contains 0 means the back-test cannot tell the config "
+                      "from the default.", "", *table(rows, list(rows[0])), ""]
     for name, title in (("skill2_summary.csv", "Fit explanation (skill 2)"),
                         ("grounders.csv", "Validator layer 2 (swapped-record proxy set)"),
                         ("cost.csv", "Cost per brief (audit log)"),

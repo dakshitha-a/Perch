@@ -87,3 +87,25 @@ def test_summary_counts_hits_and_reciprocal_rank():
                 1 / r if r else 0.0, 0.1) for r in (1, 6, None, 12)]
     s = summarise(rows)
     assert (s["hit@5"], s["hit@10"], s["mrr"]) == (0.25, 0.5, round((1 + 1 / 6 + 1 / 12) / 4, 3))
+
+
+def test_paired_table_counts_wins_and_losses_against_the_default():
+    from bench.run import DEFAULT_CONFIG, DEFAULT_EMBEDDER, paired
+
+    def row(alias, cfg, r):
+        return Row(alias, "targeted", "P", "2020-01-01", cfg, 5, 1, 9, True, True, r,
+                   1 / r if r else 0.0, 0.1)
+
+    d = DEFAULT_CONFIG
+    m = {(DEFAULT_EMBEDDER, d): [row("a", d, 3), row("b", d, None)],
+         ("x/other", "dense"): [row("a", "dense", None), row("b", "dense", 2)]}
+    other = next(r for r in paired(m, "targeted") if r["embedder"] == "other")
+    assert (other["n"], other["hit@10 count"], other["+ / -"]) == (2, 1, "+1 / -1")
+    same = next(r for r in paired(m, "targeted") if r["config"] == DEFAULT_CONFIG)
+    assert same["MRR difference, 95% interval"] == "[0.000, 0.000]"
+
+
+def test_profile_reranker_keys_build_cross_encoder_or_decision_server():
+    from perch.rerank import DecisionReranker, make_reranker
+
+    assert isinstance(make_reranker("systemone:clef-flash"), DecisionReranker)

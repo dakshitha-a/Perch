@@ -166,15 +166,10 @@ RERANKERS = ("qwen3-reranker-0.6b", "clef-flash", "clef")
 
 
 def make_reranker(key: str, device: str | None) -> Reranker:
-    if key == "qwen3-reranker-0.6b":
-        from perch.rerank import DEFAULT_MODEL, CrossEncoderReranker
+    from perch.rerank import DEFAULT_MODEL
+    from perch.rerank import make_reranker as make
 
-        return CrossEncoderReranker(DEFAULT_MODEL, device=device)
-    from perch.llm.systemone import CLEF_FLASH_URL, CLEF_URL, SystemOneClient, SystemOneDecider
-    from perch.rerank import DecisionReranker
-
-    url = {"clef-flash": CLEF_FLASH_URL, "clef": CLEF_URL}[key]
-    return DecisionReranker(SystemOneDecider(SystemOneClient(url), key), f"systemone:{key}")
+    return make(DEFAULT_MODEL if key == "qwen3-reranker-0.6b" else f"systemone:{key}", device)
 
 
 def run(embedder_name: str, configs: list[tuple[str, str, str | None]],

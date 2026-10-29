@@ -12,7 +12,7 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S5 | Provider layer, skills 1–2, validator | done | 2026-10-28 21:04 EDT | 2026-10-28 21:29 EDT | ce34844 | 105 tests green. `perch brief --explain` live for 3 PIs on qwen3.8:27b: layer 1 rejected 0 of 33, layer 2 flagged 1 of 30 (a false flag). 70 to 79 s per brief, $0. `decide` primitive with logprobs fallback. Anthropic adapter built on the SDK but not live-verified (Q5). |
 | S6 | API | done | 2026-10-28 22:07 EDT | 2026-10-28 22:13 EDT | b3ccdf6 | 112 tests green. FastAPI + in-process jobs; briefs end to end via curl for 2 PIs (one fetched from scratch); stages and partial results pollable; export with provenance. |
 | S7 | Web app, first three screens | done | 2026-10-28 22:40 EDT | 2026-10-28 23:14 EDT | 5da4e7e | 116 tests green. No-build web app in `web/` served by `perch serve` at `/`: Find, Profile, Routes, evidence panel, Scout the owl on the progress branch. Live brief in the browser in 90 s. Adversarial review: 32 findings fixed. Screenshots in `docs/screenshots/`; UI tab in the tracker. |
-| S8 | Back-test and bench | continued | 2026-10-29 00:04 EDT | 2026-10-29 01:10 EDT | see git log | 126 tests green. Back-test set 160 rows (69 targeted, 91 parent) from RePORTER; 18-month window. Corpus fetch and `make bench` matrix running unattended (ends after about 03:30). Skill 2 passed both validator layers: Gemma 28 of 30, qwen3.8:27b 28, qwen3:14b 26, Sonnet 24, qwen3:8b 23. Models per profile in `perch/profiles.py`. Keep bar shipped. Private mode designed (S13). Two concurrency bugs fixed. |
+| S8 | Back-test and bench | done | 2026-10-29 00:04 EDT | 2026-10-29 04:50 EDT | see git log | 129 tests green. Back-test on 126 of 160 rows with a fully fetched window (48 targeted, 78 parent; corpus 11,202 NIH announcements). Default config, targeted: 7 of 48 in the top 10 against 1 of 48 for keyword-only. Parent announcements: 0 or 1 of 78 under every config. No embedder separated from the default; Clef as reranker was worse. Skill 2 passed both validator layers: Gemma 28 of 30, qwen3.8:27b 28, qwen3:14b 26, Sonnet 24, qwen3:8b 23. Models per profile in `perch/profiles.py`. Keep bar shipped. Private mode designed (S13). Two concurrency bugs fixed. |
 | S9 | Deploy | todo | | | | |
 | S10 | Scout agent | todo | | | | |
 | S11 | Route B | todo | | | | |
@@ -34,8 +34,8 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 
 | Metric | Value | Source | Updated |
 |---|---|---|---|
-| Back-test hit@5 / hit@10 / MRR (best config) | | bench/results/ | |
-| Keyword-only baseline hit@5 / hit@10 / MRR | | bench/results/ | |
+| Back-test hit@5 / hit@10 / MRR, targeted, default config | 0.104 / 0.146 / 0.066 (5 and 7 of 48 awards). Highest measured: specter2_base + Qwen3 reranker 0.104 / 0.188 / 0.075 (9 of 48), not separable from the default. Parent stratum: 1 of 78 in the top 10 | bench/results/RESULTS.md | 2026-10-29 |
+| Keyword-only baseline hit@5 / hit@10 / MRR | Targeted 0.021 / 0.021 / 0.017 (1 of 48). Parent 0 / 0 / 0.001 (0 of 78) | bench/results/RESULTS.md | 2026-10-29 |
 | Validator pass rate, both layers (30 leads) | Gemma 4 26B-A4B 28 of 30, qwen3.8:27b 28, qwen3:14b 26, claude-sonnet-5-5 24, qwen3:8b 23 | bench/results/RESULTS.md | 2026-10-29 |
 | Cost per brief (API model) | $0.091 for a 10-lead brief on claude-sonnet-5-5 ($0.079 explanations, $0.012 summary); local models $0 | bench/results/cost.csv | 2026-10-29 |
 | Warm-cache brief time | 0.7 to 1.1 s (Route A: embed + rerank, no LLM calls; 3 PIs) | data/logs/brief_timings.jsonl | 2026-10-28 |

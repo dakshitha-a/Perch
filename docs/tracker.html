@@ -119,39 +119,24 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S8</code> <span class="badge s-continued">continued</span><span>8/17 sessions done</span></div>
+<div class="at-a-glance"><code>S9</code> <span class="badge s-todo">todo</span><span>9/17 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
-<a id="tab-archive" href="#archive">Archive<span class="count">8</span></a>
+<a id="tab-archive" href="#archive">Archive<span class="count">9</span></a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
 
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
-<div id="s8"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S8 · Back-test and bench</h1><span class="badge s-continued">continued</span></div>
-<div class="meta">Started 2026-10-29 00:04 EDT</div></div>
-<p>Goal: the numbers for the results slide. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="2 of 6 tasks done"><div class="counts"><span><b>2/6</b>tasks done</span><span class="s-done"><b>2</b>done</span><span class="s-in-progress"><b>3</b>in progress</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="2 of 6 tasks done"><span class="s-done" style="width:33.33%" title="done: 2"></span><span class="s-in-progress" style="width:50.00%" title="in progress: 3"></span><span class="s-todo" style="width:16.67%" title="todo: 1"></span></div></section>
-<div class="panel scroll"><table>
-<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
-<tbody>
-<tr><td>1</td><td>Back-test set from RePORTER; <code>bench/backtest.py</code> with date cut-off and keyword baseline</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono">aa5746b</td><td>Set: 160 rows (69 targeted, 91 parent) from 345 candidate awards; 128 PIs matched, 33 ambiguous, 23 not found. Window 18 months. Corpus fetch of 11,218 NIH announcements running (about 3 h at 1 per second).</td></tr>
-<tr><td>2</td><td><code>make bench</code>: embeddings, retrieval and rerank matrix; skill-2 LLM rows</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono">a2ddd35</td><td>Skill 2 on 30 leads, passed both validator layers: Gemma 4 26B-A4B 28, qwen3.8:27b 28, qwen3:14b 26, claude-sonnet-5-5 24, qwen3:8b 23. Chat winners in <code>perch/profiles.py</code>. Embedding and rerank matrix waits for the corpus.</td></tr>
-<tr><td>3</td><td>Cost per brief from the audit log</td><td><span class="badge s-done">done</span></td><td class="mono">a2ddd35</td><td>claude-sonnet-5-5: $0.079 per 10-lead brief for explanations plus $0.012 for the summary, $0.091 total. Local models $0. S8 spend $0.24 of $3; total $0.32 of $100.</td></tr>
-<tr><td>4</td><td>Decision-model rows for validator layer 2 and rerank</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono">116c5be</td><td><code>/v1/systemone</code> adapter verified live. Layer 2 on 40 swapped-record pairs: all tie at 0.5 (0 false flags, 2 of 20 misses); AUC Clef 0.998, logprobs 0.985, Clef-flash 0.948, MiniCheck 0.925. Jev and Strands not benched (access, weights). Rerank rows wait for the corpus.</td></tr>
-<tr><td>5</td><td>Single-card validation of qwen3 14b, 8b and 30b against qwen3.8:27b</td><td><span class="badge s-done">done</span></td><td class="mono">a2ddd35</td><td>3 concurrent briefs on one clean GPU. Peaks: qwen3:8b 19.1 GB, qwen3:14b 22.7 GB, qwen3.8:27b 31.1 GB, qwen3:30b 31.5 GB, Gemma 31.7 GB. p50: 161, 268, 272, 332, 144 s. No model passed every gate; deploy-1gpu uses qwen3:14b. Fixed two concurrency bugs on the way.</td></tr>
-<tr><td>6</td><td>Keep bar in the web app; Help page</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-</tbody></table></div>
-<h2>Status at stop (01:10 EDT)</h2>
-<ul><li>Tasks 3, 5 and 6 done. Tasks 1, 2 and 4 wait for the back-test matrix, which runs unattended after the corpus fetch (see HANDOFF).</li></ul>
-<h2>Definition of done</h2>
-<ul class="panel done-list"><li>A results table with the keyword baseline exists in <code>bench/results/</code>.</li><li>Winners are written into config, with the runner-up one line away.</li><li><code>make test</code> is green.</li></ul>
+<div id="s9"><div class="eyebrow">Current session</div>
+<div class="title-row"><h1>S9 · Deploy</h1><span class="badge s-todo">todo</span></div>
+<div class="meta">Not started</div></div>
+<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S9.md</code> when the session starts.</div>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="8 of 17 sessions done"><div class="counts"><span><b>8/17</b>sessions done</span><span class="s-done"><b>8</b>done</span><span class="s-continued"><b>1</b>continued</span><span class="s-todo"><b>8</b>todo</span></div><div class="bar" role="img" aria-label="8 of 17 sessions done"><span class="s-done" style="width:47.06%" title="done: 8"></span><span class="s-continued" style="width:5.88%" title="continued: 1"></span><span class="s-todo" style="width:47.06%" title="todo: 8"></span></div></section>
+<section class="panel summary" aria-label="9 of 17 sessions done"><div class="counts"><span><b>9/17</b>sessions done</span><span class="s-done"><b>9</b>done</span><span class="s-todo"><b>8</b>todo</span></div><div class="bar" role="img" aria-label="9 of 17 sessions done"><span class="s-done" style="width:52.94%" title="done: 9"></span><span class="s-todo" style="width:47.06%" title="todo: 8"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -163,8 +148,8 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s5">S5</a></td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-done">done</span></td><td>2026-10-28 21:04 EDT</td><td>2026-10-28 21:29 EDT</td><td class="mono">ce34844</td><td>105 tests green. <code>perch brief --explain</code> live for 3 PIs on qwen3.8:27b: layer 1 rejected 0 of 33, layer 2 flagged 1 of 30 (a false flag). 70 to 79 s per brief, $0. <code>decide</code> primitive with logprobs fallback. Anthropic adapter built on the SDK but not live-verified (Q5).</td></tr>
 <tr class="is-finished"><td><a href="#s6">S6</a></td><td>API</td><td><span class="badge s-done">done</span></td><td>2026-10-28 22:07 EDT</td><td>2026-10-28 22:13 EDT</td><td class="mono">b3ccdf6</td><td>112 tests green. FastAPI + in-process jobs; briefs end to end via curl for 2 PIs (one fetched from scratch); stages and partial results pollable; export with provenance.</td></tr>
 <tr class="is-finished"><td><a href="#s7">S7</a></td><td>Web app, first three screens</td><td><span class="badge s-done">done</span></td><td>2026-10-28 22:40 EDT</td><td>2026-10-28 23:14 EDT</td><td class="mono">5da4e7e</td><td>116 tests green. No-build web app in <code>web/</code> served by <code>perch serve</code> at <code>/</code>: Find, Profile, Routes, evidence panel, Scout the owl on the progress branch. Live brief in the browser in 90 s. Adversarial review: 32 findings fixed. Screenshots in <code>docs/screenshots/</code>; UI tab in the tracker.</td></tr>
-<tr class="is-current"><td><a href="#s8">S8</a></td><td>Back-test and bench</td><td><span class="badge s-continued">continued</span></td><td>2026-10-29 00:04 EDT</td><td>2026-10-29 01:10 EDT</td><td class="mono">see git log</td><td>126 tests green. Back-test set 160 rows (69 targeted, 91 parent) from RePORTER; 18-month window. Corpus fetch and <code>make bench</code> matrix running unattended (ends after about 03:30). Skill 2 passed both validator layers: Gemma 28 of 30, qwen3.8:27b 28, qwen3:14b 26, Sonnet 24, qwen3:8b 23. Models per profile in <code>perch/profiles.py</code>. Keep bar shipped. Private mode designed (S13). Two concurrency bugs fixed.</td></tr>
-<tr><td>S9</td><td>Deploy</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-finished"><td><a href="#s8">S8</a></td><td>Back-test and bench</td><td><span class="badge s-done">done</span></td><td>2026-10-29 00:04 EDT</td><td>2026-10-29 04:50 EDT</td><td class="mono">see git log</td><td>129 tests green. Back-test on 126 of 160 rows with a fully fetched window (48 targeted, 78 parent; corpus 11,202 NIH announcements). Default config, targeted: 7 of 48 in the top 10 against 1 of 48 for keyword-only. Parent announcements: 0 or 1 of 78 under every config. No embedder separated from the default; Clef as reranker was worse. Skill 2 passed both validator layers: Gemma 28 of 30, qwen3.8:27b 28, qwen3:14b 26, Sonnet 24, qwen3:8b 23. Models per profile in <code>perch/profiles.py</code>. Keep bar shipped. Private mode designed (S13). Two concurrency bugs fixed.</td></tr>
+<tr class="is-current"><td>S9</td><td>Deploy</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S10</td><td>Scout agent</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S11</td><td>Route B</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S12</td><td>Compare, hand-off, export</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
@@ -185,8 +170,8 @@ details .inner > * { min-width: 0; }
 <div class="panel scroll"><table>
 <thead><tr><th>Metric</th><th>Value</th><th>Source</th><th>Updated</th></tr></thead>
 <tbody>
-<tr><td>Back-test hit@5 / hit@10 / MRR (best config)</td><td></td><td>bench/results/</td><td></td></tr>
-<tr><td>Keyword-only baseline hit@5 / hit@10 / MRR</td><td></td><td>bench/results/</td><td></td></tr>
+<tr><td>Back-test hit@5 / hit@10 / MRR, targeted, default config</td><td>0.104 / 0.146 / 0.066 (5 and 7 of 48 awards). Highest measured: specter2_base + Qwen3 reranker 0.104 / 0.188 / 0.075 (9 of 48), not separable from the default. Parent stratum: 1 of 78 in the top 10</td><td>bench/results/RESULTS.md</td><td>2026-10-29</td></tr>
+<tr><td>Keyword-only baseline hit@5 / hit@10 / MRR</td><td>Targeted 0.021 / 0.021 / 0.017 (1 of 48). Parent 0 / 0 / 0.001 (0 of 78)</td><td>bench/results/RESULTS.md</td><td>2026-10-29</td></tr>
 <tr><td>Validator pass rate, both layers (30 leads)</td><td>Gemma 4 26B-A4B 28 of 30, qwen3.8:27b 28, qwen3:14b 26, claude-sonnet-5-5 24, qwen3:8b 23</td><td>bench/results/RESULTS.md</td><td>2026-10-29</td></tr>
 <tr><td>Cost per brief (API model)</td><td>$0.091 for a 10-lead brief on claude-sonnet-5-5 ($0.079 explanations, $0.012 summary); local models $0</td><td>bench/results/cost.csv</td><td>2026-10-29</td></tr>
 <tr><td>Warm-cache brief time</td><td>0.7 to 1.1 s (Route A: embed + rerank, no LLM calls; 3 PIs)</td><td>data/logs/brief_timings.jsonl</td><td>2026-10-28</td></tr>
@@ -198,7 +183,23 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-archive" class="view" data-view="archive" hidden>
 <div><div class="eyebrow">Finished sessions</div><h1>Archive</h1></div>
-<div><details id="s7"><summary><span><span class="sid">S7</span> <span class="stitle">Web app, first three screens</span></span><span></span><span class="badge s-done">done</span><span class="smeta">6/6 tasks done · finished 2026-10-28 23:14 EDT · commit <code>5da4e7e</code></span></summary><div class="inner"><p>Goal: Find → Profile → Routes in the browser, with the evidence panel. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<div><details id="s8"><summary><span><span class="sid">S8</span> <span class="stitle">Back-test and bench</span></span><span></span><span class="badge s-done">done</span><span class="smeta">6/6 tasks done · finished 2026-10-29 04:50 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: the numbers for the results slide. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="6 of 6 tasks done"><div class="counts"><span><b>6/6</b>tasks done</span><span class="s-done"><b>6</b>done</span></div><div class="bar" role="img" aria-label="6 of 6 tasks done"><span class="s-done" style="width:100.00%" title="done: 6"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Back-test set from RePORTER; <code>bench/backtest.py</code> with date cut-off and keyword baseline</td><td><span class="badge s-done">done</span></td><td class="mono">aa5746b</td><td>Set: 160 rows (69 targeted, 91 parent) from 345 candidate awards; 128 PIs matched, 33 ambiguous, 23 not found. Window 18 months. Corpus 11,202 NIH announcements; 126 rows scored (48 targeted, 78 parent). Default: 7 of 48 targeted in the top 10, keyword-only 1 of 48.</td></tr>
+<tr><td>2</td><td><code>make bench</code>: embeddings, retrieval and rerank matrix; skill-2 LLM rows</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Skill 2 on 30 leads, passed both validator layers: Gemma 4 26B-A4B 28, qwen3.8:27b 28, qwen3:14b 26, claude-sonnet-5-5 24, qwen3:8b 23. Chat winners in <code>perch/profiles.py</code>. Matrix: no embedder separated from Qwen3-Embedding-0.6B (every MRR interval contains 0); it stays, specter2_base is the runner-up (9 of 48). Paired table in RESULTS.md.</td></tr>
+<tr><td>3</td><td>Cost per brief from the audit log</td><td><span class="badge s-done">done</span></td><td class="mono">a2ddd35</td><td>claude-sonnet-5-5: $0.079 per 10-lead brief for explanations plus $0.012 for the summary, $0.091 total. Local models $0. S8 spend $0.24 of $3; total $0.32 of $100.</td></tr>
+<tr><td>4</td><td>Decision-model rows for validator layer 2 and rerank</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>/v1/systemone</code> adapter verified live. Layer 2 on 40 swapped-record pairs: all tie at 0.5 (0 false flags, 2 of 20 misses); AUC Clef 0.998, logprobs 0.985, Clef-flash 0.948, MiniCheck 0.925. Jev and Strands not benched (access, weights). Rerank: Qwen3-Reranker-0.6B 7 of 48, Clef-flash 5, Clef 4 (MRR interval [-0.023, -0.001], 12 s per award). Qwen3 reranker stays.</td></tr>
+<tr><td>5</td><td>Single-card validation of qwen3 14b, 8b and 30b against qwen3.8:27b</td><td><span class="badge s-done">done</span></td><td class="mono">a2ddd35</td><td>3 concurrent briefs on one clean GPU. Peaks: qwen3:8b 19.1 GB, qwen3:14b 22.7 GB, qwen3.8:27b 31.1 GB, qwen3:30b 31.5 GB, Gemma 31.7 GB. p50: 161, 268, 272, 332, 144 s. No model passed every gate; deploy-1gpu uses qwen3:14b. Fixed two concurrency bugs on the way.</td></tr>
+<tr><td>6</td><td>Keep bar in the web app; Help page</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Count, next step, download of kept leads; Help step 5.</td></tr>
+</tbody></table></div>
+<h2>Status at end (04:50 EDT)</h2>
+<ul><li>All six tasks done. The definition of done is met.</li></ul>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>A results table with the keyword baseline exists in <code>bench/results/</code>.</li><li>Winners are written into config, with the runner-up one line away.</li><li><code>make test</code> is green.</li></ul></div></details>
+<details id="s7"><summary><span><span class="sid">S7</span> <span class="stitle">Web app, first three screens</span></span><span></span><span class="badge s-done">done</span><span class="smeta">6/6 tasks done · finished 2026-10-28 23:14 EDT · commit <code>5da4e7e</code></span></summary><div class="inner"><p>Goal: Find → Profile → Routes in the browser, with the evidence panel. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
 <section class="panel summary" aria-label="6 of 6 tasks done"><div class="counts"><span><b>6/6</b>tasks done</span><span class="s-done"><b>6</b>done</span></div><div class="bar" role="img" aria-label="6 of 6 tasks done"><span class="s-done" style="width:100.00%" title="done: 6"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
@@ -311,10 +312,11 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (56)</h2>
+<h2>Decisions (57)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S8</td><td>Embedder stays Qwen3-Embedding-0.6B (runner-up specter2_base); reranker stays Qwen3-Reranker-0.6B (runner-up Clef-flash, now one line through <code>make_reranker</code>)</td><td>On 48 targeted awards no embedder's MRR-difference interval excluded 0; specter2_base put 9 in the top 10 against 7 but ran without its adapter and needs a re-index. Clef as reranker was measurably worse and 5 times slower</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>Normal mode gets a direction, include and exclude keywords and a self-reported career stage (saved with the brief, may reach a hosted model, shown as "You said", never cited as fact); a CV is private-mode only; built in S13 with private mode (Q16)</td><td>Normal mode had no fields for information the researcher adds; CVs carry personal data</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>UI accepted as it stands (Q6); Scout's tap reactions are random among eight, never the same twice in a row</td><td>Dakshitha's review</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>"Validator pass rate" counts a lead only when it passes both layers (explained, no unsupported statement)</td><td>Layer 1 alone hid qwen3:8b's 20% unsupported rate</td><td>Perch-dev</td></tr>

@@ -2,8 +2,9 @@
 
 `PERCH_PROFILE` selects one of: dev (the 8-GPU development layout), deploy-2gpu,
 deploy-1gpu. Each winner is the best measured performer for its job in
-bench/results/RESULTS.md; the runner-up is the commented line below it, so a
-switch is one line. Environment variables (PERCH_LLM_<ROLE>) still override.
+bench/results/RESULTS.md, or the incumbent where the bench cannot separate them;
+the runner-up is the commented line below it, so a switch is one line.
+Environment variables (PERCH_LLM_<ROLE>) still override.
 """
 
 from __future__ import annotations
@@ -24,15 +25,23 @@ class ModelProfile:
 # Chat: gemma4:26b-a4b passed both validator layers on 28 of 30 leads, the same as
 # qwen3.8:27b, with a p50 brief of 144 s against 272 s on one card (3 at once).
 # Grounder: Clef separated supported from swapped-record sentences best (AUC 0.998,
-# 40 pairs; every grounder tied at the 0.5 threshold). Embedder and reranker: the
-# S4 defaults until the back-test matrix picks.
+# 40 pairs; every grounder tied at the 0.5 threshold).
+# Embedder: no alternative separated from Qwen3-Embedding-0.6B on the back-test (48
+# targeted awards; every MRR-difference interval contains 0). specter2_base with the
+# Qwen3 reranker put 9 of 48 in the top 10 against 7 (+5 / -3), without its proximity
+# adapter. Qwen3-4B was slower (4.75 s against 2.27 s per award) for no measured gain.
+# The LanceIndex has one table for every model, so switching needs data/lance removed.
+# Reranker: Qwen3-Reranker-0.6B; Clef as reranker was measurably worse (4 of 48, MRR
+# interval [-0.023, -0.001], 12 s per award) and Clef-flash put 5 of 48 in the top 10.
 _TWO_GPU = ModelProfile(
     chat="ollama:gemma4:26b-a4b",
     # chat="ollama:qwen3.8:27b",
     grounder="systemone:clef",
     # grounder="systemone:clef-flash",
     embedder="Qwen/Qwen3-Embedding-0.6B",
+    # embedder="allenai/specter2_base",
     reranker="Qwen/Qwen3-Reranker-0.6B",
+    # reranker="systemone:clef-flash",
 )
 
 PROFILES: dict[str, ModelProfile] = {
@@ -49,7 +58,9 @@ PROFILES: dict[str, ModelProfile] = {
         grounder="systemone:clef-flash",
         # grounder="minicheck",
         embedder="Qwen/Qwen3-Embedding-0.6B",
+        # embedder="allenai/specter2_base",
         reranker="Qwen/Qwen3-Reranker-0.6B",
+        # reranker="systemone:clef-flash",
     ),
 }
 DEFAULT_PROFILE = "dev"

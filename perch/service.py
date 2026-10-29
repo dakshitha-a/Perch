@@ -292,7 +292,7 @@ def default_models(fake: bool = False, data_dir: Path = Path("data"),
                    llm: str | None = None) -> Models:
     from perch.embed import get_embedder
     from perch.grounding import FakeGrounder
-    from perch.rerank import CrossEncoderReranker, FakeReranker
+    from perch.rerank import FakeReranker, make_reranker
     from perch.store.lance import LanceIndex
 
     if fake:
@@ -304,6 +304,6 @@ def default_models(fake: bool = False, data_dir: Path = Path("data"),
 
     p = current()
     return Models(embedder=lambda: get_embedder(p.embedder, cache=data_dir / "cache/embeddings.db"),
-                  reranker=lambda: CrossEncoderReranker(p.reranker),
+                  reranker=lambda: make_reranker(p.reranker),
                   index=lambda: LanceIndex(data_dir / "lance"),
                   grounder=lambda: make_grounder(p.grounder), summary_spec=llm, fit_spec=llm)
