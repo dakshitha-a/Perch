@@ -1,0 +1,77 @@
+{
+ "persona": "persona-phd",
+ "SYNTHETIC": true,
+ "canary": "PERCH-CANARY-PHD-KEY-2N8W",
+ "rules": "data/synthetic/README.md, section 'Answer key rules'",
+ "as_of": "2026-11-06",
+ "facts": {
+  "level": "graduate",
+  "class_year": null,
+  "major": "Neuroscience",
+  "gpa": null,
+  "enrolment": "full-time",
+  "graduation": "2028-08",
+  "referees": 3,
+  "portfolio": false
+ },
+ "cases": [
+  {
+   "id": "sample:sch-0017",
+   "verdict": "may be eligible",
+   "reason": "gpa_unstated",
+   "gaps": [
+    "essay",
+    "gpa"
+   ]
+  },
+  {
+   "id": "sample:sch-0018",
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "transcript"
+   ]
+  },
+  {
+   "id": "sample:sch-0019",
+   "verdict": "not eligible",
+   "reason": "level",
+   "gaps": []
+  },
+  {
+   "id": "sample:sch-0020",
+   "verdict": "not eligible",
+   "reason": "graduation",
+   "gaps": []
+  },
+  {
+   "id": "sample:sch-0021",
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "essay",
+    "interview"
+   ]
+  },
+  {
+   "id": "sample:sch-0022",
+   "verdict": "may be eligible",
+   "reason": "targeted",
+   "gaps": [
+    "essay"
+   ]
+  },
+  {
+   "id": "sample:sch-0023",
+   "verdict": "not eligible",
+   "reason": "enrolment",
+   "gaps": []
+  },
+  {
+   "id": "sample:sch-0024",
+   "verdict": "not eligible",
+   "reason": "major",
+   "gaps": []
+  }
+ ]
+}

@@ -1,0 +1,76 @@
+{
+ "persona": "persona-masters",
+ "SYNTHETIC": true,
+ "canary": "PERCH-CANARY-MS-KEY-6D2A",
+ "rules": "data/synthetic/README.md, section 'Answer key rules'",
+ "as_of": "2026-11-06",
+ "facts": {
+  "level": "graduate",
+  "class_year": null,
+  "major": "Public Health",
+  "gpa": 3.8,
+  "enrolment": "part-time",
+  "graduation": "2027-05",
+  "referees": 3,
+  "portfolio": false
+ },
+ "cases": [
+  {
+   "id": "sample:sch-0009",
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "essay"
+   ]
+  },
+  {
+   "id": "sample:sch-0010",
+   "verdict": "not eligible",
+   "reason": "enrolment",
+   "gaps": []
+  },
+  {
+   "id": "sample:sch-0011",
+   "verdict": "not eligible",
+   "reason": "level",
+   "gaps": []
+  },
+  {
+   "id": "sample:sch-0012",
+   "verdict": "may be eligible",
+   "reason": "citizenship",
+   "gaps": [
+    "transcript"
+   ]
+  },
+  {
+   "id": "sample:sch-0013",
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "essay",
+    "interview"
+   ]
+  },
+  {
+   "id": "sample:sch-0014",
+   "verdict": "not eligible",
+   "reason": "graduation",
+   "gaps": []
+  },
+  {
+   "id": "sample:sch-0015",
+   "verdict": "not eligible",
+   "reason": "gpa",
+   "gaps": []
+  },
+  {
+   "id": "sample:sch-0016",
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "transcript"
+   ]
+  }
+ ]
+}

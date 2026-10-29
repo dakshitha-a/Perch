@@ -1,0 +1,79 @@
+{
+ "persona": "persona-ug",
+ "SYNTHETIC": true,
+ "canary": "PERCH-CANARY-UG-KEY-0F3S",
+ "rules": "data/synthetic/README.md, section 'Answer key rules'",
+ "as_of": "2026-11-06",
+ "facts": {
+  "level": "bachelor's",
+  "class_year": 3,
+  "major": "Environmental Science",
+  "gpa": 3.4,
+  "enrolment": "full-time",
+  "graduation": "2028-05",
+  "referees": 2,
+  "portfolio": false
+ },
+ "cases": [
+  {
+   "id": "sample:sch-0001",
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "transcript",
+    "essay"
+   ]
+  },
+  {
+   "id": "sample:sch-0002",
+   "verdict": "not eligible",
+   "reason": "gpa",
+   "gaps": []
+  },
+  {
+   "id": "sample:sch-0003",
+   "verdict": "not eligible",
+   "reason": "class_year",
+   "gaps": []
+  },
+  {
+   "id": "sample:sch-0004",
+   "verdict": "not eligible",
+   "reason": "level",
+   "gaps": []
+  },
+  {
+   "id": "sample:sch-0005",
+   "verdict": "may be eligible",
+   "reason": "residency",
+   "gaps": [
+    "essay",
+    "letters"
+   ]
+  },
+  {
+   "id": "sample:sch-0006",
+   "verdict": "may be eligible",
+   "reason": "targeted",
+   "gaps": [
+    "transcript",
+    "fafsa"
+   ]
+  },
+  {
+   "id": "sample:sch-0007",
+   "verdict": "not eligible",
+   "reason": "graduation",
+   "gaps": []
+  },
+  {
+   "id": "sample:sch-0008",
+   "verdict": "eligible",
+   "reason": null,
+   "gaps": [
+    "essay",
+    "portfolio"
+   ]
+  }
+ ]
+}
