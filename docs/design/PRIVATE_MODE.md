@@ -20,6 +20,8 @@ pieces in S9, S10, S12, S14 (MCP) and S16 (QA) (see PLAN.md). Synthetic test per
 
 ## Inputs
 
+- **Normal mode has its own lighter fields (Q16):** a direction, include and exclude keywords, and a career stage. They use the same thread mechanism, but they are saved with the brief and may reach a hosted model. A CV is accepted only in private mode, because CVs carry contact details.
+
 - **Ways in:** text pasted, or a file uploaded. Files are parsed from memory as text, Markdown, DOCX or PDF, with no temp files. Each input has a size limit.
 - **Kinds:** a CV, a direction (a few sentences), a draft proposal (aims or a summary), and unpublished work (an abstract or a manuscript).
 - **Private-only brief:** a session can run with no OpenAlex id at all. Threads then come from the private documents alone. This serves new faculty with nothing published yet, which the public pipeline cannot help.

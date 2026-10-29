@@ -179,7 +179,8 @@ Goal: private tailoring on self-hosted models that leaves no trace, on the publi
 3. Tailoring: private threads at 0.6 of the thread weight (Q13 default); deterministic CV parse (degree year, rank, appointments, prior sponsors) for the career-stage unlock and sponsor history; private-only brief with no OpenAlex id.
 4. Session records (`source: private`) cited in explanations and accepted by the validator in session only; lock label and the operator-named privacy statement in the UI; Help page section.
 5. Tests: canary test over files, logs, `/tmp`, browser storage and outbound requests; refusal test; isolation test; masking test. Persona: `data/synthetic/persona-1/`.
-6. Mechanism measured (if time): RePORTER project abstract as stand-in for the unfinished proposal on the back-test rows (verify the field live), reported as an upper bound beside the public-only numbers.
+6. Normal-mode context (Q16): a short research direction, keywords to include or exclude, and a self-reported career stage, on the Find screen's options. Same mechanism as private threads, but saved with the brief, usable by the configured model (hosted included) and shown on the Profile as "You said"; used as a query, never cited as a fact. A CV stays private-mode only.
+7. Mechanism measured (if time): RePORTER project abstract as stand-in for the unfinished proposal on the back-test rows (verify the field live), reported as an upper bound beside the public-only numbers.
 
 Done when: the canary and isolation tests pass after full private briefs with persona-1 on a local model; a private-only brief returns cited routes.
 
@@ -228,3 +229,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S9, S10, S12, S13, S15 | Private mode added (design in `docs/design/PRIVATE_MODE.md`): local-only gate and logging groundwork in S9; Scout rules in S10; egress filter in S12; S13 becomes "Private mode and MCP server" (split proposed, Q11); privacy audit in S15; floor added to the cut order | Dakshitha asked for a high-privacy mode that takes a CV, unpublished work and draft proposals, runs only on local models, leaves no logs and masks anything that leaves | Dakshitha |
 | 2026-10-29 | S13 to S16 | S13 split: S13 Private mode, S14 MCP server, S15 Monitoring, S16 QA, freeze, package (Q11). Private mode allowed on the public URL when every model is self-hosted, with session isolation and a server-side TLS rule (Q12 revised) | Dakshitha: split S13; a university deployment hosts its own models, so public hosting does not by itself break the privacy promise | Dakshitha |
 | 2026-10-29 | S13 | Private mode: full back end and front end built in S13; no Demo Day demo | Dakshitha's direction | Dakshitha |
+| 2026-10-29 | S13 | Normal-mode context fields added (direction, include and exclude keywords, self-reported career stage); CV only in private mode | Dakshitha (Q16): normal mode had no user input fields |  Dakshitha |

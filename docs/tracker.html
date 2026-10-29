@@ -311,10 +311,11 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (55)</h2>
+<h2>Decisions (56)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S8</td><td>Normal mode gets a direction, include and exclude keywords and a self-reported career stage (saved with the brief, may reach a hosted model, shown as "You said", never cited as fact); a CV is private-mode only; built in S13 with private mode (Q16)</td><td>Normal mode had no fields for information the researcher adds; CVs carry personal data</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>UI accepted as it stands (Q6); Scout's tap reactions are random among eight, never the same twice in a row</td><td>Dakshitha's review</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>"Validator pass rate" counts a lead only when it passes both layers (explained, no unsupported statement)</td><td>Layer 1 alone hid qwen3:8b's 20% unsupported rate</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S8</td><td>Models per profile in <code>perch/profiles.py</code>: dev and deploy-2gpu chat gemma4:26b-a4b (runner-up qwen3.8:27b), grounder Clef (runner-up Clef-flash); deploy-1gpu chat qwen3:14b (runner-up qwen3:8b), grounder Clef-flash (runner-up MiniCheck); a decision server that is down falls back to MiniCheck</td><td>S8 bench: Gemma ties the 27B on both validator layers (28 of 30) at about twice the speed; no chat model passed every one-card gate, qwen3:14b fits with a 22.7 GB peak and misses the pass-rate gate by 2 leads of 30; Clef had the best grounder AUC (0.998 on 40 pairs)</td><td>Perch-dev (Dakshitha asked for the best performers)</td></tr>
@@ -371,10 +372,11 @@ details .inner > * { min-width: 0; }
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (11)</h2>
+<h2>Plan change log (12)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S13</td><td>Normal-mode context fields added (direction, include and exclude keywords, self-reported career stage); CV only in private mode</td><td>Dakshitha (Q16): normal mode had no user input fields</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S13</td><td>Private mode: full back end and front end built in S13; no Demo Day demo</td><td>Dakshitha's direction</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S13 to S16</td><td>S13 split: S13 Private mode, S14 MCP server, S15 Monitoring, S16 QA, freeze, package (Q11). Private mode allowed on the public URL when every model is self-hosted, with session isolation and a server-side TLS rule (Q12 revised)</td><td>Dakshitha: split S13; a university deployment hosts its own models, so public hosting does not by itself break the privacy promise</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S9, S10, S12, S13, S15</td><td>Private mode added (design in <code>docs/design/PRIVATE_MODE.md</code>): local-only gate and logging groundwork in S9; Scout rules in S10; egress filter in S12; S13 becomes "Private mode and MCP server" (split proposed, Q11); privacy audit in S15; floor added to the cut order</td><td>Dakshitha asked for a high-privacy mode that takes a CV, unpublished work and draft proposals, runs only on local models, leaves no logs and masks anything that leaves</td><td>Dakshitha</td></tr>
