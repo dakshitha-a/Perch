@@ -1,0 +1,57 @@
+from datetime import UTC, date, datetime
+
+from perch.eligibility import Constraints, check, split
+from perch.schemas import Opportunity
+
+T = datetime(2026, 10, 28, tzinfo=UTC)
+HE = ["Private institutions of higher education", "Small businesses"]
+
+
+def opp(**kw):
+    base = dict(id="grants_gov:X", opportunity_number="X", title="SYNTHETIC (R01)", agency="NIH",
+                source="grants_gov", source_url="https://www.grants.gov/x", fetched_at=T,
+                status="posted", open_date=date(2026, 1, 1), close_date=date(2027, 1, 1),
+                eligible_applicants=HE, activity_code="R01")
+    base.update(kw)
+    return Opportunity(**base)
+
+
+C = Constraints(as_of=date(2026, 10, 28))
+
+
+def test_open_r01_for_universities_is_eligible():
+    assert check(opp(), C) == []
+
+
+def test_dates():
+    assert "closed 2026-10-01" in check(opp(close_date=date(2026, 10, 1)), C)
+    assert any("opens" in r for r in check(opp(open_date=date(2026, 12, 1)), C))
+    assert "no close date in the record" in check(opp(close_date=None), C)
+    assert check(opp(status="forecasted", close_date=None), C) == [
+        "forecasted, not yet open for applications"]
+    assert check(opp(status="forecasted", close_date=None),
+                 Constraints(as_of=C.as_of, include_forecasted=True)) == []
+
+
+def test_applicants_and_activity_codes():
+    assert check(opp(eligible_applicants=["Small businesses"]), C) == [
+        "institutions of higher education are not eligible applicants"]
+    assert check(opp(eligible_applicants=[]), C) == ["no applicant types in the record"]
+    for code in ("F32", "K99", "R00", "R36", "R43", "R44", "U44"):
+        assert check(opp(activity_code=code), C), code
+    for code in ("R01", "R21", "K01", "U01", "T32", None):
+        assert check(opp(activity_code=code), C) == [], code
+
+
+def test_user_constraints():
+    c = Constraints(as_of=C.as_of, min_amount=500_000, agencies=["NIH"], exclude_activity=["R21"])
+    assert check(opp(award_ceiling=250_000), c) == ["award ceiling 250,000 is below 500,000"]
+    assert check(opp(award_ceiling=None), c) == []  # no ceiling in the record: not excluded
+    assert check(opp(agency="NSF"), c) == ["agency NSF not in the chosen agencies"]
+    assert check(opp(activity_code="R21"), c) == ["activity code R21 excluded by the user"]
+
+
+def test_split_keeps_order_and_reasons():
+    a, b = opp(id="a"), opp(id="b", close_date=date(2020, 1, 1))
+    ok, rejected = split([a, b], C)
+    assert [o.id for o in ok] == ["a"] and list(rejected) == ["b"]
