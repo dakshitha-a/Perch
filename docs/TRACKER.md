@@ -9,7 +9,7 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S2 | Award sources, award horizon | done | 2026-10-28 19:34 EDT | 2026-10-28 19:44 EDT | 6ea2955 | 44 tests green. `perch profile` live for 3 PIs (13, 12 and 5 awards); horizons hand-checked against RePORTER. NIH field is `opportunity_number`, mostly empty before FY 2012. NSF has no opportunity field and returns contact details (redacted). |
 | S3 | Opportunities | done | 2026-10-28 19:50 EDT | 2026-10-28 19:59 EDT | 3b9740b | 52 tests green. Grants.gov search2 + fetchOpportunity, no key; attribution notice required. No documented NIH Guide archive API; Grants.gov archive (12,152 NIH) is the back-test source: 16 of 17 sampled FOAs present. 56 opportunities stored live. |
 | S4 | Route A, deterministic | done | 2026-10-28 20:05 EDT | 2026-10-28 20:40 EDT | f00e02c | 76 tests green. Live Route A for 3 PIs; 0 ineligible of 30 by hand check against Grants.gov record text. Warm brief 0.7 to 1.1 s; retrieval 73 to 78 ms. Qwen3-Embedding-0.6B and Qwen3-Reranker-0.6B on GPU 3 (torch cu126). Added title-restriction rules; Q4 on Temple's applicant category. |
-| S5 | Provider layer, skills 1–2, validator | todo | | | | |
+| S5 | Provider layer, skills 1–2, validator | in progress | 2026-10-28 21:04 EDT | | | |
 | S6 | API | todo | | | | |
 | S7 | Web app, first three screens | todo | | | | |
 | S8 | Back-test and bench | todo | | | | |

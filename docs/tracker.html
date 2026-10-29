@@ -108,7 +108,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S5</code> <span class="badge s-todo">todo</span><span>5/16 sessions done</span></div>
+<div class="at-a-glance"><code>S5</code> <span class="badge s-in-progress">in progress</span><span>5/16 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
@@ -118,13 +118,27 @@ details .inner > * { min-width: 0; }
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
 <div id="s5"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S5 · Provider layer, skills 1–2, validator</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S5.md</code> when the session starts.</div>
+<div class="title-row"><h1>S5 · Provider layer, skills 1 and 2, validator</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-28 21:04 EDT</div></div>
+<p>Goal: the first and only model calls, each bounded and validated. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 7 tasks done"><div class="counts"><span><b>0/7</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>6</b>todo</span></div><div class="bar" role="img" aria-label="0 of 7 tasks done"><span class="s-in-progress" style="width:14.29%" title="in progress: 1"></span><span class="s-todo" style="width:85.71%" title="todo: 6"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>perch/llm/</code>: one interface (chat, tool calling, structured JSON); adapters for Anthropic, OpenAI-compatible, Ollama; model-per-role config; fake provider for tests</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td><code>perch/validate.py</code> layer 1: every cited id exists in the input; no number or date in the output that is absent from cited records; regenerate once on failure, then flag</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>Skill 1, profile summariser: topic labels and a two-sentence summary tied to work ids</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td>Skill 2, fit explainer: profile + one candidate, fit 0 to 100, 2 to 3 sentences, citations as ids; reasoning first, constrained JSON last; parallel across leads; prompt caching where supported</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>5</td><td>Validator layer 2: small grounding model on CPU in the request path; unsupported sentence is flagged</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>6</td><td>Audit log of every model call: prompt hash, model, version, tokens, cost, validator result</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>7</td><td><code>decide</code> primitive (typed choice, score or yes/no in; typed value plus confidence out) with the LLM-logprobs fallback adapter; unit tests with the fake provider</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li><code>perch brief --route A --explain</code> produces cited explanations for 3 PIs.</li><li>The validator rejection rate is printed.</li><li>Tests are green with the fake provider.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="5 of 16 sessions done"><div class="counts"><span><b>5/16</b>sessions done</span><span class="s-done"><b>5</b>done</span><span class="s-todo"><b>11</b>todo</span></div><div class="bar" role="img" aria-label="5 of 16 sessions done"><span class="s-done" style="width:31.25%" title="done: 5"></span><span class="s-todo" style="width:68.75%" title="todo: 11"></span></div></section>
+<section class="panel summary" aria-label="5 of 16 sessions done"><div class="counts"><span><b>5/16</b>sessions done</span><span class="s-done"><b>5</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>10</b>todo</span></div><div class="bar" role="img" aria-label="5 of 16 sessions done"><span class="s-done" style="width:31.25%" title="done: 5"></span><span class="s-in-progress" style="width:6.25%" title="in progress: 1"></span><span class="s-todo" style="width:62.50%" title="todo: 10"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -133,7 +147,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s2">S2</a></td><td>Award sources, award horizon</td><td><span class="badge s-done">done</span></td><td>2026-10-28 19:34 EDT</td><td>2026-10-28 19:44 EDT</td><td class="mono">6ea2955</td><td>44 tests green. <code>perch profile</code> live for 3 PIs (13, 12 and 5 awards); horizons hand-checked against RePORTER. NIH field is <code>opportunity_number</code>, mostly empty before FY 2012. NSF has no opportunity field and returns contact details (redacted).</td></tr>
 <tr class="is-finished"><td><a href="#s3">S3</a></td><td>Opportunities</td><td><span class="badge s-done">done</span></td><td>2026-10-28 19:50 EDT</td><td>2026-10-28 19:59 EDT</td><td class="mono">3b9740b</td><td>52 tests green. Grants.gov search2 + fetchOpportunity, no key; attribution notice required. No documented NIH Guide archive API; Grants.gov archive (12,152 NIH) is the back-test source: 16 of 17 sampled FOAs present. 56 opportunities stored live.</td></tr>
 <tr class="is-finished"><td><a href="#s4">S4</a></td><td>Route A, deterministic</td><td><span class="badge s-done">done</span></td><td>2026-10-28 20:05 EDT</td><td>2026-10-28 20:40 EDT</td><td class="mono">f00e02c</td><td>76 tests green. Live Route A for 3 PIs; 0 ineligible of 30 by hand check against Grants.gov record text. Warm brief 0.7 to 1.1 s; retrieval 73 to 78 ms. Qwen3-Embedding-0.6B and Qwen3-Reranker-0.6B on GPU 3 (torch cu126). Added title-restriction rules; Q4 on Temple's applicant category.</td></tr>
-<tr class="is-current"><td>S5</td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s5">S5</a></td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-28 21:04 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S6</td><td>API</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S7</td><td>Web app, first three screens</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S8</td><td>Back-test and bench</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
