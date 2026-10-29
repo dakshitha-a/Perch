@@ -36,6 +36,7 @@ def test_researcher_names_stay_out_of_shareable_docs():
     """Docs, the tracker and the README use aliases (PI-1 ...); names live only in
     data/overrides/pi_aliases.csv."""
     import csv
+    import re
     import unicodedata
 
     def fold(s):
@@ -46,7 +47,11 @@ def test_researcher_names_stay_out_of_shareable_docs():
     shareable = [ROOT / "README.md", *ROOT.glob("docs/**/*.md"), *ROOT.glob("docs/**/*.html"),
                  ROOT / "bridge/QUESTIONS.md", *(p for p in ROOT.glob("web/**/*") if p.is_file()
                                                  and p.suffix in {".html", ".js", ".css"})]
-    hits = [(p.name, n) for p in shareable for n in last_names if n in fold(p.read_text("utf-8"))]
+    # Whole words: a short last name can sit inside an ordinary word ("from").
+    words = {p.name: set(re.findall(r"[a-z]+", fold(p.read_text("utf-8")))) for p in shareable}
+    # Two-letter names ("li") are also HTML tags, so markup files skip them.
+    hits = [(name, n) for name, w in words.items() for n in last_names if n in w
+            and (len(n) > 2 or name.endswith(".md"))]
     assert hits == []
 
 
