@@ -4,6 +4,8 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
+22. **Turn private mode on at the public demo URL? (raised S13, 2026-10-29).** Private mode is built and tested, and every demo model runs on this node behind loopback. Tailscale Funnel decrypts on the node, so `PERCH_TLS_AT=server` holds. Turning it on means setting `PERCH_PRIVATE_MODE=1` and `PERCH_PRIVATE_OPERATOR` in the demo's environment, then running `make demo`. The Find screen would then show a Private mode link to every visitor. You said it is not demoed on Demo Day. Default: leave it off on the public URL. Please say how the operator should be named, if you want it on.
+
 21. **How the private documents share the private weight (raised S13, 2026-10-29, asked by Dakshitha).** Private threads together get 0.6 of the thread weight (Q13). Inside that share, Perch-dev proposes:
 - **Draft proposal:** 0.5 of the private share. It is the closest thing to the work being funded.
 - **Research direction:** 0.3. It is short and looks forward.
