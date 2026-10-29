@@ -101,8 +101,9 @@ def test_bench_tab_appears_only_with_a_summary():
     md = ("# Bench results, summary\n\n## Back-test\n\n"
           "| Setup | hit@10 |\n|---|---|\n| BENCH-ROW | 0.1 |\n")
     p = rt.render_page(MASTER, {}, bench_md=md)
-    assert '<a id="tab-bench" href="#bench">Bench</a>' in p
-    assert '<section id="view-bench" class="view" data-view="bench" hidden>' in p
+    assert '<a id="tab-bench" href="#bench" aria-current="page">Bench</a>' in p  # first tab
+    assert '<section id="view-bench" class="view" data-view="bench">' in p
+    assert '<section id="view-current" class="view" data-view="current" hidden>' in p
     assert "BENCH-ROW" in p and "<h1>Bench results, summary</h1>" in p
     assert "tab-bench" not in rt.render_page(MASTER, {})
 
@@ -111,8 +112,20 @@ def test_architecture_tab_inlines_its_svg_figures(tmp_path):
     (tmp_path / "fig.svg").write_text('<svg class="arch" role="img"><rect class="k-local"/></svg>')
     md = "# Where the models sit\n\n![FIG-CAPTION](fig.svg)\n\n- **Swap:** ARCH-ITEM\n"
     p = rt.render_page(MASTER, {}, arch_md=md, arch_root=tmp_path)
-    assert '<a id="tab-architecture" href="#architecture">Architecture</a>' in p
+    assert '<a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>' in p
     view = p.split('id="view-architecture"')[1].split("</section>")[0]
     assert '<figure class="panel diagram"><svg class="arch"' in view
     assert "<figcaption>FIG-CAPTION</figcaption>" in view and "ARCH-ITEM" in view
     assert "tab-architecture" not in rt.render_page(MASTER, {})
+
+
+def test_tabs_run_ui_architecture_bench_current_master_and_decisions_last(tmp_path):
+    import re
+
+    p = rt.render_page(MASTER, {}, bench_md="# B\n", arch_md="# A\n", arch_root=tmp_path,
+                       ui="ui.html", readme="readme.html")
+    order = re.findall(r'<a id="tab-([a-z]+)"', p)
+    assert order == ["ui", "architecture", "bench", "current", "master", "archive", "readme",
+                     "decisions"]
+    assert re.findall(r'data-view="([a-z]+)"', p) == order
+    assert '<a id="tab-ui" href="#ui" aria-current="page">UI</a>' in p

@@ -184,7 +184,7 @@ SCRIPT = """
   var restart = document.getElementById("ui-restart");
   if (restart) restart.addEventListener("click", function () { frame.src = frame.src.split("#")[0]; });
   function route() {
-    var h = (location.hash || "#current").slice(1).toLowerCase();
+    var h = (location.hash || "#" + views[0]).slice(1).toLowerCase();
     var target = null;
     if (/^s[0-9]+$/.test(h)) {
       target = document.getElementById(h);
@@ -192,7 +192,7 @@ SCRIPT = """
       h = host ? host.getAttribute("data-view") : "current";
       if (target && target.tagName === "DETAILS") target.open = true;
     }
-    if (views.indexOf(h) < 0) h = "current";
+    if (views.indexOf(h) < 0) h = views[0];
     views.forEach(function (v) {
       document.getElementById("view-" + v).hidden = v !== h;
       var tab = document.getElementById("tab-" + v);
@@ -607,38 +607,33 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
         f"<code>{html.escape(current.sid)}</code> {badge(current.status)}" if current else ""
     ) + f"<span>{finished}/{len(sessions)} sessions done</span>"
     name = html.escape(page_title)
+    # Tab order (Dakshitha, 2026-10-29): UI, Architecture, Bench, Current, Master, then the
+    # rest, Decisions last. The first tab present opens at rest.
+    tabs = [t for t in (
+        ("ui", "UI", lambda: view_ui(ui), ui),
+        ("architecture", "Architecture", lambda: view_architecture(arch_md, arch_root), arch_md),
+        ("bench", "Bench", lambda: view_bench(bench_md), bench_md),
+        ("current", "Current", lambda: view_current(current), True),
+        ("master", "Master", lambda: view_master(master, sessions, current), True),
+        ("archive", f'Archive<span class="count">{archived}</span>',
+         lambda: view_archive(sessions), True),
+        ("persona", "Persona", lambda: view_persona(persona), persona),
+        ("readme", "README", lambda: view_readme(readme), readme),
+        ("decisions", "Decisions", lambda: view_decisions(decisions_md, plan_md), True),
+    ) if t[3]]
+    nav = "\n".join(f'<a id="tab-{k}" href="#{k}"{" aria-current=\"page\"" if i == 0 else ""}>'
+                    f"{label}</a>" for i, (k, label, _, _) in enumerate(tabs))
+    views = "\n".join(f'<section id="view-{k}" class="view" data-view="{k}"'
+                      f'{"" if i == 0 else " hidden"}>\n{body()}\n</section>'
+                      for i, (k, _, body, _) in enumerate(tabs))
     page = f"""<header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
 <div class="at-a-glance">{glance}</div>
 <nav aria-label="Tracker views">
-<a id="tab-current" href="#current" aria-current="page">Current</a>
-<a id="tab-master" href="#master">Master</a>
-<a id="tab-archive" href="#archive">Archive<span class="count">{archived}</span></a>
-<a id="tab-decisions" href="#decisions">Decisions</a>
-{'<a id="tab-bench" href="#bench">Bench</a>' if bench_md else ""}
-{'<a id="tab-architecture" href="#architecture">Architecture</a>' if arch_md else ""}
-{'<a id="tab-ui" href="#ui">UI</a>' if ui else ""}
-{'<a id="tab-persona" href="#persona">Persona</a>' if persona else ""}
-{'<a id="tab-readme" href="#readme">README</a>' if readme else ""}
+{nav}
 </nav></div></header>
 <main class="wrap">
-<section id="view-current" class="view" data-view="current">
-{view_current(current)}
-</section>
-<section id="view-master" class="view" data-view="master" hidden>
-{view_master(master, sessions, current)}
-</section>
-<section id="view-archive" class="view" data-view="archive" hidden>
-{view_archive(sessions)}
-</section>
-<section id="view-decisions" class="view" data-view="decisions" hidden>
-{view_decisions(decisions_md, plan_md)}
-</section>
-{f'<section id="view-bench" class="view" data-view="bench" hidden>{view_bench(bench_md)}</section>' if bench_md else ""}
-{f'<section id="view-architecture" class="view" data-view="architecture" hidden>{view_architecture(arch_md, arch_root)}</section>' if arch_md else ""}
-{f'<section id="view-ui" class="view" data-view="ui" hidden>{view_ui(ui)}</section>' if ui else ""}
-{f'<section id="view-persona" class="view" data-view="persona" hidden>{view_persona(persona)}</section>' if persona else ""}
-{f'<section id="view-readme" class="view" data-view="readme" hidden>{view_readme(readme)}</section>' if readme else ""}
+{views}
 <p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log, bench/results/SUMMARY.md, docs/ARCHITECTURE.md and data/synthetic/persona-1/ by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>
