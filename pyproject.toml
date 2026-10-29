@@ -7,6 +7,7 @@ license = "MIT"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "httpx==0.28.1",
+    "numpy==2.5.4",
     "pydantic==2.14.1",
 ]
 
@@ -15,8 +16,8 @@ perch = "perch.cli:main"
 
 [project.optional-dependencies]
 ml = [
-    "sentence-transformers>=6.2.0",
-    "torch>=2.15.0",
+    "sentence-transformers==6.2.0",
+    "torch==2.14.1",
 ]
 
 [build-system]
@@ -46,3 +47,12 @@ select = ["E", "F", "I", "B", "UP", "ANN"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+
+# The lab node's driver (565.57.01) supports CUDA 12.7; default torch wheels need CUDA 13.
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu126" }

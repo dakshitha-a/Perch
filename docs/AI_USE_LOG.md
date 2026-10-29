@@ -8,6 +8,7 @@ Required for the final deck's "AI use declaration" slide. One row per tool per p
 | 2026-10-28 | Claude (claude.ai, Project "AI-Build-Challenge") | Claude Fable 5.1 | Planning: reframing the problem, critiquing assumptions, ten-day plan; drafting Checkup 1 | Dakshitha |
 | 2026-10-28 | Claude (claude.ai, web search) | Claude Fable 5.1 | Research round 1: checked Temple's existing funding tools, verified the $300M/R1 figures, surveyed the problem bank, compared alternative ideas | Dakshitha |
 | 2026-10-28 | Claude Code CLI (model Claude Opus 5.5, `claude-opus-5-5`), session Perch-dev | 2.1.312 (Claude Code) | S0: created the private repo, uv/ruff/pytest tooling, Makefile, tracker renderer (`scripts/render_tracker.py`) and tests; writes project code from here on | Dakshitha (directing Perch-dev) |
+| 2026-10-28 | Qwen3-Embedding-0.6B (Qwen, Apache-2.0), via sentence-transformers 6.2.0 on torch 2.14.1+cu126 | Hugging Face `Qwen/Qwen3-Embedding-0.6B` revision 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3 | S4 retrieval embedder (local default): embeds public paper text as queries and public opportunity text as documents. Runs on the lab node; no data leaves it | Perch-dev for Dakshitha |
 
 Reminders:
 - Record Claude Code's version (`claude --version`) the first time it writes project code.
