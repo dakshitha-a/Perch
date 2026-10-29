@@ -103,9 +103,12 @@ Done when: a brief runs end to end via curl and reports stages.
 
 Goal: Find → Profile → Routes in the browser, with the evidence panel.
 
-1. React + Vite in `web/`; author search and candidate pick; build brief; progress by stage.
-2. Profile screen (threads, papers, awards, horizon). Routes screen (lead cards: fit, record fields, cited explanation, keep/dismiss). Evidence panel from any claim.
-3. Keyboard navigation, labels, contrast; works on a phone.
+1. Interaction audit and UI/UX design: what goes in, what comes out, what progress to show, what must be said on screen; target users, palette, type, components. Written to `docs/design/UI.md`.
+2. No-build web app in `web/` (plain ES modules, no npm), served by `perch serve` at `/`: author search and candidate pick; build brief; progress by stage.
+3. Profile screen (summary, topics, threads, key papers, awards, horizon). Routes screen (lead cards: fit, record fields, cited explanation, keep/dismiss). Evidence panel from any claim.
+4. Keyboard navigation, labels, contrast; touch-first and works on a phone; light and dark themes; replay mode that plays back a saved brief without the API (preview and Demo Day fallback).
+5. Adversarial review of the built UI (UX, accessibility, standing rules), then fixes.
+6. Screenshots to `docs/screenshots/`; UI preview tab in the tracker artifact.
 
 Done when: a brief renders in the browser from the API; screenshots saved to `docs/screenshots/` for Checkup 2.
 
@@ -202,3 +205,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-28 | S5, S8 | Added the `decide` primitive with LLM-logprobs fallback (S5 task 7) and Jev and Laya bench rows for validator layer 2 and rerank (S8 task 4); SPEC §6, §7 and §8 updated to match | Calibrated decision models as challenger at decision points | Dakshitha |
 | 2026-10-28 | S5, S8 | Laya removed; Clef-flash (default local) and Clef (accuracy challenger) added through the Jev-compatible adapter, Jev kept as hosted option, Strands Decider 2B added as CPU-only fallback; SPEC §7 and §8 updated to match | Laya replaced by Clef-flash/Clef on published Decision Index and independent tests | Dakshitha |
 | 2026-10-28 | S8, S9 | Single-GPU deployment target with deploy-1gpu, deploy-2gpu and dev profiles (SPEC §11); S8 task 5 single-card validation with gates; S9 deploys the chosen profile via `PERCH_PROFILE` and adds `make gpus`. Clef server install attempted and blocked (Q3) | Single-GPU deployment target, validation gates, Clef installed | Dakshitha |
+| 2026-10-28 | S7 | S7 rewritten into six tasks: interaction audit and design doc first, a no-build web app instead of React + Vite, replay mode, an adversarial review with fixes, and a UI tab in the tracker artifact | The node has Node 12 and no npm; a no-build app keeps `make demo` and the ZIP one step. Audit and review asked for by Dakshitha | Dakshitha |

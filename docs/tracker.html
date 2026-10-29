@@ -108,7 +108,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S7</code> <span class="badge s-todo">todo</span><span>7/16 sessions done</span></div>
+<div class="at-a-glance"><code>S7</code> <span class="badge s-in-progress">in progress</span><span>7/16 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
@@ -118,13 +118,26 @@ details .inner > * { min-width: 0; }
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
 <div id="s7"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S7 · Web app, first three screens</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S7.md</code> when the session starts.</div>
+<div class="title-row"><h1>S7 · Web app, first three screens</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-28 22:40 EDT</div></div>
+<p>Goal: Find → Profile → Routes in the browser, with the evidence panel. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 6 tasks done"><div class="counts"><span><b>0/6</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>5</b>todo</span></div><div class="bar" role="img" aria-label="0 of 6 tasks done"><span class="s-in-progress" style="width:16.67%" title="in progress: 1"></span><span class="s-todo" style="width:83.33%" title="todo: 5"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Interaction audit and UI/UX design doc</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td><code>docs/design/UI.md</code></td></tr>
+<tr><td>2</td><td>No-build web app served by <code>perch serve</code>; Find, candidates, build, stage progress</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>Profile and Routes screens; evidence panel; keep and dismiss</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td>Accessibility, touch, phone, themes; replay mode</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>5</td><td>Adversarial review, then fixes</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>6</td><td>Screenshots; UI tab in the tracker artifact</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>A brief renders in the browser from the API.</li><li>Screenshots saved to <code>docs/screenshots/</code> for Checkup 2.</li><li><code>make test</code> is green.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="7 of 16 sessions done"><div class="counts"><span><b>7/16</b>sessions done</span><span class="s-done"><b>7</b>done</span><span class="s-todo"><b>9</b>todo</span></div><div class="bar" role="img" aria-label="7 of 16 sessions done"><span class="s-done" style="width:43.75%" title="done: 7"></span><span class="s-todo" style="width:56.25%" title="todo: 9"></span></div></section>
+<section class="panel summary" aria-label="7 of 16 sessions done"><div class="counts"><span><b>7/16</b>sessions done</span><span class="s-done"><b>7</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>8</b>todo</span></div><div class="bar" role="img" aria-label="7 of 16 sessions done"><span class="s-done" style="width:43.75%" title="done: 7"></span><span class="s-in-progress" style="width:6.25%" title="in progress: 1"></span><span class="s-todo" style="width:50.00%" title="todo: 8"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -135,7 +148,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s4">S4</a></td><td>Route A, deterministic</td><td><span class="badge s-done">done</span></td><td>2026-10-28 20:05 EDT</td><td>2026-10-28 20:40 EDT</td><td class="mono">f00e02c</td><td>76 tests green. Live Route A for 3 PIs; 0 ineligible of 30 by hand check against Grants.gov record text. Warm brief 0.7 to 1.1 s; retrieval 73 to 78 ms. Qwen3-Embedding-0.6B and Qwen3-Reranker-0.6B on GPU 3 (torch cu126). Added title-restriction rules; Q4 on Temple's applicant category.</td></tr>
 <tr class="is-finished"><td><a href="#s5">S5</a></td><td>Provider layer, skills 1–2, validator</td><td><span class="badge s-done">done</span></td><td>2026-10-28 21:04 EDT</td><td>2026-10-28 21:29 EDT</td><td class="mono">ce34844</td><td>105 tests green. <code>perch brief --explain</code> live for 3 PIs on qwen3.8:27b: layer 1 rejected 0 of 33, layer 2 flagged 1 of 30 (a false flag). 70 to 79 s per brief, $0. <code>decide</code> primitive with logprobs fallback. Anthropic adapter built on the SDK but not live-verified (Q5).</td></tr>
 <tr class="is-finished"><td><a href="#s6">S6</a></td><td>API</td><td><span class="badge s-done">done</span></td><td>2026-10-28 22:07 EDT</td><td>2026-10-28 22:13 EDT</td><td class="mono">b3ccdf6</td><td>112 tests green. FastAPI + in-process jobs; briefs end to end via curl for 2 PIs (one fetched from scratch); stages and partial results pollable; export with provenance.</td></tr>
-<tr class="is-current"><td>S7</td><td>Web app, first three screens</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s7">S7</a></td><td>Web app, first three screens</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-28 22:40 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S8</td><td>Back-test and bench</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S9</td><td>Deploy</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S10</td><td>Scout agent</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
@@ -267,10 +280,11 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (33)</h2>
+<h2>Decisions (34)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-28</td><td>S7</td><td>The web app is plain ES modules and CSS in <code>web/</code>, with no build step and no npm dependencies, served by <code>perch serve</code> at <code>/</code></td><td>Node 12 and no npm on the node; nothing to install for <code>make demo</code> or the ZIP; the app is small</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-28</td><td>S6</td><td>Briefs run one at a time in an in-process job runner; fetch stages are skipped when the store already holds the data</td><td>GPU models are shared; the demo serves a handful of users; repeat briefs stay fast</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-28</td><td>after S5</td><td>Decision models served by llama.cpp's <code>cuda/89</code> build as systemd user units (<code>deploy/systemd/</code>, <code>make decide-up</code>)</td><td>Release folders are compute capabilities; the RTX 5000 Ada cards are 8.9; user units with lingering survive reboot without root</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>after S5</td><td>Anthropic API spend capped at $100 to the demo, enforced in the adapter from its own ledger (<code>PERCH_ANTHROPIC_BUDGET_USD</code>); warns at 80%, refuses at the cap; unknown prices billed at the most expensive model; local models for development, API only to verify, measure and demo</td><td>Fixed job budget</td><td>Dakshitha</td></tr>
@@ -305,10 +319,11 @@ details .inner > * { min-width: 0; }
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (5)</h2>
+<h2>Plan change log (6)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-28</td><td>S7</td><td>S7 rewritten into six tasks: interaction audit and design doc first, a no-build web app instead of React + Vite, replay mode, an adversarial review with fixes, and a UI tab in the tracker artifact</td><td>The node has Node 12 and no npm; a no-build app keeps <code>make demo</code> and the ZIP one step. Audit and review asked for by Dakshitha</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S8, S9</td><td>Single-GPU deployment target with deploy-1gpu, deploy-2gpu and dev profiles (SPEC §11); S8 task 5 single-card validation with gates; S9 deploys the chosen profile via <code>PERCH_PROFILE</code> and adds <code>make gpus</code>. Clef server install attempted and blocked (Q3)</td><td>Single-GPU deployment target, validation gates, Clef installed</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S5, S8</td><td>Laya removed; Clef-flash (default local) and Clef (accuracy challenger) added through the Jev-compatible adapter, Jev kept as hosted option, Strands Decider 2B added as CPU-only fallback; SPEC §7 and §8 updated to match</td><td>Laya replaced by Clef-flash/Clef on published Decision Index and independent tests</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S5, S8</td><td>Added the <code>decide</code> primitive with LLM-logprobs fallback (S5 task 7) and Jev and Laya bench rows for validator layer 2 and rerank (S8 task 4); SPEC §6, §7 and §8 updated to match</td><td>Calibrated decision models as challenger at decision points</td><td>Dakshitha</td></tr>

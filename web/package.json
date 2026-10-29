@@ -1,0 +1,1 @@
+{ "private": true, "type": "module", "description": "Marks web/*.js as ES modules for Node; the app has no npm dependencies." }

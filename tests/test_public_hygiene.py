@@ -44,7 +44,8 @@ def test_researcher_names_stay_out_of_shareable_docs():
     with (ROOT / "data/overrides/pi_aliases.csv").open(newline="", encoding="utf-8") as f:
         last_names = {fold(row["name"].split()[-1]) for row in csv.DictReader(f)}
     shareable = [ROOT / "README.md", *ROOT.glob("docs/**/*.md"), *ROOT.glob("docs/**/*.html"),
-                 ROOT / "bridge/QUESTIONS.md"]
+                 ROOT / "bridge/QUESTIONS.md", *(p for p in ROOT.glob("web/**/*") if p.is_file()
+                                                 and p.suffix in {".html", ".js", ".css"})]
     hits = [(p.name, n) for p in shareable for n in last_names if n in fold(p.read_text("utf-8"))]
     assert hits == []
 
