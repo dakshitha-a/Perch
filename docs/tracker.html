@@ -121,18 +121,18 @@ details .inner > * { min-width: 0; }
 <div class="title-row"><h1>S4 · Route A, deterministic</h1><span class="badge s-in-progress">in progress</span></div>
 <div class="meta">Started 2026-10-28 20:05 EDT</div></div>
 <p>Goal: ranked, eligible Route A leads with no model involved. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="2 of 8 tasks done"><div class="counts"><span><b>2/8</b>tasks done</span><span class="s-done"><b>2</b>done</span><span class="s-in-progress"><b>2</b>in progress</span><span class="s-todo"><b>4</b>todo</span></div><div class="bar" role="img" aria-label="2 of 8 tasks done"><span class="s-done" style="width:25.00%" title="done: 2"></span><span class="s-in-progress" style="width:25.00%" title="in progress: 2"></span><span class="s-todo" style="width:50.00%" title="todo: 4"></span></div></section>
+<section class="panel summary" aria-label="7 of 8 tasks done"><div class="counts"><span><b>7/8</b>tasks done</span><span class="s-done"><b>7</b>done</span><span class="s-in-progress"><b>1</b>in progress</span></div><div class="bar" role="img" aria-label="7 of 8 tasks done"><span class="s-done" style="width:87.50%" title="done: 7"></span><span class="s-in-progress" style="width:12.50%" title="in progress: 1"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
 <tbody>
-<tr><td>0</td><td>Full open NIH opportunity set in the store (<code>perch fetch opportunities --agencies HHS-NIH11</code>)</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td>Needed for retrieval</td></tr>
+<tr><td>0</td><td>Full open NIH opportunity set in the store (<code>perch fetch opportunities --agencies HHS-NIH11</code>)</td><td><span class="badge s-done">done</span></td><td class="mono">n/a</td><td>620 new; 676 opportunities in store (660 open or forecasted NIH, 16 archived). About 11 minutes.</td></tr>
 <tr><td>1</td><td><code>perch/embed/</code>: embedding adapter, local default Qwen3-Embedding-0.6B behind an interface; batch; cache by content hash</td><td><span class="badge s-done">done</span></td><td class="mono">71af895</td><td>Qwen3-Embedding-0.6B, dim 1024, on GPU 3; torch 2.14.1+cu126 (CUDA 13 wheel needs a newer driver). SQLite cache by (model, kind, sha256). In the AI-use log.</td></tr>
 <tr><td>2</td><td>LanceDB store for vectors + BM25 behind the repository interface</td><td><span class="badge s-done">done</span></td><td class="mono">14986e7</td><td><code>VectorIndex</code> in <code>perch/store/base.py</code>; <code>LanceIndex</code> (lancedb 0.40.0): cosine dense, stemmed BM25, upsert by id.</td></tr>
-<tr><td>3</td><td><code>perch/profile.py</code>: recency-weighted paper vectors into 2 to 4 research threads (k-means; one thread if fewer than 8 papers)</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
-<tr><td>4</td><td><code>perch/retrieve.py</code>: per-thread hybrid search (dense + BM25, RRF) merged across threads; top 50</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>5</td><td><code>perch/eligibility.py</code>: deterministic rules (close date, applicant types, ceiling, activity code and agency), applied before rerank</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>6</td><td>Reranker adapter, local default Qwen3-Reranker-0.6B; top 50 to top 10; cache by profile hash and record id</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>7</td><td><code>perch brief &lt;author_id&gt; --route A</code> prints 10 leads with record fields only</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td><code>perch/profile.py</code>: recency-weighted paper vectors into 2 to 4 research threads (k-means; one thread if fewer than 8 papers)</td><td><span class="badge s-done">done</span></td><td class="mono">a71f88c</td><td>Live, 2 threads each: Skorski (BCR-ABL leukemia; PARP and synthetic lethality), Persidsky (BBB and HIV; digital pathology), Gardiner (living kidney donation; organ donation). Skips 170 non-research works (supplements, "Data from", errata). Under 2 s per PI.</td></tr>
+<tr><td>4</td><td><code>perch/retrieve.py</code>: per-thread hybrid search (dense + BM25, RRF) merged across threads; top 50</td><td><span class="badge s-done">done</span></td><td class="mono">4cf342a</td><td>RRF k=60 per thread, merged weighted by thread share. Live retrieval 58 to 92 ms per brief.</td></tr>
+<tr><td>5</td><td><code>perch/eligibility.py</code>: deterministic rules (close date, applicant types, ceiling, activity code and agency), applied before rerank</td><td><span class="badge s-done">done</span></td><td class="mono">ed27630, f00e02c</td><td>Plus title-stated restrictions (limited competition, career stage), added after the live hand check. Q4: Temple applicant category.</td></tr>
+<tr><td>6</td><td>Reranker adapter, local default Qwen3-Reranker-0.6B; top 50 to top 10; cache by profile hash and record id</td><td><span class="badge s-done">done</span></td><td class="mono">3633a2c</td><td>CrossEncoder with a fit instruction; sigmoid scores. In the AI-use log.</td></tr>
+<tr><td>7</td><td><code>perch brief &lt;author_id&gt; --route A</code> prints 10 leads with record fields only</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono">f00e02c</td><td>Live hand check pending the refetch with fixed title parsing.</td></tr>
 </tbody></table></div>
 <h2>Definition of done</h2>
 <ul class="panel done-list"><li>Leads for 3 PIs.</li><li>Zero ineligible leads by hand check.</li><li>Retrieval timing logged.</li><li><code>make test</code> is green.</li></ul>
@@ -235,10 +235,14 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (21)</h2>
+<h2>Decisions (25)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-28</td><td>S4</td><td>Route A excludes, by default, opportunities whose title says "Limited Competition" or restricts career stage (early career, early-stage or new investigator); <code>--include-restricted</code> keeps them</td><td>Live hand check found IDeA-state, K-awardee-only, CTSA-hub and early-career calls in the top 10; public records cannot confirm those conditions</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S4</td><td>Route A excludes forecasted opportunities by default, records with no close date or no applicant types, and activity codes F, K99/R00, R36, R41 to R44, U43, U44</td><td>Leads must be open and applicable now; v1 scope excludes fellowships; SBIR/STTR applicants are small businesses (Q4 confirms)</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S4</td><td>A research thread needs at least 3 papers; k with a smaller cluster is rejected</td><td>A 1-paper thread appeared in live data</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-28</td><td>S4</td><td>Threads and key papers use research work types only (article, review, preprint, chapter, conference paper or abstract, dissertation, letter)</td><td>OpenAlex lists supplement files and "Data from" records as works; 170 of 710 stored works were not research</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-28</td><td>S4</td><td>Torch must be a CUDA 12.x build on this node</td><td>Default torch 2.15 wheel is CUDA 13.2; the driver (565.57.01) supports CUDA 12.7 and torch reported "driver too old"</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-28</td><td>S4</td><td>Torch and sentence-transformers live in an optional <code>ml</code> extra; tests use a fake embedder</td><td>Keeps <code>make test</code> light and offline</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-28</td><td>after S3</td><td>Clef server install stopped at the failed CUDA probe and handed to Dakshitha (Q3)</td><td>Instruction: stop on any build, download or CUDA failure</td><td>Dakshitha</td></tr>

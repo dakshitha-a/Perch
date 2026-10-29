@@ -25,6 +25,15 @@ uv run perch fetch opportunities --agencies HHS-NIH11 --limit 40   # open NIH op
 uv run perch fetch opportunities --opp-num PA-20-185                # one, in any status
 ```
 
+Route A leads use local models (Qwen3-Embedding-0.6B and Qwen3-Reranker-0.6B) from the optional `ml` extra:
+
+```sh
+uv sync --extra ml
+CUDA_VISIBLE_DEVICES=3 uv run --extra ml perch brief A5026494099 --route A
+```
+
+`--models fake` runs the same pipeline with no model downloads.
+
 Award links are matched by name. Fix a wrong or missed match in `data/overrides/award_links.csv`.
 
 An OpenAlex API key is optional; see `.env.example`.
