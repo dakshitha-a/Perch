@@ -9,17 +9,17 @@
 :root {
   --bg: #f5f7f5; --surface: #ffffff; --raised: #eef2ef; --fg: #18211d; --muted: #56635c;
   --line: #d9e0db; --code: #e8eee9; --accent: #1f6f5c; --accent-soft: #dcefe8;
-  --todo: #67726c; --progress: #a15c07; --continued: #6d3fc0; --done: #1d7a43; --cut: #b42323;
+  --todo: #67726c; --progress: #a15c07; --warn-soft: #f6ead8; --continued: #6d3fc0; --done: #1d7a43; --cut: #b42323;
   --sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #111614; --surface: #171f1c; --raised: #1d2723; --fg: #e3ebe6; --muted: #98a79f;
     --line: #2b3732; --code: #24302b; --accent: #5cc4a6; --accent-soft: #1b3a32;
-    --todo: #9aa6a0; --progress: #f0a640; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
+    --todo: #9aa6a0; --progress: #f0a640; --warn-soft: #3a2c17; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
     color-scheme: dark; } }
 :root[data-theme="dark"] { --bg: #111614; --surface: #171f1c; --raised: #1d2723; --fg: #e3ebe6; --muted: #98a79f;
     --line: #2b3732; --code: #24302b; --accent: #5cc4a6; --accent-soft: #1b3a32;
-    --todo: #9aa6a0; --progress: #f0a640; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
+    --todo: #9aa6a0; --progress: #f0a640; --warn-soft: #3a2c17; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
     color-scheme: dark; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 var(--sans); }
@@ -46,6 +46,7 @@ nav a:focus-visible, summary:focus-visible, td a:focus-visible {
   border-radius: 999px; padding: 1px 7px; margin-left: 6px; }
 main.wrap { padding-block: 24px 56px; }
 .view { display: grid; gap: 16px; }
+.view[hidden] { display: none; }
 .view > * { min-width: 0; margin: 0; }
 .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
   font-weight: 600; }
@@ -60,6 +61,16 @@ code { font-family: var(--mono); background: var(--code); padding: 1px 5px; bord
 a { color: var(--accent); }
 strong { color: var(--fg); }
 .meta { font-size: 13px; color: var(--muted); }
+figure.diagram { margin: 0; padding: 16px; display: grid; gap: 12px; justify-items: center;
+  overflow-x: auto; }
+@media (max-width: 600px) { figure.diagram { justify-items: start; } }
+figure.diagram svg { width: 100%; min-width: 560px; max-width: 720px; height: auto; color: var(--fg); }
+figure.diagram figcaption { font-size: 13px; color: var(--muted); justify-self: start;
+  max-width: min(72ch, calc(100vw - 66px)); }
+svg.arch .k-local { fill: var(--accent-soft); stroke: var(--accent); }
+svg.arch .k-cloud { fill: var(--warn-soft); stroke: var(--progress); }
+svg.arch .k-loop { stroke: var(--progress); }
+svg.arch .k-private, svg.arch .k-private-x { stroke: var(--cut); }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
 .summary { display: grid; gap: 10px; padding: 14px 16px; }
 .counts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
@@ -126,6 +137,7 @@ details .inner > * { min-width: 0; }
 <a id="tab-archive" href="#archive">Archive<span class="count">9</span></a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
 <a id="tab-bench" href="#bench">Bench</a>
+<a id="tab-architecture" href="#architecture">Architecture</a>
 
 </nav></div></header>
 <main class="wrap">
@@ -457,8 +469,212 @@ details .inner > * { min-width: 0; }
 <tr><td>qwen3:30b</td><td>minicheck</td><td>3</td><td>30873</td><td>31471</td><td>332.0</td><td>0.033</td><td>not measured</td></tr>
 <tr><td>gemma4:26b-a4b</td><td>minicheck</td><td>3</td><td>31291</td><td>31729</td><td>144.3</td><td>0.933</td><td>not measured</td></tr>
 </tbody></table></div></section>
+<section id="view-architecture" class="view" data-view="architecture" hidden><div><div class="eyebrow">Models per step, from the S8 bench</div><h1>Where the models sit</h1></div>
+<p>Which steps of a brief use a model, what runs where in the two-GPU demo, and which steps can move to a cloud model through an API key. Model choices come from the S8 bench (Bench tab); memory figures are nvidia-smi readings from S8.</p>
+<h2>A brief, step by step</h2>
+<figure class="panel diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 940" class="arch" role="img" font-family="system-ui, sans-serif" aria-label="A brief runs eight steps top to bottom: fetch and eligibility are code, embed and rerank are local models, the profile summary and fit explanation are chat models that can move to Sonnet, the citation check is code, and the grounding check is Clef. A failed check sends the explanation back once. Hand-off, Scout and decide run later, on request.">
+  <defs>
+    <marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <g font-size="12" fill="currentColor">
+    <rect x="60" y="14" width="22" height="14" rx="3" fill="none" stroke="currentColor" stroke-opacity="0.45" class="k-code"/>
+    <text x="90" y="25">code, no model</text>
+    <rect x="210" y="14" width="22" height="14" rx="3" fill="#dcefe8" stroke="#1f6f5c" class="k-local"/>
+    <text x="240" y="25">local model, stays local</text>
+    <rect x="410" y="14" width="22" height="14" rx="3" fill="#f6ead8" stroke="#a15c07" stroke-dasharray="4 3" class="k-cloud"/>
+    <text x="440" y="25">local now, can move to Sonnet</text>
+  </g>
+  <g font-size="11" fill="currentColor" opacity="0.7" font-weight="600" letter-spacing="0.06em">
+    <text x="60" y="62">STEP</text>
+    <text x="380" y="62">RUNS ON</text>
+  </g>
 
-<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log and bench/results/SUMMARY.md by scripts/render_tracker.py.
+  <!-- step boxes: x 60..340, rows every 72 from y 76 -->
+  <g fill="none" stroke="currentColor" stroke-opacity="0.35" class="k-step">
+    <rect x="60" y="76" width="280" height="44" rx="6"/>
+    <rect x="60" y="148" width="280" height="44" rx="6"/>
+    <rect x="60" y="220" width="280" height="44" rx="6"/>
+    <rect x="60" y="292" width="280" height="44" rx="6"/>
+    <rect x="60" y="364" width="280" height="44" rx="6"/>
+    <rect x="60" y="436" width="280" height="44" rx="6"/>
+    <rect x="60" y="508" width="280" height="44" rx="6"/>
+    <rect x="60" y="580" width="280" height="44" rx="6"/>
+    <rect x="60" y="730" width="280" height="44" rx="6"/>
+    <rect x="60" y="802" width="280" height="44" rx="6"/>
+    <rect x="60" y="874" width="280" height="44" rx="6"/>
+  </g>
+  <g font-size="13" font-weight="600" fill="currentColor">
+    <text x="76" y="103">1  Fetch records</text>
+    <text x="76" y="175">2  Eligibility and dates</text>
+    <text x="76" y="247">3  Embed topics and calls</text>
+    <text x="76" y="319">4  Rerank candidates</text>
+    <text x="76" y="391">5  Profile summary (skill 1)</text>
+    <text x="76" y="463">6  Fit explanation (skill 2)</text>
+    <text x="76" y="535">7  Citation check (validator 1)</text>
+    <text x="76" y="607">8  Grounding check (validator 2)</text>
+    <text x="76" y="757">Hand-off draft (skill 3, S12)</text>
+    <text x="76" y="829">Scout agent (S10)</text>
+    <text x="76" y="901">Decide (typed yes or no)</text>
+  </g>
+
+  <!-- runs-on boxes: x 380..640 -->
+  <g fill="none" stroke="currentColor" stroke-opacity="0.45" class="k-code">
+    <rect x="380" y="76" width="260" height="44" rx="6"/>
+    <rect x="380" y="148" width="260" height="44" rx="6"/>
+    <rect x="380" y="508" width="260" height="44" rx="6"/>
+  </g>
+  <g fill="#dcefe8" stroke="#1f6f5c" class="k-local">
+    <rect x="380" y="220" width="260" height="44" rx="6"/>
+    <rect x="380" y="292" width="260" height="44" rx="6"/>
+    <rect x="380" y="580" width="260" height="44" rx="6"/>
+  </g>
+  <g fill="#f6ead8" stroke="#a15c07" stroke-dasharray="4 3" class="k-cloud">
+    <rect x="380" y="364" width="260" height="44" rx="6"/>
+    <rect x="380" y="436" width="260" height="44" rx="6"/>
+    <rect x="380" y="730" width="260" height="44" rx="6"/>
+    <rect x="380" y="802" width="260" height="44" rx="6"/>
+    <rect x="380" y="874" width="260" height="44" rx="6"/>
+  </g>
+  <g fill="currentColor">
+    <g font-size="13" font-weight="600">
+      <text x="394" y="96">Public APIs</text>
+      <text x="394" y="168">Fixed rules on record fields</text>
+      <text x="394" y="240">Qwen3-Embedding-0.6B</text>
+      <text x="394" y="312">Qwen3-Reranker-0.6B</text>
+      <text x="394" y="384">Gemma 4 26B-A4B</text>
+      <text x="394" y="456">Gemma 4 26B-A4B</text>
+      <text x="394" y="528">Plain code</text>
+      <text x="394" y="600">Clef</text>
+      <text x="394" y="750">Gemma 4 26B-A4B</text>
+      <text x="394" y="822">Gemma 4 26B-A4B</text>
+      <text x="394" y="894">Clef-flash</text>
+    </g>
+    <g font-size="11" opacity="0.75">
+      <text x="394" y="112">OpenAlex, RePORTER, Grants.gov</text>
+      <text x="394" y="184">numbers and dates copied, never written</text>
+      <text x="394" y="256">no cloud adapter</text>
+      <text x="394" y="328">no cloud adapter</text>
+      <text x="394" y="400">or Sonnet: one line in .env</text>
+      <text x="394" y="472">or Sonnet: 24 of 30 passed, $0.09 a brief</text>
+      <text x="394" y="544">every citation is a real record</text>
+      <text x="394" y="616">needs token scores; Anthropic has none</text>
+      <text x="394" y="766">or Sonnet</text>
+      <text x="394" y="838">or Sonnet, allowlisted tools only</text>
+      <text x="394" y="910">or Sonnet, without a confidence score</text>
+    </g>
+  </g>
+
+  <!-- step to runs-on ticks -->
+  <g stroke="currentColor" stroke-opacity="0.35">
+    <line x1="340" y1="98" x2="380" y2="98"/><line x1="340" y1="170" x2="380" y2="170"/>
+    <line x1="340" y1="242" x2="380" y2="242"/><line x1="340" y1="314" x2="380" y2="314"/>
+    <line x1="340" y1="386" x2="380" y2="386"/><line x1="340" y1="458" x2="380" y2="458"/>
+    <line x1="340" y1="530" x2="380" y2="530"/><line x1="340" y1="602" x2="380" y2="602"/>
+    <line x1="340" y1="752" x2="380" y2="752"/><line x1="340" y1="824" x2="380" y2="824"/>
+    <line x1="340" y1="896" x2="380" y2="896"/>
+  </g>
+
+  <!-- flow arrows with what moves -->
+  <g stroke="currentColor" stroke-width="1.4" marker-end="url(#pa)">
+    <line x1="200" y1="120" x2="200" y2="146"/><line x1="200" y1="192" x2="200" y2="218"/>
+    <line x1="200" y1="264" x2="200" y2="290"/><line x1="200" y1="336" x2="200" y2="362"/>
+    <line x1="200" y1="408" x2="200" y2="434"/><line x1="200" y1="480" x2="200" y2="506"/>
+    <line x1="200" y1="552" x2="200" y2="578"/><line x1="200" y1="624" x2="200" y2="650"/>
+    <line x1="200" y1="684" x2="200" y2="728"/>
+    <line x1="200" y1="846" x2="200" y2="872"/>
+  </g>
+  <g font-size="11" fill="currentColor" opacity="0.75">
+    <text x="210" y="138">papers, awards, calls</text>
+    <text x="210" y="210">eligible calls only</text>
+    <text x="210" y="282">nearest candidates</text>
+    <text x="210" y="354">top leads</text>
+    <text x="210" y="426">profile and leads</text>
+    <text x="210" y="498">text with citations</text>
+    <text x="210" y="570">citations checked</text>
+    <text x="210" y="642">supported sentences</text>
+    <text x="210" y="712">kept leads</text>
+    <text x="210" y="864">typed questions</text>
+  </g>
+
+  <!-- validator loop back to step 6 -->
+  <path d="M60 602 H36 V458 H58" fill="none" stroke="#a15c07" stroke-width="1.4" marker-end="url(#pa)" class="k-loop"/>
+  <path d="M60 530 H36" fill="none" stroke="#a15c07" stroke-width="1.4" class="k-loop"/>
+  <text x="24" y="530" font-size="11" fill="currentColor" text-anchor="middle" transform="rotate(-90 24 530)">fails: rewrite once, then flag</text>
+
+  <!-- output -->
+  <rect x="130" y="652" width="140" height="32" rx="16" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="200" y="673" font-size="13" font-weight="600" fill="currentColor" text-anchor="middle">Leads on screen</text>
+
+  <line x1="20" y1="700" x2="640" y2="700" stroke="currentColor" stroke-opacity="0.3" stroke-dasharray="2 4"/>
+  <text x="640" y="718" font-size="11" fill="currentColor" opacity="0.7" text-anchor="end" font-weight="600" letter-spacing="0.06em">AFTER THE BRIEF, ON REQUEST</text>
+</svg><figcaption>A brief runs top to bottom. Steps 1, 2 and 7 are plain code. Steps 3, 4 and 8 run on local models that stay local. Steps 5 and 6, and the on-request steps below the line, run on local models now and can move to Sonnet. A failed check sends the explanation back once; a second failure shows the lead without an explanation, flagged.</figcaption></figure>
+<ul><li><strong>Code, no model:</strong> fetching, eligibility, dates and the citation check are plain code. Numbers and dates are copied from records, never written by a model.</li><li><strong>Search:</strong> the embedder and reranker are small local models. Nothing in the back-test beat them measurably.</li><li><strong>Writing:</strong> the profile summary, fit explanation and hand-off draft are written by the chat model. Every one passes both validator layers before it is shown.</li><li><strong>Grounding check:</strong> Clef reads each sentence beside the record it cites, and flags a sentence the record does not support.</li><li><strong>Scout and decide:</strong> Scout calls only allowlisted tools. Decide gives typed yes-or-no and score answers with a confidence.</li></ul>
+<h2>The demo on two GPUs, and the API swap</h2>
+<figure class="panel diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 470" class="arch" role="img" font-family="system-ui, sans-serif" aria-label="Two-GPU demo layout. GPU A holds Gemma and Clef-flash, which can be swapped for Sonnet through the Anthropic API with one line per role. GPU B holds Clef, the embedder and the reranker, which have no cloud path. In private mode the path to the API is refused.">
+  <defs>
+    <marker id="da" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- server -->
+  <rect x="20" y="20" width="410" height="350" rx="8" fill="none" stroke="currentColor" stroke-opacity="0.45"/>
+  <text x="36" y="44" font-size="13" font-weight="700" fill="currentColor">Perch server, two GPUs (deploy-2gpu)</text>
+
+  <!-- GPU A -->
+  <rect x="36" y="58" width="378" height="140" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.3"/>
+  <text x="50" y="80" font-size="11" font-weight="600" letter-spacing="0.06em" fill="currentColor" opacity="0.7">GPU A · WRITING AND AGENT</text>
+  <rect x="50" y="90" width="350" height="44" rx="6" fill="#f6ead8" stroke="#a15c07" stroke-dasharray="4 3" class="k-cloud"/>
+  <text x="64" y="109" font-size="13" font-weight="600" fill="currentColor">Gemma 4 26B-A4B</text>
+  <text x="64" y="125" font-size="11" fill="currentColor" opacity="0.75">summary, fit explanation, hand-off, Scout</text>
+  <rect x="50" y="142" width="350" height="36" rx="6" fill="#f6ead8" stroke="#a15c07" stroke-dasharray="4 3" class="k-cloud"/>
+  <text x="64" y="165" font-size="13" font-weight="600" fill="currentColor">Clef-flash <tspan font-size="11" font-weight="400" opacity="0.75">decide</tspan></text>
+  <text x="400" y="192" font-size="11" fill="currentColor" opacity="0.75" text-anchor="end">26,683 MiB measured together</text>
+
+  <!-- GPU B -->
+  <rect x="36" y="210" width="378" height="140" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.3"/>
+  <text x="50" y="232" font-size="11" font-weight="600" letter-spacing="0.06em" fill="currentColor" opacity="0.7">GPU B · SEARCH AND CHECKS</text>
+  <rect x="50" y="242" width="350" height="36" rx="6" fill="#dcefe8" stroke="#1f6f5c" class="k-local"/>
+  <text x="64" y="265" font-size="13" font-weight="600" fill="currentColor">Clef <tspan font-size="11" font-weight="400" opacity="0.75">grounding check</tspan></text>
+  <rect x="50" y="286" width="350" height="36" rx="6" fill="#dcefe8" stroke="#1f6f5c" class="k-local"/>
+  <text x="64" y="309" font-size="13" font-weight="600" fill="currentColor">Qwen3 embedder and reranker <tspan font-size="11" font-weight="400" opacity="0.75">search</tspan></text>
+  <text x="400" y="342" font-size="11" fill="currentColor" opacity="0.75" text-anchor="end">19,000 + 3,256 MiB, measured apart</text>
+
+  <!-- API -->
+  <rect x="490" y="96" width="150" height="76" rx="8" fill="none" stroke="currentColor" stroke-width="1.4"/>
+  <text x="565" y="124" font-size="13" font-weight="700" fill="currentColor" text-anchor="middle">Anthropic API</text>
+  <text x="565" y="142" font-size="12" fill="currentColor" text-anchor="middle">claude-sonnet-5-5</text>
+  <text x="565" y="160" font-size="11" fill="currentColor" opacity="0.75" text-anchor="middle">$100 cap in .env</text>
+
+  <!-- swap arrows -->
+  <g fill="none" stroke="#a15c07" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#da)" class="k-loop">
+    <path d="M400 112 H488"/>
+    <path d="M400 160 H444 V150 H488"/>
+  </g>
+  <text x="565" y="86" font-size="11" fill="currentColor" text-anchor="middle">one line per role in .env</text>
+  <text x="565" y="196" font-size="11" fill="currentColor" opacity="0.75" text-anchor="middle">decide: no confidence</text>
+  <text x="565" y="210" font-size="11" fill="currentColor" opacity="0.75" text-anchor="middle">score from the API</text>
+
+  <!-- no cloud path for GPU B -->
+  <text x="565" y="290" font-size="11" fill="currentColor" text-anchor="middle">no cloud path:</text>
+  <text x="565" y="305" font-size="11" fill="currentColor" opacity="0.75" text-anchor="middle">no embedding or rerank API,</text>
+  <text x="565" y="320" font-size="11" fill="currentColor" opacity="0.75" text-anchor="middle">no token scores for Clef's job</text>
+
+  <!-- private mode -->
+  <rect x="20" y="390" width="620" height="60" rx="8" fill="none" stroke="#b42323" stroke-opacity="0.8" class="k-private"/>
+  <text x="36" y="414" font-size="13" font-weight="700" fill="currentColor">Private mode (designed, built in S13)</text>
+  <text x="36" y="434" font-size="11" fill="currentColor" opacity="0.75">Every model must run on this server. A cloud role is an error, not a fallback.</text>
+  <line x1="470" y1="420" x2="560" y2="420" stroke="currentColor" stroke-width="1.4" marker-end="url(#da)"/>
+  <text x="600" y="424" font-size="11" fill="currentColor" text-anchor="middle">API</text>
+  <g stroke="#b42323" stroke-width="2.2" class="k-private-x">
+    <line x1="505" y1="410" x2="525" y2="430"/><line x1="525" y1="410" x2="505" y2="430"/>
+  </g>
+</svg><figcaption>The two-GPU demo layout. GPU A holds the writing and agent models; each of their roles can move to the Anthropic API with one line in .env. GPU B holds the grounding check and search, which have no cloud path. Private mode refuses the path to the API.</figcaption></figure>
+<ul><li><strong>The swap:</strong> set <code>PERCH_LLM_&lt;ROLE&gt;=anthropic:claude-sonnet-5-5</code> for one role, or <code>PERCH_LLM_DEFAULT</code> for all of them. Roles are profile summary, fit explainer, hand-off, Scout and decide.</li><li><strong>What Sonnet measured:</strong> a typical brief took 26 s and cost about $0.09. It passed both checks on 24 of 30 leads, against 28 for Gemma.</li><li><strong>Decide on Sonnet:</strong> it works, but the Anthropic API returns no token probabilities, so the answer comes without a confidence score.</li><li><strong>What stays local:</strong> Anthropic offers no embedding or rerank API, and Perch has no adapter for another provider of them. Clef's job needs token scores.</li><li><strong>The GPU saving:</strong> if every chat role moves to the API, GPU A no longer needs Gemma. Only Clef-flash would stay there, at about 7.4 GB.</li><li><strong>The layout is planned:</strong> S9 deploys it and measures the two cards together. The memory figures here were measured in separate S8 runs.</li><li><strong>Private mode:</strong> it is designed and is built in S13. It refuses any model that is not on this server.</li></ul></section>
+
+<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log, bench/results/SUMMARY.md and docs/ARCHITECTURE.md by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>
 <script>

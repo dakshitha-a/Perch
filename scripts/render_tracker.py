@@ -7,6 +7,7 @@ Sources (Markdown is the source of truth):
   docs/DECISIONS.md        decision log
   docs/PLAN.md             only its "## Change log" table
   bench/results/SUMMARY.md bench results, written by `make bench`
+  docs/ARCHITECTURE.md     where the models sit; its ![caption](file.svg) figures are inlined
 
 Views, switched by plain hash links (#current, #master, #archive, #decisions, #s<n>):
   Current    the session marked in progress or continued, else the first todo
@@ -14,6 +15,7 @@ Views, switched by plain hash links (#current, #master, #archive, #decisions, #s
   Archive    finished sessions (done or cut), collapsed, newest first
   Decisions  the decision log and the plan change log, newest first
   Bench      the bench results summary, when bench/results/SUMMARY.md exists
+  Architecture  docs/ARCHITECTURE.md with its diagrams, when it exists
 
 Standard library only. Output is deterministic so re-running does not dirty the
 tree. Two outputs: a complete standalone document with no external requests
@@ -42,7 +44,7 @@ FONT_LINK = (
 
 DARK = """--bg: #111614; --surface: #171f1c; --raised: #1d2723; --fg: #e3ebe6; --muted: #98a79f;
     --line: #2b3732; --code: #24302b; --accent: #5cc4a6; --accent-soft: #1b3a32;
-    --todo: #9aa6a0; --progress: #f0a640; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
+    --todo: #9aa6a0; --progress: #f0a640; --warn-soft: #3a2c17; --continued: #b394f5; --done: #5fd38f; --cut: #f2787a;
     color-scheme: dark;"""
 
 CSS = (
@@ -51,7 +53,7 @@ CSS = (
 :root {
   --bg: #f5f7f5; --surface: #ffffff; --raised: #eef2ef; --fg: #18211d; --muted: #56635c;
   --line: #d9e0db; --code: #e8eee9; --accent: #1f6f5c; --accent-soft: #dcefe8;
-  --todo: #67726c; --progress: #a15c07; --continued: #6d3fc0; --done: #1d7a43; --cut: #b42323;
+  --todo: #67726c; --progress: #a15c07; --warn-soft: #f6ead8; --continued: #6d3fc0; --done: #1d7a43; --cut: #b42323;
   --sans: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
@@ -82,6 +84,7 @@ nav a:focus-visible, summary:focus-visible, td a:focus-visible {
   border-radius: 999px; padding: 1px 7px; margin-left: 6px; }
 main.wrap { padding-block: 24px 56px; }
 .view { display: grid; gap: 16px; }
+.view[hidden] { display: none; }
 .view > * { min-width: 0; margin: 0; }
 .eyebrow { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
   font-weight: 600; }
@@ -96,6 +99,16 @@ code { font-family: var(--mono); background: var(--code); padding: 1px 5px; bord
 a { color: var(--accent); }
 strong { color: var(--fg); }
 .meta { font-size: 13px; color: var(--muted); }
+figure.diagram { margin: 0; padding: 16px; display: grid; gap: 12px; justify-items: center;
+  overflow-x: auto; }
+@media (max-width: 600px) { figure.diagram { justify-items: start; } }
+figure.diagram svg { width: 100%; min-width: 560px; max-width: 720px; height: auto; color: var(--fg); }
+figure.diagram figcaption { font-size: 13px; color: var(--muted); justify-self: start;
+  max-width: min(72ch, calc(100vw - 66px)); }
+svg.arch .k-local { fill: var(--accent-soft); stroke: var(--accent); }
+svg.arch .k-cloud { fill: var(--warn-soft); stroke: var(--progress); }
+svg.arch .k-loop { stroke: var(--progress); }
+svg.arch .k-private, svg.arch .k-private-x { stroke: var(--cut); }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
 .summary { display: grid; gap: 10px; padding: 14px 16px; }
 .counts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14px; color: var(--muted); }
@@ -260,6 +273,9 @@ def parse(md: str) -> Doc:
             rows = [(split_row(r) + [""] * len(head))[: len(head)] for r in lines[i + 2 : j]]
             doc.blocks.append(("table", Table(head, rows)))
             i = j
+        elif m := re.fullmatch(r"!\[(.*)\]\((\S+)\)", s):
+            doc.blocks.append(("fig", m.group(1), m.group(2)))
+            i += 1
         elif re.match(r"[-*]\s+", s):
             items = []
             while i < len(lines) and re.match(r"\s*[-*]\s+", lines[i]):
@@ -521,6 +537,22 @@ def view_bench(bench_md: str) -> str:
     return "\n".join(out + render_blocks(doc.blocks))
 
 
+def view_architecture(arch_md: str, root: Path) -> str:
+    """docs/ARCHITECTURE.md; each ![caption](file.svg) is inlined from root as a figure."""
+    doc = parse(arch_md)
+    out = ['<div><div class="eyebrow">Models per step, from the S8 bench</div>'
+           f"<h1>{inline(doc.title or 'Architecture')}</h1></div>"]
+    for b in doc.blocks:
+        if b[0] == "fig":
+            f = root / b[2]
+            svg = f.read_text(encoding="utf-8").strip() if f.is_file() else ""
+            out.append(f'<figure class="panel diagram">{svg}'
+                       f"<figcaption>{inline(b[1])}</figcaption></figure>")
+        else:
+            out += render_blocks([b])
+    return "\n".join(out)
+
+
 def view_ui(src: str) -> str:
     s = html.escape(src)
     return f"""<h2>UI preview</h2>
@@ -539,7 +571,8 @@ title="Perch web app preview"></iframe></div>"""
 
 def render_page(master_md: str, session_files: dict[str, str], artifact: bool = False,
                 page_title: str = "Perch Build Tracker", decisions_md: str = "",
-                plan_md: str = "", ui: str | None = None, bench_md: str = "") -> str:
+                plan_md: str = "", ui: str | None = None, bench_md: str = "",
+                arch_md: str = "", arch_root: Path = Path("docs")) -> str:
     master = parse(master_md)
     sessions = build_sessions(master, session_files)
     current = pick_current(sessions)
@@ -558,6 +591,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 <a id="tab-archive" href="#archive">Archive<span class="count">{archived}</span></a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
 {'<a id="tab-bench" href="#bench">Bench</a>' if bench_md else ""}
+{'<a id="tab-architecture" href="#architecture">Architecture</a>' if arch_md else ""}
 {'<a id="tab-ui" href="#ui">UI</a>' if ui else ""}
 </nav></div></header>
 <main class="wrap">
@@ -574,8 +608,9 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 {view_decisions(decisions_md, plan_md)}
 </section>
 {f'<section id="view-bench" class="view" data-view="bench" hidden>{view_bench(bench_md)}</section>' if bench_md else ""}
+{f'<section id="view-architecture" class="view" data-view="architecture" hidden>{view_architecture(arch_md, arch_root)}</section>' if arch_md else ""}
 {f'<section id="view-ui" class="view" data-view="ui" hidden>{view_ui(ui)}</section>' if ui else ""}
-<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log and bench/results/SUMMARY.md by scripts/render_tracker.py.
+<p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log, bench/results/SUMMARY.md and docs/ARCHITECTURE.md by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>
 <script>{SCRIPT}</script>
@@ -615,7 +650,7 @@ def main(argv: list[str]) -> int:
 
     page = render_page(src.read_text(encoding="utf-8"), sessions, args.artifact, args.title,
                        read("DECISIONS.md"), read("PLAN.md"), args.ui,
-                       read("../bench/results/SUMMARY.md"))
+                       read("../bench/results/SUMMARY.md"), read("ARCHITECTURE.md"), src.parent)
     dest.write_text(page, encoding="utf-8")
     print(f"wrote {dest}")
     return 0

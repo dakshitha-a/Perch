@@ -105,3 +105,14 @@ def test_bench_tab_appears_only_with_a_summary():
     assert '<section id="view-bench" class="view" data-view="bench" hidden>' in p
     assert "BENCH-ROW" in p and "<h1>Bench results, summary</h1>" in p
     assert "tab-bench" not in rt.render_page(MASTER, {})
+
+
+def test_architecture_tab_inlines_its_svg_figures(tmp_path):
+    (tmp_path / "fig.svg").write_text('<svg class="arch" role="img"><rect class="k-local"/></svg>')
+    md = "# Where the models sit\n\n![FIG-CAPTION](fig.svg)\n\n- **Swap:** ARCH-ITEM\n"
+    p = rt.render_page(MASTER, {}, arch_md=md, arch_root=tmp_path)
+    assert '<a id="tab-architecture" href="#architecture">Architecture</a>' in p
+    view = p.split('id="view-architecture"')[1].split("</section>")[0]
+    assert '<figure class="panel diagram"><svg class="arch"' in view
+    assert "<figcaption>FIG-CAPTION</figcaption>" in view and "ARCH-ITEM" in view
+    assert "tab-architecture" not in rt.render_page(MASTER, {})
