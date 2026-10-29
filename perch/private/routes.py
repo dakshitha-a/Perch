@@ -283,6 +283,9 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         from perch.api import draft_json
 
         s = session(x_perch_private)
+        b, _ = load(brief_id(s), s.service)
+        if b.options.get("student"):  # student drafts are written on the Compare tab
+            raise HTTPException(422, "A student brief drafts its hand-offs on the Compare tab.")
         if wait := handoff_limit.take(client_key(request)):
             raise HTTPException(429, "Too many drafts this hour.",
                                 headers={"Retry-After": str(wait)})

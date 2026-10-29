@@ -373,9 +373,15 @@ def create_app(service: BriefService, runner: JobRunner,
                       "explanation": egress.release(x.explanation, x.cited_ids, masker),
                       "inference": egress.release(x.inference, x.cited_ids, masker),
                       "notes": [egress.release(n, ["private:cv"], masker) if "(private)" in n
-                                else n for n in x.notes]} for x in leads]
-        return {"brief": b.model_dump(mode="json"), "leads": out_leads, "records": records,
-                "notice": grants_gov.ATTRIBUTION}
+                                else n for n in x.notes],
+                      # Student mode: rule lines that quote the CV leave like private text.
+                      "verdict_lines": [ex._cv_line(v, masker) for v in x.verdict_lines],
+                      "gaps": [ex._cv_line(g, masker) for g in x.gaps]} for x in leads]
+        out = {"brief": b.model_dump(mode="json"), "leads": out_leads, "records": records,
+               "notice": grants_gov.ATTRIBUTION}
+        if any(x.sample for x in leads):
+            out["sample_notice"] = ex.SAMPLE_BANNER
+        return out
 
     def export_blocks(brief_id: str, status: str | None, svc: BriefService = service,
                       masker: egress.Masker | None = None) -> tuple[list, str]:

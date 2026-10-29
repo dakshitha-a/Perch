@@ -165,7 +165,13 @@ def _brief_with_route_b(service):
 
     t = datetime(2026, 10, 29, tzinfo=UTC)
     with service.repo() as r:
-        b = max(r.list(Brief), key=lambda x: x.created_at)
+        # A brief of its own, with Route B finished, so test order cannot hand Scout a
+        # brief whose Route B is still to run (that made this flaky under random order).
+        base = max(r.list(Brief), key=lambda x: x.created_at)
+        b = base.model_copy(update={
+            "id": f"{base.id}-rb", "lead_ids": list(base.lead_ids),
+            "stages": [s.model_copy(update={"status": "done"}) if s.name == "route_b" else s
+                       for s in base.stages]})
         org = Organisation(id="https://openalex.org/I1", source="openalex",
                            source_url="https://api.openalex.org/institutions/I1", fetched_at=t,
                            name="SYNTHETIC Co", type="company", aliases=["SYNTHETIC Co"])

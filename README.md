@@ -37,7 +37,7 @@ Perch needs [uv](https://docs.astral.sh/uv/) and `make`. uv installs Python 3.12
 
 ```bash
 git clone https://github.com/dakshitha-a/Perch && cd Perch
-make test                              # lint and 210 tests; no network or GPU
+make test                              # lint and every test; no network or GPU
 uv run perch serve --models fake       # the whole app at http://127.0.0.1:8100, with fake models
 ```
 
@@ -194,6 +194,17 @@ Every number here was measured. Each is copied from [bench/results](bench/result
 - **An upper bound, not an estimate:** each award's own funded abstract was added as a stand-in "draft proposal". It lifted the back-test from 7 to 16 of 48 in the top 10. A real draft is further from the award than its funded abstract.
 - **General calls are hard:** for awards made under broad parent announcements, Perch puts 1 of 78 in the top 10.
 - **Industry leads, judged once:** the agent that built Perch judged 14 leads: 8 good, 6 thin and 0 wrong. A person has not checked them yet.
+
+## Known limits
+
+- **Awards are not refreshed weekly:** the weekly watch refreshes open opportunities, but a new or extended award is seen only when the store is refreshed.
+- **Shared watch briefs:** the What changed screen links to the watch's own brief, so visitors who open it share its keep and dismiss state.
+- **One writer for the search index:** the weekly watch and the app can both add new opportunities to the index; two writing at once has not been tested.
+- **Private briefs do not index:** opportunities fetched since the public pipeline last indexed are not searched in a private brief.
+- **The hand-off opening has one check:** the model-written paragraph passes the citation check, but not the second, grounding check.
+- **Scout on a local model:** Gemma sometimes states a count that the citation check then withholds.
+- **Untested pairing:** the MCP server was tested with Claude Code, not with a local Ollama agent.
+- **Student mode is a demonstration:** its scholarships are invented sample records. In planted tests, the search missed 2 of the 12 records a student could apply for. Public fellowship listings get "may be eligible" at most, because their own pages set the full rules.
 
 ## Learn more
 

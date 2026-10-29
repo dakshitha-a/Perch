@@ -128,7 +128,11 @@ def test_student_canary_leaves_no_trace(tmp_path, monkeypatch, capfd):
         lead = next(x for x in got["leads"] if x["route"] == "S")
         c.post(f"/private/leads/{lead['id']}/keep", headers=h)
         for ext in ("json", "md", "html"):
-            c.get(f"/private/export.{ext}", headers=h)
+            e = c.get(f"/private/export.{ext}", headers=h).text
+            assert "SAMPLE DATA" in e, ext  # every export carries the banner
+            assert not re.search(r"your CV (says|lists)", e), ext  # CV facts are withheld
+        assert c.post("/private/handoff", headers=h,
+                      json={"office": "research_development"}).status_code == 422
         c.post("/private/end", headers=h)
     assert snapshot(tmp_path) == before, "a student session wrote to the data directory"
     assert files_with(tmp_path, toks) == []
@@ -153,3 +157,21 @@ def test_no_sample_record_is_reachable_outside_student_mode(tmp_path, monkeypatc
     # A researcher's private session cannot open a sample record either.
     h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
     assert c.get(f"/private/records/{sid}", headers=h).status_code == 404
+
+
+def test_only_student_mode_opens_the_sample_store():
+    """Rule 11: the back-test, the bench, the public API and the monitor cannot list a
+    sample record, because only student-mode code opens the sample store."""
+    allowed = {"perch/scholarships.py", "perch/private/student.py", "perch/private/routes.py",
+               "perch/cli.py", "bench/student_mode.py"}
+    pat = re.compile(r"\b(sample_records|ensure_samples|read_samples|load_samples|SAMPLE_JSONL|"
+                     r"sample_db)\b")
+    users = {str(p.relative_to(ROOT)) for d in ("perch", "bench", "scripts")
+             for p in (ROOT / d).rglob("*.py") if pat.search(p.read_text())}
+    users -= {"scripts/make_sample_scholarships.py"}  # writes the corpus file itself
+    assert users <= allowed, users - allowed
+    # The bench summary and the results page never mention the sample corpus.
+    for f in ("bench/results/SUMMARY.md", "bench/results/RESULTS.md"):
+        p = ROOT / f
+        if p.exists():
+            assert "sample:sch-" not in p.read_text() and S.CANARY_PREFIX not in p.read_text()

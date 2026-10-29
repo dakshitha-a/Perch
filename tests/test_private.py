@@ -349,6 +349,6 @@ def test_exclude_keyword_and_self_reported_stage_rules():
 
 def test_private_screens_never_use_browser_storage():
     web = Path(__file__).resolve().parent.parent / "web"
-    src = (web / "private.js").read_text() + (web / "api.js").read_text()
+    src = "".join((web / f).read_text() for f in ("private.js", "api.js", "student.js", "mode.js"))
     assert not any(x in src for x in ("localStorage", "sessionStorage", "indexedDB",
                                       "document.cookie"))

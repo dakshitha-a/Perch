@@ -667,7 +667,7 @@ setInterval(() => {
 
 async function rebuild() {
   const b = S.brief.brief;
-  if (api.mode === "private") { go("#/private"); return; }
+  if (api.mode === "private") { go(isStudent(S.brief) ? "#/student" : "#/private"); return; }
   try {
     const r = await api.create({ author_id: f.shortId(b.researcher_id), ...b.options });
     remember(r.id, (S.brief.researcher || {}).display_name || f.shortId(b.researcher_id));

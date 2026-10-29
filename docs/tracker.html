@@ -132,7 +132,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S20</code> <span class="badge s-todo">todo</span><span>20/24 sessions done</span></div>
+<div class="at-a-glance"><code>S21</code> <span class="badge s-todo">todo</span><span>20/24 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -594,14 +594,14 @@ details .inner > * { min-width: 0; }
 </tbody></table></div>
 </section>
 <section id="view-current" class="view" data-view="current" hidden>
-<div id="s20"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S20 · QA and privacy audit</h1><span class="badge s-todo">todo</span></div>
+<div id="s21"><div class="eyebrow">Current session</div>
+<div class="title-row"><h1>S21 · UI/UX audit for three audiences</h1><span class="badge s-todo">todo</span></div>
 <div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S20.md</code> when the session starts.</div>
+<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S21.md</code> when the session starts.</div>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="20 of 24 sessions done"><div class="counts"><span><b>20/24</b>sessions done</span><span class="s-done"><b>20</b>done</span><span class="s-todo"><b>4</b>todo</span></div><div class="bar" role="img" aria-label="20 of 24 sessions done"><span class="s-done" style="width:83.33%" title="done: 20"></span><span class="s-todo" style="width:16.67%" title="todo: 4"></span></div></section>
+<section class="panel summary" aria-label="20 of 23 sessions done"><div class="counts"><span><b>20/23</b>sessions done</span><span class="s-done"><b>20</b>done</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="20 of 23 sessions done"><span class="s-done" style="width:86.96%" title="done: 20"></span><span class="s-todo" style="width:13.04%" title="todo: 3"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -625,8 +625,8 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s17">S17</a></td><td>Synthetic scholarship corpus, student personas</td><td><span class="badge s-done">done</span></td><td>2026-10-29 17:58 EDT</td><td>2026-10-29 18:19 EDT</td><td class="mono">see git log</td><td>234 tests green. 500 SYNTHETIC sample scholarships (24 planted by hand, 476 from templates; Gemma wrote 465 purpose sentences, 11 fell back to template text) in their own store, <code>data/sample.db</code>; 0 real-name hits on 105 fictional sponsors. Temple SDFA's fellowship list verified live: 76 public award records, levels copied from its headings, no amounts or deadlines on the page. SFS verified as the scholarship office. Three student personas (undergraduate, part-time MPH, PhD) with hand-written answer keys: 7 eligible, 5 may be eligible, 12 not eligible. ScholarshipUniverse publishes no schema, so a documented seam and Q26.</td></tr>
 <tr class="is-finished"><td><a href="#s18">S18</a></td><td>Student mode</td><td><span class="badge s-done">done</span></td><td>2026-10-29 18:21 EDT</td><td>2026-10-29 18:41 EDT</td><td class="mono">see git log</td><td>245 tests green. Private mode is an app-wide state: a header switch, Student on Find, and a browser-only paste nudge, all opening a session before any text is sent (Node test; held in 4 live browser runs). Student brief in a private session: CV read by rule, eligibility by rule (24 of 24 planted cases match the hand-written keys), a gap list, fellowships from Temple SDFA and NIH F-series, and SYNTHETIC scholarships from their own store, with Sample data badges and an export banner. Live on the public URL: all three personas got leads on both tabs in 40 to 49 s. Live canary clean. The fit skill now maps a bare <code>achievement-a</code> back to its <code>private:</code> record (Gemma dropped the prefix). Scout tool and UI preview moved to S19.</td></tr>
 <tr class="is-finished"><td><a href="#s19">S19</a></td><td>Planted-case scoring and docs</td><td><span class="badge s-done">done</span></td><td>2026-10-29 18:43 EDT</td><td>2026-10-29 18:48 EDT</td><td class="mono">see git log</td><td>245 tests green. <code>bench/student_mode.py</code> scores the demo over HTTP on SYNTHETIC data (a mechanism test): rules matched all 19 planted records that reached a brief; retrieval missed 5 of 24, so 10 of 12 records a student may apply for reached the brief; no leakage. STUDENT_MODE.md says so plainly. README student section with a badged screenshot and the real-data note; SPEC Phase 3 updated. Scout tool cut to the floor (Q27); UI preview moved to S22.</td></tr>
-<tr class="is-current"><td>S20</td><td>QA and privacy audit</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S21</td><td>UI/UX audit for three audiences</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S20</td><td>QA and privacy audit</td><td>done, task 1 blocked</td><td>2026-10-29 18:50 EDT</td><td>2026-10-29 18:53 EDT</td><td class="mono">see git log</td><td>246 tests green. Privacy audit with student mode: fixed CV-quoting lines leaving unwithheld in the JSON export, a missing sample banner there, and a research-office hand-off offered for a student brief. Live canary rerun clean; the private-only brief now explains 10 of 10 leads (8 of 10 in S13). Sample-store isolation test added. Flaky Scout test fixed (random test order). README Known limits section. Task 1 waits for the teammate's QA log (Q28).</td></tr>
+<tr class="is-current"><td>S21</td><td>UI/UX audit for three audiences</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S22</td><td>Redesign and rebuild</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S23</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
@@ -650,7 +650,7 @@ details .inner > * { min-width: 0; }
 <tr><td>Scout bench (S10 tasks / Route B tasks / compare and hand-off / wrong-tool rate / restraint)</td><td>After S12: claude-sonnet-5-5 20/20, 5/5, 3/3, 0 of 27 calls, 6/6 ($0.41); gemma4:26b-a4b 18/20, 5/5, 2/3, 1 of 26, 6/6. S10: qwen3:8b native 17/20, 1 of 14, 5/6; qwen3:8b structured 12/20, 1 of 14, 6/6</td><td>bench/results/scout_summary.csv</td><td>2026-10-29</td></tr>
 <tr><td>Route B hand-judged precision</td><td>8 yes, 6 thin, 0 wrong of 14 leads for 3 PIs (judged by Perch-dev, to be spot-checked by Dakshitha). First run before the 30-author cap: 7 yes, 3 thin, 5 wrong of 15</td><td>bench/results/route_b/JUDGMENTS.md</td><td>2026-10-29</td></tr>
 <tr><td>Deployment profile and peak VRAM</td><td>Demo: deploy-2gpu. GPU A 26,706 MiB (Gemma 19,290, Clef-flash 7,416); GPU B 21,808 MiB (Clef 18,986, model server 2,822), idle after a brief. One card: no chat model fits under 28 GB with Clef-flash; Gemma peaks at 30,259 MiB with one brief</td><td><code>make gpus</code>, bench/results/single_card.csv</td><td>2026-10-29</td></tr>
-<tr><td>Private mode, live canary (persona-1, dev node)</td><td>Private-only brief: 10 grant leads, 8 explained, 8 citing private documents. With a public profile: 10 grant leads, 7 citing private documents, 5 industry leads. No changed file under data/, no canary in data/, /tmp or six model-server journals</td><td>scripts/private_canary.py</td><td>2026-10-29</td></tr>
+<tr><td>Private mode, live canary (persona-1, dev node)</td><td>S20 rerun: private-only brief 10 grant leads, 10 explained, 10 citing private documents; with a public profile 10 explained, 7 citing private documents, 5 industry leads. S13: private-only 8 explained, 8 citing private documents. With a public profile: 10 grant leads, 7 citing private documents, 5 industry leads. No changed file under data/, no canary in data/, /tmp or six model-server journals</td><td>scripts/private_canary.py</td><td>2026-10-29</td></tr>
 <tr><td>Stand-in proposal (funded RePORTER abstract, upper bound)</td><td>Default setup 7 to 16 of 48 in the top 10; MRR 0.067 to 0.191, paired 95% interval of the difference [0.042, 0.218]. Keyword-only 1 to 4 of 48</td><td>bench/results/PROPOSAL_STANDIN.md</td><td>2026-10-29</td></tr>
 <tr><td>Weekly watch, live (S16)</td><td>Grants.gov delta: 660 open NIH listed, 3 new, 0 changed, 0 failed. Demo researchers PI-5, PI-4, PI-2: 0 changes, 0 triggers, no draft. Store copy, award ending 2027-03-31: 1 trigger, draft in 51 s</td><td><code>perch monitor</code>, data/demo</td><td>2026-10-29</td></tr>
 <tr><td>Sample scholarship corpus (SYNTHETIC)</td><td>500 records, 105 fictional sponsors, 0 real-name hits; 24 planted cases (7 eligible, 5 may be eligible, 12 not eligible) for 3 personas. Temple SDFA list: 76 public awards</td><td>data/synthetic/, tests/test_scholarships.py</td><td>2026-10-29</td></tr>
