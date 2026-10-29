@@ -533,7 +533,7 @@ def view_decisions(decisions_md: str, plan_md: str) -> str:
 
 def view_bench(bench_md: str) -> str:
     doc = parse(bench_md)
-    out = ['<div><div class="eyebrow">Measured in S8, copied from bench/results/</div>'
+    out = ['<div><div class="eyebrow">Measured in S8 to S13, copied from bench/results/</div>'
            f"<h1>{inline(doc.title or 'Bench results')}</h1></div>"]
     return "\n".join(out + render_blocks(doc.blocks))
 

@@ -131,11 +131,11 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S14</code> <span class="badge s-in-progress">in progress</span><span>14/17 sessions done</span></div>
+<div class="at-a-glance"><code>S15</code> <span class="badge s-todo">todo</span><span>15/17 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
-<a id="tab-archive" href="#archive">Archive<span class="count">14</span></a>
+<a id="tab-archive" href="#archive">Archive<span class="count">15</span></a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
 <a id="tab-bench" href="#bench">Bench</a>
 <a id="tab-architecture" href="#architecture">Architecture</a>
@@ -144,22 +144,14 @@ details .inner > * { min-width: 0; }
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
-<div id="s14"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S14 · MCP server</h1><span class="badge s-in-progress">in progress</span></div>
-<div class="meta">Started 2026-10-29 15:01 EDT</div></div>
-<p>Goal: any platform, including local. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
-<section class="panel summary" aria-label="0 of 1 tasks done"><div class="counts"><span><b>0/1</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span></div><div class="bar" role="img" aria-label="0 of 1 tasks done"><span class="s-in-progress" style="width:100.00%" title="in progress: 1"></span></div></section>
-<div class="panel scroll"><table>
-<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
-<tbody>
-<tr><td>1</td><td><code>perch/mcp_server.py</code> on the official Python SDK (verify version): Scout's nine tools from <code>perch.scout.tools.TOOLS</code>, with <code>check_arguments</code>, the validator and budgets; private tools only for self-hosted clients and models; tested from an MCP client; exact commands in README</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
-</tbody></table></div>
-<h2>Definition of done</h2>
-<ul class="panel done-list"><li>An MCP client gets a cited brief.</li></ul>
+<div id="s15"><div class="eyebrow">Current session</div>
+<div class="title-row"><h1>S15 · Monitoring (optional)</h1><span class="badge s-todo">todo</span></div>
+<div class="meta">Not started</div></div>
+<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S15.md</code> when the session starts.</div>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="14 of 17 sessions done"><div class="counts"><span><b>14/17</b>sessions done</span><span class="s-done"><b>14</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="14 of 17 sessions done"><span class="s-done" style="width:82.35%" title="done: 14"></span><span class="s-in-progress" style="width:5.88%" title="in progress: 1"></span><span class="s-todo" style="width:11.76%" title="todo: 2"></span></div></section>
+<section class="panel summary" aria-label="15 of 17 sessions done"><div class="counts"><span><b>15/17</b>sessions done</span><span class="s-done"><b>15</b>done</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="15 of 17 sessions done"><span class="s-done" style="width:88.24%" title="done: 15"></span><span class="s-todo" style="width:11.76%" title="todo: 2"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -177,8 +169,8 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s11">S11</a></td><td>Route B</td><td><span class="badge s-done">done</span></td><td>2026-10-29 12:38 EDT</td><td>2026-10-29 13:21 EDT</td><td class="mono">see git log</td><td>182 tests green. Route B from three public signals: company works citing the researcher, NIH SBIR/STTR awards from RePORTER, and company works in their topics. The SBIR.gov API is down (Q19). A lead needs two kinds of signal. Every lead is labelled inferred and not verified, and no model writes it. 3 PIs give 14 leads: 8 yes, 6 thin, 0 wrong (judged by Perch-dev). Papers with more than 30 authors do not seed Route B. Grants and Industry switch on the Routes tab. Scout's <code>get_org_signals</code> returns the leads, and the repeated-call guard is in. Scout bench: Sonnet 20/20 and 5/5 ($0.34); Gemma 19/20 and 5/5. Demo rebuilt; Industry tab live on the public URL. Architecture overview figure added.</td></tr>
 <tr class="is-finished"><td><a href="#s12">S12</a></td><td>Compare, hand-off, export</td><td><span class="badge s-done">done</span></td><td>2026-10-29 13:38 EDT</td><td>2026-10-29 14:10 EDT</td><td class="mono">see git log</td><td>194 tests green. Compare tab: kept leads side by side, every cell copied from or counted from a record, each opening its record; no effort, IP or likelihood column, because no record states them. Hand off: skill 3 writes a 2 to 4 sentence opening, code writes the rest, To left empty, office names from research.temple.edu; copy and open in mail; never sent or stored. Markdown export and a print page the browser saves as PDF. Scout <code>compare</code> and <code>draft_handoff</code> built. Bench: Sonnet 20/20, 5/5, 3/3 ($0.41); Gemma 18/20, 5/5, 2/3. Egress filter for private mode. Temple STTR table (41 awards) adds 0 leads, so not wired in (Q20). Done-when met on the public URL.</td></tr>
 <tr class="is-finished"><td><a href="#s13">S13</a></td><td>Private mode</td><td><span class="badge s-done">done</span></td><td>2026-10-29 14:22 EDT</td><td>2026-10-29 15:00 EDT</td><td class="mono">see git log</td><td>208 tests green. Private mode built end to end: sessions in memory with the session id in a header, idle timeout and caps; paste or upload (text, Markdown, DOCX, PDF from bytes); a self-hosted gate on every model and endpoint; the store as an overlay on a read-only base, no cache, log or index writes. Private threads take 0.6 (proposal 0.5, direction 0.3, unpublished 0.2 of it; Q21). The CV parse unlocks career-stage calls as "may be eligible", using NIH's ESI definition and its smaller-grants list. Private-only briefs work. Exports and hand-offs withhold private text, or mask it with an in-memory key. Lock labels, Help and a private bar in the UI. Live canary on the dev node: no trace in data/, /tmp or six model-server journals; the private-only brief had 8 of 8 explained leads citing private documents. Normal-mode context fields with "You said". Stand-in proposal (funded abstract, an upper bound): 7 to 16 of 48 in the top 10. Persona tab on the tracker. Q21, Q22 open.</td></tr>
-<tr class="is-current"><td><a href="#s14">S14</a></td><td>MCP server</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 15:01 EDT</td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S15</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-finished"><td><a href="#s14">S14</a></td><td>MCP server</td><td><span class="badge s-done">done</span></td><td>2026-10-29 15:01 EDT</td><td>2026-10-29 15:10 EDT</td><td class="mono">see git log</td><td>210 tests green. <code>perch mcp</code>: Scout's nine tools over stdio on the MCP Python SDK 2.3.0, with the same argument checks and validator, a provenance map in every result, and budgets of 60 calls (20 model-backed) per connection. <code>--private</code> runs on a private session behind the self-hosted gate. Live: the SDK client over stdio got 5 leads with provenance and a validated explanation citing three papers in 7 s. Claude Code 2.1.312 (print mode, haiku) got a cited brief. The local Ollama agent was not tested. The tracker's UI tab was rebuilt with every module, and the Bench tab gained Scout and the stand-in result. The demo was rebuilt.</td></tr>
+<tr class="is-current"><td>S15</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S16</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
@@ -209,7 +201,20 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-archive" class="view" data-view="archive" hidden>
 <div><div class="eyebrow">Finished sessions</div><h1>Archive</h1></div>
-<div><details id="s13"><summary><span><span class="sid">S13</span> <span class="stitle">Private mode</span></span><span></span><span class="badge s-done">done</span><span class="smeta">8/8 tasks done · finished 2026-10-29 15:00 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: private tailoring on self-hosted models that leaves no trace, on the public URL too. Built in full, back end and front end; not demoed on Demo Day. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<div><details id="s14"><summary><span><span class="sid">S14</span> <span class="stitle">MCP server</span></span><span></span><span class="badge s-done">done</span><span class="smeta">1/1 tasks done · finished 2026-10-29 15:10 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: any platform, including local. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="1 of 1 tasks done"><div class="counts"><span><b>1/1</b>tasks done</span><span class="s-done"><b>1</b>done</span></div><div class="bar" role="img" aria-label="1 of 1 tasks done"><span class="s-done" style="width:100.00%" title="done: 1"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><code>perch/mcp_server.py</code> on the official Python SDK (verify version): Scout's nine tools from <code>perch.scout.tools.TOOLS</code>, with <code>check_arguments</code>, the validator and budgets; private tools only for self-hosted clients and models; tested from an MCP client; exact commands in README</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>perch/mcp_server.py</code> on the MCP Python SDK 2.3.0 (released 2026-10-02). <code>perch mcp</code> serves Scout's nine tools over stdio, with the same schemas, <code>check_arguments</code> and tool code. <code>explain_fit</code> and <code>draft_handoff</code> run Perch's validator inside. Each result has a provenance map (source, link, fetch time) for every record it names. A connection may make 60 tool calls, 20 of them model-backed. <code>--private</code> runs on a private session, with no writes or logs and the self-hosted gate. Tested in pytest through the SDK's in-process client, live over stdio (<code>scripts/mcp_check.py</code>: 5 leads with provenance, one validated explanation citing three papers, 7 s), with <code>--private</code> (no file under data/ changed; a hosted model refused at start), and from Claude Code 2.1.312 in print mode with the haiku model (3 ranked opportunities and a fit explanation citing record ids). The <code>claude mcp add</code> command is in README, checked against its help. A local Ollama agent was not tested (UNVERIFIED).</td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>An MCP client gets a cited brief.</li></ul>
+<h2>Also this session (asked by Dakshitha)</h2>
+<ul><li><strong>UI tab:</strong> the tracker's UI preview is rebuilt from the current web app. The bundler had only the S7 modules, so it now includes private, compare, hand-off and Scout too. Replay works in Chromium: Find, Build, all four tabs and Help, with no console errors.</li><li><strong>Bench tab:</strong> it now shows the Scout bench and the S13 stand-in proposal result.</li><li><strong>Demo:</strong> rebuilt with <code>make demo</code>. The public URL now has the Find context fields and the new Help sections. Private mode stays off there (Q22).</li></ul>
+<h2>Status at end</h2>
+<ul><li>Done. 210 tests pass. An MCP client gets a cited brief: live over stdio, and from Claude Code.</li></ul></div></details>
+<details id="s13"><summary><span><span class="sid">S13</span> <span class="stitle">Private mode</span></span><span></span><span class="badge s-done">done</span><span class="smeta">8/8 tasks done · finished 2026-10-29 15:00 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: private tailoring on self-hosted models that leaves no trace, on the public URL too. Built in full, back end and front end; not demoed on Demo Day. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
 <section class="panel summary" aria-label="8 of 8 tasks done"><div class="counts"><span><b>8/8</b>tasks done</span><span class="s-done"><b>8</b>done</span></div><div class="bar" role="img" aria-label="8 of 8 tasks done"><span class="s-done" style="width:100.00%" title="done: 8"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
@@ -419,10 +424,13 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (97)</h2>
+<h2>Decisions (100)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S14</td><td>Private documents are not added through MCP yet; <code>--private</code> gives the no-trace mode and the gate only</td><td>The design's floor drops MCP private tools first; documents stay in the web app</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S14</td><td><code>mcp</code> 2.3.0 added as a main dependency</td><td><code>perch mcp</code> is part of the app; FastAPI already brings Starlette, which the SDK uses</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-29</td><td>S14</td><td>MCP over stdio only, with Scout's tool table unchanged; budgets of 60 tool calls and 20 model-backed calls per connection; a provenance map in every result</td><td>Stdio runs on the machine that starts it, which keeps private mode's boundary; the client's own model writes the answer, so Perch hands it the records to cite</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S13</td><td>Normal-mode direction and include keywords form one query thread with 0.3 of the weight; exclude keywords are a filter; "early-stage" unlocks career-stage calls with a "You said" note</td><td>One or two typed sentences should steer the search but not outweigh the published record; same mechanism as private threads (Q16)</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S13</td><td>A past sponsor on the CV adds 0.05 to the rerank score when the leads are ordered</td><td>The design asks for a rule shown on the lead; 0.05 is a starting value, not measured</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S13</td><td>Early-stage rule: doctorate within 10 years and no NIH activity code outside NIH's "smaller grants" list on the CV; the lead says "may be eligible", with NIH's page</td><td>NIH's definition also counts clinical training and extensions, which a CV parse cannot read</td><td>Perch-dev</td></tr>
@@ -546,8 +554,8 @@ details .inner > * { min-width: 0; }
 <tr><td>2026-10-28</td><td>—</td><td>Plan reorganised from days into sessions</td><td>Fit one session per context window</td><td>Dakshitha</td></tr>
 </tbody></table></div>
 </section>
-<section id="view-bench" class="view" data-view="bench" hidden><div><div class="eyebrow">Measured in S8, copied from bench/results/</div><h1>Bench results, summary</h1></div>
-<p>Rendered 2026-10-29 13:38 UTC by <code>make bench</code> from the CSVs in <code>bench/results/</code>. Full tables: <code>bench/results/RESULTS.md</code>.</p>
+<section id="view-bench" class="view" data-view="bench" hidden><div><div class="eyebrow">Measured in S8 to S13, copied from bench/results/</div><h1>Bench results, summary</h1></div>
+<p>Rendered 2026-10-29 19:08 UTC by <code>make bench</code> from the CSVs in <code>bench/results/</code>. Full tables: <code>bench/results/RESULTS.md</code>.</p>
 <h2>Back-test (NIH, Temple, date cut-off)</h2>
 <p>Rank of the announcement each award was funded under, from papers before the award start. Keyword-only is the baseline. Seconds are the median per award on the targeted rows.</p>
 <div class="panel scroll"><table>
@@ -592,6 +600,27 @@ details .inner > * { min-width: 0; }
 <tr><td>LLM-logprobs fallback, qwen3.8:27b</td><td>40</td><td>0.985</td><td>0.0</td><td>0.1</td><td>0.898</td><td></td></tr>
 <tr><td>Jev (hosted)</td><td>0</td><td>not benched</td><td></td><td></td><td></td><td>no access to the hosted Jev API on this node; not benched</td></tr>
 <tr><td>Strands Decider 2B</td><td>0</td><td>not benched</td><td></td><td></td><td></td><td>weights and licence not verified on this node; not benched</td></tr>
+</tbody></table></div>
+<h2>Private context, stand-in proposal (upper bound)</h2>
+<p>Each targeted award's own funded NIH abstract added as a private proposal thread at 0.6 of the weight, as private mode does. A funded abstract is far closer to the award than a real draft, so this bounds the gain from above; it does not estimate it. Details: <code>bench/results/PROPOSAL_STANDIN.md</code>.</p>
+<div class="panel scroll"><table>
+<thead><tr><th>Setup</th><th>Targeted in top 10</th><th>hit@5</th><th>hit@10</th><th>MRR</th></tr></thead>
+<tbody>
+<tr><td>keyword-only</td><td>1 of 48</td><td>0.021</td><td>0.021</td><td>0.027</td></tr>
+<tr><td>keyword-only + funded abstract</td><td>4 of 48</td><td>0.042</td><td>0.083</td><td>0.06</td></tr>
+<tr><td>hybrid+rerank</td><td>7 of 48</td><td>0.104</td><td>0.146</td><td>0.067</td></tr>
+<tr><td>hybrid+rerank + funded abstract</td><td>16 of 48</td><td>0.25</td><td>0.333</td><td>0.191</td></tr>
+</tbody></table></div>
+<ul><li><strong>Default setup, paired:</strong> 24 awards ranked higher with the abstract, 6 lower, 18 the same. MRR difference 95% interval [0.042, 0.218].</li></ul>
+<h2>Scout agent</h2>
+<p>Scripted follow-ups in <code>bench/scout_tasks.yaml</code>, newest run per model. A task passes when Scout used an allowed tool with the right arguments and its answer passed the validator. Small sets: they show the follow-ups work, they do not estimate a failure rate. Details: <code>bench/results/RESULTS.md</code>.</p>
+<div class="panel scroll"><table>
+<thead><tr><th>Model</th><th>Policy</th><th>S10 tasks</th><th>Restraint</th><th>Route B tasks</th><th>Compare and hand-off</th><th>Wrong-tool calls</th><th>Answers withheld</th><th>Cost, USD</th><th>Median s</th></tr></thead>
+<tbody>
+<tr><td>claude-sonnet-5-5</td><td>native</td><td>20/20</td><td>6/6</td><td>5/5</td><td>3/3</td><td>0/27</td><td>0</td><td>0.4074</td><td>8.1</td></tr>
+<tr><td>gemma4:26b-a4b</td><td>native</td><td>18/20</td><td>6/6</td><td>5/5</td><td>2/3</td><td>1/26</td><td>1</td><td>0.0</td><td>4.4</td></tr>
+<tr><td>qwen3:8b</td><td>native</td><td>17/20</td><td>5/6</td><td>not run</td><td>not run</td><td>1/14</td><td>1</td><td>0.0</td><td>36.9</td></tr>
+<tr><td>qwen3:8b</td><td>structured</td><td>12/20</td><td>6/6</td><td>not run</td><td>not run</td><td>1/14</td><td>5</td><td>0.0</td><td>12.4</td></tr>
 </tbody></table></div>
 <h2>One card, briefs at once</h2>
 <p>Chat model, Clef-flash, embedder and reranker on one clean GPU. The gate is a peak under 28 GB. MiniCheck rows also load MiniCheck on the GPU, which deploy-1gpu does not; the Clef-flash rows match deploy-1gpu.</p>

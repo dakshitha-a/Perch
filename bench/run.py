@@ -184,6 +184,45 @@ def read_csv(name: str) -> list[dict]:
         return list(csv.DictReader(f))
 
 
+def standin_section(rows: list[dict], draws: int = 2000) -> list[str]:
+    """S13 task 8: the funded RePORTER abstract as a stand-in proposal thread."""
+    import random
+
+    by: dict[str, list[dict]] = {}
+    for r in rows:
+        by.setdefault(r["config"], []).append(r)
+
+    def rk(x: dict) -> int:
+        return int(x["rank"]) if x["rank"] else 10**6
+
+    out = []
+    for label, xs in by.items():
+        n = len(xs)
+        out.append({"Setup": label.replace("+abstract", " + funded abstract"),
+                    "Targeted in top 10": f"{sum(rk(x) <= 10 for x in xs)} of {n}",
+                    "hit@5": round(sum(rk(x) <= 5 for x in xs) / n, 3),
+                    "hit@10": round(sum(rk(x) <= 10 for x in xs) / n, 3),
+                    "MRR": round(sum(float(x["reciprocal_rank"]) for x in xs) / n, 3)})
+    a, b = by.get("hybrid+rerank", []), by.get("hybrid+rerank+abstract", [])
+    note = []
+    if a and len(a) == len(b):
+        rng, n = random.Random(7), len(a)
+        diffs = sorted(sum(float(b[i]["reciprocal_rank"]) - float(a[i]["reciprocal_rank"])
+                           for i in (rng.randrange(n) for _ in range(n))) / n
+                       for _ in range(draws))
+        up = sum(rk(y) < rk(x) for x, y in zip(a, b, strict=True))
+        down = sum(rk(y) > rk(x) for x, y in zip(a, b, strict=True))
+        note = [f"- **Default setup, paired:** {up} awards ranked higher with the abstract, "
+                f"{down} lower, {n - up - down} the same. MRR difference 95% interval "
+                f"[{diffs[int(draws * 0.025)]:.3f}, {diffs[int(draws * 0.975) - 1]:.3f}]."]
+    return ["## Private context, stand-in proposal (upper bound)", "",
+            "Each targeted award's own funded NIH abstract added as a private proposal thread "
+            "at 0.6 of the weight, as private mode does. A funded abstract is far closer to "
+            "the award than a real draft, so this bounds the gain from above; it does not "
+            "estimate it. Details: `bench/results/PROPOSAL_STANDIN.md`.", "",
+            *table(out, list(out[0])), "", *note, ""]
+
+
 def summary() -> str:
     """The short version of RESULTS.md for the tracker's Bench tab. Every number is
     copied from the CSVs in bench/results/."""
@@ -245,6 +284,23 @@ def summary() -> str:
                   "Supported sentences against the same sentences with a swapped record. AUC "
                   "is how well the score separates the two; 1.0 is perfect. Rates are at the "
                   "0.5 threshold.", "", *table(rows, list(rows[0])), ""]
+    sp = read_csv("backtest_proposal_standin.csv")
+    if sp:
+        lines += standin_section(sp)
+    so = read_csv("scout_summary.csv")
+    if so:
+        rows = [{"Model": r["model"].split(":", 1)[1], "Policy": r["policy"],
+                 "S10 tasks": r["completed"], "Restraint": r["restraint"],
+                 "Route B tasks": r.get("route_b_completed") or "not run",
+                 "Compare and hand-off": r.get("compare_handoff_completed") or "not run",
+                 "Wrong-tool calls": r["wrong_calls"], "Answers withheld": r["flagged"],
+                 "Cost, USD": r["usd"], "Median s": r["median_s"]} for r in so]
+        lines += ["## Scout agent", "",
+                  "Scripted follow-ups in `bench/scout_tasks.yaml`, newest run per model. A task "
+                  "passes when Scout used an allowed tool with the right arguments and its "
+                  "answer passed the validator. Small sets: they show the follow-ups work, they "
+                  "do not estimate a failure rate. Details: `bench/results/RESULTS.md`.", "",
+                  *table(rows, list(rows[0])), ""]
     sc = read_csv("single_card.csv")
     if sc:
         rows = [{"Model": r["model"], "Grounder": r.get("grounder", "minicheck"),

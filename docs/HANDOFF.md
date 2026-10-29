@@ -2,55 +2,54 @@
 
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
-## Last session
-- Session: S13 — Private mode
-- Status: done. The live canary passed on the dev node, and a private-only brief returns cited routes.
-- Last commit: see `git log`; the ritual commit is last on `main`
+## Last sessions
+- S13 (Private mode) and S14 (MCP server) both ran in one context, as Dakshitha asked. Both are done.
+- Last commit: see `git log`; the S14 ritual commit is last on `main`.
 
-## What S13 built
-- **`perch/private/`:**
-  - `inputs.py` parses paste or upload from bytes: text, Markdown, DOCX, and PDF through `pypdf`.
-  - `cv.py` is the deterministic CV parse and the early-stage rule, from NIH's page and its smaller-grants list.
-  - `threads.py` turns each document into one thread. The private share is 0.6: proposal 0.5, direction 0.3, unpublished 0.2 (Q21).
-  - `store.py` holds the overlay repository (read-only base, writes in memory) and the read-only embedding cache.
-  - `session.py` holds `PrivateService` (the pipeline with every write path off) and `PrivateSessions` (30-minute idle timeout, caps).
-  - `routes.py` holds the `/private/*` routes. The session id travels in the `X-Perch-Private` header only.
-- **The gate:** `perch/privacy.py` has `refuse_if_not_local` and `refuse_endpoints`. `PERCH_PRIVATE_OPERATOR` is required, and `statement()` names that operator.
-- **Hooks in shared code:**
-  - `route_a(profile=, index_new=)`, `Constraints.career_stage_ok`, `Lead.notes`, and `Profile.salt`, so caches split when text is added.
-  - `BriefService._works` and `quiet_errors`; the hand-off may cite private records, and egress decides what leaves.
-  - `ScoutHub(private=)`, and Scout handles `private:you`.
-- **Normal mode (Q16):** direction, include and exclude keywords, and career stage on Find, under Options. The direction becomes a query thread at 0.3, and Profile shows a "You said" section. These keys are stored only when set, so old briefs are still reused.
-- **Web:** `web/private.js` (the Private mode screen, the private bar with End, masked exports and unmask) and `privateApi` in `api.js`. Lock labels on private threads, citations and records. Help has a private-mode step and "How leads are ordered".
-- **Tests:** `tests/test_private.py` has 16 tests: canary, isolation, refusal, masking, idle, uploads, context fields, and no browser storage.
-- **Live run:** `scripts/private_canary.py`, rerun in S16 on the frozen build.
-- **Back-test variant:** `bench/proposal.py` puts the funded abstract in as a stand-in proposal. It is an upper bound: 7 to 16 of 48 in the top 10.
-- **Tracker:** a Persona tab shows persona-1 for the team.
+## What S14 built
+- **The server:** `perch/mcp_server.py` on the MCP Python SDK 2.3.0, started with `perch mcp [--author A…] [--private]` and served over stdio only.
+  - **Tools:** Scout's nine, from `perch.scout.tools.TOOLS`, each checked by `check_arguments`.
+  - **Provenance:** every result carries a `provenance` map for the records it names.
+  - **Budgets:** 60 tool calls per connection, 20 of them model-backed.
+  - **`--private`:** runs on a `PrivateSession` service, with the self-hosted gate checked at start. Documents cannot be added through MCP yet.
+- **Tests:** `tests/test_mcp.py`, through the SDK's in-process `Client`.
+- **Live check:** `scripts/mcp_check.py` spawns the server over stdio, as a real client would.
+- **README:** a `claude mcp add` command and a no-install `claude -p --mcp-config` test.
+- **Tracker:**
+  - The UI tab is rebuilt. `scripts/build_ui_preview.py` now bundles every web module.
+  - The Bench tab shows the Scout bench and the S13 stand-in, rendered by `bench/run.py` `summary()`.
+- **Demo:** rebuilt with `make demo`. The public URL has the S13 Find fields and Help sections. Private mode is off there.
+
+## S13 in one paragraph
+Private mode is built end to end:
+- **Code:** `perch/private/` holds the sessions, overlay store, private threads, CV parse and routes. The screens are in `web/private.js`.
+- **Tests:** the canary, isolation, refusal and masking tests pass. The live canary (`scripts/private_canary.py`) found no trace anywhere.
+- **Results:** a private-only brief returns cited routes.
+- **Normal mode:** a direction, include and exclude keywords and a career stage, shown on Profile as "You said".
+- **Stand-in proposal:** an upper bound, 7 to 16 of 48 in the top 10.
 
 ## Numbers
-- 208 tests pass. No API spend this session; the ledger is $2.05 of $100.
-- Live canary: the private-only brief had 8 of 8 explained leads citing private documents. Nothing changed under data/, and no canary turned up anywhere.
-
-## Demo
-- Not rebuilt in S13. The public URL still runs the S12 build, and private mode is off there (Q22).
-- The new Find fields and Help sections reach the public URL at the next `make demo`.
+- 210 tests pass. No API spend in S13 or S14; the ledger is $2.05 of $100.
+- MCP live: search plus explain took 7 s on the demo's Gemma, and the result cites 3 papers with provenance.
 
 ## Known gaps, for a later session
-- **Index lag:** a private brief searches the index the public pipeline keeps. New opportunities appear only after a normal brief indexes them.
-- **Scout's search in a private session:** it builds threads from public papers only.
-- **Thread labels:** a private thread's label is its most frequent words. On persona-1 the word "synthetic" leads every label.
-- **From S12, still open:**
+- **`make bench --render-only` would overwrite RESULTS.md.** `render()` rebuilds the file from CSVs, and its Scout sections (S10 to S12) were written by hand. SUMMARY.md is safe; it was regenerated by calling `summary()` alone. Fix before S16 reruns the bench.
+- **Local Ollama agent:** the MCP server was not tested with one (UNVERIFIED in README).
+- **From S13:**
+  - A private brief does not index new opportunities.
+  - Scout's search in a private session uses public threads only.
+  - The persona's thread labels all lead with "synthetic".
+- **From S12:**
   - The hand-off opening has no layer-2 check.
   - Compare's PAR close dates.
   - Replay mode has no compare or hand-off.
-  - OpenAlex company types are trusted.
 
-## Next session: S14 — MCP server
-1. Read S14 in `docs/PLAN.md`. The `mcp` SDK on PyPI is 2.3.0, released 2026-10-02; its API has not been checked yet.
-2. Build `perch/mcp_server.py` from `perch.scout.tools.TOOLS`, with `check_arguments` and the budgets, over stdio. Private tools go only through stdio, and only behind the gate.
-3. Test with the SDK's own stdio client in pytest. Write the `claude mcp add` command into README and check it against `claude mcp --help`. The laptop Ollama agent cannot be tested from this node, so mark it UNVERIFIED.
+## Next session: S15 — Monitoring (optional; first to cut)
+1. Read S15 in `docs/PLAN.md`. The task is a weekly job that re-runs briefs when an award is within 12 months of ending or a new opportunity scores above a threshold. Its output is an email draft that is never sent, plus one "what changed" screen.
+2. It is first to cut. Code freeze is Thu 5 Nov 12:00. If time is short, Dakshitha may prefer to go straight to S16.
+3. S16 task 2 frees GPUs 1 and 2 after the last test run (local notes).
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 - Q20: should a past Temple STTR partner count as an industry lead on its own? Default: no.
-- Q21: how the private documents share the 0.6. Default: proposal 0.5, direction 0.3, unpublished 0.2; the CV gets none.
+- Q21: private document shares. Default: proposal 0.5, direction 0.3, unpublished 0.2; the CV gets none.
 - Q22: turn private mode on at the public demo URL? Default: off.

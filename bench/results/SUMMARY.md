@@ -1,6 +1,6 @@
 # Bench results, summary
 
-Rendered 2026-10-29 13:38 UTC by `make bench` from the CSVs in `bench/results/`. Full tables: `bench/results/RESULTS.md`.
+Rendered 2026-10-29 19:08 UTC by `make bench` from the CSVs in `bench/results/`. Full tables: `bench/results/RESULTS.md`.
 
 ## Back-test (NIH, Temple, date cut-off)
 
@@ -52,6 +52,30 @@ Supported sentences against the same sentences with a swapped record. AUC is how
 | LLM-logprobs fallback, qwen3.8:27b | 40 | 0.985 | 0.0 | 0.1 | 0.898 |  |
 | Jev (hosted) | 0 | not benched |  |  |  | no access to the hosted Jev API on this node; not benched |
 | Strands Decider 2B | 0 | not benched |  |  |  | weights and licence not verified on this node; not benched |
+
+## Private context, stand-in proposal (upper bound)
+
+Each targeted award's own funded NIH abstract added as a private proposal thread at 0.6 of the weight, as private mode does. A funded abstract is far closer to the award than a real draft, so this bounds the gain from above; it does not estimate it. Details: `bench/results/PROPOSAL_STANDIN.md`.
+
+| Setup | Targeted in top 10 | hit@5 | hit@10 | MRR |
+|---|---|---|---|---|
+| keyword-only | 1 of 48 | 0.021 | 0.021 | 0.027 |
+| keyword-only + funded abstract | 4 of 48 | 0.042 | 0.083 | 0.06 |
+| hybrid+rerank | 7 of 48 | 0.104 | 0.146 | 0.067 |
+| hybrid+rerank + funded abstract | 16 of 48 | 0.25 | 0.333 | 0.191 |
+
+- **Default setup, paired:** 24 awards ranked higher with the abstract, 6 lower, 18 the same. MRR difference 95% interval [0.042, 0.218].
+
+## Scout agent
+
+Scripted follow-ups in `bench/scout_tasks.yaml`, newest run per model. A task passes when Scout used an allowed tool with the right arguments and its answer passed the validator. Small sets: they show the follow-ups work, they do not estimate a failure rate. Details: `bench/results/RESULTS.md`.
+
+| Model | Policy | S10 tasks | Restraint | Route B tasks | Compare and hand-off | Wrong-tool calls | Answers withheld | Cost, USD | Median s |
+|---|---|---|---|---|---|---|---|---|---|
+| claude-sonnet-5-5 | native | 20/20 | 6/6 | 5/5 | 3/3 | 0/27 | 0 | 0.4074 | 8.1 |
+| gemma4:26b-a4b | native | 18/20 | 6/6 | 5/5 | 2/3 | 1/26 | 1 | 0.0 | 4.4 |
+| qwen3:8b | native | 17/20 | 5/6 | not run | not run | 1/14 | 1 | 0.0 | 36.9 |
+| qwen3:8b | structured | 12/20 | 6/6 | not run | not run | 1/14 | 5 | 0.0 | 12.4 |
 
 ## One card, briefs at once
 
