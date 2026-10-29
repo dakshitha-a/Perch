@@ -31,3 +31,7 @@ If the lab node or its network is down on Demo Day:
 1. **Use the replay demo:** `uv run python scripts/build_ui_preview.py` writes `build/artifacts/ui.html`, one self-contained page. Open it in the laptop's browser. It plays a saved brief with no server and no network; no real brief runs in this mode.
 2. **Or run Perch on the laptop:** `uv run perch serve --models fake` serves the full app with fake models. With a hotspot and an `ANTHROPIC_API_KEY` in `.env`, `PERCH_LLM_DEFAULT=anthropic:claude-sonnet-5-5 uv run --extra ml perch serve` runs real briefs with search on the laptop's CPU. This path is UNVERIFIED on a laptop.
 3. **Share it from the laptop:** a phone on the same hotspot opens `http://<laptop address>:8100` after `perch serve --host 0.0.0.0`.
+
+## Student mode on the demo
+
+The demo keeps the SYNTHETIC sample scholarships in `data/demo/sample.db` (`PERCH_SAMPLE_DB` in `docker-compose.yml`), loaded by the app on start. Temple SDFA's fellowship list goes into the demo store once, by hand: `uv run perch --db data/demo/perch.db fetch temple`.

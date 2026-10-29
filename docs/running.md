@@ -23,6 +23,15 @@ uv run perch fetch opportunities --agencies HHS-NIH11 --limit 40   # open NIH op
 uv run perch fetch opportunities --opp-num PA-20-185                # one, in any status
 ```
 
+Student mode (inside private mode) reads two more stores. Load them once:
+
+```sh
+uv run perch fetch temple      # Temple SDFA's public fellowship list into the public store
+uv run perch samples           # the SYNTHETIC sample scholarships into their own store
+```
+
+The sample store is `data/sample.db` (`PERCH_SAMPLE_DB`). The app also loads it on start when private mode is on.
+
 Route A leads use local models (Qwen3-Embedding-0.6B and Qwen3-Reranker-0.6B) from the optional `ml` extra:
 
 ```sh

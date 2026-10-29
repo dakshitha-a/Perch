@@ -22,7 +22,7 @@ PERCH_PRIVATE_MODE=1 PERCH_TLS_AT=server PERCH_PRIVATE_OPERATOR="..." \
 
 ## Using it
 
-1. On the Find screen, open **Options** and choose **Private mode: add a CV, a draft proposal or unpublished work**.
+1. Turn on the **Private** switch at the top of any screen. While it is on, a line under the bar and a coloured edge show it; turning it off ends the session after a confirm. If you paste a CV or long text into a public box on Find, Perch offers to move it here; nothing is sent until you choose.
 2. Start a private session. The page shows the privacy statement, which names who runs the server.
 3. Paste or upload any of four documents: plain text, Markdown, Word (.docx) or PDF.
    - **Your CV:** checks career-stage rules and past sponsors only. It does not steer the search.
@@ -39,3 +39,7 @@ PERCH_PRIVATE_MODE=1 PERCH_TLS_AT=server PERCH_PRIVATE_OPERATOR="..." \
 - **Held in memory only:** nothing from a session reaches the database, the caches, the logs or the search index.
 - **Checked by a canary test:** each test document carries a unique token. After a full session, no token may appear in any file, log, temporary file, browser storage or outbound request (`tests/test_private.py`, and `scripts/private_canary.py` on the real models).
 - **The full design:** the write-path inventory, the masking rules and the limits are in [design/PRIVATE_MODE.md](design/PRIVATE_MODE.md).
+
+## Student mode
+
+Choose **Student** on the Find screen. Student mode always runs in a private session, so it starts one first. Add your CV, an interests note and up to five achievements. Code reads the CV by rule (level, year, major, GPA, enrolment, expected graduation, referees); no model reads it. Routes has **Fellowships (public)**, from Temple Scholar Development and Fellowships Advising's list and NIH F-series listings, and **Scholarships (sample)**, from an invented test corpus badged Sample data on every card. Each lead says "eligible", "may be eligible" or "not eligible" by rule, and lists what is still needed. Compare drafts a note to SDFA or Student Financial Services; Perch sends nothing. Exports carry a sample banner and withhold lines that quote the CV unless masked. Scores on planted cases: `bench/results/STUDENT_MODE.md`.
