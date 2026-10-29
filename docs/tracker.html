@@ -79,6 +79,7 @@ svg.arch .k-private, svg.arch .k-private-x { stroke: var(--cut); }
 .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--raised); }
 .bar span { display: block; height: 100%; }
 .scroll { overflow-x: auto; }
+.readme-frame { width: 100%; height: 80vh; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
 pre.doc { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 13px; line-height: 1.5; padding: 14px 16px; margin: 0 0 18px; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { border-bottom: 1px solid var(--line); padding: 8px 12px; text-align: left;
@@ -131,7 +132,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S15</code> <span class="badge s-todo">todo</span><span>15/17 sessions done</span></div>
+<div class="at-a-glance"><code>S15</code> <span class="badge s-in-progress">in progress</span><span>15/18 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-current" href="#current" aria-current="page">Current</a>
 <a id="tab-master" href="#master">Master</a>
@@ -141,17 +142,29 @@ details .inner > * { min-width: 0; }
 <a id="tab-architecture" href="#architecture">Architecture</a>
 
 <a id="tab-persona" href="#persona">Persona</a>
+
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
 <div id="s15"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S15 · Monitoring (optional)</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S15.md</code> when the session starts.</div>
+<div class="title-row"><h1>S15 · README and public release</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-29 15:25 EDT</div></div>
+<p>Goal: a README that shows Perch at a glance, then the repo made public. Asked for by Dakshitha on 2026-10-29. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="2 of 4 tasks done"><div class="counts"><span><b>2/4</b>tasks done</span><span class="s-done"><b>2</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="2 of 4 tasks done"><span class="s-done" style="width:50.00%" title="done: 2"></span><span class="s-in-progress" style="width:25.00%" title="in progress: 1"></span><span class="s-todo" style="width:25.00%" title="todo: 1"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>README with a hero clip, a feature tour of animated WebP clips filmed in the real app, the architecture figure, and links to separate docs; filmed with NextTex's pipeline</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td>README tab on the build tracker for Dakshitha's review</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>scripts/build_readme_preview.py</code> renders README.md like GitHub, with its clips and figures, and the tracker has a README tab (<code>make tracker</code> builds both).</td></tr>
+<tr><td>3</td><td>Public-readiness audit of tracked files and history</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>check_public</code>'s patterns were run over every patch and commit message in the history, along with the node's hostname and the real names of the researchers in the alias table. No keys, local paths, emails, session links or machine names were found. Three public researchers' names appear in six test files, and one appears in an old README commit (S1). That is Q23, and its default is to change the tests before going public.</td></tr>
+<tr><td>4</td><td>Push and make the repository public, after Dakshitha approves</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td>Waits for Dakshitha</td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>Dakshitha has approved the README, and the repository is public.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="15 of 17 sessions done"><div class="counts"><span><b>15/17</b>sessions done</span><span class="s-done"><b>15</b>done</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="15 of 17 sessions done"><span class="s-done" style="width:88.24%" title="done: 15"></span><span class="s-todo" style="width:11.76%" title="todo: 2"></span></div></section>
+<section class="panel summary" aria-label="15 of 18 sessions done"><div class="counts"><span><b>15/18</b>sessions done</span><span class="s-done"><b>15</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="15 of 18 sessions done"><span class="s-done" style="width:83.33%" title="done: 15"></span><span class="s-in-progress" style="width:5.56%" title="in progress: 1"></span><span class="s-todo" style="width:11.11%" title="todo: 2"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -170,15 +183,16 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s12">S12</a></td><td>Compare, hand-off, export</td><td><span class="badge s-done">done</span></td><td>2026-10-29 13:38 EDT</td><td>2026-10-29 14:10 EDT</td><td class="mono">see git log</td><td>194 tests green. Compare tab: kept leads side by side, every cell copied from or counted from a record, each opening its record; no effort, IP or likelihood column, because no record states them. Hand off: skill 3 writes a 2 to 4 sentence opening, code writes the rest, To left empty, office names from research.temple.edu; copy and open in mail; never sent or stored. Markdown export and a print page the browser saves as PDF. Scout <code>compare</code> and <code>draft_handoff</code> built. Bench: Sonnet 20/20, 5/5, 3/3 ($0.41); Gemma 18/20, 5/5, 2/3. Egress filter for private mode. Temple STTR table (41 awards) adds 0 leads, so not wired in (Q20). Done-when met on the public URL.</td></tr>
 <tr class="is-finished"><td><a href="#s13">S13</a></td><td>Private mode</td><td><span class="badge s-done">done</span></td><td>2026-10-29 14:22 EDT</td><td>2026-10-29 15:00 EDT</td><td class="mono">see git log</td><td>208 tests green. Private mode built end to end: sessions in memory with the session id in a header, idle timeout and caps; paste or upload (text, Markdown, DOCX, PDF from bytes); a self-hosted gate on every model and endpoint; the store as an overlay on a read-only base, no cache, log or index writes. Private threads take 0.6 (proposal 0.5, direction 0.3, unpublished 0.2 of it; Q21). The CV parse unlocks career-stage calls as "may be eligible", using NIH's ESI definition and its smaller-grants list. Private-only briefs work. Exports and hand-offs withhold private text, or mask it with an in-memory key. Lock labels, Help and a private bar in the UI. Live canary on the dev node: no trace in data/, /tmp or six model-server journals; the private-only brief had 8 of 8 explained leads citing private documents. Normal-mode context fields with "You said". Stand-in proposal (funded abstract, an upper bound): 7 to 16 of 48 in the top 10. Persona tab on the tracker. Q21, Q22 open.</td></tr>
 <tr class="is-finished"><td><a href="#s14">S14</a></td><td>MCP server</td><td><span class="badge s-done">done</span></td><td>2026-10-29 15:01 EDT</td><td>2026-10-29 15:10 EDT</td><td class="mono">see git log</td><td>210 tests green. <code>perch mcp</code>: Scout's nine tools over stdio on the MCP Python SDK 2.3.0, with the same argument checks and validator, a provenance map in every result, and budgets of 60 calls (20 model-backed) per connection. <code>--private</code> runs on a private session behind the self-hosted gate. Live: the SDK client over stdio got 5 leads with provenance and a validated explanation citing three papers in 7 s. Claude Code 2.1.312 (print mode, haiku) got a cited brief. The local Ollama agent was not tested. The tracker's UI tab was rebuilt with every module, and the Bench tab gained Scout and the stand-in result. The demo was rebuilt.</td></tr>
-<tr class="is-current"><td>S15</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S16</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s15">S15</a></td><td>README and public release</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 15:25 EDT</td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S16</td><td>Monitoring (optional)</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S17</td><td>QA, freeze, package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Milestone</th><th>Date</th><th>Needs</th><th>Ready?</th></tr></thead>
 <tbody>
 <tr><td>Checkup 2</td><td>Tue 3 Nov</td><td>S0–S7</td><td></td></tr>
-<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S16</td><td></td></tr>
+<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S17</td><td></td></tr>
 <tr><td>Submission</td><td>Fri 6 Nov 12:00</td><td>ZIP + links</td><td></td></tr>
 </tbody></table></div>
 <h2>Key numbers (keep current)</h2>
@@ -530,10 +544,11 @@ details .inner > * { min-width: 0; }
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (19)</h2>
+<h2>Plan change log (20)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S15 to S17</td><td>New S15, README and public release (README with filmed clips and the architecture, a README tab on the tracker, a public-readiness audit, then make the repo public). Monitoring moves to S16, and QA, freeze and package to S17. Older notes that say "S16 task 2" mean what is now S17 task 2</td><td>Dakshitha asked for an attractive README, reviewed on the tracker, as the next step before the repo goes public</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>after S12</td><td>S16 task 2: after the last test run, stop the dev decision servers (<code>make decide-down</code>) and tell the other session on the node that their GPUs are free</td><td>The app needs only the demo's two GPUs; the dev copies exist for testing</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S12</td><td>Worked in the order 1 to 4, 7, 6, 5: the demo was rebuilt last so it carried every change. Task 7 is done but not wired in, because it adds 0 leads under the two-signal rule (Q20)</td><td>Tasks 1 to 5 are the definition of done; one demo rebuild instead of two</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S12</td><td>Task 7 added back, narrowed: Temple STTR partners (41 awards) from the SBIR.gov bulk file's research-partner column</td><td>Dakshitha: worth doing if useful; companies that already partnered with Temple are concrete leads</td><td>Dakshitha</td></tr>
@@ -642,7 +657,7 @@ details .inner > * { min-width: 0; }
 <section id="view-architecture" class="view" data-view="architecture" hidden><div><div class="eyebrow">How Perch is built</div><h1>Architecture</h1></div>
 <p>How Perch fits together, which steps of a brief use a model, what runs where in the two-GPU demo, and which steps can move to a cloud model through an API key. Model choices come from the S8 bench (Bench tab); memory figures are nvidia-smi readings from S8.</p>
 <h2>How Perch fits together</h2>
-<figure class="panel diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 850" class="arch" role="img" font-family="system-ui, sans-serif" aria-label="How Perch fits together. Public sources feed plain-code fetchers, which store every record with its provenance. A brief runs two routes from the store: grants, which uses two small local models and eligibility rules, and industry leads, which is code only. A chat model writes the profile summary and fit explanations, and Scout answers follow-ups by calling only Perch's own tools. Every model output passes the validator before the API and web app show it to the researcher. The hand-off draft, private mode and the MCP server are planned.">
+<figure class="panel diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 850" class="arch" role="img" font-family="system-ui, sans-serif" aria-label="How Perch fits together. Public sources feed plain-code fetchers, which store every record with its provenance. A brief runs two routes from the store: grants, which uses two small local models and eligibility rules, and industry leads, which is code only. A chat model writes the profile summary, the fit explanations and the hand-off draft, and Scout answers follow-ups by calling only Perch's own tools. Every model output passes the validator before the API and web app show it to the researcher. Private mode runs the same pipeline on self-hosted models and writes nothing; the MCP server offers Scout's tools to other agents.">
   <defs>
     <marker id="oa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
@@ -658,7 +673,7 @@ details .inner > * { min-width: 0; }
     <rect x="345" y="12" width="22" height="14" rx="3" fill="#f6ead8" stroke="#a15c07" stroke-dasharray="4 3" class="k-cloud"/>
     <text x="373" y="23">chat model, can move to Sonnet</text>
     <rect x="590" y="12" width="22" height="14" rx="3" fill="none" stroke="currentColor" stroke-opacity="0.4" stroke-dasharray="2 3"/>
-    <text x="618" y="23">planned</text>
+    <text x="618" y="23">unavailable</text>
   </g>
 
   <g font-size="11" fill="currentColor" opacity="0.7" font-weight="600" letter-spacing="0.06em">
@@ -740,7 +755,7 @@ details .inner > * { min-width: 0; }
   <g font-size="11.5" fill="currentColor">
     <text x="34" y="496">1  Profile summary</text>
     <text x="34" y="516">2  Fit explanation for each grant lead</text>
-    <text x="34" y="536" opacity="0.6">3  Hand-off draft, never sent (S12)</text>
+    <text x="34" y="536">3  Hand-off draft, never sent</text>
   </g>
   <rect x="365" y="454" width="335" height="104" rx="6" fill="#f6ead8" stroke="#a15c07" stroke-dasharray="4 3" class="k-cloud"/>
   <text x="379" y="475" font-size="13" font-weight="600" fill="currentColor">Scout · agent, chat model</text>
@@ -772,7 +787,7 @@ details .inner > * { min-width: 0; }
   <rect x="200" y="676" width="500" height="70" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.45" class="k-code"/>
   <text x="214" y="697" font-size="13" font-weight="600" fill="currentColor">API and web app · FastAPI, no-build web app</text>
   <g font-size="11.5" fill="currentColor" opacity="0.85">
-    <text x="214" y="717">Profile · Routes (Grants and Industry) · Ask Scout</text>
+    <text x="214" y="717">Profile · Routes · Compare · Hand off · Ask Scout</text>
     <text x="214" y="735">Every claim opens its record in the evidence panel</text>
   </g>
   <rect x="20" y="676" width="150" height="70" rx="6" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray="5 3"/>
@@ -784,21 +799,21 @@ details .inner > * { min-width: 0; }
   <path d="M360 644 V674" stroke="currentColor" stroke-opacity="0.6" fill="none" marker-end="url(#oa)"/>
   <path d="M174 711 H196" stroke="currentColor" stroke-opacity="0.6" fill="none" marker-start="url(#oa)" marker-end="url(#oa)"/>
 
-  <!-- planned -->
-  <g fill="none" stroke="currentColor" stroke-opacity="0.4" stroke-dasharray="2 3">
+  <!-- other ways in -->
+  <g fill="none" stroke="currentColor" stroke-opacity="0.45" class="k-code">
     <rect x="200" y="770" width="245" height="58" rx="6"/>
     <rect x="455" y="770" width="245" height="58" rx="6"/>
   </g>
-  <g font-size="12.5" font-weight="600" fill="currentColor" opacity="0.75">
-    <text x="214" y="791">Private mode (S13)</text>
-    <text x="469" y="791">MCP server (S14)</text>
+  <g font-size="12.5" font-weight="600" fill="currentColor">
+    <text x="214" y="791">Private mode</text>
+    <text x="469" y="791">MCP server</text>
   </g>
-  <g font-size="11.5" fill="currentColor" opacity="0.7">
-    <text x="214" y="811">local models only; writes nothing</text>
-    <text x="469" y="811">Scout's tools for other agents</text>
+  <g font-size="11.5" fill="currentColor" opacity="0.85">
+    <text x="214" y="811">self-hosted models only; writes nothing</text>
+    <text x="469" y="811">Scout's tools for any MCP client</text>
   </g>
-</svg><figcaption>The whole system as built after S11, top to bottom. Public sources feed plain-code fetchers and the store. A brief runs two routes from the store. Models are bounded: they write, or they call Perch's own tools, and the validator checks every output before the researcher sees it. Dotted boxes are planned.</figcaption></figure>
-<ul><li><strong>Public sources only:</strong> OpenAlex, NIH RePORTER, NSF Award Search and Grants.gov. The SBIR.gov API was down in S11, so small-business awards come from RePORTER and cover NIH only.</li><li><strong>Fetchers and store:</strong> plain code fetches each record and stores it with its source, link and fetch time. Numbers and dates are copied from records, never written by a model.</li><li><strong>Route A, grants:</strong> two small local models find and rank open calls. Eligibility rules between them drop anything the researcher cannot apply to.</li><li><strong>Route B, industry leads:</strong> plain code counts public signals per company. A company needs two kinds of signal to be shown. Every lead says it is inferred and not verified.</li><li><strong>Models are bounded:</strong> the chat model writes the profile summary and the fit explanations. Scout, the agent, can only call Perch's own tools.</li><li><strong>The validator:</strong> it checks every model output before it is shown. Code checks ids and numbers. Clef checks each sentence against the record it cites.</li><li><strong>What is planned:</strong> the hand-off draft (S12), private mode (S13) and the MCP server (S14).</li></ul>
+</svg><figcaption>The whole system as built after S14, top to bottom. Public sources feed plain-code fetchers and the store. A brief runs two routes from the store. Models are bounded: they write, or they call Perch's own tools, and the validator checks every output before the researcher sees it. The dotted SBIR.gov box is a source whose API was down.</figcaption></figure>
+<ul><li><strong>Public sources only:</strong> OpenAlex, NIH RePORTER, NSF Award Search and Grants.gov. The SBIR.gov API was down in S11, so small-business awards come from RePORTER and cover NIH only.</li><li><strong>Fetchers and store:</strong> plain code fetches each record and stores it with its source, link and fetch time. Numbers and dates are copied from records, never written by a model.</li><li><strong>Route A, grants:</strong> two small local models find and rank open calls. Eligibility rules between them drop anything the researcher cannot apply to.</li><li><strong>Route B, industry leads:</strong> plain code counts public signals per company. A company needs two kinds of signal to be shown. Every lead says it is inferred and not verified.</li><li><strong>Models are bounded:</strong> the chat model writes the profile summary and the fit explanations. Scout, the agent, can only call Perch's own tools.</li><li><strong>The validator:</strong> it checks every model output before it is shown. Code checks ids and numbers. Clef checks each sentence against the record it cites.</li><li><strong>Other ways in:</strong> private mode (S13) runs the same pipeline on self-hosted models and writes nothing. The MCP server (S14) offers Scout's tools to any MCP client.</li><li><strong>The hand-off draft (S12):</strong> the chat model writes only an opening paragraph. Code writes the rest, and the app never sends it.</li></ul>
 <h2>A brief, step by step</h2>
 <figure class="panel diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 940" class="arch" role="img" font-family="system-ui, sans-serif" aria-label="A brief runs eight steps top to bottom: fetch and eligibility are code, embed and rerank are local models, the profile summary and fit explanation are chat models that can move to Sonnet, the citation check is code, and the grounding check is Clef. A failed check sends the explanation back once. Hand-off, Scout and decide run later, on request.">
   <defs>
@@ -1000,7 +1015,7 @@ details .inner > * { min-width: 0; }
     <line x1="505" y1="410" x2="525" y2="430"/><line x1="525" y1="410" x2="505" y2="430"/>
   </g>
 </svg><figcaption>The two-GPU demo layout. GPU A holds the writing and agent models; each of their roles can move to the Anthropic API with one line in .env. GPU B holds the grounding check and search, which have no cloud path. Private mode refuses the path to the API.</figcaption></figure>
-<ul><li><strong>The swap:</strong> set <code>PERCH_LLM_&lt;ROLE&gt;=anthropic:claude-sonnet-5-5</code> for one role, or <code>PERCH_LLM_DEFAULT</code> for all of them. Roles are profile summary, fit explainer, hand-off, Scout and decide.</li><li><strong>What Sonnet measured:</strong> a typical brief took 26 s and cost about $0.09. It passed both checks on 24 of 30 leads, against 28 for Gemma.</li><li><strong>Decide on Sonnet:</strong> it works, but the Anthropic API returns no token probabilities, so the answer comes without a confidence score.</li><li><strong>What stays local:</strong> Anthropic offers no embedding or rerank API, and Perch has no adapter for another provider of them. Clef's job needs token scores.</li><li><strong>The GPU saving:</strong> if every chat role moves to the API, GPU A no longer needs Gemma. Only Clef-flash would stay there, at about 7.4 GB.</li><li><strong>The layout is planned:</strong> S9 deploys it and measures the two cards together. The memory figures here were measured in separate S8 runs.</li><li><strong>Private mode:</strong> it is designed and is built in S13. It refuses any model that is not on this server.</li></ul></section>
+<ul><li><strong>The swap:</strong> set <code>PERCH_LLM_&lt;ROLE&gt;=anthropic:claude-sonnet-5-5</code> for one role, or <code>PERCH_LLM_DEFAULT</code> for all of them. Roles are profile summary, fit explainer, hand-off, Scout and decide.</li><li><strong>What Sonnet measured:</strong> a typical brief took 26 s and cost about $0.09. It passed both checks on 24 of 30 leads, against 28 for Gemma.</li><li><strong>Decide on Sonnet:</strong> it works, but the Anthropic API returns no token probabilities, so the answer comes without a confidence score.</li><li><strong>What stays local:</strong> Anthropic offers no embedding or rerank API, and Perch has no adapter for another provider of them. Clef's job needs token scores.</li><li><strong>The GPU saving:</strong> if every chat role moves to the API, GPU A no longer needs Gemma. Only Clef-flash would stay there, at about 7.4 GB.</li><li><strong>The layout:</strong> S9 deployed it and measured the two cards together. The memory figures here were measured in separate S8 runs.</li><li><strong>Private mode:</strong> built in S13. It refuses any model that is not on this server.</li></ul></section>
 
 <section id="view-persona" class="view" data-view="persona" hidden><div><div class="eyebrow">Synthetic test input for private mode, for team review</div><h1>SYNTHETIC persona 1 — test input for private mode (S13)</h1></div>
 <p>Everything in this folder is invented. The person, department, dates, awards and results do not exist. Do not attach these files to a real researcher's OpenAlex profile: that would state false facts about a real person. Use them only for a private-only brief or with a synthetic profile.</p>
@@ -1084,6 +1099,7 @@ probable REM sleep behaviour disorder showed higher cycle-to-cycle variability t
 controls. These invented results motivate a longitudinal study of home gait as an
 early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-authors.
 </pre></section>
+
 <p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log, bench/results/SUMMARY.md, docs/ARCHITECTURE.md and data/synthetic/persona-1/ by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>

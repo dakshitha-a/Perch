@@ -4,7 +4,7 @@ How Perch fits together, which steps of a brief use a model, what runs where in 
 
 ## How Perch fits together
 
-![The whole system as built after S11, top to bottom. Public sources feed plain-code fetchers and the store. A brief runs two routes from the store. Models are bounded: they write, or they call Perch's own tools, and the validator checks every output before the researcher sees it. Dotted boxes are planned.](architecture/overview.svg)
+![The whole system as built after S14, top to bottom. Public sources feed plain-code fetchers and the store. A brief runs two routes from the store. Models are bounded: they write, or they call Perch's own tools, and the validator checks every output before the researcher sees it. The dotted SBIR.gov box is a source whose API was down.](architecture/overview.svg)
 
 - **Public sources only:** OpenAlex, NIH RePORTER, NSF Award Search and Grants.gov. The SBIR.gov API was down in S11, so small-business awards come from RePORTER and cover NIH only.
 - **Fetchers and store:** plain code fetches each record and stores it with its source, link and fetch time. Numbers and dates are copied from records, never written by a model.
@@ -12,7 +12,8 @@ How Perch fits together, which steps of a brief use a model, what runs where in 
 - **Route B, industry leads:** plain code counts public signals per company. A company needs two kinds of signal to be shown. Every lead says it is inferred and not verified.
 - **Models are bounded:** the chat model writes the profile summary and the fit explanations. Scout, the agent, can only call Perch's own tools.
 - **The validator:** it checks every model output before it is shown. Code checks ids and numbers. Clef checks each sentence against the record it cites.
-- **What is planned:** the hand-off draft (S12), private mode (S13) and the MCP server (S14).
+- **Other ways in:** private mode (S13) runs the same pipeline on self-hosted models and writes nothing. The MCP server (S14) offers Scout's tools to any MCP client.
+- **The hand-off draft (S12):** the chat model writes only an opening paragraph. Code writes the rest, and the app never sends it.
 
 ## A brief, step by step
 
@@ -33,5 +34,5 @@ How Perch fits together, which steps of a brief use a model, what runs where in 
 - **Decide on Sonnet:** it works, but the Anthropic API returns no token probabilities, so the answer comes without a confidence score.
 - **What stays local:** Anthropic offers no embedding or rerank API, and Perch has no adapter for another provider of them. Clef's job needs token scores.
 - **The GPU saving:** if every chat role moves to the API, GPU A no longer needs Gemma. Only Clef-flash would stay there, at about 7.4 GB.
-- **The layout is planned:** S9 deploys it and measures the two cards together. The memory figures here were measured in separate S8 runs.
-- **Private mode:** it is designed and is built in S13. It refuses any model that is not on this server.
+- **The layout:** S9 deployed it and measured the two cards together. The memory figures here were measured in separate S8 runs.
+- **Private mode:** built in S13. It refuses any model that is not on this server.

@@ -66,8 +66,10 @@ bench:
 tracker:
 	$(UV) run python scripts/render_tracker.py docs/TRACKER.md docs/tracker.html
 	-$(UV) run python scripts/build_ui_preview.py
+	-$(UV) run --with markdown python scripts/build_readme_preview.py
 	$(UV) run python scripts/render_tracker.py docs/TRACKER.md build/artifacts/tracker.html --artifact \
-		$$(test -f build/artifacts/ui.html && echo --ui ui.html)
+		$$(test -f build/artifacts/ui.html && echo --ui ui.html) \
+		$$(test -f build/artifacts/readme.html && echo --readme readme.html)
 
 package:
 	@echo "make package: not built yet (S15, see docs/PLAN.md)"

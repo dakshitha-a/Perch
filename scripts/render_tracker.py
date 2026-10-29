@@ -117,6 +117,7 @@ svg.arch .k-private, svg.arch .k-private-x { stroke: var(--cut); }
 .bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--raised); }
 .bar span { display: block; height: 100%; }
 .scroll { overflow-x: auto; }
+.readme-frame { width: 100%; height: 80vh; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
 pre.doc { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--mono); font-size: 13px; line-height: 1.5; padding: 14px 16px; margin: 0 0 18px; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { border-bottom: 1px solid var(--line); padding: 8px 12px; text-align: left;
@@ -567,6 +568,15 @@ def view_persona(files: dict[str, str]) -> str:
     return "\n".join(out)
 
 
+def view_readme(src: str) -> str:
+    s = html.escape(src)
+    return f"""<h2>README for review</h2>
+<p>The repository's README.md as GitHub will show it, with its clips and the architecture figure.
+Review it before the repository is made public (S15).</p>
+<div class="ui-tools"><a href="{s}" target="_blank" rel="noopener">Open on its own</a></div>
+<div class="ui-stage"><iframe class="readme-frame" src="{s}" title="README preview"></iframe></div>"""
+
+
 def view_ui(src: str) -> str:
     s = html.escape(src)
     return f"""<h2>UI preview</h2>
@@ -587,7 +597,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
                 page_title: str = "Perch Build Tracker", decisions_md: str = "",
                 plan_md: str = "", ui: str | None = None, bench_md: str = "",
                 arch_md: str = "", arch_root: Path = Path("docs"),
-                persona: dict[str, str] | None = None) -> str:
+                persona: dict[str, str] | None = None, readme: str | None = None) -> str:
     master = parse(master_md)
     sessions = build_sessions(master, session_files)
     current = pick_current(sessions)
@@ -609,6 +619,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 {'<a id="tab-architecture" href="#architecture">Architecture</a>' if arch_md else ""}
 {'<a id="tab-ui" href="#ui">UI</a>' if ui else ""}
 {'<a id="tab-persona" href="#persona">Persona</a>' if persona else ""}
+{'<a id="tab-readme" href="#readme">README</a>' if readme else ""}
 </nav></div></header>
 <main class="wrap">
 <section id="view-current" class="view" data-view="current">
@@ -627,6 +638,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
 {f'<section id="view-architecture" class="view" data-view="architecture" hidden>{view_architecture(arch_md, arch_root)}</section>' if arch_md else ""}
 {f'<section id="view-ui" class="view" data-view="ui" hidden>{view_ui(ui)}</section>' if ui else ""}
 {f'<section id="view-persona" class="view" data-view="persona" hidden>{view_persona(persona)}</section>' if persona else ""}
+{f'<section id="view-readme" class="view" data-view="readme" hidden>{view_readme(readme)}</section>' if readme else ""}
 <p class="foot">Generated from docs/TRACKER.md, docs/sessions/, docs/DECISIONS.md, the PLAN.md change log, bench/results/SUMMARY.md, docs/ARCHITECTURE.md and data/synthetic/persona-1/ by scripts/render_tracker.py.
 The Markdown is the source of truth.</p>
 </main>
@@ -661,6 +673,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--artifact", action="store_true", help="emit a claude.ai Artifact fragment")
     ap.add_argument("--title", default="Perch Build Tracker", help="page name")
     ap.add_argument("--ui", help="published path of the UI preview page; adds a UI tab")
+    ap.add_argument("--readme", help="published path of the README preview; adds a README tab")
     args = ap.parse_args(argv[1:])
     src = Path(args.src)
     dest = Path(args.dest) if args.dest else src.with_name("tracker.html")
@@ -674,7 +687,7 @@ def main(argv: list[str]) -> int:
     page = render_page(src.read_text(encoding="utf-8"), sessions, args.artifact, args.title,
                        read("DECISIONS.md"), read("PLAN.md"), args.ui,
                        read("../bench/results/SUMMARY.md"), read("ARCHITECTURE.md"), src.parent,
-                       load_persona(src.parent.parent / "data/synthetic/persona-1"))
+                       load_persona(src.parent.parent / "data/synthetic/persona-1"), args.readme)
     dest.write_text(page, encoding="utf-8")
     print(f"wrote {dest}")
     return 0

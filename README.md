@@ -1,126 +1,193 @@
+<div align="center">
+
+<img src="web/favicon.svg" width="72" alt="">
+
 # Perch
 
-*See every route to fund your work.*
+**See every route to fund your work.**
 
-Perch reads a Temple researcher's public papers and lays out the routes to fund that work: grants and foundations, and industry leads. Every claim is cited to a public record. It then drafts a hand-off to the right Temple office; nothing is ever sent by the app. Built for the Temple AI Build Challenge, Fall 2026. So far the repository can find a Temple researcher in OpenAlex, store their public works and their public NIH and NSF awards with provenance, and print a research profile with the public award horizon. It also stores open and archived federal funding opportunities from Grants.gov. See `docs/SPEC.md` for the design and `docs/PLAN.md` for the build plan.
+Perch reads a researcher's public papers and lays out the ways to fund that work:
+open federal grants and industry leads. Every claim is cited to a public record.
+Then it drafts a hand-off to the right Temple office, which you send yourself.
 
-## Run
+![python](https://img.shields.io/badge/python-3.12-3f8f72)
+![models](https://img.shields.io/badge/models-self--hosted%20or%20API-d9a441)
+![built for](https://img.shields.io/badge/built%20for-Temple%20AI%20Build%20Challenge-8a1e41)
+[![license](https://img.shields.io/badge/license-MIT-6b7280)](LICENSE)
 
-Requires [uv](https://docs.astral.sh/uv/) and `make`. uv installs Python 3.12 and the pinned dependencies on first run.
+**[Quick start](#quick-start)** · **[Tour](#a-quick-tour)** · **[How it works](#how-it-works)** · **[How well it works](#how-well-it-works)** · **[Docs](#learn-more)**
 
-```sh
-make hooks     # once per clone: blocks secrets and personal details at commit time
-make test      # ruff + pytest
-make tracker   # render docs/TRACKER.md to docs/tracker.html
+<img src="docs/tour/hero.webp" alt="Finding a researcher by OpenAlex ID, building their brief, then opening the top grant's reasons and the paper it cites in the evidence panel." width="880">
+
+<sub>Find a researcher, build the brief, and open the record behind any claim.</sub>
+
+</div>
+
+<table>
+<tr>
+<td align="center" width="33%"><img src="docs/tour/icon-record.svg" width="32" alt=""><br><b>Every claim has a record</b><br><sub>Dates and amounts are copied, never generated.</sub></td>
+<td align="center" width="33%"><img src="docs/tour/icon-lock.svg" width="32" alt=""><br><b>Runs on your own models</b><br><sub>Private mode keeps drafts in memory only.</sub></td>
+<td align="center" width="33%"><img src="docs/tour/icon-draft.svg" width="32" alt=""><br><b>Nothing is sent</b><br><sub>Hand-offs are drafts for you to edit.</sub></td>
+</tr>
+</table>
+
+## Quick start
+
+Perch needs [uv](https://docs.astral.sh/uv/) and `make`. uv installs Python 3.12 and every pinned dependency on first run.
+
+```bash
+git clone https://github.com/dakshitha-a/perch && cd perch
+make test                              # lint and 210 tests; no network or GPU
+uv run perch serve --models fake       # the whole app at http://127.0.0.1:8100, with fake models
 ```
 
-Find a researcher and fetch their works into `data/perch.db`:
+With real models, a brief needs Ollama for the chat model and a GPU for the embedder and reranker:
 
-```sh
-uv run perch resolve 0000-0001-6204-6475     # an ORCID iD, a name, or an OpenAlex author id
-uv run perch fetch openalex A5026494099
-uv run perch fetch awards A5026494099          # NIH RePORTER and NSF, matched by name
-uv run perch profile A5026494099               # key papers, awards, public award horizon
-uv run perch fetch opportunities --agencies HHS-NIH11 --limit 40   # open NIH opportunities
-uv run perch fetch opportunities --opp-num PA-20-185                # one, in any status
-```
-
-Route A leads use local models (Qwen3-Embedding-0.6B and Qwen3-Reranker-0.6B) from the optional `ml` extra:
-
-```sh
+```bash
 uv sync --extra ml
-CUDA_VISIBLE_DEVICES=3 uv run --extra ml perch brief A5026494099 --route A
+uv run perch brief A5026494099 --explain      # an OpenAlex author id
 ```
 
-`--models fake` runs the same pipeline with no model downloads.
+Every command is in [docs/running.md](docs/running.md), and the two-GPU demo is in [docs/deploy.md](docs/deploy.md).
 
-Route B lists up to five companies with at least two kinds of public signal: their papers cite the researcher's, they hold NIH SBIR/STTR awards in the researcher's topics, or their papers share those topics. No model is used, and every lead is labelled as inferred and not verified:
+## A quick tour
 
-```sh
-uv run perch brief A5026494099 --route B
-```
+> Researchers appear by alias in these clips. Paper titles and funding records are public and are shown as they are.
 
-Award links are matched by name. Fix a wrong or missed match in `data/overrides/award_links.csv`.
+<table>
+<tr>
+<td width="50%"><img src="docs/tour/hero.webp" alt="A brief opening on its Routes tab, with the top grant's reasons and its cited paper." width="420"></td>
+<td width="50%">
 
-An OpenAlex API key is optional; see `.env.example`.
+### Grants that fit, with the reasons
 
-`make bench` runs the back-test and bench matrix (results in `bench/results/`). `make package` is a placeholder until S16.
+Perch groups a researcher's papers into research threads, and searches open
+Grants.gov announcements by meaning and by shared words. Rules drop anything a
+university cannot apply to. A small local model puts the closest first.
 
-## Demo deployment
+Each lead says what the call funds and which papers fit it. A citation check
+holds every sentence to the record it cites.
 
-`make demo` brings up the demo in one command, on a Linux node with two NVIDIA GPUs, Docker, Ollama and llama.cpp. It uses the `deploy-2gpu` profile: Gemma 4 26B-A4B and Clef-flash on GPU A, and Clef, the embedder and the reranker on GPU B.
+</td>
+</tr>
+<tr>
+<td>
 
-```sh
-make demo                          # models as systemd user units, the app in Docker on 127.0.0.1:8090
-make demo DEMO_GPU_A=0 DEMO_GPU_B=1   # pick the two GPUs (default 6 and 7)
-make gpus                          # GPU memory per service
-make demo-status                   # units and container
-make demo-down                     # stop everything
-```
+### Industry leads from public signals
 
-- **Why two halves:** Docker on the lab node has no GPU access, so the models run on the host and the app container reaches them over localhost.
-- **The demo store:** briefs live in `data/demo/`, seeded once from `data/`. The three demo researchers' briefs are built every morning at 05:30, and a visitor's request for one is answered at once.
-- **Limits:** each visitor can start 10 new briefs an hour (`PERCH_BRIEFS_PER_HOUR`).
-- **Health:** `GET /health` answers when the app is up; `GET /health?deep=true` checks every model service.
+Perch looks for three kinds of signal: company papers that cite the
+researcher's, NIH small-business awards in their topics, and company papers in
+those topics. A company needs two kinds to be listed. No model writes these:
+plain code counts the signals and shows the records behind each.
 
-### Public URL
+Every industry lead is labelled as inferred, not as verified interest.
 
-The demo is published with Tailscale Funnel: `tailscale funnel --bg 8090`. Funnel needs HTTPS certificates, MagicDNS and Funnel turned on for the tailnet, and `sudo tailscale set --operator=$USER` once. HTTPS is decrypted on the node itself, not by Tailscale.
+</td>
+<td><img src="docs/tour/industry.webp" alt="Switching Routes to Industry, then a company lead's signals and records." width="420"></td>
+</tr>
+<tr>
+<td><img src="docs/tour/handoff.webp" alt="Keeping two grants, comparing them side by side, and drafting an email to Research Development." width="420"></td>
+<td>
 
-### Fallback: laptop and phone hotspot
+### Compare, then hand off
 
-If the lab node or its network is down on Demo Day:
+Keep the leads worth a closer look, and compare them side by side: money, close
+date, activity code and evidence, each copied from its record.
 
-1. **Use the replay demo:** `uv run python scripts/build_ui_preview.py` writes `build/artifacts/ui.html`, one self-contained page. Open it in the laptop's browser. It plays a saved brief with no server and no network; no real brief runs in this mode.
-2. **Or run Perch on the laptop:** `uv run perch serve --models fake` serves the full app with fake models. With a hotspot and an `ANTHROPIC_API_KEY` in `.env`, `PERCH_LLM_DEFAULT=anthropic:claude-sonnet-5-5 uv run --extra ml perch serve` runs real briefs with search on the laptop's CPU. This path is UNVERIFIED on a laptop.
-3. **Share it from the laptop:** a phone on the same hotspot opens `http://<laptop address>:8100` after `perch serve --host 0.0.0.0`.
+Then draft an email to the Temple office for that route. A model writes only a
+short opening. Code writes the list of leads, dates and amounts. You edit it and
+send it yourself.
 
-## Private mode
+</td>
+</tr>
+<tr>
+<td>
 
-Private mode tailors a brief to a CV, a draft proposal, a research direction or unpublished work. It runs only on self-hosted models, and what a user adds stays in memory for the session (design and limits: `docs/design/PRIVATE_MODE.md`). It is off by default. To turn it on, set these in `.env`:
+### Ask Scout a follow-up
 
-```
-PERCH_PRIVATE_MODE=1
-PERCH_PRIVATE_OPERATOR=<who runs this server, as users should read it>
-PERCH_TLS_AT=server          # needed on a public URL; or tunnel:<provider>
-PERCH_PRIVATE_ENDPOINTS=     # model hosts a session may call; default loopback
-```
+"Why does the top lead fit?" or "only R21s that close by March". Scout, the
+agent, answers by calling Perch's own nine tools, each shown as a card. It asks before every
+step unless you let it run. It cannot browse, send anything or change a record.
 
-Every chat model must be an Ollama or OpenAI-compatible server on an allowed host, or a session will not open. Keep `OLLAMA_DEBUG` unset and do not pass `-v` to llama.cpp. To check that a session leaves no trace on the real store and models, run the live canary:
+Other agents can use the same tools through Perch's [MCP server](docs/mcp.md),
+Claude Code included.
 
-```
-PERCH_PRIVATE_MODE=1 PERCH_TLS_AT=server PERCH_PRIVATE_OPERATOR="..." \
-  uv run python scripts/private_canary.py
-```
+</td>
+<td><img src="docs/tour/scout.webp" alt="Asking Scout why the top lead fits; its tool runs as a card and the answer cites the opportunity and the papers." width="420"></td>
+</tr>
+<tr>
+<td><img src="docs/tour/private.webp" alt="Starting a private session, adding a CV, a draft proposal and unpublished work, and a brief whose explanations cite the private documents with a lock." width="420"></td>
+<td>
 
-## MCP server
+### Private mode, for work not yet public
 
-`perch mcp` serves Scout's nine tools to any MCP client over stdio (`perch/mcp_server.py`, MCP Python SDK 2.3.0). Each result names its records with their source, link and fetch time. `explain_fit` and `draft_handoff` run Perch's citation checks before they return. A connection may make 60 tool calls, and 20 of them may call a model. `--author A5026494099` sets the default researcher. `--private` runs with no writes or logs. With `--private`, the server will not start unless every model is self-hosted. Private documents cannot be added through MCP yet.
+Add a CV, a draft proposal, a research direction or unpublished work. These
+steer the search, and explanations can cite them. Every model runs on the
+server, and the session lives in memory only. Exports leave private text out,
+or mask it.
 
-Add it to Claude Code (checked against `claude mcp add --help`, Claude Code 2.1.312):
+A canary test checks that no trace is left in files, logs or requests.
+[More on private mode →](docs/private-mode.md)
 
-```
-claude mcp add perch -- uv --directory /path/to/perch run perch mcp
-```
+</td>
+</tr>
+</table>
 
-Or try it once without changing any settings. This is the command S14 tested:
+<sub>The private-mode clip uses an invented persona, labelled SYNTHETIC.</sub>
 
-```
-claude -p --strict-mcp-config --mcp-config perch-mcp.json \
-  --allowedTools mcp__perch__search_opportunities mcp__perch__explain_fit -- \
-  "Find the top 3 open federal funding opportunities for OpenAlex author A5026494099, then explain the fit of the first, citing record ids."
-```
+## How it works
 
-Here `perch-mcp.json` is `{"mcpServers": {"perch": {"command": "uv", "args": ["--directory", "/path/to/perch", "run", "perch", "mcp"]}}}`. Any other MCP client that can start a stdio server uses the same command, including an agent driving a local Ollama model. That local-agent setup has not been tested (UNVERIFIED). `scripts/mcp_check.py` runs the same check with the SDK's own client.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/architecture/overview-dark.svg">
+  <img alt="The whole system, top to bottom. Public sources feed plain-code fetchers and the store. A brief runs two routes: grants, with two small local models and eligibility rules, and industry leads, in plain code. A chat model writes the summary, the fit explanations and the hand-off draft, and Scout calls only Perch's own tools. Every model output passes the validator before the web app shows it. Private mode and the MCP server are other ways in." src="docs/architecture/overview-light.svg" width="720">
+</picture>
 
-## Secrets
+- **Public records only:** OpenAlex, NIH RePORTER, NSF Award Search and Grants.gov. Each record is stored with its source, link and fetch time.
+- **The pipeline is code:** fetching, eligibility, retrieval and ranking run the same way every time. The back-test measures this pipeline.
+- **Models are bounded:** a model writes the profile summary, the fit explanations and the hand-off opening. Scout can call only allowlisted tools.
+- **Every model output is checked:**
+  - **Code check:** every id must be real, and every date or number must be in a cited record.
+  - **Grounding check:** a second model checks each sentence against its source.
+  - **On failure:** an output that fails is rewritten once, then withheld.
+- **Any provider:** Ollama, any OpenAI-compatible server, or the Anthropic API, chosen per role in `.env`.
 
-API keys go in `.env`, which is gitignored. Copy `.env.example` to start. `make hooks` installs git hooks that refuse commits containing keys, tokens, local paths or emails.
+The brief step by step and the two-GPU layout are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-## Data sources
+## How well it works
 
-This product uses the Grants.gov API but is not endorsed or certified by the U.S. Department of Health and Human Services.
+Every number here was measured. Each is copied from [bench/results](bench/results/SUMMARY.md), with the keyword-only baseline beside the back-test.
 
-## Licence
+| What | Result |
+|---|---|
+| **Back-test:** for 48 Temple NIH awards, did the announcement each was funded under rank in the top 10? Only papers from before the award count. | 7 of 48 with Perch's default setup, against 1 of 48 for keyword search alone |
+| **Citation and grounding checks,** on 30 leads | Gemma 4 26B-A4B passed both on 28; Claude Sonnet on 24 |
+| **Scout,** 20 scripted follow-ups | Claude Sonnet completed 20, with no wrong-tool calls; Gemma 4 26B-A4B completed 18 |
+| **Cost of a 10-lead brief** | about $0.09 on Claude Sonnet; $0 on local models |
+| **Private mode, live canary** | no trace in files, logs or model-server journals after full private briefs |
 
-MIT. See `LICENSE`.
+- **An upper bound, not an estimate:** each award's own funded abstract was added as a stand-in "draft proposal". It lifted the back-test from 7 to 16 of 48 in the top 10. A real draft is further from the award than its funded abstract.
+- **General calls are hard:** for awards made under broad parent announcements, Perch puts 1 of 78 in the top 10.
+- **Industry leads, judged once:** the agent that built Perch judged 14 leads: 8 good, 6 thin and 0 wrong. A person has not checked them yet.
+
+## Learn more
+
+| | |
+|---|---|
+| [Running Perch](docs/running.md) | Setup, the command line, keys and data sources |
+| [Deploying the demo](docs/deploy.md) | Two GPUs, one `make demo`, the public URL and the fallback |
+| [Private mode](docs/private-mode.md) | Turning it on, using it, and what it promises |
+| [MCP server](docs/mcp.md) | Perch's tools in Claude Code or any MCP client |
+| [Architecture](docs/ARCHITECTURE.md) | The system, a brief step by step, and the GPU layout |
+| [Bench results](bench/results/SUMMARY.md) | The back-test, the checks, Scout and cost |
+| [Sources](docs/SOURCES.md) | Every endpoint, field, limit and term, verified live |
+| [Specification](docs/SPEC.md) and [plan](docs/PLAN.md) | The design, and how it was built session by session |
+| [AI use](docs/AI_USE_LOG.md) | Every AI tool used to build Perch |
+
+## About
+
+Perch was built by Dakshitha (Temple University) for the Temple AI Build Challenge, Fall 2026,
+with Claude Code as the coding agent. The README clips were filmed with the recording pipeline
+from Dakshitha's [NextTex](https://github.com/dakshitha-a/NextTex).
+
+This product uses the Grants.gov API but is not endorsed or certified by the U.S. Department of
+Health and Human Services. MIT licence; see [LICENSE](LICENSE).

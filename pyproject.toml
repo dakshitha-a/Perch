@@ -52,6 +52,7 @@ select = ["E", "F", "I", "B", "UP", "ANN"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN"]
 "scripts/render_tracker.py" = ["E501"]  # inline CSS
+"scripts/tour/animate.py" = ["ANN", "E501", "B905"]  # copied unchanged from NextTex
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

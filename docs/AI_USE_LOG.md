@@ -31,6 +31,8 @@ Required for the final deck's "AI use declaration" slide. One row per tool per p
 | 2026-10-29 | Claude Code CLI (Claude Opus 5.5), session Perch-dev | 2.1.312 (Claude Code) | S13 and S14: private mode (sessions, private threads, CV parse, egress UI, canary tests), normal-mode context fields, Help scoring section, proposal stand-in bench, MCP server | Dakshitha (directing Perch-dev) |
 | 2026-10-29 | gemma4:26b-a4b (Ollama, demo unit) | Ollama digest 001e5dafc3c7 | S13 live private canary (summary, fit explanations, hand-off openings on SYNTHETIC persona-1 text) and S14 live MCP check (one fit explanation on public records) | Perch-dev for Dakshitha |
 | 2026-10-29 | Claude Code CLI in print mode with the haiku model alias, as an MCP client | 2.1.312 (Claude Code) | S14: one test query to Perch's MCP server over stdio (public records only) | Perch-dev for Dakshitha |
+| 2026-10-29 | Code reused from NextTex (Dakshitha's repo) | NextTex `e2e/shots/animate.py`, copied unchanged; `e2e/shots/recorder.ts`, ported to Python | S15: the README clips' camera (`scripts/tour/animate.py`) and recorder (`scripts/tour/recorder.py`); the README's layout follows NextTex's README | Dakshitha (asked for it) |
+| 2026-10-29 | gemma4:26b-a4b (Ollama, demo unit) | Ollama digest 001e5dafc3c7 | S15: model text in the README clips (fit explanations, a hand-off opening, a Scout answer, a private brief on SYNTHETIC persona-1) | Perch-dev for Dakshitha |
 
 Reminders:
 - Record Claude Code's version (`claude --version`) the first time it writes project code.
