@@ -1,6 +1,6 @@
 # SCOUT_SPEC.md — Scout, specified from what Perch needs
 
-**Status: proposed, 2026-10-30, after S26.** Dakshitha asked for Scout to be specified from the ground up, from this project's needs and not from patterns borrowed from other projects. This document replaces SPEC §8 once Dakshitha approves it (Q37). Until then the app runs as §8 describes.
+**Status: approved 2026-10-30 (Q37). Phase 1 is S27; phase 2 waits until after Demo Day.** Dakshitha asked for Scout to be specified from the ground up, from this project's needs and not from patterns borrowed from other projects. This document replaces SPEC §8 once Dakshitha approves it (Q37). Until then the app runs as §8 describes.
 
 Each item is marked:
 - **Built:** the app does this today.
@@ -95,11 +95,11 @@ Scout's tools only read records and write text on screen. So the risks are about
 - **The bench (Built):** `bench/scout_tasks.yaml` holds scripted questions. A task passes when Scout used an allowed tool with the right arguments and its answer passed the validator.
 - **Latest numbers (Built):** Sonnet passed 20 of 20 tasks with 0 wrong-tool calls in 27. Gemma passed 18 of 20. The sets are small: they show the follow-ups work, not a failure rate.
 - **Misreading (Proposed):** the "right arguments" check already measures risk 5. The bench report gains one line per model: tasks where the filters were wrong but the answer still passed the validator. Those are the quiet misses section 3 describes.
-- **After the change (Proposed):** S27's Scout bench rerun runs on the changed loop.
+- **After the change (Proposed):** S27 runs the Scout bench on the changed loop, and S28's final rerun uses it too.
 
 ## 12. What changes from today
 
-**Small enough for S27, before the freeze:**
+**Phase 1, S27, before the freeze:**
 - **Remove the gate:** drop the ask mode, the Approve and Skip buttons and the mode switch, in the loop, the hub, both APIs and `web/scout.js`.
 - **Add Stop:** end the current question between steps and keep what is done.
 - **Fix the subject:** drop `author_id` from the web app's researcher tool schemas and drop `resolve_author` from its tool table, keeping both on MCP.
@@ -110,7 +110,7 @@ Scout's tools only read records and write text on screen. So the risks are about
 - **Mock-up:** the redesign canvas has a working mock-up of this spec, `docs/design/redesign/ScoutProposed.dc.html`.
 - **Retest:** tests, the UX walk and the Scout bench rerun.
 
-**After Demo Day:**
+**Phase 2, after Demo Day:**
 - **Keep from a search step:** lead rows with Keep buttons.
 - **Edit a filter by code:** remove a chip to rerun one search with no model call.
 - **Draft review:** only if Q34 says build it.

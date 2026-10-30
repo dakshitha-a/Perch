@@ -23,7 +23,11 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - **Canary:** `build/canary-s24.json` ok (default path 15 of 15 explained in 46 s; private-only 10 of 10; 0 user rows; no canary in files or six journals).
 - **Dev server:** a scratch copy of `data/demo` on port 8091 with `PERCH_BRIEFS_PER_HOUR=200` (the walk runs more than 10 briefs). The script is in the scratchpad; stop it with an anchored pkill.
 
-## Next: S27, freeze and package
+## Next: S27, Scout redesign phase 1 (then S28, freeze and package)
+
+S27 builds phase 1 of `docs/design/SCOUT_SPEC.md`: no per-step gate, a Stop button, Scout fixed to the brief, Cloud steps counted and labelled, and the "how Scout read your question" block. The working mock-up is `docs/design/redesign/ScoutProposed.dc.html` (also on the redesign canvas). The tasks below this line are now S28's; "S27 task 2" in them means S28 task 2.
+
+### S28, freeze and package
 - Regression pass: the QA rows touched since S25 (the media scripts only, so rows 36 and the README).
 - Task 2 reruns the Scout bench, then frees the dev GPUs (`make decide-down`, then message the uracil session; see local notes).
 - README final, `make package`, tag `v0.1-demo`.

@@ -135,7 +135,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S27</code> <span class="badge s-todo">todo</span><span>27/28 sessions done</span></div>
+<div class="at-a-glance"><code>S27</code> <span class="badge s-todo">todo</span><span>27/29 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -670,13 +670,13 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-current" class="view" data-view="current" hidden>
 <div id="s27"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S27 · Freeze and package</h1><span class="badge s-todo">todo</span></div>
+<div class="title-row"><h1>S27 · Scout redesign, phase 1</h1><span class="badge s-todo">todo</span></div>
 <div class="meta">Not started</div></div>
 <div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S27.md</code> when the session starts.</div>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="27 of 28 sessions done"><div class="counts"><span><b>27/28</b>sessions done</span><span class="s-done"><b>27</b>done</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="27 of 28 sessions done"><span class="s-done" style="width:96.43%" title="done: 27"></span><span class="s-todo" style="width:3.57%" title="todo: 1"></span></div></section>
+<section class="panel summary" aria-label="27 of 29 sessions done"><div class="counts"><span><b>27/29</b>sessions done</span><span class="s-done"><b>27</b>done</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="27 of 29 sessions done"><span class="s-done" style="width:93.10%" title="done: 27"></span><span class="s-todo" style="width:6.90%" title="todo: 2"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -707,14 +707,15 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s24">S24</a></td><td>UI rebuild from the redesign canvas</td><td><span class="badge s-done">done</span></td><td>2026-10-30 02:37 EDT</td><td>2026-10-30 04:21 EDT</td><td class="mono">see git log</td><td>The canvas redesign is live on the public URL for both paths: new tokens and type, landing with the Researcher or Student pill, the status chip and a real Local or Cloud dialog, the pick screen with the optional context panel and a SYNTHETIC sample, briefs in two columns with a shortlist and evidence rail, Export menu, verdict chips, student Compare with a code-written note. Ask Scout for students on its own seven-tool allowlist. Warm demo briefs held in memory (17 ms on the demo). Documents on Cloud built behind a switch, off until the rule 1 change (Q33). Draft review evaluated, not built (Clef 36 of 44; Q34). Walk on the demo: 119 states, 0 axe violations, 0 sideways scroll, 0 failed steps. Live canary ok. 249 tests green. $0 spent.</td></tr>
 <tr class="is-finished"><td><a href="#s25">S25</a></td><td>UI/UX review and full QA test</td><td><span class="badge s-done">done</span></td><td>2026-10-30 04:23 EDT</td><td>2026-10-30 05:23 EDT</td><td class="mono">see git log</td><td>Independent review: 4 must-fix (all fixed), 10 should-fix (9 fixed), 9 could-fix. QA plan: 36 of 36 rows pass after fixes; 4 bugs found by running them and fixed. Walks after fixes: 0 axe violations, 0 sideways scroll, 0 failed steps. Canary ok (45 s, 15 of 15 explained, 0 user rows); student leakage none. Accessibility checklist 12 of 13 (zoom not rerun). 250 tests green.</td></tr>
 <tr class="is-finished"><td><a href="#s26">S26</a></td><td>Media refilm</td><td><span class="badge s-done">done</span></td><td>2026-10-30 05:25 EDT</td><td>2026-10-30 05:38 EDT</td><td class="mono">see git log</td><td>Six README clips refilmed on the redesign, with a new student clip; screenshots retaken; the tracker UI tab plays a SYNTHETIC student brief too; README wording matched. Awaiting Dakshitha's README review. 250 tests green.</td></tr>
-<tr class="is-current"><td>S27</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td>S27</td><td>Scout redesign, phase 1</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S28</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Milestone</th><th>Date</th><th>Needs</th><th>Ready?</th></tr></thead>
 <tbody>
 <tr><td>Checkup 2</td><td>Tue 3 Nov</td><td>S0–S7</td><td></td></tr>
-<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S27 (after S17–S26, or their cut-order floors)</td><td></td></tr>
+<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S28 (after S17–S27, or their cut-order floors)</td><td></td></tr>
 <tr><td>Submission</td><td>Fri 6 Nov 12:00</td><td>ZIP + links</td><td></td></tr>
 </tbody></table></div>
 <h2>Key numbers (keep current)</h2>
@@ -1234,10 +1235,11 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (143)</h2>
+<h2>Decisions (144)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-30</td><td>after S26</td><td>Scout spec approved (Q37) and built in phases: phase 1 is the new S27, phase 2 waits until after Demo Day; freeze and package moves to S28</td><td>Dakshitha reviewed the mock-up on the canvas</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>after S26</td><td>Scout respecified from Perch's own needs in <code>docs/design/SCOUT_SPEC.md</code>, proposed and awaiting Dakshitha (Q37). It drops the per-step approval gate, which came from another project, because Scout's tools have no effects to approve; it shows how Scout read the question instead</td><td>Dakshitha asked for a spec from the ground up, without borrowing from other projects</td><td>Dakshitha (asked), Perch-dev (proposal)</td></tr>
 <tr><td>2026-10-30</td><td>S24</td><td>"More options" on the landing explains what screen 2 offers and links to the documents-only brief.</td><td>The spec moved the context fields to screen 2, so the link needed somewhere honest to go.</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-30</td><td>S24</td><td>Student Scout has its own allowlist of seven tools (search_options, check_option, explain_verdict, read_cv, compare_options, draft_note, get_record). It reads only rule results and records, never CV text, and runs only in a private session.</td><td>Adding them to the researcher's nine would expose them to researcher Scout and the MCP server.</td><td>Perch-dev</td></tr>
@@ -1382,10 +1384,11 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (32)</h2>
+<h2>Plan change log (33)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-30</td><td>S27, S28</td><td>New S27 "Scout redesign, phase 1" from <code>docs/design/SCOUT_SPEC.md</code>; phase 2 waits until after Demo Day. Freeze and package becomes S28. Older notes that say "S27 task 2" for freeing the dev GPUs mean S28 task 2</td><td>Dakshitha approved the Scout spec and mock-up and asked for the redesign in phases, the first in the next session</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>S24</td><td>Tasks 7 to 9 added: draft review evaluation (Q32), documents on Cloud after a second warning behind the rule 1 change (Q30), warm demo briefs held in memory (Q31). Rule changes proposed in Q33 for Dakshitha to apply</td><td>Dakshitha's answers to Q30 to Q32</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>S24 to S27</td><td>New S24 "UI rebuild from the redesign canvas" (spec <code>docs/design/S24_REBUILD.md</code>). The UI/UX review and full QA test becomes S25, the media refilm S26, freeze and package S27. Students get Ask Scout (Q27 revised). Older notes that say "S26 task 2" for freeing the dev GPUs mean S27 task 2</td><td>Dakshitha redesigned the app on a design canvas and asked for it to be built before QA and the refilm</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S24, S25</td><td>S24 and S25 swapped: S24 is now the UI/UX review and full QA test, S25 the media refilm, so the media are filmed once, after the QA fixes. S26 freeze reruns the S24 QA rows</td><td>Dakshitha asked to switch S24 and S25</td><td>Dakshitha</td></tr>

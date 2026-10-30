@@ -348,7 +348,25 @@ Goal: the README, screenshots and tracker preview show the app as it will ship. 
 
 Done when: the README media, screenshots and UI preview match the app on the public URL.
 
-## S27 — Freeze and package
+## S27 — Scout redesign, phase 1
+
+Goal: build phase 1 of the Scout spec (`docs/design/SCOUT_SPEC.md`, section 12), as the working mock-up on the redesign canvas shows it (`docs/design/redesign/ScoutProposed.dc.html`). Phase 2 waits until after Demo Day.
+
+1. Remove the per-step gate: drop the ask mode, the Approve and Skip buttons and the mode switch, in the loop, the hub, both Scout APIs and `web/scout.js`. Steps run as soon as the model asks for them.
+2. Add Stop: a button ends the current question between steps; the steps already done stay on screen, the rest show as not run.
+3. Fix Scout to the brief: drop `author_id` from the web app's researcher tool schemas and drop `resolve_author` from its tool table. The MCP server keeps both.
+4. Count Cloud steps: the session budget adds the tokens and dollars of `explain_fit` and `draft_handoff`. Label those two steps' cards Local model or Cloud, and the code-only steps "Code, no model".
+5. Show how Scout read the question: one block above the answer lists each finished step with its filters as chips; the step cards collapse under the answer.
+6. Words and docs: Help, the Scout hint line, SPEC §8 (replaced by the spec, including its Stack line on the borrowed approval pattern), and the ResearcherBrief and StudentBrief Scout tabs on the canvas.
+7. Retest: `make test`, the UX walk on the Scout tab, and a Scout bench run on the changed loop (the final bench run stays in S28).
+
+Done when: Scout runs with no gate on both briefs, Stop works, the read-as block and step labels match the mock-up, tests and the walk pass, and the bench shows no drop against S10's numbers.
+
+**Phase 2, after Demo Day (not scheduled):** Keep buttons on a search step's leads; removing a filter chip reruns that one search by code with no model call; draft review if Q34 says build it.
+
+---
+
+## S28 — Freeze and package
 
 Goal: ship. The QA fix list and privacy audit moved to S20, the full accessibility pass to S21, and the final UI/UX review and full QA test to S25 (Dakshitha, 2026-10-29).
 
@@ -397,3 +415,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S24, S25 | S24 and S25 swapped: S24 is now the UI/UX review and full QA test, S25 the media refilm, so the media are filmed once, after the QA fixes. S26 freeze reruns the S24 QA rows | Dakshitha asked to switch S24 and S25 | Dakshitha |
 | 2026-10-30 | S24 to S27 | New S24 "UI rebuild from the redesign canvas" (spec `docs/design/S24_REBUILD.md`). The UI/UX review and full QA test becomes S25, the media refilm S26, freeze and package S27. Students get Ask Scout (Q27 revised). Older notes that say "S26 task 2" for freeing the dev GPUs mean S27 task 2 | Dakshitha redesigned the app on a design canvas and asked for it to be built before QA and the refilm | Dakshitha |
 | 2026-10-30 | S24 | Tasks 7 to 9 added: draft review evaluation (Q32), documents on Cloud after a second warning behind the rule 1 change (Q30), warm demo briefs held in memory (Q31). Rule changes proposed in Q33 for Dakshitha to apply | Dakshitha's answers to Q30 to Q32 | Dakshitha |
+| 2026-10-30 | S27, S28 | New S27 "Scout redesign, phase 1" from `docs/design/SCOUT_SPEC.md`; phase 2 waits until after Demo Day. Freeze and package becomes S28. Older notes that say "S27 task 2" for freeing the dev GPUs mean S28 task 2 | Dakshitha approved the Scout spec and mock-up and asked for the redesign in phases, the first in the next session | Dakshitha |
