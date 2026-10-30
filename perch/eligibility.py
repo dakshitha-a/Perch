@@ -65,7 +65,16 @@ AGENCY_NAMES = {
     "nih": ("national institutes of health", "hhs-nih"),
     "ahrq": ("agency for health care research and quality", "hhs-ahrq"),
     "nsf": ("national science foundation", "nsf"),
+    "dod": ("department of defense", "dod"),
+    "doe": ("department of energy", "doe"),
+    "nasa": ("national aeronautics and space administration", "nasa"),
+    "usda": ("department of agriculture", "usda"),
 }
+
+
+def agency_text(o: Opportunity) -> str:
+    """Name, department and code together, so "DoD" matches the Air Force Academy."""
+    return " ".join(x for x in (o.agency, o.parent_agency, o.agency_code) if x)
 
 
 def agency_matches(agency: str, wanted: str) -> bool:
@@ -143,9 +152,9 @@ def check(o: Opportunity, c: Constraints) -> list[str]:
     hit = [k for k in c.exclude_keywords if k.lower() in text]
     if hit:
         reasons.append(f"mentions excluded keyword {hit[0]!r}")
-    if c.agencies and not any(agency_matches(o.agency, a) for a in c.agencies):
+    if c.agencies and not any(agency_matches(agency_text(o), a) for a in c.agencies):
         reasons.append(f"agency {o.agency} not in the chosen agencies")
-    if any(agency_matches(o.agency, a) for a in c.exclude_agencies):
+    if any(agency_matches(agency_text(o), a) for a in c.exclude_agencies):
         reasons.append(f"agency {o.agency} excluded by the user")
     return reasons
 

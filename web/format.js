@@ -20,6 +20,9 @@ export const STAGES = {
 const AGENCY_SHORT = {
   "National Institutes of Health": "NIH",
   "National Science Foundation": "NSF",
+  "U.S. National Science Foundation": "NSF",
+  "National Aeronautics and Space Administration": "NASA",
+  "Department of Agriculture": "USDA",
   "Department of Energy": "DOE",
   "Department of Defense": "DOD",
   "Agency for Health Care Research and Quality": "AHRQ",
@@ -84,8 +87,10 @@ export function awardSize(opp) {
   return null;
 }
 
-export function agencyShort(name) {
-  return AGENCY_SHORT[name] || name || "";
+// A sub-agency shows its department first: "DOD · Air Force Academy".
+export function agencyShort(name, parent) {
+  const own = AGENCY_SHORT[name] || name || "";
+  return parent ? `${AGENCY_SHORT[parent] || parent} · ${own}` : own;
 }
 
 export function fitBand(score) {

@@ -99,6 +99,9 @@ class Opportunity(Record):
     opportunity_number: str
     title: str
     agency: str
+    agency_code: str | None = Field(default=None, description="Grants.gov code, e.g. DOD-USAFA")
+    parent_agency: str | None = Field(default=None, description="Department, e.g. Department "
+                                      "of Defense; None when the agency is the department")
     open_date: date | None = None
     close_date: date | None = None
     award_ceiling: float | None = None

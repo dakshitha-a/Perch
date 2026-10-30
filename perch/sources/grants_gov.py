@@ -90,15 +90,32 @@ def redact_contacts(data: Json) -> Json:
     return data
 
 
+def _details(detail: dict[str, Any], key: str) -> dict[str, Any]:
+    syn = detail.get("synopsis") or {}
+    d = syn.get(key) or detail.get(key)
+    return d if isinstance(d, dict) else {}
+
+
 def agency_name(detail: dict[str, Any]) -> str:
     """The agency's name from `agencyDetails`. The synopsis-level `agencyName` is not
     used: on DoD and DOE records it holds the contact person's name and role."""
     syn = detail.get("synopsis") or {}
-    for d in (syn.get("agencyDetails"), detail.get("agencyDetails"),
-              syn.get("topAgencyDetails"), detail.get("topAgencyDetails")):
-        if isinstance(d, dict) and d.get("agencyName"):
-            return str(d["agencyName"])
+    for key in ("agencyDetails", "topAgencyDetails"):
+        if name := _details(detail, key).get("agencyName"):
+            return str(name)
     return syn.get("agencyCode") or detail.get("owningAgencyCode") or ""
+
+
+def agency_code(detail: dict[str, Any]) -> str | None:
+    syn = detail.get("synopsis") or {}
+    return (_details(detail, "agencyDetails").get("agencyCode") or syn.get("agencyCode")
+            or detail.get("owningAgencyCode") or None)
+
+
+def parent_agency(detail: dict[str, Any]) -> str | None:
+    """The department above the agency, when there is one (DoD above the Air Force Academy)."""
+    top = _details(detail, "topAgencyDetails").get("agencyName")
+    return str(top) if top and top != agency_name(detail) else None
 
 
 def parse_opportunity(detail: dict[str, Any], fetched_at: datetime,
@@ -114,6 +131,8 @@ def parse_opportunity(detail: dict[str, Any], fetched_at: datetime,
         opportunity_number=detail["opportunityNumber"],
         title=title,
         agency=agency_name(detail),
+        agency_code=agency_code(detail),
+        parent_agency=parent_agency(detail),
         open_date=_date(syn.get("postingDate")),
         close_date=_date(syn.get("responseDate")),
         archive_date=_date(syn.get("archiveDate")),

@@ -108,3 +108,14 @@ def test_others_counts_when_the_text_names_universities():
     other = o.model_copy(update={"eligibility_notes": "Only tribal governments may apply."})
     assert "institutions of higher education are not eligible applicants" in check(
         other, Constraints(as_of=date(2026, 10, 30)))
+
+
+def test_agency_filter_reaches_the_department_and_code():
+    o = opp(agency="Air Force Academy", agency_code="DOD-USAFA",
+            parent_agency="Department of Defense")
+    c = Constraints(as_of=date(2026, 10, 30), check_dates=False)
+    for wanted in ("DoD", "Department of Defense", "DOD-USAFA", "Air Force"):
+        c.agencies = [wanted]
+        assert not any("not in the chosen agencies" in r for r in check(o, c)), wanted
+    c.agencies = ["NIH"]
+    assert any("not in the chosen agencies" in r for r in check(o, c))

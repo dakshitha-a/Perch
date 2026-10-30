@@ -108,8 +108,9 @@ def test_agency_comes_from_agency_details_not_the_contact():
     # On DoD and DOE records the synopsis agencyName is a contact's name and role.
     dod = gg.parse_opportunity(load("fetch_opportunity_dod.json")["data"], T, "posted")
     assert dod.agency == "Air Force Academy"
+    assert dod.agency_code == "DOD-USAFA" and dod.parent_agency == "Department of Defense"
     nsf = gg.parse_opportunity(load("fetch_opportunity_nsf.json")["data"], T, "posted")
-    assert nsf.agency == "U.S. National Science Foundation"
+    assert nsf.agency == "U.S. National Science Foundation" and nsf.parent_agency is None
     nih = gg.parse_opportunity(load("fetch_opportunity.json")["data"], T, "posted")
     assert nih.agency == "National Institutes of Health"
 

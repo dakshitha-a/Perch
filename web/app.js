@@ -1466,7 +1466,7 @@ function leadCard(l) {
 
   const head = h("div", { class: "lead-head" },
     h("span", { class: "tags" },
-      h("span", { class: "tag", text: f.agencyShort(o.agency) }),
+      h("span", { class: "tag", text: f.agencyShort(o.agency, o.parent_agency) }),
       o.activity_code ? h("span", { class: "tag", text: o.activity_code }) : null,
       o.status && o.status !== "posted" ? h("span", { class: "tag ember", text: o.status === "forecasted" ? "Forecast" : o.status }) : null,
       l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null),
