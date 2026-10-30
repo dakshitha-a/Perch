@@ -91,3 +91,20 @@ def test_title_restrictions():
     early = opp(title="Supporting Talented Early Career Researchers in Genomics (R01)")
     assert check(early, C) == ["restricted by career stage, which public records cannot confirm"]
     assert check(lim, Constraints(as_of=C.as_of, include_restricted=True)) == []
+
+
+def test_others_counts_when_the_text_names_universities():
+    # NSF MPS Chemistry (26-519): applicant type "Others", universities named in the text.
+    import json
+    from pathlib import Path
+
+    from perch.sources import grants_gov as gg
+
+    raw = json.loads((Path(__file__).parent / "fixtures/grants_gov/fetch_opportunity_nsf.json")
+                     .read_text(encoding="utf-8"))
+    o = gg.parse_opportunity(raw["data"], datetime(2026, 10, 30, tzinfo=UTC), "posted")
+    assert o.eligible_applicants[0].startswith("Others")
+    assert check(o, Constraints(as_of=date(2026, 10, 30))) == []
+    other = o.model_copy(update={"eligibility_notes": "Only tribal governments may apply."})
+    assert "institutions of higher education are not eligible applicants" in check(
+        other, Constraints(as_of=date(2026, 10, 30)))

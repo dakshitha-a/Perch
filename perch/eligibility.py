@@ -20,6 +20,23 @@ APPLICANT_OK = {
     "Unrestricted (i.e., open to any type of entity above), subject to any clarification in "
     "text field entitled \"Additional Information on Eligibility\"",
 }
+# An "Others" applicant type defers to the record's eligibility text. It counts when
+# that text names universities (61 of 121 open NSF listings on 2026-10-30, among them
+# MPS Chemistry) or invites "all responsible sources" (DARPA and NGA announcements).
+OTHERS_PREFIX = "Others"
+OTHERS_TEXT_OK = re.compile(
+    r"institutions? of higher education|\bIHEs?\b|colleges? and universit|universities"
+    r"|all responsible sources", re.IGNORECASE)
+
+
+def applicant_ok(o: Opportunity) -> bool:
+    types = set(o.eligible_applicants)
+    if APPLICANT_OK & types:
+        return True
+    return (any(t.startswith(OTHERS_PREFIX) for t in types)
+            and bool(OTHERS_TEXT_OK.search(o.eligibility_notes or "")))
+
+
 # Activity codes outside v1 scope or closed to a university applicant.
 EXCLUDED_ACTIVITY = {
     r"F\d\d": "fellowship (students and postdocs are out of scope in v1)",
@@ -98,7 +115,7 @@ def check(o: Opportunity, c: Constraints) -> list[str]:
         reasons += date_reasons(o, c.as_of)
     if not o.eligible_applicants:
         reasons.append("no applicant types in the record")
-    elif not APPLICANT_OK & set(o.eligible_applicants):
+    elif not applicant_ok(o):
         reasons.append("institutions of higher education are not eligible applicants")
     code = o.activity_code or ""
     for pattern, why in EXCLUDED_ACTIVITY.items():
