@@ -57,11 +57,10 @@ PROBE = """() => {
     if (r.width < 44 || r.height < 44) small.push({ el: name(el), tag: el.tagName.toLowerCase(),
       w: Math.round(r.width), h: Math.round(r.height), inline, under24: r.width < 24 || r.height < 24 });
   }
-  const sw = document.querySelector('#models-switch');
-  const frame = document.querySelector('#session-frame');
+  const chip = document.querySelector('#status-chip');
   return { small, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    session: { cloud: sw && sw.getAttribute('aria-checked'), word: sw && sw.innerText.trim(),
-      frame: frame && !frame.hidden, text: frame && frame.innerText.trim(),
+    session: { word: chip && chip.innerText.trim(), frame: Boolean(chip && vis(chip)),
+      text: chip && chip.getAttribute('aria-label'),
       cloudBody: document.body.classList.contains('cloud-on') },
     title: document.title, hash: location.hash };
 }"""
@@ -143,15 +142,20 @@ async def alias_watch(route: Route, names: dict) -> None:
 
 async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.goto(base + "/#/")
-    await page.wait_for_selector(".hero")
+    await page.wait_for_selector(".landing")
     await w.snap(page, tag, "find")
     if tag == "pi-laptop":
         await w.tab_through(page, "find")
     await page.fill("#q", AUTHOR)
-    await page.click("button:has-text('Find researcher')")
-    await w.step(tag, "candidate", page.wait_for_selector(".candidate", timeout=20000))
+    await page.click(".searchbox button[type=submit]")
+    await w.step(tag, "candidate", page.wait_for_selector(".cand", timeout=20000))
     await w.snap(page, tag, "candidate")
-    await page.locator(".candidate button:has-text('Build brief')").first.click()
+    await page.locator(".cand button.btn.outline").first.click()
+    await page.wait_for_timeout(500)
+    await w.snap(page, tag, "context", full=True)
+    if tag == "pi-laptop":
+        await w.tab_through(page, "context", 30)
+    await page.click("[data-key=build]")
     await page.wait_for_selector("#tab-routes", timeout=60000)
     await w.step(tag, "built", wait_built(page))  # a live run: briefs are never reused (S23)
     await page.wait_for_timeout(1000)
@@ -167,7 +171,12 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await w.snap(page, tag, "lead-why")
     if await w.step(tag, "evidence", lead.locator(".title-btn").click()):
         await page.wait_for_selector(".rec-title")
+        await page.wait_for_timeout(400)
         await w.snap(page, tag, "evidence-opportunity")
+        await page.keyboard.press("Escape")
+    if await w.step(tag, "export", page.click("[data-key=export]")):
+        await page.wait_for_timeout(300)
+        await w.snap(page, tag, "export-menu")
         await page.keyboard.press("Escape")
     if tag == "pi-laptop":
         await w.tab_through(page, "routes", 40)
@@ -180,7 +189,7 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     for i in (0, 1):
         await w.step(tag, f"keep {i}", leads.nth(i).locator(".btn.keep").click())
         await page.wait_for_timeout(300)
-    await w.snap(page, tag, "keep-bar")
+    await w.snap(page, tag, "shortlist")
     await page.click("#tab-compare")
     await page.wait_for_timeout(1200)
     await w.snap(page, tag, "compare", full=True)
@@ -190,23 +199,29 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.click("#tab-scout")
     await page.wait_for_timeout(800)
     await w.snap(page, tag, "scout", full=True)
-    # The cloud warning: shown, read and dismissed; no cloud call is made.
-    if not await page.locator("#models-switch").is_disabled():
-        seen: list[str] = []
-
-        def dismiss(d) -> None:  # noqa: ANN001 - a playwright Dialog
-            seen.append(d.message)
-            asyncio.ensure_future(d.dismiss())
-
-        page.once("dialog", dismiss)
-        await page.click("#models-switch")
-        await page.wait_for_timeout(600)
-        if not (seen and "Anthropic" in seen[0]):
-            w.errors.append(f"{tag}: no cloud warning naming the provider: {seen}")
-        await w.snap(page, tag, "cloud-dismissed")
+    # The Local / Cloud dialog: the warning is shown and read, then cancelled; no cloud call.
+    await page.click("#status-chip")
+    await page.wait_for_selector("#models-dialog[open]")
+    await w.snap(page, tag, "models-dialog")
+    cloud = page.locator("#models-dialog input[value=cloud]")
+    if await cloud.count() and not await cloud.is_disabled():
+        await cloud.check()
+        await page.wait_for_timeout(300)
+        warn = await page.locator("#models-dialog .warn-box").first.inner_text()
+        if "Anthropic" not in warn:
+            w.errors.append(f"{tag}: no cloud warning naming the provider: {warn[:80]}")
+        await w.snap(page, tag, "cloud-warning")
+    await page.click("#models-dialog button:has-text('Cancel')")
+    await page.wait_for_timeout(300)
     await page.goto(base + "/#/help")
     await page.wait_for_timeout(800)
     await w.snap(page, tag, "help", full=True)
+
+
+async def end_session(page: Page) -> None:
+    await page.click("#end-session")
+    await page.wait_for_selector("#models-dialog[open]")
+    await page.click("[data-key=end-ok]")
 
 
 async def wait_built(page: Page, timeout: int = 300_000) -> None:
@@ -218,16 +233,15 @@ async def wait_built(page: Page, timeout: int = 300_000) -> None:
 async def student_flow(w: Walk, page: Page, base: str, persona: str, views: list[tuple[str, dict]]) -> None:
     tag = f"{persona}"
     await page.goto(base + "/#/")
-    await page.wait_for_selector(".hero")
+    await page.wait_for_selector(".landing")
+    await page.click("[data-key=seg-s]")
     await page.click("[data-key=student]")
     await page.wait_for_selector("#st-cv", timeout=20000)
     await w.snap(page, tag, "student-form", full=True)
     for kind in ("cv", "interests", "achievements"):
         await page.fill(f"#st-{kind}", (SYN / persona / f"{kind}.md").read_text())
-        await page.locator(f"#st-{kind} ~ .doc-actions button:has-text('Add text')").click()
-        await page.wait_for_timeout(500)
     await w.snap(page, tag, "student-added", full=True)
-    await page.click("button:has-text('Find fellowships and scholarships')")
+    await page.click("[data-key=st-build]")
     await page.wait_for_selector("#progress", timeout=20000)
     await page.wait_for_timeout(4000)
     await w.snap(page, tag, "student-building")
@@ -246,7 +260,7 @@ async def student_flow(w: Walk, page: Page, base: str, persona: str, views: list
         await w.snap(page, t, "scholarships")
         await w.snap(page, t, "scholarships-full", full=True)
         if await w.step(t, "evidence", page.locator(".leads > li .title-btn").first.click()):
-            await page.wait_for_selector("#evidence:not([hidden])")
+            await page.wait_for_selector(".rec-title")
             await page.wait_for_timeout(400)
             await w.snap(page, t, "evidence-sample")
             await page.keyboard.press("Escape")
@@ -259,8 +273,10 @@ async def student_flow(w: Walk, page: Page, base: str, persona: str, views: list
         await w.snap(page, t, "compare", full=True)
         if vtag == views[0][0]:
             await w.tab_through(page, f"{persona}-compare", 25)
-    page.once("dialog", lambda d: asyncio.ensure_future(d.accept()))
-    await w.step(tag, "end", page.click("#end-session"))
+            await page.click("#tab-scout")
+            await page.wait_for_timeout(500)
+            await w.snap(page, t, "scout", full=True)
+    await w.step(tag, "end", end_session(page))
     await page.wait_for_timeout(1200)
     await w.snap(page, tag, "after-end")
 
@@ -269,7 +285,8 @@ async def private_flow(w: Walk, page: Page, base: str) -> None:
     tag = "persona-1"
     files = {"cv": "cv.md", "proposal": "specific_aims_draft.md", "manuscript": "unpublished_manuscript.md"}
     await page.goto(base + "/#/")
-    await page.wait_for_selector(".hero")
+    await page.wait_for_selector(".landing")
+    await page.click("[data-key=more-opts]")
     await page.click("[data-key=docs-link]")
     await page.wait_for_timeout(600)
     await page.click("button:has-text('Start a session')")
@@ -292,8 +309,7 @@ async def private_flow(w: Walk, page: Page, base: str) -> None:
     await page.goto(base + "/#/help")
     await page.wait_for_timeout(600)
     await w.snap(page, tag, "private-on-help")
-    page.once("dialog", lambda d: asyncio.ensure_future(d.accept()))
-    await w.step(tag, "end", page.click("#end-session"))
+    await w.step(tag, "end", end_session(page))
     await page.wait_for_timeout(1000)
 
 
@@ -313,7 +329,7 @@ async def main(base: str, axe: str | None, out: Path, only: list[str]) -> None:
                 await ctx.close()
             ctx, page = await new_page(b, PHONE, names, motion="reduce")
             await page.goto(base + "/#/")
-            await page.wait_for_selector(".hero")
+            await page.wait_for_selector(".landing")
             w.focus["reduced-motion-animations"] = await page.evaluate("""() => [...document.querySelectorAll('*')]
               .map(el => getComputedStyle(el)).filter(s => s.animationName !== 'none' && parseFloat(s.animationDuration) > 0.01
               && s.animationIterationCount !== '1').length""")
