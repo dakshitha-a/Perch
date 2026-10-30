@@ -1118,6 +1118,7 @@ function awardTimeline(awards, asOf) {
           h("span", { class: "award-num", text: `${a.agency} ${a.award_number}` }),
           h("span", { class: "award-dates", text: `${f.formatDate(a.start_date)} to ${f.formatDate(a.end_date)}` })),
         h("span", { class: "award-title", text: a.title }),
+        a.matched_by_initial ? h("span", { class: "tag ember award-initial", text: "Matched by initial: check it is yours" }) : null,
         a.start_date && a.end_date ? h("span", { class: "span-bar", "aria-hidden": "true" },
           h("span", { class: "bar-now", style: `left:${x(asOf)}%` }),
           h("span", { class: "bar-fill", style: `left:${x(a.start_date)}%;width:${Math.max(x(a.end_date) - x(a.start_date), 1.5)}%` })) : null));

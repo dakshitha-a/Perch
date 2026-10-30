@@ -257,18 +257,13 @@ class BriefService:
             ov = aw.load_overrides(res.id, self.overrides)
             # Only Temple awards: the store also holds companies' SBIR/STTR awards
             # (Route B), whose PIs could share the researcher's name.
-            linked = aw.link_awards(res, [a for a in r.list(Award) if _temple(a)], ov)
+            linked = aw.link_stored(res, [a for a in r.list(Award) if _temple(a)], ov)
             skipped = bool(linked)
             if not linked:
-                fetched: list[Award] = []
                 with self.clients.nih() as nc, self.clients.nsf() as sc:
-                    for name in aw.query_names(res, ov):
-                        first, last = aw.search_name(name)
-                        fetched += nc.awards_for_pi(first, last)
-                        fetched += sc.awards_for_pi(f"{first} {last}")
+                    fetched, linked = aw.fetch_and_link(res, ov, nc, sc)
                 r.upsert(fetched)
-                linked = aw.link_awards(res, fetched, ov)
-        summaries = aw.summarise(linked)
+        summaries = aw.summarise(linked, res, ov)
         h = aw.award_horizon(summaries)
         b.award_ids = [s.key for s in summaries]
         b.award_horizon = h.end_date if h else None

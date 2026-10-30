@@ -209,7 +209,7 @@ function labels() {
       row(h("span", { class: "tag lock" }, icon("lock"), h("span", { text: "From your private document" })),
         "Only on a brief with your documents. The text cites a document you added in this session. It never leaves Perch unless you mask it."),
       row(h("span", { class: "big-date", text: "Award horizon" }),
-        "The end date of the last public NIH or NSF award found. Perch infers nothing about lab finances.")));
+        "The end date of the last public NIH or NSF award found. Perch infers nothing about lab finances. Awards are found by name. When the full name finds none, Perch searches by last name at Temple and keeps awards whose first initial matches; those are marked “Matched by initial”, so check that each is yours.")));
 }
 
 function limits() {

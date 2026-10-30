@@ -260,6 +260,7 @@ details[open] > summary::before { transform: rotate(45deg); }
 .award-num { font-weight: 650; }
 .award-dates { color: var(--ink-3); }
 .award-title { font-family: var(--serif); font-size: 15px; color: var(--ink-2); line-height: 1.35; }
+.award-initial { justify-self: start; }
 .span-bar { position: relative; height: 6px; background: var(--sunk); border-radius: 3px; margin-top: 2px; }
 .bar-fill { position: absolute; top: 0; bottom: 0; background: var(--ink-3); border-radius: 3px; opacity: .55; }
 .award.active .bar-fill { background: var(--moss); opacity: 1; }

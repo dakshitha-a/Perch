@@ -121,8 +121,9 @@ class NIHReporterClient:
     def awards_for_pi(self, first_name: str, last_name: str,
                       org: str = TEMPLE_ORG) -> list[Award]:
         """Every fiscal-year record at org listing this person among its PIs."""
-        criteria = {"org_names": [org],
-                    "pi_names": [{"first_name": first_name, "last_name": last_name}]}
+        # An empty first name searches by last name alone (S27 fallback, checked live).
+        name = {"last_name": last_name, **({"first_name": first_name} if first_name else {})}
+        criteria = {"org_names": [org], "pi_names": [name]}
         return list(self.iter_projects(criteria))
 
     def awards_for_org(self, fiscal_years: list[int], org: str = TEMPLE_ORG) -> list[Award]:

@@ -120,8 +120,8 @@ def list_awards(ctx: ScoutContext, author_id: str | None = None) -> dict:
     res = _researcher(ctx, author_id)
     with ctx.service.repo() as r:
         ov = aw.load_overrides(res.id, ctx.service.overrides)
-        linked = aw.link_awards(res, r.list(Award), ov)
-    summaries = aw.summarise(linked)
+        linked = aw.link_stored(res, r.list(Award), ov)
+    summaries = aw.summarise(linked, res, ov)
     h = aw.award_horizon(summaries)
     out = []
     for s in summaries:
@@ -129,7 +129,8 @@ def list_awards(ctx: ScoutContext, author_id: str | None = None) -> dict:
         out.append({"id": ctx.see(rec), "award_number": s.award_number, "title": s.title,
                     "agency": s.agency, "activity_code": s.activity_code,
                     "start_date": s.start_date and s.start_date.isoformat(),
-                    "end_date": s.end_date and s.end_date.isoformat()})
+                    "end_date": s.end_date and s.end_date.isoformat(),
+                    "matched_by_initial": s.matched_by_initial})
     return {"researcher": ctx.see(res), "awards": out,
             "horizon_award": h and ctx.see(h.end_record or linked[0]),
             "note": "Public NIH and NSF records only; other funding is not visible."}

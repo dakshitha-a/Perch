@@ -321,7 +321,7 @@ def create_app(service: BriefService, runner: JobRunner,
                    else route_b_json(x, r) if x.route == "B" else student_json(x, r)
                    for x in leads]
             ov = aw.load_overrides(res.id, svc.overrides) if res else None
-            linked = aw.link_awards(res, r.list(Award), ov) if res and ov else []
+            linked = aw.link_stored(res, r.list(Award), ov) if res and ov else []
             pids = {i for t in b.threads for i in t.get("work_ids", [])[:KEY_PAPERS]}
             pids |= {f"https://openalex.org/{c}" for x in leads for c in x.cited_ids
                      if c.startswith("W")}
@@ -329,8 +329,9 @@ def create_app(service: BriefService, runner: JobRunner,
         awards = [{"key": s.key, "award_number": s.award_number, "agency": s.agency,
                    "title": s.title, "start_date": s.start_date, "end_date": s.end_date,
                    "source_url": s.end_record.source_url if s.end_record else None,
-                   "record_id": (s.end_record or s.records[0]).id}
-                  for s in aw.summarise(linked) if s.key in set(b.award_ids)]
+                   "record_id": (s.end_record or s.records[0]).id,
+                   "matched_by_initial": s.matched_by_initial}
+                  for s in aw.summarise(linked, res, ov) if s.key in set(b.award_ids)]
         return {"brief": b.model_dump(mode="json"),
                 "researcher": record_json(res) if res else None, "awards": awards,
                 "papers": papers,

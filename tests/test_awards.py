@@ -56,3 +56,34 @@ def test_summary_uses_latest_end_and_horizon():
     h = aw.award_horizon(s)
     assert h.award_number == "R01A" and h.end_date == date(2027, 4, 30)
     assert aw.award_horizon([]) is None
+
+
+class FakeSource:
+    """Answers full-name searches with nothing and last-name searches with two records:
+    one whose first initial matches and one that does not (SYNTHETIC names)."""
+
+    def __init__(self):
+        self.calls = []
+
+    def awards_for_pi(self, *name):
+        self.calls.append(name)
+        if name in (("", "Doe"), ("Doe",)):
+            return [award("n:1", "R01X", ["Janet Doe"], date(2028, 1, 1), 2026),
+                    award("n:2", "R01Y", ["Mark Doe"], date(2028, 1, 1), 2026)]
+        return []
+
+
+def test_fallback_links_by_initial_and_labels_it():
+    nih, nsf = FakeSource(), FakeSource()
+    fetched, linked = aw.fetch_and_link(R, aw.Overrides(), nih, nsf)
+    assert ("", "Doe") in nih.calls and ("Doe",) in nsf.calls
+    assert {a.award_number for a in linked} == {"R01X"}
+    s = aw.summarise(linked, R, aw.Overrides())
+    assert s[0].matched_by_initial
+    # A hand override names the person: no fallback, and nothing is labelled.
+    ov = aw.Overrides(query_names=["Janet Doe"])
+    _, linked = aw.fetch_and_link(R, ov, FakeSource(), FakeSource())
+    assert linked == []
+    full = award("n:3", "R01Z", ["Jane Doe"], date(2028, 1, 1), 2026)
+    assert not aw.summarise([full], R, aw.Overrides())[0].matched_by_initial
+    assert aw.link_stored(R, [full, *fetched], aw.Overrides()) == [full]

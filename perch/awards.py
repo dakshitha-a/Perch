@@ -1,7 +1,9 @@
 """Link public awards to a researcher, and compute the public award horizon.
 
 Linking is by name: same last name, and the same first name or a matching first
-initial. data/overrides/award_links.csv corrects it by hand, one row per fix:
+initial. When that links nothing, Perch searches by last name alone and links records
+whose first initial matches; such awards are labelled "matched by initial" (S27, Q38).
+data/overrides/award_links.csv corrects it by hand, one row per fix:
 
   kind            value                 effect
   query_name      First Last            name to search award sources with (repeatable)
@@ -21,8 +23,13 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from perch.schemas import Award, Researcher
+
+if TYPE_CHECKING:
+    from perch.sources.nih_reporter import NIHReporterClient
+    from perch.sources.nsf import NSFClient
 
 OVERRIDES = Path("data/overrides/award_links.csv")
 SUFFIXES = {"jr", "sr", "ii", "iii", "iv", "md", "phd"}
@@ -44,14 +51,22 @@ def search_name(name: str) -> tuple[str, str]:
     return (tokens[0], tokens[-1]) if tokens else ("", "")
 
 
-def same_person(a: str, b: str) -> bool:
+def same_person(a: str, b: str, by_initial: bool = False) -> bool:
+    """Same last name and same first name; a one-letter first name, or `by_initial`,
+    needs only the first initial to match."""
     fa, la = name_parts(a)
     fb, lb = name_parts(b)
     if not la or la != lb:
         return False
-    if len(fa) == 1 or len(fb) == 1:
+    if by_initial or len(fa) == 1 or len(fb) == 1:
         return fa[:1] == fb[:1]
     return fa == fb
+
+
+def full_match(a: str, b: str) -> bool:
+    fa, la = name_parts(a)
+    fb, lb = name_parts(b)
+    return bool(la) and la == lb and len(fa) > 1 and fa == fb
 
 
 @dataclass
@@ -88,7 +103,8 @@ def query_names(r: Researcher, ov: Overrides) -> list[str]:
     return ov.query_names or [r.display_name]
 
 
-def link_awards(r: Researcher, awards: Iterable[Award], ov: Overrides) -> list[Award]:
+def link_awards(r: Researcher, awards: Iterable[Award], ov: Overrides,
+                by_initial: bool = False) -> list[Award]:
     """Award records (every fiscal year) that belong to the researcher."""
     names = [r.display_name, *ov.query_names]
     out = []
@@ -96,9 +112,47 @@ def link_awards(r: Researcher, awards: Iterable[Award], ov: Overrides) -> list[A
         key = award_key(a)
         if key in ov.exclude:
             continue
-        if key in ov.include or any(same_person(n, pi) for n in names for pi in a.pi_names):
+        if key in ov.include or any(same_person(n, pi, by_initial)
+                                    for n in names for pi in a.pi_names):
             out.append(a)
     return out
+
+
+def by_initial_only(r: Researcher, a: Award, ov: Overrides) -> bool:
+    """Linked on a first initial alone: no full first-name match and no hand override."""
+    if award_key(a) in ov.include or ov.query_names:
+        return False
+    return not any(full_match(r.display_name, pi) for pi in a.pi_names)
+
+
+def fallback_needed(linked: list[Award], ov: Overrides) -> bool:
+    """Search by last name only when the full-name search linked nothing and no hand
+    override names the person."""
+    return not linked and not ov.query_names
+
+
+def link_stored(r: Researcher, awards: list[Award], ov: Overrides) -> list[Award]:
+    """Link stored records: by name, then by first initial if that finds nothing."""
+    linked = link_awards(r, awards, ov)
+    return link_awards(r, awards, ov, by_initial=True) if fallback_needed(linked, ov) else linked
+
+
+def fetch_and_link(r: Researcher, ov: Overrides, nih: NIHReporterClient, nsf: NSFClient
+                   ) -> tuple[list[Award], list[Award]]:
+    """(fetched, linked) from RePORTER and NSF: full names first, then last name only."""
+    fetched: list[Award] = []
+    for name in query_names(r, ov):
+        first, last = search_name(name)
+        fetched += nih.awards_for_pi(first, last)
+        fetched += nsf.awards_for_pi(f"{first} {last}")
+    linked = link_awards(r, fetched, ov)
+    if fallback_needed(linked, ov):
+        last = search_name(r.display_name)[1]
+        if last:
+            fetched += nih.awards_for_pi("", last)
+            fetched += nsf.awards_for_pi(last)
+            linked = link_awards(r, fetched, ov, by_initial=True)
+    return fetched, linked
 
 
 @dataclass
@@ -116,9 +170,12 @@ class AwardSummary:
     end_record: Award | None
     opportunity_numbers: list[str]
     records: list[Award]
+    matched_by_initial: bool = False  # see by_initial_only; the Profile tab says so
 
 
-def summarise(records: Iterable[Award]) -> list[AwardSummary]:
+def summarise(records: Iterable[Award], r: Researcher | None = None,
+              ov: Overrides | None = None) -> list[AwardSummary]:
+    """`r` and `ov` mark awards linked on a first initial alone."""
     groups: dict[str, list[Award]] = {}
     for a in records:
         groups.setdefault(award_key(a), []).append(a)
@@ -137,6 +194,8 @@ def summarise(records: Iterable[Award]) -> list[AwardSummary]:
             opportunity_numbers=sorted({a.opportunity_number for a in recs
                                         if a.opportunity_number}),
             records=recs,
+            matched_by_initial=bool(r) and all(by_initial_only(r, a, ov or Overrides())
+                                               for a in recs),
         ))
     out.sort(key=lambda s: (s.end_date or date.min, s.key), reverse=True)
     return out

@@ -77,14 +77,9 @@ def fetch_awards(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     with SQLiteRepository(args.db) as repo:
         r = researcher_for(args, repo, client)
         ov = aw.load_overrides(r.id, Path(args.overrides))
-        fetched: list[Award] = []
         with args.nih_factory() as nih_client, args.nsf_factory() as nsf_client:
-            for name in aw.query_names(r, ov):
-                first, last = aw.search_name(name)
-                fetched += nih_client.awards_for_pi(first, last)
-                fetched += nsf_client.awards_for_pi(f"{first} {last}")
+            fetched, linked = aw.fetch_and_link(r, ov, nih_client, nsf_client)
         repo.upsert([r, *fetched])
-        linked = aw.link_awards(r, fetched, ov)
     projects = {aw.award_key(a) for a in linked}
     print(f"{describe(r)}")
     print(f"Fetched {len(fetched)} award records; {len(linked)} linked by name "
@@ -188,7 +183,7 @@ def cmd_profile(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
             return 1
         works = repo.works_by_author(r.id)
         ov = aw.load_overrides(r.id, Path(args.overrides))
-        linked = aw.link_awards(r, repo.list(Award), ov)
+        linked = aw.link_stored(r, repo.list(Award), ov)
     print(describe(r))
     print(f"\nKey papers (most cited of {len(works)} works in the store; papers with more "
           f"than {MAX_AUTHORS} authors skipped):")
@@ -196,12 +191,13 @@ def cmd_profile(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
         venue = w.venue or "venue not listed"
         print(f"  {w.publication_year or 'n.d.'}  {w.title}  ({venue}; "
               f"{w.cited_by_count or 0} citations)  {w.doi or w.id}")
-    summaries = aw.summarise(linked)
+    summaries = aw.summarise(linked, r, ov)
     print(f"\nPublic federal awards ({len(summaries)}), latest end date first:")
     for s in summaries:
         foa = ", ".join(s.opportunity_numbers) or "no opportunity number in record"
         print(f"  {s.award_number}  {s.agency}  {fmt_date(s.start_date)} to "
-              f"{fmt_date(s.end_date)}  {foa}  {s.title}")
+              f"{fmt_date(s.end_date)}  {foa}  {s.title}"
+              + ("  [matched by initial: check it is theirs]" if s.matched_by_initial else ""))
     h = aw.award_horizon(summaries)
     print()
     if h and h.end_record:
