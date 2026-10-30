@@ -27,8 +27,15 @@ def parse_json(text: str) -> dict:
     return out
 
 
+# A full stop after initials or a common abbreviation does not end a sentence:
+# "The U.S. National Science Foundation funds ..." is one sentence (S27).
+ABBREVIATION = re.compile(r"(?:\b(?:[A-Z]\.){2,3}|\b(?:e\.g|i\.e|etc|vs|al|approx|Dr|Mr|Ms|Mrs|"
+                          r"Prof|No|St|Inc|Co|Ltd|Jr|Sr|Fig|Dept)\.)$")
+
+
 def sentences(text: str) -> int:
-    return len([s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s])
+    parts = [s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s]
+    return len(parts) - sum(bool(ABBREVIATION.search(p)) for p in parts[:-1])
 
 
 def short_work_id(w: Work) -> str:

@@ -161,3 +161,12 @@ def test_student_fit_prompt_never_says_researcher() -> None:
     assert "for the student" in STUDENT_INSTRUCTIONS
     assert "a researcher's published work" not in STUDENT_INSTRUCTIONS
     assert "never \"the researcher\"" in STUDENT_INSTRUCTIONS
+
+
+def test_sentence_count_ignores_abbreviations():
+    from perch.skills import sentences
+
+    assert sentences("The U.S. National Science Foundation funds SYNTHETIC work [X].") == 1
+    assert sentences("It funds catalysis, e.g. SYNTHETIC catalysts, and more.") == 1
+    assert sentences("Work by Smith et al. shows X. Then Y.") == 2
+    assert sentences("Funds DNA. Also RNA.") == 2
