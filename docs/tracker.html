@@ -135,7 +135,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S25</code> <span class="badge s-todo">todo</span><span>25/28 sessions done</span></div>
+<div class="at-a-glance"><code>S25</code> <span class="badge s-in-progress">in progress</span><span>25/28 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -670,13 +670,24 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-current" class="view" data-view="current" hidden>
 <div id="s25"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S25 · UI/UX review and full QA test</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S25.md</code> when the session starts.</div>
+<div class="title-row"><h1>S25 · UI/UX review and full QA test</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-30 04:23 EDT</div></div>
+<p>Goal: one last review of the whole app as it will ship, and a full QA pass of every feature, before the freeze (Dakshitha, 2026-10-29). Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 4 tasks done"><div class="counts"><span><b>0/4</b>tasks done</span><span class="s-todo"><b>4</b>todo</span></div><div class="bar" role="img" aria-label="0 of 4 tasks done"><span class="s-todo" style="width:100.00%" title="todo: 4"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>UI/UX review: the walk with axe-core for every audience, the accessibility checklist, an independent review; findings ranked in <code>docs/design/UX_REVIEW_S25.md</code>; must-fix items fixed.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td>Full QA test: <code>docs/QA_PLAN.md</code>, one row per feature and path, each run and recorded.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>Privacy and data checks: the canary (Local, and Cloud with SYNTHETIC text), the leakage check, a fresh visitor leaves no record.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td>Demo rebuilt if anything changed.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>The review and the QA plan are written and run, no open must-fix item, <code>make test</code> green.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="25 of 28 sessions done"><div class="counts"><span><b>25/28</b>sessions done</span><span class="s-done"><b>25</b>done</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="25 of 28 sessions done"><span class="s-done" style="width:89.29%" title="done: 25"></span><span class="s-todo" style="width:10.71%" title="todo: 3"></span></div></section>
+<section class="panel summary" aria-label="25 of 28 sessions done"><div class="counts"><span><b>25/28</b>sessions done</span><span class="s-done"><b>25</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="25 of 28 sessions done"><span class="s-done" style="width:89.29%" title="done: 25"></span><span class="s-in-progress" style="width:3.57%" title="in progress: 1"></span><span class="s-todo" style="width:7.14%" title="todo: 2"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -705,7 +716,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s22">S22</a></td><td>Redesign and rebuild</td><td><span class="badge s-done">done</span></td><td>2026-10-29 19:20 EDT</td><td>2026-10-29 19:54 EDT</td><td class="mono">see git log</td><td>Option B (Q29 default) live on the public URL: two doors on Find, student words, compact student and industry cards, the order explained, hand-off offices fixed, accessibility fixes. Walk on the dev server: 110 states, 0 axe violations, 0 failed steps. Review: 7 issues, all fixed. Live canary ok, 10 of 10 explained. 248 tests green. The media refilm (task 5) moved to S24.</td></tr>
 <tr class="is-finished"><td><a href="#s23">S23</a></td><td>Private by default, local models first</td><td><span class="badge s-done">done</span></td><td>2026-10-29 20:20 EDT</td><td>2026-10-29 21:05 EDT</td><td class="mono">see git log</td><td>Every brief is a session in memory: no stored briefs, reuse, browser history or per-user logs; public records stay cached. Local / Cloud switch, local by default; Cloud after a warning naming Anthropic, never with documents (Q30), 30 cloud briefs a day. Monitoring shelved in <code>perch/shelved/monitor/</code>. Live canary ok: default path 15 of 15 explained in 47 s, 0 user rows added, no trace in files or journals. Walk on the demo: 110 states, 0 axe violations. One cloud check $0.04. 245 tests green. S24 and S25 swapped (Dakshitha).</td></tr>
 <tr class="is-finished"><td><a href="#s24">S24</a></td><td>UI rebuild from the redesign canvas</td><td><span class="badge s-done">done</span></td><td>2026-10-30 02:37 EDT</td><td>2026-10-30 04:21 EDT</td><td class="mono">see git log</td><td>The canvas redesign is live on the public URL for both paths: new tokens and type, landing with the Researcher or Student pill, the status chip and a real Local or Cloud dialog, the pick screen with the optional context panel and a SYNTHETIC sample, briefs in two columns with a shortlist and evidence rail, Export menu, verdict chips, student Compare with a code-written note. Ask Scout for students on its own seven-tool allowlist. Warm demo briefs held in memory (17 ms on the demo). Documents on Cloud built behind a switch, off until the rule 1 change (Q33). Draft review evaluated, not built (Clef 36 of 44; Q34). Walk on the demo: 119 states, 0 axe violations, 0 sideways scroll, 0 failed steps. Live canary ok. 249 tests green. $0 spent.</td></tr>
-<tr class="is-current"><td>S25</td><td>UI/UX review and full QA test</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s25">S25</a></td><td>UI/UX review and full QA test</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-30 04:23 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S26</td><td>Media refilm</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S27</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
