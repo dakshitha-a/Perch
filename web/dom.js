@@ -30,12 +30,23 @@ export function fill(el, ...kids) {
 }
 
 
+// Copies each column name onto its cells, so a table can stack into labelled cards on a
+// phone (S25 review).
+export function labelCells(table) {
+  const names = [...table.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+  for (const tr of table.querySelectorAll("tbody tr")) {
+    [...tr.children].forEach((cell, i) => { if (names[i]) cell.dataset.label = names[i]; });
+  }
+  return table;
+}
+
 export function icon(name) {
   const paths = {
     keep: "M5 12.5l4.5 4.5L19 7.5",
     dismiss: "M6.5 6.5l11 11M17.5 6.5l-11 11",
     restore: "M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5",
-    evidence: "M10.5 4.5h-5v14h13v-5M13.5 4.5h6v6M19.5 4.5l-9 9",
+    evidence: "M4.5 5h15v14h-15zM14 5v14M7 9h4M7 12.5h4",
+    external: "M10.5 4.5h-5v14h13v-5M13.5 4.5h6v6M19.5 4.5l-9 9",
     search: "M10.5 17a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13zM15.5 15.5l4.5 4.5",
     back: "M14.5 5.5l-6.5 6.5 6.5 6.5",
     warn: "M12 4l9 16H3zM12 10v4.5M12 17.2v.3",

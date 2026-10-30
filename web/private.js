@@ -140,7 +140,8 @@ export async function renderPrivate(root, { api, go, announce, mode }) {
         endButton(api, go))];
 
   fill(root, h("div", { class: "private" },
-    h("h1", {}, icon("lock"), h("span", { text: " Your documents" })),
+    h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
+    h("h1", { class: "page", text: "Your documents" }),
     statement(),
     P.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: P.error })) : null,
     ...body));

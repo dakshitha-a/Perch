@@ -1020,3 +1020,31 @@ body[data-screen="landing"] .foot .promises { display: grid; }
   #keep-float .keep-float { position: static; margin: 0; pointer-events: auto; }
 }
 .route-btn[aria-pressed="true"] .tag.sample { color: var(--on-accent); border-color: var(--on-accent); }
+/* S25 review fixes */
+.short { display: none; }
+@media (max-width: 479px) {
+  .tab .long, .seg .long, .route-btn .long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tab .short, .seg .short, .route-btn .short { display: inline; }
+  .tab { padding: 0 12px; }
+}
+/* the rail stays clear of the sticky tab bar */
+.cols > .rail { top: calc(var(--bar-h, 64px) + 64px); }
+.tabs-wrap { position: sticky; top: var(--bar-h, 64px); z-index: 5; }
+/* the header lines up with the page column */
+.bar-in { max-width: calc(var(--col) + 32px); padding-left: 16px; padding-right: 16px; }
+body[data-screen="brief"] .bar-in { max-width: 1212px; }
+body[data-screen="help"] .bar-in { max-width: 852px; }
+.scroll-hint { display: none; }
+@media (max-width: 600px) { .scroll-hint { display: block; } }
+@media (max-width: 600px) {
+  .compare-wrap { overflow: visible; border: 0; background: transparent; }
+  table.compare.stack { min-width: 0; }
+  table.compare.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  table.compare.stack, table.compare.stack tbody, table.compare.stack tr, table.compare.stack th, table.compare.stack td { display: block; }
+  table.compare.stack tr { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); margin-bottom: 12px; overflow: hidden; }
+  table.compare.stack tbody th { position: static; max-width: none; background: var(--chip); }
+  table.compare.stack td { display: grid; grid-template-columns: 40% 1fr; gap: 8px; border-bottom: 1px solid var(--line); }
+  table.compare.stack td::before { content: attr(data-label); color: var(--ink-3); font-size: 13px; padding: 10px 0 10px 12px; }
+}
+.help-jump { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 6px 0 4px; }
+.help h2.section-title { scroll-margin-top: calc(var(--bar-h, 64px) + 12px); }

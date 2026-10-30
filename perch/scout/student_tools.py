@@ -178,7 +178,9 @@ def draft_note(ctx: ScoutContext, route: str | None = None,
         lines.append(f"- {f['title']}{' (SAMPLE record, not real)' if x.sample else ''}: "
                      f"{x.verdict}, deadline {f['deadline']}"
                      + (f". Still needed: {'; '.join(x.gaps)}" if x.gaps else ""))
-    body = "\n".join(["Hello,", "", f"I am a student looking at the {kind} below and would "
+    demo = (["SAMPLE DATA, A DEMONSTRATION: DO NOT SEND. The scholarships marked SAMPLE are "
+             "invented.", ""] if any(x.sample for x in chosen) else [])
+    body = "\n".join([*demo, "Hello,", "", f"I am a student looking at the {kind} below and would "
                       "like advice on applying.", "", *lines, "",
                       *(["Note: records marked SAMPLE come from a test corpus in Perch and "
                          "are not real scholarships.", ""] if any(x.sample for x in chosen)

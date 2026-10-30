@@ -4,7 +4,7 @@
 // personal. Every verdict, gap, date and amount is written by the server's rule code or
 // copied from the record; nothing here is a model's claim.
 
-import { fill, h, icon } from "./dom.js";
+import { fill, h, icon, labelCells } from "./dom.js";
 import * as f from "./format.js";
 
 // The sample tab holds fellowships and prizes as well as scholarships (S22, audit S9).
@@ -153,9 +153,11 @@ export function studentProfile(d, { openEvidence }) {
   const rows = d.student || [];
   const mine = Object.entries(d.papers || {}).filter(([id, w]) => w.private);
   const interests = mine.filter(([id]) => /interests/.test(id));
-  const achievements = mine.filter(([id]) => /achievement/.test(id));
+  const achievements = mine.filter(([id]) => /achievement-/.test(id)); // one row per achievement
+  // Your own words, from this session's memory; exports still withhold or mask them.
   const ref = ([id, w]) => h("li", { class: "fade-in" }, h("button", { class: "paper", type: "button", onclick: (e) => openEvidence(id, e.currentTarget) },
-    h("span", { class: "paper-title", text: w.title })));
+    h("span", { class: "paper-title", text: w.title }),
+    w.text ? h("span", { class: "paper-meta", text: w.text.replace(/^#.*$/gm, "").replace(/\s+/g, " ").trim().slice(0, 220) }) : null));
   return [h("div", { class: "prof-cols" },
     h("div", { class: "left" }, h("section", { class: "pblock" },
       h("h2", { class: "section-title", text: "What the rules read from your CV" }),
@@ -185,7 +187,8 @@ export function studentRoutes(panel, ctx) {
   const sw = h("div", { class: "route-switch", role: "group", "aria-label": "Route" },
     ["F", "S"].map((r) => h("button", { class: "route-btn", "data-key": `route-${r}`, "aria-pressed": String(route === r),
       onclick: () => setRoute(r) },
-    h("span", { text: STUDENT_ROUTES[r] }), r === "S" ? h("span", { class: "tag sample", text: SAMPLE }) : null,
+    h("span", { class: "long", text: STUDENT_ROUTES[r] }), h("span", { class: "short", "aria-hidden": "true", text: r === "F" ? "Fellowships" : "Samples" }),
+    r === "S" ? h("span", { class: "tag sample long", text: SAMPLE }) : null,
     done(r === "F" ? "fellowships" : "scholarships") ? h("span", { class: "route-n", text: String(n(r)) }) : null)));
   if (!ready) {
     fill(panel, sw, h("p", { class: "hint", text: "Leads appear here when the search finishes." }));
@@ -197,7 +200,8 @@ export function studentRoutes(panel, ctx) {
   fill(panel, sw,
     route === "S" ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }), h("span", { text: ` ${SAMPLE_NOTE}` })) : null,
     h("h2", { class: "section-title", id: "routes-title",
-      text: `${f.plural(ok.length, "option")} you may apply for` }),
+      text: route === "S" ? `${f.plural(ok.length, "sample option")} (invented, for demonstration)`
+        : `${f.plural(ok.length, "option")} you may apply for` }),
     h("p", { class: "hint", text: route === "F"
       ? "Public listings: Temple's Scholar Development and Fellowships Advising list and NIH fellowships. Their own pages set the full rules, so the best verdict here is “may be eligible”."
       : "Checked against your CV by rule. “May be eligible” means the record asks for something your CV does not show." }),
@@ -221,6 +225,7 @@ function card(l, { openEvidence, setLead, papers }) {
       verdictChip(l.verdict),
       sch && r.award_type ? h("span", { class: "tag", text: r.award_type }) : null,
       !sch && r.activity_code ? h("span", { class: "tag", text: `NIH ${r.activity_code}` }) : null,
+      !sch && r.status === "forecasted" ? h("span", { class: "tag ember", text: "Forecast: not open yet" }) : null,
       l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null)),
     h("h3", { class: "lead-title" }, h("button", { class: "title-btn", onclick: (e) => openEvidence(l.record_id, e.currentTarget) },
       h("span", { text: name || l.record_id }))),
@@ -289,6 +294,7 @@ export function studentCompare(panel, { brief, goRoutes, announce }) {
     const d = sch ? r.deadline : r.close_date;
     return h("tr", {},
       h("th", { scope: "row" }, h("span", { class: "row-title", text: sch ? r.name : r.title }),
+        l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null,
         h("span", { class: "cell-note", text: STUDENT_ROUTES[l.route] })),
       h("td", {}, verdictChip(l.verdict)),
       h("td", { text: d ? f.formatDate(d) : "Not stated" }),
@@ -299,9 +305,9 @@ export function studentCompare(panel, { brief, goRoutes, announce }) {
   fill(panel,
     kept.some((l) => l.sample) ? h("p", { class: "notice warn sample-note", role: "note" }, h("span", { class: "tag sample", text: SAMPLE }),
       h("span", { text: " Your shortlist includes invented sample scholarships. They are not real." })) : null,
-    h("div", { class: "table-wrap compare-wrap", role: "region", "aria-label": "Kept options, side by side", tabindex: "0" }, h("table", { class: "compare" },
-      h("thead", {}, h("tr", {}, ["Option", "Your verdict", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
-      h("tbody", {}, kept.map(row)))),
+    h("div", { class: "table-wrap compare-wrap", role: "region", "aria-label": "Kept options, side by side", tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
+      h("thead", {}, h("tr", {}, ["Option", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
+      h("tbody", {}, kept.map(row))))),
     h("p", { class: "hint", text: "Each cell is copied from its record or checked against your CV by rule. “Not stated” means the listing leaves it blank." }),
     h("section", { class: "handoff" },
       h("h2", { class: "section-title", text: "Draft a note to a Temple office" }),
@@ -326,7 +332,9 @@ function note(route, leads, announce) {
     return `- ${name}${l.sample ? " (SAMPLE record, not real)" : ""}: ${l.verdict}${d ? `, deadline ${f.formatDate(d)}` : ""}${l.gaps.length ? `. Still needed: ${l.gaps.join("; ")}` : ""}`;
   });
   const subject = `Advice on ${route === "F" ? "fellowships" : "scholarships"}: ${leads.length} on my list`;
-  const body = [`Hello,`, "",
+  const sample = leads.some((l) => l.sample);
+  const body = [...(sample ? ["SAMPLE DATA, A DEMONSTRATION: DO NOT SEND. The scholarships marked SAMPLE are invented.", ""] : []),
+    `Hello,`, "",
     `I am a student looking at the ${route === "F" ? "fellowships" : "scholarships"} below and would like advice on applying.`, "",
     ...lines, "",
     leads.some((l) => l.sample) ? "Note: records marked SAMPLE come from a test corpus in Perch and are not real scholarships.\n" : "",
@@ -345,6 +353,7 @@ function note(route, leads, announce) {
       h("button", { class: "btn", type: "button", onclick: async () => {
         try { await navigator.clipboard.writeText(box.value); announce("Note copied."); } catch { box.select(); }
       } }, icon("paper"), h("span", { text: "Copy" })),
-      h("a", { class: "btn", href: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(box.value)}` },
+      // A note about invented scholarships is a demonstration: there is no mail button.
+      sample ? null : h("a", { class: "btn", href: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(box.value)}` },
         icon("download"), h("span", { text: "Open in mail" }))));
 }

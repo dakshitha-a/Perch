@@ -90,10 +90,11 @@ function reset(briefId) {
 }
 
 function modeSwitch(ctx) {
-  const opt = (value, label) => h("button", { type: "button", role: "radio", "aria-checked": String(T.mode === value),
-    "data-key": `scout-${value}`, onclick: () => setMode(value, ctx) }, h("span", { text: label }));
+  const opt = (value, label, short) => h("button", { type: "button", role: "radio", "aria-checked": String(T.mode === value),
+    "data-key": `scout-${value}`, "aria-label": label, onclick: () => setMode(value, ctx) },
+  h("span", { class: "long", text: label }), h("span", { class: "short", "aria-hidden": "true", text: short }));
   return h("div", { class: "seg", role: "radiogroup", "aria-label": "How Scout runs steps" },
-    opt("ask", "Ask before each step"), opt("run", "Run and show me"));
+    opt("ask", "Ask before each step", "Ask first"), opt("run", "Run and show me", "Run"));
 }
 
 async function setMode(mode, ctx) {

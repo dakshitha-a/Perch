@@ -234,8 +234,15 @@ export function renderHelp(container, { back }) {
     h("header", { class: "help-head" },
       h("div", {},
         h("h1", { class: "who", text: "Help" }),
-        h("p", { class: "lede", text: "Perch reads a researcher’s public papers, finds open federal funding that fits, and shows the record behind every claim." })),
+        h("p", { class: "lede", text: "Perch reads a researcher’s public papers, or a student’s CV, finds funding that fits, and shows the record behind every claim." })),
       hello),
+    // Jump links (S25 review): the page is long, so each section is one press away.
+    h("nav", { class: "help-jump", "aria-label": "Jump to" }, h("span", { class: "hint", text: "Jump to:" }),
+      [["h-use", "How to use Perch"], ["h-how", "How it works"], ["h-score", "How leads are ordered"],
+        ["h-labels", "Reading the labels"], ["h-limits", "What Perch does not do"]].map(([id, text]) =>
+        h("button", { class: "btn quiet", type: "button", onclick: () => {
+          const t = document.getElementById(id); t.setAttribute("tabindex", "-1"); t.scrollIntoView({ block: "start" }); t.focus({ preventScroll: true });
+        } }, h("span", { text })))),
     steps(), pipeline(), scoring(), labels(), limits(),
     h("p", { class: "help-scout" }, h("span", { text: "Scout the owl moves while Perch works. Tap Scout to say hello." }))));
 }

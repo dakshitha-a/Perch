@@ -88,7 +88,7 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     h("p", { class: "hint", text: "Perch drafts an email to the Temple office for these leads. "
       + "You edit it and send it yourself. Perch never sends it and does not save it." }),
     choices,
-    h("p", { class: "office-link" }, h("span", { text: "To: leave for you to fill in. " }),
+    h("p", { class: "office-link" }, h("span", { text: "To: left blank for you. " }),
       h("a", { href: office.url, target: "_blank", rel: "noopener",
       text: `${office.name} contacts on research.temple.edu` })),
     h("div", { class: "actions" }, make), status];

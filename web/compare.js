@@ -2,7 +2,7 @@
 // is copied from a record or computed from one by code, and opens that record in the
 // evidence panel. A cell with nothing behind it says so; it never guesses.
 
-import { h, fill, icon } from "./dom.js";
+import { h, fill, icon, labelCells } from "./dom.js";
 import { formatDate } from "./format.js";
 
 const C = { data: null, briefId: null, sig: "", sort: { key: null, dir: 1 }, error: null };
@@ -96,7 +96,7 @@ export function renderCompare(panel, { keptCount, openEvidence, goRoutes, redraw
     hasB ? h("p", { class: "notice" }, icon("warn"), h("span", { text: "Industry leads are inferred "
       + "from public signals and not verified. Their records hold no amount or deadline." })) : null,
     h("div", { class: "compare-wrap", role: "region", "aria-labelledby": "compare-title", tabindex: "0" },
-      h("table", { class: "compare" }, h("thead", {}, head), h("tbody", {}, ...body))),
+      labelCells(h("table", { class: "compare stack" }, h("thead", {}, head), h("tbody", {}, ...body)))),
     h("p", { class: "hint", text: "Money and dates are as each record states them. "
       + "The office under each lead is the Temple office that handles that route." }),
     handoff ? h("div", { class: "handoff-box" }) : null);
