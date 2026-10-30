@@ -175,3 +175,15 @@ def test_personal_fields_exist_only_inside_private_mode():
         < build.index("privApi.create(req)")
     student = (WEB_DIR / "student.js").read_text()
     assert "if (!api.open)" in student  # the form shows only with a session open
+
+
+def test_draft_review_checklist_quotes_the_record():
+    """S24 task 7: the checklist is the record's own sentences, chosen by code."""
+    from bench.draft_review.items import asks
+
+    text = ("This notice invites applications on hearing. Applicants must describe a mentoring "
+            "plan in full detail. Proposals should include a data sharing plan for all data. "
+            "Projects are expected to recruit adults over the age of sixty. See Section IV.")
+    got = asks(text)
+    assert got and all(g in text for g in got)
+    assert not any("Section IV" in g for g in got)

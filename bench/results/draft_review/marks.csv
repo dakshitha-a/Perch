@@ -1,0 +1,177 @@
+checker,case,record,item,want,got
+clef,r044-a,grants_gov:PAR-25-044,0,addressed,not addressed
+clef,r044-a,grants_gov:PAR-25-044,1,addressed,addressed
+clef,r044-a,grants_gov:PAR-25-044,2,not addressed,not addressed
+clef,r044-a,grants_gov:PAR-25-044,3,addressed,addressed
+clef,r044-a,grants_gov:PAR-25-044,4,not addressed,not addressed
+clef,r044-b,grants_gov:PAR-25-044,0,addressed,not addressed
+clef,r044-b,grants_gov:PAR-25-044,1,not addressed,unclear
+clef,r044-b,grants_gov:PAR-25-044,2,addressed,addressed
+clef,r044-b,grants_gov:PAR-25-044,3,not addressed,not addressed
+clef,r044-b,grants_gov:PAR-25-044,4,addressed,addressed
+clef,r272-a,grants_gov:PAR-25-272,0,addressed,addressed
+clef,r272-a,grants_gov:PAR-25-272,1,addressed,unclear
+clef,r272-a,grants_gov:PAR-25-272,2,not addressed,not addressed
+clef,r272-a,grants_gov:PAR-25-272,3,not addressed,not addressed
+clef,r272-a,grants_gov:PAR-25-272,4,addressed,addressed
+clef,r272-b,grants_gov:PAR-25-272,0,not addressed,unclear
+clef,r272-b,grants_gov:PAR-25-272,1,not addressed,not addressed
+clef,r272-b,grants_gov:PAR-25-272,2,addressed,addressed
+clef,r272-b,grants_gov:PAR-25-272,3,addressed,unclear
+clef,r272-b,grants_gov:PAR-25-272,4,not addressed,not addressed
+clef,r235-a,grants_gov:PAR-25-235,0,addressed,not addressed
+clef,r235-a,grants_gov:PAR-25-235,1,addressed,addressed
+clef,r235-a,grants_gov:PAR-25-235,2,addressed,addressed
+clef,r235-a,grants_gov:PAR-25-235,3,addressed,addressed
+clef,r235-b,grants_gov:PAR-25-235,0,not addressed,not addressed
+clef,r235-b,grants_gov:PAR-25-235,1,not addressed,not addressed
+clef,r235-b,grants_gov:PAR-25-235,2,not addressed,not addressed
+clef,r235-b,grants_gov:PAR-25-235,3,not addressed,not addressed
+clef,r120-a,grants_gov:PAR-25-120,0,addressed,addressed
+clef,r120-a,grants_gov:PAR-25-120,1,addressed,addressed
+clef,r120-a,grants_gov:PAR-25-120,2,addressed,addressed
+clef,r120-a,grants_gov:PAR-25-120,3,addressed,addressed
+clef,r120-a,grants_gov:PAR-25-120,4,addressed,addressed
+clef,r120-b,grants_gov:PAR-25-120,0,not addressed,not addressed
+clef,r120-b,grants_gov:PAR-25-120,1,not addressed,not addressed
+clef,r120-b,grants_gov:PAR-25-120,2,addressed,addressed
+clef,r120-b,grants_gov:PAR-25-120,3,addressed,not addressed
+clef,r120-b,grants_gov:PAR-25-120,4,not addressed,not addressed
+clef,f31-a,grants_gov:PA-25-422,0,addressed,addressed
+clef,f31-a,grants_gov:PA-25-422,1,addressed,addressed
+clef,f31-a,grants_gov:PA-25-422,2,not addressed,not addressed
+clef,f31-b,grants_gov:PA-25-422,0,not addressed,not addressed
+clef,f31-b,grants_gov:PA-25-422,1,not addressed,not addressed
+clef,f31-b,grants_gov:PA-25-422,2,addressed,addressed
+clef-flash,r044-a,grants_gov:PAR-25-044,0,addressed,not addressed
+clef-flash,r044-a,grants_gov:PAR-25-044,1,addressed,addressed
+clef-flash,r044-a,grants_gov:PAR-25-044,2,not addressed,not addressed
+clef-flash,r044-a,grants_gov:PAR-25-044,3,addressed,addressed
+clef-flash,r044-a,grants_gov:PAR-25-044,4,not addressed,not addressed
+clef-flash,r044-b,grants_gov:PAR-25-044,0,addressed,addressed
+clef-flash,r044-b,grants_gov:PAR-25-044,1,not addressed,addressed
+clef-flash,r044-b,grants_gov:PAR-25-044,2,addressed,addressed
+clef-flash,r044-b,grants_gov:PAR-25-044,3,not addressed,not addressed
+clef-flash,r044-b,grants_gov:PAR-25-044,4,addressed,not addressed
+clef-flash,r272-a,grants_gov:PAR-25-272,0,addressed,not addressed
+clef-flash,r272-a,grants_gov:PAR-25-272,1,addressed,not addressed
+clef-flash,r272-a,grants_gov:PAR-25-272,2,not addressed,not addressed
+clef-flash,r272-a,grants_gov:PAR-25-272,3,not addressed,not addressed
+clef-flash,r272-a,grants_gov:PAR-25-272,4,addressed,not addressed
+clef-flash,r272-b,grants_gov:PAR-25-272,0,not addressed,not addressed
+clef-flash,r272-b,grants_gov:PAR-25-272,1,not addressed,not addressed
+clef-flash,r272-b,grants_gov:PAR-25-272,2,addressed,addressed
+clef-flash,r272-b,grants_gov:PAR-25-272,3,addressed,not addressed
+clef-flash,r272-b,grants_gov:PAR-25-272,4,not addressed,not addressed
+clef-flash,r235-a,grants_gov:PAR-25-235,0,addressed,addressed
+clef-flash,r235-a,grants_gov:PAR-25-235,1,addressed,addressed
+clef-flash,r235-a,grants_gov:PAR-25-235,2,addressed,addressed
+clef-flash,r235-a,grants_gov:PAR-25-235,3,addressed,addressed
+clef-flash,r235-b,grants_gov:PAR-25-235,0,not addressed,not addressed
+clef-flash,r235-b,grants_gov:PAR-25-235,1,not addressed,not addressed
+clef-flash,r235-b,grants_gov:PAR-25-235,2,not addressed,not addressed
+clef-flash,r235-b,grants_gov:PAR-25-235,3,not addressed,not addressed
+clef-flash,r120-a,grants_gov:PAR-25-120,0,addressed,not addressed
+clef-flash,r120-a,grants_gov:PAR-25-120,1,addressed,addressed
+clef-flash,r120-a,grants_gov:PAR-25-120,2,addressed,addressed
+clef-flash,r120-a,grants_gov:PAR-25-120,3,addressed,not addressed
+clef-flash,r120-a,grants_gov:PAR-25-120,4,addressed,not addressed
+clef-flash,r120-b,grants_gov:PAR-25-120,0,not addressed,not addressed
+clef-flash,r120-b,grants_gov:PAR-25-120,1,not addressed,not addressed
+clef-flash,r120-b,grants_gov:PAR-25-120,2,addressed,addressed
+clef-flash,r120-b,grants_gov:PAR-25-120,3,addressed,not addressed
+clef-flash,r120-b,grants_gov:PAR-25-120,4,not addressed,not addressed
+clef-flash,f31-a,grants_gov:PA-25-422,0,addressed,not addressed
+clef-flash,f31-a,grants_gov:PA-25-422,1,addressed,addressed
+clef-flash,f31-a,grants_gov:PA-25-422,2,not addressed,not addressed
+clef-flash,f31-b,grants_gov:PA-25-422,0,not addressed,not addressed
+clef-flash,f31-b,grants_gov:PA-25-422,1,not addressed,not addressed
+clef-flash,f31-b,grants_gov:PA-25-422,2,addressed,not addressed
+minicheck,r044-a,grants_gov:PAR-25-044,0,addressed,not addressed
+minicheck,r044-a,grants_gov:PAR-25-044,1,addressed,not addressed
+minicheck,r044-a,grants_gov:PAR-25-044,2,not addressed,not addressed
+minicheck,r044-a,grants_gov:PAR-25-044,3,addressed,not addressed
+minicheck,r044-a,grants_gov:PAR-25-044,4,not addressed,not addressed
+minicheck,r044-b,grants_gov:PAR-25-044,0,addressed,not addressed
+minicheck,r044-b,grants_gov:PAR-25-044,1,not addressed,not addressed
+minicheck,r044-b,grants_gov:PAR-25-044,2,addressed,not addressed
+minicheck,r044-b,grants_gov:PAR-25-044,3,not addressed,not addressed
+minicheck,r044-b,grants_gov:PAR-25-044,4,addressed,not addressed
+minicheck,r272-a,grants_gov:PAR-25-272,0,addressed,not addressed
+minicheck,r272-a,grants_gov:PAR-25-272,1,addressed,not addressed
+minicheck,r272-a,grants_gov:PAR-25-272,2,not addressed,not addressed
+minicheck,r272-a,grants_gov:PAR-25-272,3,not addressed,not addressed
+minicheck,r272-a,grants_gov:PAR-25-272,4,addressed,not addressed
+minicheck,r272-b,grants_gov:PAR-25-272,0,not addressed,not addressed
+minicheck,r272-b,grants_gov:PAR-25-272,1,not addressed,not addressed
+minicheck,r272-b,grants_gov:PAR-25-272,2,addressed,not addressed
+minicheck,r272-b,grants_gov:PAR-25-272,3,addressed,not addressed
+minicheck,r272-b,grants_gov:PAR-25-272,4,not addressed,not addressed
+minicheck,r235-a,grants_gov:PAR-25-235,0,addressed,not addressed
+minicheck,r235-a,grants_gov:PAR-25-235,1,addressed,not addressed
+minicheck,r235-a,grants_gov:PAR-25-235,2,addressed,not addressed
+minicheck,r235-a,grants_gov:PAR-25-235,3,addressed,not addressed
+minicheck,r235-b,grants_gov:PAR-25-235,0,not addressed,not addressed
+minicheck,r235-b,grants_gov:PAR-25-235,1,not addressed,not addressed
+minicheck,r235-b,grants_gov:PAR-25-235,2,not addressed,not addressed
+minicheck,r235-b,grants_gov:PAR-25-235,3,not addressed,not addressed
+minicheck,r120-a,grants_gov:PAR-25-120,0,addressed,not addressed
+minicheck,r120-a,grants_gov:PAR-25-120,1,addressed,not addressed
+minicheck,r120-a,grants_gov:PAR-25-120,2,addressed,not addressed
+minicheck,r120-a,grants_gov:PAR-25-120,3,addressed,not addressed
+minicheck,r120-a,grants_gov:PAR-25-120,4,addressed,not addressed
+minicheck,r120-b,grants_gov:PAR-25-120,0,not addressed,not addressed
+minicheck,r120-b,grants_gov:PAR-25-120,1,not addressed,not addressed
+minicheck,r120-b,grants_gov:PAR-25-120,2,addressed,not addressed
+minicheck,r120-b,grants_gov:PAR-25-120,3,addressed,not addressed
+minicheck,r120-b,grants_gov:PAR-25-120,4,not addressed,not addressed
+minicheck,f31-a,grants_gov:PA-25-422,0,addressed,not addressed
+minicheck,f31-a,grants_gov:PA-25-422,1,addressed,not addressed
+minicheck,f31-a,grants_gov:PA-25-422,2,not addressed,not addressed
+minicheck,f31-b,grants_gov:PA-25-422,0,not addressed,not addressed
+minicheck,f31-b,grants_gov:PA-25-422,1,not addressed,not addressed
+minicheck,f31-b,grants_gov:PA-25-422,2,addressed,not addressed
+ollama:gemma4:26b-a4b,r044-a,grants_gov:PAR-25-044,0,addressed,addressed
+ollama:gemma4:26b-a4b,r044-a,grants_gov:PAR-25-044,1,addressed,addressed
+ollama:gemma4:26b-a4b,r044-a,grants_gov:PAR-25-044,2,not addressed,addressed
+ollama:gemma4:26b-a4b,r044-a,grants_gov:PAR-25-044,3,addressed,addressed
+ollama:gemma4:26b-a4b,r044-a,grants_gov:PAR-25-044,4,not addressed,not addressed
+ollama:gemma4:26b-a4b,r044-b,grants_gov:PAR-25-044,0,addressed,addressed
+ollama:gemma4:26b-a4b,r044-b,grants_gov:PAR-25-044,1,not addressed,addressed
+ollama:gemma4:26b-a4b,r044-b,grants_gov:PAR-25-044,2,addressed,addressed
+ollama:gemma4:26b-a4b,r044-b,grants_gov:PAR-25-044,3,not addressed,not addressed
+ollama:gemma4:26b-a4b,r044-b,grants_gov:PAR-25-044,4,addressed,addressed
+ollama:gemma4:26b-a4b,r272-a,grants_gov:PAR-25-272,0,addressed,addressed
+ollama:gemma4:26b-a4b,r272-a,grants_gov:PAR-25-272,1,addressed,addressed
+ollama:gemma4:26b-a4b,r272-a,grants_gov:PAR-25-272,2,not addressed,addressed
+ollama:gemma4:26b-a4b,r272-a,grants_gov:PAR-25-272,3,not addressed,addressed
+ollama:gemma4:26b-a4b,r272-a,grants_gov:PAR-25-272,4,addressed,addressed
+ollama:gemma4:26b-a4b,r272-b,grants_gov:PAR-25-272,0,not addressed,addressed
+ollama:gemma4:26b-a4b,r272-b,grants_gov:PAR-25-272,1,not addressed,unclear
+ollama:gemma4:26b-a4b,r272-b,grants_gov:PAR-25-272,2,addressed,addressed
+ollama:gemma4:26b-a4b,r272-b,grants_gov:PAR-25-272,3,addressed,addressed
+ollama:gemma4:26b-a4b,r272-b,grants_gov:PAR-25-272,4,not addressed,unclear
+ollama:gemma4:26b-a4b,r235-a,grants_gov:PAR-25-235,0,addressed,addressed
+ollama:gemma4:26b-a4b,r235-a,grants_gov:PAR-25-235,1,addressed,addressed
+ollama:gemma4:26b-a4b,r235-a,grants_gov:PAR-25-235,2,addressed,addressed
+ollama:gemma4:26b-a4b,r235-a,grants_gov:PAR-25-235,3,addressed,addressed
+ollama:gemma4:26b-a4b,r235-b,grants_gov:PAR-25-235,0,not addressed,addressed
+ollama:gemma4:26b-a4b,r235-b,grants_gov:PAR-25-235,1,not addressed,addressed
+ollama:gemma4:26b-a4b,r235-b,grants_gov:PAR-25-235,2,not addressed,unclear
+ollama:gemma4:26b-a4b,r235-b,grants_gov:PAR-25-235,3,not addressed,unclear
+ollama:gemma4:26b-a4b,r120-a,grants_gov:PAR-25-120,0,addressed,addressed
+ollama:gemma4:26b-a4b,r120-a,grants_gov:PAR-25-120,1,addressed,addressed
+ollama:gemma4:26b-a4b,r120-a,grants_gov:PAR-25-120,2,addressed,addressed
+ollama:gemma4:26b-a4b,r120-a,grants_gov:PAR-25-120,3,addressed,addressed
+ollama:gemma4:26b-a4b,r120-a,grants_gov:PAR-25-120,4,addressed,addressed
+ollama:gemma4:26b-a4b,r120-b,grants_gov:PAR-25-120,0,not addressed,unclear
+ollama:gemma4:26b-a4b,r120-b,grants_gov:PAR-25-120,1,not addressed,unclear
+ollama:gemma4:26b-a4b,r120-b,grants_gov:PAR-25-120,2,addressed,addressed
+ollama:gemma4:26b-a4b,r120-b,grants_gov:PAR-25-120,3,addressed,addressed
+ollama:gemma4:26b-a4b,r120-b,grants_gov:PAR-25-120,4,not addressed,not addressed
+ollama:gemma4:26b-a4b,f31-a,grants_gov:PA-25-422,0,addressed,addressed
+ollama:gemma4:26b-a4b,f31-a,grants_gov:PA-25-422,1,addressed,addressed
+ollama:gemma4:26b-a4b,f31-a,grants_gov:PA-25-422,2,not addressed,unclear
+ollama:gemma4:26b-a4b,f31-b,grants_gov:PA-25-422,0,not addressed,not addressed
+ollama:gemma4:26b-a4b,f31-b,grants_gov:PA-25-422,1,not addressed,not addressed
+ollama:gemma4:26b-a4b,f31-b,grants_gov:PA-25-422,2,addressed,addressed

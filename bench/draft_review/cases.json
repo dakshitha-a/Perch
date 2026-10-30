@@ -1,0 +1,130 @@
+{
+ "_note": "SYNTHETIC drafts for the S24 draft review evaluation (Q32). Every draft is invented by Perch-dev; no real proposal or letter. Canary PERCH-CANARY-REVIEW-4H7N. Each key marks an item of the record's checklist (bench/draft_review/items.py, in its order) as addressed (1) or not addressed (0) by the draft. Keys were written by Perch-dev with the drafts and are a planted answer, not an expert judgment.",
+ "canary": "PERCH-CANARY-REVIEW-4H7N",
+ "cases": [
+  {
+   "id": "r044-a",
+   "record": "grants_gov:PAR-25-044",
+   "kind": "draft aims",
+   "text": "SYNTHETIC draft aims (invented). Aim 1 tests whether changes in bile acid signalling after sleeve gastrectomy lower colorectal tumour formation in a mouse model. We study this as a mechanism of cancer risk, not as a weight loss or diabetes outcome. Aim 2 measures inflammatory markers in banked serum from a surgical cohort to see whether they track later cancer diagnoses. The project is a proof of concept for feasibility: an exploratory study before any larger one. Our rationale draws on published papers and on one public preprint that has a DOI.",
+   "key": [
+    1,
+    1,
+    0,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "r044-b",
+   "record": "grants_gov:PAR-25-044",
+   "kind": "draft aims",
+   "text": "SYNTHETIC draft aims (invented). We ask how bariatric surgery changes the gut microbiome in ways that could alter breast cancer risk, a question about cancer rather than about weight loss. No study has yet shown that this question can be answered in surgical patients, so feasibility is still open. We have generated no preliminary data of our own, which is why we apply here rather than to the companion R01. Aim 1 profiles stool samples before and after surgery. Aim 2 links the profiles to mammographic density.",
+   "key": [
+    1,
+    0,
+    1,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "r272-a",
+   "record": "grants_gov:PAR-25-272",
+   "kind": "draft aims",
+   "text": "SYNTHETIC draft aims (invented). Our team joins an engineer, a developmental psychologist and a statistician to build a new way to measure brain activity with wearable near-infrared sensors. Aim 1 records the same participants every six months for three years, so that early measures can predict later outcomes. Aim 2 tests how reliable the repeated measures are. The approach is high risk: we have no preliminary data and expect to learn whether the idea works at all.",
+   "key": [
+    1,
+    1,
+    0,
+    0,
+    1
+   ]
+  },
+  {
+   "id": "r272-b",
+   "record": "grants_gov:PAR-25-272",
+   "kind": "draft aims",
+   "text": "SYNTHETIC draft aims (invented). We will study healthy volunteers aged 8 to 80 and a group of adults with balance problems, alongside a rat model. Aim 1 measures single-cell gene expression in the hippocampus of the rats. Aim 2 records neural population activity in the human participants. These measures cover genetics, single cells and population activity.",
+   "key": [
+    0,
+    0,
+    1,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "r235-a",
+   "record": "grants_gov:PAR-25-235",
+   "kind": "draft aims",
+   "text": "SYNTHETIC draft aims (invented). We will build a data science method that turns home blood pressure readings and step counts into a personal risk estimate a person can act on. Aim 1 integrates the two data streams. Aim 2 designs how the app shows the result, what it means and its limits, so that people read their own estimate correctly. People with high blood pressure help design every screen, and we test the app with 300 users in daily life.",
+   "key": [
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "id": "r235-b",
+   "record": "grants_gov:PAR-25-235",
+   "kind": "draft aims",
+   "text": "SYNTHETIC draft aims (invented). We will develop a new machine learning model that predicts hospital readmission from electronic health records. Aim 1 trains the model on records from three hospitals. Aim 2 compares it with existing scores. The output goes to care teams, who decide which patients get a follow-up call.",
+   "key": [
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  {
+   "id": "r120-a",
+   "record": "grants_gov:PAR-25-120",
+   "kind": "draft aims",
+   "text": "SYNTHETIC draft aims (invented). I am an assistant professor in my second year, starting an independent research career. This is not part of any thesis. The project studies speech perception in children who use cochlear implants, a topic in hearing and speech. It is a small, self-contained study that will give me the preliminary data for a later R01.",
+   "key": [
+    1,
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "id": "r120-b",
+   "record": "grants_gov:PAR-25-120",
+   "kind": "draft aims",
+   "text": "SYNTHETIC draft aims (invented). Our lab will run a secondary analysis of an existing data set on smell loss after viral infection. Aim 1 describes how often smell returns within a year. Aim 2 tests whether age changes recovery.",
+   "key": [
+    0,
+    0,
+    1,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "f31-a",
+   "record": "grants_gov:PA-25-422",
+   "kind": "cover letter",
+   "text": "SYNTHETIC cover letter (invented). I am a third-year PhD student applying for support while I complete my dissertation research on kidney development, a health-related field. My sponsor will give me one-to-one mentored training in imaging and genetics, and the training plan follows my dissertation project closely so that I grow into an independent research scientist.",
+   "key": [
+    1,
+    1,
+    0
+   ]
+  },
+  {
+   "id": "f31-b",
+   "record": "grants_gov:PA-25-422",
+   "kind": "cover letter",
+   "text": "SYNTHETIC cover letter (invented). I would like to gain experience in a clinical trial of a new asthma inhaler, which my co-sponsor leads; I will not lead a trial myself. I enjoy laboratory work and have presented two posters.",
+   "key": [
+    0,
+    0,
+    1
+   ]
+  }
+ ]
+}
