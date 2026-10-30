@@ -940,7 +940,8 @@ function drawRail() {
     }
   }
   const float = $("#keep-float");
-  const show = kept.length > 0 && S.tab !== "compare";
+  // Not on Compare (its own place) or Ask Scout, where it would cover the question box.
+  const show = kept.length > 0 && (S.tab === "routes" || S.tab === "profile");
   const fsig = show ? String(kept.length) : "";
   if (float.dataset.sig !== fsig) {
     float.dataset.sig = fsig;
