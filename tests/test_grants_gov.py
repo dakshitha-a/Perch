@@ -102,3 +102,21 @@ def test_title_entities_and_two_letter_codes():
     assert gg.parse_opportunity(d, T).activity_code == "DP1"
     d["opportunityTitle"] = "Institutional Network Award (U2C - Clinical Trial Not Allowed)"
     assert gg.parse_opportunity(d, T).activity_code == "U2C"
+
+
+def test_agency_comes_from_agency_details_not_the_contact():
+    # On DoD and DOE records the synopsis agencyName is a contact's name and role.
+    dod = gg.parse_opportunity(load("fetch_opportunity_dod.json")["data"], T, "posted")
+    assert dod.agency == "Air Force Academy"
+    nsf = gg.parse_opportunity(load("fetch_opportunity_nsf.json")["data"], T, "posted")
+    assert nsf.agency == "U.S. National Science Foundation"
+    nih = gg.parse_opportunity(load("fetch_opportunity.json")["data"], T, "posted")
+    assert nih.agency == "National Institutes of Health"
+
+
+def test_redaction_drops_contact_agency_name_and_contact_info():
+    data = {"synopsis": {"agencyName": "A Person\nGrantor", "contactInfo": "A Person",
+                         "agencyDetails": {"agencyName": "Air Force Academy"}}}
+    out = gg.redact_contacts(data)["synopsis"]
+    assert out["agencyName"] == "[redacted]" and out["contactInfo"] == "[redacted]"
+    assert out["agencyDetails"]["agencyName"] == "Air Force Academy"

@@ -32,7 +32,7 @@ ATTRIBUTION = ("This product uses the Grants.gov API but is not endorsed or cert
 OPEN_STATUSES = "forecasted|posted"
 PAGE = 100
 CONTACT_FIELDS = ("agencyContactEmail", "agencyContactPhone", "agencyContactName",
-                  "agencyContactDesc", "agencyContactEmailDesc", "agencyPhone")
+                  "agencyContactDesc", "agencyContactEmailDesc", "agencyPhone", "contactInfo")
 Json = dict[str, "Json"] | list["Json"] | str | int | float | bool | None
 # NIH-style activity codes in a title, e.g. "(R01 Clinical Trial Required)".
 # NIH codes: letter + two digits (R01), two letters + digit (DP1, UG3), letter digit letter (U2C).
@@ -81,10 +81,24 @@ def redact_contacts(data: Json) -> Json:
     if isinstance(data, dict):
         for k, v in data.items():
             data[k] = "[redacted]" if k in CONTACT_FIELDS and v else redact_contacts(v)
+        # Next to agencyDetails, agencyName is a contact on DoD and DOE records.
+        if "agencyDetails" in data and data.get("agencyName"):
+            data["agencyName"] = "[redacted]"
     elif isinstance(data, list):
         for i, v in enumerate(data):
             data[i] = redact_contacts(v)
     return data
+
+
+def agency_name(detail: dict[str, Any]) -> str:
+    """The agency's name from `agencyDetails`. The synopsis-level `agencyName` is not
+    used: on DoD and DOE records it holds the contact person's name and role."""
+    syn = detail.get("synopsis") or {}
+    for d in (syn.get("agencyDetails"), detail.get("agencyDetails"),
+              syn.get("topAgencyDetails"), detail.get("topAgencyDetails")):
+        if isinstance(d, dict) and d.get("agencyName"):
+            return str(d["agencyName"])
+    return syn.get("agencyCode") or detail.get("owningAgencyCode") or ""
 
 
 def parse_opportunity(detail: dict[str, Any], fetched_at: datetime,
@@ -99,7 +113,7 @@ def parse_opportunity(detail: dict[str, Any], fetched_at: datetime,
         fetched_at=fetched_at,
         opportunity_number=detail["opportunityNumber"],
         title=title,
-        agency=syn.get("agencyName") or detail.get("owningAgencyCode") or "",
+        agency=agency_name(detail),
         open_date=_date(syn.get("postingDate")),
         close_date=_date(syn.get("responseDate")),
         archive_date=_date(syn.get("archiveDate")),

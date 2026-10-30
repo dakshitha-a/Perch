@@ -1,0 +1,572 @@
+{
+ "errorcode": 0,
+ "msg": "Webservice Succeeds",
+ "data": {
+  "id": 363617,
+  "revision": 4,
+  "opportunityNumber": "26-519",
+  "opportunityTitle": "MPS Chemistry Research Programs (MPS Chem)",
+  "owningAgencyCode": "NSF",
+  "listed": "L",
+  "publisherUid": "5990951853740090865314141184033594214",
+  "flag2006": "N",
+  "opportunityCategory": {
+   "category": "D",
+   "description": "Discretionary"
+  },
+  "synopsis": {
+   "opportunityId": 363617,
+   "version": 5,
+   "agencyCode": "NSF",
+   "agencyName": "[redacted]",
+   "agencyPhone": "[redacted]",
+   "agencyAddressDesc": "If you have any problems linking to this funding announcement, please contact the email address above.",
+   "agencyDetails": {
+    "code": "NSF",
+    "seed": "NSF",
+    "agencyName": "U.S. National Science Foundation",
+    "agencyCode": "NSF",
+    "topAgencyCode": "NSF"
+   },
+   "topAgencyDetails": {
+    "code": "NSF",
+    "seed": "NSF",
+    "agencyName": "U.S. National Science Foundation",
+    "agencyCode": "NSF",
+    "topAgencyCode": "NSF"
+   },
+   "agencyContactPhone": "[redacted]",
+   "agencyContactName": "[redacted]",
+   "agencyContactDesc": "[redacted]",
+   "agencyContactEmail": "[redacted]",
+   "agencyContactEmailDesc": "[redacted]",
+   "synopsisDesc": "<p>The U.S. National Science Foundation Directorate for Mathematical and Physical Sciences (NSF MPS) supports foundational research through multiple programs in the chemical sciences.</p><p>Programs include:</p><ul><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cat-chemical-catalysis\">Chemical Catalysis</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cmi-chemical-measurement-imaging\">Chemical Measurement and Imaging</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cmfp-chemical-mechanism-function-properties\">Chemical Mechanism, Function, and Properties</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/csd-chemical-structure-dynamics-program\">Chemical Structure and Dynamics</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/syn-chemical-synthesis\">Chemical Synthesis</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/css-chemical-systems-solutions\">Chemical Systems and Solutions</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/ctmc-chemical-theory-models-computational-methods\">Chemical Theory, Models and Computational Methods</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/clp-chemistry-life-processes\">Chemistry of Life Processes</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/msn-macromolecular-supramolecular-nanochemistry\">Macromolecular, Supramolecular, and Nanochemistry</a> </p></li></ul><p>NSF MPS is particularly interested in intellectually ambitious and potentially transformative foundational research. Proposals need not promise a near-term product, deployment, or commercial outcome, nor need they address later-stage development to be competitive. </p>",
+   "responseDate": "Oct 07, 2076 12:00:00 AM EDT",
+   "responseDateDesc": "Proposals accepted anytime",
+   "fundingDescLinkUrl": "http://www.nsf.gov/publications/pub_summ.jsp?ods_key=nsf26519",
+   "fundingDescLinkDesc": "NSF Publication 26-519",
+   "postingDate": "Aug 17, 2026 12:00:00 AM EDT",
+   "costSharing": false,
+   "estimatedFunding": "150000000",
+   "estimatedFundingFormatted": "150,000,000",
+   "awardCeiling": "none",
+   "awardFloor": "none",
+   "applicantEligibilityDesc": "*Who May Submit Proposals: Proposals may only be submitted by the following:\n  -Non-profit, non-academic organizations: Independent museums, observatories, research laboratories, professional societies and similar organizations located in the U.S. that are directly associated with educational or research activities.\n  -Institutions of Higher Education (IHEs): Two- and four-year IHEs (including community colleges) accredited in, and having a campus located in the US, acting on behalf of their faculty members. Special Instructions for International Branch Campuses of US IHEs: If the proposal includes funding to be provided to an international branch campus of a US institution of higher education (including through use of sub-awards and consultant arrangements), the proposer must explain the benefit(s) to the project of performance at the international branch campus, and justify why the project activities cannot be performed at the US campus.\n  -Tribal Nations: An American Indian or Alaska Native tribe, band, nation, pueblo, village, or community that the Secretary of the Interior acknowledges as a federally recognized tribe pursuant to the Federally Recognized Indian Tribe List Act of 1994, 25 U.S.C. &sect;&sect; 5130-5131.",
+   "sendEmail": "Y",
+   "createTimeStamp": "Oct 07, 2026 03:26:29 PM EDT",
+   "modComments": "Updated Synopsis via NSF Grants Opportunity Sync",
+   "createdDate": "Aug 17, 2026 10:28:08 AM EDT",
+   "lastUpdatedDate": "Oct 07, 2026 03:26:29 PM EDT",
+   "applicantTypes": [
+    {
+     "id": "25",
+     "description": "Others (see text field entitled \"Additional Information on Eligibility\" for clarification)"
+    }
+   ],
+   "fundingInstruments": [
+    {
+     "id": "G",
+     "description": "Grant"
+    }
+   ],
+   "fundingActivityCategories": [
+    {
+     "id": "ST",
+     "description": "Science and Technology and other Research and Development"
+    }
+   ],
+   "responseDateStr": "2076-10-07-00-00-00",
+   "postingDateStr": "2026-08-17-00-00-00",
+   "createTimeStampStr": "2026-10-07-15-26-29"
+  },
+  "agencyDetails": {
+   "code": "NSF",
+   "seed": "NSF",
+   "agencyName": "U.S. National Science Foundation",
+   "agencyCode": "NSF",
+   "topAgencyCode": "NSF"
+  },
+  "topAgencyDetails": {
+   "code": "NSF",
+   "seed": "NSF",
+   "agencyName": "U.S. National Science Foundation",
+   "agencyCode": "NSF",
+   "topAgencyCode": "NSF"
+  },
+  "synopsisAttachmentFolders": [],
+  "synopsisDocumentURLs": [],
+  "synAttChangeComments": [],
+  "cfdas": [
+   {
+    "id": 435079,
+    "opportunityId": 363617,
+    "cfdaNumber": "47.049",
+    "programTitle": "Mathematical and Physical Sciences"
+   },
+   {
+    "id": 435080,
+    "opportunityId": 363617
+   }
+  ],
+  "opportunityHistoryDetails": [
+   {
+    "oppHistId": {
+     "opportunityId": 363617,
+     "revision": 0
+    },
+    "opportunityId": 363617,
+    "revision": 0,
+    "opportunityNumber": "26-519",
+    "opportunityTitle": "MPS Chemistry Research Programs (MPS Chem)",
+    "owningAgencyCode": "NSF",
+    "publisherUid": "5990951853740090865314141184033594214",
+    "listed": "L",
+    "opportunityCategory": {
+     "category": "D",
+     "description": "Discretionary"
+    },
+    "synopsis": {
+     "id": {
+      "opportunityId": 363617,
+      "revision": 0
+     },
+     "opportunityId": 363617,
+     "revision": 0,
+     "version": 1,
+     "agencyCode": "NSF",
+     "agencyAddressDesc": "If you have any problems linking to this funding announcement, please contact the email address above.",
+     "agencyDetails": {
+      "code": "NSF",
+      "seed": "NSF",
+      "agencyName": "U.S. National Science Foundation",
+      "agencyCode": "NSF",
+      "topAgencyCode": "NSF"
+     },
+     "agencyContactPhone": "[redacted]",
+     "agencyContactName": "[redacted]",
+     "agencyContactDesc": "[redacted]",
+     "agencyContactEmail": "[redacted]",
+     "agencyContactEmailDesc": "[redacted]",
+     "synopsisDesc": "<p>The U.S. National Science Foundation Directorate for Mathematical and Physical Sciences (NSF MPS) supports foundational research through multiple programs in the chemical sciences.</p><p>Programs include:</p><ul><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cat-chemical-catalysis\">Chemical Catalysis</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cmi-chemical-measurement-imaging\">Chemical Measurement and Imaging</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cmfp-chemical-mechanism-function-properties\">Chemical Mechanism, Function, and Properties</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/csd-chemical-structure-dynamics-program\">Chemical Structure and Dynamics</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/syn-chemical-synthesis\">Chemical Synthesis</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/css-chemical-systems-solutions\">Chemical Systems and Solutions</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/ctmc-chemical-theory-models-computational-methods\">Chemical Theory, Models and Computational Methods</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/clp-chemistry-life-processes\">Chemistry of Life Processes</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/msn-macromolecular-supramolecular-nanochemistry\">Macromolecular, Supramolecular, and Nanochemistry</a> </p></li></ul><p>NSF MPS is particularly interested in intellectually ambitious and potentially transformative foundational research. Proposals need not promise a near-term product, deployment, or commercial outcome, nor need they address later-stage development to be competitive. </p>",
+     "responseDate": "Aug 17, 2076 12:00:00 AM EDT",
+     "responseDateDesc": "Proposals accepted anytime",
+     "fundingDescLinkUrl": "http://www.nsf.gov/publications/pub_summ.jsp?ods_key=nsf26519",
+     "fundingDescLinkDesc": "NSF Publication 26-519",
+     "postingDate": "Aug 17, 2026 12:00:00 AM EDT",
+     "costSharing": false,
+     "estimatedFunding": "150000000",
+     "estimatedFundingFormatted": "150,000,000",
+     "awardCeiling": "none",
+     "awardFloor": "none",
+     "applicantEligibilityDesc": "*Who May Submit Proposals: Proposals may only be submitted by the following:\n  -Non-profit, non-academic organizations: Independent museums, observatories, research laboratories, professional societies and similar organizations located in the U.S. that are directly associated with educational or research activities.\n  -Institutions of Higher Education (IHEs): Two- and four-year IHEs (including community colleges) accredited in, and having a campus located in the US, acting on behalf of their faculty members. Special Instructions for International Branch Campuses of US IHEs: If the proposal includes funding to be provided to an international branch campus of a US institution of higher education (including through use of sub-awards and consultant arrangements), the proposer must explain the benefit(s) to the project of performance at the international branch campus, and justify why the project activities cannot be performed at the US campus.\n  -Tribal Nations: An American Indian or Alaska Native tribe, band, nation, pueblo, village, or community that the Secretary of the Interior acknowledges as a federally recognized tribe pursuant to the Federally Recognized Indian Tribe List Act of 1994, 25 U.S.C. &sect;&sect; 5130-5131.",
+     "createTimeStamp": "Aug 17, 2026 10:28:08 AM EDT",
+     "actionType": "U",
+     "actionDate": "Aug 20, 2026 11:58:10 AM EDT",
+     "createdDate": "Aug 17, 2026 10:28:08 AM EDT",
+     "lastUpdatedDate": "Aug 17, 2026 10:28:08 AM EDT",
+     "applicantTypes": [
+      {
+       "id": "25",
+       "description": "Others (see text field entitled \"Additional Information on Eligibility\" for clarification)"
+      }
+     ],
+     "fundingInstruments": [
+      {
+       "id": "G",
+       "description": "Grant"
+      }
+     ],
+     "fundingActivityCategories": [
+      {
+       "id": "ST",
+       "description": "Science and Technology and other Research and Development"
+      }
+     ],
+     "responseDateStr": "2076-08-17-00-00-00",
+     "postingDateStr": "2026-08-17-00-00-00",
+     "createTimeStampStr": "2026-08-17-10-28-08"
+    },
+    "cfdas": [
+     {
+      "id": 435079,
+      "opportunityId": 363617,
+      "revision": 3,
+      "cfdaNumber": "47.049",
+      "programTitle": "Mathematical and Physical Sciences"
+     },
+     {
+      "id": 435080,
+      "opportunityId": 363617,
+      "revision": 3
+     }
+    ],
+    "synopsisModifiedFields": [],
+    "forecastModifiedFields": []
+   },
+   {
+    "oppHistId": {
+     "opportunityId": 363617,
+     "revision": 1
+    },
+    "opportunityId": 363617,
+    "revision": 1,
+    "opportunityNumber": "26-519",
+    "opportunityTitle": "MPS Chemistry Research Programs (MPS Chem)",
+    "owningAgencyCode": "NSF",
+    "publisherUid": "5990951853740090865314141184033594214",
+    "listed": "L",
+    "opportunityCategory": {
+     "category": "D",
+     "description": "Discretionary"
+    },
+    "synopsis": {
+     "id": {
+      "opportunityId": 363617,
+      "revision": 1
+     },
+     "opportunityId": 363617,
+     "revision": 1,
+     "version": 2,
+     "agencyCode": "NSF",
+     "agencyAddressDesc": "If you have any problems linking to this funding announcement, please contact the email address above.",
+     "agencyDetails": {
+      "code": "NSF",
+      "seed": "NSF",
+      "agencyName": "U.S. National Science Foundation",
+      "agencyCode": "NSF",
+      "topAgencyCode": "NSF"
+     },
+     "agencyContactPhone": "[redacted]",
+     "agencyContactName": "[redacted]",
+     "agencyContactDesc": "[redacted]",
+     "agencyContactEmail": "[redacted]",
+     "agencyContactEmailDesc": "[redacted]",
+     "synopsisDesc": "<p>The U.S. National Science Foundation Directorate for Mathematical and Physical Sciences (NSF MPS) supports foundational research through multiple programs in the chemical sciences.</p><p>Programs include:</p><ul><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cat-chemical-catalysis\">Chemical Catalysis</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cmi-chemical-measurement-imaging\">Chemical Measurement and Imaging</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cmfp-chemical-mechanism-function-properties\">Chemical Mechanism, Function, and Properties</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/csd-chemical-structure-dynamics-program\">Chemical Structure and Dynamics</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/syn-chemical-synthesis\">Chemical Synthesis</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/css-chemical-systems-solutions\">Chemical Systems and Solutions</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/ctmc-chemical-theory-models-computational-methods\">Chemical Theory, Models and Computational Methods</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/clp-chemistry-life-processes\">Chemistry of Life Processes</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/msn-macromolecular-supramolecular-nanochemistry\">Macromolecular, Supramolecular, and Nanochemistry</a> </p></li></ul><p>NSF MPS is particularly interested in intellectually ambitious and potentially transformative foundational research. Proposals need not promise a near-term product, deployment, or commercial outcome, nor need they address later-stage development to be competitive. </p>",
+     "responseDate": "Aug 20, 2076 12:00:00 AM EDT",
+     "responseDateDesc": "Proposals accepted anytime",
+     "fundingDescLinkUrl": "http://www.nsf.gov/publications/pub_summ.jsp?ods_key=nsf26519",
+     "fundingDescLinkDesc": "NSF Publication 26-519",
+     "postingDate": "Aug 17, 2026 12:00:00 AM EDT",
+     "costSharing": false,
+     "estimatedFunding": "150000000",
+     "estimatedFundingFormatted": "150,000,000",
+     "awardCeiling": "none",
+     "awardFloor": "none",
+     "applicantEligibilityDesc": "*Who May Submit Proposals: Proposals may only be submitted by the following:\n  -Non-profit, non-academic organizations: Independent museums, observatories, research laboratories, professional societies and similar organizations located in the U.S. that are directly associated with educational or research activities.\n  -Institutions of Higher Education (IHEs): Two- and four-year IHEs (including community colleges) accredited in, and having a campus located in the US, acting on behalf of their faculty members. Special Instructions for International Branch Campuses of US IHEs: If the proposal includes funding to be provided to an international branch campus of a US institution of higher education (including through use of sub-awards and consultant arrangements), the proposer must explain the benefit(s) to the project of performance at the international branch campus, and justify why the project activities cannot be performed at the US campus.\n  -Tribal Nations: An American Indian or Alaska Native tribe, band, nation, pueblo, village, or community that the Secretary of the Interior acknowledges as a federally recognized tribe pursuant to the Federally Recognized Indian Tribe List Act of 1994, 25 U.S.C. &sect;&sect; 5130-5131.",
+     "createTimeStamp": "Aug 20, 2026 11:58:10 AM EDT",
+     "sendEmail": "Y",
+     "modComments": "Updated Synopsis via NSF Grants Opportunity Sync",
+     "actionType": "U",
+     "actionDate": "Oct 05, 2026 12:34:20 PM EDT",
+     "createdDate": "Aug 17, 2026 10:28:08 AM EDT",
+     "lastUpdatedDate": "Aug 20, 2026 11:58:10 AM EDT",
+     "applicantTypes": [
+      {
+       "id": "25",
+       "description": "Others (see text field entitled \"Additional Information on Eligibility\" for clarification)"
+      }
+     ],
+     "fundingInstruments": [
+      {
+       "id": "G",
+       "description": "Grant"
+      }
+     ],
+     "fundingActivityCategories": [
+      {
+       "id": "ST",
+       "description": "Science and Technology and other Research and Development"
+      }
+     ],
+     "responseDateStr": "2076-08-20-00-00-00",
+     "postingDateStr": "2026-08-17-00-00-00",
+     "createTimeStampStr": "2026-08-20-11-58-10"
+    },
+    "cfdas": [
+     {
+      "id": 435079,
+      "opportunityId": 363617,
+      "revision": 3,
+      "cfdaNumber": "47.049",
+      "programTitle": "Mathematical and Physical Sciences"
+     },
+     {
+      "id": 435080,
+      "opportunityId": 363617,
+      "revision": 3
+     }
+    ],
+    "synopsisModifiedFields": [
+     "revision",
+     "version",
+     "responseDate",
+     "createTimeStamp"
+    ],
+    "forecastModifiedFields": []
+   },
+   {
+    "oppHistId": {
+     "opportunityId": 363617,
+     "revision": 2
+    },
+    "opportunityId": 363617,
+    "revision": 2,
+    "opportunityNumber": "26-519",
+    "opportunityTitle": "MPS Chemistry Research Programs (MPS Chem)",
+    "owningAgencyCode": "NSF",
+    "publisherUid": "5990951853740090865314141184033594214",
+    "listed": "L",
+    "opportunityCategory": {
+     "category": "D",
+     "description": "Discretionary"
+    },
+    "synopsis": {
+     "id": {
+      "opportunityId": 363617,
+      "revision": 2
+     },
+     "opportunityId": 363617,
+     "revision": 2,
+     "version": 3,
+     "agencyCode": "NSF",
+     "agencyAddressDesc": "If you have any problems linking to this funding announcement, please contact the email address above.",
+     "agencyDetails": {
+      "code": "NSF",
+      "seed": "NSF",
+      "agencyName": "U.S. National Science Foundation",
+      "agencyCode": "NSF",
+      "topAgencyCode": "NSF"
+     },
+     "agencyContactPhone": "[redacted]",
+     "agencyContactName": "[redacted]",
+     "agencyContactDesc": "[redacted]",
+     "agencyContactEmail": "[redacted]",
+     "agencyContactEmailDesc": "[redacted]",
+     "synopsisDesc": "<p>The U.S. National Science Foundation Directorate for Mathematical and Physical Sciences (NSF MPS) supports foundational research through multiple programs in the chemical sciences.</p><p>Programs include:</p><ul><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cat-chemical-catalysis\">Chemical Catalysis</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cmi-chemical-measurement-imaging\">Chemical Measurement and Imaging</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cmfp-chemical-mechanism-function-properties\">Chemical Mechanism, Function, and Properties</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/csd-chemical-structure-dynamics-program\">Chemical Structure and Dynamics</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/syn-chemical-synthesis\">Chemical Synthesis</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/css-chemical-systems-solutions\">Chemical Systems and Solutions</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/ctmc-chemical-theory-models-computational-methods\">Chemical Theory, Models and Computational Methods</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/clp-chemistry-life-processes\">Chemistry of Life Processes</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/msn-macromolecular-supramolecular-nanochemistry\">Macromolecular, Supramolecular, and Nanochemistry</a> </p></li></ul><p>NSF MPS is particularly interested in intellectually ambitious and potentially transformative foundational research. Proposals need not promise a near-term product, deployment, or commercial outcome, nor need they address later-stage development to be competitive. </p>",
+     "responseDate": "Oct 05, 2076 12:00:00 AM EDT",
+     "responseDateDesc": "Proposals accepted anytime",
+     "fundingDescLinkUrl": "http://www.nsf.gov/publications/pub_summ.jsp?ods_key=nsf26519",
+     "fundingDescLinkDesc": "NSF Publication 26-519",
+     "postingDate": "Aug 17, 2026 12:00:00 AM EDT",
+     "costSharing": false,
+     "estimatedFunding": "150000000",
+     "estimatedFundingFormatted": "150,000,000",
+     "awardCeiling": "none",
+     "awardFloor": "none",
+     "applicantEligibilityDesc": "*Who May Submit Proposals: Proposals may only be submitted by the following:\n  -Non-profit, non-academic organizations: Independent museums, observatories, research laboratories, professional societies and similar organizations located in the U.S. that are directly associated with educational or research activities.\n  -Institutions of Higher Education (IHEs): Two- and four-year IHEs (including community colleges) accredited in, and having a campus located in the US, acting on behalf of their faculty members. Special Instructions for International Branch Campuses of US IHEs: If the proposal includes funding to be provided to an international branch campus of a US institution of higher education (including through use of sub-awards and consultant arrangements), the proposer must explain the benefit(s) to the project of performance at the international branch campus, and justify why the project activities cannot be performed at the US campus.\n  -Tribal Nations: An American Indian or Alaska Native tribe, band, nation, pueblo, village, or community that the Secretary of the Interior acknowledges as a federally recognized tribe pursuant to the Federally Recognized Indian Tribe List Act of 1994, 25 U.S.C. &sect;&sect; 5130-5131.",
+     "createTimeStamp": "Oct 05, 2026 12:34:20 PM EDT",
+     "sendEmail": "Y",
+     "modComments": "Updated Synopsis via NSF Grants Opportunity Sync",
+     "actionType": "U",
+     "actionDate": "Oct 06, 2026 02:35:15 PM EDT",
+     "createdDate": "Aug 17, 2026 10:28:08 AM EDT",
+     "lastUpdatedDate": "Oct 05, 2026 12:34:20 PM EDT",
+     "applicantTypes": [
+      {
+       "id": "25",
+       "description": "Others (see text field entitled \"Additional Information on Eligibility\" for clarification)"
+      }
+     ],
+     "fundingInstruments": [
+      {
+       "id": "G",
+       "description": "Grant"
+      }
+     ],
+     "fundingActivityCategories": [
+      {
+       "id": "ST",
+       "description": "Science and Technology and other Research and Development"
+      }
+     ],
+     "responseDateStr": "2076-10-05-00-00-00",
+     "postingDateStr": "2026-08-17-00-00-00",
+     "createTimeStampStr": "2026-10-05-12-34-20"
+    },
+    "cfdas": [
+     {
+      "id": 435079,
+      "opportunityId": 363617,
+      "revision": 3,
+      "cfdaNumber": "47.049",
+      "programTitle": "Mathematical and Physical Sciences"
+     },
+     {
+      "id": 435080,
+      "opportunityId": 363617,
+      "revision": 3
+     }
+    ],
+    "synopsisModifiedFields": [
+     "revision",
+     "version",
+     "responseDate",
+     "createTimeStamp"
+    ],
+    "forecastModifiedFields": []
+   },
+   {
+    "oppHistId": {
+     "opportunityId": 363617,
+     "revision": 3
+    },
+    "opportunityId": 363617,
+    "revision": 3,
+    "opportunityNumber": "26-519",
+    "opportunityTitle": "MPS Chemistry Research Programs (MPS Chem)",
+    "owningAgencyCode": "NSF",
+    "publisherUid": "5990951853740090865314141184033594214",
+    "listed": "L",
+    "opportunityCategory": {
+     "category": "D",
+     "description": "Discretionary"
+    },
+    "synopsis": {
+     "id": {
+      "opportunityId": 363617,
+      "revision": 3
+     },
+     "opportunityId": 363617,
+     "revision": 3,
+     "version": 4,
+     "agencyCode": "NSF",
+     "agencyAddressDesc": "If you have any problems linking to this funding announcement, please contact the email address above.",
+     "agencyDetails": {
+      "code": "NSF",
+      "seed": "NSF",
+      "agencyName": "U.S. National Science Foundation",
+      "agencyCode": "NSF",
+      "topAgencyCode": "NSF"
+     },
+     "agencyContactPhone": "[redacted]",
+     "agencyContactName": "[redacted]",
+     "agencyContactDesc": "[redacted]",
+     "agencyContactEmail": "[redacted]",
+     "agencyContactEmailDesc": "[redacted]",
+     "synopsisDesc": "<p>The U.S. National Science Foundation Directorate for Mathematical and Physical Sciences (NSF MPS) supports foundational research through multiple programs in the chemical sciences.</p><p>Programs include:</p><ul><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cat-chemical-catalysis\">Chemical Catalysis</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cmi-chemical-measurement-imaging\">Chemical Measurement and Imaging</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/cmfp-chemical-mechanism-function-properties\">Chemical Mechanism, Function, and Properties</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/csd-chemical-structure-dynamics-program\">Chemical Structure and Dynamics</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/syn-chemical-synthesis\">Chemical Synthesis</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/css-chemical-systems-solutions\">Chemical Systems and Solutions</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/ctmc-chemical-theory-models-computational-methods\">Chemical Theory, Models and Computational Methods</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/clp-chemistry-life-processes\">Chemistry of Life Processes</a></p></li><li><p><a target=\"_blank\" rel=\"noopener noreferrer\" href=\"https://www.nsf.gov/funding/opportunities/msn-macromolecular-supramolecular-nanochemistry\">Macromolecular, Supramolecular, and Nanochemistry</a> </p></li></ul><p>NSF MPS is particularly interested in intellectually ambitious and potentially transformative foundational research. Proposals need not promise a near-term product, deployment, or commercial outcome, nor need they address later-stage development to be competitive. </p>",
+     "responseDate": "Oct 06, 2076 12:00:00 AM EDT",
+     "responseDateDesc": "Proposals accepted anytime",
+     "fundingDescLinkUrl": "http://www.nsf.gov/publications/pub_summ.jsp?ods_key=nsf26519",
+     "fundingDescLinkDesc": "NSF Publication 26-519",
+     "postingDate": "Aug 17, 2026 12:00:00 AM EDT",
+     "costSharing": false,
+     "estimatedFunding": "150000000",
+     "estimatedFundingFormatted": "150,000,000",
+     "awardCeiling": "none",
+     "awardFloor": "none",
+     "applicantEligibilityDesc": "*Who May Submit Proposals: Proposals may only be submitted by the following:\n  -Non-profit, non-academic organizations: Independent museums, observatories, research laboratories, professional societies and similar organizations located in the U.S. that are directly associated with educational or research activities.\n  -Institutions of Higher Education (IHEs): Two- and four-year IHEs (including community colleges) accredited in, and having a campus located in the US, acting on behalf of their faculty members. Special Instructions for International Branch Campuses of US IHEs: If the proposal includes funding to be provided to an international branch campus of a US institution of higher education (including through use of sub-awards and consultant arrangements), the proposer must explain the benefit(s) to the project of performance at the international branch campus, and justify why the project activities cannot be performed at the US campus.\n  -Tribal Nations: An American Indian or Alaska Native tribe, band, nation, pueblo, village, or community that the Secretary of the Interior acknowledges as a federally recognized tribe pursuant to the Federally Recognized Indian Tribe List Act of 1994, 25 U.S.C. &sect;&sect; 5130-5131.",
+     "createTimeStamp": "Oct 06, 2026 02:35:15 PM EDT",
+     "sendEmail": "Y",
+     "modComments": "Updated Synopsis via NSF Grants Opportunity Sync",
+     "actionType": "U",
+     "actionDate": "Oct 07, 2026 03:26:29 PM EDT",
+     "createdDate": "Aug 17, 2026 10:28:08 AM EDT",
+     "lastUpdatedDate": "Oct 06, 2026 02:35:15 PM EDT",
+     "applicantTypes": [
+      {
+       "id": "25",
+       "description": "Others (see text field entitled \"Additional Information on Eligibility\" for clarification)"
+      }
+     ],
+     "fundingInstruments": [
+      {
+       "id": "G",
+       "description": "Grant"
+      }
+     ],
+     "fundingActivityCategories": [
+      {
+       "id": "ST",
+       "description": "Science and Technology and other Research and Development"
+      }
+     ],
+     "responseDateStr": "2076-10-06-00-00-00",
+     "postingDateStr": "2026-08-17-00-00-00",
+     "createTimeStampStr": "2026-10-06-14-35-15"
+    },
+    "cfdas": [
+     {
+      "id": 435079,
+      "opportunityId": 363617,
+      "revision": 3,
+      "cfdaNumber": "47.049",
+      "programTitle": "Mathematical and Physical Sciences"
+     },
+     {
+      "id": 435080,
+      "opportunityId": 363617,
+      "revision": 3
+     }
+    ],
+    "synopsisModifiedFields": [
+     "revision",
+     "version",
+     "responseDate",
+     "createTimeStamp"
+    ],
+    "forecastModifiedFields": []
+   }
+  ],
+  "opportunityPkgs": [
+   {
+    "id": 293976,
+    "topportunityId": 363617,
+    "familyId": 14,
+    "dialect": "XFDL2.2",
+    "opportunityNumber": "26-519",
+    "opportunityTitle": "MPS Chemistry Research Programs (MPS Chem)",
+    "openingDate": "2026-08-17",
+    "closingDate": "2076-10-07",
+    "owningAgencyCode": "NSF",
+    "agencyDetails": {
+     "code": "NSF",
+     "seed": "NSF",
+     "agencyName": "U.S. National Science Foundation",
+     "agencyCode": "NSF",
+     "topAgencyCode": "NSF"
+    },
+    "topAgencyDetails": {
+     "code": "NSF",
+     "seed": "NSF",
+     "agencyName": "U.S. National Science Foundation",
+     "agencyCode": "NSF",
+     "topAgencyCode": "NSF"
+    },
+    "contactInfo": "[redacted]",
+    "electronicRequired": "N",
+    "expectedApplicationCount": 1000,
+    "expectedApplicationSize": 50,
+    "openToApplicantType": 3,
+    "listed": "L",
+    "isMultiProject": "N",
+    "extension": "pdf",
+    "mimetype": "application/pdf",
+    "lastUpdate": "Oct 07, 2026 03:26:30 PM EDT",
+    "workspaceCompatibleFlag": "Y",
+    "packageId": "PKG00293976",
+    "openingDateStr": "2026-08-17-00-00-00",
+    "closingDateStr": "2076-10-07-00-00-00"
+   }
+  ],
+  "closedOpportunityPkgs": [],
+  "originalDueDate": "Aug 17, 2076 12:00:00 AM EDT",
+  "originalDueDateDesc": "Proposals accepted anytime",
+  "synopsisModifiedFields": [
+   "revision",
+   "version",
+   "responseDate",
+   "createTimeStamp"
+  ],
+  "forecastModifiedFields": [],
+  "errorMessages": [],
+  "synPostDateInPast": true,
+  "docType": "synopsis",
+  "forecastHistCount": 0,
+  "synopsisHistCount": 4,
+  "assistCompatible": false,
+  "assistURL": "",
+  "relatedOpps": [],
+  "draftMode": "N",
+  "ost": "POSTED"
+ }
+}

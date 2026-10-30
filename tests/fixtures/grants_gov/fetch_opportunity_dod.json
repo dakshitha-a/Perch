@@ -1,0 +1,858 @@
+{
+ "errorcode": 0,
+ "msg": "Webservice Succeeds",
+ "data": {
+  "id": 330175,
+  "revision": 5,
+  "opportunityNumber": "FA7000-21-S-0001",
+  "opportunityTitle": "Research Interests of the United States Air Force Academy (formerly USAFA-BAA-2021)",
+  "owningAgencyCode": "DOD-USAFA",
+  "listed": "L",
+  "publisherUid": "malissa.crofoot",
+  "modifiedComments": "In accordance with DFARS 204.1603, Federal Assistance Identification Number USAFA-BAA-2021 has been modified to FA7000-21-S-0001.",
+  "flag2006": "N",
+  "opportunityCategory": {
+   "category": "D",
+   "description": "Discretionary"
+  },
+  "synopsis": {
+   "opportunityId": 330175,
+   "version": 6,
+   "agencyCode": "DOD-USAFA",
+   "agencyName": "[redacted]",
+   "agencyPhone": "[redacted]",
+   "agencyAddressDesc": "10 CONS/PKC Assistance Org Email Box",
+   "agencyDetails": {
+    "code": "USAFA",
+    "seed": "DOD-USAFA",
+    "agencyName": "Air Force Academy",
+    "agencyCode": "DOD-USAFA",
+    "topAgencyCode": "DOD"
+   },
+   "topAgencyDetails": {
+    "code": "DOD",
+    "seed": "DOD",
+    "agencyName": "Department of Defense",
+    "agencyCode": "DOD",
+    "topAgencyCode": "DOD"
+   },
+   "agencyContactPhone": "[redacted]",
+   "agencyContactName": "[redacted]",
+   "agencyContactDesc": "[redacted]",
+   "agencyContactEmail": "[redacted]",
+   "agencyContactEmailDesc": "[redacted]",
+   "synopsisDesc": "<p>The USAFA invests in an active research program for three main reasons. First and foremost, research significantly enhances the cadet learning experience. Our research is done by, for and with cadets who work alongside fellow cadets and faculty mentors. Research provides cadets with rich independent learning opportunities as they tackle ill-defined problems and are challenged to apply their knowledge and abilities.</p><p><br></p><p>Second, our research program provides opportunities essential for faculty development. Research broadens and deepens the experience base of the faculty. This infuses current, relevant, state-of-the-art and cutting-edge applications and examples into the curriculum. This also helps our faculty remain current in their respective fields.</p><p><br></p><p>Third, at USAFA we strive to conduct research to enhance the ability of the Air Force to perform its mission. There are ongoing research projects spanning topics as diverse as super hypersonics, cyber security, spatial disorientation, athletic performance and homeland defense. This BAA offers a vehicle for research to be performed to satisfy these three objectives, while also meeting research needs of industry counterparts/serve a public purpose. USAFA’s partnerships with non-Government firms enables development in the public arena, stimulating the studies in the greater technical community. All awards issued against this BAA must serve to benefit the objectives identified above.</p>",
+   "responseDateDesc": "This announcement remains open until superseded. White papers are reviewed and evaluated as they are received and may be submitted at any time. The white paper/proposal submission process is discussed in sections IV and V of this BAA. Proposals will be due according to specific instructions contained in a separate RFP notice resulting from favorable white paper evaluations or calls issued against this BAA. Calls may be placed against this BAA and specific information related to due dates will be provided in each call. Proposals or white papers submitted in response to calls should be submitted according to directions contained within each individual call and in accordance with this BAA. Late bid and proposal provisions in accordance with (IAW) Federal Acquisition Regulations (FAR) 52.215-1(c) (3)) will apply to this BAA.",
+   "fundingDescLinkUrl": "https://sam.gov/opp/dfe0bf3dadef4a039cfbd10cbc10bf21/view",
+   "fundingDescLinkDesc": "Related SAM.GOV posting FA7000-21-S-0001 (Formerly USAFA-BAA-2021) Amend 0004",
+   "postingDate": "Dec 02, 2020 12:00:00 AM EST",
+   "costSharing": false,
+   "awardCeiling": "99000000",
+   "awardCeilingFormatted": "99,000,000",
+   "awardFloor": "0",
+   "awardFloorFormatted": "0",
+   "applicantEligibilityDesc": "White papers and proposals from Federal Agencies, including subcontracting/sub-Non-Federal Entity (NFE) efforts will not be evaluated under this BAA. Federal agencies should contact the Department of Research associated with the given technical area listed in Section I of the BAA to discuss funding through internal Government procedures.",
+   "sendEmail": "N",
+   "createTimeStamp": "Jul 28, 2026 05:44:19 PM EDT",
+   "modComments": "The purpose of this amendment is to update BAA FA700021S0001 to incorporate requirements under EO 14332.",
+   "createdDate": "Dec 02, 2020 01:31:02 PM EST",
+   "lastUpdatedDate": "Jul 28, 2026 05:43:08 PM EDT",
+   "applicantTypes": [
+    {
+     "id": "99",
+     "description": "Unrestricted (i.e., open to any type of entity above), subject to any clarification in text field entitled \"Additional Information on Eligibility\""
+    }
+   ],
+   "fundingInstruments": [
+    {
+     "id": "CA",
+     "description": "Cooperative Agreement"
+    },
+    {
+     "id": "G",
+     "description": "Grant"
+    },
+    {
+     "id": "O",
+     "description": "Other"
+    },
+    {
+     "id": "PC",
+     "description": "Procurement Contract"
+    }
+   ],
+   "fundingActivityCategories": [
+    {
+     "id": "ST",
+     "description": "Science and Technology and other Research and Development"
+    }
+   ],
+   "postingDateStr": "2020-12-02-00-00-00",
+   "createTimeStampStr": "2026-07-28-17-44-19"
+  },
+  "agencyDetails": {
+   "code": "USAFA",
+   "seed": "DOD-USAFA",
+   "agencyName": "Air Force Academy",
+   "agencyCode": "DOD-USAFA",
+   "topAgencyCode": "DOD"
+  },
+  "topAgencyDetails": {
+   "code": "DOD",
+   "seed": "DOD",
+   "agencyName": "Department of Defense",
+   "agencyCode": "DOD",
+   "topAgencyCode": "DOD"
+  },
+  "synopsisAttachmentFolders": [
+   {
+    "id": 78725,
+    "opportunityId": 330175,
+    "folderType": "Full Announcement",
+    "folderName": "Amendment 0003",
+    "zipLobSize": 485258,
+    "createdDate": "Jan 12, 2026 02:41:50 PM EST",
+    "lastUpdatedDate": "Jan 12, 2026 02:42:57 PM EST",
+    "synopsisAttachments": [
+     {
+      "id": 350026,
+      "opportunityId": 330175,
+      "mimeType": "application/pdf",
+      "fileName": "FA7000-21-S-0001_Formerly USAFA-BAA-2021_Amend 0003_Final.pdf",
+      "fileDescription": "FA700021S0001 - Amendment 0003",
+      "fileLobSize": 546870,
+      "createdDate": "Jan 12, 2026 02:42:57 PM EST",
+      "synopsisAttFolderId": 78725
+     }
+    ]
+   },
+   {
+    "id": 48626,
+    "opportunityId": 330175,
+    "folderType": "Full Announcement",
+    "folderName": "Original Announcement",
+    "zipLobSize": 431376,
+    "createdDate": "Dec 02, 2020 01:34:52 PM EST",
+    "lastUpdatedDate": "Dec 02, 2020 01:38:48 PM EST",
+    "synopsisAttachments": [
+     {
+      "id": 302457,
+      "opportunityId": 330175,
+      "mimeType": "application/pdf",
+      "fileName": "USAFA-BAA-2021.pdf",
+      "fileDescription": "USAFA-BAA-2021",
+      "fileLobSize": 448084,
+      "createdDate": "Dec 02, 2020 01:38:48 PM EST",
+      "synopsisAttFolderId": 48626
+     }
+    ]
+   },
+   {
+    "id": 54405,
+    "opportunityId": 330175,
+    "folderType": "Full Announcement",
+    "folderName": "Revised Full Announcement - 1",
+    "zipLobSize": 460975,
+    "createdDate": "Dec 10, 2021 10:30:05 AM EST",
+    "lastUpdatedDate": "Dec 10, 2021 10:32:43 AM EST",
+    "synopsisAttachments": [
+     {
+      "id": 312054,
+      "opportunityId": 330175,
+      "mimeType": "application/pdf",
+      "fileName": "FA7000-21-S-0001 (formerly USAFA-BAA-2021) Amend 0001.pdf",
+      "fileDescription": "Revised Full Amendment - Amendment 0001",
+      "fileLobSize": 477790,
+      "createdDate": "Dec 10, 2021 10:32:43 AM EST",
+      "synopsisAttFolderId": 54405
+     }
+    ]
+   },
+   {
+    "id": 61869,
+    "opportunityId": 330175,
+    "folderType": "Revised Full Announcement",
+    "folderName": "Amendment 0002",
+    "zipLobSize": 401591,
+    "createdDate": "Dec 15, 2022 04:05:36 PM EST",
+    "lastUpdatedDate": "Dec 15, 2022 04:07:08 PM EST",
+    "synopsisAttachments": [
+     {
+      "id": 322812,
+      "opportunityId": 330175,
+      "mimeType": "application/pdf",
+      "fileName": "FA7000-21-S-0001_Formerly USAFA-BAA-2021_Amend 0002.pdf",
+      "fileDescription": "FA7000-21-S-0001 (formerly USAFA-BAA-2021) Amend 0002",
+      "fileLobSize": 462428,
+      "createdDate": "Dec 15, 2022 04:07:08 PM EST",
+      "synopsisAttFolderId": 61869
+     }
+    ]
+   },
+   {
+    "id": 80910,
+    "opportunityId": 330175,
+    "folderType": "Revised Full Announcement",
+    "folderName": "FA700021S0001 - Amendment 0004",
+    "zipLobSize": 498143,
+    "createdDate": "Jul 28, 2026 05:43:49 PM EDT",
+    "lastUpdatedDate": "Jul 28, 2026 05:44:19 PM EDT",
+    "synopsisAttachments": [
+     {
+      "id": 354228,
+      "opportunityId": 330175,
+      "mimeType": "application/pdf",
+      "fileName": "BAA FA7000-21-S-0001 Amend 0004.pdf",
+      "fileDescription": "FA700021S0001 Amendment 0004",
+      "fileLobSize": 565197,
+      "createdDate": "Jul 28, 2026 05:44:19 PM EDT",
+      "synopsisAttFolderId": 80910
+     }
+    ]
+   }
+  ],
+  "synopsisDocumentURLs": [],
+  "synAttChangeComments": [
+   {
+    "id": {
+     "opportunityId": 330175,
+     "attType": "D",
+     "createdDate": "Jan 12, 2026 02:43:29 PM EST",
+     "attTypeDesc": "Related Documents",
+     "commentsDate": "Jan 12, 2026"
+    },
+    "changeComments": "Administrative Update"
+   },
+   {
+    "id": {
+     "opportunityId": 330175,
+     "attType": "D",
+     "createdDate": "Dec 10, 2021 10:34:05 AM EST",
+     "attTypeDesc": "Related Documents",
+     "commentsDate": "Dec 10, 2021"
+    },
+    "changeComments": "A Revised Full Amendment has been posted with updated information.  Please review."
+   }
+  ],
+  "cfdas": [
+   {
+    "id": 386693,
+    "opportunityId": 330175,
+    "cfdaNumber": "12.800",
+    "programTitle": "Air Force Defense Research Sciences Program"
+   }
+  ],
+  "opportunityHistoryDetails": [
+   {
+    "oppHistId": {
+     "opportunityId": 330175,
+     "revision": 0
+    },
+    "opportunityId": 330175,
+    "revision": 0,
+    "opportunityNumber": "USAFA-BAA-2021",
+    "opportunityTitle": "Research Interests of the United States Air Force Academy",
+    "owningAgencyCode": "DOD-USAFA",
+    "publisherUid": "cgurwell",
+    "listed": "L",
+    "opportunityCategory": {
+     "category": "D",
+     "description": "Discretionary"
+    },
+    "synopsis": {
+     "id": {
+      "opportunityId": 330175,
+      "revision": 0
+     },
+     "opportunityId": 330175,
+     "revision": 0,
+     "version": 1,
+     "agencyCode": "DOD-USAFA",
+     "agencyAddressDesc": "10 CONS/PKC Assistance Org Email Box",
+     "agencyDetails": {
+      "code": "USAFA",
+      "seed": "DOD-USAFA",
+      "agencyName": "Air Force Academy",
+      "agencyCode": "DOD-USAFA",
+      "topAgencyCode": "DOD"
+     },
+     "agencyContactPhone": "[redacted]",
+     "agencyContactName": "[redacted]",
+     "agencyContactDesc": "[redacted]",
+     "agencyContactEmail": "[redacted]",
+     "agencyContactEmailDesc": "[redacted]",
+     "synopsisDesc": "<p>The USAFA invests in an active research program for three main reasons. First and foremost, research significantly enhances the cadet learning experience. Our research is done by, for and with cadets who work alongside fellow cadets and faculty mentors. Research provides cadets with rich independent learning opportunities as they tackle ill-defined problems and are challenged to apply their knowledge and abilities.</p><p><br></p><p>Second, our research program provides opportunities essential for faculty development. Research broadens and deepens the experience base of the faculty. This infuses current, relevant, state-of-the-art and cutting-edge applications and examples into the curriculum. This also helps our faculty remain current in their respective fields.</p><p><br></p><p>Third, at USAFA we strive to conduct research to enhance the ability of the Air Force to perform its mission. There are ongoing research projects spanning topics as diverse as super hypersonics, cyber security, spatial disorientation, athletic performance and homeland defense. This BAA offers a vehicle for research to be performed to satisfy these three objectives, while also meeting research needs of industry counterparts/serve a public purpose. USAFA’s partnerships with non-Government firms enables development in the public arena, stimulating the studies in the greater technical community. All awards issued against this BAA must serve to benefit the objectives identified above.</p>",
+     "responseDateDesc": "This announcement remains open until superseded. White papers are reviewed and evaluated as they arereceived and may be submitted at any time. The white paper/proposal submission process is discussed insections IV and V of this BAA. Proposals will be due according to specific instructions contained in aseparate RFP notice resulting from favorable white paper evaluations or calls issued against this BAA. Callsmay be placed against this BAA and specific information related to due dates will be provided in each call.Proposals or white papers submitted in response to calls should be submitted according to directionscontained within each individual call and in accordance with this BAA. Late bid and proposal provisions inaccordance with (IAW) Federal Acquisition Regulations (FAR) 52.215-1(c) (3)) will apply to this BAA.",
+     "postingDate": "Dec 02, 2020 12:00:00 AM EST",
+     "costSharing": false,
+     "awardCeiling": "99000000",
+     "awardCeilingFormatted": "99,000,000",
+     "awardFloor": "0",
+     "awardFloorFormatted": "0",
+     "applicantEligibilityDesc": "White papers and proposals from Federal Agencies, including subcontracting/sub-Non-Federal Entity (NFE) efforts will not be evaluated under this BAA. Federal agencies should contact the Department of Research associated with the given technical area listed in Section I of the BAA to discuss funding through internal Government procedures.",
+     "createTimeStamp": "Dec 02, 2020 01:38:48 PM EST",
+     "sendEmail": "Y",
+     "actionType": "U",
+     "actionDate": "Dec 10, 2021 09:05:23 AM EST",
+     "createdDate": "Dec 02, 2020 01:31:02 PM EST",
+     "lastUpdatedDate": "Dec 02, 2020 01:33:20 PM EST",
+     "applicantTypes": [
+      {
+       "id": "99",
+       "description": "Unrestricted (i.e., open to any type of entity above), subject to any clarification in text field entitled \"Additional Information on Eligibility\""
+      }
+     ],
+     "fundingInstruments": [
+      {
+       "id": "CA",
+       "description": "Cooperative Agreement"
+      },
+      {
+       "id": "G",
+       "description": "Grant"
+      },
+      {
+       "id": "O",
+       "description": "Other"
+      },
+      {
+       "id": "PC",
+       "description": "Procurement Contract"
+      }
+     ],
+     "fundingActivityCategories": [
+      {
+       "id": "ST",
+       "description": "Science and Technology and other Research and Development"
+      }
+     ],
+     "postingDateStr": "2020-12-02-00-00-00",
+     "createTimeStampStr": "2020-12-02-13-38-48"
+    },
+    "cfdas": [
+     {
+      "id": 386693,
+      "opportunityId": 330175,
+      "revision": 4,
+      "cfdaNumber": "12.800",
+      "programTitle": "Air Force Defense Research Sciences Program"
+     }
+    ],
+    "synopsisModifiedFields": [],
+    "forecastModifiedFields": []
+   },
+   {
+    "oppHistId": {
+     "opportunityId": 330175,
+     "revision": 1
+    },
+    "opportunityId": 330175,
+    "revision": 1,
+    "opportunityNumber": "FA7000-21-S-0001",
+    "opportunityTitle": "Research Interests of the United States Air Force Academy",
+    "owningAgencyCode": "DOD-USAFA",
+    "publisherUid": "malissa.crofoot",
+    "listed": "L",
+    "opportunityCategory": {
+     "category": "D",
+     "description": "Discretionary"
+    },
+    "modifiedComments": "In accordance with DFARS 204.1603 Federal Assistance Identification Number USAFA-BAA-2021 is modified to FA7000-21-S-0001.",
+    "synopsis": {
+     "id": {
+      "opportunityId": 330175,
+      "revision": 1
+     },
+     "opportunityId": 330175,
+     "revision": 1,
+     "version": 2,
+     "agencyCode": "DOD-USAFA",
+     "agencyAddressDesc": "10 CONS/PKC Assistance Org Email Box",
+     "agencyDetails": {
+      "code": "USAFA",
+      "seed": "DOD-USAFA",
+      "agencyName": "Air Force Academy",
+      "agencyCode": "DOD-USAFA",
+      "topAgencyCode": "DOD"
+     },
+     "agencyContactPhone": "[redacted]",
+     "agencyContactName": "[redacted]",
+     "agencyContactDesc": "[redacted]",
+     "agencyContactEmail": "[redacted]",
+     "agencyContactEmailDesc": "[redacted]",
+     "synopsisDesc": "<p>The USAFA invests in an active research program for three main reasons. First and foremost, research significantly enhances the cadet learning experience. Our research is done by, for and with cadets who work alongside fellow cadets and faculty mentors. Research provides cadets with rich independent learning opportunities as they tackle ill-defined problems and are challenged to apply their knowledge and abilities.</p><p><br></p><p>Second, our research program provides opportunities essential for faculty development. Research broadens and deepens the experience base of the faculty. This infuses current, relevant, state-of-the-art and cutting-edge applications and examples into the curriculum. This also helps our faculty remain current in their respective fields.</p><p><br></p><p>Third, at USAFA we strive to conduct research to enhance the ability of the Air Force to perform its mission. There are ongoing research projects spanning topics as diverse as super hypersonics, cyber security, spatial disorientation, athletic performance and homeland defense. This BAA offers a vehicle for research to be performed to satisfy these three objectives, while also meeting research needs of industry counterparts/serve a public purpose. USAFA’s partnerships with non-Government firms enables development in the public arena, stimulating the studies in the greater technical community. All awards issued against this BAA must serve to benefit the objectives identified above.</p>",
+     "responseDateDesc": "This announcement remains open until superseded. White papers are reviewed and evaluated as they arereceived and may be submitted at any time. The white paper/proposal submission process is discussed insections IV and V of this BAA. Proposals will be due according to specific instructions contained in aseparate RFP notice resulting from favorable white paper evaluations or calls issued against this BAA. Callsmay be placed against this BAA and specific information related to due dates will be provided in each call.Proposals or white papers submitted in response to calls should be submitted according to directionscontained within each individual call and in accordance with this BAA. Late bid and proposal provisions inaccordance with (IAW) Federal Acquisition Regulations (FAR) 52.215-1(c) (3)) will apply to this BAA.",
+     "postingDate": "Dec 02, 2020 12:00:00 AM EST",
+     "costSharing": false,
+     "awardCeiling": "99000000",
+     "awardCeilingFormatted": "99,000,000",
+     "awardFloor": "0",
+     "awardFloorFormatted": "0",
+     "applicantEligibilityDesc": "White papers and proposals from Federal Agencies, including subcontracting/sub-Non-Federal Entity (NFE) efforts will not be evaluated under this BAA. Federal agencies should contact the Department of Research associated with the given technical area listed in Section I of the BAA to discuss funding through internal Government procedures.",
+     "createTimeStamp": "Dec 10, 2021 09:05:23 AM EST",
+     "sendEmail": "Y",
+     "modComments": "In accordance with DFARS 204.1603 Federal Assistance Identification Number USAFA-BAA-2021 is modified to FA7000-21-S-0001.",
+     "actionType": "U",
+     "actionDate": "Dec 10, 2021 09:32:36 AM EST",
+     "createdDate": "Dec 02, 2020 01:31:02 PM EST",
+     "lastUpdatedDate": "Dec 10, 2021 09:05:23 AM EST",
+     "applicantTypes": [
+      {
+       "id": "99",
+       "description": "Unrestricted (i.e., open to any type of entity above), subject to any clarification in text field entitled \"Additional Information on Eligibility\""
+      }
+     ],
+     "fundingInstruments": [
+      {
+       "id": "CA",
+       "description": "Cooperative Agreement"
+      },
+      {
+       "id": "G",
+       "description": "Grant"
+      },
+      {
+       "id": "O",
+       "description": "Other"
+      },
+      {
+       "id": "PC",
+       "description": "Procurement Contract"
+      }
+     ],
+     "fundingActivityCategories": [
+      {
+       "id": "ST",
+       "description": "Science and Technology and other Research and Development"
+      }
+     ],
+     "postingDateStr": "2020-12-02-00-00-00",
+     "createTimeStampStr": "2021-12-10-09-05-23"
+    },
+    "cfdas": [
+     {
+      "id": 386693,
+      "opportunityId": 330175,
+      "revision": 4,
+      "cfdaNumber": "12.800",
+      "programTitle": "Air Force Defense Research Sciences Program"
+     }
+    ],
+    "synopsisModifiedFields": [
+     "revision",
+     "version",
+     "opportunityNumber",
+     "createTimeStamp"
+    ],
+    "forecastModifiedFields": []
+   },
+   {
+    "oppHistId": {
+     "opportunityId": 330175,
+     "revision": 2
+    },
+    "opportunityId": 330175,
+    "revision": 2,
+    "opportunityNumber": "FA7000-21-S-0001",
+    "opportunityTitle": "Research Interests of the United States Air Force Academy (formerly USAFA-BAA-2021)",
+    "owningAgencyCode": "DOD-USAFA",
+    "publisherUid": "malissa.crofoot",
+    "listed": "L",
+    "opportunityCategory": {
+     "category": "D",
+     "description": "Discretionary"
+    },
+    "modifiedComments": "In accordance with DFARS 204.1603, Federal Assistance Identification Number USAFA-BAA-2021 has been modified to FA7000-21-S-0001.",
+    "synopsis": {
+     "id": {
+      "opportunityId": 330175,
+      "revision": 2
+     },
+     "opportunityId": 330175,
+     "revision": 2,
+     "version": 3,
+     "agencyCode": "DOD-USAFA",
+     "agencyAddressDesc": "10 CONS/PKC Assistance Org Email Box",
+     "agencyDetails": {
+      "code": "USAFA",
+      "seed": "DOD-USAFA",
+      "agencyName": "Air Force Academy",
+      "agencyCode": "DOD-USAFA",
+      "topAgencyCode": "DOD"
+     },
+     "agencyContactPhone": "[redacted]",
+     "agencyContactName": "[redacted]",
+     "agencyContactDesc": "[redacted]",
+     "agencyContactEmail": "[redacted]",
+     "agencyContactEmailDesc": "[redacted]",
+     "synopsisDesc": "<p>The USAFA invests in an active research program for three main reasons. First and foremost, research significantly enhances the cadet learning experience. Our research is done by, for and with cadets who work alongside fellow cadets and faculty mentors. Research provides cadets with rich independent learning opportunities as they tackle ill-defined problems and are challenged to apply their knowledge and abilities.</p><p><br></p><p>Second, our research program provides opportunities essential for faculty development. Research broadens and deepens the experience base of the faculty. This infuses current, relevant, state-of-the-art and cutting-edge applications and examples into the curriculum. This also helps our faculty remain current in their respective fields.</p><p><br></p><p>Third, at USAFA we strive to conduct research to enhance the ability of the Air Force to perform its mission. There are ongoing research projects spanning topics as diverse as super hypersonics, cyber security, spatial disorientation, athletic performance and homeland defense. This BAA offers a vehicle for research to be performed to satisfy these three objectives, while also meeting research needs of industry counterparts/serve a public purpose. USAFA’s partnerships with non-Government firms enables development in the public arena, stimulating the studies in the greater technical community. All awards issued against this BAA must serve to benefit the objectives identified above.</p>",
+     "responseDateDesc": "This announcement remains open until superseded. White papers are reviewed and evaluated as they arereceived and may be submitted at any time. The white paper/proposal submission process is discussed insections IV and V of this BAA. Proposals will be due according to specific instructions contained in aseparate RFP notice resulting from favorable white paper evaluations or calls issued against this BAA. Callsmay be placed against this BAA and specific information related to due dates will be provided in each call.Proposals or white papers submitted in response to calls should be submitted according to directionscontained within each individual call and in accordance with this BAA. Late bid and proposal provisions inaccordance with (IAW) Federal Acquisition Regulations (FAR) 52.215-1(c) (3)) will apply to this BAA.",
+     "postingDate": "Dec 02, 2020 12:00:00 AM EST",
+     "costSharing": false,
+     "awardCeiling": "99000000",
+     "awardCeilingFormatted": "99,000,000",
+     "awardFloor": "0",
+     "awardFloorFormatted": "0",
+     "applicantEligibilityDesc": "White papers and proposals from Federal Agencies, including subcontracting/sub-Non-Federal Entity (NFE) efforts will not be evaluated under this BAA. Federal agencies should contact the Department of Research associated with the given technical area listed in Section I of the BAA to discuss funding through internal Government procedures.",
+     "createTimeStamp": "Dec 10, 2021 10:34:05 AM EST",
+     "sendEmail": "Y",
+     "modComments": "In accordance with DFARS 204.1603, Federal Assistance Identification Number USAFA-BAA-2021 has been modified to FA7000-21-S-0001.",
+     "actionType": "U",
+     "actionDate": "Dec 15, 2022 04:02:29 PM EST",
+     "createdDate": "Dec 02, 2020 01:31:02 PM EST",
+     "lastUpdatedDate": "Dec 10, 2021 09:32:36 AM EST",
+     "applicantTypes": [
+      {
+       "id": "99",
+       "description": "Unrestricted (i.e., open to any type of entity above), subject to any clarification in text field entitled \"Additional Information on Eligibility\""
+      }
+     ],
+     "fundingInstruments": [
+      {
+       "id": "CA",
+       "description": "Cooperative Agreement"
+      },
+      {
+       "id": "G",
+       "description": "Grant"
+      },
+      {
+       "id": "O",
+       "description": "Other"
+      },
+      {
+       "id": "PC",
+       "description": "Procurement Contract"
+      }
+     ],
+     "fundingActivityCategories": [
+      {
+       "id": "ST",
+       "description": "Science and Technology and other Research and Development"
+      }
+     ],
+     "postingDateStr": "2020-12-02-00-00-00",
+     "createTimeStampStr": "2021-12-10-10-34-05"
+    },
+    "cfdas": [
+     {
+      "id": 386693,
+      "opportunityId": 330175,
+      "revision": 4,
+      "cfdaNumber": "12.800",
+      "programTitle": "Air Force Defense Research Sciences Program"
+     }
+    ],
+    "synopsisModifiedFields": [
+     "revision",
+     "version",
+     "opportunityTitle"
+    ],
+    "forecastModifiedFields": []
+   },
+   {
+    "oppHistId": {
+     "opportunityId": 330175,
+     "revision": 3
+    },
+    "opportunityId": 330175,
+    "revision": 3,
+    "opportunityNumber": "FA7000-21-S-0001",
+    "opportunityTitle": "Research Interests of the United States Air Force Academy (formerly USAFA-BAA-2021)",
+    "owningAgencyCode": "DOD-USAFA",
+    "publisherUid": "malissa.crofoot",
+    "listed": "L",
+    "opportunityCategory": {
+     "category": "D",
+     "description": "Discretionary"
+    },
+    "modifiedComments": "In accordance with DFARS 204.1603, Federal Assistance Identification Number USAFA-BAA-2021 has been modified to FA7000-21-S-0001.",
+    "synopsis": {
+     "id": {
+      "opportunityId": 330175,
+      "revision": 3
+     },
+     "opportunityId": 330175,
+     "revision": 3,
+     "version": 4,
+     "agencyCode": "DOD-USAFA",
+     "agencyAddressDesc": "10 CONS/PKC Assistance Org Email Box",
+     "agencyDetails": {
+      "code": "USAFA",
+      "seed": "DOD-USAFA",
+      "agencyName": "Air Force Academy",
+      "agencyCode": "DOD-USAFA",
+      "topAgencyCode": "DOD"
+     },
+     "agencyContactPhone": "[redacted]",
+     "agencyContactName": "[redacted]",
+     "agencyContactDesc": "[redacted]",
+     "agencyContactEmail": "[redacted]",
+     "agencyContactEmailDesc": "[redacted]",
+     "synopsisDesc": "<p>The USAFA invests in an active research program for three main reasons. First and foremost, research significantly enhances the cadet learning experience. Our research is done by, for and with cadets who work alongside fellow cadets and faculty mentors. Research provides cadets with rich independent learning opportunities as they tackle ill-defined problems and are challenged to apply their knowledge and abilities.</p><p><br></p><p>Second, our research program provides opportunities essential for faculty development. Research broadens and deepens the experience base of the faculty. This infuses current, relevant, state-of-the-art and cutting-edge applications and examples into the curriculum. This also helps our faculty remain current in their respective fields.</p><p><br></p><p>Third, at USAFA we strive to conduct research to enhance the ability of the Air Force to perform its mission. There are ongoing research projects spanning topics as diverse as super hypersonics, cyber security, spatial disorientation, athletic performance and homeland defense. This BAA offers a vehicle for research to be performed to satisfy these three objectives, while also meeting research needs of industry counterparts/serve a public purpose. USAFA’s partnerships with non-Government firms enables development in the public arena, stimulating the studies in the greater technical community. All awards issued against this BAA must serve to benefit the objectives identified above.</p>",
+     "responseDateDesc": "This announcement remains open until superseded. White papers are reviewed and evaluated as they are received and may be submitted at any time. The white paper/proposal submission process is discussed in sections IV and V of this BAA. Proposals will be due according to specific instructions contained in a separate RFP notice resulting from favorable white paper evaluations or calls issued against this BAA. Calls may be placed against this BAA and specific information related to due dates will be provided in each call. Proposals or white papers submitted in response to calls should be submitted according to directions contained within each individual call and in accordance with this BAA. Late bid and proposal provisions in accordance with (IAW) Federal Acquisition Regulations (FAR) 52.215-1(c) (3)) will apply to this BAA.",
+     "fundingDescLinkUrl": "https://sam.gov/opp/dfe0bf3dadef4a039cfbd10cbc10bf21/view",
+     "fundingDescLinkDesc": "Related SAM.GOV posting FA7000-21-S-0001 (Formerly USAFA-BAA-2021) Amend 0002",
+     "postingDate": "Dec 02, 2020 12:00:00 AM EST",
+     "costSharing": false,
+     "awardCeiling": "99000000",
+     "awardCeilingFormatted": "99,000,000",
+     "awardFloor": "0",
+     "awardFloorFormatted": "0",
+     "applicantEligibilityDesc": "White papers and proposals from Federal Agencies, including subcontracting/sub-Non-Federal Entity (NFE) efforts will not be evaluated under this BAA. Federal agencies should contact the Department of Research associated with the given technical area listed in Section I of the BAA to discuss funding through internal Government procedures.",
+     "createTimeStamp": "Dec 15, 2022 04:07:08 PM EST",
+     "sendEmail": "Y",
+     "modComments": "FA7000-21-S-0001 (Formerly USAFA-BAA-2021) Amend 0002, annual refresh.",
+     "actionType": "U",
+     "actionDate": "Jan 12, 2026 10:26:50 AM EST",
+     "createdDate": "Dec 02, 2020 01:31:02 PM EST",
+     "lastUpdatedDate": "Dec 15, 2022 04:02:29 PM EST",
+     "applicantTypes": [
+      {
+       "id": "99",
+       "description": "Unrestricted (i.e., open to any type of entity above), subject to any clarification in text field entitled \"Additional Information on Eligibility\""
+      }
+     ],
+     "fundingInstruments": [
+      {
+       "id": "CA",
+       "description": "Cooperative Agreement"
+      },
+      {
+       "id": "G",
+       "description": "Grant"
+      },
+      {
+       "id": "O",
+       "description": "Other"
+      },
+      {
+       "id": "PC",
+       "description": "Procurement Contract"
+      }
+     ],
+     "fundingActivityCategories": [
+      {
+       "id": "ST",
+       "description": "Science and Technology and other Research and Development"
+      }
+     ],
+     "postingDateStr": "2020-12-02-00-00-00",
+     "createTimeStampStr": "2022-12-15-16-07-08"
+    },
+    "cfdas": [
+     {
+      "id": 386693,
+      "opportunityId": 330175,
+      "revision": 4,
+      "cfdaNumber": "12.800",
+      "programTitle": "Air Force Defense Research Sciences Program"
+     }
+    ],
+    "synopsisModifiedFields": [
+     "revision",
+     "version",
+     "agencyContactDesc",
+     "responseDateDesc",
+     "fundingDescLinkUrl",
+     "fundingDescLinkDesc",
+     "createTimeStamp"
+    ],
+    "forecastModifiedFields": []
+   },
+   {
+    "oppHistId": {
+     "opportunityId": 330175,
+     "revision": 4
+    },
+    "opportunityId": 330175,
+    "revision": 4,
+    "opportunityNumber": "FA7000-21-S-0001",
+    "opportunityTitle": "Research Interests of the United States Air Force Academy (formerly USAFA-BAA-2021)",
+    "owningAgencyCode": "DOD-USAFA",
+    "publisherUid": "malissa.crofoot",
+    "listed": "L",
+    "opportunityCategory": {
+     "category": "D",
+     "description": "Discretionary"
+    },
+    "modifiedComments": "In accordance with DFARS 204.1603, Federal Assistance Identification Number USAFA-BAA-2021 has been modified to FA7000-21-S-0001.",
+    "synopsis": {
+     "id": {
+      "opportunityId": 330175,
+      "revision": 4
+     },
+     "opportunityId": 330175,
+     "revision": 4,
+     "version": 5,
+     "agencyCode": "DOD-USAFA",
+     "agencyAddressDesc": "10 CONS/PKC Assistance Org Email Box",
+     "agencyDetails": {
+      "code": "USAFA",
+      "seed": "DOD-USAFA",
+      "agencyName": "Air Force Academy",
+      "agencyCode": "DOD-USAFA",
+      "topAgencyCode": "DOD"
+     },
+     "agencyContactPhone": "[redacted]",
+     "agencyContactName": "[redacted]",
+     "agencyContactDesc": "[redacted]",
+     "agencyContactEmail": "[redacted]",
+     "agencyContactEmailDesc": "[redacted]",
+     "synopsisDesc": "<p>The USAFA invests in an active research program for three main reasons. First and foremost, research significantly enhances the cadet learning experience. Our research is done by, for and with cadets who work alongside fellow cadets and faculty mentors. Research provides cadets with rich independent learning opportunities as they tackle ill-defined problems and are challenged to apply their knowledge and abilities.</p><p><br></p><p>Second, our research program provides opportunities essential for faculty development. Research broadens and deepens the experience base of the faculty. This infuses current, relevant, state-of-the-art and cutting-edge applications and examples into the curriculum. This also helps our faculty remain current in their respective fields.</p><p><br></p><p>Third, at USAFA we strive to conduct research to enhance the ability of the Air Force to perform its mission. There are ongoing research projects spanning topics as diverse as super hypersonics, cyber security, spatial disorientation, athletic performance and homeland defense. This BAA offers a vehicle for research to be performed to satisfy these three objectives, while also meeting research needs of industry counterparts/serve a public purpose. USAFA’s partnerships with non-Government firms enables development in the public arena, stimulating the studies in the greater technical community. All awards issued against this BAA must serve to benefit the objectives identified above.</p>",
+     "responseDateDesc": "This announcement remains open until superseded. White papers are reviewed and evaluated as they are received and may be submitted at any time. The white paper/proposal submission process is discussed in sections IV and V of this BAA. Proposals will be due according to specific instructions contained in a separate RFP notice resulting from favorable white paper evaluations or calls issued against this BAA. Calls may be placed against this BAA and specific information related to due dates will be provided in each call. Proposals or white papers submitted in response to calls should be submitted according to directions contained within each individual call and in accordance with this BAA. Late bid and proposal provisions in accordance with (IAW) Federal Acquisition Regulations (FAR) 52.215-1(c) (3)) will apply to this BAA.",
+     "fundingDescLinkUrl": "https://sam.gov/opp/dfe0bf3dadef4a039cfbd10cbc10bf21/view",
+     "fundingDescLinkDesc": "Related SAM.GOV posting FA7000-21-S-0001 (Formerly USAFA-BAA-2021) Amend 0002",
+     "postingDate": "Dec 02, 2020 12:00:00 AM EST",
+     "costSharing": false,
+     "awardCeiling": "99000000",
+     "awardCeilingFormatted": "99,000,000",
+     "awardFloor": "0",
+     "awardFloorFormatted": "0",
+     "applicantEligibilityDesc": "White papers and proposals from Federal Agencies, including subcontracting/sub-Non-Federal Entity (NFE) efforts will not be evaluated under this BAA. Federal agencies should contact the Department of Research associated with the given technical area listed in Section I of the BAA to discuss funding through internal Government procedures.",
+     "createTimeStamp": "Jan 12, 2026 02:43:29 PM EST",
+     "sendEmail": "Y",
+     "modComments": "POC update",
+     "actionType": "U",
+     "actionDate": "Jul 28, 2026 05:43:08 PM EDT",
+     "createdDate": "Dec 02, 2020 01:31:02 PM EST",
+     "lastUpdatedDate": "Jan 12, 2026 10:26:50 AM EST",
+     "applicantTypes": [
+      {
+       "id": "99",
+       "description": "Unrestricted (i.e., open to any type of entity above), subject to any clarification in text field entitled \"Additional Information on Eligibility\""
+      }
+     ],
+     "fundingInstruments": [
+      {
+       "id": "CA",
+       "description": "Cooperative Agreement"
+      },
+      {
+       "id": "G",
+       "description": "Grant"
+      },
+      {
+       "id": "O",
+       "description": "Other"
+      },
+      {
+       "id": "PC",
+       "description": "Procurement Contract"
+      }
+     ],
+     "fundingActivityCategories": [
+      {
+       "id": "ST",
+       "description": "Science and Technology and other Research and Development"
+      }
+     ],
+     "postingDateStr": "2020-12-02-00-00-00",
+     "createTimeStampStr": "2026-01-12-14-43-29"
+    },
+    "cfdas": [
+     {
+      "id": 386693,
+      "opportunityId": 330175,
+      "revision": 4,
+      "cfdaNumber": "12.800",
+      "programTitle": "Air Force Defense Research Sciences Program"
+     }
+    ],
+    "synopsisModifiedFields": [
+     "revision",
+     "version",
+     "agencyContactDesc",
+     "createTimeStamp"
+    ],
+    "forecastModifiedFields": []
+   }
+  ],
+  "opportunityPkgs": [
+   {
+    "id": 270802,
+    "topportunityId": 330175,
+    "familyId": 14,
+    "dialect": "XFDL2.2",
+    "opportunityNumber": "FA7000-21-S-0001",
+    "opportunityTitle": "Research Interests of the United States Air Force Academy (formerly USAFA-BAA-2021)",
+    "cfdaNumber": "12.800",
+    "openingDate": "2020-12-02",
+    "closingDate": "2035-12-02",
+    "owningAgencyCode": "DOD-USAFA",
+    "agencyDetails": {
+     "code": "USAFA",
+     "seed": "DOD-USAFA",
+     "agencyName": "Air Force Academy",
+     "agencyCode": "DOD-USAFA",
+     "topAgencyCode": "DOD"
+    },
+    "topAgencyDetails": {
+     "code": "DOD",
+     "seed": "DOD",
+     "agencyName": "Department of Defense",
+     "agencyCode": "DOD",
+     "topAgencyCode": "DOD"
+    },
+    "programTitle": "Air Force Defense Research Sciences Program",
+    "contactInfo": "[redacted]",
+    "gracePeriod": 0,
+    "competitionId": "NONE",
+    "competitionTitle": "None",
+    "electronicRequired": "Y",
+    "expectedApplicationCount": 100,
+    "expectedApplicationSize": 9,
+    "openToApplicantType": 3,
+    "listed": "L",
+    "isMultiProject": "N",
+    "extension": "pdf",
+    "mimetype": "application/pdf",
+    "lastUpdate": "Dec 12, 2025 12:47:18 PM EST",
+    "workspaceCompatibleFlag": "Y",
+    "packageId": "PKG00270802",
+    "openingDateStr": "2020-12-02-00-00-00",
+    "closingDateStr": "2035-12-02-00-00-00"
+   }
+  ],
+  "closedOpportunityPkgs": [],
+  "originalDueDateDesc": "This announcement remains open until superseded. White papers are reviewed and evaluated as they arereceived and may be submitted at any time. The white paper/proposal submission process is discussed insections IV and V of this BAA. Proposals will be due according to specific instructions contained in aseparate RFP notice resulting from favorable white paper evaluations or calls issued against this BAA. Callsmay be placed against this BAA and specific information related to due dates will be provided in each call.Proposals or white papers submitted in response to calls should be submitted according to directionscontained within each individual call and in accordance with this BAA. Late bid and proposal provisions inaccordance with (IAW) Federal Acquisition Regulations (FAR) 52.215-1(c) (3)) will apply to this BAA.",
+  "synopsisModifiedFields": [
+   "revision",
+   "version",
+   "fundingDescLinkDesc",
+   "createTimeStamp"
+  ],
+  "forecastModifiedFields": [],
+  "errorMessages": [],
+  "synPostDateInPast": true,
+  "docType": "synopsis",
+  "forecastHistCount": 0,
+  "synopsisHistCount": 5,
+  "assistCompatible": false,
+  "assistURL": "",
+  "relatedOpps": [
+   {
+    "sourceOpportunityId": 330175,
+    "opportunityId": 332837,
+    "opportunityNum": "USAFA-BAA-2021-CALL0003",
+    "opportunityTitle": "Space Domain Awareness Grand Challenge – in situ Plasma and Event-Based Satellite Data",
+    "agencyCode": "DOD-USAFA",
+    "postedDate": "Apr 13, 2021",
+    "closeDate": "May 11, 2021",
+    "comments": ""
+   },
+   {
+    "sourceOpportunityId": 330175,
+    "opportunityId": 331549,
+    "opportunityNum": "USAFA-BAA-2021-CALL-0001",
+    "opportunityTitle": "Developing Novel Engineering Design Methodologies for the Classroom, the Department of Defense, and Industry",
+    "agencyCode": "DOD-USAFA",
+    "postedDate": "Feb 16, 2021",
+    "closeDate": "Mar 18, 2021",
+    "comments": ""
+   }
+  ],
+  "draftMode": "N",
+  "ost": "POSTED"
+ }
+}
