@@ -96,6 +96,15 @@ def _details(detail: dict[str, Any], key: str) -> dict[str, Any]:
     return d if isinstance(d, dict) else {}
 
 
+PLACEHOLDER_NOTES = {"undefined", "no explanation", "none", "n/a", "null"}
+
+
+def deadline_note(value: str | None) -> str | None:
+    """The record's deadline words; Grants.gov placeholders such as "undefined" are dropped."""
+    text = _text(value)
+    return None if not text or text.lower().strip(" .") in PLACEHOLDER_NOTES else text
+
+
 def agency_name(detail: dict[str, Any]) -> str:
     """The agency's name from `agencyDetails`. The synopsis-level `agencyName` is not
     used: on DoD and DOE records it holds the contact person's name and role."""
@@ -135,7 +144,7 @@ def parse_opportunity(detail: dict[str, Any], fetched_at: datetime,
         parent_agency=parent_agency(detail),
         open_date=_date(syn.get("postingDate")),
         close_date=_date(syn.get("responseDate")),
-        close_date_note=_text(syn.get("responseDateDesc")),
+        close_date_note=deadline_note(syn.get("responseDateDesc")),
         archive_date=_date(syn.get("archiveDate")),
         award_ceiling=_money(syn.get("awardCeiling")),
         award_floor=_money(syn.get("awardFloor")),

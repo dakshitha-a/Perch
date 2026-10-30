@@ -123,3 +123,9 @@ def test_redaction_drops_contact_agency_name_and_contact_info():
     out = gg.redact_contacts(data)["synopsis"]
     assert out["agencyName"] == "[redacted]" and out["contactInfo"] == "[redacted]"
     assert out["agencyDetails"]["agencyName"] == "Air Force Academy"
+
+
+def test_deadline_note_drops_placeholders():
+    assert gg.deadline_note("Proposals accepted anytime") == "Proposals accepted anytime"
+    for junk in ("undefined", "No Explanation", "", None, "none."):
+        assert gg.deadline_note(junk) is None
