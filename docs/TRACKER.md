@@ -29,14 +29,15 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S22 | Redesign and rebuild | done | 2026-10-29 19:20 EDT | 2026-10-29 19:54 EDT | see git log | Option B (Q29 default) live on the public URL: two doors on Find, student words, compact student and industry cards, the order explained, hand-off offices fixed, accessibility fixes. Walk on the dev server: 110 states, 0 axe violations, 0 failed steps. Review: 7 issues, all fixed. Live canary ok, 10 of 10 explained. 248 tests green. The media refilm (task 5) moved to S24. |
 | S23 | Private by default, local models first | todo | | | | |
 | S24 | Media refilm | todo | | | | |
-| S25 | Freeze and package | todo | | | | |
+| S25 | UI/UX review and full QA test | todo | | | | |
+| S26 | Freeze and package | todo | | | | |
 
 ## Milestone readiness
 
 | Milestone | Date | Needs | Ready? |
 |---|---|---|---|
 | Checkup 2 | Tue 3 Nov | S0–S7 | |
-| Code freeze | Thu 5 Nov 12:00 | S25 (after S17–S24, or their cut-order floors) | |
+| Code freeze | Thu 5 Nov 12:00 | S26 (after S17–S25, or their cut-order floors) | |
 | Submission | Fri 6 Nov 12:00 | ZIP + links | |
 
 ## Key numbers (keep current)

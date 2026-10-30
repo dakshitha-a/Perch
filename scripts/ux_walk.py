@@ -15,7 +15,7 @@ At every captured state the script records, in <out>/report-<groups>.json:
 - sideways scroll;
 - whether private mode shows (the header switch state, the frame line, the body class).
 It also tabs through Find and a brief and records the focus order and whether each focus
-is visible. S25 reruns this script on the frozen build.
+is visible. S25 reruns this script before the freeze.
 """
 
 from __future__ import annotations
