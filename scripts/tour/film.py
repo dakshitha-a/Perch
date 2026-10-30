@@ -77,41 +77,57 @@ async def alias_responses(page: Page, names: dict[str, str]) -> None:
         await page.route(f"**{path}", handle)
 
 
+def evidence_panel(page: Page):  # noqa: ANN201 - a Locator
+    """The record opens in the rail on a laptop (S24), in the sheet otherwise."""
+    return page.locator("#rail-ev")
+
+
+async def pick(page: Page, rec: Recorder | None = None) -> None:
+    """Search the demo researcher and pick them (S24 pick screen)."""
+    q = page.locator("#q")
+    if rec:
+        await click(page, q)
+        await q.press_sequentially(AUTHOR, delay=70)
+        await rec.focus(page.locator("form[role=search]"), pad=30)
+        await rec.hold(300)
+        await click(page, page.locator(".searchbox button[type=submit]"))
+    else:
+        await page.fill("#q", AUTHOR)
+        await page.click(".searchbox button[type=submit]")
+    card = page.locator(".cand").first
+    if rec:
+        await rec.quickly(lambda: card.wait_for())
+        await rec.focus(card, pad=30)
+        await rec.hold(1200)
+        await click(page, card.locator("button.btn.outline"))
+        await rec.hold(500)
+    else:
+        await card.locator("button.btn.outline").click()
+
+
 async def hero(page: Page, base: str) -> Recorder:
     await page.goto(base + "/#/")
     await page.wait_for_timeout(1200)
     rec = Recorder(page, "hero", RAW)
     await rec.start()
     await rec.hold(900)
-    q = page.locator("#q")
-    await click(page, q)
-    await q.press_sequentially(AUTHOR, delay=70)
-    await rec.focus(page.locator("form.search"), pad=30)
-    await rec.hold(300)
-    await click(page, page.locator("button:has-text('Find researcher')"))
-    card = page.locator(".candidate").first
-    await rec.quickly(lambda: card.wait_for())
-    await rec.focus(card, pad=30)
-    await rec.hold(1400)
-    await click(page, card.locator("button:has-text('Build brief')"))
+    await pick(page, rec)
     rec.wide()
-    await rec.quickly(lambda: page.locator("#tab-routes").wait_for())
-    await page.wait_for_timeout(1500)
-    await rec.hold(1200)
-    await click(page, page.locator("#tab-routes"))
     await rec.hold(900)
+    await click(page, page.locator("[data-key=build-top]"))
+    await rec.quickly(lambda: page.locator(".leads > li").first.wait_for(timeout=240_000))
+    await page.wait_for_timeout(1200)
+    await rec.hold(1200)
     lead = page.locator(".leads > li").first
     await rec.focus(lead, pad=20)
     await rec.hold(1600)
-    why = lead.locator("summary[data-key=why]")
-    await click(page, why)
+    await click(page, lead.locator("summary[data-key=why]"))
     await rec.hold(500)
     await rec.focus(lead, pad=20)
     await rec.hold(1800)
-    ref = lead.locator(".paper-ref").first
-    await click(page, ref)
-    panel = page.locator("#evidence")
-    await panel.wait_for()
+    await click(page, lead.locator(".paper-ref").first)
+    panel = evidence_panel(page)
+    await panel.locator(".rec-title").wait_for()
     await rec.hold(500)
     await rec.focus(panel, pad=10)
     await rec.hold(2600)
@@ -124,13 +140,10 @@ async def hero(page: Page, base: str) -> Recorder:
 async def open_brief(page: Page, base: str) -> None:
     """A fresh copy of the demo researcher's brief, on Routes."""
     await page.goto(base + "/#/")
-    await page.fill("#q", AUTHOR)
-    await page.click("button:has-text('Find researcher')")
-    await page.locator(".candidate button:has-text('Build brief')").first.click()
-    await page.locator("#tab-routes").wait_for()
+    await pick(page)
+    await page.click("[data-key=build]")
+    await page.locator(".leads > li").first.wait_for(timeout=240_000)
     await page.wait_for_timeout(1200)
-    await page.click("#tab-routes")
-    await page.wait_for_timeout(800)
 
 
 async def industry(page: Page, base: str) -> Recorder:
@@ -166,13 +179,13 @@ async def handoff(page: Page, base: str) -> Recorder:
     await rec.hold(700)
     keeps = page.locator(".leads > li [data-key=keep]")
     for i in range(2):
-        k = keeps.nth(i)
         await rec.focus(page.locator(".leads > li").nth(i), pad=16)
-        await click(page, k)
+        await click(page, keeps.nth(i))
         await rec.hold(700)
-    bar = page.locator("[data-key=keep-compare]")
-    await rec.focus(bar, pad=60)
-    await rec.hold(900)
+    rec.wide()
+    bar = page.locator("[data-key=sl-compare]")
+    await rec.focus(page.locator(".shortlist"), pad=40)
+    await rec.hold(1200)
     await click(page, bar)
     rec.wide(ease=0.4)
     table = page.locator("#panel table").first
@@ -207,14 +220,13 @@ async def scout(page: Page, base: str) -> Recorder:
     rec = Recorder(page, "scout", RAW)
     await rec.start()
     await rec.hold(700)
-    run = page.locator("input[name=scout-mode][value=run]")
-    await click(page, run)
+    await click(page, page.locator("[data-key=scout-run]"))
     q = page.locator("#scout-q")
     await click(page, q)
     await rec.focus(page.locator("#panel"), pad=0)
     await q.press_sequentially("Why does the top lead fit?", delay=45)
     await rec.hold(300)
-    await click(page, page.locator("#panel button:has-text('Ask')"))
+    await click(page, page.locator(".scout-ask button[type=submit]"))
     answer = page.locator(".scout-answer").last
     await rec.quickly(lambda: answer.wait_for(timeout=180_000), speed=6)
     await page.wait_for_timeout(1500)
@@ -229,42 +241,24 @@ async def scout(page: Page, base: str) -> Recorder:
 
 
 async def private(page: Page, base: str) -> Recorder:
-    files = {"cv": "cv.md", "proposal": "specific_aims_draft.md",
-             "manuscript": "unpublished_manuscript.md"}
+    """Tell Perch more (S24): the SYNTHETIC sample's direction, keywords and draft aims
+    steer a brief whose explanations cite the draft with a lock."""
     await page.goto(base + "/#/")
     await page.wait_for_timeout(1200)
     rec = Recorder(page, "private", RAW)
     await rec.start()
     await rec.hold(600)
-    await click(page, page.locator("summary:has-text('Options')"))
-    link = page.locator("text=Private mode: add a CV")
-    await rec.focus(link, pad=80)
-    await rec.hold(700)
-    await click(page, link)
-    await rec.hold(600)
+    await pick(page, rec)
+    panel = page.locator(".more-panel")
+    await rec.focus(panel, pad=10)
+    await rec.hold(900)
+    await click(page, page.locator("[data-key=fill-sample]"))
+    await rec.hold(1800)
+    await click(page, page.locator("[data-key=build]"))
     rec.wide()
-    start = page.locator("text=Start a private session")
-    await rec.focus(page.locator(".private"), pad=10)
-    await rec.hold(1500)
-    await click(page, start)
-    await rec.hold(500)
-    for kind, name in files.items():
-        box = page.locator(f"#doc-{kind}")
-        await click(page, box, steps=8)
-        await box.fill((PERSONA / name).read_text())
-        await click(page, page.locator(f"#doc-{kind} ~ .doc-actions button:has-text('Add text')"),
-                    steps=8)
-        await page.wait_for_timeout(500)
-    await rec.focus(page.locator(".private-docs"), pad=10)
-    await rec.hold(1200)
-    build = page.locator("button:has-text('Build private brief')")
-    await click(page, build)
-    rec.wide()
-    await rec.quickly(lambda: page.locator("text=Brief ready").wait_for(timeout=240_000),
+    await rec.quickly(lambda: page.locator("text=Brief ready").wait_for(timeout=300_000),
                       speed=12)
     await rec.hold(800)
-    await click(page, page.locator("#tab-routes"))
-    await rec.hold(700)
     lead = page.locator(".leads > li").first
     await click(page, lead.locator("summary[data-key=why]"))
     await rec.hold(400)
@@ -273,12 +267,43 @@ async def private(page: Page, base: str) -> Recorder:
     rec.wide()
     await rec.hold(500)
     await rec.stop()
-    await page.locator("text=End private session").first.click()
+    await page.click("#end-session")
+    await page.click("[data-key=end-ok]")
+    return rec
+
+
+async def student(page: Page, base: str) -> Recorder:
+    """Student mode (S24) with the SYNTHETIC persona-ug sample: the form, then the sample
+    scholarships tab with its badges."""
+    await page.goto(base + "/#/")
+    await page.wait_for_timeout(1000)
+    rec = Recorder(page, "student", RAW)
+    await rec.start()
+    await rec.hold(600)
+    await click(page, page.locator("[data-key=seg-s]"))
+    await rec.hold(400)
+    await click(page, page.locator("[data-key=student]"))
+    await page.locator("[data-key=st-fill]").wait_for()
+    await click(page, page.locator("[data-key=st-fill]"))
+    await rec.hold(1600)
+    await click(page, page.locator("[data-key=st-build]"))
+    await rec.quickly(lambda: page.locator("text=Brief ready").wait_for(timeout=300_000),
+                      speed=12)
+    await click(page, page.locator("[data-key=route-S]"))
+    await rec.hold(700)
+    card = page.locator(".leads > li").first
+    await rec.focus(card, pad=16)
+    await rec.hold(3200)
+    rec.wide()
+    await rec.hold(600)
+    await rec.stop()
+    await page.click("#end-session")
+    await page.click("[data-key=end-ok]")
     return rec
 
 
 SCENES = {"hero": hero, "industry": industry, "handoff": handoff, "scout": scout,
-          "private": private}
+          "private": private, "student": student}
 
 
 async def main(base: str, names: list[str], width: int, fps: int, quality: int) -> None:
