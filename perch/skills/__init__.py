@@ -43,7 +43,7 @@ def work_view(w: Work, abstract_chars: int = 600) -> str:
 
 
 def opportunity_view(o: Opportunity, description_chars: int = 1500) -> str:
-    lines = [f"[{o.opportunity_number}] {o.title}", f"  Agency: {o.agency}"]
+    lines = [f"[{o.opportunity_number}] {o.title}", f"  Agency: {o.agency_label()}"]
     if o.activity_code:
         lines.append(f"  Activity code: {o.activity_code}")
     if o.open_date:

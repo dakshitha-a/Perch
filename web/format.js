@@ -23,6 +23,8 @@ const AGENCY_SHORT = {
   "U.S. National Science Foundation": "NSF",
   "National Aeronautics and Space Administration": "NASA",
   "Department of Agriculture": "USDA",
+  "Department of Health and Human Services": "HHS",
+  "Department of Energy - Office of Science": "DOE",
   "Department of Energy": "DOE",
   "Department of Defense": "DOD",
   "Agency for Health Care Research and Quality": "AHRQ",
@@ -87,9 +89,11 @@ export function awardSize(opp) {
   return null;
 }
 
-// A sub-agency shows its department first: "DOD · Air Force Academy".
+// A known short name stands alone ("NIH"); any other sub-agency shows its department
+// first ("DOD · Air Force Academy").
 export function agencyShort(name, parent) {
-  const own = AGENCY_SHORT[name] || name || "";
+  if (AGENCY_SHORT[name]) return AGENCY_SHORT[name];
+  const own = name || "";
   return parent ? `${AGENCY_SHORT[parent] || parent} · ${own}` : own;
 }
 

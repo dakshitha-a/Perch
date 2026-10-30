@@ -93,7 +93,7 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
         out.append(Block("h3", f"{x.rank}. {o.opportunity_number}: {o.title}{mark}"))
         closes = o.close_date.isoformat() if o.close_date else "Not in the record"
         out.append(Block("list", items=[
-            f"Agency: {o.agency}", f"Closes: {closes}", f"Money: {_money(o)}",
+            f"Agency: {o.agency_label()}", f"Closes: {closes}", f"Money: {_money(o)}",
             f"Activity code: {o.activity_code or 'Not in the record'}",
             f"Office: {for_route('A').name}"]))
         if x.explanation and not x.flagged:

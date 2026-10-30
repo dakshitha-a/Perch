@@ -61,6 +61,10 @@ const out = {
     "Funds X [PAR-1]. Cited work: W123456 did A [W123456]; W654321 did B.",
     ["PAR-1", "W123456", "W654321"]),
   raw: f.parseExplanation("Free text citing W123456 only.", ["W123456"]),
+  tags: [f.agencyShort("National Institutes of Health", "Department of Health and Human Services"),
+         f.agencyShort("U.S. National Science Foundation", null),
+         f.agencyShort("Air Force Academy", "Department of Defense"),
+         f.agencyShort("Office of Science", "Department of Energy - Office of Science")],
 };
 console.log(JSON.stringify(out));
 """.replace("MODULE", (WEB_DIR / "format.js").as_uri())
@@ -77,6 +81,7 @@ console.log(JSON.stringify(out));
     assert p["findings"] == [{"paper": "W123456", "text": "did A"},
                              {"paper": "W654321", "text": "did B"}]
     assert {"cite": "W123456"} in out["raw"]["raw"]
+    assert out["tags"] == ["NIH", "NSF", "DOD · Air Force Academy", "DOE · Office of Science"]
 
 
 def test_award_rows_open_their_record_and_cors_is_off_by_default(tmp_path):

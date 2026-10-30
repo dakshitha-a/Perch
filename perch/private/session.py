@@ -32,7 +32,7 @@ from datetime import date
 
 from perch import egress
 from perch.brief import route_a
-from perch.eligibility import Constraints, career_stage_restricted
+from perch.eligibility import Constraints, agency_text, career_stage_restricted
 from perch.llm import Provider
 from perch.llm.audit import AuditLog
 from perch.privacy import PrivateSettings, refuse_endpoints, refuse_if_not_local
@@ -231,7 +231,7 @@ class PrivateService(BriefService):
                 if esi and career_stage_restricted(x.opportunity):
                     notes.append(cv.esi_note())
                 bonus = 0.0
-                if cv and (k := sponsor_match(x.opportunity.agency, cv.sponsors)):
+                if cv and (k := sponsor_match(agency_text(x.opportunity), cv.sponsors)):
                     notes.append(f"Your CV lists a past award from {k} (private), so this "
                                  "sponsor's programme moved up.")
                     bonus = SPONSOR_BONUS

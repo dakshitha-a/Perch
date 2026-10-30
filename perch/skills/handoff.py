@@ -111,7 +111,7 @@ def lead_lines(items: list[tuple[Lead, Record | None]]) -> list[str]:
                       else "close date not stated in the record")
             code = (f" ({rec.activity_code})" if rec.activity_code
                     and rec.activity_code not in rec.title else "")
-            out.append(f"{i}. {rec.opportunity_number}: {rec.title}{code}. {rec.agency}; "
+            out.append(f"{i}. {rec.opportunity_number}: {rec.title}{code}. {rec.agency_label()}; "
                        f"{closes}; {_money(rec)}.\n   Record: {rec.source_url}")
         elif isinstance(rec, Organisation):
             rel = f" Suggested relationship, by rule: {lead.relationship}." \

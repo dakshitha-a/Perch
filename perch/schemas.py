@@ -115,6 +115,11 @@ class Opportunity(Record):
     assistance_listings: list[str] = Field(default_factory=list, description="CFDA / ALN")
     funding_instruments: list[str] = Field(default_factory=list)
 
+    def agency_label(self) -> str:
+        """The agency, with its department when there is one: "Air Force Academy
+        (Department of Defense)"."""
+        return f"{self.agency} ({self.parent_agency})" if self.parent_agency else self.agency
+
 
 class Organisation(Record):
     kind: ClassVar[str] = "organisation"
