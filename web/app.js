@@ -1475,7 +1475,8 @@ function leadCard(l) {
   const facts = h("dl", { class: `facts${size ? "" : " one"}` },
     h("div", { class: `fact close ${urg}` }, h("dt", { text: "Closes" }),
       h("dd", {}, o.close_date ? h("span", { text: f.formatDate(o.close_date) }) : h("span", { class: "missing", text: "Not stated in the record" }),
-        days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),
+        o.close_date_note ? h("span", { class: "rel", text: o.close_date_note })
+          : days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),
     size ? h("div", { class: "fact" }, h("dt", { text: "Award size" }), h("dd", {}, h("span", { text: size }))) : null);
   const noSize = size ? null : h("p", { class: "hint no-size", text: "Award size: not stated in the record." });
 
@@ -1756,9 +1757,11 @@ function recordView(r) {
     out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.title }),
       h("dl", { class: "fields" },
         field("Opportunity number", r.opportunity_number), field("Agency", r.agency),
+        field("Department", r.parent_agency),
         field("Status", r.status ? r.status[0].toUpperCase() + r.status.slice(1) : null),
         field("Posted", f.formatDate(r.open_date)),
         field("Closes", f.formatDate(r.close_date) || "Not stated in the record"),
+        field("Deadline note", r.close_date_note),
         field("Archive date", f.formatDate(r.archive_date)),
         field("Award ceiling", r.award_ceiling ? f.money(r.award_ceiling) : "Not stated in the record"),
         field("Award floor", r.award_floor ? f.money(r.award_floor) : "Not stated in the record"),

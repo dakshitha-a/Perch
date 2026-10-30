@@ -56,7 +56,8 @@ def opportunity_view(o: Opportunity, description_chars: int = 1500) -> str:
     if o.open_date:
         lines.append(f"  Opens: {o.open_date.isoformat()}")
     if o.close_date:
-        lines.append(f"  Closes: {o.close_date.isoformat()}")
+        note = f" ({o.close_date_note})" if o.close_date_note else ""
+        lines.append(f"  Closes: {o.close_date.isoformat()}{note}")
     if o.award_ceiling is not None:
         lines.append(f"  Award ceiling: ${o.award_ceiling:,.0f}")
     if o.description:

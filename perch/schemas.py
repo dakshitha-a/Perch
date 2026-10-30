@@ -104,6 +104,9 @@ class Opportunity(Record):
                                       "of Defense; None when the agency is the department")
     open_date: date | None = None
     close_date: date | None = None
+    close_date_note: str | None = Field(
+        default=None, description="The record's own words on the deadline, e.g. 'Proposals "
+        "accepted anytime' (NSF gives such programs a close date decades out)")
     award_ceiling: float | None = None
     award_floor: float | None = None
     eligible_applicants: list[str] = Field(default_factory=list)

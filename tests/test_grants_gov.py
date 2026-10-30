@@ -111,6 +111,8 @@ def test_agency_comes_from_agency_details_not_the_contact():
     assert dod.agency_code == "DOD-USAFA" and dod.parent_agency == "Department of Defense"
     nsf = gg.parse_opportunity(load("fetch_opportunity_nsf.json")["data"], T, "posted")
     assert nsf.agency == "U.S. National Science Foundation" and nsf.parent_agency is None
+    assert nsf.close_date == date(2076, 10, 7)
+    assert nsf.close_date_note == "Proposals accepted anytime"
     nih = gg.parse_opportunity(load("fetch_opportunity.json")["data"], T, "posted")
     assert nih.agency == "National Institutes of Health"
 

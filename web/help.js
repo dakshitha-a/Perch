@@ -123,7 +123,7 @@ function steps() {
   const legend = h("ol", { class: "callouts" },
     h("li", { text: "The fit estimate is a model’s judgment of how well the opportunity matches the papers. It is not the odds of funding." }),
     h("li", { text: "The title, like Evidence, opens the record inside Perch, with a link to Grants.gov." }),
-    h("li", { text: "Dates and amounts are copied from the record. Amber means it closes within 30 days." }),
+    h("li", { text: "Dates and amounts are copied from the record. Amber means it closes within 30 days. When the record states its deadline in words, such as “Proposals accepted anytime”, the card shows those words; NSF gives such programs a close date decades away." }),
     h("li", { text: "Text a model wrote is tagged. Open “Why it fits” to see which papers it cites." }),
     h("li", { text: "Keep what is worth a closer look; dismiss what is not. Dismissed leads can be restored." }));
   return h("section", { class: "help-block", "aria-labelledby": "h-use" },
