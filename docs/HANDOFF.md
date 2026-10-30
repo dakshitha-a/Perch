@@ -2,39 +2,40 @@
 
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
-## Last run: S21 and S22 done
-- Dakshitha asked for S21 and S22 in one run; both are done. S22's media refilm moved to a new S24, after S23.
-- 248 tests pass. No API spend; the ledger is still $2.05 of $100.
+## Last run: plan edits, then S23 done
+- **Plan:** Dakshitha added a UI/UX review and full QA test, then swapped two sessions. The order is now S24 UI/UX review and full QA test, S25 media refilm, S26 freeze and package.
+- **S23 is done.** Dakshitha asked to stop after S23, so S24 has not started.
+- 245 tests pass. API spend: $2.09 of $100, after one $0.04 cloud check.
 
-## S21 — UX audit (done)
-- `docs/design/UX_AUDIT.md` and the tracker's UX tab: 6 must-fix, 12 should-fix, 4 could-fix, with 9 screenshots.
-- `docs/design/A11Y_CHECKLIST.md`: 13 items, run by `scripts/ux_walk.py` with axe-core 4.10.2 (`--axe` path to `axe.min.js` from cdnjs). S25 reruns it.
-- Q29 (open): which S22 option. Default B, redesign of the core screens. S22 started on B.
+## S23 — what changed
+- **Every brief is a session in memory.** Find runs researcher briefs through `/private/brief`; no document is needed with an author id. The context fields and the award ceiling go with it.
+- **Nothing about a visitor is stored.** There is no reuse, no recent-briefs list and no per-user log. The stored-brief routes answer 404 unless `PERCH_STORED_BRIEFS=1`; tests and replays set it.
+- **Public records stay cached.** A session writes OpenAlex, RePORTER and NSF records through to the store (`perch/private/store.py`, `is_public`). The embedding cache stays read-only for sessions.
+- **Local / Cloud switch** (`#models-switch`) replaces Private. Cloud needs a confirm naming the provider. Only the summary, fit and hand-off skills switch. Cloud never runs with documents, and student mode turns it off. The server allows 30 cloud briefs a day (`PERCH_CLOUD`, `PERCH_CLOUD_BRIEFS_PER_DAY`).
+- **End session** sits in the line under the top bar, on every screen. The line says "Nothing about you is stored", and the bar turns amber with Cloud on.
+- **Monitoring shelved:** `perch/shelved/monitor/` holds the module, screen, units, skipped tests and a README. The morning warm-up was deleted.
+- **Demo:** rebuilt; old timers removed. The old 64 briefs and 880 leads were deleted from `data/demo/perch.db`. A copy of the old store and its logs is in the gitignored `data/archive/pre-s23/`. Dakshitha may delete it.
+- **Checks:** live canary ok (`scripts/private_canary.py`, now with a default-path run and a Cloud refusal check). Walk on the demo: 110 states, 0 axe violations, 0 sideways scroll, 0 failed steps.
 
-## S22 — what is built and live on the public URL
-- **Must-fix:** the hand-off lists only the research offices, and its radios sit in their cards. The owl copies leave the tab order. Scroll regions take focus. Two contrast fixes. The order is explained beside the fit estimate. Student explanations say "the student", not "the researcher".
-- **Redesign:** Find has two doors, "I'm a researcher" and "I'm a student". A student brief says What Perch read, Your options and Your documents. Compact student cards: one line when a listing states no deadline or amount, and a folded explanation. Industry cards show the newest record per signal.
-- **Checks:** the walk was rerun on the dev server: 0 axe violations, no sideways scroll, private mode correct in every state. An independent review found 7 issues; all are fixed.
-- **Corrected:** the audit's S10 was wrong; the evidence panel already sat beside the list on a laptop.
-- **Not built (after Demo Day):** grouping one announcement family (S5) and merging company aliases (S7). Both change pipeline output.
+## Next: S24, UI/UX review and full QA test
+- Read S24 in PLAN.md. The walk (`scripts/ux_walk.py`) already knows the S23 switch and End session. axe-core 4.10.2 was in an old scratchpad; fetch `axe.min.js` from cdnjs again if it is gone.
+- To test without touching the demo: `perch serve --port 8091` on a scratch copy of `data/demo`, with the demo's model servers. Stop it by its task, or with an anchored pkill; an unanchored pkill kills its own shell.
+- Write `docs/QA_PLAN.md` and `docs/design/UX_REVIEW_S24.md`. Fix must-fix items in S24.
+- Things worth a look: the phone frame line wraps with End session; the replay preview still uses the stored-brief shape.
+- Then S25 (media refilm, notes below) and S26 (freeze; task 2 frees the dev GPUs).
 
-## Next: S23 (private by default), then S24 (media refilm), then S25 (freeze)
-- **S23 next:** read S23 in PLAN.md. It changes the header switch, so the refilm waits for it.
-
-S24, notes for the refilm:
-1. Refilm the README clips: `scripts/tour/film.py`, then `scripts/tour/animate.py`. The `private` scene opens private mode from "Options" with a link. That path may be stale since S18; use the header switch.
-2. Retake `docs/screenshots/` (`scripts/screenshots.py` on the replay preview), and the README student screenshot (S19, Scholarships tab at 390 px; the tab is now "Scholarships and awards (sample)").
-3. Tracker UI preview with the student flow (moved here from S19). A private brief cannot be replayed today. This needs a replay of a SYNTHETIC student brief: export one from a live run with persona-ug and teach `scripts/build_ui_preview.py` to serve `/private/*`.
-4. Update the README text that names old labels, then the README tab (`make tracker`), and republish the artifact. Dakshitha reviews the README tab.
-5. Then S25, freeze and package. S25 task 2 frees the dev GPUs.
-
-## Dev server used in S22
-- `perch serve --port 8091` on a scratch copy of the demo stores, using the demo's model servers. It is not needed again. Kill it with an anchored pattern, because an unanchored `pkill` matches its own shell.
+## Notes for S25, the media refilm
+1. README clips: `scripts/tour/film.py`, then `scripts/tour/animate.py`. The `private` scene must use the documents link and the new switch.
+2. `docs/screenshots/` (`scripts/screenshots.py`) and the README student screenshot (tab "Scholarships and awards (sample)").
+3. Tracker UI preview with the student flow: a replay of a SYNTHETIC student brief; `scripts/build_ui_preview.py` must serve its routes.
+4. README text for the new labels, then the README tab, then republish.
 
 ## Known gaps
 - **Student retrieval:** 2 of 12 planted positives never reached a brief.
 - **Shared Ollama:** the dev Ollama on 11434 reloads gemma when another client asks for a different context size.
-- **README known limits:** the S20 list stands. S5 and S7 above should be added there.
+- **Every brief is live:** about 45 s on the demo models (Q31).
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- **Q29:** S22 option A, B or C. Default B is built; say if you want less, or C.
+- **Q29:** S22 option A, B or C. Default B is built.
+- **Q30:** documents on Cloud? Default: Local only.
+- **Q31:** every brief is live, about 45 s. Default: accept it.
