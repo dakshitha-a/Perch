@@ -58,7 +58,8 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
   const have = new Set(docs.map((d) => d.kind));
   const kinds = info.student_kinds || { cv: "Your CV or résumé", interests: "Your interests", achievements: "Your achievements" };
   const text = (k) => (D.drafts[k] || "").trim();
-  const ready = (text("cv") || D.files.cv || have.has("cv"))
+  // Checked when Build is pressed, not when the form is drawn: typing does not redraw.
+  const ready = () => (text("cv") || D.files.cv || have.has("cv"))
     && (text("interests") || text("achievements") || have.has("interests") || have.has("achievements"));
   const set = (k) => (e) => { D.drafts[k] = e.target.value; if (D.sample) { D.sample = false; drawSample(); } };
 
@@ -140,7 +141,7 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
         box("achievements", kinds.achievements || "Your achievements", "Up to five, one per line. Explanations may cite them.", 4))),
     h("div", { class: "go-row" },
       h("button", { class: "btn primary big", type: "button", "data-key": "st-build", disabled: D.busy, onclick: () => {
-        if (!ready) { D.error = "Add your CV and either your interests or your achievements."; draw(); return; }
+        if (!ready()) { D.error = "Add your CV and either your interests or your achievements."; draw(); return; }
         build();
       } }, h("span", { text: D.busy ? "Starting" : "Find fellowships and scholarships" })),
       h("span", { class: "hint", text: "Needs your CV and either your interests or your achievements." }))));

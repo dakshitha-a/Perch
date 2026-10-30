@@ -1000,3 +1000,17 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .scout-rules { font-size: 13px; line-height: 1.5; }
 .scout-intro .lede { flex: 1 1 320px; font-size: 16px; }
 .dialog .warn-box.strong { background: var(--no-bg); display: grid; gap: 8px; }
+/* Phone header (S24 walk): wordmark, Help and theme on one row; the chip and End session under it. */
+@media (max-width: 479px) {
+  .bar-in { display: grid; grid-template-columns: 1fr auto auto; align-items: center; row-gap: 4px; }
+  .bar-tools { display: contents; }
+  #help { grid-column: 2; grid-row: 1; }
+  #theme { grid-column: 3; grid-row: 1; }
+  .status-chip { grid-column: 1; grid-row: 2; justify-self: start; }
+  #end-session { grid-column: 2 / -1; grid-row: 2; justify-self: end; }
+}
+/* 44 px targets where the walk found smaller ones */
+.cite { min-height: 32px; display: inline-flex; align-items: center; }
+.pcard .steps summary, .wordmark { min-height: 44px; }
+.wordmark { display: inline-flex; align-items: center; }
+@media (pointer: coarse) { .cite { min-height: 44px; } .seg button, .route-btn { min-height: 44px; } }
