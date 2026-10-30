@@ -1014,3 +1014,9 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .pcard .steps summary, .wordmark { min-height: 44px; }
 .wordmark { display: inline-flex; align-items: center; }
 @media (pointer: coarse) { .cite { min-height: 44px; } .seg button, .route-btn { min-height: 44px; } }
+/* The keep pill sticks to the viewport, so the sticky box is #keep-float itself. */
+@media (max-width: 900px) {
+  #keep-float { position: sticky; bottom: 16px; z-index: 6; display: flex; justify-content: center; pointer-events: none; }
+  #keep-float .keep-float { position: static; margin: 0; pointer-events: auto; }
+}
+.route-btn[aria-pressed="true"] .tag.sample { color: var(--on-accent); border-color: var(--on-accent); }

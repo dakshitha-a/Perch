@@ -913,7 +913,7 @@ function drawRail() {
     let card = rail.querySelector(".shortlist");
     if (!card) {
       card = h("section", { class: "shortlist", "aria-labelledby": "sl-title" });
-      const ev = h("aside", { class: "rail-evidence", id: "rail-ev", "aria-label": "Evidence", tabindex: "-1" },
+      const ev = h("aside", { class: "rail-evidence", id: "rail-ev", "aria-label": "Evidence", tabindex: "0" },
         h("p", { class: "ev-kind", text: "Evidence" }),
         h("p", { class: "empty-ev", text: "Pick a title or Evidence on a card to see its record here. Every value is copied from the record." }));
       fill(rail, card, ev);
