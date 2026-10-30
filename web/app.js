@@ -22,7 +22,7 @@ const mode = createMode(privApi, { onChange: () => drawSwitch() });
 setMode(mode);
 const PRIVATE_ID = "private";
 const POLL_MS = 1500;
-const TABS = ["profile", "routes", "compare", "scout"];
+const TABS = ["routes", "profile", "compare", "scout"]; // the order of the tabs (S24)
 const SOURCES = { openalex: "OpenAlex", grants_gov: "Grants.gov", nih_reporter: "NIH RePORTER",
   nsf: "NSF Award Search", perch: "Perch", private: "Your private document (this session only)",
   temple_sdfa: "Temple Scholar Development and Fellowships Advising (public list)",
@@ -35,12 +35,16 @@ const SIGNALS = { citing_works: "They cite your papers", sbir_sttr: "NIH SBIR/ST
 
 const S = {
   find: { q: "", busy: false, error: null, candidates: null, searched: "", explain: true,
-    minAmount: "", direction: "", include: "", exclude: "", stage: "", nudge: null },
+    minAmount: "", direction: "", include: "", exclude: "", stage: "", nudge: null,
+    picked: null, cv: "", proposal: "", files: {}, sample: false, building: false },
+  who: "r", // the landing's Researcher | Student control
+  hasDocs: false, // the session holds documents: Cloud stays off
+  sampleBrief: false, // the brief on screen was steered by SYNTHETIC sample text
   privateOn: false, // the server offers sessions
   cloud: false, // Cloud on for this session
   brief: null, // last GET /briefs payload
   briefId: null,
-  tab: "profile",
+  tab: "routes",
   sort: "order",
   route: "A", // Routes tab: "A" grants, "B" industry
   open: new Set(), // lead ids whose "Why it fits" is open
@@ -63,6 +67,18 @@ function announce(msg) {
 
 // ---------- routing ----------
 
+function screen(name) {
+  document.body.dataset.screen = name;
+}
+
+function leaveBrief() {
+  stopPolling();
+  S.briefId = null;
+  S.brief = null;
+  api = publicApi;
+  closeEvidence();
+}
+
 function route() {
   if (location.hash && !location.hash.startsWith("#/")) return; // in-page anchors, e.g. the skip link
   const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
@@ -71,11 +87,9 @@ function route() {
   else $("#help").removeAttribute("aria-current");
   document.body.classList.toggle("on-help", onHelp);
   if (onHelp) {
-    stopPolling();
-    S.briefId = null;
-    S.brief = null;
+    leaveBrief();
+    screen("help");
     document.title = "Help — Perch";
-    barOwl("idle");
     renderHelp(main(), { back: S.lastHash && S.lastHash !== location.hash ? S.lastHash : "#/" });
     window.scrollTo(0, 0);
     main().focus({ preventScroll: true });
@@ -83,36 +97,36 @@ function route() {
   }
   S.lastHash = location.hash || "#/";
   if (parts[0] === "private") {
-    stopPolling();
-    S.briefId = null;
-    S.brief = null;
-    api = publicApi;
-    barOwl("idle");
+    leaveBrief();
+    screen("form");
     renderPrivate(main(), { api: privApi, go, announce, mode });
     return;
   }
   if (parts[0] === "student") {
-    stopPolling();
-    S.briefId = null;
-    S.brief = null;
-    api = publicApi;
-    barOwl("idle");
+    leaveBrief();
+    screen("form");
     renderStudentStart(main(), { api: privApi, mode, go, announce, info: privateInfo() || {} });
+    return;
+  }
+  if (parts[0] === "find") {
+    leaveBrief();
+    screen("form");
+    renderPick();
+    window.scrollTo(0, 0);
     return;
   }
   if (parts[0] === "brief" && parts[1]) {
     const id = decodeURIComponent(parts[1]);
-    if (id === PRIVATE_ID && !privApi.open) { go("#/private"); return; }
+    if (id === PRIVATE_ID && !privApi.open) { go("#/"); return; }
+    screen("brief");
     api = id === PRIVATE_ID ? privApi : publicApi;
     S.tab = TABS.includes(parts[2]) ? parts[2] : S.tab;
     if (id !== S.briefId) openBrief(id);
     else renderPanel();
     return;
   }
-  stopPolling();
-  S.briefId = null;
-  S.brief = null;
-  api = publicApi;
+  leaveBrief();
+  screen("landing");
   renderFind();
 }
 
@@ -121,13 +135,9 @@ function go(hash) {
   else location.hash = hash;
 }
 
-// ---------- app bar owl ----------
+function barOwl() { /* the redesign has no owl in the bar (S24) */ }
 
-function barOwl(state) {
-  setOwl($("#bar-owl"), state);
-}
-
-// ---------- Find ----------
+// ---------- Landing (S24): Scout on the branch, the headline, Researcher | Student ----------
 
 function keepFocus(render) {
   const a = document.activeElement;
@@ -138,112 +148,63 @@ function keepFocus(render) {
   if (t && t !== document.activeElement) t.focus({ preventScroll: true });
 }
 
+// A segmented control: a radiogroup of two buttons, arrow keys move the choice.
+function seg(label, value, options, pick) {
+  const keys = options.map((o) => o[0]);
+  return h("div", { class: "seg", role: "radiogroup", "aria-label": label },
+    options.map(([key, text, extra]) => h("button", { type: "button", role: "radio", "data-key": `seg-${key}`,
+      "aria-checked": String(value === key), tabindex: value === key ? "0" : "-1",
+      onclick: () => pick(key),
+      onkeydown: (e) => {
+        if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"].includes(e.key)) return;
+        e.preventDefault();
+        const step = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : keys.length - 1;
+        const next = keys[(keys.indexOf(key) + step) % keys.length];
+        pick(next);
+        setTimeout(() => { const b = document.querySelector(`[data-key="seg-${next}"]`); if (b) b.focus(); }, 0);
+      } }, h("span", { text }), extra || null)));
+}
+
 function renderFind() {
   document.title = "Perch";
-  barOwl(S.find.busy ? "look" : "idle");
   const F = S.find;
+  const ok = mode.state.available;
   const input = h("input", { id: "q", name: "q", type: "search", autocomplete: "off",
-    enterkeyhint: "search", placeholder: "Name, ORCID iD or OpenAlex ID", required: true,
+    enterkeyhint: "search", placeholder: "Researcher name, ORCID iD or OpenAlex ID", required: true,
     "aria-describedby": "q-hint", value: F.q,
     oninput: (e) => { F.q = e.target.value; },
     onpaste: (e) => pasted(e, "q", "cv") });
-  const form = h("form", { class: "search", role: "search", onsubmit: (e) => {
-    e.preventDefault(); search(); } },
-  h("label", { for: "q", class: "field-label", text: "Find a Temple researcher" }),
-  h("div", { class: "search-row" }, input,
-    h("button", { class: "btn primary", type: "submit", disabled: F.busy || Boolean(F.nudge),
-      "aria-busy": F.busy ? "true" : null }, icon("search"),
-    h("span", { text: F.busy ? "Searching" : "Find researcher" }))),
-  h("p", { id: "q-hint", class: "hint", text:
-    "Names are searched among Temple University authors in OpenAlex. An ORCID iD or OpenAlex ID finds anyone." }),
-  h("details", { class: "options" },
-    h("summary", { text: "Options" }),
-    h("label", { class: "check" },
-      h("input", { type: "checkbox", checked: F.explain,
-        onchange: (e) => { F.explain = e.target.checked; } }),
-      h("span", {}, h("b", { text: "Explain each lead" }),
-        h("span", { class: "hint", text:
-          " A model writes a short, cited reason for every lead. This is the slow step." }))),
-    h("label", { class: "field-label", for: "min", text: "Smallest award ceiling, in US dollars" }),
-    h("input", { id: "min", type: "number", inputmode: "numeric", min: "0", step: "any",
-      placeholder: "Any", value: F.minAmount, "aria-describedby": "min-hint",
-      oninput: (e) => { F.minAmount = e.target.value; } }),
-    h("p", { id: "min-hint", class: "hint", text:
-      "Leaves out opportunities whose record states a lower ceiling. Records that state no amount stay in." }),
-    h("h3", { class: "mini", text: "Tell Perch more (optional)" }),
-    h("p", { class: "hint", text: "Held with this brief in memory and shown on its Profile as “You said”. Used to search, never as a fact. With Cloud on, it is sent to the cloud model. For a CV or unpublished work, add documents instead." }),
-    h("label", { class: "field-label", for: "dir", text: "Where your research is going" }),
-    h("textarea", { id: "dir", rows: 3, maxlength: 1000, value: F.direction,
-      placeholder: "A sentence or two", oninput: (e) => { F.direction = e.target.value; },
-      onpaste: (e) => pasted(e, "dir", "direction") }),
-    h("label", { class: "field-label", for: "inc", text: "Keywords to search for" }),
-    h("input", { id: "inc", type: "text", value: F.include, placeholder: "Comma-separated",
-      oninput: (e) => { F.include = e.target.value; } }),
-    h("label", { class: "field-label", for: "exc", text: "Keywords to leave out" }),
-    h("input", { id: "exc", type: "text", value: F.exclude, placeholder: "Comma-separated",
-      "aria-describedby": "exc-hint", oninput: (e) => { F.exclude = e.target.value; } }),
-    h("p", { id: "exc-hint", class: "hint", text: "Opportunities that mention one of these in the title or description are left out." }),
-    h("label", { class: "field-label", for: "stage", text: "Career stage" }),
-    h("select", { id: "stage", "aria-describedby": "stage-hint", onchange: (e) => { F.stage = e.target.value; } },
-      [["", "Not stated"], ["early_stage", "Early-stage investigator (NIH)"], ["established", "Established investigator"]]
-        .map(([v, t]) => h("option", { value: v, selected: F.stage === v, text: t }))),
-    h("p", { id: "stage-hint", class: "hint", text: "Early-stage keeps opportunities limited to early-stage or new investigators, marked “You said”. Check NIH’s definition before applying." })),
-  null);
-
-  const results = [];
-  if (F.error) {
-    results.push(h("div", { class: "notice error", role: "alert" }, icon("warn"),
-      h("p", { text: F.error })));
-  }
-  if (F.candidates && !F.candidates.length) {
-    results.push(h("div", { class: "empty" }, owl("worry", "owl-md"),
-      h("div", {}, h("p", { class: "lede", text: `No Temple University author matches “${F.searched}”.` }),
-        h("p", { class: "hint", text:
-          "Try the name as it appears on papers, or paste an ORCID iD such as 0000-0002-1825-0097." }))));
-  } else if (F.candidates) {
-    results.push(h("h2", { id: "pick", tabindex: "-1", class: "section-title",
-      text: F.candidates.length === 1 ? "Is this the right person?" : "Which one is the right person?" }),
-    h("p", { class: "hint", text: "Pick the match. Nothing runs until you do." }),
-    h("ul", { class: "candidates" }, F.candidates.map(candidateCard)));
-  }
-
-  const page = h("div", { class: "find" },
-    h("section", { class: "hero" }, F.candidates || F.error ? null : heroArt(),
-      h("div", { class: "hero-text" },
-        h("h1", { text: "See every route to fund your work." }),
-        h("p", { class: "lede", text:
-          "Perch reads public records and lists funding that fits. Every claim links to the record behind it." }))),
-    doors(form),
+  const researcher = h("form", { role: "search", onsubmit: (e) => { e.preventDefault(); search(); } },
+    h("label", { for: "q", class: "sr-only", text: "Find a Temple researcher" }),
+    h("div", { class: "searchbox" }, input,
+      h("button", { class: "btn primary", type: "submit", disabled: F.busy || Boolean(F.nudge),
+        "aria-busy": F.busy ? "true" : null }, h("span", { text: F.busy ? "Searching" : "Find" }))),
+    h("div", { class: "hint-row" },
+      h("span", { id: "q-hint", text: "Names search Temple authors; an ID finds anyone." }),
+      h("details", { class: "more-opts" }, h("summary", { "data-key": "more-opts", text: "More options" }),
+        h("p", { text: "After you pick the person, you can tell Perch where your research is going, keywords to search for or leave out, your CV and a draft proposal. All of it is optional and held in memory only." }),
+        ok ? h("p", {}, h("a", { href: "#/private", "data-key": "docs-link", text: "No public papers yet? Build a brief from your documents alone." })) : null)));
+  const student = h("div", { class: "student-go" },
+    h("button", { class: "btn primary", type: "button", disabled: !ok, "aria-describedby": "aud-hint",
+      "data-key": "student", onclick: startStudent }, h("span", { text: "Start with your CV or résumé" })),
+    h("span", { class: "hint", id: "aud-hint", text: ok ? "Fellowships and sample scholarships, checked against it by rule."
+      : `Student mode is not available. ${mode.state.reason || "This server offers no sessions."}` }));
+  fill(main(), h("div", { class: "landing" },
+    heroArt(),
+    h("h1", { text: "Find funding that fits." }),
+    h("p", { class: "lede", text: "Perch reads public records and links every claim to its source." }),
+    seg("Who is searching", S.who, [["r", "Researcher"], ["s", "Student"]], (k) => { S.who = k; keepFocus(renderFind); }),
+    S.who === "s" ? student : researcher,
     nudgeBox(),
-    h("div", { class: "results" }, results),
-    h("p", { class: "hero-help" }, h("a", { href: "#/help" }, icon("help"), h("span", { text: "New here? See how Perch works" }))));
-  fill(main(), page);
+    F.error ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: F.error })) : null));
 }
 
-// Two equal doors (S22, audit S1): a researcher searches public records; a student
-// adds a CV. Both run in a session held in memory (S23).
-function doors(form) {
-  const ok = mode.state.available;
-  return h("div", { class: "doors" },
-    h("section", { class: "card door", "aria-labelledby": "door-r" },
-      h("h2", { id: "door-r", class: "door-title", text: "I’m a researcher" }),
-      h("p", { class: "hint", text: "Grants and industry leads from your public papers." }),
-      form,
-      ok ? h("p", { class: "hint" }, h("a", { href: "#/private", "data-key": "docs-link" },
-        icon("lock"), h("span", { text: " Add a CV or unpublished work (optional, Local only)" }))) : null),
-    h("section", { class: "card door", "aria-labelledby": "door-s" },
-      h("h2", { id: "door-s", class: "door-title" }, icon("lock"), h("span", { text: " I’m a student" })),
-      h("p", { class: "hint", id: "aud-hint", text: ok
-        ? "Paste your CV or résumé. Fellowships and sample scholarships are checked against it by rule, on local models."
-        : `Student mode is not available. ${mode.state.reason || "This server offers no sessions."}` }),
-      h("button", { class: "btn primary", type: "button", disabled: !ok, "aria-describedby": "aud-hint",
-        "data-key": "student",
-        onclick: async () => {
-          try {
-            if (S.cloud) await setCloud(false); // a CV stays on local models
-            await mode.enable(); go("#/student");
-          } catch (e) { S.find.error = e.message; renderFind(); }
-        } }, icon("lock"), h("span", { text: "Start as a student" }))));
+async function startStudent() {
+  try {
+    if (S.cloud) await setCloud(false); // a CV stays on local models
+    await mode.enable();
+    go("#/student");
+  } catch (e) { S.find.error = e.message; renderFind(); }
 }
 
 // The paste nudge: a check in this browser only. Long or CV-like text pasted into a
@@ -260,83 +221,25 @@ function nudgeBox() {
   const n = S.find.nudge;
   if (!n) return null;
   const F = S.find;
-  const value = () => (n.field === "q" ? F.q : F.direction);
-  const clear = () => { if (n.field === "q") F.q = ""; else F.direction = ""; };
   return h("div", { class: "notice nudge", role: "alert" }, icon("lock"),
     h("div", {}, h("p", { text: "This looks like personal text, such as a CV. Add it as a document instead? Documents stay on local models. Nothing has been sent." }),
       h("div", { class: "doc-actions" },
         h("button", { class: "btn primary", type: "button", onclick: async () => {
-          const text = value();
+          const text = F.q;
           try {
             if (S.cloud) await setCloud(false);
             await mode.move(n.kind, text);
-            clear();
+            F.q = "";
             F.nudge = null;
-            go(n.kind === "cv" ? "#/student" : "#/private");
+            go("#/student");
           } catch (err) { F.nudge = null; F.error = err.message; renderFind(); }
         } }, icon("lock"), h("span", { text: "Add as a document" })),
         h("button", { class: "btn", type: "button", onclick: () => { F.nudge = null; renderFind(); } },
           h("span", { text: "Keep it here" })))));
 }
 
-// ----- the Local / Cloud switch in the header (S23) -----
-
-const cloudInfo = () => (privateInfo() && privateInfo().cloud) || {};
-
-function drawSwitch() {
-  const b = $("#models-switch");
-  if (!b) return;
-  if (!privApi.open) S.cloud = false; // Cloud belongs to a session and ends with it
-  const c = cloudInfo();
-  b.setAttribute("aria-checked", String(S.cloud));
-  b.disabled = !c.available;
-  b.title = !c.available ? "This server runs local models only."
-    : S.cloud ? `Cloud on: ${c.provider} writes this session's explanations. Turn off for local models.`
-      : `Local models. Turn on to use ${c.provider} instead.`;
-  b.querySelector(".switch-word").textContent = S.cloud ? "Cloud" : "Local";
-  document.body.classList.toggle("cloud-on", S.cloud);
-  const frame = $("#session-frame");
-  if (frame) {
-    frame.hidden = !mode.state.available;
-    frame.querySelector(".frame-text").textContent = S.cloud
-      ? `Nothing about you is stored. Cloud on: text goes to ${c.provider}.`
-      : "Nothing about you is stored. Local models.";
-    $("#end-session").hidden = !privApi.open;
-  }
-}
-
-// Ends the session from any screen, after a confirm that lists what goes.
-async function endSession() {
-  let docs = [];
-  try { docs = (await privApi.session()).documents; } catch { /* already ended */ }
-  const list = mode.discards(docs, Boolean(S.briefId === PRIVATE_ID));
-  const ok = await mode.disable(() => window.confirm(
-    `End this session? It discards:\n- ${list.length ? list.join("\n- ") : "nothing yet"}`));
-  if (ok) { S.cloud = false; drawSwitch(); announce("Session ended. Everything in it was discarded."); go("#/"); }
-}
-
-// Cloud on for this session, only after the warning that names the provider.
-async function setCloud(on) {
-  const c = cloudInfo();
-  if (on) {
-    if (!window.confirm(`Turn Cloud on?\n\n${c.warning}`)) return false;
-    await mode.enable();
-    await privApi.cloud(true, c.provider);
-  } else if (privApi.open) {
-    await privApi.cloud(false);
-  }
-  S.cloud = on;
-  drawSwitch();
-  announce(on ? `Cloud on. ${c.provider} writes the explanations for your next brief.` : "Local models on.");
-  return true;
-}
-
-async function toggleSwitch() {
-  try { await setCloud(!S.cloud); } catch (e) { announce(e.message); window.alert(e.message); }
-}
-
 function heroArt() {
-  // A branch at dusk with Scout on it. Decorative.
+  // A branch at dusk with Scout on it. Decorative; Scout reacts to taps.
   const wrap = h("div", { class: "hero-art", "aria-hidden": "true" });
   wrap.innerHTML = `<svg class="scene" viewBox="0 0 320 150" focusable="false">
     <circle class="moon" cx="262" cy="38" r="18"/>
@@ -349,36 +252,20 @@ function heroArt() {
     <path class="leaf" d="M60 116 c-4 -12 2 -20 8 -22 c4 10 0 18 -8 22z"/>
     <path class="leaf" d="M240 104 c6 -9 16 -9 20 -6 c-6 7 -15 9 -20 6z"/>
   </svg>`;
-  wrap.append(owl("idle", "owl-hero", { button: true, copy: true }));
+  const o = owl("idle", "owl-hero", { button: true, copy: true });
+  o.setAttribute("aria-label", "Say hello to Scout");
+  wrap.removeAttribute("aria-hidden");
+  wrap.querySelector("svg").setAttribute("aria-hidden", "true");
+  wrap.append(o);
   return wrap;
-}
-
-function candidateCard(c) {
-  const id = f.shortId(c.id);
-  const temple = (c.institutions || []).some((i) => /temple university/i.test(i));
-  return h("li", { class: "card candidate" },
-    h("div", { class: "cand-head" },
-      h("h3", { class: "cand-name", text: c.display_name }),
-      temple ? h("span", { class: "tag moss", text: "Temple University" }) : null),
-    h("p", { class: "cand-meta" },
-      (c.institutions || []).filter((i) => !/temple university/i.test(i)).join(", ") || null,
-      c.works_count !== null ? h("span", { text: `${(c.works_count ?? 0).toLocaleString("en-US")} works` }) : null,
-      c.cited_by_count !== null ? h("span", { text: `${(c.cited_by_count ?? 0).toLocaleString("en-US")} citations` }) : null),
-    c.topics && c.topics.length ? h("ul", { class: "chips", "aria-label": "OpenAlex topics" },
-      c.topics.slice(0, 3).map((t) => h("li", { class: "chip", text: t.display_name }))) : null,
-    h("p", { class: "hint ids" }, h("span", { text: `OpenAlex ${id}` }),
-      c.orcid ? h("a", { href: f.safeUrl(c.orcid), target: "_blank", rel: "noopener",
-        text: `ORCID ${c.orcid.replace(/^https?:\/\/orcid\.org\//, "")}` }) : null),
-    h("button", { class: "btn primary wide", onclick: () => build(c) },
-      h("span", { text: "Build brief" }), h("span", { class: "sr-only", text: ` for ${c.display_name}` })));
 }
 
 async function search() {
   const F = S.find;
   const q = F.q.trim();
   if (!q) { $("#q").focus(); return; }
-  Object.assign(F, { busy: true, error: null, candidates: null, searched: q });
-  keepFocus(renderFind);
+  Object.assign(F, { busy: true, error: null, candidates: null, searched: q, picked: null });
+  keepFocus(location.hash === "#/find" ? renderPick : renderFind);
   try {
     const r = await api.resolve(q);
     F.candidates = r.candidates || [];
@@ -387,13 +274,182 @@ async function search() {
       : `OpenAlex could not be searched: ${e.message} Check the spelling or try an ORCID iD.`;
   }
   F.busy = false;
-  renderFind();
   const n = (F.candidates || []).length;
   if (F.candidates) announce(n ? `${f.plural(n, "match", "matches")} found.` : "No match found.");
-  const pick = $("#pick");
-  if (pick) pick.focus();
+  if (location.hash === "#/find") renderPick(); else go("#/find");
+  const t = $("#pick-title");
+  if (t) t.focus();
 }
 
+// ---------- Researcher 2: pick the person, then optional context ----------
+
+const CTX_FIELDS = ["direction", "include", "exclude", "cv", "proposal"];
+
+function renderPick() {
+  const F = S.find;
+  if (!F.candidates && !F.error && !F.busy) { go("#/"); return; }
+  document.title = "Pick the researcher — Perch";
+  const c = F.picked;
+  const list = c ? [c] : (F.candidates || []);
+  const n = (F.candidates || []).length;
+  const title = c ? "Ready to build the brief." : F.busy ? "Searching OpenAlex…"
+    : !n ? `No Temple University author matches “${F.searched}”.`
+      : n === 1 ? "Is this the right person?" : "Which one is the right person?";
+  const sub = c ? "Add anything below to steer it, or build it now."
+    : F.busy ? "" : !n ? "Try the name as it appears on papers, or paste an ORCID iD such as 0000-0002-1825-0097."
+      : `${f.plural(n, "Temple author", "Temple authors")} in OpenAlex ${n === 1 ? "matches" : "match"}. Nothing runs until you pick one.`;
+  const back = c
+    ? h("button", { class: "back btn quiet", type: "button", "data-key": "unpick",
+      onclick: () => { F.picked = null; renderPick(); const t = $("#pick-title"); if (t) t.focus(); } },
+    icon("back"), h("span", { text: "Back to the matches" }))
+    : h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" }));
+  const again = c ? null : h("form", { role: "search", onsubmit: (e) => { e.preventDefault(); search(); } },
+    h("label", { for: "q", class: "sr-only", text: "Find a Temple researcher" }),
+    h("div", { class: "searchbox small" },
+      h("input", { id: "q", type: "search", value: F.q, autocomplete: "off", oninput: (e) => { F.q = e.target.value; } }),
+      h("button", { class: "btn", type: "submit", disabled: F.busy, text: F.busy ? "Searching" : "Search again" })));
+  fill(main(), h("div", { class: "screen" },
+    back, again,
+    h("div", { class: "title-row" },
+      h("div", {}, h("h1", { class: "page", id: "pick-title", tabindex: "-1", text: title }),
+        sub ? h("p", { class: "page-sub", text: sub }) : null),
+      c ? h("button", { class: "btn primary big fade-in", type: "button", "data-key": "build-top", disabled: F.building,
+        onclick: () => build(c) }, h("span", { text: F.building ? "Starting" : "Build brief" })) : null),
+    F.error ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: F.error })) : null,
+    F.busy ? h("div", { class: "shimmer-card" }) : null,
+    list.length ? h("ul", { class: "cand-list" }, list.map((x, i) => candidateCard(x, i === 0 && !c && n > 1))) : null,
+    c ? contextPanel(c) : null));
+}
+
+function candidateCard(c, best) {
+  const id = f.shortId(c.id);
+  const chosen = S.find.picked === c;
+  const temple = (c.institutions || []).some((i) => /temple university/i.test(i));
+  const meta = [
+    (c.institutions || []).filter((i) => !/temple university/i.test(i)).join(", ") || null,
+    c.works_count != null ? `${c.works_count.toLocaleString("en-US")} works` : null,
+    c.cited_by_count != null ? `${c.cited_by_count.toLocaleString("en-US")} citations` : null,
+    `OpenAlex ${id}`].filter(Boolean);
+  return h("li", { class: `cand${chosen ? " chosen fade-in" : best ? " best" : ""}` },
+    h("div", { class: "cand-body" },
+      h("div", { class: "cand-top" }, h("h2", { text: c.display_name }),
+        temple ? h("span", { class: "temple", text: "Temple University" }) : null),
+      h("p", { class: "cand-meta2" }, meta.join(" · "),
+        c.orcid ? [" · ", h("a", { href: f.safeUrl(c.orcid), target: "_blank", rel: "noopener",
+          text: `ORCID ${c.orcid.replace(/^https?:\/\/orcid\.org\//, "")}` })] : null),
+      c.topics && c.topics.length ? h("ul", { class: "topics", "aria-label": "OpenAlex topics" },
+        c.topics.slice(0, 3).map((t) => h("li", { text: t.display_name }))) : null),
+    chosen ? h("span", { class: "picked-mark" }, icon("keep"), h("span", { text: "Selected" }))
+      : h("button", { class: "btn outline", type: "button", "data-key": `pick-${id}`,
+        onclick: () => { S.find.picked = c; renderPick(); const t = $("#pick-title"); if (t) t.focus(); } },
+      h("span", { text: "This is the one" }), h("span", { class: "sr-only", text: `: ${c.display_name}` })));
+}
+
+function contextPanel(c) {
+  const F = S.find;
+  const ok = mode.state.available;
+  const set = (k) => (e) => { F[k] = e.target.value; if (F.sample) { F.sample = false; F.sampleEdited = true; drawSampleStatus(); } };
+  const docBox = (kind, label, note) => {
+    const file = F.files[kind];
+    return h("div", { class: "box" },
+      h("div", { class: "box-head" }, h("label", { class: "big", for: `ctx-${kind}`, text: label }),
+        h("span", { class: "local", text: "Local only" })),
+      h("p", { class: "note", id: `ctx-${kind}-note`, text: note }),
+      file ? h("p", { class: "added" }, icon("paper"), h("span", { text: `${file.name}, read on this server when you build` }),
+        h("button", { class: "btn quiet", type: "button", onclick: () => { delete F.files[kind]; renderPick(); } }, h("span", { text: "Remove" })))
+        : h("textarea", { id: `ctx-${kind}`, rows: 6, placeholder: "Paste text here", "aria-describedby": `ctx-${kind}-note`,
+          value: F[kind], oninput: set(kind), disabled: !ok }),
+      file ? null : h("div", { class: "file-row" },
+        h("label", { class: `btn${ok ? "" : " off"}` }, h("span", { text: "Or upload a file" }),
+          h("input", { type: "file", class: "sr-only", disabled: !ok, accept: ".txt,.md,.docx,.pdf",
+            onchange: (e) => pickFile(kind, e.target.files[0]) })),
+        h("span", { class: "hint", text: "Text, Markdown, Word or PDF" })));
+  };
+  return h("section", { class: "more-panel fade-in", "aria-labelledby": "more-h" },
+    h("div", {}, h("h2", { id: "more-h", text: "Tell Perch more (optional)" }),
+      h("p", { class: "page-sub", text: "Everything here steers the search and is held in memory for this session only. Your CV and ongoing research stay on local models." })),
+    ok ? h("div", { class: "sample-row" },
+      h("span", { text: "See what helps most: a sample direction, keywords and draft aims. The sample leaves the CV empty, because an invented CV would make career-stage claims about a real person." }),
+      h("button", { class: "btn outline", type: "button", "data-key": "fill-sample", onclick: fillResearcherSample }, h("span", { text: "Fill with a sample" })),
+      h("button", { class: "btn ghost", type: "button", "data-key": "clear-ctx", onclick: () => {
+        CTX_FIELDS.forEach((k) => { F[k] = ""; }); F.files = {}; F.sample = false; F.sampleEdited = false; renderPick();
+        announce("Cleared.");
+      } }, h("span", { text: "Clear" }))) : null,
+    h("div", { id: "sample-status" }, sampleStatus()),
+    h("div", { class: "box-grid" },
+      h("div", { class: "box" },
+        h("label", { class: "big", for: "ctx-direction", text: "Where your research is going" }),
+        h("textarea", { id: "ctx-direction", rows: 4, maxlength: 1000, placeholder: "A sentence or two", value: F.direction, oninput: set("direction") })),
+      h("div", { class: "box" },
+        h("label", { class: "big", for: "ctx-include", text: "Keywords to search for" }),
+        h("input", { id: "ctx-include", type: "text", placeholder: "Comma-separated", value: F.include, oninput: set("include") }),
+        h("label", { class: "big", for: "ctx-exclude", text: "Keywords to leave out" }),
+        h("input", { id: "ctx-exclude", type: "text", placeholder: "Comma-separated", value: F.exclude, oninput: set("exclude"),
+          "aria-describedby": "exc-hint" }),
+        h("p", { class: "note", id: "exc-hint", text: "Opportunities that mention one of these in the title or description are left out." })),
+      ok ? docBox("cv", "Your CV", "Checks career-stage rules and past sponsors. It does not steer the search.") : null,
+      ok ? docBox("proposal", "Ongoing research or draft proposal", "Draft aims or a summary. This steers the search most.") : null,
+      h("div", { class: "box" },
+        h("label", { class: "big", for: "ctx-stage", text: "Career stage" }),
+        h("select", { id: "ctx-stage", "aria-describedby": "stage-hint", onchange: (e) => { F.stage = e.target.value; } },
+          [["", "Not stated"], ["early_stage", "Early-stage investigator (NIH)"], ["established", "Established investigator"]]
+            .map(([v, t]) => h("option", { value: v, selected: F.stage === v, text: t }))),
+        h("p", { class: "note", id: "stage-hint", text: "Early-stage keeps opportunities limited to early-stage or new investigators, marked “You said”." }),
+        h("label", { class: "big", for: "ctx-min", text: "Smallest award ceiling, in US dollars" }),
+        h("input", { id: "ctx-min", type: "number", inputmode: "numeric", min: "0", step: "any", placeholder: "Any",
+          value: F.minAmount, "aria-describedby": "min-hint", oninput: (e) => { F.minAmount = e.target.value; } }),
+        h("p", { class: "note", id: "min-hint", text: "Records that state no amount stay in." }),
+        h("label", { class: "check" },
+          h("input", { type: "checkbox", checked: F.explain, onchange: (e) => { F.explain = e.target.checked; } }),
+          h("span", {}, h("b", { text: "Explain each lead" }),
+            h("span", { class: "hint", text: " A model writes a short, cited reason for every lead. This is the slow step." }))))),
+    h("div", { class: "go-row" },
+      h("button", { class: "btn primary big", type: "button", "data-key": "build", disabled: F.building, onclick: () => build(c) },
+        h("span", { text: F.building ? "Starting" : "Build brief" })),
+      h("span", { class: "hint", text: "Everything above is optional." })));
+}
+
+function sampleStatus() {
+  if (!S.find.sample) return null;
+  return h("p", { class: "sample-status", role: "status" }, h("span", { class: "sample-badge", text: "Sample data" }),
+    h("span", { text: "Invented text, labelled SYNTHETIC. Edit it or clear it before you run your own." }));
+}
+
+function drawSampleStatus() {
+  const box = $("#sample-status");
+  if (box) fill(box, sampleStatus());
+}
+
+async function fillResearcherSample() {
+  const F = S.find;
+  try {
+    const s = await privApi.sample("researcher");
+    Object.assign(F, { direction: s.direction, include: s.include_keywords, exclude: s.exclude_keywords,
+      proposal: s.proposal, cv: s.cv, files: {}, sample: true, sampleEdited: false });
+    keepFocus(renderPick);
+    announce("Filled with a SYNTHETIC sample.");
+  } catch (e) { F.error = `The sample could not be loaded: ${e.message}`; renderPick(); }
+}
+
+async function pickFile(kind, file) {
+  const F = S.find;
+  if (!file) return;
+  const max = (privateInfo() || {}).max_bytes || 5e6;
+  if (file.size > max) { F.error = `That file is larger than ${max / 1e6} MB.`; renderPick(); return; }
+  const data = await new Promise((ok, bad) => {
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result).split(",", 2)[1] || "");
+    r.onerror = () => bad(new Error("The file could not be read."));
+    r.readAsDataURL(file);
+  });
+  F.files[kind] = { name: file.name, data };
+  F[kind] = "";
+  renderPick();
+  announce(`${file.name} will be read on this server when you build.`);
+}
+
+// Order matters (S24): open the session, send the documents, then start the brief. With
+// documents in the session the server keeps Cloud off (S23), so Cloud is turned off first.
 async function build(c) {
   const F = S.find;
   const req = { author_id: f.shortId(c.id), explain: F.explain };
@@ -404,26 +460,147 @@ async function build(c) {
   if (F.stage) req.career_stage = F.stage;
   const min = parseFloat(F.minAmount);
   if (Number.isFinite(min) && min > 0) req.min_amount = min;
+  const docs = ["cv", "proposal"].map((kind) => (F.files[kind] ? { kind, filename: F.files[kind].name, data: F.files[kind].data }
+    : F[kind].trim() ? { kind, text: F[kind].trim() } : null)).filter(Boolean);
+  F.building = true; F.error = null;
+  keepFocus(renderPick);
   try {
     if (api.mode === "replay") {
       const r = await api.create(req);
       S.startedHere = true;
-      S.tab = "profile";
-      go(`#/brief/${encodeURIComponent(r.id)}/profile`);
+      S.tab = "routes";
+      go(`#/brief/${encodeURIComponent(r.id)}/routes`);
       return;
     }
     await mode.enable(); // every brief is a session (S23); nothing is stored
+    if (docs.length && S.cloud) { await setCloud(false); announce("Cloud is off: documents stay on local models."); }
+    const have = (await privApi.session()).documents.map((d) => d.kind);
+    for (const kind of ["cv", "proposal"]) if (have.includes(kind)) await privApi.removeDocument(kind);
+    for (const d of docs) await privApi.addDocument(d);
+    S.sampleBrief = Boolean(F.sample);
     await privApi.create(req);
     S.startedHere = true;
-    S.tab = "profile";
+    S.tab = "routes";
     S.briefId = null; // a new brief in the session: open it fresh
-    go(`#/brief/${PRIVATE_ID}/profile`);
+    F.building = false;
+    go(`#/brief/${PRIVATE_ID}/routes`);
   } catch (e) {
+    F.building = false;
     F.error = `The brief could not start: ${e.message}`;
-    renderFind();
+    renderPick();
     const err = main().querySelector(".notice.error");
     if (err) err.scrollIntoView({ block: "center" });
   }
+}
+
+// ----- the status chip and the Local / Cloud dialog (S23 behaviour, S24 design) -----
+
+const cloudInfo = () => (privateInfo() && privateInfo().cloud) || {};
+
+function drawSwitch() {
+  const b = $("#status-chip");
+  if (!b) return;
+  if (!privApi.open) { S.cloud = false; S.hasDocs = false; }
+  const c = cloudInfo();
+  b.querySelector(".chip-word").textContent = S.cloud ? `Cloud: ${c.provider} · nothing stored`
+    : S.hasDocs ? "Local only · nothing stored" : "Local · nothing stored";
+  b.setAttribute("aria-label", S.cloud ? `Privacy: nothing stored; Cloud on, text goes to ${c.provider}. Change models`
+    : "Privacy: nothing stored, local models. Change models");
+  document.body.classList.toggle("cloud-on", S.cloud);
+  $("#end-session").hidden = !privApi.open;
+}
+
+// A real dialog (S24 gap list). resolve(true) on the primary action.
+function dialog(build) {
+  const d = $("#models-dialog");
+  return new Promise((resolve) => {
+    const done = (v) => { d.close(); resolve(v); };
+    fill(d, build(done));
+    d.onclose = () => resolve(false);
+    d.oncancel = () => resolve(false);
+    d.showModal();
+    const first = d.querySelector("[autofocus]") || d.querySelector("input, button");
+    if (first) first.focus();
+  });
+}
+
+async function openModels() {
+  const c = cloudInfo();
+  if (privApi.open) {
+    try { S.hasDocs = (await privApi.session()).documents.length > 0; } catch { S.hasDocs = false; }
+  }
+  const studentOn = Boolean(S.brief && isStudent(S.brief));
+  const blocked = !c.available ? "This server runs local models only."
+    : S.hasDocs || studentOn ? "Off while this session holds documents: they stay on local models." : "";
+  let choice = S.cloud ? "cloud" : "local";
+  const opener = $("#status-chip");
+  const ok = await dialog((done) => {
+    const box = h("div", { class: "dialog-in" });
+    const draw = () => fill(box,
+      h("h2", { id: "models-title", text: "Which models write the text?" }),
+      h("p", { class: "hint", text: "Nothing about you is stored either way. Search, ranking, the rules and Scout always run on this server." }),
+      h("div", { role: "radiogroup", "aria-labelledby": "models-title", class: "dialog-opts" },
+        h("label", { class: `opt${choice === "local" ? " on" : ""}` },
+          h("input", { type: "radio", name: "models", value: "local", checked: choice === "local", autofocus: true,
+            onchange: () => { choice = "local"; draw(); } }),
+          h("span", {}, h("b", { text: "Local models" }),
+            h("span", { text: "Models on this server write the summary, the fit explanations and hand-off openings. Nothing leaves the server." }))),
+        h("label", { class: `opt${choice === "cloud" ? " on" : ""}${blocked ? " off" : ""}` },
+          h("input", { type: "radio", name: "models", value: "cloud", checked: choice === "cloud", disabled: Boolean(blocked),
+            onchange: () => { choice = "cloud"; draw(); } }),
+          h("span", {}, h("b", { text: c.provider ? `Cloud: ${c.provider}` : "Cloud" }),
+            h("span", { text: blocked || `${c.provider} writes those three texts instead. Faster, but your text leaves this server.` })))),
+      choice === "cloud" && !S.cloud ? h("p", { class: "warn-box", role: "note" }, h("b", { text: "Before you turn Cloud on: " }), h("span", { text: c.warning || "" })) : null,
+      h("div", { class: "row" },
+        h("button", { class: "btn", type: "button", onclick: () => done(false), text: "Cancel" }),
+        h("button", { class: "btn primary", type: "button", "data-key": "models-ok", onclick: () => done(true),
+          text: choice === "cloud" ? (S.cloud ? "Keep Cloud on" : `Send to ${c.provider}`) : "Use local models" })));
+    draw();
+    return box;
+  });
+  if (opener) opener.focus();
+  if (!ok || (choice === "cloud") === S.cloud) return;
+  try { await setCloud(choice === "cloud"); } catch (e) { announce(e.message); showError(e.message); }
+}
+
+function showError(msg) {
+  dialog((done) => h("div", { class: "dialog-in", role: "alertdialog", "aria-labelledby": "err-title" },
+    h("h2", { id: "err-title", text: "That did not work" }), h("p", { text: msg }),
+    h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", autofocus: true, onclick: () => done(true), text: "OK" }))));
+}
+
+// Ends the session from any screen, after a dialog that lists what goes.
+async function endSession() {
+  let docs = [];
+  try { docs = (await privApi.session()).documents; } catch { /* already ended */ }
+  const list = mode.discards(docs, Boolean(S.briefId === PRIVATE_ID));
+  const ok = await mode.disable(() => dialog((done) => h("div", { class: "dialog-in" },
+    h("h2", { id: "models-title", text: "End this session?" }),
+    h("p", { text: "It discards:" }),
+    h("ul", {}, (list.length ? list : ["Nothing yet"]).map((x) => h("li", { text: x }))),
+    h("div", { class: "row" },
+      h("button", { class: "btn", type: "button", autofocus: true, onclick: () => done(false), text: "Keep working" }),
+      h("button", { class: "btn primary", type: "button", "data-key": "end-ok", onclick: () => done(true), text: "End session" })))));
+  if (ok) {
+    S.cloud = false; S.hasDocs = false; S.sampleBrief = false;
+    Object.assign(S.find, { picked: null, files: {}, direction: "", include: "", exclude: "", cv: "", proposal: "", sample: false });
+    drawSwitch(); announce("Session ended. Everything in it was discarded."); go("#/");
+  }
+}
+
+// Cloud on for this session; the dialog above is the warning that names the provider.
+async function setCloud(on) {
+  const c = cloudInfo();
+  if (on) {
+    await mode.enable();
+    await privApi.cloud(true, c.provider);
+  } else if (privApi.open) {
+    await privApi.cloud(false);
+  }
+  S.cloud = on;
+  drawSwitch();
+  announce(on ? `Cloud on. ${c.provider} writes the explanations for your next brief.` : "Local models on.");
+  return true;
 }
 
 // ---------- Brief ----------
@@ -484,49 +661,62 @@ function renderBrief() {
   const d = S.brief;
   const r = d.researcher || {};
   const student = isStudent(d);
-  const name = student ? "Your student brief" : r.display_name || "Researcher";
+  const name = student ? "Your options" : r.display_name || "Your brief";
   document.title = `${name} — Perch`;
   if (student && !["F", "S"].includes(S.route)) S.route = "F";
   if (!student && !["A", "B"].includes(S.route)) S.route = "A";
-  const head = h("header", { class: "brief-head" },
-    // A student goes back to their documents; the session stays open (S22, audit S2).
-    student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Your documents" }))
-      : h("a", { class: "back", href: "#/", "aria-label": "New search" }, icon("back"),
-        h("span", { text: "New search" })),
-    h("h1", { class: "who", text: name }),
-    h("p", { class: "who-meta" },
-      h("span", { text: student ? "Private session: fellowships and sample scholarships"
-        : (r.institutions || []).join(", ") || "Institution not stated in the record" }),
-      h("span", { text: `Brief as of ${f.formatDate(d.brief.options.as_of)}` })));
+  const meta = student ? `Fellowships and sample scholarships, checked against your CV by rule · as of ${f.formatDate(d.brief.options.as_of)}`
+    : [...(r.institutions || []), `Brief as of ${f.formatDate(d.brief.options.as_of)}`].join(" · ");
+  // Back: a student returns to their documents, a researcher to the matches; the
+  // session stays open either way (S22, audit S2).
+  const back = student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Back to your documents" }))
+    : h("a", { class: "back", href: S.find.candidates ? "#/find" : "#/" }, icon("back"), h("span", { text: "Back" }));
   const tabs = h("div", { class: `tabs${student ? " student" : ""}`, role: "tablist", "aria-label": "Brief sections" },
+    tabButton("routes", student ? "Your options" : "Routes"),
     tabButton("profile", student ? "What Perch read" : "Profile"),
-    tabButton("routes", student ? "Your options" : "Routes"), tabButton("compare", "Compare"),
-    student ? null : tabButton("scout", "Ask Scout"));
-  fill(main(), h("div", { class: "brief" }, head,
+    tabButton("compare", "Compare"), tabButton("scout", "Ask Scout"));
+  fill(main(), h("div", { class: "brief screen" }, back,
+    h("div", { class: "title-row" },
+      h("div", {}, h("h1", { class: "page who", text: name }), h("p", { class: "brief-meta", text: meta })),
+      exportMenu()),
+    S.sampleBrief && api.mode === "private" ? h("p", { class: "notice sample-note", role: "note" },
+      h("span", { class: "sample-badge", text: "Sample data" }),
+      h("span", { text: " This brief was steered by invented SYNTHETIC text. Anything it cites from “your document” is from the sample, not from this researcher." })) : null,
     h("div", { id: "progress" }),
     h("div", { class: "tabs-wrap" }, tabs),
-    h("div", { id: "panel", role: "tabpanel", tabindex: "-1" }),
-    exportLink()));
+    h("div", { class: "cols" },
+      h("div", { class: "main-col" }, h("div", { id: "panel", role: "tabpanel", tabindex: "-1" })),
+      h("div", { class: "rail", id: "rail" })),
+    h("div", { id: "keep-float" })));
   S.seen.explained = explainedCount();
   S.seen.stagesDone = d.brief.stages.filter((s) => ["done", "skipped"].includes(s.status)).length;
-  if (!S.startedHere && d.brief.status === "done" && location.hash.split("/").length < 4) S.tab = "routes";
   S.startedHere = false;
   renderProgress();
   renderTabs();
   renderPanel();
 }
 
-function exportLink() {
-  if (api.mode === "private") return privateBar(api, go);
-  const url = api.exportUrl(S.briefId);
-  if (!url) return null;
-  return h("p", { class: "export" },
-    h("a", { class: "btn quiet", href: api.exportUrl(S.briefId, "html"), target: "_blank", rel: "noopener" },
-      icon("paper"), h("span", { text: "Print or save as PDF" })),
-    h("a", { class: "btn quiet", href: api.exportUrl(S.briefId, "md"), download: `perch-brief-${S.briefId}.md` },
-      icon("download"), h("span", { text: "Markdown" })),
-    h("a", { class: "btn quiet", href: url, download: `perch-brief-${S.briefId}.json` },
-      icon("download"), h("span", { text: "Records as JSON" })));
+// The Export button: a menu with the three exports and, in a session, the mask option.
+function exportMenu() {
+  let pop;
+  if (api.mode === "private") pop = privateBar(api, go);
+  else {
+    const url = api.exportUrl(S.briefId);
+    if (!url) return null;
+    pop = h("div", {},
+      h("a", { class: "btn quiet", href: api.exportUrl(S.briefId, "html"), target: "_blank", rel: "noopener" },
+        icon("paper"), h("span", { text: "Print or save as PDF" })),
+      h("a", { class: "btn quiet", href: api.exportUrl(S.briefId, "md"), download: `perch-brief-${S.briefId}.md` },
+        icon("download"), h("span", { text: "Markdown" })),
+      h("a", { class: "btn quiet", href: url, download: `perch-brief-${S.briefId}.json` },
+        icon("download"), h("span", { text: "Records as JSON" })));
+  }
+  const det = h("details", { class: "export-menu" },
+    h("summary", { "data-key": "export" }, icon("download"), h("span", { text: "Export" })),
+    h("div", { class: "export-pop" }, pop));
+  det.addEventListener("keydown", (e) => { if (e.key === "Escape" && det.open) { det.open = false; det.querySelector("summary").focus(); e.stopPropagation(); } });
+  document.addEventListener("click", (e) => { if (det.open && !det.contains(e.target)) det.open = false; });
+  return det;
 }
 
 function tabButton(key, label) {
@@ -539,7 +729,7 @@ function tabButton(key, label) {
         go(`#/brief/${encodeURIComponent(S.briefId)}/${other}`);
         setTimeout(() => $(`#tab-${other}`).focus(), 0);
       }
-    } }, h("span", { text: label }), ["routes", "compare"].includes(key) ? h("span", { class: "tab-count", hidden: true }) : null);
+    } }, h("span", { class: "tab-label", text: label }));
 }
 
 function renderTabs() {
@@ -550,17 +740,9 @@ function renderTabs() {
     t.setAttribute("aria-selected", String(on));
     t.tabIndex = on ? 0 : -1;
   }
-  const n = leadsOf().filter((l) => l.status !== "dismissed" && l.verdict !== "not eligible").length;
-  const c = $("#tab-routes .tab-count");
-  const ready = isStudent(S.brief) ? isDone("fellowships") : isDone("route_a");
-  c.textContent = ready ? String(n) : "";
-  if (ready) c.append(h("span", { class: "sr-only", text: n === 1 ? " lead" : " leads" }));
-  c.hidden = !ready;
   const kept = leadsOf().filter((l) => l.status === "kept").length;
-  const k = $("#tab-compare .tab-count");
-  k.textContent = kept ? String(kept) : "";
-  if (kept) k.append(h("span", { class: "sr-only", text: " kept" }));
-  k.hidden = !kept;
+  const k = $("#tab-compare .tab-label");
+  if (k) k.textContent = kept ? `Compare (${kept})` : "Compare";
   $("#panel").setAttribute("aria-labelledby", `tab-${S.tab}`);
 }
 
@@ -568,7 +750,7 @@ function updateBrief() {
   const ex = explainedCount();
   const done = S.brief.brief.stages.filter((s) => ["done", "skipped"].includes(s.status)).length;
   const pOwl = $("#progress .owl");
-  if (ex > S.seen.explained || done > S.seen.stagesDone) { hop(pOwl); hop($("#bar-owl")); }
+  if (ex > S.seen.explained || done > S.seen.stagesDone) { hop(pOwl); }
   if (done > S.seen.stagesDone) {
     const last = S.brief.brief.stages.filter((s) => ["done", "skipped"].includes(s.status)).pop();
     if (last) announce(`${f.STAGES[last.name] || last.name}: done.`);
@@ -579,7 +761,7 @@ function updateBrief() {
   renderPanel();
 }
 
-// ---------- progress ----------
+// ---------- progress: owl, step name, step count, a thin bar in the branch colour ----------
 
 function renderProgress() {
   const b = S.brief.brief;
@@ -590,55 +772,50 @@ function renderProgress() {
   const doneN = stages.filter((s) => ["done", "skipped"].includes(s.status)).length;
   const t0 = Date.parse(stages[0] && stages[0].started_at) || Date.parse(b.created_at);
   const lastEnd = Math.max(...stages.map((s) => Date.parse(s.finished_at) || 0));
-  let state = "work", headline, sub;
+  let state = "work", headline, detail, sub = null;
   if (b.status === "failed") {
     state = "droop";
     const s = stages[failedIdx] || {};
     headline = `Stopped at: ${f.STAGES[s.name] || s.name || "a step"}`;
+    detail = `${doneN} of ${stages.length} steps`;
     sub = b.error || s.detail || "The server did not say why.";
   } else if (b.status === "done") {
     state = "done";
     headline = "Brief ready";
-    sub = `Built in ${f.elapsed(lastEnd - t0)}.`;
+    detail = `Built in ${f.elapsed(lastEnd - t0)} · ${stages.length} of ${stages.length} steps`;
   } else {
-    const s = stages[runningIdx] || stages.find((x) => x.status === "pending") || stages[0];
-    headline = `${f.STAGES[s.name] || s.name}`;
-    if (s.name === "explanations" && isDone("route_a")) {
-      sub = `${explainedCount()} of ${routeLeads("A").length} explained`;
-    } else sub = b.status === "queued" ? "Waiting for the previous brief to finish" : "Working";
+    const i = runningIdx >= 0 ? runningIdx : Math.max(stages.findIndex((x) => x.status === "pending"), 0);
+    const s = stages[i];
+    headline = `${f.STAGES[s.name] || s.name}…`;
+    detail = `Step ${i + 1} of ${stages.length}`;
+    if (s.name === "explanations" && isDone("route_a")) detail += ` · ${explainedCount()} of ${routeLeads("A").length} explained`;
+    if (b.status === "queued") sub = "Waiting for the previous brief to finish.";
   }
-  barOwl(state === "done" ? "done" : state);
-  const pos = b.status === "done" ? stages.length - 1
-    : failedIdx >= 0 ? failedIdx : Math.max(runningIdx, doneN, 0);
-  const pct = stages.length > 1 ? (pos / (stages.length - 1)) * 100 : 0;
-
-  let branch = box.querySelector(".branch");
-  const compact = b.status === "done";
-  if (!branch) {
-    branch = h("div", { class: "branch", "aria-hidden": "true" },
-      h("div", { class: "branch-line" }), h("div", { class: "branch-fill" }),
-      h("div", { class: "knots" }, stages.map((s) => h("span", { class: "knot" }))),
-      h("div", { class: "rider" }, owl(state, "owl-rider", { button: true, copy: true })));
-    fill(box, h("section", { class: "progress", "aria-label": "Building the brief" },
-      branch, h("div", { class: "progress-text" }), h("div", { class: "progress-steps" })));
+  const pct = b.status === "done" ? 100 : (doneN / Math.max(stages.length, 1)) * 100;
+  let card = box.querySelector(".pcard");
+  if (!card) {
+    card = h("section", { class: "pcard", role: "status", "aria-label": "Progress" },
+      owl(state, "owl-sm", { button: true, copy: true }),
+      h("div", { class: "pcard-main" },
+        h("div", { class: "pcard-line" }, h("b", { class: "p-head" }), h("span", { class: "p-detail" })),
+        h("div", { class: "pbar", "aria-hidden": "true" }, h("span")),
+        h("p", { class: "p-sub hint" })),
+      h("div", { class: "p-act" }),
+      h("div", { class: "progress-steps" }));
+    fill(box, card);
   }
-  const sec = box.querySelector(".progress");
-  sec.classList.toggle("compact", compact);
-  sec.classList.toggle("failed", b.status === "failed");
-  setOwl(box.querySelector(".owl-rider"), state);
-  branch.querySelector(".rider").style.left = `${pct}%`;
-  branch.querySelector(".branch-fill").style.width = `${pct}%`;
-  branch.querySelectorAll(".knot").forEach((k, i) => {
-    k.dataset.status = stages[i].status;
-  });
-  const elapsedNow = b.status === "done" || b.status === "failed" ? null
-    : h("span", { class: "elapsed", "data-t0": String(t0) }, icon("clock"),
-      h("span", { text: f.elapsed(Date.now() - t0) }));
-  fill(box.querySelector(".progress-text"), 
-    h("p", { class: "progress-head" }, h("b", { text: headline }), elapsedNow),
-    h("p", { class: "progress-sub", text: sub }),
-    b.status === "failed" ? h("button", { class: "btn primary", onclick: rebuild },
-      h("span", { text: "Build again" })) : null);
+  card.classList.toggle("failed", b.status === "failed");
+  setOwl(card.querySelector(".owl"), state);
+  card.querySelector(".owl").classList.toggle("bob", b.status === "running" || b.status === "queued");
+  card.querySelector(".p-head").textContent = headline;
+  card.querySelector(".p-detail").textContent = detail;
+  card.querySelector(".pbar > span").style.width = `${pct}%`;
+  const subEl = card.querySelector(".p-sub");
+  subEl.textContent = sub || "";
+  subEl.hidden = !sub;
+  fill(card.querySelector(".p-act"),
+    b.status === "failed" ? h("button", { class: "btn primary", onclick: rebuild }, h("span", { text: "Build again" })) : null,
+    api.mode === "replay" && b.status === "done" ? h("button", { class: "btn link", type: "button", onclick: replayBuild }, h("span", { text: "Replay the build" })) : null);
   const steps = h("details", { class: "steps", open: S.stepsOpen,
     ontoggle: (e) => { S.stepsOpen = e.target.open; } },
   h("summary", { text: `Steps (${doneN} of ${stages.length} done)` }),
@@ -647,7 +824,14 @@ function renderProgress() {
     h("span", { class: "step-name" }, h("b", { text: f.STAGES[s.name] || s.name }),
       h("span", { class: "sr-only", text: `, ${stepWord(s.status)}` })),
     h("span", { class: "step-detail", text: stepDetail(s) })))));
-  fill(box.querySelector(".progress-steps"), steps);
+  fill(card.querySelector(".progress-steps"), steps);
+}
+
+async function replayBuild() {
+  const r = await api.create({});
+  S.startedHere = true;
+  S.briefId = null;
+  go(`#/brief/${encodeURIComponent(r.id)}/routes`);
 }
 
 function stepWord(st) {
@@ -667,24 +851,9 @@ function stepDetail(s) {
   return (s.detail || "") + dur;
 }
 
-setInterval(() => {
-  const el = document.querySelector(".elapsed");
-  if (el) el.lastChild.textContent = f.elapsed(Date.now() - Number(el.dataset.t0));
-}, 1000);
-
 async function rebuild() {
-  const b = S.brief.brief;
-  if (api.mode === "private") { go(isStudent(S.brief) ? "#/student" : "#/private"); return; }
-  try {
-    const r = await api.create({ author_id: f.shortId(b.researcher_id), ...b.options });
-    remember(r.id, (S.brief.researcher || {}).display_name || f.shortId(b.researcher_id));
-    S.startedHere = true;
-    go(`#/brief/${encodeURIComponent(r.id)}/profile`);
-  } catch (e) {
-    const box = $("#progress .progress-text");
-    if (box) add(box, [h("p", { class: "notice error", role: "alert" }, icon("warn"),
-      h("span", { text: `The brief could not start again: ${e.message}` }))]);
-  }
+  if (api.mode === "private") { go(isStudent(S.brief) ? "#/student" : S.find.picked ? "#/find" : "#/private"); return; }
+  if (api.mode === "replay") replayBuild();
 }
 
 // ---------- panels ----------
@@ -697,8 +866,10 @@ function renderPanel() {
     panel.dataset.tab = S.tab;
     panel.dataset.sig = "";
     panel.replaceChildren();
+    $("#rail").replaceChildren();
   }
-  if (isStudent(S.brief)) { renderStudentPanel(panel); return; }
+  drawRail();
+  if (isStudent(S.brief) && S.tab !== "scout") { renderStudentPanel(panel); return; }
   if (S.tab === "profile") renderProfile(panel);
   else if (S.tab === "compare") drawCompare();
   else if (S.tab === "scout") {
@@ -708,6 +879,64 @@ function renderPanel() {
       drawScout();
     }
   } else renderRoutes(panel);
+}
+
+// The right rail on the list tab: the shortlist card above the evidence panel. Under
+// 900 px the rail hides and a floating keep pill takes the shortlist's place.
+const KIND_SHORT = { A: "Grant", B: "Industry", F: "Fellowship", S: "Sample" };
+
+function leadTitle(l) {
+  return (l.opportunity && l.opportunity.title) || (l.organisation && l.organisation.name)
+    || (l.scholarship && l.scholarship.name) || l.title || l.record_id;
+}
+
+function drawRail() {
+  const rail = $("#rail");
+  if (!rail || !S.brief) return;
+  const onList = S.tab === "routes";
+  rail.hidden = !onList;
+  const kept = leadsOf().filter((l) => l.status === "kept");
+  const student = isStudent(S.brief);
+  if (onList) {
+    let card = rail.querySelector(".shortlist");
+    if (!card) {
+      card = h("section", { class: "shortlist", "aria-labelledby": "sl-title" });
+      const ev = h("aside", { class: "rail-evidence", id: "rail-ev", "aria-label": "Evidence", tabindex: "-1" },
+        h("p", { class: "ev-kind", text: "Evidence" }),
+        h("p", { class: "empty-ev", text: "Pick a title or Evidence on a card to see its record here. Every value is copied from the record." }));
+      fill(rail, card, ev);
+    }
+    const sig = JSON.stringify(kept.map((l) => l.id));
+    if (card.dataset.sig !== sig) {
+      card.dataset.sig = sig;
+      card.classList.toggle("has", kept.length > 0);
+      const focusKey = card.contains(document.activeElement) ? "sl-compare" : null;
+      fill(card,
+        h("div", { class: "shortlist-head" }, h("h2", { id: "sl-title", text: "Your shortlist" }),
+          h("span", { text: kept.length ? `${kept.length} kept` : "none yet" })),
+        kept.length ? h("ul", {}, kept.map((l) => h("li", { class: "fade-in" },
+          h("span", { class: "kind-short", text: KIND_SHORT[l.route || "A"] || "Lead" }),
+          h("span", { class: "sl-title", text: leadTitle(l), title: leadTitle(l) }),
+          h("button", { class: "x", type: "button", "aria-label": `Remove from shortlist: ${leadTitle(l)}`,
+            onclick: () => setLead(l.id, "restore") }, "×"))))
+          : h("p", { text: student ? "Keep fellowships or scholarships and they collect here, ready to compare."
+            : "Keep grants or industry leads and they collect here, ready to compare and hand off." }),
+        h("button", { class: "btn primary", type: "button", "data-key": "sl-compare", disabled: !kept.length,
+          onclick: () => go(`#/brief/${encodeURIComponent(S.briefId)}/compare`) },
+        h("span", { text: student ? "Compare and draft a note" : "Compare and hand off" })));
+      if (focusKey) { const b = card.querySelector(`[data-key="${focusKey}"]`); if (b && !b.disabled) b.focus(); }
+    }
+  }
+  const float = $("#keep-float");
+  const show = kept.length > 0 && S.tab !== "compare";
+  const fsig = show ? String(kept.length) : "";
+  if (float.dataset.sig !== fsig) {
+    float.dataset.sig = fsig;
+    fill(float, show ? h("div", { class: "keep-float fade-in", role: "region", "aria-label": "Kept" },
+      h("span", { text: `${kept.length} kept` }),
+      h("a", { class: "btn", href: `#/brief/${encodeURIComponent(S.briefId)}/compare`, "data-key": "keep-compare" },
+        h("span", { text: "Compare" }))) : null);
+  }
 }
 
 // ----- Student brief (S18, student.js) -----
@@ -757,11 +986,23 @@ function renderProfile(panel) {
     Object.keys(d.papers || {}).length, b.stages.map((s) => s.status)]);
   if (panel.dataset.sig === sig) return;
   panel.dataset.sig = sig;
-  keepFocus(() => fill(panel,
-    youSaidSection(), summarySection(), horizonSection(), threadsSection(),
-    isDone("route_a") ? h("p", { class: "next" },
-      h("a", { class: "btn primary", href: `#/brief/${encodeURIComponent(S.briefId)}/routes` },
-        h("span", { text: `See ${f.plural(leadsOf().filter((l) => l.status !== "dismissed").length, "route")}` }))) : null));
+  const card = (sec) => { if (sec) sec.classList.add("pblock"); return sec; };
+  keepFocus(() => fill(panel, h("div", { class: "prof-cols" },
+    h("div", { class: "left" }, card(youSaidSection()), card(summarySection()), card(threadsSection())),
+    h("div", { class: "right" }, card(horizonSection()), card(keyPapersSection())))));
+}
+
+// The most cited of the researcher's papers in this brief, one row per title.
+function keyPapersSection() {
+  const d = S.brief;
+  if (!isDone("profile")) return h("section", { class: "block" }, h("h2", { class: "section-title", text: "Key papers" }), skeleton(3));
+  const all = distinctPapers(Object.values(d.papers || {}).filter((w) => !w.private));
+  if (!all.length) return null;
+  const top = [...all].sort((a, b) => (b.cited_by_count || 0) - (a.cited_by_count || 0)
+    || (b.publication_year || 0) - (a.publication_year || 0)).slice(0, 5);
+  return h("section", { class: "block" },
+    h("h2", { class: "section-title" }, h("span", { text: "Key papers" }), h("span", { class: "hint", text: `${top.length} of ${all.length}, most cited first` })),
+    h("ul", { class: "papers" }, top.map(paperRow)));
 }
 
 // Normal-mode context (Q16): what the user typed on Find, shown as theirs, never as a fact.
@@ -799,7 +1040,8 @@ function summarySection() {
   } else {
     body = [skeleton(2), h("p", { class: "hint", text: "The summary is written after the search for leads." })];
   }
-  return h("section", { class: "block" }, h("h2", { class: "section-title", text: "Research profile" }), body);
+  return h("section", { class: "block" }, h("h2", { class: "section-title" }, h("span", { text: "Summary" }),
+    h("span", { class: "hint", text: "Written by a model, checked against the papers" })), body);
 }
 
 // A chip only for a paper in this brief; any other token stays plain text, so the summary
@@ -820,7 +1062,7 @@ function openAlexTopics() {
 function horizonSection() {
   if (String(S.brief.brief.researcher_id).startsWith("private:")) return null; // no public profile
   const d = S.brief, b = d.brief;
-  const title = h("h2", { class: "section-title", text: "Public award horizon" });
+  const title = h("h2", { class: "section-title", text: "Award horizon" });
   if (!isDone("awards")) return h("section", { class: "block" }, title, skeleton(1));
   if (!d.awards.length) {
     return h("section", { class: "block" }, title, h("p", { class: "lede", text:
@@ -1150,20 +1392,8 @@ function orgCard(l) {
   signals, yours, h("div", { class: "actions" }, actions));
 }
 
-// Keep bar: once a lead is kept, how many and what comes next: the Compare tab.
-function renderKeepBar(box, kept) {
-  if (!kept) { box.replaceChildren(); return; }
-  const sig = `keep:${kept}`;
-  if (box.dataset.sig === sig) return;
-  box.dataset.sig = sig;
-  const link = h("a", { class: "btn primary", href: `#/brief/${encodeURIComponent(S.briefId)}/compare`,
-    "data-key": "keep-compare" }, h("span", { text: `Compare ${kept === 1 ? "it" : "them"}` }));
-  fill(box, h("section", { class: "keep-bar", "aria-label": "Kept leads" },
-    h("div", {}, h("p", { class: "keep-count", text: `${f.plural(kept, "lead", "leads")} kept` }),
-      h("p", { class: "hint", text: "Next: compare them side by side, then draft a hand-off "
-        + "to the right Temple office." })),
-    link));
-}
+// The old keep bar (S8) became the shortlist rail and the floating pill (S24).
+function renderKeepBar() { drawRail(); }
 
 // Keyed update: a card is rebuilt only when its data changed, so focus and open
 // sections survive polling.
@@ -1406,6 +1636,12 @@ async function setLead(leadId, action) {
 let evidenceOpener = null;
 
 async function openEvidence(id, opener) {
+  // On a laptop the record opens in the rail beside the list (S24); elsewhere, and on a
+  // phone, in the sheet.
+  const railEv = $("#rail-ev");
+  if (railEv && railEv.offsetParent !== null && window.matchMedia("(min-width: 901px)").matches) {
+    return openInRail(railEv, id, opener);
+  }
   evidenceOpener = opener || null;
   const panel = $("#evidence");
   const body = $("#evidence-body");
@@ -1427,6 +1663,21 @@ async function openEvidence(id, opener) {
     panel.setAttribute("aria-labelledby", "evidence-kind evidence-title");
   } catch (e) {
     fill(body, h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The record could not be opened: ${e.message}` })));
+  }
+}
+
+async function openInRail(box, id, opener) {
+  document.querySelectorAll("#panel .lead.selected").forEach((x) => x.classList.remove("selected"));
+  const card = opener && opener.closest && opener.closest(".lead");
+  if (card) card.classList.add("selected");
+  fill(box, h("p", { class: "ev-kind", text: "Evidence" }), h("div", { class: "loading" }, owl("look", "owl-sm"), h("p", { text: "Fetching the record" })));
+  try {
+    const r = await api.record(id);
+    fill(box, h("p", { class: "ev-kind", text: `Evidence · ${KINDS[r.kind] || "Record"}` }), ...recordView(r));
+    box.setAttribute("aria-labelledby", "evidence-title");
+    announce(`Evidence: ${r.title || r.name || r.display_name || "record"} is in the panel beside the list.`);
+  } catch (e) {
+    fill(box, h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The record could not be opened: ${e.message}` })));
   }
 }
 
@@ -1602,7 +1853,6 @@ function initTheme() {
 // ---------- start ----------
 
 function init() {
-  $("#bar-owl-slot").replaceWith(Object.assign(owl("idle", "owl-bar", { button: true }), { id: "bar-owl" }));
   document.addEventListener("click", (e) => {
     const o = e.target.closest(".owl");
     if (o && !o.classList.contains("owl-xs")) poke(o);
@@ -1629,7 +1879,7 @@ function init() {
     S.find.q = (window.PERCH_REPLAY.candidates[0] || {}).display_name || "";
   }
   $(".skip").addEventListener("click", (e) => { e.preventDefault(); main().focus(); });
-  $("#models-switch").addEventListener("click", toggleSwitch);
+  $("#status-chip").addEventListener("click", openModels);
   $("#end-session").addEventListener("click", endSession);
   if (api.mode === "live") {
     privateAvailable(privApi).then((on) => {

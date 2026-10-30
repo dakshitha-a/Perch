@@ -180,6 +180,7 @@ export function privateApi(base = "") {
     mode: "private",
     get open() { return Boolean(token); },
     info: () => call(base, "/private"),
+    sample: (name) => call(base, `/private/samples/${encodeURIComponent(name)}`),
     start: async () => { const r = await call(base, "/private/session", { method: "POST" }); token = r.token; return r; },
     session: () => p("/private/session"),
     addDocument: (body) => post("/private/documents", body),

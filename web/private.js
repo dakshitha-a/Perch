@@ -169,8 +169,7 @@ export function privateBar(api, go, briefId) {
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
-  return h("section", { class: "private-bar card" },
-    h("div", { class: "private-bar-head" }, lockLabel("Session in memory"), endButton(api, go)),
+  return h("section", { class: "private-bar" },
     h("p", { class: "hint", text: "Exports leave out text drawn from your documents. Mask it instead to keep that text with names, identifiers and private phrases replaced." }),
     h("label", { class: "check" }, h("input", { type: "checkbox", onchange: (e) => { mask = e.target.checked; warn.hidden = !mask; } }),
       h("span", { text: "Mask private text in exports and hand-offs" })),
@@ -188,6 +187,6 @@ export function privateBar(api, go, briefId) {
 }
 
 export function maskOn() {
-  const box = document.querySelector(".private-bar input[type=checkbox]");
+  const box = document.querySelector(".private-bar input[type=checkbox]"); // in the Export menu
   return Boolean(box && box.checked);
 }

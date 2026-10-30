@@ -29,9 +29,11 @@ from __future__ import annotations
 
 import base64
 import binascii
+import json
 import threading
 from collections.abc import Callable
 from datetime import date
+from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
@@ -125,6 +127,34 @@ def session_records(s: PrivateSession) -> dict[str, Work]:
     return out
 
 
+SYNTHETIC_DIR = Path(__file__).resolve().parents[2] / "data/synthetic"
+
+
+def _read(rel: str) -> str:
+    return (SYNTHETIC_DIR / rel).read_text(encoding="utf-8")
+
+
+def _researcher_sample() -> dict:
+    # persona-1's README forbids attaching its CV to a real researcher's profile, so the
+    # researcher sample steers the search (direction, keywords, draft aims) and leaves the
+    # CV empty (S24 decision).
+    ctx = json.loads(_read("persona-1/context.json"))
+    return {"label": "SYNTHETIC persona-1", "direction": ctx["direction"],
+            "include_keywords": ctx["include_keywords"],
+            "exclude_keywords": ctx["exclude_keywords"],
+            "proposal": _read("persona-1/specific_aims_draft.md"), "cv": ""}
+
+
+def _student_sample() -> dict:
+    return {"label": "SYNTHETIC persona-ug", "cv": _read("persona-ug/cv.md"),
+            "interests": _read("persona-ug/interests.md"),
+            "achievements": _read("persona-ug/achievements.md")}
+
+
+SAMPLES: dict[str, Callable[[], dict]] = {"researcher": _researcher_sample,
+                                          "student": _student_sample}
+
+
 def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                        scout_runner: JobRunner, *, brief_view: Callable, export_json: Callable,
                        export_blocks: Callable, load: Callable, limiter: type,
@@ -176,6 +206,14 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                 "formats": list(FORMATS), "max_bytes": MAX_BYTES,
                 "max_chars": MAX_CHARS, "max_total_chars": MAX_TOTAL_CHARS,
                 "idle_minutes": IDLE_SECONDS // 60, "cloud": cloud_info()}
+
+    @app.get("/private/samples/{name}")
+    def sample(name: Literal["researcher", "student"]) -> dict:
+        """SYNTHETIC text for "Fill with a sample" (S24). Read from data/synthetic, so the
+        canary files stay the one source; nothing here is about a real person."""
+        if not on:
+            raise HTTPException(404, "Private mode is not available on this server.")
+        return SAMPLES[name]()
 
     def session(token: str | None) -> PrivateSession:
         if not on:

@@ -162,13 +162,15 @@ console.log(JSON.stringify({ calls, afterMove, kept, ended, refused, drafts: m.s
 
 
 def test_personal_fields_exist_only_inside_private_mode():
-    """No personal-text field (CV, interests, achievements) is on a public screen."""
+    """The landing has no personal-text field; the pick screen's CV and draft boxes reach
+    the server only as session documents, after the session opens (S24)."""
     app = (WEB_DIR / "app.js").read_text()
     find = app[app.index("function renderFind()"):app.index("function pasted(")]
     fields = re.findall(r'h\("(?:textarea|input)", \{[^}]*\}', find)
-    labels = re.findall(r'class: "field-label"[^)]*text: "([^"]+)"', find)
-    assert fields and labels
-    assert not [x for x in fields + labels if re.search(r"\b(cv|interests|achievements)\b",
-                                                        x, re.I)]
+    assert fields
+    assert not [x for x in fields if re.search(r"\b(cv|interests|achievements|proposal)\b", x, re.I)]
+    build = app[app.index("async function build(c)"):app.index("// ----- the status chip")]
+    assert build.index("await mode.enable()") < build.index("privApi.addDocument") \
+        < build.index("privApi.create(req)")
     student = (WEB_DIR / "student.js").read_text()
     assert "if (!api.open)" in student  # the form shows only with a session open

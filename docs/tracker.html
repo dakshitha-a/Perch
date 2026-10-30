@@ -135,7 +135,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S24</code> <span class="badge s-todo">todo</span><span>24/28 sessions done</span></div>
+<div class="at-a-glance"><code>S24</code> <span class="badge s-in-progress">in progress</span><span>24/28 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -670,13 +670,29 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-current" class="view" data-view="current" hidden>
 <div id="s24"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S24 · UI rebuild from the redesign canvas</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S24.md</code> when the session starts.</div>
+<div class="title-row"><h1>S24 · UI rebuild from the redesign canvas</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-30 02:37 EDT</div></div>
+<p>Goal: build the redesign Dakshitha made on the design canvas on 2026-10-30, for both paths, filling any gaps in the same design language (Dakshitha, 2026-10-30). Spec: <code>docs/design/S24_REBUILD.md</code>. Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 9 tasks done"><div class="counts"><span><b>0/9</b>tasks done</span><span class="s-todo"><b>9</b>todo</span></div><div class="bar" role="img" aria-label="0 of 9 tasks done"><span class="s-todo" style="width:100.00%" title="todo: 9"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Design language in <code>web/styles.css</code>: tokens, type, shapes, motion, the two-column brief layout with the right rail.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td>Landing: owl on the branch, headline, Researcher or Student control, the status chip and Local or Cloud dialog, footer promises.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>Researcher path: pick, optional context panel, the brief with Routes, Profile, Compare and hand-off, Ask Scout, the shortlist rail and keep bar.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td>Student path: add your CV; the brief with What Perch read, Your options, Compare and the note, and Ask Scout for students.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>5</td><td>Gaps: Help, the dialog, the evidence sheet on a phone, error and empty states, the export menu, the replay preview, phone layouts.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>6</td><td>Tests and checks: Node and API tests, the walk, the canary, demo rebuilt.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>7</td><td>Draft review evaluation (Q32): SYNTHETIC bench, decision-only first.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>8</td><td>Documents on Cloud (Q30) behind the rule 1 change.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>9</td><td>Warm demo briefs held in memory (Q31).</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>Every screen in the spec is live on the public URL for both paths, light and dark, phone and laptop, with the checks passing and <code>make test</code> green.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="24 of 28 sessions done"><div class="counts"><span><b>24/28</b>sessions done</span><span class="s-done"><b>24</b>done</span><span class="s-todo"><b>4</b>todo</span></div><div class="bar" role="img" aria-label="24 of 28 sessions done"><span class="s-done" style="width:85.71%" title="done: 24"></span><span class="s-todo" style="width:14.29%" title="todo: 4"></span></div></section>
+<section class="panel summary" aria-label="24 of 28 sessions done"><div class="counts"><span><b>24/28</b>sessions done</span><span class="s-done"><b>24</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="24 of 28 sessions done"><span class="s-done" style="width:85.71%" title="done: 24"></span><span class="s-in-progress" style="width:3.57%" title="in progress: 1"></span><span class="s-todo" style="width:10.71%" title="todo: 3"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -704,7 +720,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s21">S21</a></td><td>UI/UX audit for three audiences</td><td><span class="badge s-done">done</span></td><td>2026-10-29 19:02 EDT</td><td>2026-10-29 19:19 EDT</td><td class="mono">see git log</td><td>Expert walkthrough on the public URL with <code>scripts/ux_walk.py</code> (axe-core 4.10.2): PI-4, three SYNTHETIC student personas and persona-1, phone and laptop, light and dark, 108 states. Private mode visible in all 54 private states. 6 must-fix (worst: the PI hand-off office picker lists student offices as \"undefined\"), 12 should-fix, 4 could-fix. Accessibility checklist in <code>docs/design/A11Y_CHECKLIST.md</code>. Options A (about 1 session), B (about 2), C (about 4); Q29 default B. UX tab on the tracker.</td></tr>
 <tr class="is-finished"><td><a href="#s22">S22</a></td><td>Redesign and rebuild</td><td><span class="badge s-done">done</span></td><td>2026-10-29 19:20 EDT</td><td>2026-10-29 19:54 EDT</td><td class="mono">see git log</td><td>Option B (Q29 default) live on the public URL: two doors on Find, student words, compact student and industry cards, the order explained, hand-off offices fixed, accessibility fixes. Walk on the dev server: 110 states, 0 axe violations, 0 failed steps. Review: 7 issues, all fixed. Live canary ok, 10 of 10 explained. 248 tests green. The media refilm (task 5) moved to S24.</td></tr>
 <tr class="is-finished"><td><a href="#s23">S23</a></td><td>Private by default, local models first</td><td><span class="badge s-done">done</span></td><td>2026-10-29 20:20 EDT</td><td>2026-10-29 21:05 EDT</td><td class="mono">see git log</td><td>Every brief is a session in memory: no stored briefs, reuse, browser history or per-user logs; public records stay cached. Local / Cloud switch, local by default; Cloud after a warning naming Anthropic, never with documents (Q30), 30 cloud briefs a day. Monitoring shelved in <code>perch/shelved/monitor/</code>. Live canary ok: default path 15 of 15 explained in 47 s, 0 user rows added, no trace in files or journals. Walk on the demo: 110 states, 0 axe violations. One cloud check $0.04. 245 tests green. S24 and S25 swapped (Dakshitha).</td></tr>
-<tr class="is-current"><td>S24</td><td>UI rebuild from the redesign canvas</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s24">S24</a></td><td>UI rebuild from the redesign canvas</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-30 02:37 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S25</td><td>UI/UX review and full QA test</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S26</td><td>Media refilm</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S27</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
