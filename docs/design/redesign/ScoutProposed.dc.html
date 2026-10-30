@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Perch: Ask Scout (proposed)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{opacity:.85}
+.fade-in{animation:fadein .4s ease both}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.bob{animation:bob 1.1s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+summary{list-style:none}summary::-webkit-details-marker{display:none}
+@media (prefers-reduced-motion: reduce){.fade-in,.bob{animation:none}}
+</style>
+</helmet>
+<div style="min-height: 1100px; background: {{c.bg}}; color: {{c.ink}}; font-family: Inter, system-ui, sans-serif; display: flex; flex-direction: column">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 16px clamp(16px, 4vw, 48px); border-bottom: 1px solid {{c.line}}">
+    <a href="Main.dc.html" style="text-decoration: none; font-family: Newsreader, Georgia, serif; font-size: 24px; font-weight: 600">Perch</a>
+    <nav style="display: flex; align-items: center; gap: 8px">
+      <button type="button" aria-label="{{chipAria}}" style="display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid {{c.line}}; background: {{c.surface}}; color: {{c.ink2}}; font: 500 14px Inter, sans-serif; cursor: pointer">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: {{chipDot}}"></span>
+        {{chipText}}
+      </button>
+      <button type="button" style="min-height: 40px; padding: 0 12px; border: 0; background: transparent; color: {{c.ink2}}; font: 500 15px Inter, sans-serif; cursor: pointer">End session</button>
+      <a href="#" style="min-height: 40px; display: inline-flex; align-items: center; padding: 0 12px; font-size: 15px; text-decoration: none; color: {{c.ink2}}">Help</a>
+    </nav>
+  </header>
+
+  <main style="width: 100%; max-width: 1180px; margin: 0 auto; box-sizing: border-box; padding: 24px clamp(16px, 4vw, 48px) 48px; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <p style="margin: 0; font-size: 14px; color: {{c.ink3}}">{{crumb}}</p>
+      <h1 style="margin: 0; font-family: Newsreader, Georgia, serif; font-size: 32px; font-weight: 600">{{heading}}</h1>
+    </div>
+
+    <nav aria-label="Brief sections" style="display: flex; gap: 4px; border-bottom: 1px solid {{c.line}}; overflow-x: auto">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+        <a href="#" aria-current="{{t.current}}" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; text-decoration: none; font-size: 15px; font-weight: 600; color: {{t.ink}}; border-bottom: 3px solid {{t.bar}}; white-space: nowrap">{{t.label}}</a>
+      </sc-for>
+    </nav>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+      <section aria-label="Conversation with Scout" style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+        <p style="margin: 0; font-size: 15px; color: {{c.ink2}}">{{lede}}</p>
+
+        <sc-if value="{{noMsgs}}" hint-placeholder-val="{{ true }}">
+          <div style="border-radius: 14px; border: 1px dashed {{c.line}}; padding: 22px; display: flex; gap: 14px; align-items: flex-start">
+            <svg width="36" height="36" viewBox="0 0 80 80" aria-hidden="true" style="flex: none"><path d="M19 42 C19 25 25 16 29 10 L33 19 C37 17.5 43 17.5 47 19 L51 10 C55 16 61 25 61 42 C61 60 52 70 40 70 C28 70 19 60 19 42 Z" fill="{{c.owlBody}}"></path><ellipse cx="40" cy="54" rx="12.5" ry="13" fill="{{c.owlBelly}}"></ellipse><circle cx="31" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="49" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="31" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="49" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="31" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="49" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="31" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><circle cx="49" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><path d="M37 41 L43 41 L40 47 Z" fill="{{c.ember}}"></path></svg>
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <p style="margin: 0; font-size: 15px; line-height: 1.5">Hello. Try one of these, or type your own.</p>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                <sc-for list="{{suggestions}}" as="q" hint-placeholder-count="4">
+                  <button type="button" onClick="{{q.ask}}" style="min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1px solid {{c.accent}}; background: transparent; color: {{c.accent}}; font: 600 14px Inter, sans-serif; cursor: pointer">{{q.text}}</button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <ol aria-live="polite" style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 18px">
+          <sc-for list="{{msgs}}" as="m" hint-placeholder-count="0">
+            <li class="fade-in" style="display: flex; flex-direction: column; gap: 10px">
+              <div style="display: flex; justify-content: flex-end"><p style="margin: 0; max-width: 75%; padding: 10px 14px; border-radius: 14px 14px 4px 14px; background: {{c.accent}}; color: {{c.onAccent}}; font-size: 15px; line-height: 1.5"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">You asked: </span>{{m.q}}</p></div>
+
+              <sc-if value="{{m.isRunning}}" hint-placeholder-val="{{ false }}">
+                <div style="margin-left: 50px; border-radius: 12px; border: 1px solid {{c.line}}; background: {{c.surface}}; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap">
+                  <span style="display: inline-flex; align-items: center; gap: 10px; font-size: 15px">
+                    <svg class="bob" width="28" height="28" viewBox="0 0 80 80" aria-hidden="true" style="flex: none"><path d="M19 42 C19 25 25 16 29 10 L33 19 C37 17.5 43 17.5 47 19 L51 10 C55 16 61 25 61 42 C61 60 52 70 40 70 C28 70 19 60 19 42 Z" fill="{{c.owlBody}}"></path><circle cx="31" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="49" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="31" cy="35" r="4" fill="{{c.ember}}"></circle><circle cx="49" cy="35" r="4" fill="{{c.ember}}"></circle></svg>
+                    {{m.progress}}
+                  </span>
+                  <button type="button" onClick="{{m.stop}}" style="min-height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 8px"><svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor"></rect></svg>Stop</button>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{m.hasRead}}" hint-placeholder-val="{{ false }}">
+                <div style="margin-left: 50px; border-radius: 12px; border: 1px solid {{c.line}}; background: {{c.surface}}; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px">
+                  <p style="margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .02em; color: {{c.ink3}}">HOW SCOUT READ YOUR QUESTION</p>
+                  <sc-for list="{{m.read}}" as="r" hint-placeholder-count="1">
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+                      <span style="font-size: 14px; font-weight: 600">{{r.label}}</span>
+                      <sc-for list="{{r.chips}}" as="ch" hint-placeholder-count="2">
+                        <span style="display: inline-flex; align-items: center; gap: 2px; min-height: 32px; padding: 0 4px 0 10px; border-radius: 999px; background: {{c.chip}}; font-size: 13px">
+                          {{ch.text}}
+                          <sc-if value="{{ch.removable}}" hint-placeholder-val="{{ false }}">
+                            <button type="button" aria-label="{{ch.removeAria}}" onClick="{{ch.remove}}" style="width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: {{c.ink2}}; cursor: pointer; display: inline-flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+                          </sc-if>
+                          <sc-if value="{{ch.fixed}}" hint-placeholder-val="{{ true }}"><span style="width: 6px"></span></sc-if>
+                        </span>
+                      </sc-for>
+                      <span style="font-size: 13px; color: {{c.ink2}}">→ {{r.result}}</span>
+                    </div>
+                  </sc-for>
+                  <sc-if value="{{m.rerun}}" hint-placeholder-val="{{ false }}">
+                    <p style="margin: 0; font-size: 13px; color: {{c.ink2}}">Search rerun by code, with no model call. The answer below was written for the earlier filters; ask again for a new one.</p>
+                  </sc-if>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{m.showLeads}}" hint-placeholder-val="{{ false }}">
+                <ul style="margin: 0 0 0 50px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px">
+                  <sc-for list="{{m.leads}}" as="ld" hint-placeholder-count="3">
+                    <li style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; border-radius: 10px; border: 1px solid {{c.line}}">
+                      <span style="min-width: 0; display: flex; flex-direction: column; gap: 2px">
+                        <span style="font-size: 14px; font-weight: 600">{{ld.title}}</span>
+                        <span style="font-size: 13px; color: {{c.ink2}}">{{ld.meta}}</span>
+                      </span>
+                      <button type="button" aria-pressed="{{ld.keptAria}}" onClick="{{ld.keep}}" style="flex: none; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid {{ld.border}}; background: {{ld.bg}}; color: {{ld.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer">{{ld.keepLabel}}</button>
+                    </li>
+                  </sc-for>
+                </ul>
+              </sc-if>
+
+              <sc-if value="{{m.isStopped}}" hint-placeholder-val="{{ false }}">
+                <p style="margin: 0 0 0 50px; font-size: 14px; color: {{c.ink2}}">{{m.stoppedText}}</p>
+              </sc-if>
+
+              <sc-if value="{{m.hasAnswer}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; gap: 14px; align-items: flex-start">
+                  <svg width="36" height="36" viewBox="0 0 80 80" aria-hidden="true" style="flex: none"><path d="M19 42 C19 25 25 16 29 10 L33 19 C37 17.5 43 17.5 47 19 L51 10 C55 16 61 25 61 42 C61 60 52 70 40 70 C28 70 19 60 19 42 Z" fill="{{c.owlBody}}"></path><ellipse cx="40" cy="54" rx="12.5" ry="13" fill="{{c.owlBelly}}"></ellipse><circle cx="31" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="49" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="31" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="49" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="31" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="49" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="31" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><circle cx="49" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><path d="M37 41 L43 41 L40 47 Z" fill="{{c.ember}}"></path></svg>
+                  <div style="flex: 1; min-width: 0; padding: 12px 14px; border-radius: 4px 14px 14px 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; display: flex; flex-direction: column; gap: 8px">
+                    <p style="margin: 0; font-size: 15px; line-height: 1.55">{{m.answer}}</p>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap">
+                      <sc-for list="{{m.cites}}" as="ct" hint-placeholder-count="2">
+                        <button type="button" onClick="{{ct.open}}" aria-label="{{ct.aria}}" style="min-height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid {{c.accent}}; background: transparent; color: {{c.accent}}; font: 600 12px Inter, sans-serif; cursor: pointer">{{ct.label}}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{m.hasSteps}}" hint-placeholder-val="{{ false }}">
+                <details style="margin-left: 50px; border-radius: 12px; border: 1px solid {{c.line}}; padding: 2px 14px">
+                  <summary style="cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: {{c.ink2}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>{{m.stepsLabel}}</summary>
+                  <ol style="list-style: none; margin: 0; padding: 0 0 12px; display: flex; flex-direction: column; gap: 8px">
+                    <sc-for list="{{m.steps}}" as="s" hint-placeholder-count="2">
+                      <li style="border-radius: 10px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px">
+                        <div style="display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center">
+                          <span style="display: inline-flex; gap: 8px; align-items: center; font-size: 14px; font-weight: 600">{{s.label}} <code style="font-size: 12px; font-weight: 400; color: {{c.ink3}}">{{s.tool}}</code></span>
+                          <span style="display: inline-flex; gap: 8px; align-items: center">
+                            <span style="padding: 2px 8px; border-radius: 999px; background: {{s.whereBg}}; color: {{s.whereInk}}; font-size: 12px; font-weight: 600">{{s.where}}</span>
+                            <span style="font-size: 13px; color: {{s.statusInk}}">{{s.status}}</span>
+                          </span>
+                        </div>
+                        <p style="margin: 0; font-size: 13px; color: {{c.ink2}}">{{s.args}}</p>
+                        <p style="margin: 0; font-size: 13px; color: {{c.ink2}}">{{s.result}}</p>
+                      </li>
+                    </sc-for>
+                  </ol>
+                </details>
+              </sc-if>
+            </li>
+          </sc-for>
+        </ol>
+
+        <form onSubmit="{{submit}}" style="display: flex; gap: 8px; padding: 6px; border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}">
+          <label for="scout-q" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Ask Scout</label>
+          <input id="scout-q" type="text" placeholder="{{placeholder}}" value="{{draftQ}}" onChange="{{onQ}}" style="flex: 1; min-width: 0; min-height: 48px; padding: 0 14px; border: 0; background: transparent; color: {{c.ink}}; font: 400 16px Inter, sans-serif">
+          <button type="submit" aria-disabled="{{busyAria}}" style="min-height: 48px; padding: 0 20px; border: 0; border-radius: 10px; background: {{askBg}}; color: {{askInk}}; font: 600 15px Inter, sans-serif; cursor: pointer">Ask</button>
+        </form>
+        <p style="margin: 0; font-size: 13px; color: {{c.ink3}}">{{rules}}</p>
+      </section>
+
+      <aside aria-label="Scout’s tools and evidence" style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 14px; position: sticky; top: 16px">
+        <div style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 600">What Scout can use</h2>
+          <ul style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: {{c.ink2}}">
+            <sc-for list="{{canUse}}" as="u" hint-placeholder-count="6"><li>{{u}}</li></sc-for>
+          </ul>
+          <p style="margin: 0; font-size: 13px; color: {{c.ink3}}">Steps used this question: {{calls}} of 8</p>
+        </div>
+        <div style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 18px; display: flex; flex-direction: column; gap: 8px">
+          <h2 style="margin: 0; font-size: 16px; font-weight: 600">Evidence</h2>
+          <sc-if value="{{noEv}}" hint-placeholder-val="{{ true }}">
+            <p style="margin: 0; font-size: 14px; color: {{c.ink2}}">Tap a citation in an answer to open its record here.</p>
+          </sc-if>
+          <sc-if value="{{hasEv}}" hint-placeholder-val="{{ false }}">
+            <p style="margin: 0; font-size: 14px; font-weight: 600">{{ev}}</p>
+            <p style="margin: 0; font-size: 13px; color: {{c.ink2}}">[The record’s fields, copied from the source, with its link and the date Perch fetched it.]</p>
+          </sc-if>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"student":{"editor":"boolean","default":false},"cloud":{"editor":"boolean","default":false},"later":{"editor":"boolean","default":true},"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { msgs: [], q: '', kept: {}, ev: '' };
+    this.timers = {};
+  }
+  componentWillUnmount() { Object.values(this.timers).forEach((l) => l.forEach(clearTimeout)); }
+  later(id, fn, ms) { (this.timers[id] = this.timers[id] || []).push(setTimeout(fn, ms)); }
+  // What Scout would call for a question. Placeholders stand in for values a record would supply.
+  plan(text, student) {
+    const t = text.toLowerCase();
+    if (/email|send|apply for me|submit|browse|web/.test(t)) return { steps: [],
+      answer: student ? 'Scout cannot send anything or apply for you. It can draft a note to a Temple office for you to copy.'
+        : 'Scout cannot send email or contact anyone. It can draft a hand-off to a Temple office for you to copy and send.' };
+    if (student) {
+      if (/why|verdict|eligible/.test(t)) return { steps: [
+        { tool: 'check_option', label: 'Check against your CV', where: 'code', chips: [['Option', '[your top fellowship]', false]], result: 'may be eligible, by rule' },
+        { tool: 'explain_verdict', label: 'Explain a verdict', where: 'code', chips: [['Option', '[your top fellowship]', false]], result: '[N] rules met, [N] not shown in your CV' }],
+        answer: '[Which stated requirements your CV meets, and which it does not show yet, each from the rule results.]', cites: ['[Fellowship name]'] };
+      if (/compare|kept|note|office/.test(t)) return { steps: [
+        { tool: 'compare_options', label: 'Compare options', where: 'code', chips: [['Options', 'kept', false]], result: '[N] options side by side' },
+        { tool: 'draft_note', label: 'Draft a note', where: 'code', chips: [['Office', '[Temple office]', false]], result: 'note written by code, not sent' }],
+        answer: '[A short note to the office, listing the kept options with deadlines copied from their records. Sample options stay marked.]', cites: ['[Fellowship name]', '[Sample scholarship]'] };
+      const chips = [];
+      if (/after|deadline|march/.test(t)) chips.push(['Deadline after', '[the date you named]', true]);
+      if (/\$|amount|at least|money/.test(t)) chips.push(['Amount at least', '[the amount you named]', true]);
+      chips.push(['Verdict', 'may be eligible', true]);
+      return { steps: [{ tool: 'search_options', label: 'Search options', where: 'code', chips, result: '[N] options match', search: true }],
+        answer: '[The matching options, best first, each deadline copied from its record.]', cites: ['[Fellowship name]', '[Sample scholarship]'], leads: true };
+    }
+    if (/why|fit/.test(t)) return { steps: [
+      { tool: 'get_record', label: 'Open a record', where: 'code', chips: [['Lead', '[top lead]', false]], result: '[Opportunity number]' },
+      { tool: 'explain_fit', label: 'Explain the fit', where: 'model', chips: [['Opportunity', '[top lead]', false]], result: 'explanation cites 2 papers' }],
+      answer: '[Why the top lead fits, in two sentences, each citing a record.]', cites: ['[Opportunity number]', 'Paper 1', 'Paper 2'] };
+    if (/compare|kept|draft|hand-off|handoff|office/.test(t)) {
+      const steps = [{ tool: 'compare', label: 'Compare leads', where: 'code', chips: [['Leads', 'kept', false]], result: '[N] leads side by side' }];
+      if (/draft|hand-off|handoff|office/.test(t)) steps.push({ tool: 'draft_handoff', label: 'Draft a hand-off', where: 'model', chips: [['Office', 'Research Development', false]], result: 'draft shown below, not sent' });
+      return { steps, answer: '[A short comparison of the kept leads: money and close dates copied from the records.]', cites: ['[Opportunity number]', '[Company]'] };
+    }
+    const chips = [];
+    if (/r21/.test(t)) chips.push(['Activity code', 'R21', true]);
+    if (/close|by|march|before/.test(t)) chips.push(['Closes by', '[the date you named]', true]);
+    if (/small|under|\$|200k|ceiling/.test(t)) chips.push(['Ceiling at most', '[the amount you named]', true]);
+    if (/clinical/.test(t)) chips.push(['Does not mention', 'clinical trial', true]);
+    if (!chips.length) chips.push(['Mentions', '[words from your question]', true]);
+    return { steps: [{ tool: 'search_opportunities', label: 'Search opportunities', where: 'code', chips, result: '[N] leads; [N] removed by the eligibility rules and filters', search: true }],
+      answer: '[The matching grants, best first, each close date copied from its record.]', cites: ['[Opportunity number]', '[Opportunity number]'], leads: true };
+  }
+  ask(q) {
+    const text = (q || '').trim();
+    if (!text || this.busy()) return;
+    const p = this.plan(text, !!this.props.student);
+    const id = String(Date.now());
+    const steps = p.steps.map((s) => ({ ...s, state: 'queued', chips: s.chips.map(([k, v, rm]) => ({ k, v, rm })) }));
+    this.setState({ q: '', msgs: [...this.state.msgs, { id, q: text, steps, answer: p.answer, cites: p.cites || [], leads: !!p.leads, state: 'running', at: 0, rerun: false }] });
+    this.next(id, 0);
+  }
+  busy() { return this.state.msgs.some((m) => m.state === 'running'); }
+  patch(id, f) { this.setState({ msgs: this.state.msgs.map((m) => (m.id === id ? f(m) : m)) }); }
+  next(id, i) {
+    const m = this.state.msgs.find((x) => x.id === id);
+    if (!m || m.state !== 'running') return;
+    if (i >= m.steps.length) {
+      this.later(id, () => this.patch(id, (x) => (x.state === 'running' ? { ...x, state: 'done' } : x)), m.steps.length ? 500 : 900);
+      return;
+    }
+    this.patch(id, (x) => ({ ...x, at: i, steps: x.steps.map((s, j) => (j === i ? { ...s, state: 'running' } : s)) }));
+    this.later(id, () => {
+      this.patch(id, (x) => ({ ...x, steps: x.steps.map((s, j) => (j === i ? { ...s, state: 'done' } : s)) }));
+      this.next(id, i + 1);
+    }, m.steps[i].where === 'model' ? 1600 : 1000);
+  }
+  stop(id) {
+    (this.timers[id] || []).forEach(clearTimeout);
+    this.timers[id] = [];
+    this.patch(id, (x) => ({ ...x, state: 'stopped', steps: x.steps.map((s) => (s.state === 'done' ? s : { ...s, state: 'stopped' })) }));
+  }
+  removeChip(id, si, k) {
+    this.patch(id, (x) => ({ ...x, rerun: true, steps: x.steps.map((s, j) => (j === si
+      ? { ...s, chips: s.chips.filter((ch) => ch.k !== k), result: '[N] leads after the change, rerun by code' } : s)) }));
+  }
+  renderVals() {
+    const dark = this.props.dark ?? true;
+    const student = !!this.props.student;
+    const cloud = !!this.props.cloud && !student;
+    const later = this.props.later ?? true;
+    const c = dark
+      ? { bg: '#0F1715', surface: '#17221F', line: '#273631', chip: '#22302B', ink: '#E9EFEC', ink2: '#B3C1BC', ink3: '#93A39D', accent: '#7CCBA8', onAccent: '#0B1F17', ember: '#F0B54A',
+          owlBody: '#8EA59E', owlBelly: '#2F3F3C', owlFace: '#3A4B47', owlPupil: '#0E1617', cloudBg: '#3A2F1A', cloudInk: '#F0C878' }
+      : { bg: '#F7F8F4', surface: '#FFFFFF', line: '#DCE3DE', chip: '#EBF0EC', ink: '#16201C', ink2: '#45524D', ink3: '#5C6964', accent: '#23664F', onAccent: '#FFFFFF', ember: '#D99A2B',
+          owlBody: '#4F625D', owlBelly: '#DCE3D8', owlFace: '#EEF1EA', owlPupil: '#1F2B2D', cloudBg: '#FBEFD6', cloudInk: '#6B4A0E' };
+    const st = this.state;
+    const busy = this.busy();
+    const WHERE = { code: ['Code, no model', c.chip, c.ink2], model: cloud ? ['Cloud: Anthropic', c.cloudBg, c.cloudInk] : ['Local model', c.chip, c.ink2] };
+    const STATUS = { queued: ['Next', c.ink3], running: ['Running…', c.ink2], done: ['Done', c.accent], stopped: ['Not run', c.ink3] };
+    const last = st.msgs[st.msgs.length - 1];
+    const msgs = st.msgs.map((m) => {
+      const done = m.steps.filter((s) => s.state === 'done');
+      const cur = m.steps[m.at];
+      return {
+        q: m.q,
+        isRunning: m.state === 'running',
+        progress: !m.steps.length ? 'Scout is reading your question…'
+          : `Step ${Math.min(m.at + 1, m.steps.length)} of ${m.steps.length}: ${cur ? cur.label : ''}…`,
+        stop: () => this.stop(m.id),
+        hasRead: done.length > 0,
+        read: m.steps.map((s, si) => ({ s, si })).filter(({ s }) => s.state === 'done').map(({ s, si }) => ({
+          label: s.label, result: s.result,
+          chips: s.chips.map((ch) => {
+            const removable = later && s.search && ch.rm && m.state !== 'running';
+            return { text: `${ch.k}: ${ch.v}`, removable, fixed: !removable, removeAria: `Remove the filter ${ch.k}: ${ch.v}`,
+              remove: () => this.removeChip(m.id, si, ch.k) };
+          }),
+        })),
+        rerun: m.rerun,
+        showLeads: later && m.leads && m.state === 'done',
+        leads: [1, 2, 3].map((n) => {
+          const key = `${m.id}:${n}`;
+          const k = !!st.kept[key];
+          return { title: student ? (n === 3 ? '[Sample scholarship name] · SAMPLE' : '[Fellowship name, copied from the record]') : '[Opportunity title, copied from Grants.gov]',
+            meta: student ? 'Deadline [date] · may be eligible' : 'NIH · [activity code] · closes [close date]',
+            keptAria: String(k), keepLabel: k ? 'Kept' : 'Keep', border: k ? c.accent : c.line, bg: k ? c.accent : 'transparent', ink: k ? c.onAccent : c.ink,
+            keep: () => this.setState({ kept: { ...st.kept, [key]: !k } }) };
+        }),
+        isStopped: m.state === 'stopped',
+        stoppedText: `Stopped. ${done.length} of ${m.steps.length} steps ran; what they found is listed here. Ask again to continue.`,
+        hasAnswer: m.state === 'done',
+        answer: m.answer,
+        cites: m.cites.map((x) => ({ label: x, aria: `Evidence: ${x}`, open: () => this.setState({ ev: x }) })),
+        hasSteps: m.steps.length > 0 && m.state !== 'running',
+        stepsLabel: `Steps Scout ran (${done.length})`,
+        steps: m.steps.map((s) => ({
+          label: s.label, tool: s.tool,
+          where: WHERE[s.where][0], whereBg: WHERE[s.where][1], whereInk: WHERE[s.where][2],
+          status: STATUS[s.state][0], statusInk: STATUS[s.state][1],
+          args: s.chips.map((ch) => `${ch.k}: ${ch.v}`).join(' · '),
+          result: s.state === 'done' ? s.result : 'Not run',
+        })),
+      };
+    });
+    const R_SUGGEST = ['Only R21s that close by March', 'Small grants only: a ceiling of $200k or less', 'Why does the top lead fit?', 'Compare my kept leads and draft a hand-off', 'Email the program officer for me'];
+    const S_SUGGEST = ['Only options with a deadline after March', 'Why is my top fellowship “may be eligible”?', 'Compare my kept options and draft a note', 'Apply for me'];
+    return {
+      c,
+      chipText: student ? 'Local only · nothing stored' : cloud ? 'Cloud on · Scout stays local' : 'Local · nothing stored',
+      chipAria: student ? 'Privacy: local models only, nothing stored' : cloud ? 'Cloud is on for the model skills; Scout itself stays local. Change models' : 'Privacy: nothing stored, local models. Change models',
+      chipDot: cloud ? c.ember : c.accent,
+      crumb: student ? 'Your options · [Student name, from the CV]' : 'The brief · [Researcher name] · Temple University',
+      heading: 'Ask Scout',
+      tabs: (student ? ['What Perch read', 'Your options', 'Compare', 'Ask Scout'] : ['Routes', 'Profile', 'Compare', 'Ask Scout']).map((label, i) => ({
+        label, current: i === 3 ? 'page' : 'false', bar: i === 3 ? c.accent : 'transparent', ink: i === 3 ? c.ink : c.ink2 })),
+      lede: student ? 'Ask about your options in plain words. Scout runs Perch’s own tools and shows how it read your question.'
+        : 'Ask about this brief in plain words. Scout runs Perch’s own tools and shows how it read your question.',
+      noMsgs: st.msgs.length === 0,
+      suggestions: (student ? S_SUGGEST : R_SUGGEST).map((text) => ({ text, ask: () => this.ask(text) })),
+      msgs,
+      placeholder: student ? 'For example: only options with a deadline after March' : 'For example: only R21s that close by March',
+      draftQ: st.q, onQ: (e) => this.setState({ q: e.target.value }),
+      submit: (e) => { e.preventDefault(); this.ask(st.q); },
+      busyAria: String(busy),
+      askBg: busy ? c.line : c.accent, askInk: busy ? c.ink3 : c.onAccent,
+      rules: student
+        ? 'Scout runs each step as it goes; Stop ends the question. It cites records, and a date or amount not in a cited record is rewritten once, then withheld. It stops after eight model calls, cannot browse the web, send anything or change a record, and runs on a local model because your CV is in this session. Sample scholarships stay marked as samples.'
+        : 'Scout runs each step as it goes; Stop ends the question. It cites records, and a date or amount not in a cited record is rewritten once, then withheld. It stops after eight model calls and cannot browse the web, send anything or change a record. Scout’s own model is local; with Cloud on, the fit explanation and the hand-off draft use the Cloud model and count toward this session’s budget.',
+      canUse: student
+        ? ['Search fellowships and sample scholarships with filters: verdict, deadline, amount, words', 'Check one option against your CV by rule', 'Explain a verdict and what is still needed', 'What Perch read from your CV', 'Compare chosen or kept options', 'A note to a Temple office, shown for you to copy']
+        : ['Search with filters: agency, ceiling, close date, activity code, words', 'Industry leads and their signals', 'Any record in this brief', 'This researcher’s public awards and profile', 'A fit explanation', 'Compare chosen or kept leads', 'A hand-off draft, shown for you to copy'],
+      calls: last ? last.steps.filter((s) => s.state === 'done').length + (last.state === 'done' ? 1 : 0) : 0,
+      noEv: !st.ev, hasEv: !!st.ev, ev: st.ev,
+    };
+  }
+}
+</script>
+</body>
+</html>

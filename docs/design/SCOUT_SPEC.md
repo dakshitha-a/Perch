@@ -107,6 +107,7 @@ Scout's tools only read records and write text on screen. So the risks are about
 - **Show where a step ran:** label the two model-backed cards Local or Cloud.
 - **Add the "how Scout read it" line:** and collapse the cards under it.
 - **Update the words:** Help, the Scout hint line, the canvas copy in `docs/design/redesign/`, SPEC §8, including its Stack line that names the borrowed approve-every-action pattern.
+- **Mock-up:** the redesign canvas has a working mock-up of this spec, `docs/design/redesign/ScoutProposed.dc.html`.
 - **Retest:** tests, the UX walk and the Scout bench rerun.
 
 **After Demo Day:**
