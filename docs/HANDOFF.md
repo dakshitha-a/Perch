@@ -2,44 +2,36 @@
 
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
-## Last run: S23 done, then the UI redesign on a canvas
-- **S23 is done** (below). 245 tests pass. API spend: $2.09 of $100.
-- **After S23, 2026-10-30:** Dakshitha redesigned the whole web app with Perch-dev on a design canvas and asked for it to be built. That is the new S24. QA is now S25, the media refilm S26, freeze S27.
-- **Spec:** `docs/design/S24_REBUILD.md`. Canvas sources: `docs/design/redesign/` (one `.dc.html` per screen). The canvas link is in `CLAUDE.local.md`.
-- **Decisions on the way:** students get Ask Scout (Q27 revised). Q30 to Q32 answered: S24 tasks 7 to 9. Q33 holds two rule changes for Dakshitha to apply.
+## Last run: S24 done (UI rebuild from the redesign canvas)
+- **All nine tasks done.** 249 tests pass. API spend: $2.09 of $100 (none in S24).
+- **Live:** the redesign is on the public URL for both paths, light and dark, phone and laptop. Dakshitha asked for S24 to S26 in one run, so S25 follows in the same context.
 
-## S23 — what changed
-- **Every brief is a session in memory.** Find runs researcher briefs through `/private/brief`; no document is needed with an author id. The context fields and the award ceiling go with it.
-- **Nothing about a visitor is stored.** There is no reuse, no recent-briefs list and no per-user log. The stored-brief routes answer 404 unless `PERCH_STORED_BRIEFS=1`; tests and replays set it.
-- **Public records stay cached.** A session writes OpenAlex, RePORTER and NSF records through to the store (`perch/private/store.py`, `is_public`). The embedding cache stays read-only for sessions.
-- **Local / Cloud switch** (`#models-switch`) replaces Private. Cloud needs a confirm naming the provider. Only the summary, fit and hand-off skills switch. Cloud never runs with documents, and student mode turns it off. The server allows 30 cloud briefs a day (`PERCH_CLOUD`, `PERCH_CLOUD_BRIEFS_PER_DAY`).
-- **End session** sits in the line under the top bar, on every screen. The line says "Nothing about you is stored", and the bar turns amber with Cloud on.
-- **Monitoring shelved:** `perch/shelved/monitor/` holds the module, screen, units, skipped tests and a README. The morning warm-up was deleted.
-- **Demo:** rebuilt; old timers removed. The old 64 briefs and 880 leads were deleted from `data/demo/perch.db`. A copy of the old store and its logs is in the gitignored `data/archive/pre-s23/`. Dakshitha may delete it.
-- **Checks:** live canary ok (`scripts/private_canary.py`, now with a default-path run and a Cloud refusal check). Walk on the demo: 110 states, 0 axe violations, 0 sideways scroll, 0 failed steps.
+## What S24 built
+- **Design language:** canvas tokens in `web/styles.css`, with the old names as aliases. Newsreader and Inter from Google Fonts, Georgia and system fallbacks. A big "S24 redesign" section sits at the end of the file.
+- **Screens:** landing `#/`, pick `#/find` (context panel, "Fill with a sample"), briefs with a rail (shortlist above evidence; under 900 px a floating keep pill and the evidence sheet). Tabs: Routes, Profile, Compare, Ask Scout; a brief opens on Routes.
+- **Header:** the status chip opens a real `<dialog>` (Local or Cloud); End session is a dialog too. No owl in the bar.
+- **Samples:** `GET /private/samples/{researcher|student}` reads `data/synthetic/`. The researcher sample leaves the CV empty (persona-1's README; DECISIONS).
+- **Student Scout:** `perch/scout/student_tools.py`, its own allowlist; `make_scout` picks it for a student brief, private sessions only. Researcher Scout and MCP unchanged.
+- **Warm briefs:** `perch/private/warm.py`, `PERCH_WARM_AUTHORS` (PI-5, PI-4, PI-2 on the demo). Built after start in a thread, memory only; a default request gets a copy.
+- **Documents on Cloud:** behind `PERCH_CLOUD_DOCUMENTS=1`, off. Second warning, tick box, a confirm phrase the API checks.
+- **Draft review:** `bench/draft_review/`, results in `bench/results/draft_review/RESULTS.md`. Not built (Q34).
 
-## Next: S24, the UI rebuild
-- Read `docs/design/S24_REBUILD.md` first, then open the canvas sources for exact sizes and colours. Build in the spec's order: design language, landing, researcher path, student path, gaps, checks. Commit after each screen.
-- The app is no-build (Node 12 on the node, no npm). Keep it that way; the `.dc.html` files are design references, not code to ship.
-- Student Scout is new backend work: tools for options, a CV rule check, a verdict explanation, compare and a note, on the existing Scout loop and allowlist.
-- The walk (`scripts/ux_walk.py`) selects by id and text; update it with the new screens. axe-core 4.10.2 lives in an old scratchpad; fetch `axe.min.js` from cdnjs again if it is gone.
-- Test on a dev server (`perch serve --port 8091` on a scratch copy of `data/demo`) before rebuilding the demo. Stop it by its task or an anchored pkill.
-- Then S25 (UI/UX review and full QA), S26 (media refilm, notes below) and S27 (freeze; task 2 frees the dev GPUs).
+## Checks
+- **Walk:** `scripts/ux_walk.py` updated for the new selectors and dialogs. Dev server: 125 states; demo: 119 states. 0 axe violations, 0 sideways scroll, 0 failed steps. axe-core 4.10.2 is in this session's scratchpad; refetch from cdnjs if gone.
+- **Canary:** `build/canary-s24.json` ok (default path 15 of 15 explained in 46 s; private-only 10 of 10; 0 user rows; no canary in files or six journals).
+- **Dev server:** a scratch copy of `data/demo` on port 8091 with `PERCH_BRIEFS_PER_HOUR=200` (the walk runs more than 10 briefs). The script is in the scratchpad; stop it with an anchored pkill.
 
-## Notes for S26, the media refilm
-1. README clips: `scripts/tour/film.py`, then `scripts/tour/animate.py`, on the rebuilt screens.
-2. `docs/screenshots/` (`scripts/screenshots.py`) and the README student screenshot.
-3. Tracker UI preview with the student flow: a replay of a SYNTHETIC student brief; `scripts/build_ui_preview.py` must serve its routes.
-4. README text for the new labels, then the README tab, then republish.
+## Next: S25, UI/UX review and full QA
+- A draft QA plan with 36 rows is in the scratchpad (`QA_PLAN.md`); copy it to `docs/QA_PLAN.md` and run it.
+- Independent review of the screens; findings in `docs/design/UX_REVIEW_S25.md`, must-fix items fixed.
+- Then S26 (media refilm: README clips, screenshots, tracker UI preview with a student replay) and S27 (freeze; task 2 frees the dev GPUs).
 
 ## Known gaps
+- **Student Scout is wordy with tools:** on Gemma it checked options one by one before the rules pointed it at `compare_options`.
 - **Student retrieval:** 2 of 12 planted positives never reached a brief.
 - **Shared Ollama:** the dev Ollama on 11434 reloads gemma when another client asks for a different context size.
-- **Every brief is live:** about 45 s on the demo models (Q31).
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- **Q33:** two standing-rule changes for Dakshitha to apply: rule 1 (documents on Cloud after a second warning) and, only if the S24 evaluation needs it, rule 5 (a draft review job).
-- **Q32 answered:** evaluate the draft review first (S24 task 7); build only if good.
-- **Q30 answered:** documents on Cloud after a second warning (S24 task 8), behind the rule 1 change.
-- **Q31 answered:** warm demo briefs held in memory (S24 task 9).
+- **Q34:** build the draft review anyway (Clef only, records with three or more points)? Default: no.
+- **Q33:** apply the rule 1 change, then set `PERCH_CLOUD_DOCUMENTS=1` on the demo. The rule 5 change is withdrawn.
 - **Q29:** kept open by Dakshitha.
