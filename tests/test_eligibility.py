@@ -126,6 +126,7 @@ def test_institution_type_young_investigator_and_epscor():
     for title, why in [
         ("ONR FY27 NOFO for Young Investigator Program", "career stage"),
         ("Young Faculty Award (YFA) 2027", "career stage"),
+        ("Parkinson's, Early Investigator Research Award", "career stage"),
         ("Facilitating Research at Primarily Undergraduate Institutions (RUI)", "undergraduate"),
         ("Academic Research Enhancement Award (AREA) for Undergraduate-Focused Institutions "
          "(R15)", "undergraduate"),
