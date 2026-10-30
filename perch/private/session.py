@@ -100,6 +100,7 @@ class PrivateSession:
     lock: threading.Lock = field(default_factory=threading.Lock)
     service: PrivateService | None = None
     cloud: bool = False  # Cloud on: the skills use the cloud provider (S23)
+    cloud_docs: bool = False  # the second warning was confirmed: documents may go too (S24)
 
     @property
     def cv(self) -> CVFacts | None:
@@ -116,6 +117,7 @@ class PrivateSession:
         self.scout = None
         self.brief_id = None
         self.cloud = False
+        self.cloud_docs = False
 
     def make_masker(self, public_texts: list[str]) -> egress.Masker:
         cv = self.cv
@@ -132,7 +134,8 @@ class PrivateService(BriefService):
                  settings: PrivateSettings) -> None:
         self.db, self.clients, self.overrides = base.db, base.clients, base.overrides
         self.models = PrivateModels(base.models, settings,  # type: ignore[assignment]
-                                    lambda: session.cloud and not session.docs)
+                                    lambda: session.cloud and (not session.docs or (
+                                        settings.cloud_documents and session.cloud_docs)))
         self.settings = settings
         self.session = session
         self.audit = AuditLog(None)

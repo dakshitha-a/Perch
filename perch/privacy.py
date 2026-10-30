@@ -7,6 +7,9 @@ Settings, read from the environment:
   PERCH_CLOUD              a cloud model spec a session may turn on, e.g.
                            "anthropic:claude-sonnet-5-5" (default none: Local only)
   PERCH_CLOUD_BRIEFS_PER_DAY  cloud briefs the whole server runs per day (default 30)
+  PERCH_CLOUD_DOCUMENTS    "1" lets a session send its documents to the cloud provider after
+                           a second warning (S24, Q30). Default off: standing rule 1 keeps
+                           private text on local models until Dakshitha changes it (Q33).
   PERCH_PUBLIC_CACHE       "0" stops sessions writing public records to the store (default on)
   PERCH_PRIVATE_ENDPOINTS  hosts a private session may send model calls to, comma-separated
                            (default loopback: 127.0.0.1, localhost, ::1)
@@ -41,6 +44,7 @@ class PrivateSettings:
     cloud_spec: str | None = None
     public_cache: bool = False
     cloud_per_day: int = 30
+    cloud_documents: bool = False
 
     @classmethod
     def from_env(cls) -> PrivateSettings:
@@ -52,7 +56,8 @@ class PrivateSettings:
                    operator=env("PERCH_PRIVATE_OPERATOR"),
                    cloud_spec=env("PERCH_CLOUD") or None,
                    public_cache=env("PERCH_PUBLIC_CACHE") != "0",
-                   cloud_per_day=int(env("PERCH_CLOUD_BRIEFS_PER_DAY") or 30))
+                   cloud_per_day=int(env("PERCH_CLOUD_BRIEFS_PER_DAY") or 30),
+                   cloud_documents=env("PERCH_CLOUD_DOCUMENTS") == "1")
 
     @property
     def cloud_provider(self) -> str | None:

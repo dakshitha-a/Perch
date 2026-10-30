@@ -465,3 +465,32 @@ def test_warm_demo_briefs_are_copied_into_each_session(tmp_path, monkeypatch):
                                                    "direction": "home gait sensing"}).json()
     assert not r.get("warm")
     assert user_rows(service.db) == rows
+
+
+def test_documents_go_to_cloud_only_with_the_switch_and_a_second_confirm(tmp_path, monkeypatch):
+    """Q30 (S24 task 8), SYNTHETIC text only. Off by default: standing rule 1 keeps
+    documents local until Dakshitha changes it (Q33)."""
+    monkeypatch.setenv("PERCH_CLOUD", "anthropic:claude-sonnet-5-5")
+    c, _ = private_app(tmp_path, monkeypatch)
+    h = open_with_persona(c)
+    info = c.get("/private").json()["cloud"]
+    assert not info["documents"]
+    assert c.post("/private/cloud", headers=h, json={
+        "on": True, "confirm": "Anthropic",
+        "documents_confirm": "send my documents to anthropic"}).status_code == 409
+    c.post("/private/end", headers=h)
+
+    monkeypatch.setenv("PERCH_CLOUD_DOCUMENTS", "1")
+    c, service = private_app(tmp_path / "on", monkeypatch)
+    info = c.get("/private").json()["cloud"]
+    assert info["documents"] and "second warning" in info["warning"]
+    h = open_with_persona(c)
+    r = c.post("/private/cloud", headers=h, json={"on": True, "confirm": "Anthropic"})
+    assert r.status_code == 409 and "send my documents to anthropic" in r.json()["detail"]
+    r = c.post("/private/cloud", headers=h, json={
+        "on": True, "confirm": "Anthropic", "documents_confirm": "Send my documents to Anthropic"})
+    assert r.json() == {"cloud": True, "documents": True}
+    s = c.app.state.private_sessions.get(h["X-Perch-Private"])
+    assert s.service.models.cloud()  # the skills now use the cloud spec
+    assert c.post("/private/cloud", headers=h, json={"on": False}).json()["documents"] is False
+    assert not s.service.models.cloud()

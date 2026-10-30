@@ -999,3 +999,4 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .scout-hello { display: flex; gap: 12px; align-items: center; color: var(--ink-2); }
 .scout-rules { font-size: 13px; line-height: 1.5; }
 .scout-intro .lede { flex: 1 1 320px; font-size: 16px; }
+.dialog .warn-box.strong { background: var(--no-bg); display: grid; gap: 8px; }

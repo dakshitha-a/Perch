@@ -184,7 +184,7 @@ export function privateApi(base = "") {
     start: async () => { const r = await call(base, "/private/session", { method: "POST" }); token = r.token; return r; },
     session: () => p("/private/session"),
     addDocument: (body) => post("/private/documents", body),
-    cloud: (on, confirm) => post("/private/cloud", { on, confirm }),
+    cloud: (on, confirm, documentsConfirm) => post("/private/cloud", { on, confirm, documents_confirm: documentsConfirm || null }),
     removeDocument: (kind) => post(`/private/documents/${encodeURIComponent(kind)}/remove`),
     create: (req) => post("/private/brief", req),
     createStudent: (req) => post("/private/student/brief", req),

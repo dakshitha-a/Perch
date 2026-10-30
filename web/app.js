@@ -473,7 +473,7 @@ async function build(c) {
       return;
     }
     await mode.enable(); // every brief is a session (S23); nothing is stored
-    if (docs.length && S.cloud) { await setCloud(false); announce("Cloud is off: documents stay on local models."); }
+    if (docs.length && S.cloud && !S.cloudDocs) { await setCloud(false); announce("Cloud is off: documents stay on local models."); }
     const have = (await privApi.session()).documents.map((d) => d.kind);
     for (const kind of ["cv", "proposal"]) if (have.includes(kind)) await privApi.removeDocument(kind);
     for (const d of docs) await privApi.addDocument(d);
@@ -501,7 +501,7 @@ const cloudInfo = () => (privateInfo() && privateInfo().cloud) || {};
 function drawSwitch() {
   const b = $("#status-chip");
   if (!b) return;
-  if (!privApi.open) { S.cloud = false; S.hasDocs = false; }
+  if (!privApi.open) { S.cloud = false; S.hasDocs = false; S.cloudDocs = false; }
   const c = cloudInfo();
   b.querySelector(".chip-word").textContent = S.cloud ? `Cloud: ${c.provider} · nothing stored`
     : S.hasDocs ? "Local only · nothing stored" : "Local · nothing stored";
@@ -531,9 +531,11 @@ async function openModels() {
     try { S.hasDocs = (await privApi.session()).documents.length > 0; } catch { S.hasDocs = false; }
   }
   const studentOn = Boolean(S.brief && isStudent(S.brief));
+  const docsCloud = S.hasDocs && !studentOn && c.documents; // Q30, behind the server switch
   const blocked = !c.available ? "This server runs local models only."
-    : S.hasDocs || studentOn ? "Off while this session holds documents: they stay on local models." : "";
+    : studentOn || (S.hasDocs && !c.documents) ? "Off while this session holds documents: they stay on local models." : "";
   let choice = S.cloud ? "cloud" : "local";
+  let understood = false;
   const opener = $("#status-chip");
   const ok = await dialog((done) => {
     const box = h("div", { class: "dialog-in" });
@@ -552,16 +554,22 @@ async function openModels() {
           h("span", {}, h("b", { text: c.provider ? `Cloud: ${c.provider}` : "Cloud" }),
             h("span", { text: blocked || `${c.provider} writes those three texts instead. Faster, but your text leaves this server.` })))),
       choice === "cloud" && !S.cloud ? h("p", { class: "warn-box", role: "note" }, h("b", { text: "Before you turn Cloud on: " }), h("span", { text: c.warning || "" })) : null,
+      choice === "cloud" && !S.cloud && docsCloud ? h("div", { class: "warn-box strong", role: "note" },
+        h("p", {}, h("b", { text: "Second warning: your documents. " }), h("span", { text: c.documents_warning || "" })),
+        h("label", { class: "check" }, h("input", { type: "checkbox", checked: understood, "data-key": "docs-understood",
+          onchange: (e) => { understood = e.target.checked; draw(); } }),
+        h("span", { text: `I understand. Send my documents to ${c.provider}.` }))) : null,
       h("div", { class: "row" },
         h("button", { class: "btn", type: "button", onclick: () => done(false), text: "Cancel" }),
         h("button", { class: "btn primary", type: "button", "data-key": "models-ok", onclick: () => done(true),
-          text: choice === "cloud" ? (S.cloud ? "Keep Cloud on" : `Send to ${c.provider}`) : "Use local models" })));
+          disabled: choice === "cloud" && !S.cloud && docsCloud && !understood,
+          text: choice === "cloud" ? (S.cloud ? "Keep Cloud on" : docsCloud ? `Send my documents to ${c.provider}` : `Send to ${c.provider}`) : "Use local models" })));
     draw();
     return box;
   });
   if (opener) opener.focus();
   if (!ok || (choice === "cloud") === S.cloud) return;
-  try { await setCloud(choice === "cloud"); } catch (e) { announce(e.message); showError(e.message); }
+  try { await setCloud(choice === "cloud", docsCloud); } catch (e) { announce(e.message); showError(e.message); }
 }
 
 function showError(msg) {
@@ -590,13 +598,14 @@ async function endSession() {
 }
 
 // Cloud on for this session; the dialog above is the warning that names the provider.
-async function setCloud(on) {
+async function setCloud(on, withDocs = false) {
   const c = cloudInfo();
   if (on) {
     await mode.enable();
-    await privApi.cloud(true, c.provider);
-  } else if (privApi.open) {
-    await privApi.cloud(false);
+    S.cloudDocs = Boolean((await privApi.cloud(true, c.provider, withDocs ? c.documents_phrase : null)).documents);
+  } else {
+    S.cloudDocs = false;
+    if (privApi.open) await privApi.cloud(false);
   }
   S.cloud = on;
   drawSwitch();
