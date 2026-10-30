@@ -1292,11 +1292,12 @@ function renderRoutes(panel) {
   const sig = `routes:${isDone("route_b")}`;
   if (panel.dataset.sig !== sig) {
     panel.dataset.sig = sig;
-    fill(panel, routeSwitch(),
+    // The sort switch shares the Grants | Industry row (Dakshitha, S27); the title and its
+    // note sit under both, so the switch never moves when the note changes length.
+    fill(panel, h("div", { class: "route-row" }, routeSwitch(), sortSwitch()),
       h("div", { class: "routes-bar" },
         h("div", {}, h("h2", { class: "section-title", id: "routes-title" }),
-          h("p", { class: "hint routes-sub" })),
-        sortSwitch()),
+          h("p", { class: "hint routes-sub" }))),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
       h("div", { class: "dismissed-box" }),
       h("div", { class: "keep-bar-box" }));

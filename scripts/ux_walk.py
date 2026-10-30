@@ -211,6 +211,17 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.wait_for_timeout(800)
     await w.snap(page, tag, "routes-grants")
     await w.snap(page, tag, "routes-grants-full", full=True)
+    # The sort switch must stay put while its note changes with each choice (S27).
+    boxes = []
+    for key in ("fit", "closing", "order"):
+        btn = page.locator(f"[data-key=sort-{key}]")
+        if await btn.count():
+            await btn.click()
+            await page.wait_for_timeout(150)
+            boxes.append(await page.locator(".sort-switch").bounding_box())
+    if boxes and any(abs(b["x"] - boxes[0]["x"]) > 1 or abs(b["y"] - boxes[0]["y"]) > 1
+                     for b in boxes):
+        w.errors.append(f"{tag}: sort: layout: the sort switch moves when the sort changes")
     lead = page.locator(".leads > li").first
     await w.step(tag, "why", lead.locator("summary[data-key=why]").click())
     await lead.scroll_into_view_if_needed()
