@@ -1023,7 +1023,8 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 /* S25 review fixes */
 .short { display: none; }
 @media (max-width: 479px) {
-  .tab .long, .seg .long, .route-btn .long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* each of these buttons carries its full name in aria-label */
+  .tab .long, .seg .long, .route-btn .long { display: none; }
   .tab .short, .seg .short, .route-btn .short { display: inline; }
   .tab { padding: 0 12px; }
 }

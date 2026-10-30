@@ -477,6 +477,8 @@ async function build(c) {
     const have = (await privApi.session()).documents.map((d) => d.kind);
     for (const kind of ["cv", "proposal"]) if (have.includes(kind)) await privApi.removeDocument(kind);
     for (const d of docs) await privApi.addDocument(d);
+    S.hasDocs = docs.length > 0 || have.some((k) => !["cv", "proposal"].includes(k));
+    drawSwitch();
     S.sampleBrief = Boolean(F.sample);
     const made = await privApi.create(req);
     S.warm = Boolean(made && made.warm);
@@ -726,12 +728,13 @@ function exportMenu() {
     h("summary", { "data-key": "export" }, icon("download"), h("span", { text: "Export" })),
     h("div", { class: "export-pop" }, pop));
   det.addEventListener("keydown", (e) => { if (e.key === "Escape" && det.open) { det.open = false; det.querySelector("summary").focus(); e.stopPropagation(); } });
-  document.addEventListener("click", (e) => { if (det.open && !det.contains(e.target)) det.open = false; });
+  // Only a real click outside closes it: a download clicks a link of its own.
+  document.addEventListener("click", (e) => { if (det.open && e.isTrusted && !det.contains(e.target)) det.open = false; });
   return det;
 }
 
 function tabButton(key, label, short) {
-  return h("button", { role: "tab", id: `tab-${key}`, class: "tab", "aria-controls": "panel",
+  return h("button", { role: "tab", id: `tab-${key}`, class: "tab", "aria-controls": "panel", "aria-label": label,
     onclick: () => go(`#/brief/${encodeURIComponent(S.briefId)}/${key}`),
     onkeydown: (e) => {
       if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
@@ -754,6 +757,8 @@ function renderTabs() {
   const kept = leadsOf().filter((l) => l.status === "kept").length;
   const k = $("#tab-compare .tab-label");
   if (k) k.textContent = kept ? `Compare (${kept})` : "Compare";
+  const kt = $("#tab-compare");
+  if (kt) kt.setAttribute("aria-label", kept ? `Compare, ${kept} kept` : "Compare");
   $("#panel").setAttribute("aria-labelledby", `tab-${S.tab}`);
 }
 

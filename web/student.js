@@ -186,6 +186,7 @@ export function studentRoutes(panel, ctx) {
   const n = (r) => brief.leads.filter((l) => l.route === r && l.verdict !== "not eligible" && l.status !== "dismissed").length;
   const sw = h("div", { class: "route-switch", role: "group", "aria-label": "Route" },
     ["F", "S"].map((r) => h("button", { class: "route-btn", "data-key": `route-${r}`, "aria-pressed": String(route === r),
+      "aria-label": `${STUDENT_ROUTES[r]}${r === "S" ? ", sample data" : ""}${done(r === "F" ? "fellowships" : "scholarships") ? `, ${n(r)}` : ""}`,
       onclick: () => setRoute(r) },
     h("span", { class: "long", text: STUDENT_ROUTES[r] }), h("span", { class: "short", "aria-hidden": "true", text: r === "F" ? "Fellowships" : "Samples" }),
     r === "S" ? h("span", { class: "tag sample long", text: SAMPLE }) : null,
