@@ -21,21 +21,32 @@ import argparse
 import json
 import time
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import perch.retrieve as R
-from bench.backtest import (BENCH_DB, PIS, WINDOW_MONTHS, PoolIndex, coverage, in_window,
-                            load_rows, slug, works_for)
+from bench.backtest import (
+    BENCH_DB,
+    PIS,
+    WINDOW_MONTHS,
+    PoolIndex,
+    coverage,
+    in_window,
+    load_rows,
+    slug,
+    works_for,
+)
 from perch.config import env, load_dotenv
 from perch.eligibility import Constraints, check
 from perch.embed import get_embedder
 from perch.profile import Profile, Thread, build_threads
-from perch.rerank import DEFAULT_MODEL, CrossEncoderReranker, RerankCache
+from perch.rerank import DEFAULT_MODEL, CrossEncoderReranker, RerankCache, Reranker
 from perch.retrieve import opportunity_text, retrieve
 from perch.schemas import Opportunity, Work
 from perch.sources.openalex import OpenAlexClient
+from perch.store.base import VectorIndex
 from perch.store.lance import LanceIndex
 from perch.store.sqlite import SQLiteRepository
 
@@ -60,14 +71,15 @@ def topic_terms(t: Thread, works: dict[str, Work], n: int = 3) -> list[str]:
     return [name for name, _ in c.most_common(n)]
 
 
-def make_query(kind: str, works: dict[str, Work]):
+def make_query(kind: str, works: dict[str, Work]) -> Callable[[Thread], str]:
     def q(t: Thread) -> str:
         base = " ".join([t.label.replace(",", " "), *t.titles])
         return base if kind == "label" else " ".join([*topic_terms(t, works), base])
     return q
 
 
-def order_for(v: Variant, profile: Profile, works: dict[str, Work], index, opps, reranker,
+def order_for(v: Variant, profile: Profile, works: dict[str, Work], index: VectorIndex,
+              opps: dict[str, Opportunity], reranker: Reranker,
               cache: RerankCache) -> list[str]:
     qf = make_query(v.query, works)
     R.thread_query = qf  # retrieve() builds its BM25 query through this name
@@ -109,7 +121,8 @@ def metrics(ranks: list[int | None]) -> dict[str, float]:
             "mrr": round(sum(1 / r for r in ranks if r) / n, 3)}
 
 
-def run(variants: list[Variant], device: str | None, strata=("targeted",)) -> dict:
+def run(variants: list[Variant], device: str | None,
+        strata: tuple[str, ...] = ("targeted",)) -> dict:
     load_dotenv()
     rows = [r for r in load_rows(PIS) if r["stratum"] in strata]
     embedder = get_embedder("Qwen/Qwen3-Embedding-0.6B", cache=Path("data/cache/embeddings.db"),
