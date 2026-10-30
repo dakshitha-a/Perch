@@ -2,9 +2,10 @@
 
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
-## Last run: S24 done (UI rebuild from the redesign canvas)
-- **All nine tasks done.** 249 tests pass. API spend: $2.09 of $100 (none in S24).
-- **Live:** the redesign is on the public URL for both paths, light and dark, phone and laptop. Dakshitha asked for S24 to S26 in one run, so S25 follows in the same context.
+## Last run: S25 done (UI/UX review and full QA), after S24 in the same context
+- **S24 and S25 are done.** 250 tests pass. API spend: $2.09 of $100 (none in S24 or S25).
+- **S25:** an independent review (`docs/design/UX_REVIEW_S25.md`; all 4 must-fix fixed), the QA plan (`docs/QA_PLAN.md`; 36 of 36 pass after 4 fixes), the accessibility checklist rerun, the canary and the student leakage bench. The demo runs the S25 build.
+- **Test traffic hits the caps:** a visitor may open 20 sessions and 10 briefs an hour. Long walks from one machine hit them; restart the dev server to clear them, and walk the demo at most once an hour.
 
 ## What S24 built
 - **Design language:** canvas tokens in `web/styles.css`, with the old names as aliases. Newsreader and Inter from Google Fonts, Georgia and system fallbacks. A big "S24 redesign" section sits at the end of the file.
@@ -21,10 +22,11 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - **Canary:** `build/canary-s24.json` ok (default path 15 of 15 explained in 46 s; private-only 10 of 10; 0 user rows; no canary in files or six journals).
 - **Dev server:** a scratch copy of `data/demo` on port 8091 with `PERCH_BRIEFS_PER_HOUR=200` (the walk runs more than 10 briefs). The script is in the scratchpad; stop it with an anchored pkill.
 
-## Next: S25, UI/UX review and full QA
-- A draft QA plan with 36 rows is in the scratchpad (`QA_PLAN.md`); copy it to `docs/QA_PLAN.md` and run it.
-- Independent review of the screens; findings in `docs/design/UX_REVIEW_S25.md`, must-fix items fixed.
-- Then S26 (media refilm: README clips, screenshots, tracker UI preview with a student replay) and S27 (freeze; task 2 frees the dev GPUs).
+## Next: S26, the media refilm
+- `scripts/tour/film.py` is already updated for the new screens, with a new `student` scene (SYNTHETIC persona-ug). Run it on the demo, then check each clip.
+- Retake `docs/screenshots/` with `scripts/screenshots.py` (selectors may need the same updates as the walk).
+- The tracker UI preview: `scripts/build_ui_preview.py` works with the new modules; a student replay still needs recording.
+- README text to the new labels (Find → the pick screen, the chip, Export, the shortlist), then republish the README tab and the tracker.
 
 ## Known gaps
 - **Student Scout is wordy with tools:** on Gemma it checked options one by one before the rules pointed it at `compare_options`.
