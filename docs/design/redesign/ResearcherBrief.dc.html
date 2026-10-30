@@ -14,6 +14,7 @@
 body{margin:0}
 a{color:inherit}a:hover{opacity:.85}
 .fade-in{animation:fadein .4s ease both}
+.clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:8;line-clamp:8;overflow:hidden}
 @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .bob{animation:bob 1.1s ease-in-out infinite}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
@@ -90,9 +91,13 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
               <button type="button" role="radio" aria-checked="{{aAria}}" onClick="{{showA}}" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 9px; font: 600 15px Inter, sans-serif; cursor: pointer; background: {{aBg}}; color: {{aInk}}">Grants {{nA}}</button>
               <button type="button" role="radio" aria-checked="{{bAria}}" onClick="{{showB}}" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 9px; font: 600 15px Inter, sans-serif; cursor: pointer; background: {{bBg}}; color: {{bInk}}">Industry {{nB}}</button>
             </div>
-            <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: {{c.ink2}}">Sort
-              <select style="min-height: 40px; padding: 0 10px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.surface}}; color: {{c.ink}}; font: 500 14px Inter, sans-serif"><option>Perch’s order</option><option>Closing soonest</option><option>Largest award</option></select>
-            </label>
+            <sc-if value="{{onGrants}}" hint-placeholder-val="{{ true }}">
+              <div role="radiogroup" aria-label="Sort leads by" style="display: inline-flex; padding: 4px; border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.line}}">
+                <sc-for list="{{sorts}}" as="s" hint-placeholder-count="3">
+                  <button type="button" role="radio" aria-checked="{{s.aria}}" onClick="{{s.pick}}" style="min-height: 36px; padding: 0 12px; border: 0; border-radius: 9px; font: 600 14px Inter, sans-serif; cursor: pointer; background: {{s.bg}}; color: {{s.ink}}">{{s.label}}</button>
+                </sc-for>
+              </div>
+            </sc-if>
           </div>
           <p style="margin: 0; font-size: 14px; line-height: 1.5; color: {{c.ink3}}">{{orderNote}}</p>
 
@@ -110,7 +115,12 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
                   <sc-for list="{{l.tags}}" as="tg" hint-placeholder-count="2">
                     <span style="padding: 3px 8px; border-radius: 6px; background: {{c.chip}}; font-size: 12px; font-weight: 600">{{tg}}</span>
                   </sc-for>
-                  <span style="margin-left: auto; font-size: 13px; color: {{c.ink2}}">{{l.rightLabel}} <b style="color: {{c.ink}}">{{l.rightValue}}</b></span>
+                  <sc-if value="{{l.hasFit}}" hint-placeholder-val="{{ true }}">
+                    <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; background: {{l.pillBg}}; color: {{l.pillInk}}; font-size: 13px; font-weight: 650; white-space: nowrap"><span style="font-weight: 500; color: {{c.ink2}}">Fit estimate</span>{{l.band}}<b style="min-width: 28px; height: 22px; border-radius: 999px; display: inline-grid; place-items: center; padding: 0 6px; font-size: 13px; background: {{l.badgeBg}}; color: {{l.badgeInk}}; box-shadow: {{l.badgeRing}}">{{l.score}}</b></span>
+                  </sc-if>
+                  <sc-if value="{{l.plainRight}}" hint-placeholder-val="{{ false }}">
+                    <span style="margin-left: auto; font-size: 13px; color: {{c.ink2}}">{{l.rightLabel}} <b style="color: {{c.ink}}">{{l.rightValue}}</b></span>
+                  </sc-if>
                 </div>
                 <button type="button" onClick="{{l.select}}" style="text-align: left; padding: 0; border: 0; background: transparent; color: {{c.ink}}; font: 600 19px/1.3 Newsreader, Georgia, serif; cursor: pointer">{{l.title}}</button>
                 <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; color: {{c.ink2}}">
@@ -136,8 +146,8 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
           </ul>
         </section>
 
-        <div class="rail" style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px">
-          <section class="rail-only" aria-label="Your shortlist" style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{shortBorder}}; padding: 16px 18px; flex-direction: column; gap: 10px">
+        <div class="rail" style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px; max-height: calc(100vh - 32px)">
+          <section class="rail-only" aria-label="Your shortlist" style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{shortBorder}}; padding: 16px 18px; flex-direction: column; gap: 10px; flex: 0 0 auto; max-height: 40vh; overflow-y: auto">
             <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 8px">
               <h2 style="margin: 0; font-size: 16px; font-weight: 600">Your shortlist</h2>
               <span style="font-size: 13px; color: {{c.ink3}}">{{keptText}}</span>
@@ -152,7 +162,7 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
             </ul>
             <button type="button" onClick="{{toCompare}}" disabled="{{noKept}}" style="min-height: 44px; border: 0; border-radius: 10px; background: {{shortBtnBg}}; color: {{shortBtnInk}}; font: 600 15px Inter, sans-serif; cursor: pointer">Compare and hand off</button>
           </section>
-          <aside aria-label="Evidence" style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+          <aside aria-label="Evidence" style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 18px; display: flex; flex-direction: column; gap: 12px; flex: 1 1 auto; min-height: 0; overflow-y: auto">
             <div style="font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: {{c.ink3}}">Evidence · {{ev.kind}}</div>
             <div style="font: 600 18px/1.3 Newsreader, Georgia, serif">{{ev.title}}</div>
             <dl style="margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; font-size: 14px">
@@ -161,6 +171,13 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
                 <dd style="margin: 0">{{r.v}}</dd>
               </sc-for>
             </dl>
+            <sc-if value="{{ev.hasNotes}}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+                <h3 style="margin: 0; font-size: 14px; font-weight: 600; color: {{c.ink2}}">Eligibility notes</h3>
+                <p id="ev-notes" class="{{evNotesCls}}" style="margin: 0; font: 15px/1.6 Newsreader, Georgia, serif; color: {{c.ink2}}; overflow-wrap: anywhere">{{ev.notes}}</p>
+                <button type="button" aria-expanded="{{evOpenAria}}" aria-controls="ev-notes" onClick="{{toggleNotes}}" style="align-self: flex-start; min-height: 44px; padding: 0; border: 0; background: transparent; color: {{c.ink2}}; font: 600 14px Inter, sans-serif; cursor: pointer">{{evNotesLabel}}</button>
+              </div>
+            </sc-if>
             <p style="margin: 0; font-size: 13px; line-height: 1.5; color: {{c.ink3}}">Every value here is copied from the record. Source: {{ev.source}} · fetched [date].</p>
             <a href="#" style="font-size: 14px; font-weight: 600; color: {{c.accent}}">Open the record at {{ev.source}}</a>
           </aside>
@@ -207,7 +224,7 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
             <h2 style="margin: 0; font-size: 16px; font-weight: 600">Public awards {{nAwards}}</h2>
             <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
               <sc-for list="{{awards}}" as="a" hint-placeholder-count="2">
-                <li class="fade-in" style="font-size: 14px; display: flex; flex-direction: column; gap: 2px"><b>{{a.title}}</b><span style="color: {{c.ink3}}">{{a.meta}}</span></li>
+                <li class="fade-in" style="font-size: 14px; display: flex; flex-direction: column; gap: 2px"><b>{{a.title}}</b><span style="color: {{c.ink3}}">{{a.meta}}</span><sc-if value="{{a.initial}}" hint-placeholder-val="{{ false }}"><span style="align-self: flex-start; margin-top: 4px; padding: 3px 8px; border-radius: 6px; background: {{c.emberSoft}}; color: {{c.ember}}; font-size: 12px; font-weight: 600">Matched by initial: check it is yours</span></sc-if></li>
               </sc-for>
             </ul>
           </section>
@@ -433,7 +450,7 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
 class Component extends DCLogic {
   constructor(p) {
     super(p);
-    this.state = { step: 0, tab: 'routes', route: 'A', sel: 0, kept: {}, office: 'rd', draft: false, mode: 'ask', msgs: [], q: '', calls: 0, rvTarget: ['[Kept grant 1]', '[Kept grant 2]', '[Top grant in Routes]'][0], rvText: '' };
+    this.state = { step: 0, tab: 'routes', route: 'A', sort: 'order', evOpen: false, sel: 0, kept: {}, office: 'rd', draft: false, mode: 'ask', msgs: [], q: '', calls: 0, rvTarget: ['[Kept grant 1]', '[Kept grant 2]', '[Top grant in Routes]'][0], rvText: '' };
     this.timers = [];
     this.timer = null;
   }
@@ -495,9 +512,9 @@ class Component extends DCLogic {
   renderVals() {
     const dark = this.props.dark ?? true;
     const c = dark
-      ? { bg: '#0F1715', surface: '#17221F', line: '#273631', chip: '#22302B', ink: '#E9EFEC', ink2: '#B3C1BC', ink3: '#93A39D', accent: '#7CCBA8', onAccent: '#0B1F17', ember: '#F0B54A', branch: '#9C8466',
+      ? { bg: '#0F1715', surface: '#17221F', line: '#273631', chip: '#22302B', ink: '#E9EFEC', ink2: '#B3C1BC', ink3: '#93A39D', accent: '#7CCBA8', onAccent: '#0B1F17', accentSoft: '#1E3B30', ember: '#F0B54A', emberSoft: '#3A2E16', branch: '#9C8466',
           owlBody: '#8EA59E', owlWing: '#71877F', owlBelly: '#2F3F3C', owlFace: '#3A4B47', owlPupil: '#0E1617' }
-      : { bg: '#F7F8F4', surface: '#FFFFFF', line: '#DCE3DE', chip: '#EBF0EC', ink: '#16201C', ink2: '#45524D', ink3: '#5C6964', accent: '#23664F', onAccent: '#FFFFFF', ember: '#D99A2B', branch: '#7A5E44',
+      : { bg: '#F7F8F4', surface: '#FFFFFF', line: '#DCE3DE', chip: '#EBF0EC', ink: '#16201C', ink2: '#45524D', ink3: '#5C6964', accent: '#23664F', onAccent: '#FFFFFF', accentSoft: '#E2F2E9', ember: '#8F5A08', emberSoft: '#FBF0DC', branch: '#7A5E44',
           owlBody: '#4F625D', owlWing: '#3E4F4B', owlBelly: '#DCE3D8', owlFace: '#EEF1EA', owlPupil: '#1F2B2D' };
     const st = this.state;
     const STEPS = ['Finding the researcher', 'Reading public papers', 'Linking public awards', 'Building the research profile',
@@ -505,14 +522,23 @@ class Component extends DCLogic {
     const done = st.step >= 8;
     const grantsIn = st.step >= 5, industryIn = st.step >= 6, explained = st.step >= 8;
 
-    const grants = [0, 1, 2].map((i) => ({
+    // Agency tags: a known short name alone (NIH, NSF); any other sub-agency after its
+    // department (DOD · ...). NSF programs open at any time show the record's own words.
+    const G = [
+      { tags: ['NIH', '[Activity code]'], band: 'strong', agency: 'National Institutes of Health', dept: 'Department of Health and Human Services', closes: 'Closes [close date] · in [N] days', note: null },
+      { tags: ['NSF'], band: 'good', agency: 'U.S. National Science Foundation', dept: null, closes: 'Closes [date decades out] · Proposals accepted anytime', note: 'Proposals accepted anytime' },
+      { tags: ['DOD · [sub-agency]'], band: 'partial', agency: '[sub-agency]', dept: 'Department of Defense', closes: 'Closes [close date] · in [N] days', note: null },
+    ];
+    const grants = G.map((g, i) => ({
       id: 'a' + i, kind: 'Funding opportunity', source: 'Grants.gov',
-      tags: ['NIH', '[Activity code]'], rightLabel: 'Fit estimate', rightValue: explained ? '[band]' : '…',
+      tags: g.tags, band: g.band, rightLabel: 'Fit estimate', rightValue: '…',
       title: '[Opportunity title, copied from Grants.gov]',
-      fact1: 'Closes [close date]', fact2: 'Award ceiling [amount]',
+      fact1: g.closes, fact2: 'Award ceiling [amount]', closeRank: i === 1 ? 9 : i,
       whyLabel: explained ? 'Why it fits · cites 2 papers' : 'Why it fits · being written',
       why: '[One sentence on the opportunity, one on the papers, each cited.]',
-      rows: [{ k: 'Number', v: '[opportunity number]' }, { k: 'Agency', v: 'NIH · [institute]' }, { k: 'Closes', v: '[close date]' },
+      notes: '[Eligibility notes, copied word for word from the record.] '.repeat(14).trim(),
+      rows: [{ k: 'Number', v: '[opportunity number]' }, { k: 'Agency', v: g.agency }, ...(g.dept ? [{ k: 'Department', v: g.dept }] : []),
+        { k: 'Closes', v: '[close date]' }, ...(g.note ? [{ k: 'Deadline note', v: g.note }] : []),
         { k: 'Ceiling', v: '[amount]' }, { k: 'Eligible', v: '[applicant types]' }],
     }));
     const industry = [0, 1].map((i) => ({
@@ -524,8 +550,11 @@ class Component extends DCLogic {
       rows: [{ k: 'Company', v: '[name]' }, { k: 'Citing works', v: '[N], newest [date]' }, { k: 'SBIR/STTR', v: '[N], newest [date]' },
         { k: 'Topic works', v: '[N]' }],
     }));
-    const list = st.route === 'A' ? (grantsIn ? grants : []) : (industryIn ? industry : []);
-    const pool = st.route === 'A' ? grants : industry;
+    const BAND = { strong: 3, good: 2, partial: 1 };
+    const sorted = st.sort === 'closing' ? [...grants].sort((a, b) => a.closeRank - b.closeRank)
+      : st.sort === 'fit' ? [...grants].sort((a, b) => BAND[b.band] - BAND[a.band]) : grants;
+    const list = st.route === 'A' ? (grantsIn ? sorted : []) : (industryIn ? industry : []);
+    const pool = st.route === 'A' ? sorted : industry;
     const sel = pool[Math.min(st.sel, pool.length - 1)];
     const keptList = [...grants, ...industry].filter((l) => st.kept[l.id]).map((l) => ({
       title: l.title, kind: l.kind, kindShort: l.id[0] === 'a' ? 'Grant' : 'Industry',
@@ -542,6 +571,11 @@ class Component extends DCLogic {
         ...l,
         border: i === st.sel ? c.accent : c.line,
         explained: l.id[0] === 'b' || explained, pending: l.id[0] === 'a' && !explained,
+        hasFit: l.id[0] === 'a' && explained, plainRight: l.id[0] === 'b' || !explained,
+        score: '[score]',
+        pillBg: l.band === 'partial' ? c.chip : c.accentSoft, pillInk: l.band === 'partial' ? c.ink2 : c.ink,
+        badgeBg: l.band === 'strong' ? c.accent : c.surface, badgeInk: l.band === 'strong' ? c.onAccent : l.band === 'good' ? c.ink : c.ink2,
+        badgeRing: l.band === 'good' ? `inset 0 0 0 2px ${c.accent}` : l.band === 'partial' ? `inset 0 0 0 1px ${c.line}` : 'none',
         keptAria: String(k), keepLabel: k ? 'Kept' : 'Keep',
         keepBorder: k ? c.accent : c.line, keepBg: k ? c.accent : 'transparent', keepInk: k ? c.onAccent : c.ink,
         keep: () => this.setState({ kept: { ...st.kept, [l.id]: !k }, draft: false }),
@@ -577,7 +611,7 @@ class Component extends DCLogic {
       nAwards: st.step >= 3 ? '[N]' : '',
       awards: st.step >= 3 ? [
         { title: '[Award title]', meta: 'NIH · [award number] · ends [date]' },
-        { title: '[Award title]', meta: 'NSF · [award number] · ends [date]' },
+        { title: '[Award title]', meta: 'NSF · [award number] · ends [date]', initial: true },
       ] : [],
       nPapers: st.step >= 2 ? '[N]' : '',
       papers: st.step >= 2 ? [
@@ -631,12 +665,21 @@ class Component extends DCLogic {
       bBg: st.route === 'B' ? c.accent : 'transparent', bInk: st.route === 'B' ? c.onAccent : c.ink2,
       nA: grantsIn ? '[N]' : '…', nB: industryIn ? '[N]' : '…',
       showA: () => this.setState({ route: 'A', sel: 0 }), showB: () => this.setState({ route: 'B', sel: 0 }),
+      onGrants: st.route === 'A',
+      sorts: [['order', 'Perch’s order'], ['closing', 'Closing soon'], ['fit', 'Fit estimate']].map(([k, label]) => ({
+        label, aria: String(st.sort === k), bg: st.sort === k ? c.accent : 'transparent', ink: st.sort === k ? c.onAccent : c.ink2,
+        pick: () => this.setState({ sort: k, sel: 0 }) })),
       orderNote: st.route === 'A'
-        ? 'Perch’s order: how closely each record’s text matches the papers. The fit estimate is a separate model judgment, not the odds of funding.'
+        ? (st.sort === 'fit' ? 'Sorted by the model’s fit estimate, which is not the odds of funding.'
+          : st.sort === 'closing' ? 'Sorted by closing date.'
+          : 'In Perch’s order: how closely each record’s text matches the papers. Fit is a separate model estimate, not the odds of funding, so the two can disagree.')
         : 'Companies with at least two kinds of public signal, counted by code. A lead is an inference, not a verified interest in funding.',
       waiting: list.length === 0,
       leads,
-      ev: { kind: sel.kind, title: sel.title, rows: sel.rows, source: sel.source },
+      ev: { kind: sel.kind, title: sel.title, rows: sel.rows, source: sel.source, notes: sel.notes || '', hasNotes: !!sel.notes },
+      evNotesCls: st.evOpen ? '' : 'clamp', evOpenAria: String(!!st.evOpen),
+      evNotesLabel: st.evOpen ? 'Show less' : 'Show the full text',
+      toggleNotes: () => this.setState({ evOpen: !st.evOpen }),
       hasKept: nKept > 0,
       keptText: nKept ? `${nKept} kept` : 'none yet',
       toCompare: () => this.setState({ tab: 'compare' }),
