@@ -1,6 +1,6 @@
 // Ask Scout: follow-up questions about a finished brief (S10). Each tool Scout wants to
-// use is a card. In "Ask before every step" mode a card waits for Approve or Skip; in
-// "Run and show me" it runs at once. Answers cite records; a citation opens the record.
+// use is a card, and each runs as soon as the model asks for it (S27: the ask-first mode
+// is off). Answers cite records; a citation opens the record.
 
 import { h, fill, icon } from "./dom.js";
 import { owl } from "./owl.js";
@@ -38,7 +38,9 @@ const EXAMPLES = ["Only R21 grants that close by 2027-03-01", "Small grants only
   "Drop anything that mentions clinical trials", "Why does the top lead fit?"];
 
 // One Scout conversation per brief, kept while the brief is on screen.
-const T = { briefId: null, data: null, mode: "ask", error: null, timer: null, draft: "", sending: false };
+// Scout runs every step as soon as the model asks for it and shows each one; the ask-first
+// switch is gone (Dakshitha, S27; the server's ask mode goes in S28).
+const T = { briefId: null, data: null, mode: "run", error: null, timer: null, draft: "", sending: false };
 
 // Stop polling and forget the conversation when the session has ended (S27).
 export function resetScout() {
@@ -66,8 +68,7 @@ export function renderScout(panel, ctx) {
   const view = h("div", { class: "scout" },
     h("div", { class: "scout-intro title-row" },
       h("p", { class: "lede", text: ctx.student ? "Ask about your options in plain words. Scout uses Perch’s own tools, one card per step."
-        : "Ask about this brief in plain words. Scout uses Perch’s own tools, one card per step." }),
-      modeSwitch(ctx)),
+        : "Ask about this brief in plain words. Scout uses Perch’s own tools, one card per step." })),
     !T.data ? h("div", { class: "scout-hello" }, owl("idle", "owl-sm", { button: true }),
       h("p", { text: "Hello. Try one of the questions under the box, or type your own." })) : null,
     h("ol", { class: "scout-log", "aria-live": "polite" }, ...(T.data ? T.data.exchanges.map((x) => exchange(x, ctx, busy)) : [])),
@@ -93,28 +94,6 @@ export function renderScout(panel, ctx) {
 function reset(briefId) {
   clearTimeout(T.timer);
   Object.assign(T, { briefId, data: null, error: null, timer: null, draft: "", sending: false });
-}
-
-function modeSwitch(ctx) {
-  const opt = (value, label, short) => h("button", { type: "button", role: "radio", "aria-checked": String(T.mode === value),
-    "data-key": `scout-${value}`, "aria-label": label, onclick: () => setMode(value, ctx) },
-  h("span", { class: "lbl-long", text: label }), h("span", { class: "lbl-short", "aria-hidden": "true", text: short }));
-  return h("div", { class: "seg", role: "radiogroup", "aria-label": "How Scout runs steps" },
-    opt("ask", "Ask before each step", "Ask first"), opt("run", "Run and show me", "Run"));
-}
-
-async function setMode(mode, ctx) {
-  const was = T.mode;
-  T.mode = mode;
-  if (!T.data || T.data.mode === mode) return ctx.rerender();
-  try {
-    T.data = await ctx.api.scoutAct(T.data.id, "mode", {});
-    poll(ctx);
-  } catch (e) {
-    T.mode = was;
-    T.error = e.message;
-  }
-  ctx.rerender();
 }
 
 function exchange(x, ctx, busy) {

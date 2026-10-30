@@ -367,7 +367,7 @@ Done when: Dakshitha closes the session.
 
 Goal: build phase 1 of the Scout spec (`docs/design/SCOUT_SPEC.md`, section 12), as the working mock-up on the redesign canvas shows it (`docs/design/redesign/ScoutProposed.dc.html`). Phase 2 waits until after Demo Day.
 
-1. Remove the per-step gate: drop the ask mode, the Approve and Skip buttons and the mode switch, in the loop, the hub, both Scout APIs and `web/scout.js`. Steps run as soon as the model asks for them.
+1. Remove the per-step gate: drop the ask mode, the Approve and Skip buttons and the mode switch, in the loop, the hub, both Scout APIs and `web/scout.js`. Steps run as soon as the model asks for them. *(The web switch was removed in S27 and Scout runs every step by default; the server's ask mode, the Approve and Skip code and the APIs remain for this task.)*
 2. Add Stop: a button ends the current question between steps; the steps already done stay on screen, the rest show as not run.
 3. Fix Scout to the brief: drop `author_id` from the web app's researcher tool schemas and drop `resolve_author` from its tool table. The MCP server keeps both.
 4. Count Cloud steps: the session budget adds the tokens and dollars of `explain_fit` and `draft_handoff`. Label those two steps' cards Local model or Cloud, and the code-only steps "Code, no model".
@@ -432,3 +432,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-30 | S24 | Tasks 7 to 9 added: draft review evaluation (Q32), documents on Cloud after a second warning behind the rule 1 change (Q30), warm demo briefs held in memory (Q31). Rule changes proposed in Q33 for Dakshitha to apply | Dakshitha's answers to Q30 to Q32 | Dakshitha |
 | 2026-10-30 | S27, S28 | New S27 "Scout redesign, phase 1" from `docs/design/SCOUT_SPEC.md`; phase 2 waits until after Demo Day. Freeze and package becomes S28. Older notes that say "S27 task 2" for freeing the dev GPUs mean S28 task 2 | Dakshitha approved the Scout spec and mock-up and asked for the redesign in phases, the first in the next session | Dakshitha |
 | 2026-10-30 | S27 to S29 | New S27, funding coverage and ranking tune, run live; Scout redesign moves to S28, freeze and package to S29 | Dakshitha found NSF missing in a test and asked for this session to be the current phase | Dakshitha |
+| 2026-10-30 | S27, S28 | The Scout mode switch removed from the web app in S27; Scout runs every step by default. The rest of S28 task 1 (the server's ask mode, Approve and Skip code, both APIs) stays in S28 | Dakshitha: the switch should already be gone, and run should be the default | Dakshitha |

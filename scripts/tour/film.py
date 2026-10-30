@@ -223,7 +223,6 @@ async def scout(page: Page, base: str) -> Recorder:
     rec = Recorder(page, "scout", RAW)
     await rec.start()
     await rec.hold(700)
-    await click(page, page.locator("[data-key=scout-run]"))
     q = page.locator("#scout-q")
     await click(page, q)
     await rec.focus(page.locator("#panel"), pad=0)
