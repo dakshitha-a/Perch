@@ -18,6 +18,18 @@ Rounds scored with `bench/tune.py` on the NIH back-test (same rows, pool and dat
 | R4 via `bench.backtest` | production code after the change; keyword-only now also uses topic names (0.042 / 0.042 / 0.032) | 48 | 0.188 | 0.208 | 0.144 | 78 | 0.026 | 0.016 |
 | R4 | topics + rerank 150 / 200 | 48 | 0.188 / 0.188 | 0.208 / 0.208 | 0.138 / 0.134 | | | |
 
+### One score: the fit estimate orders the candidates (S27, `bench/fit_order.py`)
+
+Dakshitha asked for one score and one order. The ranking model's top 20 per award (production, as above) were explained by the demo's chat model (gemma4:26b-a4b, validator layer 1; a withheld explanation has no fit and sorts last).
+
+| order | targeted n | hit@5 | hit@10 | MRR |
+|---|---|---|---|---|
+| ranking model (R4) | 48 | 0.188 | 0.208 | 0.144 |
+| fit re-sorts the shown 10 | 48 | 0.188 | 0.208 | 0.133 |
+| fit orders the 20 closest, 10 shown (**new default**) | 48 | 0.208 | 0.271 | 0.133 |
+
+Fit over 20 moved the funded announcement up in 7 awards and down in 4: three more reach the visible 10 (13 of 48 against 10), while some at rank 1 drop to 2 to 5, so MRR dips. With 48 awards, a few either way is within noise. Student mode (SYNTHETIC, 3 personas, `bench/student_fit_order.py`): planted positives in the top 5, 9 of 10 by the ranking order and 8 of 10 by fit (MRR 0.538 and 0.532), so students keep the ranking order. Cost: each brief explains 20 leads instead of 10; the live canary's default path took 79.4 s against 46.8 s.
+
 **The tables below and `SUMMARY.md` are the S8 runs** (the embedder matrix was not rerun in S27). Their "(default)" rows describe the default before S27; this section supersedes them.
 
 **Hand check, not a measurement.** Six Temple PIs on today's listings, all agencies. Papers include the funded work, so this is a sanity check only. The NSF program behind each NSF PI's latest award ranks first under R4 for PI-130 and PI-131 (MPS Chemistry) and PI-132 and PI-133 (MPS Physics); Tuning used only the NIH back-test, so none of the six PIs shaped it; PI-131 and PI-133 were picked as second checks per field. PI-1 and PI-7 get NIH cancer programs. There is no NSF back-test: Grants.gov's NSF archive lacks most 2015 to 2021 listings and carries a bulk open date of 2025-06-06 on 291 of them.

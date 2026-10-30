@@ -1229,7 +1229,6 @@ function sortedLeads() {
   if (S.route === "B") return leads.sort((a, b) => a.rank - b.rank);
   const close = (l) => (l.opportunity && l.opportunity.close_date) || "9999";
   if (S.sort === "closing") leads.sort((a, b) => close(a).localeCompare(close(b)) || a.rank - b.rank);
-  else if (S.sort === "fit") leads.sort((a, b) => (b.fit_score ?? -1) - (a.fit_score ?? -1) || a.rank - b.rank);
   else leads.sort((a, b) => a.rank - b.rank);
   return leads;
 }
@@ -1248,7 +1247,9 @@ function routeSwitch() {
 }
 
 // The sort order as the same segmented pill as Grants | Industry, smaller (S27).
-const SORTS = [["order", "Perch’s order"], ["closing", "Closing soon"], ["fit", "Fit estimate"]];
+// One score and one order (S27): Perch's order is the fit estimate; closing date is the
+// only other way to sort.
+const SORTS = [["order", "Perch’s order"], ["closing", "Closing soon"]];
 
 function sortSwitch() {
   return h("div", { class: "route-switch sort-switch", role: "group", "aria-label": "Sort leads by" },
@@ -1311,11 +1312,12 @@ function renderRoutes(panel) {
   const subBits = [];
   if (kept) subBits.push(`${kept} kept`);
   if (explaining && S.brief.brief.options.explain) subBits.push(`${explainedCount()} of ${routeLeads("A").length} explained so far`);
-  // The order is the pipeline's, which the back-test measures; the fit number is a
-  // separate model estimate, so the two can disagree (S22, audit M4).
-  subBits.push(S.sort === "fit" ? "Sorted by the model’s fit estimate, which is not the odds of funding"
-    : S.sort === "closing" ? "Sorted by closing date"
-      : "In Perch’s order: how closely each record’s text matches the papers. Fit is a separate model estimate, not the odds of funding, so the two can disagree");
+  // One score, one order (S27): a model reads the closest candidates against the papers and
+  // scores each 0 to 100; the best fits stay, highest first.
+  const nA = routeLeads("A").length;
+  subBits.push(S.sort === "closing" ? "Sorted by closing date"
+    : explaining && S.brief.brief.options.explain ? `Reading the ${nA} closest listings against the papers; the ones that fit best will stay, highest fit first`
+      : "In Perch’s order: highest fit estimate first. A model read the closest listings against the papers and scored each from 0 to 100. It is not the odds of funding");
   panel.querySelector(".routes-sub").textContent = `${subBits.join(". ")}.`;
 
   if (!leads.length) {

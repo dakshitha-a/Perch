@@ -1,0 +1,88 @@
+{
+ "by_rank": [
+  1,
+  2,
+  5,
+  1,
+  2,
+  3,
+  1,
+  2,
+  5,
+  7
+ ],
+ "by_fit": [
+  1,
+  2,
+  5,
+  1,
+  2,
+  3,
+  1,
+  2,
+  6,
+  8
+ ],
+ "personas": {
+  "persona-ug": {
+   "S": {
+    "leads": 10,
+    "by_rank": [
+     1,
+     2,
+     5
+    ],
+    "by_fit": [
+     1,
+     2,
+     5
+    ],
+    "with_fit": 10
+   }
+  },
+  "persona-masters": {
+   "S": {
+    "leads": 7,
+    "by_rank": [
+     1,
+     2,
+     3
+    ],
+    "by_fit": [
+     1,
+     2,
+     3
+    ],
+    "with_fit": 7
+   }
+  },
+  "persona-phd": {
+   "S": {
+    "leads": 10,
+    "by_rank": [
+     1,
+     2,
+     5,
+     7
+    ],
+    "by_fit": [
+     1,
+     2,
+     6,
+     8
+    ],
+    "with_fit": 10
+   }
+  }
+ },
+ "by_rank_summary": {
+  "n": 10,
+  "in_top5": 9,
+  "mrr": 0.538
+ },
+ "by_fit_summary": {
+  "n": 10,
+  "in_top5": 8,
+  "mrr": 0.532
+ }
+}

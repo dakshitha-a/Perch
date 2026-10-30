@@ -175,7 +175,7 @@ Fellowships Advising for fellowships, to be agreed with those offices.
 </picture>
 
 - **Public records only:** OpenAlex, NIH RePORTER, NSF Award Search and Grants.gov. Each record is stored with its source, link and fetch time.
-- **The pipeline is code:** fetching, eligibility, retrieval and ranking run the same way every time. The back-test measures this pipeline.
+- **The pipeline is code, up to the last step:** fetching, eligibility, retrieval and the ranking model run the same way every time and pick 20 candidates. A language model's fit estimate then orders them, and the 10 best stay. The back-test measures both steps.
 - **Models are bounded:** a model writes the profile summary, the fit explanations and the hand-off opening. Scout can call only allowlisted tools.
 - **Every model output is checked:**
   - **Code check:** every id must be real, and every date or number must be in a cited record.
@@ -191,7 +191,7 @@ Every number here was measured. Each is copied from [bench/results](bench/result
 
 | What | Result |
 |---|---|
-| **Back-test:** for 48 Temple NIH awards, did the announcement each was funded under rank in the top 10? Only papers from before the award count. | 10 of 48 with Perch's default setup, against 2 of 48 for keyword search alone. The default was tuned on these same 48 awards, and placed 7 before that, so part of the gain is fitted to them |
+| **Back-test:** for 48 Temple NIH awards, did the announcement each was funded under rank in the top 10? Only papers from before the award count. | 13 of 48 with Perch's default setup, against 2 of 48 for keyword search alone. The ranking model alone places 10; ordering its 20 closest by the fit estimate places 13. Both steps were chosen on these same 48 awards, and the setup placed 7 before that, so part of the gain is fitted to them |
 | **Citation and grounding checks,** on 30 leads | Gemma 4 26B-A4B passed both on 28; Claude Sonnet on 24 |
 | **Scout,** 20 scripted follow-ups | Claude Sonnet completed 20, with no wrong-tool calls; Gemma 4 26B-A4B completed 18 |
 | **Cost of a 10-lead brief** | about $0.09 on Claude Sonnet; $0 on local models |

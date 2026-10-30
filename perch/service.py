@@ -301,7 +301,7 @@ class BriefService:
             res = self._researcher(r, b)
             brief = route_a(res, r, self.models.get("index"), self.models.get("embedder"),
                             self.models.get("reranker"), c, RerankCache(self.rerank_cache),
-                            top=o.get("top", 10), timings_log=self.timings_log,
+                            top=candidates(o), timings_log=self.timings_log,
                             profile=self._ctx.get(b.id, {}).get("profile"))
             leads = [Lead(id=f"{b.id}:{i}", source=x.opportunity.source,
                           source_url=x.opportunity.source_url,
@@ -382,8 +382,38 @@ class BriefService:
                                 grounder=self.models.get("grounder"), on_result=save)
         flagged = sum(v.flagged for v in results)
         unsupported = sum(bool(v.value and v.value.unsupported) for v in results)
+        top = b.options.get("top", 10)
+        with self.repo() as r:
+            a = [x for x in (r.get(Lead, i) for i in b.lead_ids) if x and x.route == "A"]
+            kept = by_fit(a, top)
+            r.upsert(kept)
+        ids = {x.id for x in kept}
+        cut = {x.id for x in a} - ids
+        b.lead_ids = [i for i in b.lead_ids if i not in cut]
         return (f"{len(results) - flagged} explained, {flagged} withheld, {unsupported} with an "
-                "unsupported statement"), False
+                f"unsupported statement; the {len(kept)} best fits of {len(a)} kept"), False
+
+
+# One score and one order (S27, Dakshitha): the ranking model picks CANDIDATES, the chat
+# model explains each, and its 0-100 fit orders them; the brief keeps `top`. On the NIH
+# back-test this put 13 of 48 funded announcements in the visible 10, against 10 for the
+# ranking order (bench/fit_order.py); MRR 0.133 against 0.144. Without explanations there
+# is no fit, so the ranking order's top stays.
+CANDIDATES = 20
+
+
+def candidates(options: dict) -> int:
+    top = options.get("top", 10)
+    return max(top, CANDIDATES) if options.get("explain") else top
+
+
+def by_fit(leads: list[Lead], top: int) -> list[Lead]:
+    """Route A leads by fit (none last, ties keep the ranking order), the best `top` kept
+    with any lead the user already kept or dismissed; ranks renumbered from 1."""
+    order = sorted(leads, key=lambda x: (-(x.fit_score if x.fit_score is not None else -1),
+                                         x.rank or 0))
+    keep = [x for i, x in enumerate(order) if i < top or x.status != "new"]
+    return [x.model_copy(update={"rank": i}) for i, x in enumerate(keep, 1)]
 
 
 def said_text(options: dict) -> str:
