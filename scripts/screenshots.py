@@ -12,7 +12,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import glob
-import json
 import os
 import sys
 from pathlib import Path
@@ -36,20 +35,23 @@ async def walk(page: Page, url: str, out: Path, tag: str, errors: list[str]) -> 
 
     page.on("pageerror", lambda e: errors.append(f"{tag}: {e}"))
     await page.goto(url)
-    await page.wait_for_selector(".hero")
+    await page.wait_for_selector(".landing")
     await snap("1-find")
-    await page.click("button[type=submit]")
-    await page.wait_for_selector(".candidate")
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector(".cand")
+    await page.click(".cand .btn.outline")
+    await page.wait_for_selector(".more-panel")
+    await page.wait_for_timeout(500)
     await snap("2-candidate")
-    await page.click(".candidate .btn.primary")
-    await page.wait_for_selector(".progress")
-    await page.wait_for_timeout(2600)
-    await snap("3-building-profile")
-    await page.wait_for_timeout(2600)
-    await page.click("#tab-routes")
-    await page.wait_for_timeout(2600)
+    await page.click("[data-key=build]")
+    await page.wait_for_selector(".pcard")
+    await page.wait_for_timeout(1500)
+    await snap("3-building")
+    await page.wait_for_selector(".leads > li", timeout=30000)
+    await page.wait_for_timeout(2500)
     await snap("4-building-routes")
-    await page.wait_for_selector(".progress.compact", timeout=30000)
+    ready = "() => /Brief ready/.test(document.querySelector('#progress').innerText)"
+    await page.wait_for_function(ready, timeout=60000)
     await page.wait_for_timeout(500)
     await snap("5-routes-done")
     await page.click(".lead .why summary")
@@ -66,22 +68,19 @@ async def walk(page: Page, url: str, out: Path, tag: str, errors: list[str]) -> 
     await page.wait_for_timeout(350)
     await snap("8-evidence-opportunity")
     await page.keyboard.press("Escape")
-    await page.click(".lead .btn.keep")
-    await page.locator(".lead").nth(1).locator("[data-key=dismiss]").click()
     await page.wait_for_timeout(300)
-    kept = await page.locator(".lead.kept").count()
-    if kept != 1 or await page.locator(".dismissed").count() != 1:
-        errors.append(f"{tag}: keep or dismiss did not take effect")
-    if await page.locator(".keep-bar").count() != 1:
-        errors.append(f"{tag}: the Keep bar did not appear")
-    else:
-        async with page.expect_download() as dl:
-            await page.click("[data-key=keep-download]")
-        saved = json.loads(Path(await (await dl.value).path()).read_text("utf-8"))
-        if [x["status"] for x in saved["leads"]] != ["kept"]:
-            errors.append(f"{tag}: the Keep bar download did not hold exactly the kept lead")
-        await snap("9b-keep-bar")
-    wide =await page.evaluate("document.documentElement.scrollWidth - innerWidth")
+    keeps = page.locator(".leads > li:not(.kept) .btn.keep")
+    await keeps.first.click()
+    await page.locator(".leads > li:not(.kept)").first.locator("[data-key=dismiss]").click()
+    await page.wait_for_timeout(400)
+    if await page.locator(".dismissed").count() != 1:
+        errors.append(f"{tag}: dismiss did not take effect")
+    shown = """() => [...document.querySelectorAll('.shortlist li, #keep-float .keep-float')]
+      .some((el) => el.offsetParent !== null)"""
+    if not await page.evaluate(shown):
+        errors.append(f"{tag}: neither the shortlist nor the keep pill shows the kept lead")
+    await snap("9b-keep-bar")
+    wide = await page.evaluate("document.documentElement.scrollWidth - innerWidth")
     if wide > 0:
         errors.append(f"{tag}: page scrolls sideways by {wide}px")
     await snap("9-routes-full", full=True)
