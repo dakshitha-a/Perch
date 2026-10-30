@@ -62,7 +62,8 @@ Every command is in [docs/running.md](docs/running.md), and the two-GPU demo is 
 ### Grants that fit, with the reasons
 
 Perch groups a researcher's papers into research threads, and searches open
-Grants.gov announcements by meaning and by shared words. Rules drop anything a
+Grants.gov announcements from every federal agency (NIH, NSF, DoD, DOE and the
+rest) by meaning and by shared words. Rules drop anything a
 university cannot apply to. A small local model puts the closest first.
 
 Each lead says what the call funds and which papers fit it. A citation check
@@ -190,13 +191,13 @@ Every number here was measured. Each is copied from [bench/results](bench/result
 
 | What | Result |
 |---|---|
-| **Back-test:** for 48 Temple NIH awards, did the announcement each was funded under rank in the top 10? Only papers from before the award count. | 7 of 48 with Perch's default setup, against 1 of 48 for keyword search alone |
+| **Back-test:** for 48 Temple NIH awards, did the announcement each was funded under rank in the top 10? Only papers from before the award count. | 10 of 48 with Perch's default setup, against 2 of 48 for keyword search alone. The default was tuned on these same 48 awards, and placed 7 before that, so part of the gain is fitted to them |
 | **Citation and grounding checks,** on 30 leads | Gemma 4 26B-A4B passed both on 28; Claude Sonnet on 24 |
 | **Scout,** 20 scripted follow-ups | Claude Sonnet completed 20, with no wrong-tool calls; Gemma 4 26B-A4B completed 18 |
 | **Cost of a 10-lead brief** | about $0.09 on Claude Sonnet; $0 on local models |
 | **Live canary** | no trace in files, logs or model-server journals after full briefs, with and without documents |
 
-- **An upper bound, not an estimate:** each award's own funded abstract was added as a stand-in "draft proposal". It lifted the back-test from 7 to 16 of 48 in the top 10. A real draft is further from the award than its funded abstract.
+- **An upper bound, not an estimate:** each award's own funded abstract was added as a stand-in "draft proposal". With the earlier setup, it lifted the back-test from 7 to 16 of 48 in the top 10. A real draft is further from the award than its funded abstract.
 - **General calls are hard:** for awards made under broad parent announcements, Perch puts 1 of 78 in the top 10.
 - **Industry leads, judged once:** the agent that built Perch judged 14 leads: 8 good, 6 thin and 0 wrong. A person has not checked them yet.
 

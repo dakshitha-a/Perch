@@ -15,9 +15,10 @@ Rounds scored with `bench/tune.py` on the NIH back-test (same rows, pool and dat
 | R3 | rerank 100 candidates (was 50) | 48 | 0.188 | 0.188 | 0.109 | | | |
 | R3 | retrieval depth 200 per list | 48 | 0.125 | 0.146 | 0.077 | | | |
 | R4 | topics + rerank 100 (**new default**) | 48 | 0.188 | 0.208 | 0.149 | 78 | 0.026 | 0.016 |
+| R4 via `bench.backtest` | production code after the change; keyword-only now also uses topic names (0.042 / 0.042 / 0.032) | 48 | 0.188 | 0.208 | 0.144 | 78 | 0.026 | 0.016 |
 | R4 | topics + rerank 150 / 200 | 48 | 0.188 / 0.188 | 0.208 / 0.208 | 0.138 / 0.134 | | | |
 
-**The tables below are the S8 runs.** Their "(default)" rows describe the default before S27; this section supersedes them.
+**The tables below and `SUMMARY.md` are the S8 runs** (the embedder matrix was not rerun in S27). Their "(default)" rows describe the default before S27; this section supersedes them.
 
 **Hand check, not a measurement.** Six Temple PIs on today's listings, all agencies. Papers include the funded work, so this is a sanity check only. The NSF program behind each NSF PI's latest award ranks first under R4 for PI-130 and PI-131 (MPS Chemistry) and PI-132 and PI-133 (MPS Physics); Tuning used only the NIH back-test, so none of the six PIs shaped it; PI-131 and PI-133 were picked as second checks per field. PI-1 and PI-7 get NIH cancer programs. There is no NSF back-test: Grants.gov's NSF archive lacks most 2015 to 2021 listings and carries a bulk open date of 2025-06-06 on 291 of them.
 
