@@ -17,7 +17,7 @@ Then it drafts a hand-off to the right Temple office, which you send yourself.
 
 **[Quick start](#quick-start)** · **[Tour](#a-quick-tour)** · **[How it works](#how-it-works)** · **[How well it works](#how-well-it-works)** · **[Docs](#learn-more)**
 
-<img src="docs/tour/hero.webp" alt="Finding a researcher by OpenAlex ID, building their brief, then opening the top grant's reasons and the paper it cites in the evidence panel." width="880">
+<img src="docs/tour/hero.webp" alt="Finding a researcher by OpenAlex ID, picking them, building their brief, then opening the top grant's reasons and the paper it cites in the evidence panel beside the list." width="880">
 
 <sub>Find a researcher, build the brief, and open the record behind any claim.</sub>
 
@@ -91,8 +91,9 @@ Every industry lead is labelled as inferred, not as verified interest.
 
 ### Compare, then hand off
 
-Keep the leads worth a closer look, and compare them side by side: money, close
-date, activity code and evidence, each copied from its record.
+Keep the leads worth a closer look: they collect in a shortlist beside the list.
+Compare them side by side: money, close date, activity code and evidence, each
+copied from its record.
 
 Then draft an email to the Temple office for that route. A model writes only a
 short opening. Code writes the list of leads, dates and amounts. You edit it and
@@ -109,25 +110,27 @@ send it yourself.
 agent, answers by calling Perch's own nine tools, each shown as a card. It asks before every
 step unless you let it run. It cannot browse, send anything or change a record.
 
-Other agents can use the same tools through Perch's [MCP server](docs/mcp.md),
-Claude Code included.
+On a student brief, Scout has its own rule-based tools instead. Other agents can
+use the researcher tools through Perch's [MCP server](docs/mcp.md), Claude Code
+included.
 
 </td>
 <td><img src="docs/tour/scout.webp" alt="Asking Scout why the top lead fits; its tool runs as a card and the answer cites the opportunity and the papers." width="420"></td>
 </tr>
 <tr>
-<td><img src="docs/tour/private.webp" alt="Starting a private session, adding a CV, a draft proposal and unpublished work, and a brief whose explanations cite the private documents with a lock." width="420"></td>
+<td><img src="docs/tour/private.webp" alt="Picking a researcher, filling Tell Perch more with an invented SYNTHETIC sample (a direction, keywords and draft aims), and a brief whose explanations cite the draft with a lock." width="420"></td>
 <td>
 
 ### Private by default, local models first
 
 Perch has no accounts, so it keeps nothing about you: every brief is a
 session held in memory, and only public records are cached. Models run on
-the server. A Local / Cloud switch can send the model work to a cloud
-provider instead, after a warning that names it.
+the server. The chip at the top, "Local · nothing stored", opens a choice: the
+model work can go to a cloud provider instead, after a warning that names it.
 
-Add a CV, a draft proposal or unpublished work to steer the search. Documents
-stay on local models, and exports leave their text out, or mask it. A canary
+After picking the researcher, add a direction, keywords, a CV or a draft
+proposal to steer the search. Documents stay on local models, and exports leave
+their text out, or mask it. A canary
 test checks that no trace is left in files, logs or requests.
 [More on privacy →](docs/private-mode.md)
 
@@ -138,10 +141,10 @@ test checks that no trace is left in files, logs or requests.
 
 ### Student mode, on sample data
 
-Choose Student, and Perch opens a private session first. Paste a CV, a note on
-your interests and a few achievements. Perch lists fellowships from public
+Choose Student, and Perch opens a private session first. Paste or upload a CV,
+and add a note on your interests or a few achievements. Perch lists fellowships from public
 records and scholarships from a sample database. It checks each one against
-your CV by rule, and lists what you would still need.
+your CV by rule, and lists what you would still need. Ask Scout works here too.
 
 Every sample record is invented and badged **Sample data**. On 24 planted test
 cases, the rules matched every case that reached a brief; retrieval missed 2 of
@@ -149,11 +152,11 @@ the 12 a student could apply for.
 [Scores →](bench/results/STUDENT_MODE.md)
 
 </td>
-<td><img src="docs/tour/student.webp" alt="The Scholarships (sample) tab of a student brief: a Sample data badge on the tab, a notice that the records are invented, and a card with its verdict, deadline, amount, what is still needed and a cited explanation." width="300"></td>
+<td><img src="docs/tour/student.webp" alt="Filling the student form with an invented sample, then the Scholarships and awards (sample) tab: Sample data badges, a notice that the records are invented, and a card with its rule check, deadline and amount." width="420"></td>
 </tr>
 </table>
 
-<sub>The private-mode clip and the student screenshot use invented personas, labelled SYNTHETIC. The scholarships are from an invented sample corpus.</sub>
+<sub>The private-mode and student clips use invented personas, labelled SYNTHETIC. The scholarships are from an invented sample corpus.</sub>
 
 **Real data for student mode.** The sample corpus stands in for a real
 scholarship feed. Temple already runs ScholarshipUniverse for its students,
