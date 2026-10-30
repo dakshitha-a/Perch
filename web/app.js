@@ -1217,6 +1217,16 @@ function routeSwitch() {
     btn("A", "Grants"), btn("B", "Industry"));
 }
 
+// The sort order as the same segmented pill as Grants | Industry, smaller (S27).
+const SORTS = [["order", "Perch’s order"], ["closing", "Closing soon"], ["fit", "Fit estimate"]];
+
+function sortSwitch() {
+  return h("div", { class: "route-switch sort-switch", role: "group", "aria-label": "Sort leads by" },
+    ...SORTS.map(([v, label]) => h("button", { class: "route-btn", "data-key": `sort-${v}`,
+      "aria-pressed": String(S.sort === v),
+      onclick: () => { S.sort = v; renderPanel(); panelFocus(`sort-${v}`); } }, label)));
+}
+
 function updateSwitch(panel) {
   for (const r of ["A", "B"]) {
     const el = panel.querySelector(`[data-key="route-${r}"] .route-n`);
@@ -1256,18 +1266,16 @@ function renderRoutes(panel) {
       h("div", { class: "routes-bar" },
         h("div", {}, h("h2", { class: "section-title", id: "routes-title" }),
           h("p", { class: "hint routes-sub" })),
-        h("label", { class: "sort" }, h("span", { class: "sr-only", text: "Sort leads by" }),
-          h("select", { onchange: (e) => { S.sort = e.target.value; renderPanel(); } },
-            h("option", { value: "order", text: "Perch’s order" }),
-            h("option", { value: "closing", text: "Closing soon" }),
-            h("option", { value: "fit", text: "Fit estimate" })))),
+        sortSwitch()),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
       h("div", { class: "dismissed-box" }),
       h("div", { class: "keep-bar-box" }));
   }
   renderKeepBar(panel.querySelector(".keep-bar-box"), kept);
   updateSwitch(panel);
-  panel.querySelector("select").value = S.sort;
+  for (const b of panel.querySelectorAll(".sort-switch button")) {
+    b.setAttribute("aria-pressed", String(b.dataset.key === `sort-${S.sort}`));
+  }
   panel.querySelector("#routes-title").textContent = `${f.plural(active.length, "open opportunity", "open opportunities")}`;
   const subBits = [];
   if (kept) subBits.push(`${kept} kept`);
@@ -1459,8 +1467,8 @@ function leadCard(l) {
   if (band) {
     fit = h("span", { class: `fit ${band.key}` },
       h("span", { class: "fit-k", text: "Fit estimate" }),
-      h("span", { text: band.word }), h("b", { text: `${Math.round(l.fit_score)}/100` }),
-      h("span", { class: "sr-only", text: ", a model’s estimate, not the odds of funding" }));
+      h("span", { text: band.word }), h("b", { text: String(Math.round(l.fit_score)) }),
+      h("span", { class: "sr-only", text: " out of 100, a model’s estimate, not the odds of funding" }));
   } else if (pending) {
     fit = h("span", { class: "fit pending" }, owl("work", "owl-xs"), h("span", { text: "Reading" }));
   }

@@ -901,8 +901,8 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .lead.selected { border-color: var(--accent); }
 .lead-title { font: 600 19px/1.3 var(--serif); }
 .tag { border-radius: 6px; height: 24px; font-size: 12px; background: var(--chip); color: var(--ink); }
-.fit { background: transparent !important; padding: 0; height: auto; font-size: 13px; font-weight: 500; color: var(--ink-2) !important; }
-.fit b { background: transparent !important; box-shadow: none !important; color: var(--ink) !important; min-width: 0; padding: 0; font-weight: 700; }
+/* The fit keeps its tinted pill and round score badge from before the redesign
+   (Dakshitha preferred it, S27). */
 .fact { background: transparent; padding: 0; border-radius: 0; }
 .facts { gap: 4px 20px; }
 .fact dt { font-size: 13px; font-weight: 500; }
@@ -989,6 +989,10 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .route-btn[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); box-shadow: none; }
 .route-n { background: transparent; box-shadow: none; min-width: 0; padding: 0; font-weight: 500; }
 .routes-bar .section-title { font-size: 17px; }
+.routes-bar { flex-wrap: wrap; }
+.sort-switch { flex: 0 0 auto; }
+.sort-switch .route-btn { min-height: 36px; padding: 0 12px; font-size: 14px; }
+@media (max-width: 559px) { .sort-switch { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); } .sort-switch .route-btn { padding: 0 6px; } }
 .st-cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch; }
 .st-cv { flex: 1 1 460px; min-width: 0; display: flex; }
 .st-cv .box { flex: 1; }
@@ -1031,6 +1035,14 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 }
 /* the rail stays clear of the sticky tab bar */
 .cols > .rail { top: calc(var(--bar-h, 64px) + 64px); }
+/* The rail fits the window under the tab bar: Evidence takes the room the shortlist
+   leaves and scrolls inside itself, so its end never hides below the fold (S27). */
+@media (min-width: 901px) {
+  .cols > .rail { max-height: calc(100vh - var(--bar-h, 64px) - 80px); max-height: calc(100dvh - var(--bar-h, 64px) - 80px); }
+  .rail .shortlist { flex: 0 0 auto; max-height: 40vh; overflow-y: auto; }
+  .rail .rail-evidence { flex: 1 1 auto; min-height: 0; max-height: none; }
+}
+.routes-bar > .sort-switch { flex: 0 0 auto; }
 .tabs-wrap { position: sticky; top: var(--bar-h, 64px); z-index: 5; }
 /* the header lines up with the page column */
 .bar-in { max-width: calc(var(--col) + 32px); padding-left: 16px; padding-right: 16px; }
