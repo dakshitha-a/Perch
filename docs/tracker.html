@@ -135,7 +135,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S27</code> <span class="badge s-todo">todo</span><span>27/29 sessions done</span></div>
+<div class="at-a-glance"><code>S27</code> <span class="badge s-in-progress">in progress</span><span>27/30 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -670,13 +670,29 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-current" class="view" data-view="current" hidden>
 <div id="s27"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S27 · Scout redesign, phase 1</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S27.md</code> when the session starts.</div>
+<div class="title-row"><h1>S27 · Funding coverage and ranking tune</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-30 12:10 EDT</div></div>
+<p>Goal: every route a researcher's work can be funded by shows up, not only NIH, and the order is tuned against real Temple PIs' public funding history. Run live: Dakshitha diagnoses with Perch-dev and closes the session (2026-10-30). Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="2 of 6 tasks done"><div class="counts"><span><b>2/6</b>tasks done</span><span class="s-done"><b>2</b>done</span><span class="s-in-progress"><b>3</b>in progress</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="2 of 6 tasks done"><span class="s-done" style="width:33.33%" title="done: 2"></span><span class="s-in-progress" style="width:50.00%" title="in progress: 3"></span><span class="s-todo" style="width:16.67%" title="todo: 1"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Grants.gov parser: agency from <code>agencyDetails</code>; redacted DoD and NSF fixtures.</td><td><span class="badge s-done">done</span></td><td class="mono">7948966, a88d65e</td><td>The synopsis <code>agencyName</code> holds a contact's name and role on DoD and DOE records. Records now carry the agency code and department; a "DoD" filter reaches the Air Force Academy. Lead tags read "DOD · Air Force Academy".</td></tr>
+<tr><td>2</td><td>Eligibility: "Others" applicant type counts when the eligibility text names institutions of higher education.</td><td><span class="badge s-done">done</span></td><td class="mono">4cf7579</td><td>61 of 121 open NSF listings were dropped, among them MPS Chemistry (26-519).</td></tr>
+<tr><td>3</td><td>Load NSF, DoD, DOE and other science agencies into the dev store, each checked live.</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td>The store held 679 open listings, all NIH or AHRQ. Grants.gov's <code>agencies</code> filter needs sub-agency codes: "DOE" alone returns 0.</td></tr>
+<tr><td>4</td><td>Test set: three real Temple PIs (biomedical, theoretical chemistry, experimental physics), plus a held-out PI per field.</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td>Tuned on PI-1, PI-130, PI-132; held out PI-7, PI-131, PI-133. Chosen for the most public records per field.</td></tr>
+<tr><td>5</td><td>Tune scoring and sorting in rounds against each PI's public funding history, with the keyword-only baseline.</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td>Measure: the NIH back-test (48 targeted awards, date cut-off). Before tuning, on the S27 code: hit@5 0.104, hit@10 0.146, MRR 0.067; keyword-only 0.021, 0.021, 0.027; recall@200 0.417. NSF and physics PIs get a hand check only. Harness: <code>bench/tune.py</code>.</td></tr>
+<tr><td>6</td><td>Rebuild the demo store after a regression check; README and Help name the agencies covered.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Findings so far</h2>
+<ul><li><strong>No NSF back-test:</strong> Grants.gov's NSF archive has almost no listings that opened 2015 to 2021, and 291 archived NSF listings carry a bulk open date of 2025-06-06. A date cut-off cannot be applied, so NSF PIs get a hand check on current listings.</li><li><strong>Flaky test:</strong> <code>tests/test_scout.py::test_route_b_answer_counts_and_dates_pass_the_validator</code> failed once in a full run and passed alone and on two reruns.</li><li><strong>Public CVs and group pages:</strong> Dakshitha allowed them as test input. Any such text stays in the session scratchpad, never in the repo.</li></ul>
+<ul><li><strong>SBIR.gov API:</strong> still 403 on 2026-10-30 for awards, firm and solicitations; the API page still says it is under maintenance.</li><li><strong>DOE Office of Science:</strong> no open DOE-SC listing on Grants.gov on 2026-10-30. DOE had 14 open listings, from ARPA-E, field offices and NETL.</li></ul>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>Dakshitha closes the session.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="27 of 29 sessions done"><div class="counts"><span><b>27/29</b>sessions done</span><span class="s-done"><b>27</b>done</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="27 of 29 sessions done"><span class="s-done" style="width:93.10%" title="done: 27"></span><span class="s-todo" style="width:6.90%" title="todo: 2"></span></div></section>
+<section class="panel summary" aria-label="27 of 30 sessions done"><div class="counts"><span><b>27/30</b>sessions done</span><span class="s-done"><b>27</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="27 of 30 sessions done"><span class="s-done" style="width:90.00%" title="done: 27"></span><span class="s-in-progress" style="width:3.33%" title="in progress: 1"></span><span class="s-todo" style="width:6.67%" title="todo: 2"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -707,15 +723,16 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s24">S24</a></td><td>UI rebuild from the redesign canvas</td><td><span class="badge s-done">done</span></td><td>2026-10-30 02:37 EDT</td><td>2026-10-30 04:21 EDT</td><td class="mono">see git log</td><td>The canvas redesign is live on the public URL for both paths: new tokens and type, landing with the Researcher or Student pill, the status chip and a real Local or Cloud dialog, the pick screen with the optional context panel and a SYNTHETIC sample, briefs in two columns with a shortlist and evidence rail, Export menu, verdict chips, student Compare with a code-written note. Ask Scout for students on its own seven-tool allowlist. Warm demo briefs held in memory (17 ms on the demo). Documents on Cloud built behind a switch, off until the rule 1 change (Q33). Draft review evaluated, not built (Clef 36 of 44; Q34). Walk on the demo: 119 states, 0 axe violations, 0 sideways scroll, 0 failed steps. Live canary ok. 249 tests green. $0 spent.</td></tr>
 <tr class="is-finished"><td><a href="#s25">S25</a></td><td>UI/UX review and full QA test</td><td><span class="badge s-done">done</span></td><td>2026-10-30 04:23 EDT</td><td>2026-10-30 05:23 EDT</td><td class="mono">see git log</td><td>Independent review: 4 must-fix (all fixed), 10 should-fix (9 fixed), 9 could-fix. QA plan: 36 of 36 rows pass after fixes; 4 bugs found by running them and fixed. Walks after fixes: 0 axe violations, 0 sideways scroll, 0 failed steps. Canary ok (45 s, 15 of 15 explained, 0 user rows); student leakage none. Accessibility checklist 12 of 13 (zoom not rerun). 250 tests green.</td></tr>
 <tr class="is-finished"><td><a href="#s26">S26</a></td><td>Media refilm</td><td><span class="badge s-done">done</span></td><td>2026-10-30 05:25 EDT</td><td>2026-10-30 05:38 EDT</td><td class="mono">see git log</td><td>Six README clips refilmed on the redesign, with a new student clip; screenshots retaken; the tracker UI tab plays a SYNTHETIC student brief too; README wording matched. Awaiting Dakshitha's README review. 250 tests green.</td></tr>
-<tr class="is-current"><td>S27</td><td>Scout redesign, phase 1</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S28</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s27">S27</a></td><td>Funding coverage and ranking tune</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-30 12:10 EDT</td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S28</td><td>Scout redesign, phase 1</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S29</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Milestone</th><th>Date</th><th>Needs</th><th>Ready?</th></tr></thead>
 <tbody>
 <tr><td>Checkup 2</td><td>Tue 3 Nov</td><td>S0–S7</td><td></td></tr>
-<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S28 (after S17–S27, or their cut-order floors)</td><td></td></tr>
+<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S29 (after S17–S28, or their cut-order floors)</td><td></td></tr>
 <tr><td>Submission</td><td>Fri 6 Nov 12:00</td><td>ZIP + links</td><td></td></tr>
 </tbody></table></div>
 <h2>Key numbers (keep current)</h2>
@@ -1235,10 +1252,15 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (144)</h2>
+<h2>Decisions (149)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-30</td><td>S27</td><td>S27 test PIs are PI-130 and PI-131 (theoretical chemistry), PI-132 and PI-133 (experimental physics), PI-1 and PI-7 (biomedical); the second of each pair is held out from tuning</td><td>Most public records per field among Temple NSF lead PIs since 2008; PI-1 and PI-7 are in the NIH back-test</td><td>Perch-dev (Dakshitha: pick PIs with a lot of public data)</td></tr>
+<tr><td>2026-10-30</td><td>S27</td><td>No NSF back-test from Grants.gov; NSF and physics PIs get a hand check on current listings instead</td><td>Grants.gov's NSF archive has almost no listings that opened 2015 to 2021, and 291 archived NSF listings carry a bulk open date of 2025-06-06, so a date cut-off cannot be applied</td><td>Perch-dev</td></tr>
+<tr><td>2026-10-30</td><td>S27</td><td>The live index holds every open Grants.gov listing, all agencies, not NIH only</td><td>Dakshitha found no NSF, DOE or DoD leads for a theoretical chemist</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-30</td><td>S27</td><td>An "Others" applicant type counts as open to universities when the record's eligibility text names institutions of higher education or invites "all responsible sources"</td><td>61 of 121 open NSF listings, MPS Chemistry among them, were dropped; no negative wording found in the matching records on 2026-10-30. This widens the eligible set the NIH back-test sees</td><td>Perch-dev (Dakshitha asked for NSF to show)</td></tr>
+<tr><td>2026-10-30</td><td>S27</td><td>Grants.gov agency read from <code>agencyDetails</code>; records also carry the agency code and the department above it; agency filters match all three</td><td>The synopsis <code>agencyName</code> is the contact person on DoD and DOE records; a "DoD" filter must reach the Air Force Academy, ONR and DARPA</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-30</td><td>after S26</td><td>Scout spec approved (Q37) and built in phases: phase 1 is the new S27, phase 2 waits until after Demo Day; freeze and package moves to S28</td><td>Dakshitha reviewed the mock-up on the canvas</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>after S26</td><td>Scout respecified from Perch's own needs in <code>docs/design/SCOUT_SPEC.md</code>, proposed and awaiting Dakshitha (Q37). It drops the per-step approval gate, which came from another project, because Scout's tools have no effects to approve; it shows how Scout read the question instead</td><td>Dakshitha asked for a spec from the ground up, without borrowing from other projects</td><td>Dakshitha (asked), Perch-dev (proposal)</td></tr>
 <tr><td>2026-10-30</td><td>S24</td><td>"More options" on the landing explains what screen 2 offers and links to the documents-only brief.</td><td>The spec moved the context fields to screen 2, so the link needed somewhere honest to go.</td><td>Perch-dev</td></tr>
@@ -1384,10 +1406,11 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (33)</h2>
+<h2>Plan change log (34)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-30</td><td>S27 to S29</td><td>New S27, funding coverage and ranking tune, run live; Scout redesign moves to S28, freeze and package to S29</td><td>Dakshitha found NSF missing in a test and asked for this session to be the current phase</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>S27, S28</td><td>New S27 "Scout redesign, phase 1" from <code>docs/design/SCOUT_SPEC.md</code>; phase 2 waits until after Demo Day. Freeze and package becomes S28. Older notes that say "S27 task 2" for freeing the dev GPUs mean S28 task 2</td><td>Dakshitha approved the Scout spec and mock-up and asked for the redesign in phases, the first in the next session</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>S24</td><td>Tasks 7 to 9 added: draft review evaluation (Q32), documents on Cloud after a second warning behind the rule 1 change (Q30), warm demo briefs held in memory (Q31). Rule changes proposed in Q33 for Dakshitha to apply</td><td>Dakshitha's answers to Q30 to Q32</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>S24 to S27</td><td>New S24 "UI rebuild from the redesign canvas" (spec <code>docs/design/S24_REBUILD.md</code>). The UI/UX review and full QA test becomes S25, the media refilm S26, freeze and package S27. Students get Ask Scout (Q27 revised). Older notes that say "S26 task 2" for freeing the dev GPUs mean S27 task 2</td><td>Dakshitha redesigned the app on a design canvas and asked for it to be built before QA and the refilm</td><td>Dakshitha</td></tr>
