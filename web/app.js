@@ -478,7 +478,8 @@ async function build(c) {
     for (const kind of ["cv", "proposal"]) if (have.includes(kind)) await privApi.removeDocument(kind);
     for (const d of docs) await privApi.addDocument(d);
     S.sampleBrief = Boolean(F.sample);
-    await privApi.create(req);
+    const made = await privApi.create(req);
+    S.warm = Boolean(made && made.warm);
     S.startedHere = true;
     S.tab = "routes";
     S.briefId = null; // a new brief in the session: open it fresh
@@ -783,7 +784,8 @@ function renderProgress() {
   } else if (b.status === "done") {
     state = "done";
     headline = "Brief ready";
-    detail = `Built in ${f.elapsed(lastEnd - t0)} · ${stages.length} of ${stages.length} steps`;
+    detail = S.warm && api.mode === "private" ? `Ready at once: built when the server started · ${stages.length} of ${stages.length} steps`
+      : `Built in ${f.elapsed(lastEnd - t0)} · ${stages.length} of ${stages.length} steps`;
   } else {
     const i = runningIdx >= 0 ? runningIdx : Math.max(stages.findIndex((x) => x.status === "pending"), 0);
     const s = stages[i];

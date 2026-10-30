@@ -28,6 +28,9 @@ services:
       # The key comes from .env; the adapter's $100 cap and this daily cap both apply.
       PERCH_CLOUD: anthropic:claude-sonnet-5-5
       PERCH_CLOUD_BRIEFS_PER_DAY: "30"
+      # Warm demo briefs (S24, Q31): built at start and held in memory, never on disk.
+      # PI-5, PI-4 and PI-2, the demo researchers.
+      PERCH_WARM_AUTHORS: A5034175589,A5026494099,A5057472361
     volumes:
       - ./data:/app/data
     restart: unless-stopped

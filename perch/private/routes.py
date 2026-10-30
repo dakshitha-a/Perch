@@ -173,6 +173,11 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     cloud_day = {"day": "", "n": 0}  # cloud briefs today, whole server, in memory only
     cloud_lock = threading.Lock()
     app.state.private_sessions = sessions
+    from perch.private.warm import WarmBriefs, is_default, warm_authors
+
+    warm = WarmBriefs(sessions, settings, warm_authors() if on else [])
+    app.state.warm_briefs = warm
+    warm.start()  # a background thread; the server answers while it builds
 
     def cloud_info() -> dict:
         p = settings.cloud_provider
@@ -299,6 +304,9 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         if s.briefs_run >= BRIEFS_PER_SESSION:
             raise HTTPException(429, f"A session runs at most {BRIEFS_PER_SESSION} briefs.")
         throttle(request)
+        if is_default(req, s) and (w := warm.take(s, req.author_id)) is not None:
+            s.briefs_run += 1  # a copy of a warm demo brief, held in this session only
+            return {"id": w.id, "status": w.status, "warm": True}
         if s.cloud and not s.docs and req.explain:
             take_cloud()
         try:

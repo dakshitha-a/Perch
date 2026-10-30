@@ -439,3 +439,29 @@ def test_cloud_briefs_stop_at_the_daily_cap(tmp_path, monkeypatch):
     body["explain"] = True
     statuses = [c.post("/private/brief", headers=h, json=body).status_code for _ in range(2)]
     assert statuses[1] == 429
+
+
+def test_warm_demo_briefs_are_copied_into_each_session(tmp_path, monkeypatch):
+    """Q31 (S24 task 9): a warm brief is built once and held in memory; each visitor gets
+    their own copy at once, with their own keep state; nothing is written to the store."""
+    c, service = private_app(tmp_path, monkeypatch)
+    warm = c.app.state.warm_briefs
+    warm.authors = ["A5026494099"]
+    rows = user_rows(service.db)
+    assert warm.build("A5026494099") is not None
+    assert user_rows(service.db) == rows  # built in memory only
+    hs = [{"X-Perch-Private": c.post("/private/session").json()["token"]} for _ in range(2)]
+    got = [c.post("/private/brief", headers=h, json={"author_id": "A5026494099"}).json()
+           for h in hs]
+    assert all(g.get("warm") and g["status"] == "done" for g in got)
+    leads = c.get("/private/brief", headers=hs[0]).json()["leads"]
+    assert leads
+    c.post(f"/private/leads/{leads[0]['id']}/keep", headers=hs[0])
+    other = c.get("/private/brief", headers=hs[1]).json()["leads"]
+    assert other[0]["status"] == "new"  # the second visitor's copy is untouched
+    # Anything added (context, documents, Cloud) builds live instead.
+    h3 = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    r = c.post("/private/brief", headers=h3, json={"author_id": "A5026494099",
+                                                   "direction": "home gait sensing"}).json()
+    assert not r.get("warm")
+    assert user_rows(service.db) == rows
