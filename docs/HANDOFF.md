@@ -2,13 +2,13 @@
 
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
-## Last run: S21 done, S22 continued
-- Dakshitha asked for S21 and S22 in one run. S21 is done. S22 stopped at a clean commit with task 5 left, because the context passed two-thirds.
+## Last run: S21 and S22 done
+- Dakshitha asked for S21 and S22 in one run; both are done. S22's media refilm moved to a new S24, after S23.
 - 248 tests pass. No API spend; the ledger is still $2.05 of $100.
 
 ## S21 — UX audit (done)
 - `docs/design/UX_AUDIT.md` and the tracker's UX tab: 6 must-fix, 12 should-fix, 4 could-fix, with 9 screenshots.
-- `docs/design/A11Y_CHECKLIST.md`: 13 items, run by `scripts/ux_walk.py` with axe-core 4.10.2 (`--axe` path to `axe.min.js` from cdnjs). S23 reruns it.
+- `docs/design/A11Y_CHECKLIST.md`: 13 items, run by `scripts/ux_walk.py` with axe-core 4.10.2 (`--axe` path to `axe.min.js` from cdnjs). S25 reruns it.
 - Q29 (open): which S22 option. Default B, redesign of the core screens. S22 started on B.
 
 ## S22 — what is built and live on the public URL
@@ -18,15 +18,15 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - **Corrected:** the audit's S10 was wrong; the evidence panel already sat beside the list on a laptop.
 - **Not built (after Demo Day):** grouping one announcement family (S5) and merging company aliases (S7). Both change pipeline output.
 
-## Next: S23 (private by default), then S22 task 5, then S24
-- **S23 first** (Dakshitha, 2026-10-29): read S23 in PLAN.md. It changes the header switch, so the refilm waits for it.
+## Next: S23 (private by default), then S24 (media refilm), then S25 (freeze)
+- **S23 next:** read S23 in PLAN.md. It changes the header switch, so the refilm waits for it.
 
-S22 task 5, after S23:
+S24, notes for the refilm:
 1. Refilm the README clips: `scripts/tour/film.py`, then `scripts/tour/animate.py`. The `private` scene opens private mode from "Options" with a link. That path may be stale since S18; use the header switch.
 2. Retake `docs/screenshots/` (`scripts/screenshots.py` on the replay preview), and the README student screenshot (S19, Scholarships tab at 390 px; the tab is now "Scholarships and awards (sample)").
 3. Tracker UI preview with the student flow (moved here from S19). A private brief cannot be replayed today. This needs a replay of a SYNTHETIC student brief: export one from a live run with persona-ug and teach `scripts/build_ui_preview.py` to serve `/private/*`.
 4. Update the README text that names old labels, then the README tab (`make tracker`), and republish the artifact. Dakshitha reviews the README tab.
-5. Close S22: tracker row, this file, push. Then S24, freeze and package.
+5. Then S25, freeze and package. S25 task 2 frees the dev GPUs.
 
 ## Dev server used in S22
 - `perch serve --port 8091` on a scratch copy of the demo stores, using the demo's model servers. It is not needed again. Kill it with an anchored pattern, because an unanchored `pkill` matches its own shell.

@@ -278,7 +278,7 @@ Done when: the QA log has no open item marked must-fix, the canary and leakage c
 Goal: a comprehensive audit of the whole app for undergraduates, graduate students and PIs, and a recommendation Dakshitha can choose from, up to a full redesign and rebuild (Dakshitha, 2026-10-29).
 
 1. Task walkthroughs on the public URL, phone and laptop, for each audience: the three student personas from S17 (undergraduate, master's, PhD) and the PI demo personas. Cover every screen: Find, Profile, Routes (grants, industry, fellowships, scholarships), evidence panel, Compare, hand-off, export, Ask Scout, What changed, Help, private mode. Record where each audience stalls, misreads a label, or cannot tell public records from sample or inferred ones. Check that every audience can tell at a glance whether private mode is on.
-2. Accessibility pass against a written checklist (keyboard paths, focus order, contrast in light and dark, screen-reader labels, motion, touch targets). This is the accessibility pass for the release; S23 reruns only the checklist on the frozen build.
+2. Accessibility pass against a written checklist (keyboard paths, focus order, contrast in light and dark, screen-reader labels, motion, touch targets). This is the accessibility pass for the release; S25 reruns only the checklist on the frozen build (renumbered from S23).
 3. Information architecture review: whether one app with a mode switch serves all three audiences, or whether entry points, vocabulary and defaults should differ by audience. The standing rules hold in every option: provenance visible, sample data badged, numbers copied from records, nothing sent.
 4. Findings report `docs/design/UX_AUDIT.md` with screenshots, ranked by severity, plus a UX tab on the tracker. It ends with two or three options, each with a session-cost estimate: targeted fixes; a redesign of the core screens; a full redesign and rebuild. Each estimate counts refilming the README clips and screenshots, the Help page and the tracker's UI preview.
 5. Write the choice to `bridge/QUESTIONS.md` with a recommended default.
@@ -293,9 +293,9 @@ Goal: build the option Dakshitha chose in S21.
 2. Build in priority order so the session can stop at a clean commit at any point: Find, Profile and Routes first; then the evidence panel and student mode; then Compare, hand-off, Scout and What changed. Anything not reached keeps the current UI and still works.
 3. Keep the app no-build (Node 12 on the node, no npm) unless Dakshitha decides otherwise in S21.
 4. Adversarial review with fixes, as in S7; the canary test and every existing UI test still pass.
-5. Help page, tracker UI preview, `docs/screenshots/`, the README clips (S15 pipeline) and the S19 student-mode screenshot refilmed against the new UI; the README tab reviewed by Dakshitha.
+5. Help page updated for the new screens. The media refilm (README clips, screenshots, the tracker's UI preview) moved to S24, after S23 changes the header switch.
 
-Done when: the chosen option is live on the public URL for all three audiences, `make test` green, the README media match the app.
+Done when: the chosen option is live on the public URL for all three audiences, `make test` green.
 
 ## S23 — Private by default, local models first
 
@@ -309,11 +309,22 @@ Goal: with no user accounts, nothing a user enters or receives is stored, and mo
 
 Done when: a fresh visitor on the public URL gets a brief that leaves no record of them on the server, local models by default, the cloud warning before any cloud call, and no monitoring in the app.
 
-## S24 — Freeze and package
+## S24 — Media refilm
+
+Goal: the README, screenshots and tracker preview show the app as it will ship. Moved out of S22 so the media are filmed once, after S23 (Dakshitha, 2026-10-29).
+
+1. Refilm the README clips (`scripts/tour/film.py`, then `scripts/tour/animate.py`) against the S23 app; the `private` scene uses the new header switch.
+2. Retake `docs/screenshots/` (`scripts/screenshots.py`) and the README student screenshot (the sample tab is "Scholarships and awards (sample)").
+3. The tracker's UI preview with the student flow: a replay of a SYNTHETIC student brief, with `scripts/build_ui_preview.py` serving its routes.
+4. README text matched to the new labels; the README tab reviewed by Dakshitha; every artifact republished.
+
+Done when: the README media, screenshots and UI preview match the app on the public URL.
+
+## S25 — Freeze and package
 
 Goal: ship. The QA fix list and privacy audit moved to S20, and the full accessibility pass to S21 (Dakshitha, 2026-10-29).
 
-1. Regression pass on the frozen build: any QA-log items opened after S20 or by the S22 rebuild; the S21 accessibility checklist rerun; the canary and leakage checks rerun.
+1. Regression pass on the frozen build: any QA-log items opened after S20 or by the S22 and S23 changes; the S21 accessibility checklist rerun; the canary and leakage checks rerun.
 2. Rerun the Scout bench on the frozen build with the demo model. Final numbers (back-test, validator rate, cost per brief, Scout completion and wrong-tool rate, student mode as a synthetic mechanism test) into `docs/TRACKER.md` and `docs/RESULTS.md` for the deck. When this last test run is done, free the dev test servers: `make decide-down` stops the dev Clef-flash and Clef units, and the demo's own servers stay up. Then tell the other session sharing the node that those GPUs are free (details in the local notes). The Clef rows of `make bench` need `make decide-up` again after this.
 3. README final; `make package` → submission ZIP with how-to-run.
 4. Freeze: tag `v0.1-demo`; nothing on `main` after that except README typos.
@@ -352,4 +363,5 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S18, S21 | S18 task 1 added: private mode becomes an app-wide state with a header switch, turned on by construction when personal text is entered or Student is chosen, with a browser-side nudge for CV-like text in the public box; S18 tasks renumbered; the Scout tool may move to S19. S21 checks that the mode is visible to every audience | Student mode needs private mode, and a link on Find was too easy to miss. Dakshitha asked Perch-dev to decide the design | Dakshitha (direction), Perch-dev (design) |
 | 2026-10-29 | S18, S19 | S18 task 7 (Scout `search_scholarships`) moves to S19, as the plan allows; S19 also refilms the tracker's UI preview with the student flow, because the preview replays a public brief and a student brief is private | Context budget of the S17 to S20 run; a private brief cannot be recorded for replay | Perch-dev |
 | 2026-10-29 | S19, S22 | S19 task 5 (Scout `search_scholarships`, from S18) cut to the student-mode floor in the cut order (Q27); S19 task 6 (the tracker's UI preview of the student flow) moves to S22, whose task 5 refilms the preview anyway | Scout's tools assume a researcher and its tab is hidden on student briefs; a private brief cannot be recorded for the replay preview without new work | Perch-dev |
-| 2026-10-29 | S23, S24 | New S23 "Private by default, local models first": every session in memory with no stored briefs, reuse or history (public data stays cached); a Local / Cloud header switch, local by default, with a warning naming the provider before any cloud call; monitoring shelved in `perch/shelved/monitor/`. Freeze and package moves to S24. S22 task 5 (refilm) runs after S23, so the media are filmed once. Older notes that say "S23 task 2" mean S24 task 2 | Dakshitha: with no user access system nothing should be stored; the no-private-text-to-cloud rule is a challenge rule, and a real deployment may rely on zero-data-retention cloud keys | Dakshitha |
+| 2026-10-29 | S23, S24 | New S23 "Private by default, local models first": every session in memory with no stored briefs, reuse or history (public data stays cached); a Local / Cloud header switch, local by default, with a warning naming the provider before any cloud call; monitoring shelved in `perch/shelved/monitor/`. Freeze and package moves to S24. S22 task 5 (refilm) runs after S23, so the media are filmed once. Older notes that say "S23 task 2" mean S24 task 2 (superseded by the next row: S25 task 2) | Dakshitha: with no user access system nothing should be stored; the no-private-text-to-cloud rule is a challenge rule, and a real deployment may rely on zero-data-retention cloud keys | Dakshitha |
+| 2026-10-29 | S22 to S25 | Sessions reordered to the order of work: S22 task 5 (media refilm) becomes its own session S24, after S23 (private by default); freeze and package becomes S25. S22 is done without task 5. Older notes that say "S23 task 2" or "S24 task 2" for freeing the dev GPUs mean S25 task 2 | Dakshitha asked to reorder the tracker phases and cascade the changes | Dakshitha |
