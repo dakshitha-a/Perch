@@ -348,7 +348,22 @@ Goal: the README, screenshots and tracker preview show the app as it will ship. 
 
 Done when: the README media, screenshots and UI preview match the app on the public URL.
 
-## S27 — Scout redesign, phase 1
+## S27 — Funding coverage and ranking tune (live, diagnose and fix)
+
+Started 2026-10-30 from Dakshitha's own test: a theoretical chemist (A5052363442) got only NIH leads. Dakshitha runs this session as a live phase, diagnosing and fixing as we go, and closes it.
+
+1. Fix the Grants.gov parser for non-NIH records: the agency comes from `agencyDetails` (the synopsis `agencyName` holds a contact on DoD and DOE records). Redacted DoD and NSF fixtures.
+2. Eligibility: accept an "Others" applicant type when the record's eligibility text names institutions of higher education (61 of 121 open NSF listings).
+3. Load NSF, DoD, DOE and other science agencies' open listings into the dev store; check every fetcher against a live response first.
+4. Test set: three real Temple PIs from public records, one each in biomedical science, theoretical chemistry and experimental physics, plus a held-out PI per field.
+5. Tune scoring and sorting in rounds against each PI's public funding history; report each round with the keyword-only baseline.
+6. Rebuild the demo store with the new listings after a regression check; README and Help say which agencies are covered.
+
+Done when: Dakshitha closes the session.
+
+---
+
+## S28 — Scout redesign, phase 1
 
 Goal: build phase 1 of the Scout spec (`docs/design/SCOUT_SPEC.md`, section 12), as the working mock-up on the redesign canvas shows it (`docs/design/redesign/ScoutProposed.dc.html`). Phase 2 waits until after Demo Day.
 
@@ -358,7 +373,7 @@ Goal: build phase 1 of the Scout spec (`docs/design/SCOUT_SPEC.md`, section 12),
 4. Count Cloud steps: the session budget adds the tokens and dollars of `explain_fit` and `draft_handoff`. Label those two steps' cards Local model or Cloud, and the code-only steps "Code, no model".
 5. Show how Scout read the question: one block above the answer lists each finished step with its filters as chips; the step cards collapse under the answer.
 6. Words and docs: Help, the Scout hint line, SPEC §8 (replaced by the spec, including its Stack line on the borrowed approval pattern), and the ResearcherBrief and StudentBrief Scout tabs on the canvas.
-7. Retest: `make test`, the UX walk on the Scout tab, and a Scout bench run on the changed loop (the final bench run stays in S28).
+7. Retest: `make test`, the UX walk on the Scout tab, and a Scout bench run on the changed loop (the final bench run stays in S29).
 
 Done when: Scout runs with no gate on both briefs, Stop works, the read-as block and step labels match the mock-up, tests and the walk pass, and the bench shows no drop against S10's numbers.
 
@@ -366,7 +381,7 @@ Done when: Scout runs with no gate on both briefs, Stop works, the read-as block
 
 ---
 
-## S28 — Freeze and package
+## S29 — Freeze and package
 
 Goal: ship. The QA fix list and privacy audit moved to S20, the full accessibility pass to S21, and the final UI/UX review and full QA test to S25 (Dakshitha, 2026-10-29).
 
@@ -416,3 +431,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-30 | S24 to S27 | New S24 "UI rebuild from the redesign canvas" (spec `docs/design/S24_REBUILD.md`). The UI/UX review and full QA test becomes S25, the media refilm S26, freeze and package S27. Students get Ask Scout (Q27 revised). Older notes that say "S26 task 2" for freeing the dev GPUs mean S27 task 2 | Dakshitha redesigned the app on a design canvas and asked for it to be built before QA and the refilm | Dakshitha |
 | 2026-10-30 | S24 | Tasks 7 to 9 added: draft review evaluation (Q32), documents on Cloud after a second warning behind the rule 1 change (Q30), warm demo briefs held in memory (Q31). Rule changes proposed in Q33 for Dakshitha to apply | Dakshitha's answers to Q30 to Q32 | Dakshitha |
 | 2026-10-30 | S27, S28 | New S27 "Scout redesign, phase 1" from `docs/design/SCOUT_SPEC.md`; phase 2 waits until after Demo Day. Freeze and package becomes S28. Older notes that say "S27 task 2" for freeing the dev GPUs mean S28 task 2 | Dakshitha approved the Scout spec and mock-up and asked for the redesign in phases, the first in the next session | Dakshitha |
+| 2026-10-30 | S27 to S29 | New S27, funding coverage and ranking tune, run live; Scout redesign moves to S28, freeze and package to S29 | Dakshitha found NSF missing in a test and asked for this session to be the current phase | Dakshitha |
