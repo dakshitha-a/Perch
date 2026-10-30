@@ -47,8 +47,8 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 
 | Metric | Value | Source | Updated |
 |---|---|---|---|
-| Back-test hit@5 / hit@10 / MRR, targeted, default config | S27 default (topic queries, 100 reranked): 0.188 / 0.208 / 0.149 (9 and 10 of 48 awards). Before S27: 0.104 / 0.146 / 0.067. Parent stratum: 2 of 78 in the top 10 (was 1). Tuned on these 48 rows, so the gain is partly fitted to them | bench/results/RESULTS.md | 2026-10-30 |
-| Keyword-only baseline hit@5 / hit@10 / MRR | Targeted 0.021 / 0.021 / 0.027 (1 of 48). Parent 0 / 0 / 0.001 (0 of 78) | bench/results/RESULTS.md | 2026-10-30 |
+| Back-test hit@5 / hit@10 / MRR, targeted, default config | S27 default (topic queries, 100 reranked), production rerun: 0.188 / 0.208 / 0.144 (9 and 10 of 48 awards). Before S27: 0.104 / 0.146 / 0.067. Parent stratum: 2 of 78 in the top 10 (was 1). Tuned on these 48 rows, so the gain is partly fitted to them | bench/results/RESULTS.md | 2026-10-30 |
+| Keyword-only baseline hit@5 / hit@10 / MRR | Targeted 0.042 / 0.042 / 0.032 (2 of 48; its query now carries topic names too; 1 of 48 before S27). Parent 0 / 0 / 0 (0 of 78) | bench/results/RESULTS.md | 2026-10-30 |
 | Validator pass rate, both layers (30 leads) | Gemma 4 26B-A4B 28 of 30, qwen3.8:27b 28, qwen3:14b 26, claude-sonnet-5-5 24, qwen3:8b 23 | bench/results/RESULTS.md | 2026-10-29 |
 | Cost per brief (API model) | $0.091 for a 10-lead brief on claude-sonnet-5-5 ($0.079 explanations, $0.012 summary); local models $0 | bench/results/cost.csv | 2026-10-29 |
 | Warm-cache brief time | 0.7 to 1.1 s (Route A: embed + rerank, no LLM calls; 3 PIs) | data/logs/brief_timings.jsonl | 2026-10-28 |
