@@ -116,7 +116,7 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
                     <span style="padding: 3px 8px; border-radius: 6px; background: {{c.chip}}; font-size: 12px; font-weight: 600">{{tg}}</span>
                   </sc-for>
                   <sc-if value="{{l.hasFit}}" hint-placeholder-val="{{ true }}">
-                    <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; background: {{l.pillBg}}; color: {{l.pillInk}}; font-size: 13px; font-weight: 650; white-space: nowrap"><span style="font-weight: 500; color: {{c.ink2}}">Fit estimate</span>{{l.band}}<b style="min-width: 28px; height: 22px; border-radius: 999px; display: inline-grid; place-items: center; padding: 0 6px; font-size: 13px; background: {{l.badgeBg}}; color: {{l.badgeInk}}; box-shadow: {{l.badgeRing}}">{{l.score}}</b></span>
+                    <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; background: {{l.pillBg}}; color: {{l.pillInk}}; font-size: 13px; font-weight: 650; white-space: nowrap"><span style="font-weight: 500; color: {{c.ink2}}">Match</span>{{l.band}}<b style="min-width: 28px; height: 22px; border-radius: 999px; display: inline-grid; place-items: center; padding: 0 6px; font-size: 13px; background: {{l.badgeBg}}; color: {{l.badgeInk}}; box-shadow: {{l.badgeRing}}">{{l.score}}</b></span>
                   </sc-if>
                   <sc-if value="{{l.plainRight}}" hint-placeholder-val="{{ false }}">
                     <span style="margin-left: auto; font-size: 13px; color: {{c.ink2}}">{{l.rightLabel}} <b style="color: {{c.ink}}">{{l.rightValue}}</b></span>
@@ -531,7 +531,7 @@ class Component extends DCLogic {
     ];
     const grants = G.map((g, i) => ({
       id: 'a' + i, kind: 'Funding opportunity', source: 'Grants.gov',
-      tags: g.tags, band: g.band, rightLabel: 'Fit estimate', rightValue: '…',
+      tags: g.tags, band: g.band, rightLabel: 'Match', rightValue: '…',
       title: '[Opportunity title, copied from Grants.gov]',
       fact1: g.closes, fact2: 'Award ceiling [amount]', closeRank: i === 1 ? 9 : i,
       whyLabel: explained ? 'Why it fits · cites 2 papers' : 'Why it fits · being written',
@@ -550,9 +550,8 @@ class Component extends DCLogic {
       rows: [{ k: 'Company', v: '[name]' }, { k: 'Citing works', v: '[N], newest [date]' }, { k: 'SBIR/STTR', v: '[N], newest [date]' },
         { k: 'Topic works', v: '[N]' }],
     }));
-    const BAND = { strong: 3, good: 2, partial: 1 };
     const sorted = st.sort === 'closing' ? [...grants].sort((a, b) => a.closeRank - b.closeRank)
-      : st.sort === 'fit' ? [...grants].sort((a, b) => BAND[b.band] - BAND[a.band]) : grants;
+      : grants;
     const list = st.route === 'A' ? (grantsIn ? sorted : []) : (industryIn ? industry : []);
     const pool = st.route === 'A' ? sorted : industry;
     const sel = pool[Math.min(st.sel, pool.length - 1)];
@@ -571,7 +570,7 @@ class Component extends DCLogic {
         ...l,
         border: i === st.sel ? c.accent : c.line,
         explained: l.id[0] === 'b' || explained, pending: l.id[0] === 'a' && !explained,
-        hasFit: l.id[0] === 'a' && explained, plainRight: l.id[0] === 'b' || !explained,
+        hasFit: l.id[0] === 'a', plainRight: l.id[0] === 'b',
         score: '[score]',
         pillBg: l.band === 'partial' ? c.chip : c.accentSoft, pillInk: l.band === 'partial' ? c.ink2 : c.ink,
         badgeBg: l.band === 'strong' ? c.accent : c.surface, badgeInk: l.band === 'strong' ? c.onAccent : l.band === 'good' ? c.ink : c.ink2,
@@ -666,13 +665,12 @@ class Component extends DCLogic {
       nA: grantsIn ? '[N]' : '…', nB: industryIn ? '[N]' : '…',
       showA: () => this.setState({ route: 'A', sel: 0 }), showB: () => this.setState({ route: 'B', sel: 0 }),
       onGrants: st.route === 'A',
-      sorts: [['order', 'Perch’s order'], ['closing', 'Closing soon'], ['fit', 'Fit estimate']].map(([k, label]) => ({
+      sorts: [['order', 'Perch’s order'], ['closing', 'Closing soon']].map(([k, label]) => ({
         label, aria: String(st.sort === k), bg: st.sort === k ? c.accent : 'transparent', ink: st.sort === k ? c.onAccent : c.ink2,
         pick: () => this.setState({ sort: k, sel: 0 }) })),
       orderNote: st.route === 'A'
-        ? (st.sort === 'fit' ? 'Sorted by the model’s fit estimate, which is not the odds of funding.'
-          : st.sort === 'closing' ? 'Sorted by closing date.'
-          : 'In Perch’s order: how closely each record’s text matches the papers. Fit is a separate model estimate, not the odds of funding, so the two can disagree.')
+        ? (st.sort === 'closing' ? 'Sorted by closing date.'
+          : 'In Perch’s order: highest match first. Match is how closely each listing’s text matches the papers, from 0 to 100. It is not the odds of funding.')
         : 'Companies with at least two kinds of public signal, counted by code. A lead is an inference, not a verified interest in funding.',
       waiting: list.length === 0,
       leads,
