@@ -18,12 +18,15 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - **Corrected:** the audit's S10 was wrong; the evidence panel already sat beside the list on a laptop.
 - **Not built (after Demo Day):** grouping one announcement family (S5) and merging company aliases (S7). Both change pipeline output.
 
-## Next: finish S22 task 5, then S23
+## Next: S23 (private by default), then S22 task 5, then S24
+- **S23 first** (Dakshitha, 2026-10-29): read S23 in PLAN.md. It changes the header switch, so the refilm waits for it.
+
+S22 task 5, after S23:
 1. Refilm the README clips: `scripts/tour/film.py`, then `scripts/tour/animate.py`. The `private` scene opens private mode from "Options" with a link. That path may be stale since S18; use the header switch.
 2. Retake `docs/screenshots/` (`scripts/screenshots.py` on the replay preview), and the README student screenshot (S19, Scholarships tab at 390 px; the tab is now "Scholarships and awards (sample)").
 3. Tracker UI preview with the student flow (moved here from S19). A private brief cannot be replayed today. This needs a replay of a SYNTHETIC student brief: export one from a live run with persona-ug and teach `scripts/build_ui_preview.py` to serve `/private/*`.
 4. Update the README text that names old labels, then the README tab (`make tracker`), and republish the artifact. Dakshitha reviews the README tab.
-5. Close S22: tracker row, this file, push.
+5. Close S22: tracker row, this file, push. Then S24, freeze and package.
 
 ## Dev server used in S22
 - `perch serve --port 8091` on a scratch copy of the demo stores, using the demo's model servers. It is not needed again. Kill it with an anchored pattern, because an unanchored `pkill` matches its own shell.

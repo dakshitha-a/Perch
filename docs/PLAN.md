@@ -297,7 +297,19 @@ Goal: build the option Dakshitha chose in S21.
 
 Done when: the chosen option is live on the public URL for all three audiences, `make test` green, the README media match the app.
 
-## S23 — Freeze and package
+## S23 — Private by default, local models first
+
+Goal: with no user accounts, nothing a user enters or receives is stored, and models run locally unless the user chooses a cloud provider (Dakshitha, 2026-10-29).
+
+1. **Private by default.** Every brief, researcher or student, runs as an in-memory session: no stored briefs, no 24-hour reuse, no recent-briefs list in the browser, no per-user logs. Public data stays cached and indexed (OpenAlex, RePORTER, NSF, Grants.gov responses, the opportunity index), because it holds no user data. The Private switch and the separate private path fold into this one mode; the private-mode guarantees (memory only, idle timeout, exports withheld or masked) become the app's behaviour.
+2. **Local models by default, cloud by choice.** A header switch, Local or Cloud, replaces the Private switch. Local is the default. Turning Cloud on names the provider (Anthropic, through `perch/llm/`) and warns that what the user enters and the brief's text are sent to that company; the user confirms first. The self-hosted gate allows the cloud provider only while Cloud is on for that session. The Anthropic spend cap still applies.
+3. **Shelve monitoring.** The weekly watch needs a user to watch for, so it moves out of the app: the What changed screen, `GET /watch`, the Monday timer and the Help step go; the code moves to `perch/shelved/monitor/` with a README on how to reconnect it once a user system exists. Its tests move with it and are skipped.
+4. **Docs and tests.** `docs/private-mode.md`, Help, README (known limits: real deployments can use zero-data-retention cloud keys), SPEC, the canary (now the default path, plus a Cloud-on run on SYNTHETIC text only), the S21 walk.
+5. Demo rebuilt; the canary passes with Local; `make test` green.
+
+Done when: a fresh visitor on the public URL gets a brief that leaves no record of them on the server, local models by default, the cloud warning before any cloud call, and no monitoring in the app.
+
+## S24 — Freeze and package
 
 Goal: ship. The QA fix list and privacy audit moved to S20, and the full accessibility pass to S21 (Dakshitha, 2026-10-29).
 
@@ -340,3 +352,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S18, S21 | S18 task 1 added: private mode becomes an app-wide state with a header switch, turned on by construction when personal text is entered or Student is chosen, with a browser-side nudge for CV-like text in the public box; S18 tasks renumbered; the Scout tool may move to S19. S21 checks that the mode is visible to every audience | Student mode needs private mode, and a link on Find was too easy to miss. Dakshitha asked Perch-dev to decide the design | Dakshitha (direction), Perch-dev (design) |
 | 2026-10-29 | S18, S19 | S18 task 7 (Scout `search_scholarships`) moves to S19, as the plan allows; S19 also refilms the tracker's UI preview with the student flow, because the preview replays a public brief and a student brief is private | Context budget of the S17 to S20 run; a private brief cannot be recorded for replay | Perch-dev |
 | 2026-10-29 | S19, S22 | S19 task 5 (Scout `search_scholarships`, from S18) cut to the student-mode floor in the cut order (Q27); S19 task 6 (the tracker's UI preview of the student flow) moves to S22, whose task 5 refilms the preview anyway | Scout's tools assume a researcher and its tab is hidden on student briefs; a private brief cannot be recorded for the replay preview without new work | Perch-dev |
+| 2026-10-29 | S23, S24 | New S23 "Private by default, local models first": every session in memory with no stored briefs, reuse or history (public data stays cached); a Local / Cloud header switch, local by default, with a warning naming the provider before any cloud call; monitoring shelved in `perch/shelved/monitor/`. Freeze and package moves to S24. S22 task 5 (refilm) runs after S23, so the media are filmed once. Older notes that say "S23 task 2" mean S24 task 2 | Dakshitha: with no user access system nothing should be stored; the no-private-text-to-cloud rule is a challenge rule, and a real deployment may rely on zero-data-retention cloud keys | Dakshitha |

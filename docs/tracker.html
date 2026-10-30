@@ -135,7 +135,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S22</code> <span class="badge s-continued">continued</span><span>22/24 sessions done</span></div>
+<div class="at-a-glance"><code>S22</code> <span class="badge s-continued">continued</span><span>22/25 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -693,7 +693,7 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="22 of 24 sessions done"><div class="counts"><span><b>22/24</b>sessions done</span><span class="s-done"><b>22</b>done</span><span class="s-continued"><b>1</b>continued</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="22 of 24 sessions done"><span class="s-done" style="width:91.67%" title="done: 22"></span><span class="s-continued" style="width:4.17%" title="continued: 1"></span><span class="s-todo" style="width:4.17%" title="todo: 1"></span></div></section>
+<section class="panel summary" aria-label="22 of 25 sessions done"><div class="counts"><span><b>22/25</b>sessions done</span><span class="s-done"><b>22</b>done</span><span class="s-continued"><b>1</b>continued</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="22 of 25 sessions done"><span class="s-done" style="width:88.00%" title="done: 22"></span><span class="s-continued" style="width:4.00%" title="continued: 1"></span><span class="s-todo" style="width:8.00%" title="todo: 2"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -720,14 +720,15 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s20">S20</a></td><td>QA and privacy audit</td><td><span class="badge s-done">done</span></td><td>2026-10-29 18:50 EDT</td><td>2026-10-29 18:53 EDT</td><td class="mono">see git log</td><td>246 tests green. Privacy audit with student mode: fixed CV-quoting lines leaving unwithheld in the JSON export, a missing sample banner there, and a research-office hand-off offered for a student brief. Live canary rerun clean; the private-only brief now explains 10 of 10 leads (8 of 10 in S13). Sample-store isolation test added. Flaky Scout test fixed (random test order). README Known limits section. Task 1 dropped: no QA log exists (Q28).</td></tr>
 <tr class="is-finished"><td><a href="#s21">S21</a></td><td>UI/UX audit for three audiences</td><td><span class="badge s-done">done</span></td><td>2026-10-29 19:02 EDT</td><td>2026-10-29 19:19 EDT</td><td class="mono">see git log</td><td>Expert walkthrough on the public URL with <code>scripts/ux_walk.py</code> (axe-core 4.10.2): PI-4, three SYNTHETIC student personas and persona-1, phone and laptop, light and dark, 108 states. Private mode visible in all 54 private states. 6 must-fix (worst: the PI hand-off office picker lists student offices as \"undefined\"), 12 should-fix, 4 could-fix. Accessibility checklist in <code>docs/design/A11Y_CHECKLIST.md</code>. Options A (about 1 session), B (about 2), C (about 4); Q29 default B. UX tab on the tracker.</td></tr>
 <tr class="is-current"><td><a href="#s22">S22</a></td><td>Redesign and rebuild</td><td><span class="badge s-continued">continued</span></td><td>2026-10-29 19:20 EDT</td><td>2026-10-29 19:54 EDT</td><td class="mono">see git log</td><td>Option B (Q29 default) live on the public URL: two doors on Find, student words, compact student and industry cards, the order explained, hand-off offices fixed, accessibility fixes. Walk on the dev server: 110 states, 0 axe violations, 0 failed steps. Review: 7 issues, all fixed. Live canary ok, 10 of 10 explained. 248 tests green. Left: refilm the README clips and screenshots, and the UI preview's student flow (task 5).</td></tr>
-<tr><td>S23</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S23</td><td>Private by default, local models first</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S24</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Milestone</th><th>Date</th><th>Needs</th><th>Ready?</th></tr></thead>
 <tbody>
 <tr><td>Checkup 2</td><td>Tue 3 Nov</td><td>S0–S7</td><td></td></tr>
-<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S23 (after S17–S22, or their cut-order floors)</td><td></td></tr>
+<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S24 (after S17–S23, or their cut-order floors)</td><td></td></tr>
 <tr><td>Submission</td><td>Fri 6 Nov 12:00</td><td>ZIP + links</td><td></td></tr>
 </tbody></table></div>
 <h2>Key numbers (keep current)</h2>
@@ -1165,10 +1166,11 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (128)</h2>
+<h2>Decisions (129)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>after S22</td><td>Private by default (no stored briefs, reuse, history or per-user logs; public data stays cached), local models by default with a Local / Cloud header switch and a provider warning, monitoring shelved for a future user system</td><td>No user access system exists; a real deployment may use zero-data-retention cloud keys or lack local hardware</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S21</td><td>S22 builds option B (redesign of the core screens), the recommended default in Q29, until Dakshitha answers</td><td>Dakshitha asked for S21 and S22 in one run; the audit found defects and a vocabulary problem, not a broken structure; B is a superset of A and stops at a clean commit after each screen</td><td>Perch-dev (default), Dakshitha to confirm</td></tr>
 <tr><td>2026-10-29</td><td>after S20</td><td>Q26: keep the generic scholarship schema and the ScholarshipUniverse seam until a real export arrives. Q27: no Scout in student mode. Q28: no QA log exists, so S20 task 1 is dropped</td><td>Dakshitha's answers</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S18</td><td>The paste nudge triggers on 280 or more characters, or on two CV markers (education, GPA, references, an email, a phone number, ...), in the browser only; search is held while the offer is open</td><td>A name, ORCID iD or OpenAlex id never triggers it; nothing is sent until the person chooses</td><td>Perch-dev</td></tr>
@@ -1298,10 +1300,11 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (26)</h2>
+<h2>Plan change log (27)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S23, S24</td><td>New S23 "Private by default, local models first": every session in memory with no stored briefs, reuse or history (public data stays cached); a Local / Cloud header switch, local by default, with a warning naming the provider before any cloud call; monitoring shelved in <code>perch/shelved/monitor/</code>. Freeze and package moves to S24. S22 task 5 (refilm) runs after S23, so the media are filmed once. Older notes that say "S23 task 2" mean S24 task 2</td><td>Dakshitha: with no user access system nothing should be stored; the no-private-text-to-cloud rule is a challenge rule, and a real deployment may rely on zero-data-retention cloud keys</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S19, S22</td><td>S19 task 5 (Scout <code>search_scholarships</code>, from S18) cut to the student-mode floor in the cut order (Q27); S19 task 6 (the tracker's UI preview of the student flow) moves to S22, whose task 5 refilms the preview anyway</td><td>Scout's tools assume a researcher and its tab is hidden on student briefs; a private brief cannot be recorded for the replay preview without new work</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S18, S19</td><td>S18 task 7 (Scout <code>search_scholarships</code>) moves to S19, as the plan allows; S19 also refilms the tracker's UI preview with the student flow, because the preview replays a public brief and a student brief is private</td><td>Context budget of the S17 to S20 run; a private brief cannot be recorded for replay</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S18, S21</td><td>S18 task 1 added: private mode becomes an app-wide state with a header switch, turned on by construction when personal text is entered or Student is chosen, with a browser-side nudge for CV-like text in the public box; S18 tasks renumbered; the Scout tool may move to S19. S21 checks that the mode is visible to every audience</td><td>Student mode needs private mode, and a link on Find was too easy to miss. Dakshitha asked Perch-dev to decide the design</td><td>Dakshitha (direction), Perch-dev (design)</td></tr>
