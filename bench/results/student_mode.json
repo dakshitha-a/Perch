@@ -51,7 +51,7 @@
  },
  "leakage": {
   "sample_record_public_api": false,
-  "public_briefs_checked": 6,
+  "public_briefs_checked": 0,
   "sample_in_public_brief": 0,
   "persona_canary_in_export": [],
   "export_without_banner": [],
@@ -381,8 +381,8 @@
   }
  ],
  "seconds": {
-  "persona-ug": 48,
-  "persona-masters": 39,
-  "persona-phd": 45
+  "persona-ug": 97,
+  "persona-masters": 75,
+  "persona-phd": 78
  }
 }

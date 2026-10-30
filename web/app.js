@@ -743,7 +743,7 @@ function tabButton(key, label, short) {
         go(`#/brief/${encodeURIComponent(S.briefId)}/${other}`);
         setTimeout(() => $(`#tab-${other}`).focus(), 0);
       }
-    } }, h("span", { class: "tab-label long", text: label }), h("span", { class: "short", "aria-hidden": "true", text: short }));
+    } }, h("span", { class: "tab-label lbl-long", text: label }), h("span", { class: "lbl-short", "aria-hidden": "true", text: short }));
 }
 
 function renderTabs() {

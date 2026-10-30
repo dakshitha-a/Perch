@@ -1021,11 +1021,11 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 }
 .route-btn[aria-pressed="true"] .tag.sample { color: var(--on-accent); border-color: var(--on-accent); }
 /* S25 review fixes */
-.short { display: none; }
+.lbl-short { display: none; }
 @media (max-width: 479px) {
   /* each of these buttons carries its full name in aria-label */
-  .tab .long, .seg .long, .route-btn .long { display: none; }
-  .tab .short, .seg .short, .route-btn .short { display: inline; }
+  .lbl-long { display: none; }
+  .lbl-short { display: inline; }
   .tab { padding: 0 12px; }
 }
 /* the rail stays clear of the sticky tab bar */

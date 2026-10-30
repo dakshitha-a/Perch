@@ -8,9 +8,9 @@ The answer keys were written by hand from the rules in data/synthetic/README.md 
 
 | Persona | Brief | Planted retrieved | Precision | Recall | Verdict exact | Gap list exact |
 |---|---|---|---|---|---|---|
-| persona-ug | 48 s | 6 of 8 | 1.00 | 1.00 | 6 of 6 | 3 of 3 |
-| persona-masters | 39 s | 6 of 8 | 1.00 | 1.00 | 6 of 6 | 3 of 3 |
-| persona-phd | 45 s | 7 of 8 | 1.00 | 1.00 | 7 of 7 | 4 of 4 |
+| persona-ug | 97 s | 6 of 8 | 1.00 | 1.00 | 6 of 6 | 3 of 3 |
+| persona-masters | 75 s | 6 of 8 | 1.00 | 1.00 | 6 of 6 | 3 of 3 |
+| persona-phd | 78 s | 7 of 8 | 1.00 | 1.00 | 7 of 7 | 4 of 4 |
 | all |  | 19 of 24 | 1.00 | 1.00 | 19 of 19 | 10 of 10 |
 
 ## Reading these numbers
@@ -23,7 +23,7 @@ The answer keys were written by hand from the rules in data/synthetic/README.md 
 ## Leakage
 
 - `sample_record_public_api`: none
-- `public_briefs_checked`: 6
+- `public_briefs_checked`: none
 - `sample_in_public_brief`: none
 - `persona_canary_in_export`: none
 - `export_without_banner`: none

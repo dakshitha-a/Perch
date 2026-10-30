@@ -188,8 +188,8 @@ export function studentRoutes(panel, ctx) {
     ["F", "S"].map((r) => h("button", { class: "route-btn", "data-key": `route-${r}`, "aria-pressed": String(route === r),
       "aria-label": `${STUDENT_ROUTES[r]}${r === "S" ? ", sample data" : ""}${done(r === "F" ? "fellowships" : "scholarships") ? `, ${n(r)}` : ""}`,
       onclick: () => setRoute(r) },
-    h("span", { class: "long", text: STUDENT_ROUTES[r] }), h("span", { class: "short", "aria-hidden": "true", text: r === "F" ? "Fellowships" : "Samples" }),
-    r === "S" ? h("span", { class: "tag sample long", text: SAMPLE }) : null,
+    h("span", { class: "lbl-long", text: STUDENT_ROUTES[r] }), h("span", { class: "lbl-short", "aria-hidden": "true", text: r === "F" ? "Fellowships" : "Samples" }),
+    r === "S" ? h("span", { class: "tag sample lbl-long", text: SAMPLE }) : null,
     done(r === "F" ? "fellowships" : "scholarships") ? h("span", { class: "route-n", text: String(n(r)) }) : null)));
   if (!ready) {
     fill(panel, sw, h("p", { class: "hint", text: "Leads appear here when the search finishes." }));
