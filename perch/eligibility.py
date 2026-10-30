@@ -49,7 +49,7 @@ EXCLUDED_ACTIVITY = {
 # Restrictions the title states outright. Excluded by default because Perch cannot
 # confirm them from public records (career stage needs the CV: private context, S13).
 CAREER_STAGE = (r"\bearly[- ]career\b|\bearly[- ]stage investigator|\bnew investigator"
-                r"|\byoung investigator")
+                r"|\byoung investigator|\byoung faculty")
 TITLE_RESTRICTIONS = {
     r"\blimited competition\b": "limited competition: only named applicants may apply",
     CAREER_STAGE: "restricted by career stage, which public records cannot confirm",
