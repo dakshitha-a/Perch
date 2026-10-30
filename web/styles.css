@@ -382,7 +382,16 @@ body.sheet-open .scrim { opacity: 1; pointer-events: auto; }
 .field dd { margin: 0; overflow-wrap: anywhere; }
 .elig-list { margin: 0; padding-left: 18px; font-size: 14.5px; color: var(--ink-2); display: grid; gap: 2px; }
 .elig-list .hi { color: var(--ink); font-weight: 600; }
-.long { white-space: pre-line; font-size: 15px; line-height: 1.6; color: var(--ink-2); font-family: var(--serif); }
+.long { white-space: pre-line; font-size: 15px; line-height: 1.6; color: var(--ink-2); font-family: var(--serif); overflow-wrap: anywhere; }
+.long.clamped { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 8; line-clamp: 8; overflow: hidden; }
+.long-wrap { display: grid; gap: 2px; min-width: 0; }
+.more-btn { justify-self: start; min-height: 44px; display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 0; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.more-btn::before { content: ""; width: 8px; height: 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .15s; margin: 0 4px 0 2px; flex: none; }
+.more-btn[aria-expanded="true"]::before { transform: rotate(45deg); }
+/* Evidence never grows wider than its box: a long link or word wraps instead (S27). */
+.sheet-body, .rail-evidence { min-width: 0; }
+.sheet-body { grid-template-columns: minmax(0, 1fr); }
+.sheet-body > *, .rail-evidence > * { min-width: 0; max-width: 100%; }
 .source { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); display: grid; gap: 6px; }
 .source a { overflow-wrap: anywhere; font-size: 14px; }
 .source-top { margin: 4px 0 2px; }

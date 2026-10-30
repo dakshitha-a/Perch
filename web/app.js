@@ -1779,12 +1779,15 @@ function recordView(r) {
         field("Funding instrument", (r.funding_instruments || []).join(", ")),
         field("Assistance listings", (r.assistance_listings || []).join(", "))));
     const all = r.eligible_applicants || [];
-    const higher = f.higherEdRows(all);
+    // University types first and the rest behind a toggle; with no university type,
+    // the record's own list shows as it is (S27).
+    const uni = f.higherEdRows(all);
+    const higher = uni.length ? uni : all;
     if (all.length) {
       out.push(h("h3", { class: "mini", text: "Eligible applicants" }),
-        h("ul", { class: "elig-list" }, higher.map((x) => h("li", { class: "hi", text: x }))),
+        h("ul", { class: "elig-list" }, higher.map((x) => h("li", { class: uni.includes(x) ? "hi" : null, text: x }))),
         all.length > higher.length ? h("details", { class: "more" },
-          h("summary", { text: `Show ${all.length - higher.length} other applicant types` }),
+          h("summary", { text: `Show ${f.plural(all.length - higher.length, "other applicant type", "other applicant types")}` }),
           h("ul", { class: "elig-list" }, all.filter((x) => !higher.includes(x)).map((x) => h("li", { text: x })))) : null);
     }
     if (r.eligibility_notes) out.push(h("h3", { class: "mini", text: "Eligibility notes" }), longText(r.eligibility_notes));
@@ -1847,11 +1850,20 @@ function fetched(iso) {
   return `${f.formatDate(iso)}, ${iso.slice(11, 16)} UTC`;
 }
 
+// Long record text shows once, cut to a few lines; the button opens it in place (S27).
+let longSeq = 0;
 function longText(text) {
   const t = String(text);
   if (t.length <= 700) return h("p", { class: "long", text: t });
-  return h("div", {}, h("p", { class: "long", text: `${t.slice(0, 600).trimEnd()}…` }),
-    h("details", { class: "more" }, h("summary", { text: "Show the full text" }), h("p", { class: "long", text: t })));
+  const id = `long-${++longSeq}`;
+  const p = h("p", { class: "long clamped", id, text: t });
+  const btn = h("button", { type: "button", class: "more-btn", "aria-expanded": "false", "aria-controls": id,
+    onclick: () => {
+      const open = p.classList.toggle("clamped") === false;
+      btn.setAttribute("aria-expanded", String(open));
+      btn.lastChild.textContent = open ? "Show less" : "Show the full text";
+    } }, h("span", { text: "Show the full text" }));
+  return h("div", { class: "long-wrap" }, p, btn);
 }
 
 // ---------- theme ----------
