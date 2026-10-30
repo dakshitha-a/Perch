@@ -1,4 +1,4 @@
-keyword-only: {'n': 48, 'hit@5': 0.021, 'hit@10': 0.021, 'mrr': 0.027, 'recall@200': 0.188, 'truth_eligible': 40}
-keyword-only+abstract: {'n': 48, 'hit@5': 0.042, 'hit@10': 0.083, 'mrr': 0.06, 'recall@200': 0.375, 'truth_eligible': 40}
-hybrid+rerank: {'n': 48, 'hit@5': 0.104, 'hit@10': 0.146, 'mrr': 0.067, 'recall@200': 0.417, 'truth_eligible': 40}
-hybrid+rerank+abstract: {'n': 48, 'hit@5': 0.25, 'hit@10': 0.333, 'mrr': 0.191, 'recall@200': 0.625, 'truth_eligible': 40}
+keyword-only: {'n': 48, 'hit@5': 0.042, 'hit@10': 0.042, 'mrr': 0.032, 'recall@200': 0.229, 'truth_eligible': 40}
+keyword-only+abstract: {'n': 48, 'hit@5': 0.042, 'hit@10': 0.083, 'mrr': 0.059, 'recall@200': 0.375, 'truth_eligible': 40}
+hybrid+rerank: {'n': 48, 'hit@5': 0.188, 'hit@10': 0.208, 'mrr': 0.144, 'recall@200': 0.417, 'truth_eligible': 40}
+hybrid+rerank+abstract: {'n': 48, 'hit@5': 0.271, 'hit@10': 0.354, 'mrr': 0.206, 'recall@200': 0.625, 'truth_eligible': 40}
