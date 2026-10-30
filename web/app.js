@@ -1249,7 +1249,7 @@ function routeSwitch() {
 // The sort order as the same segmented pill as Grants | Industry, smaller (S27).
 // One score and one order (S27): Perch's order is the Match score; closing date is the
 // only other way to sort.
-const SORTS = [["order", "Perch’s order"], ["closing", "Closing soon"]];
+const SORTS = [["order", "Score"], ["closing", "Closing date"]];
 
 function sortSwitch() {
   return h("div", { class: "route-switch sort-switch", role: "group", "aria-label": "Sort leads by" },
@@ -1312,10 +1312,10 @@ function renderRoutes(panel) {
   const subBits = [];
   if (kept) subBits.push(`${kept} kept`);
   if (explaining && S.brief.brief.options.explain) subBits.push(`${explainedCount()} of ${routeLeads("A").length} explained so far`);
-  // One score, one order (S27): Match is the ranking model's score on a 0-100 scale.
-  subBits.push(S.sort === "closing" ? "Sorted by closing date"
-    : "In Perch’s order: highest match first. Match is how closely each listing’s text matches the papers, from 0 to 100. It is not the odds of funding");
-  panel.querySelector(".routes-sub").textContent = `${subBits.join(". ")}.`;
+  // Only live progress here; what Match means is in its pill and Help (Dakshitha, S27).
+  const sub = panel.querySelector(".routes-sub");
+  sub.textContent = subBits.length ? `${subBits.join(". ")}.` : "";
+  sub.hidden = !subBits.length;
 
   if (!leads.length) {
     fill(panel.querySelector(".leads"), h("li", { class: "empty" }, owl("worry", "owl-md"),
