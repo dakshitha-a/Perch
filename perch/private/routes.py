@@ -1,4 +1,4 @@
-"""Private-mode HTTP routes (S13). Off unless PERCH_PRIVATE_MODE=1 with no problems.
+"""Session HTTP routes (S13; every brief since S23). On unless PERCH_PRIVATE_MODE=0.
 
 The session token travels in the X-Perch-Private header only, never in a path or a
 query string, so no access or proxy log can hold it. Private input travels in POST
@@ -11,7 +11,10 @@ disk, which private mode must not do).
   POST /private/end                     drop everything in the session
   POST /private/documents               {"kind", "text"} or {"kind", "filename", "data"}
   POST /private/documents/{kind}/remove
-  POST /private/brief                   {"author_id"?, "top"?, "explain"?}: a private brief
+  POST /private/cloud                   {"on", "confirm"?}: Cloud on or off for this session;
+                                        on needs "confirm" equal to the provider's name
+  POST /private/brief                   {"author_id"?, "top"?, "explain"?, "direction"?, ...}:
+                                        a brief; needs an author id or a document
   GET  /private/brief                   the brief, as GET /briefs/{id} with private records
   POST /private/leads/{lead_id}/{keep|dismiss|restore}
   GET  /private/records/{id}            a record, public or private
@@ -26,6 +29,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import threading
 from collections.abc import Callable
 from datetime import date
 from typing import Literal
@@ -35,6 +39,7 @@ from pydantic import BaseModel, Field
 
 from perch import compare as cmp
 from perch import export as ex
+from perch.config import env
 from perch.jobs import JobRunner
 from perch.privacy import PrivateSettings
 from perch.private.inputs import FORMATS, KINDS, MAX_BYTES, MAX_CHARS, InputError, Upload
@@ -64,6 +69,24 @@ class PrivateBriefRequest(BaseModel):
     as_of: date | None = None
     top: int = Field(10, ge=1, le=25)
     explain: bool = True
+    min_amount: float | None = Field(None, ge=0)
+    # The optional context fields (Q16): used as a query only, held with the brief.
+    direction: str | None = Field(None, max_length=1000)
+    include_keywords: list[str] = Field(default_factory=list, max_length=20)
+    exclude_keywords: list[str] = Field(default_factory=list, max_length=20)
+    career_stage: Literal["early_stage", "established"] | None = None
+
+    def context(self) -> dict:
+        clean = lambda xs: [x.strip()[:60] for x in xs if x.strip()]  # noqa: E731
+        return {"direction": (self.direction or "").strip(),
+                "include_keywords": clean(self.include_keywords),
+                "exclude_keywords": clean(self.exclude_keywords),
+                "career_stage": self.career_stage}
+
+
+class CloudRequest(BaseModel):
+    on: bool
+    confirm: str | None = Field(None, max_length=40)
 
 
 class PrivateHandoffRequest(BaseModel):
@@ -116,7 +139,32 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
 
         ensure_samples()
     open_limit = limiter(20)  # new sessions an hour per visitor
+    brief_limit = limiter(int(env("PERCH_BRIEFS_PER_HOUR") or 10))
+    cloud_day = {"day": "", "n": 0}  # cloud briefs today, whole server, in memory only
+    cloud_lock = threading.Lock()
     app.state.private_sessions = sessions
+
+    def cloud_info() -> dict:
+        p = settings.cloud_provider
+        return {"available": bool(p) and on, "provider": p,
+                "model": settings.cloud_spec.partition(":")[2] if p else None,
+                "warning": (f"Cloud sends what you type (the researcher you look up and any "
+                            f"direction or keywords) and the text of the public papers and "
+                            f"listings in your brief to {p}, through its API, to write the "
+                            f"summary, the fit explanations and hand-off openings. Documents "
+                            f"you add never go to {p}: Cloud stays off while a session holds "
+                            f"documents. Search, ranking and Scout stay on local models.")
+                if p else None}
+
+    def take_cloud() -> None:
+        with cloud_lock:
+            today = date.today().isoformat()
+            if cloud_day["day"] != today:
+                cloud_day.update(day=today, n=0)
+            if cloud_day["n"] >= settings.cloud_per_day:
+                raise HTTPException(429, "Cloud briefs for today are used up. Turn Cloud off "
+                                    "to use local models.")
+            cloud_day["n"] += 1
 
     @app.get("/private")
     def private_info() -> dict:
@@ -127,7 +175,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                                   "cv": "Your CV or résumé"},
                 "formats": list(FORMATS), "max_bytes": MAX_BYTES,
                 "max_chars": MAX_CHARS, "max_total_chars": MAX_TOTAL_CHARS,
-                "idle_minutes": IDLE_SECONDS // 60}
+                "idle_minutes": IDLE_SECONDS // 60, "cloud": cloud_info()}
 
     def session(token: str | None) -> PrivateSession:
         if not on:
@@ -151,14 +199,14 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         except PermissionError as e:
             raise HTTPException(403, f"Private mode refused: {e}") from e
         return {"token": s.token, "idle_minutes": IDLE_SECONDS // 60,
-                "statement": settings.statement()}
+                "statement": settings.statement(), "cloud": False}
 
     @app.get("/private/session")
     def get_session(x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
         cv = s.cv
         return {"documents": [doc_json(k, d) for k, d in s.docs.items()],
-                "brief_id": s.brief_id, "chars": s.chars(),
+                "brief_id": s.brief_id, "chars": s.chars(), "cloud": s.cloud,
                 "cv": {"degree_year": cv.degree_year, "rank": cv.rank,
                        "sponsors": cv.sponsors, "nih_awards": cv.nih_substantial} if cv else None}
 
@@ -166,9 +214,26 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     def end(x_perch_private: str | None = Header(None)) -> dict:
         return {"ended": sessions.end(x_perch_private)}
 
+    @app.post("/private/cloud")
+    def set_cloud(req: CloudRequest, x_perch_private: str | None = Header(None)) -> dict:
+        s = session(x_perch_private)
+        if req.on:
+            p = settings.cloud_provider
+            if not (p and on):
+                raise HTTPException(404, "Cloud is not offered on this server.")
+            if (req.confirm or "").strip().lower() != p.lower():
+                raise HTTPException(422, f"Confirm by sending the provider's name, {p}.")
+            if s.docs:
+                raise HTTPException(409, "Remove your documents first: they stay on local "
+                                    "models.")
+        s.cloud = req.on
+        return {"cloud": s.cloud}
+
     @app.post("/private/documents", status_code=201)
     def add_doc(req: DocumentRequest, x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
+        if s.cloud:
+            raise HTTPException(409, "Turn Cloud off first: documents stay on local models.")
         try:
             data = (base64.b64decode(req.data, validate=True) if req.data is not None
                     else None)
@@ -188,16 +253,20 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             return {"removed": s.docs.pop(kind, None) is not None}
 
     @app.post("/private/brief", status_code=202)
-    def start_brief(req: PrivateBriefRequest, x_perch_private: str | None = Header(None)
-                    ) -> dict:
+    def start_brief(req: PrivateBriefRequest, request: Request,
+                    x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
-        if not s.docs:
-            raise HTTPException(422, "Add at least one document first.")
+        if not s.docs and not req.author_id:
+            raise HTTPException(422, "Choose a researcher or add a document first.")
         if s.briefs_run >= BRIEFS_PER_SESSION:
             raise HTTPException(429, f"A session runs at most {BRIEFS_PER_SESSION} briefs.")
+        throttle(request)
+        if s.cloud and not s.docs and req.explain:
+            take_cloud()
         try:
             b = s.service.create_private(req.author_id, as_of=req.as_of, top=req.top,
-                                         explain=req.explain)
+                                         explain=req.explain, min_amount=req.min_amount,
+                                         context=req.context())
         except ValueError as e:
             raise HTTPException(422, "not an OpenAlex author id") from e
         s.briefs_run += 1
@@ -205,8 +274,8 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         return {"id": b.id, "status": b.status}
 
     @app.post("/private/student/brief", status_code=202)
-    def start_student(req: PrivateBriefRequest, x_perch_private: str | None = Header(None)
-                      ) -> dict:
+    def start_student(req: PrivateBriefRequest, request: Request,
+                      x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
         if "cv" not in s.docs:
             raise HTTPException(422, "Add your CV first.")
@@ -214,10 +283,17 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             raise HTTPException(422, "Add your interests or achievements too.")
         if s.briefs_run >= BRIEFS_PER_SESSION:
             raise HTTPException(429, f"A session runs at most {BRIEFS_PER_SESSION} briefs.")
+        throttle(request)
         b = s.service.create_student(as_of=req.as_of, top=req.top, explain=req.explain)
         s.briefs_run += 1
         runner.submit(f"private-{b.id}", lambda: s.service.run(b.id))
         return {"id": b.id, "status": b.status}
+
+    def throttle(request: Request) -> None:
+        if wait := brief_limit.take(client_key(request)):
+            raise HTTPException(429, f"Limit of {brief_limit.per_hour} new briefs an hour "
+                                f"reached. Try again in {wait // 60 + 1} minutes.",
+                                headers={"Retry-After": str(wait)})
 
     def brief_id(s: PrivateSession) -> str:
         if not s.brief_id:

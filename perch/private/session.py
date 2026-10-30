@@ -12,6 +12,13 @@ session (docs/design/PRIVATE_MODE.md, "The no-logs inventory"):
 - errors: exception type only, no traceback
 Every model, and every endpoint behind the embedder, reranker and grounder, must pass
 the self-hosted gate (perch.privacy); otherwise the run fails with PermissionError.
+
+Since S23 every brief is a session (private by default). Public records fetched for a
+researcher are written through to the shared store (perch.private.store.is_public). A
+session may turn Cloud on: then the three model skills (summary, fit, hand-off) use the
+cloud spec, and the gate lets that one provider through for that session only. Cloud is
+refused while the session holds documents, so private text stays on local models
+(standing rule 1); the embedder, reranker, grounder and Scout always stay local.
 """
 
 from __future__ import annotations
@@ -34,23 +41,39 @@ from perch.private.inputs import KINDS, PrivateDoc
 from perch.private.store import OverlayRepository, ReadOnlyCacheEmbedder
 from perch.private.threads import add_threads
 from perch.schemas import Brief, Lead, Record, Researcher, Stage, Work, utcnow
-from perch.service import STAGES, BriefService, Models, brief_options
+from perch.service import SAID_ID, STAGES, BriefService, Models, brief_options
 
 YOU = "private:you"  # the researcher of a brief with no public profile
 IDLE_SECONDS = 30 * 60
-MAX_SESSIONS = 20
+MAX_SESSIONS = 200  # every visitor holds one since S23
 MAX_TOTAL_CHARS = 200_000  # all documents of one session
 BRIEFS_PER_SESSION = 10
 SPONSOR_BONUS = 0.05  # added to the rerank score for a past sponsor; a default, not measured
 
 
 class PrivateModels:
-    """The shared models behind the gate. Built models are reused, never rebuilt."""
+    """The shared models behind the gate. Built models are reused, never rebuilt.
+    `cloud` says whether the session has Cloud on; only then do the skills' specs become
+    the cloud spec, and only that spec passes the gate."""
 
-    def __init__(self, base: Models, settings: PrivateSettings) -> None:
-        self.base, self.settings = base, settings
-        self.summary_spec, self.fit_spec = base.summary_spec, base.fit_spec
-        self.handoff_spec = base.handoff_spec
+    def __init__(self, base: Models, settings: PrivateSettings,
+                 cloud: Callable[[], bool] = lambda: False) -> None:
+        self.base, self.settings, self.cloud = base, settings, cloud
+
+    def _spec(self, local: str | None) -> str | None:
+        return self.settings.cloud_spec if self.cloud() and self.settings.cloud_spec else local
+
+    @property
+    def summary_spec(self) -> str | None:
+        return self._spec(self.base.summary_spec)
+
+    @property
+    def fit_spec(self) -> str | None:
+        return self._spec(self.base.fit_spec)
+
+    @property
+    def handoff_spec(self) -> str | None:
+        return self._spec(self.base.handoff_spec)
 
     def get(self, name: str) -> object:
         x = self.base.get(name)
@@ -59,7 +82,8 @@ class PrivateModels:
 
     def provider(self, spec: str) -> Provider:
         p = self.base.provider(spec)
-        refuse_if_not_local(p, self.settings)
+        if not (self.cloud() and spec == self.settings.cloud_spec):
+            refuse_if_not_local(p, self.settings)
         return p
 
 
@@ -75,6 +99,7 @@ class PrivateSession:
     scout: object | None = None  # a ScoutHub of its own, made on first use
     lock: threading.Lock = field(default_factory=threading.Lock)
     service: PrivateService | None = None
+    cloud: bool = False  # Cloud on: the skills use the cloud provider (S23)
 
     @property
     def cv(self) -> CVFacts | None:
@@ -90,6 +115,7 @@ class PrivateSession:
         self.masker = None
         self.scout = None
         self.brief_id = None
+        self.cloud = False
 
     def make_masker(self, public_texts: list[str]) -> egress.Masker:
         cv = self.cv
@@ -105,7 +131,8 @@ class PrivateService(BriefService):
     def __init__(self, base: BriefService, session: PrivateSession,
                  settings: PrivateSettings) -> None:
         self.db, self.clients, self.overrides = base.db, base.clients, base.overrides
-        self.models = PrivateModels(base.models, settings)  # type: ignore[assignment]
+        self.models = PrivateModels(base.models, settings,  # type: ignore[assignment]
+                                    lambda: session.cloud and not session.docs)
         self.settings = settings
         self.session = session
         self.audit = AuditLog(None)
@@ -116,12 +143,13 @@ class PrivateService(BriefService):
         self.index_writes = False
 
     def repo(self) -> OverlayRepository:  # type: ignore[override]
-        return OverlayRepository(self.db, self.session.mem)
+        return OverlayRepository(self.db, self.session.mem, self.settings.public_cache)
 
     # --- create ---
 
     def create_private(self, author_id: str | None, *, as_of: date | None = None,
-                       top: int = 10, explain: bool = True) -> Brief:
+                       top: int = 10, explain: bool = True, min_amount: float | None = None,
+                       context: dict | None = None) -> Brief:
         from perch.sources import openalex as oa
 
         if author_id:
@@ -132,8 +160,10 @@ class PrivateService(BriefService):
         else:
             rid = YOU
         bid = secrets.token_urlsafe(9)
-        options = {**brief_options(as_of, top, explain), "private": True,
-                   "documents": sorted(self.session.docs)}
+        options = {**brief_options(as_of, top, explain, min_amount, context=context),
+                   "private": True,
+                   "documents": sorted(self.session.docs),
+                   "models": "cloud" if self.models.cloud() else "local"}
         b = Brief(id=bid, source="private", source_url="private://session", fetched_at=utcnow(),
                   researcher_id=rid, stages=[Stage(name=n) for n in STAGES], options=options)
         with self.repo() as r:
@@ -171,7 +201,8 @@ class PrivateService(BriefService):
         self._ctx[b.id]["profile"] = p
         b.threads = [{"index": t.index, "label": t.label, "weight": round(t.weight, 4),
                       "work_ids": t.work_ids,
-                      "private": bool(t.work_ids) and egress.is_private_id(t.work_ids[0])}
+                      "private": bool(t.work_ids) and egress.is_private_id(t.work_ids[0]),
+                      **({"said": True} if t.work_ids == [SAID_ID] else {})}
                      for t in p.threads]
         added = sum(t["private"] for t in b.threads)
         return f"{detail}; {added} from your private documents", False
@@ -182,7 +213,9 @@ class PrivateService(BriefService):
         cv = self.session.cv
         esi = bool(cv and cv.esi_possible(as_of))
         c = Constraints(as_of=as_of, min_amount=o.get("min_amount"),
-                        agencies=o.get("agencies") or [], career_stage_ok=esi)
+                        agencies=o.get("agencies") or [],
+                        exclude_keywords=o.get("exclude_keywords") or [],
+                        career_stage_ok=esi or o.get("career_stage") == "early_stage")
         with self.repo() as r:
             res = self._researcher(r, b)
             brief = route_a(res, r, self.models.get("index"), self.models.get("embedder"),

@@ -39,7 +39,7 @@ def make(tmp_path):
             (FIX / "nsf/awards_copi.json").read_text())), min_interval=0))
     service = BriefService(db, default_models(fake=True, data_dir=tmp_path), clients,
                            overrides=tmp_path / "none.csv")
-    return TestClient(create_app(service, InlineRunner())), service
+    return TestClient(create_app(service, InlineRunner(), stored_briefs=True)), service
 
 
 def test_brief_end_to_end_reports_stages_and_leads(tmp_path):
@@ -107,35 +107,30 @@ def test_failed_stage_is_recorded(tmp_path):
     assert b["stages"][0]["status"] == "failed"
 
 
-def test_a_finished_brief_is_reused_with_fresh_lead_state(tmp_path):
+def test_a_repeat_brief_is_a_new_job_never_a_reused_copy(tmp_path):
     c, _ = make(tmp_path)
     req = {"author_id": "A5026494099", "as_of": "2026-10-28"}
     first = c.post("/briefs", json=req).json()["id"]
-    lead = c.get(f"/briefs/{first}").json()["leads"][0]["id"]
-    c.post(f"/briefs/{first}/leads/{lead}/keep")
-    r = c.post("/briefs", json=req)
-    assert r.status_code == 200 and r.json()["reused"] is True
-    again = c.get(f"/briefs/{r.json()['id']}").json()
-    assert again["brief"]["status"] == "done" and r.json()["id"] != first
-    assert [x["status"] for x in again["leads"]] == ["new"]  # the first visitor's keep stays
-    assert c.post("/briefs", json={**req, "top": 5}).status_code == 202  # other options: new
+    r = c.post("/briefs", json=req)  # S23: no reuse; each brief is its own run
+    assert r.status_code == 202 and r.json()["id"] != first and "reused" not in r.json()
 
 
-def test_a_brief_from_older_code_is_not_reused(tmp_path):
-    from perch.schemas import Brief
+def test_stored_brief_routes_are_off_by_default(tmp_path):
+    from perch.api import create_app
+    from perch.jobs import InlineRunner
 
     c, service = make(tmp_path)
-    req = {"author_id": "A5026494099", "as_of": "2026-10-28"}
-    first = c.post("/briefs", json=req).json()["id"]
-    with service.repo() as r:  # as built before S11: no route_b stage
-        b = r.get(Brief, first)
-        r.upsert([b.model_copy(update={"stages": [x for x in b.stages if x.name != "route_b"]})])
-    assert c.post("/briefs", json=req).status_code == 202
+    bid = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28"}).json()["id"]
+    off = TestClient(create_app(service, InlineRunner()))
+    assert off.post("/briefs", json={"author_id": "A5026494099"}).status_code == 404
+    assert off.get(f"/briefs/{bid}").status_code == 404
+    assert off.get(f"/briefs/{bid}/export.json").status_code == 404
+    assert off.get(f"/records/{bid}").status_code == 404  # a brief is a visitor's record
+    assert off.get("/watch").status_code in (404, 405)  # monitoring shelved (S23)
 
 
 def test_rate_limit_counts_new_briefs_per_forwarded_visitor(tmp_path, monkeypatch):
     monkeypatch.setenv("PERCH_BRIEFS_PER_HOUR", "2")
-    monkeypatch.setenv("PERCH_BRIEF_REUSE_HOURS", "0")
     c, _ = make(tmp_path)
     c = TestClient(c.app, client=("127.0.0.1", 50000))  # as the tunnel's local proxy
     req = {"author_id": "A5026494099", "as_of": "2026-10-28"}

@@ -1,16 +1,21 @@
 """Monitoring (S16): the Grants.gov delta refresh, triggers, diff and the code-written
-draft, on fake models and fixture-backed clients."""
+draft, on fake models and fixture-backed clients.
+
+Shelved in S23 with the module: skipped, and outside pytest's testpaths. To reconnect,
+move this file back to tests/ and drop the skip (README.md beside the module)."""
 
 import json
 from datetime import date
 
 import httpx
+import pytest
 
-from perch import monitor
 from perch.schemas import Brief, Digest, Opportunity
+from perch.shelved.monitor import monitor
 from perch.sources import grants_gov
+from tests.test_api import FIX, make
 
-from .test_api import FIX, make
+pytestmark = pytest.mark.skip(reason="monitoring is shelved until a user system exists (S23)")
 
 AID = "A5026494099"  # the fixture researcher; their last award ends 2016-06-30
 

@@ -8,7 +8,6 @@
   perch brief <author id> --route A   ranked, eligible Route A leads (record fields only)
   perch brief <author id> --route B   industry leads from public signals (inferred)
   perch brief <author id> --explain   plus profile summary and validated fit explanations
-  perch monitor --author <id> ...     weekly watch: refresh, re-run, compare, draft (S16)
   perch serve                         the HTTP API (briefs as background jobs)
 """
 
@@ -435,38 +434,6 @@ def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     return 0
 
 
-def cmd_monitor(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
-    from perch import monitor
-    from perch.service import BriefService, Clients, default_models
-
-    authors = args.author or [a for a in (env("PERCH_WATCH") or "").split(",") if a.strip()]
-    if not authors:
-        print("perch monitor needs --author, or PERCH_WATCH set to author ids.",
-              file=sys.stderr)
-        return 2
-    data = Path(args.db).parent
-    service = BriefService(args.db, default_models(args.models == "fake", data, args.llm),
-                           Clients(openalex=default_client, nih=args.nih_factory,
-                                   nsf=args.nsf_factory), Path(args.overrides))
-    as_of = date.fromisoformat(args.as_of) if args.as_of else None
-    digests = monitor.run(service, [a.strip() for a in authors],
-                          None if args.no_refresh else args.grants_factory, as_of,
-                          not args.no_explain, args.limit)
-    if digests and digests[0].refresh:
-        n = digests[0].refresh
-        print(f"Grants.gov: {n['listed']} open listed; {n['new']} new, {n['changed']} changed, "
-              f"{n['failed']} failed.")
-        print(grants_gov.ATTRIBUTION)
-    for d in digests:
-        fired = [c for c in d.changes if c.trigger]
-        print(f"{d.researcher_id.rsplit('/', 1)[-1]}: brief {d.brief_id}, "
-              f"{len(d.changes)} changes, {len(fired)} triggers, "
-              + ("first run (baseline)" if d.baseline_brief_id is None else
-                 f"compared with brief {d.baseline_brief_id}")
-              + (f"; draft: {d.draft_subject}" if d.draft_subject else "; no draft"))
-    return 0
-
-
 def cmd_scout(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     from perch.scout import make_scout
     from perch.scout.log import ScoutLog, replay
@@ -553,16 +520,6 @@ def build_parser() -> argparse.ArgumentParser:
                    help="private session: no writes or logs; self-hosted models only")
     m.add_argument("--models", choices=["local", "fake"], default="local")
     m.add_argument("--llm", default=None, help="provider spec for the model-backed tools")
-    mo = sub.add_parser("monitor", help="weekly watch: refresh opportunities, re-run briefs, "
-                        "compare with the last run, draft an email (never sent)")
-    mo.add_argument("--author", action="append", default=[],
-                    help="OpenAlex author id to watch (repeatable; default PERCH_WATCH)")
-    mo.add_argument("--as-of", default=None, help="run date, YYYY-MM-DD (default today)")
-    mo.add_argument("--no-refresh", action="store_true", help="skip the Grants.gov refresh")
-    mo.add_argument("--limit", type=int, default=None, help="refresh: stop after N listings")
-    mo.add_argument("--no-explain", action="store_true", help="briefs without explanations")
-    mo.add_argument("--models", choices=["local", "fake"], default="local")
-    mo.add_argument("--llm", default=None, help="provider spec for the skills")
     sub.add_parser("samples", help="load the SYNTHETIC sample scholarships into their own "
                    "store (student mode)")
     sv = sub.add_parser("serve", help="run the HTTP API")
@@ -587,7 +544,7 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
     args.grants_factory = grants_factory
     commands = {"resolve": cmd_resolve, "samples": cmd_samples,
                 "fetch": cmd_fetch, "profile": cmd_profile,
-                "brief": cmd_brief, "serve": cmd_serve, "monitor": cmd_monitor, "scout": cmd_scout,
+                "brief": cmd_brief, "serve": cmd_serve, "scout": cmd_scout,
                 "mcp": cmd_mcp}
     with (client_factory or default_client)() as client:
         return commands[args.command](args, client)

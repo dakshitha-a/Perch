@@ -36,7 +36,7 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
   const draw = () => renderStudentStart(root, { api, mode, go, announce, info });
   if (!mode.state.available) {
     fill(root, h("div", { class: "private" }, h("h1", { text: "Student mode" }),
-      h("p", { class: "notice", text: `Student mode needs private mode, which is not available here. ${mode.state.reason}` }),
+      h("p", { class: "notice", text: `Student mode is not available on this server. ${mode.state.reason}` }),
       h("p", {}, h("a", { href: "#/", text: "Back to Find" }))));
     return;
   }

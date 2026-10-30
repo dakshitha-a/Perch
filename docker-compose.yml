@@ -19,13 +19,15 @@ services:
       OLLAMA_BASE_URL: http://127.0.0.1:11437
       PERCH_CLEF_URL: http://127.0.0.1:8094
       PERCH_CLEF_FLASH_URL: http://127.0.0.1:8095
-      # The weekly watch (S16): the demo researchers, as in scripts/demo_warm.py.
-      PERCH_WATCH: A5034175589,A5026494099,A5057472361
-      # Private mode on the public URL (Q22, Dakshitha, 2026-10-29). Every model above is on
-      # loopback, and Tailscale Funnel decrypts on this node, so TLS ends on the server.
+      # Every brief is a session held in memory (S23). Every model above is on loopback,
+      # and Tailscale Funnel decrypts on this node, so TLS ends on the server.
       PERCH_PRIVATE_MODE: "1"
       PERCH_TLS_AT: server
       PERCH_PRIVATE_OPERATOR: Dakshitha, Temple University
+      # Cloud by choice (S23): a visitor may turn it on for a brief with no documents.
+      # The key comes from .env; the adapter's $100 cap and this daily cap both apply.
+      PERCH_CLOUD: anthropic:claude-sonnet-5-5
+      PERCH_CLOUD_BRIEFS_PER_DAY: "30"
     volumes:
       - ./data:/app/data
     restart: unless-stopped

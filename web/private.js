@@ -1,5 +1,5 @@
-// Private mode (S13, docs/design/PRIVATE_MODE.md): add private documents, build a brief
-// on self-hosted models, export with private text withheld or masked, end the session.
+// Your documents (S13, docs/design/PRIVATE_MODE.md; every brief is a session since S23):
+// add private documents, build a brief on self-hosted models, export with private text withheld or masked, end the session.
 // Nothing here touches browser storage: inputs live in this module and are cleared
 // when the session ends.
 
@@ -35,12 +35,12 @@ function statement() {
 }
 
 export async function renderPrivate(root, { api, go, announce, mode }) {
-  document.title = "Private mode — Perch";
+  document.title = "Your documents — Perch";
   if (mode) MODE = mode;
   if (!P.info) await privateAvailable(api);
   if (!P.info || !P.info.enabled) {
-    fill(root, h("div", { class: "private" }, h("h1", { text: "Private mode" }),
-      h("p", { class: "notice", text: "Private mode is not available on this server. It needs every model to run on the server itself." }),
+    fill(root, h("div", { class: "private" }, h("h1", { text: "Your documents" }),
+      h("p", { class: "notice", text: "Documents are not available on this server. They need every model to run on the server itself." }),
       h("p", {}, h("a", { href: "#/", text: "Back to Find" }))));
     return;
   }
@@ -56,7 +56,7 @@ export async function renderPrivate(root, { api, go, announce, mode }) {
     P.busy = true; P.error = null; draw();
     try {
       if (MODE) await MODE.enable(); else await api.start();
-      announce("Private session started.");
+      announce("Session started.");
     } catch (e) { P.error = e.message; }
     P.busy = false; draw();
   }
@@ -108,10 +108,10 @@ export async function renderPrivate(root, { api, go, announce, mode }) {
   const body = !api.open
     ? [h("p", { class: "lede", text: "Add a CV, a draft proposal, a research direction or unpublished work, and get routes tailored to it." }),
       h("ul", { class: "plain" },
-        h("li", { text: "Only models running on this server read your documents." }),
+        h("li", { text: "Only models running on this server read your documents, even when Cloud is offered." }),
         h("li", { text: "Nothing you add is saved, logged or sent elsewhere. Ending the session, closing this tab for 30 minutes, or a server restart drops everything." }),
         h("li", { text: "Exports leave out anything drawn from your documents unless you choose to mask it." })),
-      h("button", { class: "btn primary", disabled: P.busy, onclick: start }, icon("lock"), h("span", { text: "Start a private session" }))]
+      h("button", { class: "btn primary", disabled: P.busy, onclick: start }, icon("lock"), h("span", { text: "Start a session" }))]
     : [
       h("ol", { class: "private-docs" }, Object.entries(kinds).map(([kind, label]) => {
         const d = P.docs.find((x) => x.kind === kind);
@@ -136,11 +136,11 @@ export async function renderPrivate(root, { api, go, announce, mode }) {
       h("p", { id: "p-author-hint", class: "hint", text: "With an ID, your public papers count too: they take 40% of the weight and your documents 60%. Without one, the brief runs on your documents alone." }),
       h("div", { class: "doc-actions" },
         h("button", { class: "btn primary", disabled: P.busy || !have.size || (have.size === 1 && have.has("cv")), onclick: build },
-          h("span", { text: P.busy ? "Starting" : "Build private brief" })),
+          h("span", { text: P.busy ? "Starting" : "Build brief" })),
         endButton(api, go))];
 
   fill(root, h("div", { class: "private" },
-    h("h1", {}, icon("lock"), h("span", { text: " Private mode" })),
+    h("h1", {}, icon("lock"), h("span", { text: " Your documents" })),
     statement(),
     P.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: P.error })) : null,
     ...body));
@@ -151,7 +151,7 @@ export function endButton(api, go) {
     if (MODE) await MODE.disable(null); else await api.end();
     Object.assign(P, { docs: [], authorId: "", drafts: {}, error: null, busy: false, unmasked: "" });
     go("#/private");
-  } }, icon("dismiss"), h("span", { text: "End private session" }));
+  } }, icon("dismiss"), h("span", { text: "End session" }));
 }
 
 // The bar on a private brief: lock, end, exports (withheld by default, masked on opt-in)
@@ -170,7 +170,7 @@ export function privateBar(api, go, briefId) {
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
   return h("section", { class: "private-bar card" },
-    h("div", { class: "private-bar-head" }, lockLabel("Private session"), endButton(api, go)),
+    h("div", { class: "private-bar-head" }, lockLabel("Session in memory"), endButton(api, go)),
     h("p", { class: "hint", text: "Exports leave out text drawn from your documents. Mask it instead to keep that text with names, identifiers and private phrases replaced." }),
     h("label", { class: "check" }, h("input", { type: "checkbox", onchange: (e) => { mask = e.target.checked; warn.hidden = !mask; } }),
       h("span", { text: "Mask private text in exports and hand-offs" })),

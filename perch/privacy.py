@@ -1,7 +1,13 @@
 """Private-mode groundwork (S9; design in docs/design/PRIVATE_MODE.md, built in S13).
 
+Since S23 every brief is a private session, so sessions are on by default.
+
 Settings, read from the environment:
-  PERCH_PRIVATE_MODE       "1" turns private sessions on (default off)
+  PERCH_PRIVATE_MODE       "0" turns sessions off (default on); the web app then has no briefs
+  PERCH_CLOUD              a cloud model spec a session may turn on, e.g.
+                           "anthropic:claude-sonnet-5-5" (default none: Local only)
+  PERCH_CLOUD_BRIEFS_PER_DAY  cloud briefs the whole server runs per day (default 30)
+  PERCH_PUBLIC_CACHE       "0" stops sessions writing public records to the store (default on)
   PERCH_PRIVATE_ENDPOINTS  hosts a private session may send model calls to, comma-separated
                            (default loopback: 127.0.0.1, localhost, ::1)
   PERCH_TLS_AT             where HTTPS is decrypted: "server" (on the Perch server, as with
@@ -32,15 +38,29 @@ class PrivateSettings:
     tls_at: str | None
     public_url: str | None
     operator: str | None = None
+    cloud_spec: str | None = None
+    public_cache: bool = False
+    cloud_per_day: int = 30
 
     @classmethod
     def from_env(cls) -> PrivateSettings:
         hosts = [h.strip().lower() for h in (env("PERCH_PRIVATE_ENDPOINTS") or "").split(",")
                  if h.strip()]
-        return cls(enabled=env("PERCH_PRIVATE_MODE") == "1",
+        return cls(enabled=env("PERCH_PRIVATE_MODE") != "0",
                    endpoints=tuple(hosts) or LOOPBACK,
                    tls_at=env("PERCH_TLS_AT"), public_url=env("PERCH_PUBLIC_URL"),
-                   operator=env("PERCH_PRIVATE_OPERATOR"))
+                   operator=env("PERCH_PRIVATE_OPERATOR"),
+                   cloud_spec=env("PERCH_CLOUD") or None,
+                   public_cache=env("PERCH_PUBLIC_CACHE") != "0",
+                   cloud_per_day=int(env("PERCH_CLOUD_BRIEFS_PER_DAY") or 30))
+
+    @property
+    def cloud_provider(self) -> str | None:
+        """The company a cloud spec sends text to, named in the warning."""
+        if not self.cloud_spec:
+            return None
+        adapter = self.cloud_spec.partition(":")[0]
+        return {"anthropic": "Anthropic"}.get(adapter, adapter)
 
     def endpoint_allowed(self, url: str) -> bool:
         """True when a model endpoint's host is on the allowlist. Hosted APIs never are,
@@ -55,16 +75,16 @@ class PrivateSettings:
         if self.enabled and self.public_url and not self.tls_at:
             out.append("private mode on a public URL needs PERCH_TLS_AT, so users are told "
                        "where their connection is decrypted")
-        if self.enabled and not self.operator:
+        if self.enabled and self.public_url and not self.operator:
             out.append("private mode needs PERCH_PRIVATE_OPERATOR, so the privacy statement "
                        "names who runs the server")
         return out
 
     def statement(self) -> str:
         """The promise shown in the UI (docs/design/PRIVATE_MODE.md)."""
-        s = (f"Private mode uses only models running on the Perch server, run by "
-             f"{self.operator or 'UNVERIFIED'}. What you add is held in memory for this session "
-             "and is never saved, logged or sent elsewhere.")
+        s = (f"Perch keeps nothing about you. Your brief and anything you add are held in memory "
+             f"for this session only and are never saved or logged. With Local on, every model "
+             f"runs on the Perch server, run by {self.operator or 'the operator of this server'}.")
         if self.tls_at and self.tls_at.startswith("tunnel:"):
             s += (f" Your connection is decrypted by {self.tls_at.split(':', 1)[1]} before it "
                   "reaches the server.")
@@ -102,7 +122,7 @@ def refuse_if_not_local(provider: object, private: PrivateSettings) -> None:
     PermissionError, never falls back."""
     name = getattr(provider, "name", "")
     if name not in LOCAL_ADAPTERS:
-        raise PermissionError(f"private sessions cannot use {name}: hosted API")
+        raise PermissionError(f"private sessions cannot use {name}: hosted API (Local)")
     refuse_endpoints(provider, private)
 
 

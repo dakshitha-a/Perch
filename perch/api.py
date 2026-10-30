@@ -2,10 +2,13 @@
 
   GET  /health[?deep=true]                     liveness; deep: each model service up or down
   GET  /authors/resolve?q=<name|orcid|id>      candidates for the Find screen
+Since S23 the web app runs every brief in a session (/private/*, perch/private/routes.py),
+and nothing about a visitor is stored. The stored-brief routes below exist only when
+PERCH_STORED_BRIEFS=1 (development, the bench, replays); otherwise they answer 404.
+
   POST /briefs                                  {"author_id", "as_of"?, "top"?, "explain"?, ...}
-                                                a finished brief with the same options from the
-                                                last 24 h is reused (200); else a job (202),
-                                                limited to 10 new briefs an hour per visitor
+                                                a job (202), limited to 10 new briefs an hour
+                                                per visitor
   GET  /briefs/{id}                             status, stages, profile, leads with records
   POST /briefs/{id}/leads/{lead_id}/keep        and /dismiss, /restore
   GET  /briefs/{id}/export.json[?status=kept]   brief, leads and every record they cite
@@ -15,10 +18,7 @@
   POST /briefs/{id}/handoff                     {"office", "lead_ids"?}: a hand-off draft to one
                                                 Temple office about the kept leads (skill 3);
                                                 returned, never stored or sent
-  GET  /records/{id}                            any stored record, with provenance
-  GET  /watch                                   the latest monitoring run per watched
-                                                researcher: what changed and the email
-                                                draft (S16); drafts are never sent
+  GET  /records/{id}                            a stored public record, with provenance
   POST /briefs/{id}/scout                       {"question", "mode": "ask"|"run"}: a Scout
                                                 session about the brief (S10)
   GET  /scout/{session}                         its questions, tool cards and answers
@@ -42,7 +42,7 @@ from pathlib import Path
 from typing import Literal
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -68,13 +68,14 @@ from perch.schemas import (
 from perch.scout.hub import Busy, ScoutHub
 from perch.scout.hub import view as scout_view
 from perch.scout.log import ScoutLog
-from perch.service import BriefService, brief_options
+from perch.service import BriefService
 from perch.skills.handoff import Draft
 from perch.sources import grants_gov
 from perch.sources import openalex as oa
 from perch.store.base import Repository
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+USER_KINDS = ("brief", "lead", "digest")  # records about a visitor, never served without a session
 KEY_PAPERS = 5  # per thread, most recent-weighted first (thread order from perch.profile)
 
 
@@ -232,7 +233,15 @@ def up(url: str) -> bool:
 def create_app(service: BriefService, runner: JobRunner,
                resolver: type[oa.OpenAlexClient] | None = None,
                web_dir: Path | None = WEB_DIR, scout_runner: JobRunner | None = None,
-               scout_log: ScoutLog | None = None) -> FastAPI:
+               scout_log: ScoutLog | None = None, stored_briefs: bool | None = None) -> FastAPI:
+    if stored_briefs is None:
+        stored_briefs = env("PERCH_STORED_BRIEFS") == "1"
+
+    def stored_only() -> None:
+        if not stored_briefs:
+            raise HTTPException(404, "Briefs are not stored on this server; use a session.")
+
+    STORED = [Depends(stored_only)]
     app = FastAPI(title="Perch API", description="See every route to fund your work. "
                   + grants_gov.ATTRIBUTION, version="0.1.0")
     @app.exception_handler(RequestValidationError)
@@ -276,17 +285,11 @@ def create_app(service: BriefService, runner: JobRunner,
         return {"candidates": [record_json(x) for x in found]}
 
     limiter = RateLimiter(int(env("PERCH_BRIEFS_PER_HOUR") or 10))
-    reuse_hours = float(env("PERCH_BRIEF_REUSE_HOURS") or 24)
 
-    @app.post("/briefs", status_code=202)
-    def create_brief(req: BriefRequest, request: Request, response: Response) -> dict:
+    @app.post("/briefs", status_code=202, dependencies=STORED)
+    def create_brief(req: BriefRequest, request: Request) -> dict:
         if not oa.parse_author_id(req.author_id):
             raise HTTPException(422, f"not an OpenAlex author id: {req.author_id!r}")
-        options = brief_options(req.as_of, req.top, req.explain, req.min_amount, req.agencies,
-                                req.context())
-        if reuse_hours > 0 and (b := service.reuse(req.author_id, options, reuse_hours)):
-            response.status_code = 200  # a finished brief: no job, not counted in the limit
-            return {"id": b.id, "status": b.status, "poll": f"/briefs/{b.id}", "reused": True}
         wait = limiter.take(client_key(request))
         if wait:
             raise HTTPException(429, f"Limit of {limiter.per_hour} new briefs an hour reached. "
@@ -304,7 +307,7 @@ def create_app(service: BriefService, runner: JobRunner,
             raise HTTPException(404, f"no brief {brief_id!r}")
         return got
 
-    @app.get("/briefs/{brief_id}")
+    @app.get("/briefs/{brief_id}", dependencies=STORED)
     def get_brief(brief_id: str) -> dict:
         return brief_view(brief_id)
 
@@ -339,19 +342,19 @@ def create_app(service: BriefService, runner: JobRunner,
             raise HTTPException(404, f"no lead {lead_id!r} in brief {brief_id!r}")
         return lead.model_dump(mode="json")
 
-    @app.post("/briefs/{brief_id}/leads/{lead_id}/keep")
+    @app.post("/briefs/{brief_id}/leads/{lead_id}/keep", dependencies=STORED)
     def keep(brief_id: str, lead_id: str) -> dict:
         return set_status(brief_id, lead_id, "kept")
 
-    @app.post("/briefs/{brief_id}/leads/{lead_id}/dismiss")
+    @app.post("/briefs/{brief_id}/leads/{lead_id}/dismiss", dependencies=STORED)
     def dismiss(brief_id: str, lead_id: str) -> dict:
         return set_status(brief_id, lead_id, "dismissed")
 
-    @app.post("/briefs/{brief_id}/leads/{lead_id}/restore")
+    @app.post("/briefs/{brief_id}/leads/{lead_id}/restore", dependencies=STORED)
     def restore(brief_id: str, lead_id: str) -> dict:
         return set_status(brief_id, lead_id, "new")
 
-    @app.get("/briefs/{brief_id}/export.json")
+    @app.get("/briefs/{brief_id}/export.json", dependencies=STORED)
     def export(brief_id: str, status: str | None = None) -> dict:
         return export_json(brief_id, status)
 
@@ -410,19 +413,19 @@ def create_app(service: BriefService, runner: JobRunner,
         return (ex.blocks(b, res, leads, opps, orgs, works, rows, masker=masker),
                 f"Perch brief: {name}")
 
-    @app.get("/briefs/{brief_id}/export.md")
+    @app.get("/briefs/{brief_id}/export.md", dependencies=STORED)
     def export_md(brief_id: str, status: Literal["kept"] | None = None) -> Response:
         bs, _ = export_blocks(brief_id, status)
         return Response(ex.to_markdown(bs), media_type="text/markdown; charset=utf-8",
                         headers={"Content-Disposition":
                                  f'attachment; filename="perch-brief-{brief_id}.md"'})
 
-    @app.get("/briefs/{brief_id}/export.html")
+    @app.get("/briefs/{brief_id}/export.html", dependencies=STORED)
     def export_html(brief_id: str, status: Literal["kept"] | None = None) -> Response:
         bs, title = export_blocks(brief_id, status)
         return Response(ex.to_html(bs, title), media_type="text/html; charset=utf-8")
 
-    @app.get("/briefs/{brief_id}/compare")
+    @app.get("/briefs/{brief_id}/compare", dependencies=STORED)
     def compare_view(brief_id: str, status: Literal["kept", "all"] = "kept") -> dict:
         b, leads = load(brief_id)
         with service.repo() as r:
@@ -431,7 +434,7 @@ def create_app(service: BriefService, runner: JobRunner,
 
     handoff_limiter = RateLimiter(int(env("PERCH_HANDOFF_PER_HOUR") or 30))
 
-    @app.post("/briefs/{brief_id}/handoff")
+    @app.post("/briefs/{brief_id}/handoff", dependencies=STORED)
     def handoff(brief_id: str, req: HandoffRequest, request: Request) -> dict:
         load(brief_id)
         wait = handoff_limiter.take(client_key(request))
@@ -451,34 +454,9 @@ def create_app(service: BriefService, runner: JobRunner,
                 x = r.get_any(f"https://openalex.org/{record_id}")
             if x is None:  # an opportunity number, as cited in explanations
                 x = r.get_any(f"grants_gov:{record_id}")
-        if x is None:
+        if x is None or (not stored_briefs and x.kind in USER_KINDS):
             raise HTTPException(404, f"no record {record_id!r}")
         return record_json(x)
-
-    @app.get("/watch")
-    def watch() -> dict:
-        from perch import monitor
-
-        out = []
-        with service.repo() as r:
-            for d in sorted(monitor.latest(r), key=lambda d: d.fetched_at, reverse=True):
-                res = r.get(Researcher, d.researcher_id)
-                base = r.get(Brief, d.baseline_brief_id) if d.baseline_brief_id else None
-                cur = r.get(Brief, d.brief_id)
-                out.append({
-                    "id": d.id, "run_at": d.fetched_at.isoformat(), "as_of": d.as_of.isoformat(),
-                    "researcher": {"id": d.researcher_id,
-                                   "name": res.display_name if res else None},
-                    "brief_id": d.brief_id,
-                    "award_horizon": (cur.award_horizon.isoformat()
-                                      if cur and cur.award_horizon else None),
-                    "baseline": ({"brief_id": base.id, "as_of": base.options.get("as_of")}
-                                 if base else None),
-                    "changes": [c.model_dump() for c in d.changes],
-                    "draft": ({"subject": d.draft_subject, "body": d.draft_body}
-                              if d.draft_subject else None),
-                    "refresh": d.refresh})
-        return {"digests": out, "notice": grants_gov.ATTRIBUTION}
 
     # --- Scout (S10) ---
     hub = ScoutHub(service, scout_runner or runner, scout_log)
@@ -491,7 +469,7 @@ def create_app(service: BriefService, runner: JobRunner,
                                 f"hour reached. Try again in {wait // 60 + 1} minutes.",
                                 headers={"Retry-After": str(wait)})
 
-    @app.post("/briefs/{brief_id}/scout", status_code=202)
+    @app.post("/briefs/{brief_id}/scout", status_code=202, dependencies=STORED)
     def scout_start(brief_id: str, req: ScoutRequest, request: Request) -> dict:
         b, _ = load(brief_id)
         if b.status != "done":
@@ -508,11 +486,11 @@ def create_app(service: BriefService, runner: JobRunner,
                                 "restarts.")
         return e
 
-    @app.get("/scout/{sid}")
+    @app.get("/scout/{sid}", dependencies=STORED)
     def scout_get(sid: str) -> dict:
         return scout_view(entry(sid))
 
-    @app.post("/scout/{sid}/{action}", status_code=202)
+    @app.post("/scout/{sid}/{action}", status_code=202, dependencies=STORED)
     def scout_act(sid: str, action: Literal["approve", "skip", "ask", "mode"],
                   req: ScoutRequest, request: Request) -> dict:
         e = entry(sid)

@@ -15,11 +15,17 @@ def settings(**kw):
     return PrivateSettings(**{**base, **kw})
 
 
-def test_defaults_are_off_and_loopback(monkeypatch):
-    for k in ("PERCH_PRIVATE_MODE", "PERCH_PRIVATE_ENDPOINTS", "PERCH_TLS_AT"):
+def test_defaults_are_sessions_on_local_only_and_loopback(monkeypatch):
+    for k in ("PERCH_PRIVATE_MODE", "PERCH_PRIVATE_ENDPOINTS", "PERCH_TLS_AT", "PERCH_CLOUD",
+              "PERCH_PUBLIC_CACHE"):
         monkeypatch.delenv(k, raising=False)
+    s = PrivateSettings.from_env()  # S23: every brief is a session; no cloud unless set
+    assert s.enabled and s.endpoints == ("127.0.0.1", "localhost", "::1")
+    assert s.cloud_spec is None and s.cloud_provider is None and s.public_cache
+    monkeypatch.setenv("PERCH_PRIVATE_MODE", "0")
+    monkeypatch.setenv("PERCH_CLOUD", "anthropic:claude-sonnet-5-5")
     s = PrivateSettings.from_env()
-    assert not s.enabled and s.endpoints == ("127.0.0.1", "localhost", "::1")
+    assert not s.enabled and s.cloud_provider == "Anthropic"
     assert s.endpoint_allowed("http://127.0.0.1:11437") and s.endpoint_allowed("http://[::1]:8094")
     assert not s.endpoint_allowed("https://api.anthropic.com/v1/messages")
 
@@ -32,9 +38,11 @@ def test_public_url_without_tls_location_is_refused():
     assert any('"server"' in x for x in settings(tls_at="tunnel:").problems())
 
 
-def test_private_mode_needs_a_named_operator():
-    assert any("PERCH_PRIVATE_OPERATOR" in x for x in settings(tls_at="server").problems())
-    assert settings(tls_at="server", operator="Lab IT").problems() == []
+def test_a_public_url_needs_a_named_operator():
+    pub = {"public_url": "https://perch.example.org", "tls_at": "server"}
+    assert any("PERCH_PRIVATE_OPERATOR" in x for x in settings(**pub).problems())
+    assert settings(tls_at="server").problems() == []  # a local server needs no name
+    assert settings(**pub, operator="Lab IT").problems() == []
     assert settings(enabled=False).problems() == []
     assert "run by Lab IT" in settings(operator="Lab IT").statement()
     assert "decrypted by example" in settings(operator="x", tls_at="tunnel:example").statement()

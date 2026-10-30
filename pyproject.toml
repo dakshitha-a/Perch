@@ -51,6 +51,7 @@ select = ["E", "F", "I", "B", "UP", "ANN"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN"]
+"perch/shelved/monitor/tests/**" = ["ANN"]
 "scripts/render_tracker.py" = ["E501"]  # inline CSS
 "scripts/ux_walk.py" = ["E501"]  # inline JavaScript probes
 "scripts/tour/animate.py" = ["ANN", "E501", "B905"]  # copied unchanged from NextTex

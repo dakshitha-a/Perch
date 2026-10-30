@@ -163,12 +163,24 @@ def files_with(root, tokens, since=None):
     return hits
 
 
-def test_canary_leaves_no_trace(tmp_path, monkeypatch, capfd):
+def user_rows(db):
+    import sqlite3
+
+    with sqlite3.connect(db) as con:
+        return con.execute("SELECT count(*) FROM records WHERE kind IN ('brief', 'lead', "
+                           "'digest')").fetchone()[0]
+
+
+@pytest.mark.parametrize("public_cache", [False, True])
+def test_canary_leaves_no_trace(tmp_path, monkeypatch, capfd, public_cache):
+    """S23: with the public cache on (the default), the researcher's public records may be
+    written to the store, and nothing else: no brief, lead or other file changes."""
     import time
 
     import httpx
 
     start = time.time()
+    monkeypatch.setenv("PERCH_PUBLIC_CACHE", "1" if public_cache else "0")
     c, service = private_app(tmp_path, monkeypatch)
     sent = []
     real_send = httpx.Client.send
@@ -179,6 +191,7 @@ def test_canary_leaves_no_trace(tmp_path, monkeypatch, capfd):
 
     monkeypatch.setattr(httpx.Client, "send", spy)
     before = snapshot(tmp_path)
+    rows = user_rows(service.db)
     h = open_with_persona(c)
     assert c.post("/private/documents", headers=h, json={
         "kind": "direction", "text": "SYNTHETIC direction PERCH-CANARY-DIR-Z5P1: home gait "
@@ -200,7 +213,13 @@ def test_canary_leaves_no_trace(tmp_path, monkeypatch, capfd):
         assert sc.status_code == 202, sc.text
     assert c.post("/private/end", headers=h).json()["ended"]
     canaries = [*CANARIES, "PERCH-CANARY-DIR-Z5P1"]
-    assert snapshot(tmp_path) == before, "a private session wrote to the data directory"
+    after = snapshot(tmp_path)
+    if public_cache:  # only the store may change, and only with public records
+        after.pop(service.db, None), before.pop(service.db, None)
+        assert user_rows(service.db) == rows
+        with service.repo() as r:
+            assert r.works_by_author("https://openalex.org/A5026494099"), "public data cached"
+    assert after == before, "a private session wrote to the data directory"
     assert files_with(tmp_path, canaries) == []
     assert files_with("/tmp", canaries, since=start) == []
     out, err = capfd.readouterr()
@@ -352,3 +371,71 @@ def test_private_screens_never_use_browser_storage():
     src = "".join((web / f).read_text() for f in ("private.js", "api.js", "student.js", "mode.js"))
     assert not any(x in src for x in ("localStorage", "sessionStorage", "indexedDB",
                                       "document.cookie"))
+
+
+def test_a_brief_needs_no_document_and_carries_the_context_fields(tmp_path, monkeypatch):
+    c, service = private_app(tmp_path, monkeypatch)
+    h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    assert c.post("/private/brief", headers=h, json={}).status_code == 422
+    rows = user_rows(service.db)
+    r = c.post("/private/brief", headers=h, json={
+        "author_id": "A5026494099", "as_of": "2026-10-28", "direction": "home gait sensing",
+        "exclude_keywords": ["  "], "career_stage": "early_stage"})
+    assert r.status_code == 202, r.text
+    b = c.get("/private/brief", headers=h).json()["brief"]
+    assert b["status"] == "done" and b["options"]["models"] == "local"
+    assert b["options"]["direction"] == "home gait sensing" and "exclude_keywords" not in \
+        b["options"] and b["options"]["career_stage"] == "early_stage"
+    assert any(t.get("said") for t in b["threads"])  # "You said" steers as a query
+    assert user_rows(service.db) == rows  # the brief stays in the session
+
+
+def test_cloud_is_confirmed_by_name_and_never_takes_documents(tmp_path, monkeypatch):
+    from perch.llm.fake import FakeProvider
+    from perch.private.session import PrivateModels
+
+    monkeypatch.setenv("PERCH_CLOUD", "anthropic:claude-sonnet-5-5")
+    c, service = private_app(tmp_path, monkeypatch)
+    info = c.get("/private").json()["cloud"]
+    assert info["available"] and info["provider"] == "Anthropic" and "Anthropic" in info["warning"]
+    h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    assert c.post("/private/cloud", headers=h, json={"on": True}).status_code == 422
+    assert c.post("/private/cloud", headers=h,
+                  json={"on": True, "confirm": "anthropic"}).json()["cloud"] is True
+    assert c.post("/private/documents", headers=h, json={
+        "kind": "direction", "text": "SYNTHETIC direction"}).status_code == 409
+    assert c.post("/private/cloud", headers=h, json={"on": False}).json()["cloud"] is False
+    assert c.post("/private/documents", headers=h, json={
+        "kind": "direction", "text": "SYNTHETIC direction"}).status_code == 201
+    assert c.post("/private/cloud", headers=h,
+                  json={"on": True, "confirm": "Anthropic"}).status_code == 409
+
+    # The gate: the cloud spec passes only while Cloud is on, and only that spec.
+    class Hosted(FakeProvider):
+        name = "anthropic"
+
+    s = PrivateSettings(enabled=True, endpoints=("127.0.0.1",), tls_at=None, public_url=None,
+                        cloud_spec="anthropic:claude-sonnet-5-5")
+    service.models.provider = lambda spec: Hosted()
+    on = {"v": False}
+    m = PrivateModels(service.models, s, lambda: on["v"])
+    with pytest.raises(PermissionError):
+        m.provider("anthropic:claude-sonnet-5-5")
+    on["v"] = True
+    assert m.fit_spec == "anthropic:claude-sonnet-5-5"
+    assert m.provider("anthropic:claude-sonnet-5-5").name == "anthropic"
+    with pytest.raises(PermissionError):
+        m.provider("anthropic:claude-opus-5-5")
+
+
+def test_cloud_briefs_stop_at_the_daily_cap(tmp_path, monkeypatch):
+    monkeypatch.setenv("PERCH_CLOUD", "anthropic:claude-sonnet-5-5")
+    monkeypatch.setenv("PERCH_CLOUD_BRIEFS_PER_DAY", "1")
+    c, _ = private_app(tmp_path, monkeypatch)
+    h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    c.post("/private/cloud", headers=h, json={"on": True, "confirm": "Anthropic"})
+    body = {"author_id": "A5026494099", "as_of": "2026-10-28", "explain": False}
+    assert c.post("/private/brief", headers=h, json=body).status_code == 202  # no model call
+    body["explain"] = True
+    statuses = [c.post("/private/brief", headers=h, json=body).status_code for _ in range(2)]
+    assert statuses[1] == 429

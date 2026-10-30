@@ -135,7 +135,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S23</code> <span class="badge s-todo">todo</span><span>23/26 sessions done</span></div>
+<div class="at-a-glance"><code>S23</code> <span class="badge s-in-progress">in progress</span><span>23/27 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -670,13 +670,25 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-current" class="view" data-view="current" hidden>
 <div id="s23"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S23 · Private by default, local models first</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S23.md</code> when the session starts.</div>
+<div class="title-row"><h1>S23 · Private by default, local models first</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-29 20:20 EDT</div></div>
+<p>Goal: with no user accounts, nothing a user enters or receives is stored, and models run locally unless the user chooses a cloud provider (Dakshitha, 2026-10-29). Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 5 tasks done"><div class="counts"><span><b>0/5</b>tasks done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>4</b>todo</span></div><div class="bar" role="img" aria-label="0 of 5 tasks done"><span class="s-in-progress" style="width:20.00%" title="in progress: 1"></span><span class="s-todo" style="width:80.00%" title="todo: 4"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Private by default: every brief is an in-memory session; no stored briefs, reuse, browser history or per-user logs; public data stays cached.</td><td><span class="badge s-in-progress">in progress</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td>Local or Cloud header switch, local by default; the cloud warning names the provider and the user confirms first; the gate allows the cloud provider only for that session.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>Monitoring shelved to <code>perch/shelved/monitor/</code>: What changed screen, <code>GET /watch</code>, the Monday timer and the Help step go.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td>Docs and tests: private-mode.md, Help, README, SPEC, the canary (default path, plus Cloud on with SYNTHETIC text), the S21 walk.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>5</td><td>Demo rebuilt; canary passes with Local; <code>make test</code> green.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>A fresh visitor on the public URL gets a brief that leaves no record of them on the server, local models by default, the cloud warning before any cloud call, and no monitoring in the app.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="23 of 26 sessions done"><div class="counts"><span><b>23/26</b>sessions done</span><span class="s-done"><b>23</b>done</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="23 of 26 sessions done"><span class="s-done" style="width:88.46%" title="done: 23"></span><span class="s-todo" style="width:11.54%" title="todo: 3"></span></div></section>
+<section class="panel summary" aria-label="23 of 27 sessions done"><div class="counts"><span><b>23/27</b>sessions done</span><span class="s-done"><b>23</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="23 of 27 sessions done"><span class="s-done" style="width:85.19%" title="done: 23"></span><span class="s-in-progress" style="width:3.70%" title="in progress: 1"></span><span class="s-todo" style="width:11.11%" title="todo: 3"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -703,16 +715,17 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s20">S20</a></td><td>QA and privacy audit</td><td><span class="badge s-done">done</span></td><td>2026-10-29 18:50 EDT</td><td>2026-10-29 18:53 EDT</td><td class="mono">see git log</td><td>246 tests green. Privacy audit with student mode: fixed CV-quoting lines leaving unwithheld in the JSON export, a missing sample banner there, and a research-office hand-off offered for a student brief. Live canary rerun clean; the private-only brief now explains 10 of 10 leads (8 of 10 in S13). Sample-store isolation test added. Flaky Scout test fixed (random test order). README Known limits section. Task 1 dropped: no QA log exists (Q28).</td></tr>
 <tr class="is-finished"><td><a href="#s21">S21</a></td><td>UI/UX audit for three audiences</td><td><span class="badge s-done">done</span></td><td>2026-10-29 19:02 EDT</td><td>2026-10-29 19:19 EDT</td><td class="mono">see git log</td><td>Expert walkthrough on the public URL with <code>scripts/ux_walk.py</code> (axe-core 4.10.2): PI-4, three SYNTHETIC student personas and persona-1, phone and laptop, light and dark, 108 states. Private mode visible in all 54 private states. 6 must-fix (worst: the PI hand-off office picker lists student offices as \"undefined\"), 12 should-fix, 4 could-fix. Accessibility checklist in <code>docs/design/A11Y_CHECKLIST.md</code>. Options A (about 1 session), B (about 2), C (about 4); Q29 default B. UX tab on the tracker.</td></tr>
 <tr class="is-finished"><td><a href="#s22">S22</a></td><td>Redesign and rebuild</td><td><span class="badge s-done">done</span></td><td>2026-10-29 19:20 EDT</td><td>2026-10-29 19:54 EDT</td><td class="mono">see git log</td><td>Option B (Q29 default) live on the public URL: two doors on Find, student words, compact student and industry cards, the order explained, hand-off offices fixed, accessibility fixes. Walk on the dev server: 110 states, 0 axe violations, 0 failed steps. Review: 7 issues, all fixed. Live canary ok, 10 of 10 explained. 248 tests green. The media refilm (task 5) moved to S24.</td></tr>
-<tr class="is-current"><td>S23</td><td>Private by default, local models first</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s23">S23</a></td><td>Private by default, local models first</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-29 20:20 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S24</td><td>Media refilm</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S25</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S25</td><td>UI/UX review and full QA test</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S26</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Milestone</th><th>Date</th><th>Needs</th><th>Ready?</th></tr></thead>
 <tbody>
 <tr><td>Checkup 2</td><td>Tue 3 Nov</td><td>S0–S7</td><td></td></tr>
-<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S25 (after S17–S24, or their cut-order floors)</td><td></td></tr>
+<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S26 (after S17–S25, or their cut-order floors)</td><td></td></tr>
 <tr><td>Submission</td><td>Fri 6 Nov 12:00</td><td>ZIP + links</td><td></td></tr>
 </tbody></table></div>
 <h2>Key numbers (keep current)</h2>
@@ -1302,10 +1315,11 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (28)</h2>
+<h2>Plan change log (29)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-29</td><td>S25, S26</td><td>New S25 "UI/UX review and full QA test": the S21 walk and accessibility checklist rerun on the S23 app, an independent review, a written QA plan run row by row, and the privacy and leakage checks. Freeze and package becomes S26; its regression pass reruns only the QA rows touched since S25. Older notes that say "S25 task 2" for freeing the dev GPUs mean S26 task 2</td><td>Dakshitha asked for a UI/UX review and a full QA test before the freeze</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S22 to S25</td><td>Sessions reordered to the order of work: S22 task 5 (media refilm) becomes its own session S24, after S23 (private by default); freeze and package becomes S25. S22 is done without task 5. Older notes that say "S23 task 2" or "S24 task 2" for freeing the dev GPUs mean S25 task 2</td><td>Dakshitha asked to reorder the tracker phases and cascade the changes</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S23, S24</td><td>New S23 "Private by default, local models first": every session in memory with no stored briefs, reuse or history (public data stays cached); a Local / Cloud header switch, local by default, with a warning naming the provider before any cloud call; monitoring shelved in <code>perch/shelved/monitor/</code>. Freeze and package moves to S24. S22 task 5 (refilm) runs after S23, so the media are filmed once. Older notes that say "S23 task 2" mean S24 task 2 (superseded by the next row: S25 task 2)</td><td>Dakshitha: with no user access system nothing should be stored; the no-private-text-to-cloud rule is a challenge rule, and a real deployment may rely on zero-data-retention cloud keys</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S19, S22</td><td>S19 task 5 (Scout <code>search_scholarships</code>, from S18) cut to the student-mode floor in the cut order (Q27); S19 task 6 (the tracker's UI preview of the student flow) moves to S22, whose task 5 refilms the preview anyway</td><td>Scout's tools assume a researcher and its tab is hidden on student briefs; a private brief cannot be recorded for the replay preview without new work</td><td>Perch-dev</td></tr>

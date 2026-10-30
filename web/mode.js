@@ -30,7 +30,7 @@ export function createMode(api, hooks = {}) {
     // Start a session if none is open. Every path that takes personal text calls this
     // first and waits for it.
     async enable() {
-      if (!st.available) throw new Error(st.reason || "Private mode is not available here.");
+      if (!st.available) throw new Error(st.reason || "Sessions are not available on this server.");
       if (!api.open) await api.start();
       st.on = true;
       changed();

@@ -7,7 +7,6 @@ import { renderHelp } from "./help.js";
 import { compareOffices, loadCompare, renderCompare } from "./compare.js";
 import { renderHandoff } from "./handoff.js";
 import { renderScout } from "./scout.js";
-import { renderWatch } from "./watch.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
 import { lockLabel, privateAvailable, privateBar, privateInfo, renderPrivate, setMode } from "./private.js";
@@ -16,8 +15,9 @@ import { isStudent, renderStudentStart, studentCompare, studentProfile, studentR
 
 const publicApi = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
 const privApi = privateApi(window.PERCH_API || "");
-let api = publicApi; // privApi while a private brief (#/brief/private) is on screen
-// Private mode is a state of the whole app (S18): the header switch shows and sets it.
+let api = publicApi; // privApi while a session brief (#/brief/private) is on screen
+// Since S23 every brief runs in a session held in memory (private by default). The
+// header switch picks the models: Local (default) or Cloud, after a warning.
 const mode = createMode(privApi, { onChange: () => drawSwitch() });
 setMode(mode);
 const PRIVATE_ID = "private";
@@ -36,7 +36,8 @@ const SIGNALS = { citing_works: "They cite your papers", sbir_sttr: "NIH SBIR/ST
 const S = {
   find: { q: "", busy: false, error: null, candidates: null, searched: "", explain: true,
     minAmount: "", direction: "", include: "", exclude: "", stage: "", nudge: null },
-  privateOn: false, // the server offers private mode
+  privateOn: false, // the server offers sessions
+  cloud: false, // Cloud on for this session
   brief: null, // last GET /briefs payload
   briefId: null,
   tab: "profile",
@@ -97,15 +98,6 @@ function route() {
     api = publicApi;
     barOwl("idle");
     renderStudentStart(main(), { api: privApi, mode, go, announce, info: privateInfo() || {} });
-    return;
-  }
-  if (parts[0] === "changes") {
-    stopPolling();
-    S.briefId = null;
-    S.brief = null;
-    api = publicApi;
-    barOwl("idle");
-    renderWatch(main(), { api: publicApi, announce });
     return;
   }
   if (parts[0] === "brief" && parts[1]) {
@@ -179,7 +171,7 @@ function renderFind() {
     h("p", { id: "min-hint", class: "hint", text:
       "Leaves out opportunities whose record states a lower ceiling. Records that state no amount stay in." }),
     h("h3", { class: "mini", text: "Tell Perch more (optional)" }),
-    h("p", { class: "hint", text: "Saved with the brief and shown on its Profile as “You said”. Used to search, never as a fact. The configured model may read it. For a CV or unpublished work, use private mode." }),
+    h("p", { class: "hint", text: "Held with this brief in memory and shown on its Profile as “You said”. Used to search, never as a fact. With Cloud on, it is sent to the cloud model. For a CV or unpublished work, add documents instead." }),
     h("label", { class: "field-label", for: "dir", text: "Where your research is going" }),
     h("textarea", { id: "dir", rows: 3, maxlength: 1000, value: F.direction,
       placeholder: "A sentence or two", oninput: (e) => { F.direction = e.target.value; },
@@ -215,7 +207,6 @@ function renderFind() {
     h("ul", { class: "candidates" }, F.candidates.map(candidateCard)));
   }
 
-  const recent = recentBriefs();
   const page = h("div", { class: "find" },
     h("section", { class: "hero" }, F.candidates || F.error ? null : heroArt(),
       h("div", { class: "hero-text" },
@@ -225,41 +216,38 @@ function renderFind() {
     doors(form),
     nudgeBox(),
     h("div", { class: "results" }, results),
-    h("p", { class: "hero-help" }, h("a", { href: "#/help" }, icon("help"), h("span", { text: "New here? See how Perch works" })),
-      h("a", { href: "#/changes" }, icon("search"), h("span", { text: "What changed this week" }))),
-    recent.length ? h("section", { class: "recent" },
-      h("div", { class: "recent-head" },
-        h("h2", { class: "section-title", text: "Recent briefs on this device" }),
-        h("button", { class: "btn quiet", type: "button", onclick: clearRecent },
-          icon("dismiss"), h("span", { text: "Clear history" }))),
-      h("ul", {}, recent.map((r) => h("li", {}, h("a", { href: `#/brief/${encodeURIComponent(r.id)}/routes` },
-        h("span", { text: r.name }), h("span", { class: "hint", text: f.formatDate(r.at) })))))) : null);
+    h("p", { class: "hero-help" }, h("a", { href: "#/help" }, icon("help"), h("span", { text: "New here? See how Perch works" }))));
   fill(main(), page);
 }
 
 // Two equal doors (S22, audit S1): a researcher searches public records; a student
-// starts a private session first (S18), because a student's input is always personal.
+// adds a CV. Both run in a session held in memory (S23).
 function doors(form) {
   const ok = mode.state.available;
   return h("div", { class: "doors" },
     h("section", { class: "card door", "aria-labelledby": "door-r" },
       h("h2", { id: "door-r", class: "door-title", text: "I’m a researcher" }),
       h("p", { class: "hint", text: "Grants and industry leads from your public papers." }),
-      form),
+      form,
+      ok ? h("p", { class: "hint" }, h("a", { href: "#/private", "data-key": "docs-link" },
+        icon("lock"), h("span", { text: " Add a CV or unpublished work (optional, Local only)" }))) : null),
     h("section", { class: "card door", "aria-labelledby": "door-s" },
       h("h2", { id: "door-s", class: "door-title" }, icon("lock"), h("span", { text: " I’m a student" })),
       h("p", { class: "hint", id: "aud-hint", text: ok
-        ? "Paste your CV or résumé in a private session. Fellowships and sample scholarships are checked against it by rule."
-        : `Student mode needs private mode. ${mode.state.reason || "It is not available on this server."}` }),
+        ? "Paste your CV or résumé. Fellowships and sample scholarships are checked against it by rule, on local models."
+        : `Student mode is not available. ${mode.state.reason || "This server offers no sessions."}` }),
       h("button", { class: "btn primary", type: "button", disabled: !ok, "aria-describedby": "aud-hint",
         "data-key": "student",
         onclick: async () => {
-          try { await mode.enable(); go("#/student"); } catch (e) { S.find.error = e.message; renderFind(); }
+          try {
+            if (S.cloud) await setCloud(false); // a CV stays on local models
+            await mode.enable(); go("#/student");
+          } catch (e) { S.find.error = e.message; renderFind(); }
         } }, icon("lock"), h("span", { text: "Start as a student" }))));
 }
 
 // The paste nudge: a check in this browser only. Long or CV-like text pasted into a
-// public field gets an offer to move it into private mode. Nothing is sent until the
+// search field gets an offer to add it as a document instead. Nothing is sent until the
 // person chooses; search is held back while the offer is open.
 function pasted(e, field, kind) {
   const text = (e.clipboardData || window.clipboardData).getData("text");
@@ -275,50 +263,65 @@ function nudgeBox() {
   const value = () => (n.field === "q" ? F.q : F.direction);
   const clear = () => { if (n.field === "q") F.q = ""; else F.direction = ""; };
   return h("div", { class: "notice nudge", role: "alert" }, icon("lock"),
-    h("div", {}, h("p", { text: "This looks like personal text, such as a CV. Move it into private mode? Nothing has been sent." }),
+    h("div", {}, h("p", { text: "This looks like personal text, such as a CV. Add it as a document instead? Documents stay on local models. Nothing has been sent." }),
       h("div", { class: "doc-actions" },
         h("button", { class: "btn primary", type: "button", onclick: async () => {
           const text = value();
           try {
+            if (S.cloud) await setCloud(false);
             await mode.move(n.kind, text);
             clear();
             F.nudge = null;
             go(n.kind === "cv" ? "#/student" : "#/private");
           } catch (err) { F.nudge = null; F.error = err.message; renderFind(); }
-        } }, icon("lock"), h("span", { text: "Move to private mode" })),
+        } }, icon("lock"), h("span", { text: "Add as a document" })),
         h("button", { class: "btn", type: "button", onclick: () => { F.nudge = null; renderFind(); } },
           h("span", { text: "Keep it here" })))));
 }
 
-// ----- the Private switch in the header (S18) -----
+// ----- the Local / Cloud switch in the header (S23) -----
+
+const cloudInfo = () => (privateInfo() && privateInfo().cloud) || {};
 
 function drawSwitch() {
-  const b = $("#private-switch");
+  const b = $("#models-switch");
   if (!b) return;
-  const st = mode.state;
-  const on = st.on || privApi.open;
-  b.setAttribute("aria-checked", String(on));
-  b.disabled = !st.available && !on;
-  b.title = st.available ? (on ? "Private session on. Turn off to end it." : "Turn on private mode")
-    : `Private mode is unavailable: ${st.reason || "this server does not offer it"}`;
-  b.querySelector(".switch-word").textContent = "Private";
-  document.body.classList.toggle("private-on", on);
-  const label = $("#private-frame");
-  if (label) label.hidden = !on;
+  if (!privApi.open) S.cloud = false; // Cloud belongs to a session and ends with it
+  const c = cloudInfo();
+  b.setAttribute("aria-checked", String(S.cloud));
+  b.disabled = !c.available;
+  b.title = !c.available ? "This server runs local models only."
+    : S.cloud ? `Cloud on: ${c.provider} writes this session's explanations. Turn off for local models.`
+      : `Local models. Turn on to use ${c.provider} instead.`;
+  b.querySelector(".switch-word").textContent = S.cloud ? "Cloud" : "Local";
+  document.body.classList.toggle("cloud-on", S.cloud);
+  const frame = $("#session-frame");
+  if (frame) {
+    frame.hidden = !mode.state.available;
+    frame.querySelector(".frame-text").textContent = S.cloud
+      ? `Nothing about you is stored. Cloud is on: what you type and your brief's public text go to ${c.provider}.`
+      : "Nothing about you is stored. Your brief lives in this session's memory, on local models.";
+  }
+}
+
+// Cloud on for this session, only after the warning that names the provider.
+async function setCloud(on) {
+  const c = cloudInfo();
+  if (on) {
+    if (!window.confirm(`Turn Cloud on?\n\n${c.warning}`)) return false;
+    await mode.enable();
+    await privApi.cloud(true, c.provider);
+  } else if (privApi.open) {
+    await privApi.cloud(false);
+  }
+  S.cloud = on;
+  drawSwitch();
+  announce(on ? `Cloud on. ${c.provider} writes the explanations for your next brief.` : "Local models on.");
+  return true;
 }
 
 async function toggleSwitch() {
-  if (mode.state.on || privApi.open) {
-    let docs = [];
-    try { docs = (await privApi.session()).documents; } catch { /* already ended */ }
-    const list = mode.discards(docs, Boolean(S.briefId === PRIVATE_ID || S.brief && api.mode === "private"));
-    const ok = await mode.disable(() => window.confirm(
-      `Turn off private mode? This ends the session and discards:\n- ${list.length ? list.join("\n- ") : "nothing yet"}`));
-    if (ok) { announce("Private session ended. Everything in it was discarded."); go("#/"); }
-    return;
-  }
-  try { await mode.enable(); announce("Private session started."); go("#/private"); }
-  catch (e) { announce(e.message); }
+  try { await setCloud(!S.cloud); } catch (e) { announce(e.message); window.alert(e.message); }
 }
 
 function heroArt() {
@@ -391,39 +394,25 @@ async function build(c) {
   const min = parseFloat(F.minAmount);
   if (Number.isFinite(min) && min > 0) req.min_amount = min;
   try {
-    const r = await api.create(req);
-    remember(r.id, c.display_name);
+    if (api.mode === "replay") {
+      const r = await api.create(req);
+      S.startedHere = true;
+      S.tab = "profile";
+      go(`#/brief/${encodeURIComponent(r.id)}/profile`);
+      return;
+    }
+    await mode.enable(); // every brief is a session (S23); nothing is stored
+    await privApi.create(req);
     S.startedHere = true;
     S.tab = "profile";
-    go(`#/brief/${encodeURIComponent(r.id)}/profile`);
+    S.briefId = null; // a new brief in the session: open it fresh
+    go(`#/brief/${PRIVATE_ID}/profile`);
   } catch (e) {
     F.error = `The brief could not start: ${e.message}`;
     renderFind();
     const err = main().querySelector(".notice.error");
     if (err) err.scrollIntoView({ block: "center" });
   }
-}
-
-function recentBriefs() {
-  if (api.mode === "replay") return [];
-  try { return JSON.parse(localStorage.getItem("perch.recent") || "[]"); } catch { return []; }
-}
-
-// Forgets the list on this device only. The briefs stay on the server, reachable by link.
-function clearRecent() {
-  try { localStorage.removeItem("perch.recent"); } catch { /* storage may be blocked */ }
-  renderFind();
-  announce("Recent briefs cleared from this device.");
-  $("#q").focus();
-}
-
-function remember(id, name) {
-  if (api.mode === "replay") return;
-  try {
-    const list = recentBriefs().filter((r) => r.id !== id);
-    list.unshift({ id, name, at: new Date().toISOString().slice(0, 10) });
-    localStorage.setItem("perch.recent", JSON.stringify(list.slice(0, 5)));
-  } catch { /* storage may be blocked; recent list is a convenience */ }
 }
 
 // ---------- Brief ----------
@@ -1629,11 +1618,12 @@ function init() {
     S.find.q = (window.PERCH_REPLAY.candidates[0] || {}).display_name || "";
   }
   $(".skip").addEventListener("click", (e) => { e.preventDefault(); main().focus(); });
-  $("#private-switch").addEventListener("click", toggleSwitch);
+  $("#models-switch").addEventListener("click", toggleSwitch);
   if (api.mode === "live") {
     privateAvailable(privApi).then((on) => {
       S.privateOn = on;
       mode.setAvailable(on, on ? "" : "It needs every model to run on this server.");
+      drawSwitch();
       if (!S.briefId && !location.hash.startsWith("#/private") && !location.hash.startsWith("#/help")
         && !location.hash.startsWith("#/student")) route();
     });

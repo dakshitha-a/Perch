@@ -15,7 +15,7 @@ import threading
 import traceback
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from perch import awards as aw
@@ -135,29 +135,6 @@ class BriefService:
                   options=brief_options(as_of, top, explain, min_amount, agencies, context))
         with self.repo() as r:
             r.upsert([b])
-        return b
-
-    def reuse(self, author_id: str, options: dict, hours: float) -> Brief | None:
-        """A copy of the newest finished brief for the same researcher and options, made in
-        the last `hours`, with fresh lead ids and every lead back to "new". Visitors share
-        the work, never each other's keep and dismiss state."""
-        aid = oa.parse_author_id(author_id)
-        cutoff = now() - timedelta(hours=hours)
-        with self.repo() as r:
-            done = [b for b in r.list(Brief)
-                    if b.status == "done" and b.researcher_id == f"https://openalex.org/{aid}"
-                    and b.options == options and b.created_at >= cutoff
-                    and tuple(s.name for s in b.stages) == STAGES]  # not from older code
-            if not done:
-                return None
-            src = max(done, key=lambda b: b.created_at)
-            bid = secrets.token_urlsafe(9)
-            leads = [x for x in (r.get(Lead, i) for i in src.lead_ids) if x]
-            copies = [x.model_copy(update={"id": f"{bid}:{x.id.split(':', 1)[1]}",
-                                           "brief_id": bid, "status": "new"}) for x in leads]
-            b = src.model_copy(update={"id": bid, "source_url": f"perch://briefs/{bid}",
-                                       "lead_ids": [x.id for x in copies]})
-            r.upsert([*copies, b])
         return b
 
     def get(self, brief_id: str) -> tuple[Brief, list[Lead]] | None:

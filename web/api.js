@@ -31,7 +31,6 @@ export function liveApi(base = "") {
       `/briefs/${encodeURIComponent(id)}/leads/${encodeURIComponent(leadId)}/${action}`,
       { method: "POST" }),
     record: (id) => call(base, `/records/${encodeURIComponent(id)}`),
-    watch: () => call(base, "/watch"),
     exportUrl: (id, kind = "json") => `${base}/briefs/${encodeURIComponent(id)}/export.${kind}`,
     keptUrl: (id) => `${base}/briefs/${encodeURIComponent(id)}/export.json?status=kept`,
     compare: (id) => call(base, `/briefs/${encodeURIComponent(id)}/compare`),
@@ -124,7 +123,6 @@ export function replayApi(data) {
     // Later steps, recorded by scripts/export_replay.py (version 2 files). The comparison
     // is filtered to the kept leads; a hand-off draft and a Scout answer play back only
     // for what was recorded, and say so otherwise.
-    watch: () => later(data.watch ? clone(data.watch) : { digests: [], replay: true }),
     compare: () => {
       if (!data.compare) return Promise.reject(new ApiError("The comparison needs the live app.", 0));
       const kept = new Set(leadsIn().filter((l) => l.status === "kept").map((l) => l.id));
@@ -171,7 +169,7 @@ export function replayApi(data) {
   };
 }
 
-// Private mode (S13): the same shape as liveApi, scoped to one private session. The session
+// A session (S13; every brief since S23): the same shape as liveApi, scoped to one session. The session
 // id travels in a header, lives only in this object, and is never written to storage.
 export function privateApi(base = "") {
   let token = null;
@@ -185,6 +183,7 @@ export function privateApi(base = "") {
     start: async () => { const r = await call(base, "/private/session", { method: "POST" }); token = r.token; return r; },
     session: () => p("/private/session"),
     addDocument: (body) => post("/private/documents", body),
+    cloud: (on, confirm) => post("/private/cloud", { on, confirm }),
     removeDocument: (kind) => post(`/private/documents/${encodeURIComponent(kind)}/remove`),
     create: (req) => post("/private/brief", req),
     createStudent: (req) => post("/private/student/brief", req),

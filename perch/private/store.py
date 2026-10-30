@@ -5,6 +5,11 @@ keeps every write in a dict the session owns. A write path that someone forgets 
 route here fails instead of persisting, because the base connection cannot write.
 `ReadOnlyCacheEmbedder` reads the shared embedding cache and never adds to it, so the
 hash of a private text never reaches disk.
+
+Since S23 every brief runs in a session, so public records fetched for a researcher
+(OpenAlex, NIH RePORTER, NSF) may be written through to the shared store when the
+session allows it: public data stays cached. Only those kinds from those sources pass;
+briefs, leads and anything private stay in memory.
 """
 
 from __future__ import annotations
@@ -19,13 +24,23 @@ from perch.embed import CachedEmbedder, Embedder, content_hash
 from perch.schemas import RECORD_TYPES, Record, Work
 from perch.store.base import R, Repository
 
+# What a session may write to the shared store: public records from public sources.
+PUBLIC_KINDS = ("researcher", "work", "award", "organisation")
+PUBLIC_SOURCES = ("openalex", "nih_reporter", "nsf")
+
+
+def is_public(r: Record) -> bool:
+    return (r.kind in PUBLIC_KINDS and r.source in PUBLIC_SOURCES
+            and not r.id.startswith(("private:", "sample:")))
+
 
 class OverlayRepository(Repository):
     """Memory over a read-only base. `mem` maps (kind, id) to a record and belongs to
     the session, so it outlives this object and dies with the session."""
 
-    def __init__(self, base: str | Path, mem: dict[tuple[str, str], Record]) -> None:
-        self.mem = mem
+    def __init__(self, base: str | Path, mem: dict[tuple[str, str], Record],
+                 public_writes: bool = False) -> None:
+        self.mem, self.base, self.public_writes = mem, Path(base), public_writes
         self.conn: sqlite3.Connection | None = None
         if Path(base).is_file():
             self.conn = sqlite3.connect(f"file:{Path(base).resolve()}?mode=ro", uri=True,
@@ -33,9 +48,18 @@ class OverlayRepository(Repository):
 
     def upsert(self, records: Iterable[Record]) -> int:
         n = 0
+        public: list[Record] = []
         for r in records:
-            self.mem[(r.kind, r.id)] = r
+            if self.public_writes and is_public(r):
+                public.append(r)
+            else:
+                self.mem[(r.kind, r.id)] = r
             n += 1
+        if public:  # through the store's own writer, as a stored brief would
+            from perch.store.sqlite import SQLiteRepository
+
+            with SQLiteRepository(self.base) as w:
+                w.upsert(public)
         return n
 
     def _base(self, sql: str, args: tuple) -> list[tuple]:
