@@ -135,7 +135,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S24</code> <span class="badge s-todo">todo</span><span>24/27 sessions done</span></div>
+<div class="at-a-glance"><code>S24</code> <span class="badge s-todo">todo</span><span>24/28 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -670,13 +670,13 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-current" class="view" data-view="current" hidden>
 <div id="s24"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S24 · UI/UX review and full QA test</h1><span class="badge s-todo">todo</span></div>
+<div class="title-row"><h1>S24 · UI rebuild from the redesign canvas</h1><span class="badge s-todo">todo</span></div>
 <div class="meta">Not started</div></div>
 <div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S24.md</code> when the session starts.</div>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="24 of 27 sessions done"><div class="counts"><span><b>24/27</b>sessions done</span><span class="s-done"><b>24</b>done</span><span class="s-todo"><b>3</b>todo</span></div><div class="bar" role="img" aria-label="24 of 27 sessions done"><span class="s-done" style="width:88.89%" title="done: 24"></span><span class="s-todo" style="width:11.11%" title="todo: 3"></span></div></section>
+<section class="panel summary" aria-label="24 of 28 sessions done"><div class="counts"><span><b>24/28</b>sessions done</span><span class="s-done"><b>24</b>done</span><span class="s-todo"><b>4</b>todo</span></div><div class="bar" role="img" aria-label="24 of 28 sessions done"><span class="s-done" style="width:85.71%" title="done: 24"></span><span class="s-todo" style="width:14.29%" title="todo: 4"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -704,16 +704,17 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s21">S21</a></td><td>UI/UX audit for three audiences</td><td><span class="badge s-done">done</span></td><td>2026-10-29 19:02 EDT</td><td>2026-10-29 19:19 EDT</td><td class="mono">see git log</td><td>Expert walkthrough on the public URL with <code>scripts/ux_walk.py</code> (axe-core 4.10.2): PI-4, three SYNTHETIC student personas and persona-1, phone and laptop, light and dark, 108 states. Private mode visible in all 54 private states. 6 must-fix (worst: the PI hand-off office picker lists student offices as \"undefined\"), 12 should-fix, 4 could-fix. Accessibility checklist in <code>docs/design/A11Y_CHECKLIST.md</code>. Options A (about 1 session), B (about 2), C (about 4); Q29 default B. UX tab on the tracker.</td></tr>
 <tr class="is-finished"><td><a href="#s22">S22</a></td><td>Redesign and rebuild</td><td><span class="badge s-done">done</span></td><td>2026-10-29 19:20 EDT</td><td>2026-10-29 19:54 EDT</td><td class="mono">see git log</td><td>Option B (Q29 default) live on the public URL: two doors on Find, student words, compact student and industry cards, the order explained, hand-off offices fixed, accessibility fixes. Walk on the dev server: 110 states, 0 axe violations, 0 failed steps. Review: 7 issues, all fixed. Live canary ok, 10 of 10 explained. 248 tests green. The media refilm (task 5) moved to S24.</td></tr>
 <tr class="is-finished"><td><a href="#s23">S23</a></td><td>Private by default, local models first</td><td><span class="badge s-done">done</span></td><td>2026-10-29 20:20 EDT</td><td>2026-10-29 21:05 EDT</td><td class="mono">see git log</td><td>Every brief is a session in memory: no stored briefs, reuse, browser history or per-user logs; public records stay cached. Local / Cloud switch, local by default; Cloud after a warning naming Anthropic, never with documents (Q30), 30 cloud briefs a day. Monitoring shelved in <code>perch/shelved/monitor/</code>. Live canary ok: default path 15 of 15 explained in 47 s, 0 user rows added, no trace in files or journals. Walk on the demo: 110 states, 0 axe violations. One cloud check $0.04. 245 tests green. S24 and S25 swapped (Dakshitha).</td></tr>
-<tr class="is-current"><td>S24</td><td>UI/UX review and full QA test</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S25</td><td>Media refilm</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S26</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td>S24</td><td>UI rebuild from the redesign canvas</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S25</td><td>UI/UX review and full QA test</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S26</td><td>Media refilm</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S27</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Milestone</th><th>Date</th><th>Needs</th><th>Ready?</th></tr></thead>
 <tbody>
 <tr><td>Checkup 2</td><td>Tue 3 Nov</td><td>S0–S7</td><td></td></tr>
-<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S26 (after S17–S25, or their cut-order floors)</td><td></td></tr>
+<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S27 (after S17–S26, or their cut-order floors)</td><td></td></tr>
 <tr><td>Submission</td><td>Fri 6 Nov 12:00</td><td>ZIP + links</td><td></td></tr>
 </tbody></table></div>
 <h2>Key numbers (keep current)</h2>
@@ -1184,10 +1185,12 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (135)</h2>
+<h2>Decisions (137)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-30</td><td>UI redesign</td><td>Scout can check a student cover letter or a draft proposal against a chosen record: code quotes the record's stated asks, the grounding model marks each addressed, not addressed or unclear, no model-written advice, local only, nothing stored. Designed on the canvas; building it waits on Q32 (standing rule 5)</td><td>Dakshitha asked for draft feedback; the bounded form is Perch-dev's design</td><td>Dakshitha (feature), Perch-dev (design)</td></tr>
+<tr><td>2026-10-30</td><td>UI redesign</td><td>Students get Ask Scout (reverses Q27); local models only, sample scholarships stay marked; tools: search options, check against the CV by rule, explain a verdict, compare, draft a note</td><td>Dakshitha on the redesign canvas</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S23</td><td>The demo store's 64 old briefs, 880 leads and 3 digests are deleted at rebuild (<code>scripts/forget_briefs.py</code>), and the demo's old per-brief logs cleared</td><td>"Leaves no record" should hold for what visitors ran before S23 too</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S23</td><td>Sessions are on unless <code>PERCH_PRIVATE_MODE=0</code>; a named operator is required only with a public URL; the session cap rises from 20 to 200</td><td>Every visitor now holds a session</td><td>Perch-dev</td></tr>
 <tr><td>2026-10-29</td><td>S23</td><td>The adapter's spend ledger still records cloud calls (time, model, tokens, cost; no text)</td><td>The $100 cap needs it; a cloud call is one the user chose after the warning</td><td>Perch-dev</td></tr>
@@ -1324,10 +1327,11 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (30)</h2>
+<h2>Plan change log (31)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-30</td><td>S24 to S27</td><td>New S24 "UI rebuild from the redesign canvas" (spec <code>docs/design/S24_REBUILD.md</code>). The UI/UX review and full QA test becomes S25, the media refilm S26, freeze and package S27. Students get Ask Scout (Q27 revised). Older notes that say "S26 task 2" for freeing the dev GPUs mean S27 task 2</td><td>Dakshitha redesigned the app on a design canvas and asked for it to be built before QA and the refilm</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S24, S25</td><td>S24 and S25 swapped: S24 is now the UI/UX review and full QA test, S25 the media refilm, so the media are filmed once, after the QA fixes. S26 freeze reruns the S24 QA rows</td><td>Dakshitha asked to switch S24 and S25</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S25, S26</td><td>New S25 "UI/UX review and full QA test": the S21 walk and accessibility checklist rerun on the S23 app, an independent review, a written QA plan run row by row, and the privacy and leakage checks. Freeze and package becomes S26; its regression pass reruns only the QA rows touched since S25. Older notes that say "S25 task 2" for freeing the dev GPUs mean S26 task 2</td><td>Dakshitha asked for a UI/UX review and a full QA test before the freeze</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-29</td><td>S22 to S25</td><td>Sessions reordered to the order of work: S22 task 5 (media refilm) becomes its own session S24, after S23 (private by default); freeze and package becomes S25. S22 is done without task 5. Older notes that say "S23 task 2" or "S24 task 2" for freeing the dev GPUs mean S25 task 2</td><td>Dakshitha asked to reorder the tracker phases and cascade the changes</td><td>Dakshitha</td></tr>

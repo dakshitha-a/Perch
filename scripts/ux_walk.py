@@ -17,7 +17,7 @@ At every captured state the script records, in <out>/report-<groups>.json:
   body class that marks Cloud on). Since S23 every brief is a session; the PI flow also
   opens the cloud warning and dismisses it, so no cloud call is made.
 It also tabs through Find and a brief and records the focus order and whether each focus
-is visible. S24 reruns this script before the freeze.
+is visible. S25 reruns this script before the freeze.
 """
 
 from __future__ import annotations

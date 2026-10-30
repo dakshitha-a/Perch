@@ -53,7 +53,7 @@ Award links are matched by name. Fix a wrong or missed match in `data/overrides/
 
 An OpenAlex API key is optional; see `.env.example`.
 
-`make bench` runs the back-test and bench matrix (results in `bench/results/`). `make package` builds the submission ZIP in S26.
+`make bench` runs the back-test and bench matrix (results in `bench/results/`). `make package` builds the submission ZIP in S27.
 
 ## Secrets
 

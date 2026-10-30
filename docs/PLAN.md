@@ -11,7 +11,7 @@ This plan is organised by **session**, not by day. A session is a goal set sized
 | Sat 31 Oct | Checkup 1 (one page; Dakshitha writes it) | nothing from the code; S1–S2 helpful for a real example |
 | Tue 3 Nov | Checkup 2: prototype draft, screenshots, tests run, tools used | S0–S7 |
 | Thu 5 Nov 12:00 | Code freeze | everything kept in the cut order |
-| Fri 6 Nov 12:00 | Submission ZIP + links; 3:00 pm demo | S26 |
+| Fri 6 Nov 12:00 | Submission ZIP + links; 3:00 pm demo | S27 |
 
 **Cut order if time runs short:** S22 rebuild narrows to the S21 must-fix list → S16 monitoring (done) → student mode narrows to its floor (S17 corpus and personas, S18 eligibility by rule and the two tabs, S19 scoring; drops the Scout tool and the hand-off) → private mode (S13) narrows to its floor (paste-only input, private threads, session records, self-hosted-endpoint gate, session isolation, no-logs paths, canary test; drops upload parsing, CV eligibility unlock, obfuscated export, MCP private tools) → the Ollama demo moment inside S14 (keep the MCP server) → Route B (S11) narrows to one signal. Never cut: the pipeline (S1–S4), the validator (S5), the web demo (S6–S7), the back-test (S8), Scout's approve mode (S10).
 
@@ -278,7 +278,7 @@ Done when: the QA log has no open item marked must-fix, the canary and leakage c
 Goal: a comprehensive audit of the whole app for undergraduates, graduate students and PIs, and a recommendation Dakshitha can choose from, up to a full redesign and rebuild (Dakshitha, 2026-10-29).
 
 1. Task walkthroughs on the public URL, phone and laptop, for each audience: the three student personas from S17 (undergraduate, master's, PhD) and the PI demo personas. Cover every screen: Find, Profile, Routes (grants, industry, fellowships, scholarships), evidence panel, Compare, hand-off, export, Ask Scout, What changed, Help, private mode. Record where each audience stalls, misreads a label, or cannot tell public records from sample or inferred ones. Check that every audience can tell at a glance whether private mode is on.
-2. Accessibility pass against a written checklist (keyboard paths, focus order, contrast in light and dark, screen-reader labels, motion, touch targets). This is the accessibility pass for the release; S24 reruns the checklist before the freeze (renumbered from S23 and S25).
+2. Accessibility pass against a written checklist (keyboard paths, focus order, contrast in light and dark, screen-reader labels, motion, touch targets). This is the accessibility pass for the release; S25 reruns the checklist before the freeze (renumbered from S23, S24 and S25).
 3. Information architecture review: whether one app with a mode switch serves all three audiences, or whether entry points, vocabulary and defaults should differ by audience. The standing rules hold in every option: provenance visible, sample data badged, numbers copied from records, nothing sent.
 4. Findings report `docs/design/UX_AUDIT.md` with screenshots, ranked by severity, plus a UX tab on the tracker. It ends with two or three options, each with a session-cost estimate: targeted fixes; a redesign of the core screens; a full redesign and rebuild. Each estimate counts refilming the README clips and screenshots, the Help page and the tracker's UI preview.
 5. Write the choice to `bridge/QUESTIONS.md` with a recommended default.
@@ -293,7 +293,7 @@ Goal: build the option Dakshitha chose in S21.
 2. Build in priority order so the session can stop at a clean commit at any point: Find, Profile and Routes first; then the evidence panel and student mode; then Compare, hand-off, Scout and What changed. Anything not reached keeps the current UI and still works.
 3. Keep the app no-build (Node 12 on the node, no npm) unless Dakshitha decides otherwise in S21.
 4. Adversarial review with fixes, as in S7; the canary test and every existing UI test still pass.
-5. Help page updated for the new screens. The media refilm (README clips, screenshots, the tracker's UI preview) moved to S25 (numbered S24 earlier), after S23 changes the header switch and S24 fixes what QA finds.
+5. Help page updated for the new screens. The media refilm (README clips, screenshots, the tracker's UI preview) moved to S26 (numbered S24 and S25 earlier), after the S24 rebuild and the S25 QA fixes.
 
 Done when: the chosen option is live on the public URL for all three audiences, `make test` green.
 
@@ -309,33 +309,48 @@ Goal: with no user accounts, nothing a user enters or receives is stored, and mo
 
 Done when: a fresh visitor on the public URL gets a brief that leaves no record of them on the server, local models by default, the cloud warning before any cloud call, and no monitoring in the app.
 
-## S24 — UI/UX review and full QA test
+## S24 — UI rebuild from the redesign canvas
+
+Goal: build the redesign Dakshitha made on the design canvas on 2026-10-30, for both paths, filling any gaps in the same design language (Dakshitha, 2026-10-30). Spec: `docs/design/S24_REBUILD.md`; canvas sources: `docs/design/redesign/`.
+
+1. Design language in `web/styles.css`: the tokens, type (Newsreader and Inter with offline fallbacks), shapes, motion and the laptop two-column brief layout with the right rail.
+2. Landing: owl on the branch with tap reactions, "Find funding that fits.", the Researcher | Student control, the status chip that opens the Local / Cloud dialog, the footer promises.
+3. Researcher path: pick the person, then the optional context panel (direction, keywords, CV, ongoing research; fill with a sample, clear); the brief with Routes, Profile, Compare and hand-off, Ask Scout, the shortlist rail and the narrow keep bar.
+4. Student path: add your CV (sample and clear); the brief with What Perch read, Your options, Compare and the note, and Ask Scout for students (new tools: search options, check one against the CV by rule, explain a verdict, compare, draft a note; local only).
+5. Gaps: Help, the Local / Cloud dialog, the evidence sheet on a phone, error and empty states, the export menu, the replay preview, phone layouts.
+6. Tests and checks: Node and API tests for the new behaviour; `scripts/ux_walk.py` updated and rerun (0 axe violations, no sideways scroll); the canary; demo rebuilt.
+
+Draft review in Scout (a checklist of what a cover letter or proposal misses) waits on Q32 (standing rule 5) and is built only if Dakshitha answers (a) or (b).
+
+Done when: every screen in the spec is live on the public URL for both paths, light and dark, phone and laptop, with the checks above passing and `make test` green.
+
+## S25 — UI/UX review and full QA test
 
 Goal: one last review of the whole app as it will ship, and a full QA pass of every feature, before the freeze (Dakshitha, 2026-10-29).
 
-1. **UI/UX review.** Rerun the S21 walk (`scripts/ux_walk.py` with axe-core) on the S23 app for every audience: the PI demo personas, the three SYNTHETIC student personas and persona-1, phone and laptop, light and dark. Check the Local / Cloud switch and the cloud warning, the two doors, the student vocabulary and the S22 fixes. Rerun the accessibility checklist (`docs/design/A11Y_CHECKLIST.md`). An independent review reads the screens fresh. Findings go to `docs/design/UX_REVIEW_S24.md`, ranked; must-fix items are fixed in this session.
+1. **UI/UX review.** Rerun the S21 walk (`scripts/ux_walk.py` with axe-core) on the rebuilt S24 app for every audience: the PI demo personas, the three SYNTHETIC student personas and persona-1, phone and laptop, light and dark. Check the Local / Cloud switch and the cloud warning, the two doors, the student vocabulary and the S22 fixes. Rerun the accessibility checklist (`docs/design/A11Y_CHECKLIST.md`). An independent review reads the screens fresh. Findings go to `docs/design/UX_REVIEW_S25.md`, ranked; must-fix items are fixed in this session.
 2. **Full QA test.** A written test plan, `docs/QA_PLAN.md`, with one row per feature and path: Find (both doors), Profile, Routes (grants, industry, fellowships, scholarships), the evidence panel, Compare, hand-off, export (Markdown, JSON, print), Ask Scout, Help, the Local / Cloud switch, the MCP server, the CLI, `make demo`, error states (bad id, model down, timeouts, caps). Each row is run on the public URL or the CLI, and the result is recorded as pass or fail with a note. Failures are fixed or written down as known limits.
 3. **Privacy and data checks.** The canary (Local, and Cloud-on with SYNTHETIC text), the leakage check (standing rule 11), and a check that a fresh visitor leaves no record on the server.
-4. Demo rebuilt if anything changed. The media are filmed after this session, in S25.
+4. Demo rebuilt if anything changed. The media are filmed after this session, in S26.
 
 Done when: the review and the QA plan are written and run, no open must-fix item, `make test` green.
 
-## S25 — Media refilm
+## S26 — Media refilm
 
-Goal: the README, screenshots and tracker preview show the app as it will ship. Moved out of S22 so the media are filmed once, after S23 and after the S24 review and QA fixes (Dakshitha, 2026-10-29).
+Goal: the README, screenshots and tracker preview show the app as it will ship. Moved out of S22 so the media are filmed once, after S23 and after the S25 review and QA fixes (Dakshitha, 2026-10-29).
 
-1. Refilm the README clips (`scripts/tour/film.py`, then `scripts/tour/animate.py`) against the app as fixed in S24; the `private` scene uses the new header switch.
+1. Refilm the README clips (`scripts/tour/film.py`, then `scripts/tour/animate.py`) against the app as fixed in S25; the `private` scene uses the new header switch.
 2. Retake `docs/screenshots/` (`scripts/screenshots.py`) and the README student screenshot (the sample tab is "Scholarships and awards (sample)").
 3. The tracker's UI preview with the student flow: a replay of a SYNTHETIC student brief, with `scripts/build_ui_preview.py` serving its routes.
 4. README text matched to the new labels; the README tab reviewed by Dakshitha; every artifact republished.
 
 Done when: the README media, screenshots and UI preview match the app on the public URL.
 
-## S26 — Freeze and package
+## S27 — Freeze and package
 
-Goal: ship. The QA fix list and privacy audit moved to S20, the full accessibility pass to S21, and the final UI/UX review and full QA test to S24 (Dakshitha, 2026-10-29).
+Goal: ship. The QA fix list and privacy audit moved to S20, the full accessibility pass to S21, and the final UI/UX review and full QA test to S25 (Dakshitha, 2026-10-29).
 
-1. Regression pass on the frozen build: the S24 QA plan rows touched by any change since S24; the canary and leakage checks rerun.
+1. Regression pass on the frozen build: the S25 QA plan rows touched by any change since S25; the canary and leakage checks rerun.
 2. Rerun the Scout bench on the frozen build with the demo model. Final numbers (back-test, validator rate, cost per brief, Scout completion and wrong-tool rate, student mode as a synthetic mechanism test) into `docs/TRACKER.md` and `docs/RESULTS.md` for the deck. When this last test run is done, free the dev test servers: `make decide-down` stops the dev Clef-flash and Clef units, and the demo's own servers stay up. Then tell the other session sharing the node that those GPUs are free (details in the local notes). The Clef rows of `make bench` need `make decide-up` again after this.
 3. README final; `make package` → submission ZIP with how-to-run.
 4. Freeze: tag `v0.1-demo`; nothing on `main` after that except README typos.
@@ -378,3 +393,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-29 | S22 to S25 | Sessions reordered to the order of work: S22 task 5 (media refilm) becomes its own session S24, after S23 (private by default); freeze and package becomes S25. S22 is done without task 5. Older notes that say "S23 task 2" or "S24 task 2" for freeing the dev GPUs mean S25 task 2 | Dakshitha asked to reorder the tracker phases and cascade the changes | Dakshitha |
 | 2026-10-29 | S25, S26 | New S25 "UI/UX review and full QA test": the S21 walk and accessibility checklist rerun on the S23 app, an independent review, a written QA plan run row by row, and the privacy and leakage checks. Freeze and package becomes S26; its regression pass reruns only the QA rows touched since S25. Older notes that say "S25 task 2" for freeing the dev GPUs mean S26 task 2 | Dakshitha asked for a UI/UX review and a full QA test before the freeze | Dakshitha |
 | 2026-10-29 | S24, S25 | S24 and S25 swapped: S24 is now the UI/UX review and full QA test, S25 the media refilm, so the media are filmed once, after the QA fixes. S26 freeze reruns the S24 QA rows | Dakshitha asked to switch S24 and S25 | Dakshitha |
+| 2026-10-30 | S24 to S27 | New S24 "UI rebuild from the redesign canvas" (spec `docs/design/S24_REBUILD.md`). The UI/UX review and full QA test becomes S25, the media refilm S26, freeze and package S27. Students get Ask Scout (Q27 revised). Older notes that say "S26 task 2" for freeing the dev GPUs mean S27 task 2 | Dakshitha redesigned the app on a design canvas and asked for it to be built before QA and the refilm | Dakshitha |
