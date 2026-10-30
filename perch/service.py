@@ -216,7 +216,7 @@ class BriefService:
                 self._stage(b, current, "skipped" if skipped else "done", detail)
             b.status = "done"
         except Exception as e:  # recorded on the brief; the job thread must not die silently
-            b.error = type(e).__name__ if self.quiet_errors else f"{type(e).__name__}: {e}"
+            b.error = plain_error(e) if self.quiet_errors else f"{type(e).__name__}: {e}"
             self._stage(b, current, "failed", b.error)
             b.status = "failed"
             if not self.quiet_errors:
@@ -399,6 +399,18 @@ def said_text(options: dict) -> str:
 
 def _temple(a: Award) -> bool:
     return "temple" in (a.institution or "").lower()
+
+
+def plain_error(e: Exception) -> str:
+    """A stage failure in plain words, with the type for the operator; never the message,
+    which could quote a visitor's text (S25 QA)."""
+    name = type(e).__name__
+    if name in ("ConnectError", "ConnectTimeout", "ReadTimeout", "TimeoutException",
+                "RemoteProtocolError", "ReadError"):
+        return f"A model server did not answer. Try again in a few minutes. ({name})"
+    if isinstance(e, PermissionError):
+        return f"A model was refused because it does not run on this server. ({name})"
+    return f"Something went wrong in this step. ({name})"
 
 
 def default_models(fake: bool = False, data_dir: Path = Path("data"),

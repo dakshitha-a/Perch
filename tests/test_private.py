@@ -494,3 +494,13 @@ def test_documents_go_to_cloud_only_with_the_switch_and_a_second_confirm(tmp_pat
     assert s.service.models.cloud()  # the skills now use the cloud spec
     assert c.post("/private/cloud", headers=h, json={"on": False}).json()["documents"] is False
     assert not s.service.models.cloud()
+
+
+def test_failed_steps_read_in_plain_words_and_a_bad_id_costs_no_brief():
+    """S25 QA rows 33 and 34."""
+    import httpx
+
+    from perch.service import plain_error
+
+    assert plain_error(httpx.ConnectError("x")).startswith("A model server did not answer")
+    assert "visitor text" not in plain_error(ValueError("visitor text"))

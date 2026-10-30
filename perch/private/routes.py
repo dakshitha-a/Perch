@@ -54,6 +54,7 @@ from perch.private.session import (
     add_document,
 )
 from perch.schemas import Opportunity, Record, Work
+from perch.sources import openalex as oa
 
 STUDENT_KINDS = ("interests", "achievements")
 SESSION_HEADER = "X-Perch-Private"  # the header that carries the session id
@@ -325,6 +326,8 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             raise HTTPException(422, "Choose a researcher or add a document first.")
         if s.briefs_run >= BRIEFS_PER_SESSION:
             raise HTTPException(429, f"A session runs at most {BRIEFS_PER_SESSION} briefs.")
+        if req.author_id and not oa.parse_author_id(req.author_id):  # before the hourly cap
+            raise HTTPException(422, "not an OpenAlex author id")
         throttle(request)
         if is_default(req, s) and (w := warm.take(s, req.author_id)) is not None:
             s.briefs_run += 1  # a copy of a warm demo brief, held in this session only
