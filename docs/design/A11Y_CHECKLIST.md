@@ -1,6 +1,6 @@
-# Accessibility checklist (S21; rerun in S25, before the freeze)
+# Accessibility checklist (S21; rerun in S24, before the freeze)
 
-The release checklist for the Perch web app. S21 ran it on the live demo; S25 reruns it before the freeze. The runner is `scripts/ux_walk.py`, with axe-core 4.10.2 (`axe.min.js` from cdnjs, passed with `--axe`). Results go to `build/ux/report-<groups>.json`.
+The release checklist for the Perch web app. S21 ran it on the live demo; S24 reruns it before the freeze. The runner is `scripts/ux_walk.py`, with axe-core 4.10.2 (`axe.min.js` from cdnjs, passed with `--axe`). Results go to `build/ux/report-<groups>.json`.
 
 Target: WCAG 2.2 AA, plus the app's own rule of 44 px touch targets (`docs/design/UI.md` §1).
 

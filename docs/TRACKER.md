@@ -27,9 +27,9 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S20 | QA and privacy audit | done | 2026-10-29 18:50 EDT | 2026-10-29 18:53 EDT | see git log | 246 tests green. Privacy audit with student mode: fixed CV-quoting lines leaving unwithheld in the JSON export, a missing sample banner there, and a research-office hand-off offered for a student brief. Live canary rerun clean; the private-only brief now explains 10 of 10 leads (8 of 10 in S13). Sample-store isolation test added. Flaky Scout test fixed (random test order). README Known limits section. Task 1 dropped: no QA log exists (Q28). |
 | S21 | UI/UX audit for three audiences | done | 2026-10-29 19:02 EDT | 2026-10-29 19:19 EDT | see git log | Expert walkthrough on the public URL with `scripts/ux_walk.py` (axe-core 4.10.2): PI-4, three SYNTHETIC student personas and persona-1, phone and laptop, light and dark, 108 states. Private mode visible in all 54 private states. 6 must-fix (worst: the PI hand-off office picker lists student offices as \"undefined\"), 12 should-fix, 4 could-fix. Accessibility checklist in `docs/design/A11Y_CHECKLIST.md`. Options A (about 1 session), B (about 2), C (about 4); Q29 default B. UX tab on the tracker. |
 | S22 | Redesign and rebuild | done | 2026-10-29 19:20 EDT | 2026-10-29 19:54 EDT | see git log | Option B (Q29 default) live on the public URL: two doors on Find, student words, compact student and industry cards, the order explained, hand-off offices fixed, accessibility fixes. Walk on the dev server: 110 states, 0 axe violations, 0 failed steps. Review: 7 issues, all fixed. Live canary ok, 10 of 10 explained. 248 tests green. The media refilm (task 5) moved to S24. |
-| S23 | Private by default, local models first | todo | | | | |
-| S24 | Media refilm | todo | | | | |
-| S25 | UI/UX review and full QA test | todo | | | | |
+| S23 | Private by default, local models first | in progress | 2026-10-29 20:20 EDT | | | |
+| S24 | UI/UX review and full QA test | todo | | | | |
+| S25 | Media refilm | todo | | | | |
 | S26 | Freeze and package | todo | | | | |
 
 ## Milestone readiness
