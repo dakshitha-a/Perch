@@ -2,6 +2,23 @@
 
 Rendered 2026-10-29 20:50 UTC by `make bench`. Numbers are copied from the CSVs in this folder; nothing here is estimated.
 
+## S27 ranking tune (2026-10-30)
+
+Rounds scored with `bench/tune.py` on the NIH back-test (same rows, pool and date cut-off as above, eligibility rules as of S27). One award in 48 is about 0.021, so differences of one or two awards are noise.
+
+| round | change | targeted n | hit@5 | hit@10 | MRR | parent n | parent hit@10 | parent MRR |
+|---|---|---|---|---|---|---|---|---|
+| baseline | keyword-only (BM25, no rerank) | 48 | 0.021 | 0.021 | 0.027 | 78 | 0.0 | 0.001 |
+| R0 | production before S27 | 48 | 0.104 | 0.146 | 0.067 | 78 | 0.013 | 0.013 |
+| R1 | blend retrieval score into rerank (0.7, 0.5, 0.3) | 48 | 0.104 / 0.104 / 0.083 | 0.146 / 0.167 / 0.167 | 0.060 / 0.053 / 0.045 | | | |
+| R2 | thread query adds OpenAlex topic names | 48 | 0.146 | 0.167 | 0.109 | | | |
+| R3 | rerank 100 candidates (was 50) | 48 | 0.188 | 0.188 | 0.109 | | | |
+| R3 | retrieval depth 200 per list | 48 | 0.125 | 0.146 | 0.077 | | | |
+| R4 | topics + rerank 100 (**new default**) | 48 | 0.188 | 0.208 | 0.149 | 78 | 0.026 | 0.016 |
+| R4 | topics + rerank 150 / 200 | 48 | 0.188 / 0.188 | 0.208 / 0.208 | 0.138 / 0.134 | | | |
+
+**Hand check, not a measurement.** Six Temple PIs on today's listings, all agencies. Papers include the funded work, so this is a sanity check only. The NSF program behind each NSF PI's latest award ranks first under R4 for PI-130 and PI-131 (MPS Chemistry) and PI-132 and PI-133 (MPS Physics); PI-131 and PI-133 were held out of tuning. PI-1 and PI-7 get NIH cancer programs. There is no NSF back-test: Grants.gov's NSF archive lacks most 2015 to 2021 listings and carries a bulk open date of 2025-06-06 on 291 of them.
+
 ## Back-test (NIH, Temple, date cut-off)
 
 Papers before the award start; pool: NIH announcements on Grants.gov open in the 18 months before it; rank of the announcement the award was funded under. Baseline: keyword-only (BM25 on thread terms, no dense, no rerank).
