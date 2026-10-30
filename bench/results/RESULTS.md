@@ -26,9 +26,17 @@ Dakshitha asked for one score and one order. The ranking model's top 20 per awar
 |---|---|---|---|---|
 | ranking model (R4) | 48 | 0.188 | 0.208 | 0.144 |
 | fit re-sorts the shown 10 | 48 | 0.188 | 0.208 | 0.133 |
-| fit orders the 20 closest, 10 shown (**new default**) | 48 | 0.208 | 0.271 | 0.133 |
+| fit orders the 20 closest, 10 shown | 48 | 0.208 | 0.271 | 0.133 |
 
-Fit over 20 moved the funded announcement up in 7 awards and down in 4: three more reach the visible 10 (13 of 48 against 10), while some at rank 1 drop to 2 to 5, so MRR dips. With 48 awards, a few either way is within noise. Student mode (SYNTHETIC, 3 personas, `bench/student_fit_order.py`): planted positives in the top 5, 9 of 10 by the ranking order and 8 of 10 by fit (MRR 0.538 and 0.532), so students keep the ranking order. Cost: each brief explains 20 leads instead of 10; the live canary's default path took 79.4 s against 46.8 s.
+**Not adopted.** Dakshitha chose the ranking model's own score on a 0-100 scale instead (Match, below), which keeps the order deterministic (standing rule 5) and briefs as fast. Fit over 20 moved the funded announcement up in 7 awards and down in 4: three more reach the visible 10 (13 of 48 against 10), while some at rank 1 drop to 2 to 5, so MRR dips. With 48 awards, a few either way is within noise. Student mode (SYNTHETIC, 3 personas, `bench/student_fit_order.py`): planted positives in the top 5, 9 of 10 by the ranking order and 8 of 10 by fit (MRR 0.538 and 0.532), so students keep the ranking order. Cost: each brief explains 20 leads instead of 10; the live canary's default path took 79.4 s against 46.8 s.
+
+### Match: the ranking score on a 0-100 scale (S27, `perch/score.py`, `bench/calibrate.py`)
+
+Match maps the reranker's log-odds from -6 to 0 and +6 to 100, clipped; the bands stay strong 80+, good 60-79, partial 40-59, weak below 40. On the 126 back-test rows, every funded announcement placed in the top 10 scored 80 or more (most 97 to 100); those ranked 13th or lower scored 30 to 73. The other top-10 leads were 47% strong, 23% good, 17% partial, 12% weak. On today's listings the NIH researchers' top 6 read 85 to 44; the chemists' and physicists' read one or two at 54 to 82 (their NSF programme), then mostly below 30, because NSF programme listings are short and general. The calibration data is all NIH; there is no NSF back-test. The order is unchanged: hit@10 0.208 (10 of 48).
+
+### Proposal stand-in, rerun on the S27 setup
+
+Each award's funded RePORTER abstract as a stand-in draft proposal: hit@10 0.208 to 0.354 (10 to 17 of 48), hit@5 0.188 to 0.271, MRR 0.144 to 0.206; keyword-only 0.042 to 0.083. An upper bound: the abstract is closer to the funded call than a real draft.
 
 **The tables below and `SUMMARY.md` are the S8 runs** (the embedder matrix was not rerun in S27). Their "(default)" rows describe the default before S27; this section supersedes them.
 

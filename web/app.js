@@ -11,7 +11,7 @@ import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
 import { lockLabel, privateAvailable, privateBar, privateInfo, renderPrivate, resetPrivate, setMode } from "./private.js";
 import { createMode, looksPersonal } from "./mode.js";
-import { isStudent, resetStudent, usedSample, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
+import { isStudent, matchPill, resetStudent, usedSample, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
 
 const publicApi = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
 const privApi = privateApi(window.PERCH_API || "");
@@ -1247,7 +1247,7 @@ function routeSwitch() {
 }
 
 // The sort order as the same segmented pill as Grants | Industry, smaller (S27).
-// One score and one order (S27): Perch's order is the fit estimate; closing date is the
+// One score and one order (S27): Perch's order is the Match score; closing date is the
 // only other way to sort.
 const SORTS = [["order", "Perch’s order"], ["closing", "Closing soon"]];
 
@@ -1312,12 +1312,9 @@ function renderRoutes(panel) {
   const subBits = [];
   if (kept) subBits.push(`${kept} kept`);
   if (explaining && S.brief.brief.options.explain) subBits.push(`${explainedCount()} of ${routeLeads("A").length} explained so far`);
-  // One score, one order (S27): a model reads the closest candidates against the papers and
-  // scores each 0 to 100; the best fits stay, highest first.
-  const nA = routeLeads("A").length;
+  // One score, one order (S27): Match is the ranking model's score on a 0-100 scale.
   subBits.push(S.sort === "closing" ? "Sorted by closing date"
-    : explaining && S.brief.brief.options.explain ? `Reading the ${nA} closest listings against the papers; the ones that fit best will stay, highest fit first`
-      : "In Perch’s order: highest fit estimate first. A model read the closest listings against the papers and scored each from 0 to 100. It is not the odds of funding");
+    : "In Perch’s order: highest match first. Match is how closely each listing’s text matches the papers, from 0 to 100. It is not the odds of funding");
   panel.querySelector(".routes-sub").textContent = `${subBits.join(". ")}.`;
 
   if (!leads.length) {
@@ -1461,7 +1458,7 @@ function syncList(ol, leads) {
   const want = new Set(leads.map((l) => l.id));
   for (const [id, el] of have) if (!want.has(id)) el.remove();
   leads.forEach((l, i) => {
-    const sig = JSON.stringify([l.status, l.fit_score, l.explanation, l.inference, l.flagged,
+    const sig = JSON.stringify([l.status, l.match_score, l.explanation, l.inference, l.flagged,
       l.unsupported, l.cited_ids.length, isPending(l)]);
     let el = have.get(l.id);
     if (!el || el.dataset.sig !== sig) {
@@ -1492,16 +1489,13 @@ function leadCard(l) {
   const days = f.daysBetween(api.mode === "replay" ? S.brief.brief.options.as_of : today(), o.close_date);
   const urg = f.urgency(days);
   const size = f.awardSize(o);
-  const band = f.fitBand(l.fit_score);
+  const band = f.fitBand(l.match_score);
   const pending = isPending(l);
   const parsed = f.parseExplanation(l.explanation, l.cited_ids);
 
   let fit;
   if (band) {
-    fit = h("span", { class: `fit ${band.key}` },
-      h("span", { class: "fit-k", text: "Fit estimate" }),
-      h("span", { text: band.word }), h("b", { text: String(Math.round(l.fit_score)) }),
-      h("span", { class: "sr-only", text: " out of 100, a model’s estimate, not the odds of funding" }));
+    fit = matchPill(l.match_score, band);
   } else if (pending) {
     fit = h("span", { class: "fit pending" }, owl("work", "owl-xs"), h("span", { text: "Reading" }));
   }
@@ -1577,7 +1571,7 @@ function explanationBlock(l, parsed, o) {
   const open = S.open.has(l.id);
   const why = h("details", { class: "why", open,
     ontoggle: (e) => { if (e.target.open) S.open.add(l.id); else S.open.delete(l.id); } },
-  h("summary", { "data-key": "why" }, h("span", { text: (l.fit_score ?? 100) < 30 ? "How it relates" : "Why it fits" }),
+  h("summary", { "data-key": "why" }, h("span", { text: (l.match_score ?? 100) < 30 ? "How it relates" : "Why it fits" }),
     h("span", { class: "hint", text: ` cites ${f.plural(parsed.findings.length, "paper")} by the researcher` })),
   h("h4", { class: "mini", text: "From the researcher’s papers" }),
   h("ul", { class: "findings" }, parsed.findings.map((x) => h("li", {},

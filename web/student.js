@@ -215,6 +215,14 @@ export function studentRoutes(panel, ctx) {
       h("ol", { class: "leads" }, out.map((l) => card(l, ctx)))) : null);
 }
 
+// The Match pill: how closely the listing's text matches the papers, 0 to 100 (S27).
+export function matchPill(score, band, what = "the papers") {
+  return h("span", { class: `fit ${band.key}`, title: `How closely the listing’s text matches ${what}` },
+    h("span", { class: "fit-k", text: "Match" }),
+    h("span", { text: band.word }), h("b", { text: String(score) }),
+    h("span", { class: "sr-only", text: ` out of 100: how closely the listing’s text matches ${what}, not the odds of funding` }));
+}
+
 function card(l, { openEvidence, setLead, papers }) {
   const r = l.record || {};
   const sch = r.kind === "scholarship";
@@ -226,6 +234,7 @@ function card(l, { openEvidence, setLead, papers }) {
     h("div", { class: "lead-head" }, h("span", { class: "tags" },
       l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null,
       verdictChip(l.verdict),
+      l.match_score != null ? matchPill(l.match_score, f.fitBand(l.match_score), "your interests and CV") : null,
       sch && r.award_type ? h("span", { class: "tag", text: r.award_type }) : null,
       !sch && r.activity_code ? h("span", { class: "tag", text: `NIH ${r.activity_code}` }) : null,
       !sch && r.status === "forecasted" ? h("span", { class: "tag ember", text: "Forecast: not open yet" }) : null,

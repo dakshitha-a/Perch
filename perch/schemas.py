@@ -165,7 +165,10 @@ class Lead(Record):
     rank: int | None = None
     rerank_score: float | None = None
     matched_thread: int | None = None
-    fit_score: float | None = None
+    fit_score: float | None = None  # the chat model's own number; no longer shown (S27)
+    match_score: int | None = Field(
+        default=None, description="0-100 from the ranking model's score (perch/score.py); "
+        "the one score shown, and the order")
     explanation: str | None = Field(default=None, description="Factual sentences, validated")
     inference: str | None = Field(default=None, description="Link sentence, shown as inference")
     unsupported: list[str] = Field(default_factory=list, description="Validator layer 2 flags")

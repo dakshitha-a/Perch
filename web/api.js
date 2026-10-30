@@ -93,7 +93,7 @@ export function replayApi(data) {
     if (!done("summary")) { b.summary = null; b.topics = []; }
     if (!done("explanations")) {
       const landed = running.name === "explanations" ? Math.floor(running.at / EXPLAIN_STEP) : 0;
-      out.leads = out.leads.map((l, i) => (i < landed ? l : { ...l, fit_score: null,
+      out.leads = out.leads.map((l, i) => (i < landed ? l : { ...l,
         explanation: null, inference: null, cited_ids: [], unsupported: [], flagged: false }));
     }
     return out;

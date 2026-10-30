@@ -75,7 +75,7 @@ console.log(JSON.stringify(out));
     assert out["date"] == "28 Oct 2027" and out["days"] == 365
     assert (out["soon"], out["months"], out["closed"]) == ("in 12 days", "in 12 months", "closed")
     assert out["size"] == "Up to $1,500,000" and out["none"] is None
-    assert out["band"] == "Good fit" and out["higher"] == 2
+    assert out["band"] == "Good match" and out["higher"] == 2
     p = out["parsed"]
     assert p["opportunity"] == ["Funds X ", {"cite": "PAR-1"}, "."]
     assert p["findings"] == [{"paper": "W123456", "text": "did A"},

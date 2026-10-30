@@ -99,10 +99,10 @@ export function agencyShort(name, parent) {
 
 export function fitBand(score) {
   if (score === null || score === undefined) return null;
-  if (score >= 80) return { key: "strong", word: "strong", label: "Strong fit" };
-  if (score >= 60) return { key: "good", word: "good", label: "Good fit" };
-  if (score >= 40) return { key: "partial", word: "partial", label: "Partial fit" };
-  return { key: "weak", word: "weak", label: "Weak fit" };
+  if (score >= 80) return { key: "strong", word: "strong", label: "Strong match" };
+  if (score >= 60) return { key: "good", word: "good", label: "Good match" };
+  if (score >= 40) return { key: "partial", word: "partial", label: "Partial match" };
+  return { key: "weak", word: "weak", label: "Weak match" };
 }
 
 // Applicant categories that name higher education, copied from the record.

@@ -30,6 +30,7 @@ from perch.private.inputs import PrivateDoc
 from perch.profile import Profile, Thread
 from perch.schemas import Lead, Opportunity, Scholarship, utcnow
 from perch.scholarships import NIH_FELLOWSHIP_LEVEL, sample_records
+from perch.score import match_score
 from perch.student import StudentFacts, Verdict, check, check_nih, gaps
 
 STUDENT_STAGES = ("student_profile", "fellowships", "scholarships", "student_explanations")
@@ -134,7 +135,8 @@ def to_leads(brief_id: str, route: str, chosen: list[Scored], facts: StudentFact
         leads.append(Lead(
             id=f"{brief_id}:{route}{i}", source=src.source, source_url=src.source_url,
             fetched_at=src.fetched_at, brief_id=brief_id, route=route, record_id=src.id,
-            rank=i, rerank_score=round(x.score, 4), verdict=v.verdict,
+            rank=i, rerank_score=round(x.score, 4), match_score=match_score(x.score),
+            verdict=v.verdict,
             verdict_reason=v.reason, verdict_lines=v.lines, gaps=[t for _, t in g],
             gap_keys=[k for k, _ in g], sample=s.synthetic))
     return leads

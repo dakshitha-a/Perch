@@ -22,6 +22,7 @@ from perch.llm.audit import AuditedProvider
 from perch.profile import Profile, build_threads
 from perch.rerank import RerankCache
 from perch.schemas import Award, Lead, Opportunity, Organisation, Record, Researcher
+from perch.score import match_score
 from perch.sources import openalex as oa
 
 ALLOWLIST = ("resolve_author", "build_profile", "list_awards", "search_opportunities",
@@ -170,6 +171,7 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                       "activity_code": o.activity_code,
                       "close_date": o.close_date and o.close_date.isoformat(),
                       "award_ceiling": o.award_ceiling,
+                      "match": match_score(x.rerank_score),
                       "matched_thread": x.candidate.best_thread + 1})
     reasons: dict[str, int] = {}
     for rs in b.rejected.values():
