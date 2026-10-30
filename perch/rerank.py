@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from perch.profile import Profile
-from perch.retrieve import Candidate, opportunity_text, thread_query
+from perch.retrieve import QUERY_VERSION, Candidate, opportunity_text, thread_query
 from perch.schemas import Opportunity
 
 DEFAULT_MODEL = "Qwen/Qwen3-Reranker-0.6B"
@@ -92,11 +92,12 @@ def rerank(cands: list[Candidate], opps: dict[str, Opportunity], profile: Profil
            ) -> tuple[list[Ranked], int]:
     """Top `top` by rerank score (ties broken by retrieval order). Returns (ranked, cache hits)."""
     threads = {t.index: t for t in profile.threads}
+    pkey = f"{profile.hash}:{QUERY_VERSION}"
     scores: dict[str, float] = {}
     hits = 0
     todo: dict[int, list[Candidate]] = {}
     for c in cands:
-        cached = cache.get(reranker.name, profile.hash, c.record_id) if cache else None
+        cached = cache.get(reranker.name, pkey, c.record_id) if cache else None
         if cached is not None:
             scores[c.record_id] = cached
             hits += 1
@@ -107,7 +108,7 @@ def rerank(cands: list[Candidate], opps: dict[str, Opportunity], profile: Profil
         for c, s in zip(group, reranker.score(thread_query(threads[ti]), docs), strict=True):
             scores[c.record_id] = s
             if cache:
-                cache.put(reranker.name, profile.hash, c.record_id, s)
+                cache.put(reranker.name, pkey, c.record_id, s)
     order = {c.record_id: i for i, c in enumerate(cands)}
     best = sorted(cands, key=lambda c: (-scores[c.record_id], order[c.record_id]))[:top]
     return [Ranked(opps[c.record_id], c, scores[c.record_id]) for c in best], hits

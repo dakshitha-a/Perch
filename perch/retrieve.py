@@ -37,8 +37,14 @@ def index_opportunities(repo: Repository, index: VectorIndex, embedder: Embedder
     return index.upsert([o.id for o in opps], texts, vecs.tolist())
 
 
+# Bumped when thread_query changes, so cached rerank scores for the old query are not reused.
+QUERY_VERSION = "topics-1"
+
+
 def thread_query(t: Thread) -> str:
-    return " ".join([t.label.replace(",", " "), *t.titles])
+    """Topic names, label terms and top titles. Topics added in S27: on the NIH back-test
+    they raised MRR from 0.067 to 0.109 alone, and to 0.149 with 100 candidates reranked."""
+    return " ".join([*t.topics, t.label.replace(",", " "), *t.titles])
 
 
 @dataclass

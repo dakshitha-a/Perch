@@ -78,6 +78,14 @@ class Thread:
     weight: float  # share of total recency weight
     label: str
     titles: list[str] = field(default_factory=list)
+    # The thread's most common OpenAlex primary topics, e.g. "Spectroscopy and Quantum
+    # Chemical Studies": the discipline that title words alone do not name (S27).
+    topics: list[str] = field(default_factory=list)
+
+
+def thread_topics(works: list[Work], n: int = 3) -> list[str]:
+    c = Counter(w.topics[0].display_name for w in works if w.topics)
+    return [name for name, _ in c.most_common(n)]
 
 
 @dataclass
@@ -190,5 +198,5 @@ def build_threads(researcher_id: str, works: list[Work], embedder: Embedder,
         m = labels == j
         vec = normalise((wts[m, None] * x[m]).sum(0, keepdims=True))[0]
         threads.append(Thread(idx, vec, [w.id for w in g], float(wts[m].sum() / total), name,
-                              [w.title for w in g[:3]]))
+                              [w.title for w in g[:3]], thread_topics(g)))
     return Profile(researcher_id, as_of, embedder.name, threads, [w.id for w in papers])

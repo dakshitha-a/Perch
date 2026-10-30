@@ -1,0 +1,371 @@
+{
+ "PI-1": {
+  "R0 production": {
+   "expected_rank": null,
+   "top": [
+    "PAR-25-442",
+    "PAR-25-338",
+    "PAR-25-337",
+    "RFA-HG-27-007",
+    "PAR-26-121",
+    "PAR-28-022",
+    "RFA-TR-25-002",
+    "PAR-28-062",
+    "PA-25-172",
+    "PAR-25-444"
+   ],
+   "mix": {
+    "Department of Health and Human Services": 10
+   }
+  },
+  "R2 topics": {
+   "expected_rank": null,
+   "top": [
+    "PAR-25-442",
+    "PAR-25-444",
+    "PAS-25-205",
+    "PAR-28-022",
+    "PAR-26-121",
+    "PAR-28-062",
+    "PAR-25-338",
+    "RFA-RM-27-008",
+    "PAR-25-337",
+    "RFA-HG-27-007"
+   ],
+   "mix": {
+    "Department of Health and Human Services": 10
+   }
+  },
+  "R3 rerank 100": {
+   "expected_rank": null,
+   "top": [
+    "PAR-25-442",
+    "PAR-25-338",
+    "PAR-25-337",
+    "RFA-HG-27-007",
+    "PA-27-061",
+    "PAR-26-121",
+    "PAR-28-022",
+    "RFA-TR-25-002",
+    "PAR-28-062",
+    "PAR-25-416"
+   ],
+   "mix": {
+    "Department of Health and Human Services": 10
+   }
+  }
+ },
+ "PI-130": {
+  "R0 production": {
+   "expected_rank": 1,
+   "top": [
+    "26-519",
+    "25-537",
+    "26-523",
+    "PAR-26-121",
+    "PD-19-127Y",
+    "RFA-HG-27-007",
+    "26-521",
+    "14-579",
+    "N0001426SF002",
+    "PA-27-061"
+   ],
+   "mix": {
+    "National Science Foundation": 6,
+    "Department of Health and Human Services": 3,
+    "Department of Defense": 1
+   }
+  },
+  "R2 topics": {
+   "expected_rank": 1,
+   "top": [
+    "26-519",
+    "26-523",
+    "N0001426SF002",
+    "25-537",
+    "PAR-26-121",
+    "PD-19-127Y",
+    "PA-27-061",
+    "PAR-27-003",
+    "DE-FOA-0003665",
+    "FA955026S0003"
+   ],
+   "mix": {
+    "National Science Foundation": 4,
+    "Department of Defense": 2,
+    "Department of Health and Human Services": 3,
+    "Department of Energy - Office of Science": 1
+   }
+  },
+  "R3 rerank 100": {
+   "expected_rank": 1,
+   "top": [
+    "26-519",
+    "25-537",
+    "26-523",
+    "PAR-26-121",
+    "RFA-HG-27-010",
+    "PD-19-127Y",
+    "RFA-HG-27-007",
+    "26-521",
+    "14-579",
+    "N0001426SF002"
+   ],
+   "mix": {
+    "National Science Foundation": 6,
+    "Department of Health and Human Services": 3,
+    "Department of Defense": 1
+   }
+  }
+ },
+ "PI-132": {
+  "R0 production": {
+   "expected_rank": 2,
+   "top": [
+    "DE-FOA-0003665",
+    "26-523",
+    "24-598",
+    "22-624",
+    "RDK-RAD-FOA-2024",
+    "N0001425SB001",
+    "PAR-26-121",
+    "PAR-27-003",
+    "PA-27-061",
+    "NOFOAFRLAFOSR20260004"
+   ],
+   "mix": {
+    "Department of Energy - Office of Science": 1,
+    "National Science Foundation": 3,
+    "Department of Defense": 3,
+    "Department of Health and Human Services": 3
+   }
+  },
+  "R2 topics": {
+   "expected_rank": 1,
+   "top": [
+    "26-523",
+    "DE-FOA-0003665",
+    "24-598",
+    "22-624",
+    "RDK-RAD-FOA-2024",
+    "PAR-26-121",
+    "DE-FOA-0003630",
+    "N00173-24-S-BA01",
+    "PA-27-061",
+    "FA955026S0003"
+   ],
+   "mix": {
+    "National Science Foundation": 3,
+    "Department of Energy - Office of Science": 1,
+    "Department of Defense": 3,
+    "Department of Health and Human Services": 2,
+    "Department of Energy": 1
+   }
+  },
+  "R3 rerank 100": {
+   "expected_rank": 2,
+   "top": [
+    "DE-FOA-0003665",
+    "26-523",
+    "24-598",
+    "22-624",
+    "RDK-RAD-FOA-2024",
+    "PD-23-221Y",
+    "N0001425SB001",
+    "PAR-26-121",
+    "14-579",
+    "PAR-27-003"
+   ],
+   "mix": {
+    "Department of Energy - Office of Science": 1,
+    "National Science Foundation": 5,
+    "Department of Defense": 2,
+    "Department of Health and Human Services": 2
+   }
+  }
+ },
+ "PI-7": {
+  "R0 production": {
+   "expected_rank": null,
+   "top": [
+    "PAR-25-442",
+    "PAR-25-444",
+    "PAR-26-121",
+    "PAR-28-022",
+    "PAR-25-338",
+    "PAR-25-337",
+    "PA-25-253",
+    "PAR-28-062",
+    "RFA-HG-27-007",
+    "RFA-CA-27-002"
+   ],
+   "mix": {
+    "Department of Health and Human Services": 10
+   }
+  },
+  "R2 topics": {
+   "expected_rank": null,
+   "top": [
+    "PAR-25-444",
+    "PAR-28-022",
+    "PAR-25-338",
+    "PAR-25-337",
+    "PAR-28-062",
+    "PAR-26-121",
+    "PAR-27-003",
+    "RFA-HG-27-007",
+    "RFA-CA-27-001",
+    "RFA-CA-27-002"
+   ],
+   "mix": {
+    "Department of Health and Human Services": 10
+   }
+  },
+  "R3 rerank 100": {
+   "expected_rank": null,
+   "top": [
+    "PAR-25-442",
+    "PAR-25-444",
+    "PAR-26-121",
+    "PAR-28-022",
+    "PAR-25-338",
+    "PAR-25-337",
+    "PA-25-253",
+    "PAR-28-062",
+    "RFA-HG-27-007",
+    "RFA-CA-27-002"
+   ],
+   "mix": {
+    "Department of Health and Human Services": 10
+   }
+  }
+ },
+ "PI-131": {
+  "R0 production": {
+   "expected_rank": 1,
+   "top": [
+    "26-521",
+    "26-519",
+    "PA-27-061",
+    "14-579",
+    "PAR-26-121",
+    "25-537",
+    "DE-FOA-0003665",
+    "PAR-27-003",
+    "24-528",
+    "26-514"
+   ],
+   "mix": {
+    "National Science Foundation": 6,
+    "Department of Health and Human Services": 3,
+    "Department of Energy - Office of Science": 1
+   }
+  },
+  "R2 topics": {
+   "expected_rank": 1,
+   "top": [
+    "26-519",
+    "26-521",
+    "PA-27-061",
+    "PAR-26-121",
+    "14-579",
+    "24-528",
+    "DE-FOA-0003665",
+    "25-537",
+    "PAR-27-003",
+    "FA955026S0003"
+   ],
+   "mix": {
+    "National Science Foundation": 5,
+    "Department of Health and Human Services": 3,
+    "Department of Energy - Office of Science": 1,
+    "Department of Defense": 1
+   }
+  },
+  "R3 rerank 100": {
+   "expected_rank": 1,
+   "top": [
+    "26-521",
+    "26-519",
+    "23-595",
+    "PA-27-061",
+    "14-579",
+    "PAR-26-121",
+    "PD-23-221Y",
+    "25-537",
+    "DE-FOA-0003665",
+    "24-588"
+   ],
+   "mix": {
+    "National Science Foundation": 7,
+    "Department of Health and Human Services": 2,
+    "Department of Energy - Office of Science": 1
+   }
+  }
+ },
+ "PI-133": {
+  "R0 production": {
+   "expected_rank": 1,
+   "top": [
+    "26-523",
+    "26-519",
+    "26-521",
+    "PA-27-061",
+    "PAR-26-121",
+    "DE-FOA-0003665",
+    "N0001425SB001",
+    "W911NF21S0009",
+    "N0001426SF002",
+    "25-537"
+   ],
+   "mix": {
+    "National Science Foundation": 4,
+    "Department of Health and Human Services": 2,
+    "Department of Energy - Office of Science": 1,
+    "Department of Defense": 3
+   }
+  },
+  "R2 topics": {
+   "expected_rank": 1,
+   "top": [
+    "26-523",
+    "26-519",
+    "PA-27-061",
+    "PAR-26-121",
+    "N0001425SB001",
+    "PAR-27-003",
+    "14-579",
+    "N0001426SF002",
+    "DE-FOA-0003665",
+    "NOFOAFRLAFOSR20260002"
+   ],
+   "mix": {
+    "National Science Foundation": 3,
+    "Department of Health and Human Services": 3,
+    "Department of Defense": 3,
+    "Department of Energy - Office of Science": 1
+   }
+  },
+  "R3 rerank 100": {
+   "expected_rank": 1,
+   "top": [
+    "26-523",
+    "26-519",
+    "FA955026S0003",
+    "26-521",
+    "PA-27-061",
+    "PAR-26-121",
+    "RDK-RAD-FOA-2024",
+    "N0001426SF004",
+    "W911NF25S0007",
+    "DE-FOA-0003665"
+   ],
+   "mix": {
+    "National Science Foundation": 3,
+    "Department of Defense": 4,
+    "Department of Health and Human Services": 2,
+    "Department of Energy - Office of Science": 1
+   }
+  }
+ }
+}

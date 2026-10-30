@@ -30,6 +30,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 from bench.corpus import BENCH_DB, HITS, MIN_CLOSE
+from perch.brief import RERANK_IN
 from perch.config import env, load_dotenv
 from perch.eligibility import Constraints, check
 from perch.embed import Embedder, get_embedder
@@ -47,7 +48,6 @@ PIS = Path("data/backtest/pis.csv")
 RESULTS = Path("bench/results")
 WINDOW_MONTHS = 18  # longest targeted gap (start minus close) in the set: 16.2 months
 RETRIEVE_K = 200
-RERANK_IN = 50
 
 
 def slug(name: str) -> str:

@@ -1,7 +1,7 @@
 """Route A brief, deterministic: threads, retrieval, eligibility, rerank. No model output.
 
 Pipeline: research threads, then hybrid retrieval (top 200), then the eligibility
-filter, then the 50 best eligible go to the reranker, which keeps 10. Every stage
+filter, then the 100 best eligible go to the reranker, which keeps 10. Every stage
 is timed; timings are appended to data/logs/brief_timings.jsonl.
 """
 
@@ -22,7 +22,7 @@ from perch.schemas import Opportunity, Researcher
 from perch.store.base import Repository, VectorIndex
 
 RETRIEVE_K = 200
-RERANK_IN = 50
+RERANK_IN = 100  # 50 until S27; 100 with topic queries raised back-test MRR 0.067 to 0.149
 TIMINGS_LOG = Path("data/logs/brief_timings.jsonl")
 
 
