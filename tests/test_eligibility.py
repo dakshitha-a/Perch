@@ -119,3 +119,21 @@ def test_agency_filter_reaches_the_department_and_code():
         assert not any("not in the chosen agencies" in r for r in check(o, c)), wanted
     c.agencies = ["NIH"]
     assert any("not in the chosen agencies" in r for r in check(o, c))
+
+
+def test_institution_type_young_investigator_and_epscor():
+    c = Constraints(as_of=date(2026, 10, 30), check_dates=False)
+    for title, why in [
+        ("ONR FY27 NOFO for Young Investigator Program", "career stage"),
+        ("Facilitating Research at Primarily Undergraduate Institutions (RUI)", "undergraduate"),
+        ("Academic Research Enhancement Award (AREA) for Undergraduate-Focused Institutions "
+         "(R15)", "undergraduate"),
+        ("EPSCoR Research Infrastructure Improvement Program", "EPSCoR"),
+        ("FY26 DEFENSE ESTABLISHED PROGRAM TO STIMULATE COMPETITIVE RESEARCH (DEPSCoR)",
+         "EPSCoR"),
+    ]:
+        assert any(why in r for r in check(opp(title=f"SYNTHETIC {title}"), c)), title
+    named = opp(title="SYNTHETIC EPSCoR Workshops", eligibility_notes="Pennsylvania and others")
+    assert not any("EPSCoR" in r for r in check(named, c))
+    c.include_restricted = True
+    assert not check(opp(title="SYNTHETIC EPSCoR Workshops"), c)

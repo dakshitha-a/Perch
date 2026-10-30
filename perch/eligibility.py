@@ -48,11 +48,20 @@ EXCLUDED_ACTIVITY = {
 
 # Restrictions the title states outright. Excluded by default because Perch cannot
 # confirm them from public records (career stage needs the CV: private context, S13).
-CAREER_STAGE = r"\bearly[- ]career\b|\bearly[- ]stage investigator|\bnew investigator"
+CAREER_STAGE = (r"\bearly[- ]career\b|\bearly[- ]stage investigator|\bnew investigator"
+                r"|\byoung investigator")
 TITLE_RESTRICTIONS = {
     r"\blimited competition\b": "limited competition: only named applicants may apply",
     CAREER_STAGE: "restricted by career stage, which public records cannot confirm",
+    r"\bprimarily undergraduate institution|\bundergraduate[- ]focused institution":
+        "for undergraduate-focused institutions; Temple is a doctoral university",
 }
+# EPSCoR and DEPSCoR are open only in listed states. Pennsylvania is not on NSF's list
+# (frozen through FY2027, nsf.gov EPSCoR eligibility page, read 2026-10-30) nor on the
+# FY2026 DEPSCoR list in the record itself. A listing that names Pennsylvania is kept.
+EPSCOR = re.compile(r"\bD?EPSCoR\b|Established Program to Stimulate Competitive Research",
+                    re.IGNORECASE)
+HOME_STATE = "Pennsylvania"
 
 
 def career_stage_restricted(o: Opportunity) -> bool:
@@ -138,6 +147,9 @@ def check(o: Opportunity, c: Constraints) -> list[str]:
                 continue
             if re.search(pattern, o.title, re.IGNORECASE):
                 reasons.append(why)
+        text_all = f"{o.title} {o.eligibility_notes or ''} {o.description or ''}"
+        if EPSCOR.search(o.title) and HOME_STATE not in text_all:
+            reasons.append(f"EPSCoR: open only in listed states, and {HOME_STATE} is not one")
     if c.min_amount is not None and o.award_ceiling is not None and o.award_ceiling < c.min_amount:
         reasons.append(f"award ceiling {o.award_ceiling:,.0f} is below {c.min_amount:,.0f}")
     if c.max_amount is not None and o.award_ceiling is not None and o.award_ceiling > c.max_amount:
