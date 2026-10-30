@@ -59,8 +59,10 @@ Archived options B and C (`ShowResult.png`, `Guided.png`) are not built.
 ## Gaps to fill in the same language
 Help page, the Local / Cloud dialog (a real dialog, not `window.confirm`), the evidence sheet on a phone, error and empty states, the export menu, the replay preview, and phone layouts of every screen (the canvas is laptop-first; follow its stacking rules).
 
-## Out of scope until answered
-- **Draft review in Scout (Q32):** the canvas shows a "Check a cover letter / draft aims for what it misses" panel. Build the UI only if Dakshitha answers Q32 with (a) or (b); otherwise leave it out of the build.
+## Added by Dakshitha's answers (2026-10-30)
+- **Draft review in Scout (Q32):** evaluate first (PLAN S24 task 7); build the canvas panel into both Scout tabs only if the numbers are good.
+- **Documents on Cloud (Q30):** a second, stronger warning before documents go to the cloud provider; held behind the standing rule 1 change in Q33.
+- **Warm demo briefs (Q31):** demo researchers' briefs are built at server start and held in memory; a visitor gets a fresh copy at once.
 
 ## Done when
 Every screen above is live on the public URL for both paths, light and dark, phone and laptop; `scripts/ux_walk.py` is updated and reports 0 axe violations and no sideways scroll; the canary passes; Help is updated; `make test` is green.

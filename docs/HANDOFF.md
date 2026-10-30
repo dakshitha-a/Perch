@@ -6,7 +6,7 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - **S23 is done** (below). 245 tests pass. API spend: $2.09 of $100.
 - **After S23, 2026-10-30:** Dakshitha redesigned the whole web app with Perch-dev on a design canvas and asked for it to be built. That is the new S24. QA is now S25, the media refilm S26, freeze S27.
 - **Spec:** `docs/design/S24_REBUILD.md`. Canvas sources: `docs/design/redesign/` (one `.dc.html` per screen). The canvas link is in `CLAUDE.local.md`.
-- **Decisions on the way:** students get Ask Scout (Q27 revised). Scout draft review is designed but waits on Q32 (standing rule 5).
+- **Decisions on the way:** students get Ask Scout (Q27 revised). Q30 to Q32 answered: S24 tasks 7 to 9. Q33 holds two rule changes for Dakshitha to apply.
 
 ## S23 — what changed
 - **Every brief is a session in memory.** Find runs researcher briefs through `/private/brief`; no document is needed with an author id. The context fields and the award ceiling go with it.
@@ -38,7 +38,8 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - **Every brief is live:** about 45 s on the demo models (Q31).
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- **Q29:** S22 option A, B or C. Default B is built.
-- **Q30:** documents on Cloud? Default: Local only.
-- **Q31:** every brief is live, about 45 s. Default: accept it.
-- **Q32:** Scout draft review under standing rule 5: (a) allowed as is, (b) you change the rule, (c) after Demo Day. Default: (c).
+- **Q33:** two standing-rule changes for Dakshitha to apply: rule 1 (documents on Cloud after a second warning) and, only if the S24 evaluation needs it, rule 5 (a draft review job).
+- **Q32 answered:** evaluate the draft review first (S24 task 7); build only if good.
+- **Q30 answered:** documents on Cloud after a second warning (S24 task 8), behind the rule 1 change.
+- **Q31 answered:** warm demo briefs held in memory (S24 task 9).
+- **Q29:** kept open by Dakshitha.
