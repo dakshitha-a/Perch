@@ -100,6 +100,26 @@ RAIL = """() => {
   return out; }"""
 
 
+# The open Evidence (rail or phone sheet): no text past its right edge, and no long
+# text shown twice.
+EVIDENCE = """() => {
+  const out = [];
+  for (const box of document.querySelectorAll('.rail-evidence, .sheet-body')) {
+    if (!box.offsetParent && getComputedStyle(box).position !== 'fixed') continue;
+    const r = box.getBoundingClientRect();
+    if (!r.width) continue;
+    const edge = r.right - parseFloat(getComputedStyle(box).paddingRight) + 1;
+    const wide = [...box.querySelectorAll('p, dd, li, h2, h3, a')]
+      .filter(el => el.getClientRects().length && el.getBoundingClientRect().right > edge);
+    if (wide.length) out.push(`${wide.length} text blocks run ${Math.round(Math.max(...wide.map(
+      el => el.getBoundingClientRect().right)) - edge)} px past the Evidence box's edge`);
+    const longs = [...box.querySelectorAll('.long')].map(el => el.textContent.replace(/…$/, '').slice(0, 200));
+    if (longs.some((t, i) => longs.findIndex(u => u.startsWith(t) || t.startsWith(u)) !== i))
+      out.push('the same long text is shown twice');
+  }
+  return out; }"""
+
+
 class Walk:
     def __init__(self, out: Path, axe: str | None) -> None:
         self.out = out
@@ -199,6 +219,19 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
         await page.wait_for_selector(".rec-title")
         await page.wait_for_timeout(400)
         await w.snap(page, tag, "evidence-opportunity")
+        for problem in await page.evaluate(EVIDENCE):
+            w.errors.append(f"{tag}: evidence: layout: {problem}")
+        more = page.locator(".rail-evidence .more-btn, .sheet-body .more-btn").first
+        if await more.count() and await more.is_visible():
+            para = page.locator(".rail-evidence .long, .sheet-body .long").first
+            before = (await para.bounding_box() or {}).get("height", 0)
+            await more.click()
+            await page.wait_for_timeout(200)
+            after = (await para.bounding_box() or {}).get("height", 0)
+            if after <= before:
+                w.errors.append(f"{tag}: evidence: Show the full text did not open the text")
+            await more.scroll_into_view_if_needed()
+            await w.snap(page, tag, "evidence-expanded")
         await page.evaluate("() => window.scrollBy(0, 600)")
         await page.wait_for_timeout(300)
         for problem in await page.evaluate(RAIL):
