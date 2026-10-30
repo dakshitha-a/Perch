@@ -18,6 +18,8 @@ const P = { info: null, docs: [], authorId: "", busy: false, error: null, drafts
 let MODE = null; // the app's private-mode state (mode.js); set by app.js
 
 export function setMode(m) { MODE = m; }
+// Forget what this module held for a session that has ended (S27).
+export function resetPrivate() { Object.assign(P, { docs: [], authorId: "", busy: false, error: null, drafts: {} }); }
 export function privateInfo() { return P.info; }
 
 export async function privateAvailable(api) {

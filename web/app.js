@@ -6,12 +6,12 @@ import { add, fill, h, icon } from "./dom.js";
 import { renderHelp } from "./help.js";
 import { compareOffices, loadCompare, renderCompare } from "./compare.js";
 import { renderHandoff } from "./handoff.js";
-import { renderScout } from "./scout.js";
+import { renderScout, resetScout } from "./scout.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
-import { lockLabel, privateAvailable, privateBar, privateInfo, renderPrivate, setMode } from "./private.js";
+import { lockLabel, privateAvailable, privateBar, privateInfo, renderPrivate, resetPrivate, setMode } from "./private.js";
 import { createMode, looksPersonal } from "./mode.js";
-import { isStudent, usedSample, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
+import { isStudent, resetStudent, usedSample, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
 
 const publicApi = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
 const privApi = privateApi(window.PERCH_API || "");
@@ -20,6 +20,7 @@ let api = publicApi; // privApi while a session brief (#/brief/private) is on sc
 // header switch picks the models: Local (default) or Cloud, after a warning.
 const mode = createMode(privApi, { onChange: () => drawSwitch() });
 setMode(mode);
+privApi.onExpired = sessionExpired;
 const PRIVATE_ID = "private";
 const POLL_MS = 1500;
 const TABS = ["routes", "profile", "compare", "scout"]; // the order of the tabs (S24)
@@ -38,6 +39,7 @@ const S = {
     minAmount: "", direction: "", include: "", exclude: "", stage: "", nudge: null,
     picked: null, cv: "", proposal: "", files: {}, sample: false, building: false },
   who: "r", // the landing's Researcher | Student control
+  notice: null, // a message for the landing, e.g. that the session ended (S27)
   hasDocs: false, // the session holds documents: Cloud stays off
   sampleBrief: false, // the brief on screen was steered by SYNTHETIC sample text
   privateOn: false, // the server offers sessions
@@ -96,6 +98,7 @@ function route() {
     return;
   }
   S.lastHash = location.hash || "#/";
+  if (location.hash && location.hash !== "#/") S.notice = null;
   if (parts[0] === "private") {
     leaveBrief();
     screen("form");
@@ -193,6 +196,10 @@ function renderFind() {
     heroArt(),
     h("h1", { text: "Find funding that fits." }),
     h("p", { class: "lede", text: "Perch reads public records and links every claim to its source." }),
+    S.notice ? h("div", { class: "notice warn session-ended", role: "status" }, icon("warn"),
+      h("p", { text: S.notice }),
+      h("button", { class: "x", type: "button", "aria-label": "Dismiss", "data-key": "notice-close",
+        onclick: () => { S.notice = null; keepFocus(renderFind); }, text: "×" })) : null,
     seg("Who is searching", S.who, [["r", "Researcher"], ["s", "Student"]], (k) => { S.who = k; keepFocus(renderFind); }),
     S.who === "s" ? student : researcher,
     nudgeBox(),
@@ -597,6 +604,29 @@ async function endSession() {
     Object.assign(S.find, { picked: null, files: {}, direction: "", include: "", exclude: "", cv: "", proposal: "", sample: false });
     drawSwitch(); announce("Session ended. Everything in it was discarded."); go("#/");
   }
+}
+
+// The server dropped the session: 30 minutes idle, or a restart. Clear what the page
+// held, go back to the start and say why, instead of leaving a page that cannot answer
+// (S27). It runs on the next tick, after the failed call's own error handling.
+function sessionExpired() {
+  setTimeout(() => {
+    resetSession();
+    const idle = (privateInfo() || {}).idle_minutes || 30;
+    S.notice = `Your session ended, so Perch went back to the start. A session ends after ${idle} minutes without use, or when the server restarts, and everything in it is discarded. Start again whenever you are ready.`;
+    announce("Your session ended. Perch went back to the start.");
+    go("#/");
+  }, 0);
+}
+
+function resetSession() {
+  stopPolling();
+  resetScout(); resetPrivate(); resetStudent();
+  mode.expired();
+  S.cloud = false; S.hasDocs = false; S.cloudDocs = false; S.sampleBrief = false;
+  Object.assign(S.find, { picked: null, files: {}, direction: "", include: "", exclude: "", cv: "",
+    proposal: "", sample: false, busy: false, building: false, error: null });
+  drawSwitch();
 }
 
 // Cloud on for this session; the dialog above is the warning that names the provider.

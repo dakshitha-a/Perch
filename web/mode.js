@@ -54,6 +54,12 @@ export function createMode(api, hooks = {}) {
       if (hasBrief) out.push("Your brief, its leads and any drafts");
       return out;
     },
+    // The server dropped the session (idle timeout or restart): off, with no server call.
+    expired() {
+      st.on = false;
+      st.drafts = {};
+      changed();
+    },
     // Off means end: only after the user confirms.
     async disable(confirm) {
       if (!st.on && !api.open) return true;

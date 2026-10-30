@@ -181,6 +181,9 @@ details[open] > summary::before { transform: rotate(45deg); }
 .notice.warn { background: var(--ember-soft); color: var(--ink); }
 .notice.warn .icon { color: var(--ember); }
 .notice ul { margin: 6px 0 0; padding-left: 18px; }
+.session-ended { align-items: center; }
+.session-ended p { flex: 1; margin: 0; line-height: 1.5; }
+.session-ended .x { width: 44px; height: 44px; flex: none; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-size: 20px; cursor: pointer; }
 .empty { display: flex; gap: 14px; align-items: center; padding: 16px 4px; list-style: none; }
 .empty .btn { margin-top: 12px; }
 .loading { display: flex; gap: 12px; align-items: center; padding: 24px 4px; color: var(--ink-2); }

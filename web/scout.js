@@ -40,6 +40,12 @@ const EXAMPLES = ["Only R21 grants that close by 2027-03-01", "Small grants only
 // One Scout conversation per brief, kept while the brief is on screen.
 const T = { briefId: null, data: null, mode: "ask", error: null, timer: null, draft: "", sending: false };
 
+// Stop polling and forget the conversation when the session has ended (S27).
+export function resetScout() {
+  clearTimeout(T.timer);
+  Object.assign(T, { briefId: null, data: null, error: null, timer: null, draft: "", sending: false });
+}
+
 export function renderScout(panel, ctx) {
   const key = `${ctx.briefId}:${ctx.student ? "s" : "r"}`;
   if (T.briefId !== key) reset(key);

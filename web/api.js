@@ -174,10 +174,20 @@ export function replayApi(data) {
 export function privateApi(base = "") {
   let token = null;
   const hdr = () => ({ "Content-Type": "application/json", "X-Perch-Private": token || "" });
-  const p = (path, opts = {}) => call(base, path, { ...opts, headers: hdr() });
+  // A 401 means the server no longer holds this session (30 minutes idle, or a restart).
+  // The token is dropped and `onExpired` runs once, so the app can go home and say so (S27).
+  const lost = (e) => {
+    if (e instanceof ApiError && e.status === 401 && token) {
+      token = null;
+      if (api.onExpired) api.onExpired(e.message);
+    }
+    throw e;
+  };
+  const p = (path, opts = {}) => call(base, path, { ...opts, headers: hdr() }).catch(lost);
   const post = (path, body = {}) => p(path, { method: "POST", body: JSON.stringify(body) });
-  return {
+  const api = {
     mode: "private",
+    onExpired: null,
     get open() { return Boolean(token); },
     info: () => call(base, "/private"),
     sample: (name) => call(base, `/private/samples/${encodeURIComponent(name)}`),
@@ -195,7 +205,7 @@ export function privateApi(base = "") {
     exportUrl: () => null, // downloads go through fetch with the header (exportFile)
     exportFile: async (kind, mask) => {
       const r = await fetch(`${base}/private/export.${kind}?mask=${mask ? "true" : "false"}`, { headers: hdr() });
-      if (!r.ok) throw new ApiError(`The server answered ${r.status}.`, r.status);
+      if (!r.ok) lost(new ApiError(`The server answered ${r.status}.`, r.status));
       return r.blob();
     },
     unmask: (text) => post("/private/unmask", { text }),
@@ -205,4 +215,5 @@ export function privateApi(base = "") {
     scoutGet: (sid) => p(`/private/scout/${encodeURIComponent(sid)}`),
     scoutAct: (sid, action, body) => post(`/private/scout/${encodeURIComponent(sid)}/${action}`, body),
   };
+  return api;
 }

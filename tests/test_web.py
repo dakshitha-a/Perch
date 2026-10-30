@@ -192,3 +192,43 @@ def test_draft_review_checklist_quotes_the_record():
     got = asks(text)
     assert got and all(g in text for g in got)
     assert not any("Section IV" in g for g in got)
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
+def test_a_lost_session_is_detected_once_and_the_mode_turns_off():
+    """S27: when the server no longer holds the session (idle timeout or restart), every
+    session call answers 401. The client drops the token and calls onExpired once, even
+    when several calls fail together, and the mode goes off without asking the server."""
+    script = """
+import { privateApi } from './web/api.js';
+import { createMode } from './web/mode.js';
+let status = 201;
+globalThis.fetch = async (url) => ({ ok: status < 400, status,
+  json: async () => status === 201 ? { token: 'SYNTHETIC-token' }
+    : { detail: 'No private session. It may have ended or timed out.' } });
+(async () => {
+const api = privateApi('');
+let fired = 0, message = '';
+api.onExpired = (m) => { fired += 1; message = m; };
+await api.start();
+const openBefore = api.open;
+status = 401;
+const results = await Promise.allSettled([api.brief(), api.session(), api.compare()]);
+const openAfter = api.open;
+status = 201;
+const m = createMode(api);
+m.setAvailable(true);
+await m.move('cv', 'SYNTHETIC draft');
+m.expired();
+console.log(JSON.stringify({ openBefore, openAfter, fired, message,
+  rejected: results.every((r) => r.status === 'rejected'), on: m.state.on,
+  drafts: m.state.drafts }));
+})().catch((e) => { console.error(e); process.exit(1); });
+"""
+    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
+                       text=True, cwd=ROOT, timeout=30)
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["openBefore"] is True and out["openAfter"] is False
+    assert out["fired"] == 1 and "timed out" in out["message"]
+    assert out["rejected"] and out["on"] is False and out["drafts"] == {}

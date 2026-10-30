@@ -34,6 +34,8 @@ const OPEN = new Set(); // cards whose "Why it may fit" is open; kept across red
 
 // The brief on screen was built from the SYNTHETIC sample (for its banner).
 export function usedSample() { return Boolean(D.lastSample); }
+// Forget what this module held for a session that has ended (S27).
+export function resetStudent() { Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, sample: false, lastSample: false }); }
 
 export function isStudent(brief) {
   return Boolean(brief && brief.brief && brief.brief.options && brief.brief.options.student);
