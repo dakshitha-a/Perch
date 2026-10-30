@@ -76,6 +76,30 @@ FOCUS = """() => {
 }"""
 
 
+# Layout checks the screenshots alone missed (S27). A pill group is stretched when it is
+# much wider than its buttons.
+STRETCH = """() => [...document.querySelectorAll('.route-switch, .seg')].filter(g => g.offsetParent)
+  .filter(g => getComputedStyle(g).display !== 'grid')
+  .map(g => [g, [...g.children].reduce((w, c) => w + c.getBoundingClientRect().width, 0)])
+  .filter(([g, inner]) => g.getBoundingClientRect().width > inner + 40)
+  .map(([g, inner]) => `${g.className} is ${Math.round(g.getBoundingClientRect().width)} px wide `
+       + `for ${Math.round(inner)} px of buttons`)"""
+# With the page scrolled, the side rail and the Evidence box must end inside the window,
+# and the shortlist must not be cut off.
+RAIL = """() => {
+  const out = [], vh = innerHeight, rail = document.querySelector('.cols > .rail');
+  if (!rail || getComputedStyle(rail).position !== 'sticky') return out;
+  for (const [sel, label] of [['.cols > .rail', 'rail'], ['.rail-evidence', 'Evidence box']]) {
+    const el = document.querySelector(sel);
+    if (el && el.getBoundingClientRect().bottom > vh + 1)
+      out.push(`${label} ends ${Math.round(el.getBoundingClientRect().bottom - vh)} px below the window`);
+  }
+  const sl = document.querySelector('.rail .shortlist');
+  if (sl && !sl.querySelector('li') && sl.scrollHeight > sl.clientHeight + 1)
+    out.push('the empty shortlist is cut off');
+  return out; }"""
+
+
 class Walk:
     def __init__(self, out: Path, axe: str | None) -> None:
         self.out = out
@@ -90,6 +114,8 @@ class Walk:
         await page.screenshot(path=str(path), full_page=full)
         probe = await page.evaluate(PROBE)
         state = {"tag": tag, "name": name, "shot": path.name, **probe}
+        for problem in await page.evaluate(STRETCH):
+            self.errors.append(f"{tag}: {name}: layout: {problem}")
         if self.axe:
             if not await page.evaluate("() => Boolean(window.axe)"):
                 await page.add_script_tag(path=self.axe)
@@ -173,6 +199,12 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
         await page.wait_for_selector(".rec-title")
         await page.wait_for_timeout(400)
         await w.snap(page, tag, "evidence-opportunity")
+        await page.evaluate("() => window.scrollBy(0, 600)")
+        await page.wait_for_timeout(300)
+        for problem in await page.evaluate(RAIL):
+            w.errors.append(f"{tag}: evidence scrolled: layout: {problem}")
+        await w.snap(page, tag, "evidence-scrolled")
+        await page.evaluate("() => window.scrollTo(0, 0)")
         await page.keyboard.press("Escape")
     if await w.step(tag, "export", page.click("[data-key=export]")):
         await page.wait_for_timeout(300)
