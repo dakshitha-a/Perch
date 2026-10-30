@@ -51,7 +51,9 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 
 ## 4. Private context: CV and unpublished directions
 
-**Private mode** (expanded 2026-10-29 at Dakshitha's request; full design in `docs/design/PRIVATE_MODE.md`). A researcher adds a current CV, a research summary, an unfinished proposal or unpublished work, and the routes are tailored to it.
+**Private by default** (S23, 2026-10-29, Dakshitha). With no user accounts, every brief is a session held in memory: no stored briefs, no reuse, no browser history, no per-user logs. Public records fetched for a brief stay cached. Models are local by default; a Local / Cloud switch sends the three model skills to a named cloud provider after a warning the user confirms, never for a session with documents. Monitoring is shelved until a user system exists (`perch/shelved/monitor/`). User guide: `docs/private-mode.md`.
+
+**Private mode** (expanded 2026-10-29 at Dakshitha's request; full design in `docs/design/PRIVATE_MODE.md`; since S23 the documents part of every session). A researcher adds a current CV, a research summary, an unfinished proposal or unpublished work, and the routes are tailored to it.
 
 - Self-hosted only: served wherever every model runs on the deployer's own hardware, a public URL included (Q12); the provider layer refuses endpoints off the deployment's allowlist; on a public URL the connection must be decrypted on the Perch server, or the tunnel provider is named; sessions are isolated.
 - No logs: nothing from the session is written to the store, audit log, caches, timings or browser storage; the inventory of write paths and what private mode does with each is in the design doc.
@@ -120,7 +122,7 @@ Decision models are never used for skills 1–3 (profile summary, fit explanatio
 
 Two layers: the deterministic pipeline (what the back-test measures) and Scout on top.
 
-Scout can: run a brief end to end or one approved step at a time; take plain-language follow-ups ("foundations only, under $200k"); monitor (award within 12 months of ending or new opportunity above threshold → refresh and draft a notification); explain its ranking from its records.
+Scout can: run a brief end to end or one approved step at a time; take plain-language follow-ups ("foundations only, under $200k"); monitor (award within 12 months of ending or new opportunity above threshold → refresh and draft a notification; built in S16, shelved in S23 until users have accounts); explain its ranking from its records.
 Scout cannot: call anything outside the allowlist (no web, no shell); state a number or date not in a cited record; send email or change a record; exceed the per-brief budget; read anything about a researcher that is not a public record.
 Tools: `resolve_author · build_profile · list_awards · search_opportunities(route, filters) · get_org_signals · explain_fit · compare · draft_handoff · get_record`. Every call logged with args and result hashes; a brief is replayable.
 UI: each tool call is a card; modes *ask before every step* (default) and *run and show me*.

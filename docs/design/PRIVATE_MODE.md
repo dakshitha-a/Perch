@@ -4,6 +4,14 @@ Asked for by Dakshitha on 2026-10-29 (S8). Extends SPEC §4. Built in S13, with
 pieces in S9, S10, S12, S14 (MCP) S18 (student mode) and S20 (QA) (see PLAN.md). Synthetic test persona:
 `data/synthetic/persona-1/`.
 
+**S23 update (private by default).** Every brief, with or without documents, now runs
+as a session on this design, so the write-path inventory below applies to every visitor.
+Two changes to it: a session writes public records (OpenAlex researchers, works and
+organisations, RePORTER and NSF awards) through to the store (`perch/private/store.py`,
+`is_public`), and a session may turn Cloud on for briefs without documents, which lets
+one named cloud spec through the gate for the three model skills
+(`perch/private/session.py`, `PrivateModels`). User guide: `docs/private-mode.md`.
+
 ## What it is
 
 - **Purpose:** a researcher can add sensitive material and get routes tailored to it. Examples are a current CV, an ongoing research summary, an unfinished grant proposal or an unpublished manuscript.

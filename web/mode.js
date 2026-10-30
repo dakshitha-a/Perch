@@ -51,7 +51,7 @@ export function createMode(api, hooks = {}) {
     discards(docs = [], hasBrief = false) {
       const out = docs.map((d) => d.label || d.kind);
       if (Object.values(st.drafts).some((x) => x && x.trim())) out.push("Unsent text you moved here");
-      if (hasBrief) out.push("Your private brief, its leads and any drafts");
+      if (hasBrief) out.push("Your brief, its leads and any drafts");
       return out;
     },
     // Off means end: only after the user confirms.

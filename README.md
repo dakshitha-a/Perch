@@ -26,7 +26,7 @@ Then it drafts a hand-off to the right Temple office, which you send yourself.
 <table>
 <tr>
 <td align="center" width="33%"><img src="docs/tour/icon-record.svg" width="32" alt=""><br><b>Every claim has a record</b><br><sub>Dates and amounts are copied, never generated.</sub></td>
-<td align="center" width="33%"><img src="docs/tour/icon-lock.svg" width="32" alt=""><br><b>Runs on your own models</b><br><sub>Private mode keeps drafts in memory only.</sub></td>
+<td align="center" width="33%"><img src="docs/tour/icon-lock.svg" width="32" alt=""><br><b>Keeps nothing about you</b><br><sub>Every brief lives in memory, on local models by default.</sub></td>
 <td align="center" width="33%"><img src="docs/tour/icon-draft.svg" width="32" alt=""><br><b>Nothing is sent</b><br><sub>Hand-offs are drafts for you to edit.</sub></td>
 </tr>
 </table>
@@ -119,15 +119,17 @@ Claude Code included.
 <td><img src="docs/tour/private.webp" alt="Starting a private session, adding a CV, a draft proposal and unpublished work, and a brief whose explanations cite the private documents with a lock." width="420"></td>
 <td>
 
-### Private mode, for work not yet public
+### Private by default, local models first
 
-Add a CV, a draft proposal, a research direction or unpublished work. These
-steer the search, and explanations can cite them. Every model runs on the
-server, and the session lives in memory only. Exports leave private text out,
-or mask it.
+Perch has no accounts, so it keeps nothing about you: every brief is a
+session held in memory, and only public records are cached. Models run on
+the server. A Local / Cloud switch can send the model work to a cloud
+provider instead, after a warning that names it.
 
-A canary test checks that no trace is left in files, logs or requests.
-[More on private mode →](docs/private-mode.md)
+Add a CV, a draft proposal or unpublished work to steer the search. Documents
+stay on local models, and exports leave their text out, or mask it. A canary
+test checks that no trace is left in files, logs or requests.
+[More on privacy →](docs/private-mode.md)
 
 </td>
 </tr>
@@ -189,7 +191,7 @@ Every number here was measured. Each is copied from [bench/results](bench/result
 | **Citation and grounding checks,** on 30 leads | Gemma 4 26B-A4B passed both on 28; Claude Sonnet on 24 |
 | **Scout,** 20 scripted follow-ups | Claude Sonnet completed 20, with no wrong-tool calls; Gemma 4 26B-A4B completed 18 |
 | **Cost of a 10-lead brief** | about $0.09 on Claude Sonnet; $0 on local models |
-| **Private mode, live canary** | no trace in files, logs or model-server journals after full private briefs |
+| **Live canary** | no trace in files, logs or model-server journals after full briefs, with and without documents |
 
 - **An upper bound, not an estimate:** each award's own funded abstract was added as a stand-in "draft proposal". It lifted the back-test from 7 to 16 of 48 in the top 10. A real draft is further from the award than its funded abstract.
 - **General calls are hard:** for awards made under broad parent announcements, Perch puts 1 of 78 in the top 10.
@@ -197,10 +199,13 @@ Every number here was measured. Each is copied from [bench/results](bench/result
 
 ## Known limits
 
-- **Awards are not refreshed weekly:** the weekly watch refreshes open opportunities, but a new or extended award is seen only when the store is refreshed.
-- **Shared watch briefs:** the What changed screen links to the watch's own brief, so visitors who open it share its keep and dismiss state.
-- **One writer for the search index:** the weekly watch and the app can both add new opportunities to the index; two writing at once has not been tested.
-- **Private briefs do not index:** opportunities fetched since the public pipeline last indexed are not searched in a private brief.
+- **No monitoring:** Perch keeps nothing about its users, so it cannot watch a researcher for changes. The weekly watch is shelved in `perch/shelved/monitor/` until a user system exists.
+- **Refresh by hand:** open opportunities are refreshed when the operator runs `perch fetch opportunities` and re-indexes; a researcher's cached papers and awards are not refreshed on their own.
+- **Every brief is live:** nothing is reused, so each brief runs the models again; one brief with explanations took 46 s on the demo models in S23.
+- **Cloud is narrow by design:** with Cloud on, only the summary, the fit explanations and the hand-off opening use the cloud model, and never for a session with documents. A real deployment might send more to a cloud provider under a zero-data-retention key; that is not built.
+- **Sessions do not index:** opportunities fetched since the pipeline last indexed are not searched in a brief.
+- **One announcement, several cards:** related announcements of one family (for example, one call with and without a clinical trial) are listed separately.
+- **Company names are not merged:** two names for one company can appear as two industry leads.
 - **The hand-off opening has one check:** the model-written paragraph passes the citation check, but not the second, grounding check.
 - **Scout on a local model:** Gemma sometimes states a count that the citation check then withholds.
 - **Untested pairing:** the MCP server was tested with Claude Code, not with a local Ollama agent.
@@ -212,7 +217,7 @@ Every number here was measured. Each is copied from [bench/results](bench/result
 |---|---|
 | [Running Perch](docs/running.md) | Setup, the command line, keys and data sources |
 | [Deploying the demo](docs/deploy.md) | Two GPUs, one `make demo`, the public URL and the fallback |
-| [Private mode](docs/private-mode.md) | Turning it on, using it, and what it promises |
+| [Privacy](docs/private-mode.md) | What is stored, Local or Cloud, your documents, and how it is checked |
 | [MCP server](docs/mcp.md) | Perch's tools in Claude Code or any MCP client |
 | [Architecture](docs/ARCHITECTURE.md) | The system, a brief step by step, and the GPU layout |
 | [Bench results](bench/results/SUMMARY.md) | The back-test, the checks, Scout and cost |

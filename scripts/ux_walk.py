@@ -5,7 +5,7 @@
 
 Audiences: the PI demo researcher (PI-4, by OpenAlex id), the three SYNTHETIC student
 personas (persona-ug, persona-masters, persona-phd) and the SYNTHETIC researcher
-persona-1 in private mode. Each flow is captured on a phone (390 px) and a laptop
+persona-1 with private documents. Each flow is captured on a phone (390 px) and a laptop
 (1280 px); the PI flow also in dark mode. Researchers appear by alias only, as in the
 README clips (scripts/tour/film.py).
 
@@ -13,7 +13,9 @@ At every captured state the script records, in <out>/report-<groups>.json:
 - axe-core violations (WCAG 2.0 to 2.2 A and AA), if --axe points at axe.min.js;
 - interactive elements smaller than 44 px (the design's target) and 24 px (WCAG 2.2 AA);
 - sideways scroll;
-- whether private mode shows (the header switch state, the frame line, the body class).
+- whether the session frame shows (the Local / Cloud switch state, the frame line, and the
+  body class that marks Cloud on). Since S23 every brief is a session; the PI flow also
+  opens the cloud warning and dismisses it, so no cloud call is made.
 It also tabs through Find and a brief and records the focus order and whether each focus
 is visible. S24 reruns this script before the freeze.
 """
@@ -55,11 +57,12 @@ PROBE = """() => {
     if (r.width < 44 || r.height < 44) small.push({ el: name(el), tag: el.tagName.toLowerCase(),
       w: Math.round(r.width), h: Math.round(r.height), inline, under24: r.width < 24 || r.height < 24 });
   }
-  const sw = document.querySelector('#private-switch');
-  const frame = document.querySelector('#private-frame');
+  const sw = document.querySelector('#models-switch');
+  const frame = document.querySelector('#session-frame');
   return { small, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    private: { switch: sw && sw.getAttribute('aria-checked'), frame: frame && !frame.hidden,
-      body: document.body.classList.contains('private-on') },
+    session: { cloud: sw && sw.getAttribute('aria-checked'), word: sw && sw.innerText.trim(),
+      frame: frame && !frame.hidden, text: frame && frame.innerText.trim(),
+      cloudBody: document.body.classList.contains('cloud-on') },
     title: document.title, hash: location.hash };
 }"""
 
@@ -150,7 +153,8 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await w.snap(page, tag, "candidate")
     await page.locator(".candidate button:has-text('Build brief')").first.click()
     await page.wait_for_selector("#tab-routes", timeout=60000)
-    await page.wait_for_timeout(1500)
+    await w.step(tag, "built", wait_built(page))  # a live run: briefs are never reused (S23)
+    await page.wait_for_timeout(1000)
     await page.click("#tab-profile")
     await w.snap(page, tag, "profile", full=True)
     await page.click("#tab-routes")
@@ -186,15 +190,20 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.click("#tab-scout")
     await page.wait_for_timeout(800)
     await w.snap(page, tag, "scout", full=True)
-    # leave no keeps behind on the shared demo brief
-    await page.click("#tab-routes")
-    await page.wait_for_timeout(400)
-    for _ in range(await page.locator(".lead.kept .btn.keep").count()):
-        await w.step(tag, "unkeep", page.locator(".lead.kept .btn.keep").first.click())
-        await page.wait_for_timeout(250)
-    await page.goto(base + "/#/changes")
-    await page.wait_for_timeout(1500)
-    await w.snap(page, tag, "changes", full=True)
+    # The cloud warning: shown, read and dismissed; no cloud call is made.
+    if not await page.locator("#models-switch").is_disabled():
+        seen: list[str] = []
+
+        def dismiss(d) -> None:  # noqa: ANN001 - a playwright Dialog
+            seen.append(d.message)
+            asyncio.ensure_future(d.dismiss())
+
+        page.once("dialog", dismiss)
+        await page.click("#models-switch")
+        await page.wait_for_timeout(600)
+        if not (seen and "Anthropic" in seen[0]):
+            w.errors.append(f"{tag}: no cloud warning naming the provider: {seen}")
+        await w.snap(page, tag, "cloud-dismissed")
     await page.goto(base + "/#/help")
     await page.wait_for_timeout(800)
     await w.snap(page, tag, "help", full=True)
@@ -251,7 +260,7 @@ async def student_flow(w: Walk, page: Page, base: str, persona: str, views: list
         if vtag == views[0][0]:
             await w.tab_through(page, f"{persona}-compare", 25)
     page.once("dialog", lambda d: asyncio.ensure_future(d.accept()))
-    await page.click("#private-switch")
+    await w.step(tag, "end", page.click("#end-session"))
     await page.wait_for_timeout(1200)
     await w.snap(page, tag, "after-end")
 
@@ -261,7 +270,9 @@ async def private_flow(w: Walk, page: Page, base: str) -> None:
     files = {"cv": "cv.md", "proposal": "specific_aims_draft.md", "manuscript": "unpublished_manuscript.md"}
     await page.goto(base + "/#/")
     await page.wait_for_selector(".hero")
-    await page.click("#private-switch")
+    await page.click("[data-key=docs-link]")
+    await page.wait_for_timeout(600)
+    await page.click("button:has-text('Start a session')")
     await page.wait_for_timeout(1000)
     await w.snap(page, tag, "private-start", full=True)
     for kind, name in files.items():
@@ -269,7 +280,7 @@ async def private_flow(w: Walk, page: Page, base: str) -> None:
         await page.locator(f"#doc-{kind} ~ .doc-actions button:has-text('Add text')").click()
         await page.wait_for_timeout(500)
     await w.snap(page, tag, "private-added", full=True)
-    await page.click("button:has-text('Build private brief')")
+    await page.click("button:has-text('Build brief')")
     await page.wait_for_timeout(5000)
     await w.snap(page, tag, "private-building")
     await w.step(tag, "built", wait_built(page))
@@ -282,7 +293,7 @@ async def private_flow(w: Walk, page: Page, base: str) -> None:
     await page.wait_for_timeout(600)
     await w.snap(page, tag, "private-on-help")
     page.once("dialog", lambda d: asyncio.ensure_future(d.accept()))
-    await page.click("#private-switch")
+    await w.step(tag, "end", page.click("#end-session"))
     await page.wait_for_timeout(1000)
 
 

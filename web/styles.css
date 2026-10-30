@@ -727,7 +727,10 @@ body.cloud-on { box-shadow: inset 0 0 0 4px var(--ember); }
 body.cloud-on .bar { border-bottom: 3px solid var(--ember); }
 body.cloud-on .private-frame { background: var(--ember-soft); }
 body.cloud-on .private-frame .icon { color: var(--ember); }
-.private-frame { background: var(--model-soft); color: var(--ink); font-size: 14px; padding: 6px 16px; display: flex; gap: 8px; align-items: center; justify-content: center; }
+.private-frame { background: var(--model-soft); color: var(--ink); font-size: 14px; padding: 4px 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+.private-frame #end-session { min-height: 44px; padding: 0 10px; }
+@media (max-width: 520px) { .private-frame { justify-content: flex-start; gap: 4px 8px; font-size: 13px; } }
+.private-frame #end-session[hidden] { display: none; }
 .private-frame .icon { color: var(--model); }
 .tag.sample { background: var(--brick-soft); color: var(--brick); border: 1px dashed var(--brick); }
 .tag.amber { background: var(--ember-soft); color: var(--ember); }

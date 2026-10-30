@@ -8,6 +8,13 @@ a private Scout question; then ends the session. Afterwards it checks that no ca
 is in any file under data/, in a file under /tmp changed during the run, or in the
 model servers' journals, and that no file under data/ changed.
 
+Since S23 every brief is a session, so the run starts with the default path: a brief for
+the public researcher with no documents, as any visitor runs it. With the public cache
+on, that brief may write public records to the store, so the store file may change, but
+it must gain no brief or lead row. Then a Cloud check, when PERCH_CLOUD is set: Cloud is
+turned on and a SYNTHETIC document must be refused (documents stay on local models); no
+cloud call is made.
+
   PERCH_PRIVATE_MODE=1 PERCH_TLS_AT=server PERCH_PRIVATE_OPERATOR="..." \\
   PERCH_MODEL_SERVER=http://127.0.0.1:8093 OLLAMA_BASE_URL=http://127.0.0.1:11437 \\
   uv run python scripts/private_canary.py [--author A5026494099]
@@ -68,6 +75,51 @@ def journals(since: str) -> dict[str, int]:
     return out
 
 
+def user_rows(db: Path) -> int:
+    import sqlite3
+
+    with sqlite3.connect(db) as con:
+        return con.execute("SELECT count(*) FROM records WHERE kind IN ('brief', 'lead', "
+                           "'digest')").fetchone()[0]
+
+
+def default_path(c, author: str) -> dict:  # noqa: ANN001 - a TestClient
+    """A visitor's brief: no documents, local models; everything a visitor can do on it."""
+    h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    t0 = time.time()
+    c.post("/private/brief", headers=h, json={"author_id": author,
+                                               "direction": DIRECTION}).raise_for_status()
+    got = c.get("/private/brief", headers=h).json()
+    leads = got["leads"]
+    if leads:
+        c.post(f"/private/leads/{leads[0]['id']}/keep", headers=h)
+        c.get("/private/compare", headers=h)
+        for ext in ("json", "md", "html"):
+            c.get(f"/private/export.{ext}", headers=h)
+        c.post("/private/handoff", headers=h, json={"office": "research_development"})
+    c.post("/private/end", headers=h)
+    b = got["brief"]
+    return {"status": b["status"], "models": b["options"].get("models"),
+            "seconds": round(time.time() - t0, 1), "leads": len(leads),
+            "explained": sum(bool(x.get("explanation")) for x in leads)}
+
+
+def cloud_check(c) -> dict:  # noqa: ANN001 - a TestClient
+    info = c.get("/private").json().get("cloud") or {}
+    if not info.get("available"):
+        return {"offered": False}
+    h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    unconfirmed = c.post("/private/cloud", headers=h, json={"on": True}).status_code
+    on = c.post("/private/cloud", headers=h,
+                json={"on": True, "confirm": info["provider"]}).status_code
+    doc = c.post("/private/documents", headers=h,
+                 json={"kind": "direction", "text": DIRECTION}).status_code
+    c.post("/private/end", headers=h)
+    return {"offered": True, "provider": info["provider"], "unconfirmed": unconfirmed,
+            "confirmed": on, "document_with_cloud_on": doc,
+            "ok": unconfirmed == 422 and on == 200 and doc == 409}
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--author", default="A5026494099", help="public profile for the 2nd brief")
@@ -88,6 +140,9 @@ def main(argv: list[str]) -> int:
                            Clients(openalex=default_client), ROOT / "data/overrides/awards.csv")
     c = TestClient(create_app(service, InlineRunner(), web_dir=None))
     out: dict = {"started": datetime.now(UTC).isoformat(timespec="seconds"), "briefs": []}
+    rows = user_rows(data / "perch.db")
+    out["default_path"] = default_path(c, a.author)
+    out["cloud"] = cloud_check(c)
     r = c.post("/private/session")
     if r.status_code != 201:
         print(json.dumps({"error": r.json()}, indent=2))
@@ -142,12 +197,16 @@ def main(argv: list[str]) -> int:
     after = snapshot(data)
     changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
     demo = str(data / "demo")  # the live demo's own store; it writes on its own schedule
-    out["data_changed"] = [k for k in changed if not k.startswith(demo)]
+    store = str(data / "perch.db")  # public records may be cached there (S23)
+    out["data_changed"] = [k for k in changed if not k.startswith(demo) and k != store]
+    out["user_rows_added"] = user_rows(data / "perch.db") - rows
     out["demo_store_changed_meanwhile"] = [k for k in changed if k.startswith(demo)]
     out["canary_in_data"] = files_with(data)
     out["canary_in_tmp"] = files_with(Path("/tmp"), since=start)
     out["canary_in_journals"] = journals(since)
-    ok = (not out["data_changed"] and not out["canary_in_data"] and not out["canary_in_tmp"]
+    ok = (not out["data_changed"] and not out["user_rows_added"]
+          and out["default_path"]["status"] == "done" and out["cloud"].get("ok", True)
+          and not out["canary_in_data"] and not out["canary_in_tmp"]
           and not any(out["canary_in_journals"].values())
           and all(b["status"] == "done" for b in out["briefs"])
           and out["briefs"][0]["citing_private"] > 0)

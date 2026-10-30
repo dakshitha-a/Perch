@@ -4,6 +4,10 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
+30. **Documents and Cloud (raised S23, 2026-10-29; not blocking).** S23 built Cloud by choice, but only for briefs without documents: Cloud cannot turn on while a session holds a CV, proposal or unpublished work, and student mode turns it off. Reason: standing rule 1 says the private-context feature is used only with synthetic text on a local model. Your S23 note says a real deployment may rely on zero-data-retention cloud keys. **Ask:** keep documents Local only for Demo Day (the default), or allow them on Cloud after a second, stronger warning? The second option needs a standing-rule change from you. Default: Local only.
+
+31. **Every brief is now live (raised S23, 2026-10-29; not blocking).** Briefs are no longer stored or reused, so the morning warm-up is gone and every Demo Day brief runs the models. One PI brief with explanations took 46 s on the demo models in S23 (S9 measured 61 s). Default: accept this. If the wait is a problem on stage, the fallback is the replay preview, which plays a saved brief.
+
 29. **Which S22 option (raised S21, 2026-10-29).** The S21 audit is in `docs/design/UX_AUDIT.md` and on the tracker's UX tab. It found 6 must-fix defects, 12 should-fix items and 4 could-fix items. The options are:
 - **A. Targeted fixes:** the must-fix list and the accessibility items. About 1 session, including refilming.
 - **B. Redesign the core screens:** A, plus two equal doors on Find (researcher and student), student vocabulary, compact cards and an explained order. The visual style and the API stay. About 2 sessions.

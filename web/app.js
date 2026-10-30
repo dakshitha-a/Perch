@@ -299,9 +299,20 @@ function drawSwitch() {
   if (frame) {
     frame.hidden = !mode.state.available;
     frame.querySelector(".frame-text").textContent = S.cloud
-      ? `Nothing about you is stored. Cloud is on: what you type and your brief's public text go to ${c.provider}.`
-      : "Nothing about you is stored. Your brief lives in this session's memory, on local models.";
+      ? `Nothing about you is stored. Cloud on: text goes to ${c.provider}.`
+      : "Nothing about you is stored. Local models.";
+    $("#end-session").hidden = !privApi.open;
   }
+}
+
+// Ends the session from any screen, after a confirm that lists what goes.
+async function endSession() {
+  let docs = [];
+  try { docs = (await privApi.session()).documents; } catch { /* already ended */ }
+  const list = mode.discards(docs, Boolean(S.briefId === PRIVATE_ID));
+  const ok = await mode.disable(() => window.confirm(
+    `End this session? It discards:\n- ${list.length ? list.join("\n- ") : "nothing yet"}`));
+  if (ok) { S.cloud = false; drawSwitch(); announce("Session ended. Everything in it was discarded."); go("#/"); }
 }
 
 // Cloud on for this session, only after the warning that names the provider.
@@ -1619,6 +1630,7 @@ function init() {
   }
   $(".skip").addEventListener("click", (e) => { e.preventDefault(); main().focus(); });
   $("#models-switch").addEventListener("click", toggleSwitch);
+  $("#end-session").addEventListener("click", endSession);
   if (api.mode === "live") {
     privateAvailable(privApi).then((on) => {
       S.privateOn = on;
