@@ -117,6 +117,16 @@ class BriefRequest(BaseModel):
                 "career_stage": self.career_stage}
 
 
+class WebFiles(StaticFiles):
+    """The web app's files, revalidated on every load (S27). Without a Cache-Control
+    header, browsers kept old scripts after a release, so visitors saw the previous app."""
+
+    async def get_response(self, path: str, scope: dict) -> Response:
+        resp = await super().get_response(path, scope)
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
 def record_json(r: Record) -> dict:
     return {"kind": r.kind, **r.model_dump(mode="json")}
 
@@ -512,5 +522,5 @@ def create_app(service: BriefService, runner: JobRunner,
                        limiter=RateLimiter, client_key=client_key)
 
     if web_dir and (web_dir / "index.html").is_file():  # after every API route
-        app.mount("/", StaticFiles(directory=web_dir, html=True), name="web")
+        app.mount("/", WebFiles(directory=web_dir, html=True), name="web")
     return app

@@ -24,7 +24,13 @@ def test_api_serves_the_app_and_its_assets(tmp_path):
     refs = re.findall(r'(?:href|src)="([^"#:]+)"', page.text)
     assert {"styles.css", "app.js"} <= set(refs)
     for ref in refs:
-        assert c.get(f"/{ref}").status_code == 200, ref
+        r = c.get(f"/{ref}")
+        assert r.status_code == 200, ref
+        assert r.headers["cache-control"] == "no-cache", ref  # a release reaches every browser
+    assert page.headers["cache-control"] == "no-cache"
+    # Unchanged files still cost only a 304 on reload.
+    etag = c.get("/app.js").headers["etag"]
+    assert c.get("/app.js", headers={"If-None-Match": etag}).status_code == 304
     for js in WEB_DIR.glob("*.js"):
         for dep in re.findall(r'from "\./([^"]+)"', js.read_text()):
             assert (WEB_DIR / dep).is_file(), f"{js.name} imports missing {dep}"
