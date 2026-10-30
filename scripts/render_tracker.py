@@ -187,6 +187,10 @@ SCRIPT = """
   });
   var restart = document.getElementById("ui-restart");
   if (restart) restart.addEventListener("click", function () { frame.src = frame.src.split("#")[0]; });
+  ["ui-student", "ui-researcher"].forEach(function (id) {
+    var b = document.getElementById(id);
+    if (b) b.addEventListener("click", function () { frame.src = b.getAttribute("data-src"); });
+  });
   function route() {
     var h = (location.hash || "#" + views[0]).slice(1).toLowerCase();
     var target = null;
@@ -596,17 +600,22 @@ Review it before the repository is made public (S15).</p>
 <div class="ui-stage"><iframe class="readme-frame" src="{s}" title="README preview"></iframe></div>"""
 
 
-def view_ui(src: str) -> str:
+def view_ui(src: str, student: str | None = None) -> str:
     s = html.escape(src)
+    st = (f'<button type="button" id="ui-student" data-src="{html.escape(student)}">'
+          f'Student (sample)</button>\n'
+          f'<button type="button" id="ui-researcher" data-src="{s}">Researcher</button>\n'
+          if student else "")
     return f"""<h2>UI preview</h2>
-<p>The S7 web app in replay mode: a saved brief played back in about 15 seconds, the researcher shown
-by alias. Press <b>Find researcher</b>, then <b>Build brief</b>, to watch Scout build it. Nothing is
-fetched; keep and dismiss work but are not saved.</p>
+<p>The web app in replay mode, as redesigned in S24: a saved brief played back in about 15 seconds, the
+researcher shown by alias. Press <b>Find</b>, then <b>This is the one</b> and <b>Build brief</b>, to
+watch Scout build it. <b>Student (sample)</b> opens a finished brief for an invented SYNTHETIC student.
+Nothing is fetched; keep and dismiss work but are not saved.</p>
 <div class="ui-tools" role="group" aria-label="Preview size">
 <button type="button" data-size="wide" aria-pressed="true">Laptop</button>
 <button type="button" data-size="phone" aria-pressed="false">Phone</button>
 <button type="button" id="ui-restart">Restart</button>
-<a href="{s}" target="_blank" rel="noopener">Open on its own</a>
+{st}<a href="{s}" target="_blank" rel="noopener">Open on its own</a>
 </div>
 <div class="ui-stage"><iframe id="ui-frame" class="ui-frame wide" src="{s}"
 title="Perch web app preview"></iframe></div>"""
@@ -617,7 +626,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
                 plan_md: str = "", ui: str | None = None, bench_md: str = "",
                 arch_md: str = "", arch_root: Path = Path("docs"),
                 persona: dict[str, str] | None = None, readme: str | None = None,
-                ux_md: str = "") -> str:
+                ux_md: str = "", ui_student: str | None = None) -> str:
     master = parse(master_md)
     sessions = build_sessions(master, session_files)
     current = pick_current(sessions)
@@ -630,7 +639,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
     # Tab order (Dakshitha, 2026-10-29): UI, Architecture, Bench, Current, Master, then the
     # rest, Decisions last. The first tab present opens at rest.
     tabs = [t for t in (
-        ("ui", "UI", lambda: view_ui(ui), ui),
+        ("ui", "UI", lambda: view_ui(ui, ui_student), ui),
         ("architecture", "Architecture", lambda: view_architecture(arch_md, arch_root), arch_md),
         ("bench", "Bench", lambda: view_bench(bench_md), bench_md),
         ("ux", "UX", lambda: view_ux(ux_md), ux_md),
@@ -689,6 +698,7 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--artifact", action="store_true", help="emit a claude.ai Artifact fragment")
     ap.add_argument("--title", default="Perch Build Tracker", help="page name")
     ap.add_argument("--ui", help="published path of the UI preview page; adds a UI tab")
+    ap.add_argument("--ui-student", help="published path (with #/brief/...) of the student preview")
     ap.add_argument("--readme", help="published path of the README preview; adds a README tab")
     args = ap.parse_args(argv[1:])
     src = Path(args.src)
@@ -704,7 +714,7 @@ def main(argv: list[str]) -> int:
                        read("DECISIONS.md"), read("PLAN.md"), args.ui,
                        read("../bench/results/SUMMARY.md"), read("ARCHITECTURE.md"), src.parent,
                        load_persona(src.parent.parent / "data/synthetic/persona-1"), args.readme,
-                       read("design/UX_AUDIT.md"))
+                       read("design/UX_AUDIT.md"), args.ui_student)
     dest.write_text(page, encoding="utf-8")
     print(f"wrote {dest}")
     return 0

@@ -61,9 +61,13 @@ bench:
 tracker:
 	$(UV) run python scripts/render_tracker.py docs/TRACKER.md docs/tracker.html
 	-$(UV) run python scripts/build_ui_preview.py
+	-test -f build/replay/student.json && $(UV) run python scripts/build_ui_preview.py \
+		build/replay/student.json --out build/artifacts/ui-student.html
 	-$(UV) run --with markdown python scripts/build_readme_preview.py
 	$(UV) run python scripts/render_tracker.py docs/TRACKER.md build/artifacts/tracker.html --artifact \
 		$$(test -f build/artifacts/ui.html && echo --ui ui.html) \
+		$$(test -f build/artifacts/ui-student.html && echo --ui-student \
+		  "ui-student.html#/brief/$$(python3 -c 'import json;print(json.load(open("build/replay/student.json"))["brief"]["brief"]["id"])')/routes") \
 		$$(test -f build/artifacts/readme.html && echo --readme readme.html)
 
 package:

@@ -135,7 +135,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S26</code> <span class="badge s-todo">todo</span><span>26/28 sessions done</span></div>
+<div class="at-a-glance"><code>S26</code> <span class="badge s-in-progress">in progress</span><span>26/28 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -670,13 +670,24 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-current" class="view" data-view="current" hidden>
 <div id="s26"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S26 · Media refilm</h1><span class="badge s-todo">todo</span></div>
-<div class="meta">Not started</div></div>
-<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S26.md</code> when the session starts.</div>
+<div class="title-row"><h1>S26 · Media refilm</h1><span class="badge s-in-progress">in progress</span></div>
+<div class="meta">Started 2026-10-30 05:25 EDT</div></div>
+<p>Goal: the README, screenshots and tracker preview show the app as it will ship. Moved out of S22 so the media are filmed once, after S23 and after the S25 review and QA fixes (Dakshitha, 2026-10-29). Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<section class="panel summary" aria-label="0 of 4 tasks done"><div class="counts"><span><b>0/4</b>tasks done</span><span class="s-todo"><b>4</b>todo</span></div><div class="bar" role="img" aria-label="0 of 4 tasks done"><span class="s-todo" style="width:100.00%" title="todo: 4"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Refilm the README clips (<code>scripts/tour/film.py</code>, then <code>scripts/tour/animate.py</code>) against the app as fixed in S25.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>2</td><td>Retake <code>docs/screenshots/</code> (<code>scripts/screenshots.py</code>) and the README student media.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>3</td><td>The tracker's UI preview with the student flow: a replay of a SYNTHETIC student brief.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+<tr><td>4</td><td>README text matched to the new labels; the README tab and every artifact republished.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<ul class="panel done-list"><li>The README media, screenshots and UI preview match the app on the public URL.</li></ul>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="26 of 28 sessions done"><div class="counts"><span><b>26/28</b>sessions done</span><span class="s-done"><b>26</b>done</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="26 of 28 sessions done"><span class="s-done" style="width:92.86%" title="done: 26"></span><span class="s-todo" style="width:7.14%" title="todo: 2"></span></div></section>
+<section class="panel summary" aria-label="26 of 28 sessions done"><div class="counts"><span><b>26/28</b>sessions done</span><span class="s-done"><b>26</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="26 of 28 sessions done"><span class="s-done" style="width:92.86%" title="done: 26"></span><span class="s-in-progress" style="width:3.57%" title="in progress: 1"></span><span class="s-todo" style="width:3.57%" title="todo: 1"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -706,7 +717,7 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s23">S23</a></td><td>Private by default, local models first</td><td><span class="badge s-done">done</span></td><td>2026-10-29 20:20 EDT</td><td>2026-10-29 21:05 EDT</td><td class="mono">see git log</td><td>Every brief is a session in memory: no stored briefs, reuse, browser history or per-user logs; public records stay cached. Local / Cloud switch, local by default; Cloud after a warning naming Anthropic, never with documents (Q30), 30 cloud briefs a day. Monitoring shelved in <code>perch/shelved/monitor/</code>. Live canary ok: default path 15 of 15 explained in 47 s, 0 user rows added, no trace in files or journals. Walk on the demo: 110 states, 0 axe violations. One cloud check $0.04. 245 tests green. S24 and S25 swapped (Dakshitha).</td></tr>
 <tr class="is-finished"><td><a href="#s24">S24</a></td><td>UI rebuild from the redesign canvas</td><td><span class="badge s-done">done</span></td><td>2026-10-30 02:37 EDT</td><td>2026-10-30 04:21 EDT</td><td class="mono">see git log</td><td>The canvas redesign is live on the public URL for both paths: new tokens and type, landing with the Researcher or Student pill, the status chip and a real Local or Cloud dialog, the pick screen with the optional context panel and a SYNTHETIC sample, briefs in two columns with a shortlist and evidence rail, Export menu, verdict chips, student Compare with a code-written note. Ask Scout for students on its own seven-tool allowlist. Warm demo briefs held in memory (17 ms on the demo). Documents on Cloud built behind a switch, off until the rule 1 change (Q33). Draft review evaluated, not built (Clef 36 of 44; Q34). Walk on the demo: 119 states, 0 axe violations, 0 sideways scroll, 0 failed steps. Live canary ok. 249 tests green. $0 spent.</td></tr>
 <tr class="is-finished"><td><a href="#s25">S25</a></td><td>UI/UX review and full QA test</td><td><span class="badge s-done">done</span></td><td>2026-10-30 04:23 EDT</td><td>2026-10-30 05:23 EDT</td><td class="mono">see git log</td><td>Independent review: 4 must-fix (all fixed), 10 should-fix (9 fixed), 9 could-fix. QA plan: 36 of 36 rows pass after fixes; 4 bugs found by running them and fixed. Walks after fixes: 0 axe violations, 0 sideways scroll, 0 failed steps. Canary ok (45 s, 15 of 15 explained, 0 user rows); student leakage none. Accessibility checklist 12 of 13 (zoom not rerun). 250 tests green.</td></tr>
-<tr class="is-current"><td>S26</td><td>Media refilm</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-current"><td><a href="#s26">S26</a></td><td>Media refilm</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-30 05:25 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S27</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
@@ -1422,6 +1433,10 @@ The Markdown is the source of truth.</p>
   });
   var restart = document.getElementById("ui-restart");
   if (restart) restart.addEventListener("click", function () { frame.src = frame.src.split("#")[0]; });
+  ["ui-student", "ui-researcher"].forEach(function (id) {
+    var b = document.getElementById(id);
+    if (b) b.addEventListener("click", function () { frame.src = b.getAttribute("data-src"); });
+  });
   function route() {
     var h = (location.hash || "#" + views[0]).slice(1).toLowerCase();
     var target = null;

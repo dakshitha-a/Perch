@@ -62,16 +62,16 @@ async def alias_responses(page: Page, names: dict[str, str]) -> None:
     async def handle(route: Route) -> None:
         try:
             r = await route.fetch()
+            ctype = r.headers.get("content-type", "")
+            if "json" not in ctype:
+                await route.fulfill(response=r)
+                return
+            body = await r.text()
+            for real, alias in names.items():
+                body = body.replace(real, alias)
+            await route.fulfill(response=r, body=body)
         except Exception:  # noqa: BLE001 - the page closed mid-request
             return
-        ctype = r.headers.get("content-type", "")
-        if "json" not in ctype:
-            await route.fulfill(response=r)
-            return
-        body = await r.text()
-        for real, alias in names.items():
-            body = body.replace(real, alias)
-        await route.fulfill(response=r, body=body)
 
     for path in ("/authors/**", "/briefs/**", "/records/**", "/scout/**", "/private/**"):
         await page.route(f"**{path}", handle)
@@ -142,7 +142,7 @@ async def open_brief(page: Page, base: str) -> None:
     await page.goto(base + "/#/")
     await pick(page)
     await page.click("[data-key=build]")
-    await page.locator(".leads > li").first.wait_for(timeout=240_000)
+    await page.locator("text=Brief ready").wait_for(timeout=300_000)
     await page.wait_for_timeout(1200)
 
 

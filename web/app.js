@@ -1891,7 +1891,9 @@ function init() {
     const b = $("#banner");
     b.hidden = false;
     fill(b, h("p", {}, h("b", { text: "Preview. " }),
-      h("span", { text: "A saved brief, played back. Press Find, then This is the one and Build brief, to watch it build." }),
+      h("span", { text: window.PERCH_REPLAY.student
+        ? "A SYNTHETIC student brief, played back: an invented student, real fellowship listings and sample scholarships."
+        : "A saved brief, played back. Press Find, then This is the one and Build brief, to watch it build." }),
       h("a", { href: `#/brief/${encodeURIComponent(api.briefId)}/routes`, text: "Skip to the result" })));
     S.find.q = (window.PERCH_REPLAY.candidates[0] || {}).display_name || "";
   }

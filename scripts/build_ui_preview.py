@@ -61,7 +61,8 @@ def main(argv: list[str]) -> int:
     args = ap.parse_args(argv[1:])
     src = Path(args.replay) if args.replay else None
     if src is None:
-        found = sorted(Path("build/replay").glob("*.json"), key=lambda p: p.stat().st_mtime)
+        found = sorted((p for p in Path("build/replay").glob("*.json") if p.name != "student.json"),
+                       key=lambda p: p.stat().st_mtime)
         if not found:
             print("no replay file in build/replay; run scripts/export_replay.py first")
             return 0
