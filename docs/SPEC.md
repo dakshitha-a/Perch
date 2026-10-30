@@ -123,6 +123,8 @@ Decision models are never used for skills 1–3 (profile summary, fit explanatio
 Two layers: the deterministic pipeline (what the back-test measures) and Scout on top.
 
 Scout can: run a brief end to end or one approved step at a time; take plain-language follow-ups ("foundations only, under $200k"); monitor (award within 12 months of ending or new opportunity above threshold → refresh and draft a notification; built in S16, shelved in S23 until users have accounts); explain its ranking from its records.
+A student brief gets its own allowlist instead (S24): search_options, check_option, explain_verdict, read_cv, compare_options, draft_note and get_record. They read only rule results and records, never the CV text, and run only in a private session; the MCP server keeps the researcher tools.
+
 Scout cannot: call anything outside the allowlist (no web, no shell); state a number or date not in a cited record; send email or change a record; exceed the per-brief budget; read anything about a researcher that is not a public record.
 Tools: `resolve_author · build_profile · list_awards · search_opportunities(route, filters) · get_org_signals · explain_fit · compare · draft_handoff · get_record`. Every call logged with args and result hashes; a brief is replayable.
 UI: each tool call is a card; modes *ask before every step* (default) and *run and show me*.

@@ -67,7 +67,7 @@ tracker:
 	$(UV) run python scripts/render_tracker.py docs/TRACKER.md build/artifacts/tracker.html --artifact \
 		$$(test -f build/artifacts/ui.html && echo --ui ui.html) \
 		$$(test -f build/artifacts/ui-student.html && echo --ui-student \
-		  "ui-student.html#/brief/$$(python3 -c 'import json;print(json.load(open("build/replay/student.json"))["brief"]["brief"]["id"])')/routes") \
+		  "ui-student.html#/brief/$$($(UV) run python -c 'import json;print(json.load(open("build/replay/student.json"))["brief"]["brief"]["id"])')/routes") \
 		$$(test -f build/artifacts/readme.html && echo --readme readme.html)
 
 package:

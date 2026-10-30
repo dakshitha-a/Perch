@@ -18,3 +18,4 @@ private-only brief or with a synthetic profile.
 | `cv.md` | a current CV | PERCH-CANARY-CV-7Q4X |
 | `specific_aims_draft.md` | an unfinished grant proposal | PERCH-CANARY-AIMS-K2M9 |
 | `unpublished_manuscript.md` | unpublished work in preparation | PERCH-CANARY-MS-T8V3 |
+| `context.json` | a research direction and keywords, for the pick screen's "Fill with a sample" (S24) | PERCH-CANARY-DIR-Z5P1 |

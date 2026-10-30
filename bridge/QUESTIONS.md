@@ -4,6 +4,10 @@ Numbered decisions Perch-dev needs from Dakshitha. Answered items move to the bo
 
 ## Open
 
+36. **Google Fonts and "nothing stored" (raised S25, 2026-10-30; not blocking).** The spec asks for Newsreader and Inter from Google Fonts, so every visitor's browser asks Google for the fonts. Perch stores nothing, but that request reaches a third party, and the privacy page says Perch sends text to no outside service. **Ask:** (a) keep Google Fonts (the default, as specified); (b) serve the two fonts from `web/fonts/` (both are under the SIL Open Font License), so no visitor request leaves the Perch server.
+
+35. **Per-visitor caps on Demo Day (raised S25, 2026-10-30).** A visitor may start 10 briefs and open 20 sessions an hour, counted by IP address. Testing from one machine hit both caps several times. A Demo Day audience on Temple wifi may share one IP behind the network's NAT, so a few people could use up the hour for everyone. Warm demo briefs no longer count against the cap (changed in S26). **Ask:** (a) keep the caps (the default); (b) raise them for Demo Day (for example 100 briefs and 200 sessions an hour, with `PERCH_BRIEFS_PER_HOUR` and a new setting for sessions); (c) count per session instead of per IP. The daily Cloud cap and the $100 spend cap stay either way.
+
 34. **Build the draft review anyway? (raised S24, 2026-10-30; not blocking).** The decision-only evaluation is done (`bench/results/draft_review/RESULTS.md`). On 10 SYNTHETIC drafts (44 marks), Clef marked 36 correctly and caught 17 of 19 left-out points, but called 4 of 25 addressed points missing. MiniCheck marked everything missing; Gemma caught only 5 omissions. 425 of 663 open NIH listings give fewer than three points to check. **Ask:** (a) leave it out for Demo Day (the default, as recommended); (b) build it with Clef only, for records with three or more points, labelled as a check and not advice. Either way, no rule 5 change is needed: the model only decides.
 
 33. **Standing-rule change to apply (raised 2026-10-30; narrowed in S24).** Standing rules are yours to edit; Perch-dev never edits them. Your answer to Q30 needs this change in `CLAUDE.md`:

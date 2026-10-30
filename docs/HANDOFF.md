@@ -3,7 +3,7 @@
 Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
 
 ## Last run: S24, S25 and S26 done in one context (Dakshitha asked for all three)
-- **State:** 250 tests pass. API spend: $2.09 of $100 (none in S24 to S26). The demo runs the S25 build; S26 changed only scripts, media and the README.
+- **State:** 250 tests pass. API spend: $2.09 of $100 (none in S24 to S26). The demo was rebuilt at the end of S26: warm demo briefs no longer count against the hourly cap, and the replay banner names the student preview.
 - **S25:** independent review (`docs/design/UX_REVIEW_S25.md`; all 4 must-fix fixed), QA plan (`docs/QA_PLAN.md`; 36 of 36 pass after 4 fixes), accessibility checklist rerun, canary and student leakage checks clean.
 - **S26:** README clips refilmed (six, a new student clip), screenshots retaken, the tracker UI tab plays a SYNTHETIC student brief (`scripts/export_student_replay.py`), README wording matched. Dakshitha reviews the README tab.
 - **Test traffic hits the caps:** a visitor may open 20 sessions and 10 briefs an hour. Long walks from one machine hit them; restart the dev server to clear them, and walk the demo at most once an hour.
@@ -35,6 +35,8 @@ Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it 
 - **Shared Ollama:** the dev Ollama on 11434 reloads gemma when another client asks for a different context size.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
+- **Q36:** Google Fonts reach a third party; keep them, or serve the fonts from the app? Default: keep.
+- **Q35:** per-visitor caps by IP on Demo Day wifi; keep, raise, or count per session? Default: keep.
 - **Q34:** build the draft review anyway (Clef only, records with three or more points)? Default: no.
 - **Q33:** apply the rule 1 change, then set `PERCH_CLOUD_DOCUMENTS=1` on the demo. The rule 5 change is withdrawn.
 - **Q29:** kept open by Dakshitha.

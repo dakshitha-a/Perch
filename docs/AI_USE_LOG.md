@@ -37,6 +37,7 @@ Required for the final deck's "AI use declaration" slide. One row per tool per p
 | 2026-10-29 | gemma4:26b-a4b (Ollama) | Ollama digest 001e5dafc3c7 | S17: wrote the purpose sentence of the SYNTHETIC sample scholarships (476 records), local. Code rejected any sentence with a number, month or name and set every structured field | Perch-dev for Dakshitha |
 | 2026-10-29 | Claude Code 2.1.312 (claude-opus-5-5) | CLI | S17 to S20: student mode (sample corpus, personas, rules, UI), scoring, QA and privacy audit | Perch-dev for Dakshitha |
 | 2026-10-29 | Claude Code 2.1.312 (claude-opus-5-5) | CLI | S23: private by default (sessions for every brief, the Local / Cloud switch, monitoring shelved), docs and tests; one 3-lead cloud brief on claude-sonnet-5-5 ($0.04) to verify Cloud live | Perch-dev for Dakshitha |
+| 2026-10-30 | Claude Code 2.1.314 (claude-opus-5-5) | CLI | S24 to S26: the UI rebuild from the redesign canvas, student Scout, warm briefs, the documents-on-Cloud gate, the draft review evaluation (Clef, Clef-flash, MiniCheck and gemma4:26b-a4b as checkers on SYNTHETIC drafts), an independent UI review by a Claude Code subagent (same model), the QA run and the media refilm; demo models (gemma4:26b-a4b) wrote the briefs filmed. $0 API spend | Perch-dev for Dakshitha |
 
 Reminders:
 - Record Claude Code's version (`claude --version`) the first time it writes project code.

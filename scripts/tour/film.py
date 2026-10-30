@@ -23,6 +23,7 @@ import csv
 import glob
 import json
 import os
+import re
 import sqlite3
 import subprocess
 import sys
@@ -69,6 +70,8 @@ async def alias_responses(page: Page, names: dict[str, str]) -> None:
             body = await r.text()
             for real, alias in names.items():
                 body = body.replace(real, alias)
+            # An ORCID leads straight to the person, so it goes too, as in the replay.
+            body = re.sub(r'"orcid":\s*"[^"]*"', '"orcid": null', body)
             await route.fulfill(response=r, body=body)
         except Exception:  # noqa: BLE001 - the page closed mid-request
             return
