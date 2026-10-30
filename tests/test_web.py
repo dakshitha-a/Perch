@@ -168,7 +168,8 @@ def test_personal_fields_exist_only_inside_private_mode():
     find = app[app.index("function renderFind()"):app.index("function pasted(")]
     fields = re.findall(r'h\("(?:textarea|input)", \{[^}]*\}', find)
     assert fields
-    assert not [x for x in fields if re.search(r"\b(cv|interests|achievements|proposal)\b", x, re.I)]
+    personal = r"\b(cv|interests|achievements|proposal)\b"
+    assert not [x for x in fields if re.search(personal, x, re.I)]
     build = app[app.index("async function build(c)"):app.index("// ----- the status chip")]
     assert build.index("await mode.enable()") < build.index("privApi.addDocument") \
         < build.index("privApi.create(req)")

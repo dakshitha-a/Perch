@@ -11,7 +11,7 @@ import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
 import { lockLabel, privateAvailable, privateBar, privateInfo, renderPrivate, setMode } from "./private.js";
 import { createMode, looksPersonal } from "./mode.js";
-import { isStudent, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
+import { isStudent, usedSample, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
 
 const publicApi = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
 const privApi = privateApi(window.PERCH_API || "");
@@ -679,9 +679,10 @@ function renderBrief() {
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page who", text: name }), h("p", { class: "brief-meta", text: meta })),
       exportMenu()),
-    S.sampleBrief && api.mode === "private" ? h("p", { class: "notice sample-note", role: "note" },
+    api.mode === "private" && (student ? usedSample() : S.sampleBrief) ? h("p", { class: "notice sample-note", role: "note" },
       h("span", { class: "sample-badge", text: "Sample data" }),
-      h("span", { text: " This brief was steered by invented SYNTHETIC text. Anything it cites from “your document” is from the sample, not from this researcher." })) : null,
+      h("span", { text: student ? " Built from an invented SYNTHETIC student. Nothing here is about you."
+        : " This brief was steered by invented SYNTHETIC text. Anything it cites from “your document” is from the sample, not from this researcher." })) : null,
     h("div", { id: "progress" }),
     h("div", { class: "tabs-wrap" }, tabs),
     h("div", { class: "cols" },
@@ -887,7 +888,7 @@ const KIND_SHORT = { A: "Grant", B: "Industry", F: "Fellowship", S: "Sample" };
 
 function leadTitle(l) {
   return (l.opportunity && l.opportunity.title) || (l.organisation && l.organisation.name)
-    || (l.scholarship && l.scholarship.name) || l.title || l.record_id;
+    || (l.record && (l.record.name || l.record.title)) || l.record_id;
 }
 
 function drawRail() {

@@ -11,7 +11,14 @@ import * as f from "./format.js";
 export const STUDENT_ROUTES = { F: "Fellowships (public)", S: "Scholarships and awards (sample)" };
 const SAMPLE = "Sample data";
 const SAMPLE_NOTE = "These are invented records from a test corpus. They show how student mode works with a real scholarship feed; they are not real scholarships. Do not apply to them.";
-const VERDICT_CLASS = { eligible: "moss", "may be eligible": "amber", "not eligible": "ember" };
+const VERDICTS = { eligible: ["eligible", "✓", "Eligible"], "may be eligible": ["may", "?", "May be eligible"],
+  "not eligible": ["not", "✕", "Not eligible"] };
+
+// A verdict chip: a mark and a word, so colour is never the only signal (S24).
+export function verdictChip(v) {
+  const [cls, mark, word] = VERDICTS[v] || ["", "", v];
+  return h("span", { class: `verdict ${cls}` }, h("span", { class: "mk", "aria-hidden": "true", text: mark }), h("span", { text: word }));
+}
 const OFFICES = {
   F: { name: "Scholar Development and Fellowships Advising", url: "https://undergraduate.temple.edu/fellowships" },
   S: { name: "Student Financial Services", url: "https://sfs.temple.edu/" },
@@ -21,9 +28,12 @@ const HINTS = {
   interests: "A few sentences on what you want to study or work on. This steers the search.",
   achievements: "Up to five, one per line or numbered. Explanations may cite them.",
 };
-const D = { drafts: {}, busy: false, error: null };
+const D = { drafts: {}, files: {}, busy: false, error: null, sample: false };
 const NOT_STATED = "Not stated in the record";
 const OPEN = new Set(); // cards whose "Why it may fit" is open; kept across redraws
+
+// The brief on screen was built from the SYNTHETIC sample (for its banner).
+export function usedSample() { return Boolean(D.lastSample); }
 
 export function isStudent(brief) {
   return Boolean(brief && brief.brief && brief.brief.options && brief.brief.options.student);
@@ -32,89 +42,132 @@ export function isStudent(brief) {
 // ----- start: CV, interests, achievements -----
 
 export async function renderStudentStart(root, { api, mode, go, announce, info }) {
-  document.title = "Student — Perch";
+  document.title = "Tell Perch about you — Perch";
   const draw = () => renderStudentStart(root, { api, mode, go, announce, info });
   if (!mode.state.available) {
-    fill(root, h("div", { class: "private" }, h("h1", { text: "Student mode" }),
-      h("p", { class: "notice", text: `Student mode is not available on this server. ${mode.state.reason}` }),
-      h("p", {}, h("a", { href: "#/", text: "Back to Find" }))));
+    fill(root, h("div", { class: "screen" }, h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
+      h("h1", { class: "page", text: "Student mode" }),
+      h("p", { class: "notice", text: `Student mode is not available on this server. ${mode.state.reason}` })));
     return;
   }
-  if (!api.open) {
-    fill(root, h("div", { class: "private" }, h("h1", {}, icon("lock"), h("span", { text: " Student mode" })),
-      h("p", { class: "lede", text: "Student mode runs in a private session, because a CV is personal." }),
-      h("button", { class: "btn primary", onclick: async () => { await mode.enable(); draw(); } },
-        icon("lock"), h("span", { text: "Start a private session" }))));
-    return;
-  }
-  for (const [k, v] of Object.entries(mode.state.drafts)) if (v && !D.drafts[k]) D.drafts[k] = v;
+  if (!api.open) await mode.enable(); // a CV is personal: the session opens before any text is typed in
+  for (const [k, v] of Object.entries(mode.state.drafts)) if (v && !D.drafts[k]) { D.drafts[k] = v; delete mode.state.drafts[k]; }
   const sess = await api.session();
   const docs = sess.documents;
   const hasBrief = Boolean(sess.brief_id); // the session's brief, kept when going back here
   const have = new Set(docs.map((d) => d.kind));
   const kinds = info.student_kinds || { cv: "Your CV or résumé", interests: "Your interests", achievements: "Your achievements" };
+  const text = (k) => (D.drafts[k] || "").trim();
+  const ready = (text("cv") || D.files.cv || have.has("cv"))
+    && (text("interests") || text("achievements") || have.has("interests") || have.has("achievements"));
+  const set = (k) => (e) => { D.drafts[k] = e.target.value; if (D.sample) { D.sample = false; drawSample(); } };
 
-  async function add(kind, body) {
-    D.busy = true; D.error = null; draw();
-    try {
-      await mode.send(body);
-      D.drafts[kind] = "";
-      delete mode.state.drafts[kind];
-      announce(`${kinds[kind]} added.`);
-    } catch (e) { D.error = e.message; }
-    D.busy = false; draw();
-  }
   async function build() {
     D.busy = true; D.error = null; draw();
     try {
+      for (const kind of Object.keys(kinds)) {
+        const body = D.files[kind] ? { kind, filename: D.files[kind].name, data: D.files[kind].data }
+          : text(kind) ? { kind, text: text(kind) } : null;
+        if (!body) continue;
+        if (have.has(kind)) await api.removeDocument(kind);
+        await mode.send(body);
+      }
+      D.drafts = {}; D.files = {};
+      D.lastSample = D.sample;
       await api.createStudent({});
-      go("#/brief/private/profile");
+      D.busy = false;
+      go("#/brief/private/routes");
     } catch (e) { D.error = e.message; D.busy = false; draw(); }
   }
-  const ready = have.has("cv") && (have.has("interests") || have.has("achievements"));
-  fill(root, h("div", { class: "private student" },
-    h("h1", {}, icon("lock"), h("span", { text: " Student mode" })),
+  async function fillSample() {
+    try {
+      const x = await api.sample("student");
+      D.drafts = { cv: x.cv, interests: x.interests, achievements: x.achievements };
+      D.files = {}; D.sample = true;
+      draw(); announce("Filled with a SYNTHETIC sample.");
+    } catch (e) { D.error = `The sample could not be loaded: ${e.message}`; draw(); }
+  }
+  async function pick(kind, file) {
+    if (!file) return;
+    if (file.size > info.max_bytes) { D.error = `That file is larger than ${info.max_bytes / 1e6} MB.`; draw(); return; }
+    const data = await new Promise((ok, bad) => {
+      const r = new FileReader();
+      r.onload = () => ok(String(r.result).split(",", 2)[1] || "");
+      r.onerror = () => bad(new Error("The file could not be read."));
+      r.readAsDataURL(file);
+    });
+    D.files[kind] = { name: file.name, data };
+    draw();
+  }
+  const drawSample = () => { const b = document.getElementById("st-sample"); if (b) fill(b, sampleLine()); };
+  const sampleLine = () => (D.sample ? h("p", { class: "sample-status", role: "status" }, h("span", { class: "sample-badge", text: SAMPLE }),
+    h("span", { text: "An invented student, labelled SYNTHETIC. Edit it or clear it before you run your own." })) : null);
+  const box = (kind, label, note, rows, need) => {
+    const d = docs.find((x) => x.kind === kind);
+    const file = D.files[kind];
+    return h("section", { class: "box" },
+      h("div", { class: "box-head" }, h("label", { class: "big", for: `st-${kind}`, text: label }),
+        need ? h("span", { class: "local", text: "Needed" }) : null),
+      h("p", { class: "note", id: `st-${kind}-note`, text: note }),
+      d && !text(kind) && !file ? h("p", { class: "added" }, icon("lock"),
+        h("span", { text: `Added, ${d.chars.toLocaleString("en-US")} characters, in this session's memory` }),
+        h("button", { class: "btn quiet", type: "button", onclick: async () => { await api.removeDocument(kind); draw(); } }, h("span", { text: "Remove" }))) : null,
+      file ? h("p", { class: "added" }, icon("paper"), h("span", { text: `${file.name}, read on this server when you start` }),
+        h("button", { class: "btn quiet", type: "button", onclick: () => { delete D.files[kind]; draw(); } }, h("span", { text: "Remove" })))
+        : h("textarea", { id: `st-${kind}`, rows, placeholder: kind === "achievements" ? "One per line" : kind === "interests" ? "For example, the field you want to work in" : "Paste text here",
+          "aria-describedby": `st-${kind}-note`, value: D.drafts[kind] || "", oninput: set(kind) }),
+      kind === "cv" && !file ? h("div", { class: "file-row" },
+        h("label", { class: "btn" }, h("span", { text: "Or upload a file" }),
+          h("input", { type: "file", class: "sr-only", accept: (info.formats || []).join(","), onchange: (e) => pick(kind, e.target.files[0]) })),
+        h("span", { class: "hint", text: "Text, Markdown, Word or PDF" })) : null);
+  };
+  fill(root, h("div", { class: "screen student-start" },
+    h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
+    h("div", {}, h("h1", { class: "page", text: "Tell Perch about you." }),
+      h("p", { class: "page-sub", text: "Code reads your CV by rule on this server; no model reads it. It is held in memory for this session and never saved." })),
     hasBrief ? h("p", {}, h("a", { class: "btn", href: "#/brief/private/routes" }, h("span", { text: "Back to your options" }))) : null,
-    h("p", { class: "lede", text: "Paste your CV or résumé, a note on your interests and a few achievements. Perch lists fellowships from public records and scholarships from a sample database, checks each one against your CV by rule, and lists what you would still need." }),
-    h("p", { class: "notice sample-note" }, h("span", { class: "tag sample", text: SAMPLE }),
-      h("span", { text: " The scholarships tab uses invented sample records. Fellowships are real public listings." })),
+    h("div", { class: "sample-row" },
+      h("span", { text: "Not sure what to paste? See a sample laid out the way that matches best: clear headings for education, honours, research, activities and references." }),
+      h("button", { class: "btn outline", type: "button", "data-key": "st-fill", onclick: fillSample }, h("span", { text: "Fill with a sample" })),
+      h("button", { class: "btn ghost", type: "button", "data-key": "st-clear", onclick: () => { D.drafts = {}; D.files = {}; D.sample = false; draw(); announce("Cleared."); } },
+        h("span", { text: "Clear" }))),
+    h("div", { id: "st-sample" }, sampleLine()),
     D.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null,
-    h("ol", { class: "private-docs" }, Object.entries(kinds).map(([kind, label]) => {
-      const d = docs.find((x) => x.kind === kind);
-      return h("li", { class: "card" },
-        h("div", { class: "doc-head" }, h("h2", { class: "doc-title", text: label }),
-          d ? h("span", { class: "tag moss", text: `Added, ${d.chars.toLocaleString("en-US")} characters` }) : null),
-        h("p", { class: "hint", text: HINTS[kind] }),
-        d ? h("button", { class: "btn quiet", onclick: async () => { await api.removeDocument(kind); draw(); } },
-          icon("dismiss"), h("span", { text: "Remove" }))
-          : h("div", { class: "doc-in" },
-            h("label", { class: "field-label", for: `st-${kind}`, text: "Paste text" }),
-            h("textarea", { id: `st-${kind}`, rows: kind === "cv" ? 8 : 4, value: D.drafts[kind] || "",
-              oninput: (e) => { D.drafts[kind] = e.target.value; } }),
-            h("div", { class: "doc-actions" },
-              h("button", { class: "btn", disabled: D.busy, onclick: () => {
-                const text = (D.drafts[kind] || "").trim();
-                if (text) add(kind, { kind, text });
-              } }, h("span", { text: "Add text" })))));
-    })),
-    h("div", { class: "doc-actions" },
-      h("button", { class: "btn primary", disabled: D.busy || !ready, onclick: build },
-        h("span", { text: D.busy ? "Starting" : "Find fellowships and scholarships" })),
-      ready ? null : h("p", { class: "hint", text: "Add your CV and either your interests or your achievements." }))));
+    h("div", { class: "st-cols" },
+      h("div", { class: "st-cv" }, box("cv", kinds.cv, "Level, year, major, GPA, enrolment, graduation date and referees are read from it.", 12, true)),
+      h("div", { class: "st-side" },
+        box("interests", "What you are interested in", "A few sentences. This steers the search.", 4),
+        box("achievements", kinds.achievements || "Your achievements", "Up to five, one per line. Explanations may cite them.", 4))),
+    h("div", { class: "go-row" },
+      h("button", { class: "btn primary big", type: "button", "data-key": "st-build", disabled: D.busy, onclick: () => {
+        if (!ready) { D.error = "Add your CV and either your interests or your achievements."; draw(); return; }
+        build();
+      } }, h("span", { text: D.busy ? "Starting" : "Find fellowships and scholarships" })),
+      h("span", { class: "hint", text: "Needs your CV and either your interests or your achievements." }))));
 }
 
 // ----- profile -----
 
-export function studentProfile(d, { briefId }) {
+export function studentProfile(d, { openEvidence }) {
   const rows = d.student || [];
-  return [
-    h("section", { class: "card" },
-      h("h2", { class: "section-title" }, icon("lock"), h("span", { text: " What Perch read from your CV" })),
-      h("p", { class: "hint", text: "Read by rule, not by a model, and kept in this session only. If something is missing or wrong, edit your CV and build again." }),
+  const mine = Object.entries(d.papers || {}).filter(([id, w]) => w.private);
+  const interests = mine.filter(([id]) => /interests/.test(id));
+  const achievements = mine.filter(([id]) => /achievement/.test(id));
+  const ref = ([id, w]) => h("li", { class: "fade-in" }, h("button", { class: "paper", type: "button", onclick: (e) => openEvidence(id, e.currentTarget) },
+    h("span", { class: "paper-title", text: w.title })));
+  return [h("div", { class: "prof-cols" },
+    h("div", { class: "left" }, h("section", { class: "pblock" },
+      h("h2", { class: "section-title", text: "What the rules read from your CV" }),
       rows.length ? h("dl", { class: "fields" }, rows.map(([k, v]) => h("div", { class: "field" }, h("dt", { text: k }), h("dd", { text: v }))))
-        : h("p", { class: "hint", text: "Nothing read yet." })),
-    h("p", { class: "next" }, h("a", { class: "btn primary", href: `#/brief/${encodeURIComponent(briefId)}/routes` },
-      h("span", { text: "See fellowships and scholarships" })))];
+        : h("div", { class: "skeleton" }, h("span", { style: "width:80%" }), h("span", { style: "width:60%" })),
+      h("p", { class: "hint", text: "Read by code, not by a model. If something is wrong, fix your CV and run it again." }))),
+    h("div", { class: "right" }, h("section", { class: "pblock" },
+      h("h2", { class: "section-title", text: "What steers the search" }),
+      interests.length ? h("ul", { class: "papers" }, interests.map(ref)) : h("p", { class: "hint", text: "No interests note in this session." }),
+      h("h3", { class: "mini", text: "Your achievements" }),
+      achievements.length ? h("ul", { class: "papers" }, achievements.map(ref)) : h("p", { class: "hint", text: "None added." }),
+      h("p", { class: "hint", text: "Explanations may cite these. They stay in this session’s memory." }))),
+    h("p", { class: "notice", style: "flex: 1 1 100%" }, icon("lock"), h("span", { text: "Perch never asks about residency, citizenship or other personal criteria. When a listing has one, it is quoted on the card for you to judge." })))];
 }
 
 // ----- routes -----
@@ -164,7 +217,7 @@ function card(l, { openEvidence, setLead, papers }) {
   return h("li", { class: `card lead${l.sample ? " is-sample" : ""}${l.status === "kept" ? " kept" : ""}`, "data-id": l.id },
     h("div", { class: "lead-head" }, h("span", { class: "tags" },
       l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null,
-      h("span", { class: `tag ${VERDICT_CLASS[l.verdict] || ""}`, text: l.verdict }),
+      verdictChip(l.verdict),
       sch && r.award_type ? h("span", { class: "tag", text: r.award_type }) : null,
       !sch && r.activity_code ? h("span", { class: "tag", text: `NIH ${r.activity_code}` }) : null,
       l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null)),
@@ -177,9 +230,10 @@ function card(l, { openEvidence, setLead, papers }) {
       : h("dl", { class: "facts" },
         h("div", { class: "fact" }, h("dt", { text: "Deadline" }), h("dd", { text: deadline ? f.formatDate(deadline) : NOT_STATED })),
         sch ? h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", { text: amount })) : null),
-    h("ul", { class: "notes" }, l.verdict_lines.map((x) => h("li", { text: x }))),
-    l.gaps.length ? h("div", { class: "gaps" }, h("h4", { class: "mini", text: "Still needed" }),
-      h("ul", {}, l.gaps.map((g) => h("li", { text: g })))) : null,
+    l.verdict_lines.length ? h("div", { class: "reason" }, h("b", { text: "Why: " }),
+      l.verdict_lines.length === 1 ? h("span", { text: l.verdict_lines[0] })
+        : h("ul", { class: "notes" }, l.verdict_lines.map((x) => h("li", { text: x })))) : null,
+    l.gaps.length ? h("div", { class: "reason" }, h("b", { text: "Still needed: " }), h("span", { text: l.gaps.join("; ") })) : null,
     l.flagged ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "The explanation was withheld because it failed the citation checks twice." }))
       : parsed ? h("details", { class: "why explain", open: OPEN.has(l.id),
         ontoggle: (e) => { if (e.target.open) OPEN.add(l.id); else OPEN.delete(l.id); } },
@@ -214,6 +268,8 @@ function amountText(r) {
 
 // ----- compare and hand-off (code-written; nothing is sent) -----
 
+const NOTE = { office: null, shown: false };
+
 export function studentCompare(panel, { brief, goRoutes, announce }) {
   const kept = brief.leads.filter((l) => l.status === "kept");
   if (!kept.length) {
@@ -222,23 +278,45 @@ export function studentCompare(panel, { brief, goRoutes, announce }) {
       h("button", { class: "btn", onclick: goRoutes }, h("span", { text: "Go to Your options" })))));
     return;
   }
-  const rows = kept.map((l) => {
+  const draw = () => studentCompare(panel, { brief, goRoutes, announce });
+  const byOffice = { F: kept.filter((l) => l.route === "F"), S: kept.filter((l) => l.route === "S") };
+  const routes = ["F", "S"].filter((r) => byOffice[r].length);
+  if (!routes.includes(NOTE.office)) { NOTE.office = routes[0]; NOTE.shown = false; }
+  const row = (l) => {
     const r = l.record || {};
     const sch = r.kind === "scholarship";
-    return [sch ? r.name : r.title, STUDENT_ROUTES[l.route], l.verdict,
-      (sch ? r.deadline : r.close_date) ? f.formatDate(sch ? r.deadline : r.close_date) : "Not stated",
-      sch ? amountText(r) : "See the record", l.gaps.join("; ") || "Nothing listed", OFFICES[l.route].name];
-  });
-  const byOffice = { F: kept.filter((l) => l.route === "F"), S: kept.filter((l) => l.route === "S") };
+    const d = sch ? r.deadline : r.close_date;
+    return h("tr", {},
+      h("th", { scope: "row" }, h("span", { class: "row-title", text: sch ? r.name : r.title }),
+        h("span", { class: "cell-note", text: STUDENT_ROUTES[l.route] })),
+      h("td", {}, verdictChip(l.verdict)),
+      h("td", { text: d ? f.formatDate(d) : "Not stated" }),
+      h("td", { text: sch ? amountText(r) : "See the record" }),
+      h("td", { text: l.gaps.join("; ") || "Nothing listed" }),
+      h("td", { text: OFFICES[l.route].name }));
+  };
   fill(panel,
-    kept.some((l) => l.sample) ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }), h("span", { text: ` ${SAMPLE_NOTE}` })) : null,
-    h("div", { class: "table-wrap", role: "region", "aria-label": "Kept options, side by side", tabindex: "0" }, h("table", { class: "compare" },
-      h("thead", {}, h("tr", {}, ["Lead", "Route", "Verdict", "Deadline", "Amount", "Still needed", "Office"].map((x) => h("th", { scope: "col", text: x })))),
-      h("tbody", {}, rows.map((row) => h("tr", {}, row.map((x, i) => h(i ? "td" : "th", { scope: i ? null : "row", text: x }))))))),
-    ["F", "S"].filter((r) => byOffice[r].length).map((r) => handoff(r, byOffice[r], announce)));
+    kept.some((l) => l.sample) ? h("p", { class: "notice warn sample-note", role: "note" }, h("span", { class: "tag sample", text: SAMPLE }),
+      h("span", { text: " Your shortlist includes invented sample scholarships. They are not real." })) : null,
+    h("div", { class: "table-wrap compare-wrap", role: "region", "aria-label": "Kept options, side by side", tabindex: "0" }, h("table", { class: "compare" },
+      h("thead", {}, h("tr", {}, ["Option", "Your verdict", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
+      h("tbody", {}, kept.map(row)))),
+    h("p", { class: "hint", text: "Each cell is copied from its record or checked against your CV by rule. “Not stated” means the listing leaves it blank." }),
+    h("section", { class: "handoff" },
+      h("h2", { class: "section-title", text: "Draft a note to a Temple office" }),
+      h("fieldset", { class: "office-pick" }, h("legend", { text: "Office" }),
+        routes.map((r) => h("label", { class: "office-opt" },
+          h("input", { type: "radio", name: "st-office", checked: NOTE.office === r, onchange: () => { NOTE.office = r; NOTE.shown = false; draw(); } }),
+          h("span", {}, h("b", { text: OFFICES[r].name }), h("br"),
+            h("span", { class: "hint", text: r === "F" ? "For the kept fellowships" : "For the kept sample scholarships" }))))),
+      h("div", { class: "go-row" },
+        h("button", { class: "btn primary", type: "button", "data-key": "st-draft", onclick: () => { NOTE.shown = true; draw(); } },
+          h("span", { text: NOTE.shown ? "Draft again" : "Draft the note" })),
+        h("span", { class: "hint", text: "Code writes this note; no model. Perch never sends it." })),
+      NOTE.shown ? note(NOTE.office, byOffice[NOTE.office], announce) : null));
 }
 
-function handoff(route, leads, announce) {
+function note(route, leads, announce) {
   const o = OFFICES[route];
   const lines = leads.map((l) => {
     const r = l.record || {};
@@ -246,20 +324,26 @@ function handoff(route, leads, announce) {
     const d = r.kind === "scholarship" ? r.deadline : r.close_date;
     return `- ${name}${l.sample ? " (SAMPLE record, not real)" : ""}: ${l.verdict}${d ? `, deadline ${f.formatDate(d)}` : ""}${l.gaps.length ? `. Still needed: ${l.gaps.join("; ")}` : ""}`;
   });
+  const subject = `Advice on ${route === "F" ? "fellowships" : "scholarships"}: ${leads.length} on my list`;
   const body = [`Hello,`, "",
     `I am a student looking at the ${route === "F" ? "fellowships" : "scholarships"} below and would like advice on applying.`, "",
     ...lines, "",
     leads.some((l) => l.sample) ? "Note: records marked SAMPLE come from a test corpus in Perch and are not real scholarships.\n" : "",
     "Thank you."].join("\n");
-  const box = h("textarea", { rows: 10, "aria-label": `Draft to ${o.name}` });
+  const box = h("textarea", { class: "input draft-body", rows: 10, "aria-label": `Draft to ${o.name}` });
   box.value = body;
-  return h("section", { class: "card handoff" },
-    h("h2", { class: "section-title", text: `Draft to ${o.name}` }),
-    h("p", { class: "hint" }, h("span", { text: "Written by code from the kept leads. The To line is yours to fill. Nothing is sent from Perch. " }),
-      h("a", { href: o.url, target: "_blank", rel: "noopener", text: `${o.name} (public page)` })),
-    h("label", { class: "field-label", text: "To" }), h("input", { type: "text", placeholder: "Fill in the address yourself", "aria-label": "To" }),
+  return h("div", { class: "draft fade-in" },
+    leads.some((l) => l.sample) ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }),
+      h("span", { text: " This note names invented sample scholarships." })) : null,
+    h("label", { class: "field-label", for: "st-to", text: "To" }),
+    h("input", { id: "st-to", class: "input", type: "text", placeholder: "Left empty for you" }),
+    h("p", {}, h("b", { text: "Subject: " }), h("span", { text: subject })),
     box,
-    h("button", { class: "btn", onclick: async () => {
-      try { await navigator.clipboard.writeText(box.value); announce("Draft copied."); } catch { box.select(); }
-    } }, icon("paper"), h("span", { text: "Copy draft" })));
+    h("p", { class: "hint" }, h("a", { href: o.url, target: "_blank", rel: "noopener", text: `${o.name} (public page)` })),
+    h("div", { class: "actions" },
+      h("button", { class: "btn", type: "button", onclick: async () => {
+        try { await navigator.clipboard.writeText(box.value); announce("Note copied."); } catch { box.select(); }
+      } }, icon("paper"), h("span", { text: "Copy" })),
+      h("a", { class: "btn", href: `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(box.value)}` },
+        icon("download"), h("span", { text: "Open in mail" }))));
 }
