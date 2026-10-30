@@ -175,3 +175,50 @@ def test_only_student_mode_opens_the_sample_store():
         p = ROOT / f
         if p.exists():
             assert "sample:sch-" not in p.read_text() and S.CANARY_PREFIX not in p.read_text()
+
+
+def test_student_scout_uses_only_the_student_tools(tmp_path, monkeypatch):
+    """Ask Scout on a student brief (S24): the student allowlist, rule results only, no CV
+    text in any tool result, sample records marked, a code-written note never sent."""
+    from perch.llm import ToolCall
+    from perch.scout.student_tools import STUDENT_ALLOWLIST
+    from perch.scout.tools import ALLOWLIST
+
+    c, service = student_app(tmp_path, monkeypatch)
+    steps = iter([[ToolCall("c1", "search_options", {"route": "S"})],
+                  [ToolCall("c2", "read_cv", {})],
+                  [ToolCall("c3", "search_opportunities", {"route": "A"})],  # not allowed
+                  [ToolCall("c4", "draft_note", {"route": "S"})],
+                  "Your sample options are listed above, and the note is ready to copy."])
+
+    def reply(messages, system, schema):
+        if system and system.startswith("You are Scout"):
+            assert "student" in system and "SAMPLE" in system
+            return next(steps)
+        return student_reply(messages, system, schema)
+
+    service.models.provider = lambda spec: FakeProvider(responder=reply)
+    h = open_student(c, "persona-ug")
+    c.post("/private/student/brief", headers=h, json={"as_of": "2026-11-06"})
+    got = c.get("/private/brief", headers=h).json()
+    lead = next(x for x in got["leads"] if x["route"] == "S" and x["verdict"] != "not eligible")
+    c.post(f"/private/leads/{lead['id']}/keep", headers=h)
+    v = c.post("/private/scout", headers=h, json={"question": "What can I apply for?",
+                                                  "mode": "run"}).json()
+    for _ in range(50):
+        v = c.get(f"/private/scout/{v['id']}", headers=h).json()
+        if not v["busy"] and v["status"] != "running":
+            break
+        time.sleep(0.1)
+    cards = {x["tool"]: x for x in v["exchanges"][0]["cards"]}
+    assert set(cards) == {"search_options", "read_cv", "search_opportunities", "draft_note"}
+    assert cards["search_opportunities"]["status"] == "refused"
+    assert set(STUDENT_ALLOWLIST).isdisjoint(set(ALLOWLIST) - {"get_record"})
+    assert cards["search_options"]["status"] == "done"
+    assert all(r.startswith("sample:") for r in cards["search_options"]["records"])
+    assert cards["read_cv"]["status"] == "done"
+    note = cards["draft_note"]["draft"]
+    assert note and "SAMPLE" in note["body"] and note["office"] == "Student Financial Services"
+    canary = canaries("persona-ug")
+    assert not any(t in json.dumps(v) for t in canary)  # no CV text reached Scout's view
+    assert c.post("/private/end", headers=h).json()["ended"]

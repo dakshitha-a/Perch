@@ -975,7 +975,7 @@ function drawCompare(focusKey) {
 function drawScout() {
   const panel = $("#panel");
   if (!panel || S.tab !== "scout" || !S.brief) return;
-  renderScout(panel, { api, briefId: S.briefId, done: S.brief.brief.status === "done",
+  renderScout(panel, { api, briefId: S.briefId, done: S.brief.brief.status === "done", student: isStudent(S.brief),
     openEvidence, announce, rerender: drawScout });
 }
 

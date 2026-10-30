@@ -108,7 +108,7 @@ def view(e: Entry) -> dict:
 def draft_of(c) -> dict | None:  # noqa: ANN001 - a Card
     """A hand-off draft from draft_handoff, shown in full on its card to copy."""
     r = c.result
-    if c.tool != "draft_handoff" or not isinstance(r, dict) or "body" not in r:
+    if c.tool not in ("draft_handoff", "draft_note") or not isinstance(r, dict) or "body" not in r:
         return None
     return {k: r[k] for k in ("office", "office_page", "subject", "body", "opening_withheld")}
 

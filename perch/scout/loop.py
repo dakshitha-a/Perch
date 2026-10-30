@@ -55,6 +55,12 @@ STRUCTURED = """You work in steps. Each reply is one JSON object:
 tool, or {"action": "answer", "tool": "none", "arguments": {}, "answer": "<your answer>"} \
 to finish. Tools:"""
 
+def step_schema(names: tuple[str, ...]) -> dict:
+    """The structured-step schema for one allowlist."""
+    return {**STEP_SCHEMA, "properties": {**STEP_SCHEMA["properties"],
+                                          "tool": {"type": "string", "enum": [*names, "none"]}}}
+
+
 STEP_SCHEMA = {"type": "object", "properties": {
     "action": {"type": "string", "enum": ["call", "answer"]},
     "tool": {"type": "string", "enum": [*ALLOWLIST, "none"]},
@@ -164,7 +170,10 @@ class Scout:
     def __init__(self, provider: Provider, ctx: ScoutContext, *, mode: Mode = "ask",
                  policy: Policy | None = None, budget: ScoutBudget | None = None,
                  log: ScoutLog | None = None, private: PrivateSettings | None = None,
-                 brief_note: str = "") -> None:
+                 brief_note: str = "", table: dict | None = None,
+                 rules: str | None = None) -> None:
+        """`table` and `rules`: another allowlist and rule set, such as the student
+        tools (perch.scout.student_tools); the researcher's nine by default."""
         if private is not None:
             refuse_if_not_local(provider, private)
             log = None  # no Scout log (Q14); the tools' caches are S13's job
@@ -177,9 +186,13 @@ class Scout:
         who = ("a researcher with no public profile (private documents only)"
                if (ctx.researcher_id or "").startswith("private:")
                else f"researcher {ctx.full_author_id(None)} (OpenAlex)")
-        self.system = (f"{RULES}\n\nSession: {who}, as-of date {ctx.as_of.isoformat()}."
-                       f"{brief_note}")
-        self.tools = [t for t, _ in TOOLS.values()]
+        self.table = table or TOOLS
+        if table is not None:
+            who = "a student (private session)"
+        self.system = (f"{rules or RULES}\n\nSession: {who}, as-of date "
+                       f"{ctx.as_of.isoformat()}.{brief_note}")
+        self.tools = [t for t, _ in self.table.values()]
+        self.schema = step_schema(tuple(self.table))
 
     # --- public API ---
 
@@ -268,7 +281,7 @@ class Scout:
                               f"{json.dumps(t.parameters['properties'])}" for t in self.tools)
         system = f"{self.system}\n\n{STRUCTURED}\n{catalogue}" if tools else self.system
         msgs = [Message(m.role, render(m)) for m in s.messages]
-        r = self.provider.chat(msgs, system=system, schema=STEP_SCHEMA if tools else None,
+        r = self.provider.chat(msgs, system=system, schema=self.schema if tools else None,
                                max_tokens=1500, cache_system=True)
         if not tools:
             return r
@@ -301,11 +314,11 @@ class Scout:
 
     def _execute(self, s: Session, c: Card) -> None:
         t0 = time.perf_counter()
-        entry = TOOLS.get(c.tool)
+        entry = self.table.get(c.tool)
         if entry is None:
             c.status, c.detail = "refused", f"{c.tool} is not an allowed tool"
             c.result = {"error": f"{c.tool!r} is not an allowed tool. Allowed: "
-                        f"{', '.join(ALLOWLIST)}."}
+                        f"{', '.join(self.table)}."}
         elif errs := check_arguments(entry[0], c.arguments):
             c.status, c.detail = "refused", "; ".join(errs)
             c.result = {"error": "bad arguments: " + "; ".join(errs)}
@@ -440,4 +453,14 @@ def summarise(tool: str, result: dict) -> str:
     if tool == "draft_handoff":
         return (f"draft to {result['office']}, not sent"
                 + ("; the model's opening was withheld" if result["opening_withheld"] else ""))
+    if tool == "search_options":
+        return f"{result['count']} option{'' if result['count'] == 1 else 's'} match"
+    if tool in ("check_option", "explain_verdict"):
+        return f"{result['verdict']}" + (", sample record" if result.get("sample") else "")
+    if tool == "read_cv":
+        return f"{len(result['fields'])} fields read by rule"
+    if tool == "compare_options":
+        return f"{len(result['rows'])} options side by side"
+    if tool == "draft_note":
+        return f"note to {result['office']}, written by code, not sent"
     return "done"

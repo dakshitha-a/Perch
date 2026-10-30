@@ -996,3 +996,6 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .reason { font-size: 14px; color: var(--ink-2); line-height: 1.5; }
 .reason b { color: var(--ink); }
 .reason .notes { margin: 2px 0 0; }
+.scout-hello { display: flex; gap: 12px; align-items: center; color: var(--ink-2); }
+.scout-rules { font-size: 13px; line-height: 1.5; }
+.scout-intro .lede { flex: 1 1 320px; font-size: 16px; }

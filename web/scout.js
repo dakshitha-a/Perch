@@ -11,7 +11,20 @@ const TOOLS = {
   list_awards: "List public awards", search_opportunities: "Search opportunities",
   get_org_signals: "Industry signals", explain_fit: "Explain the fit",
   compare: "Compare leads", draft_handoff: "Draft a hand-off", get_record: "Open a record",
+  search_options: "Search options", check_option: "Check against your CV", explain_verdict: "Explain a verdict",
+  read_cv: "What Perch read", compare_options: "Compare options", draft_note: "Draft a note",
 };
+// The rail lists what Scout can use; students get their own tools (S24, Q27 revised).
+const CAN_USE = {
+  researcher: ["Search with filters: agency, ceiling, close date, activity code, words",
+    "Industry leads and their signals", "Any record in the brief", "Public awards and the research profile",
+    "A fit explanation", "Compare chosen or kept leads", "A hand-off draft, shown for you to copy"],
+  student: ["Search fellowships and sample scholarships with filters: verdict, deadline, amount, words",
+    "Check one option against your CV by rule", "Explain a verdict and what is still needed",
+    "What Perch read from your CV", "Compare chosen or kept options", "A note to a Temple office, shown for you to copy"],
+};
+const STUDENT_EXAMPLES = ["Only options with a deadline after 2027-03-01", "Why is my top fellowship “may be eligible”?",
+  "What do my kept options still need?", "Draft a note about my kept fellowships"];
 const ARGS = {
   route: "Route", author_id: "Researcher", min_amount: "Ceiling at least", max_amount: "Ceiling at most",
   agencies: "Agencies", exclude_agencies: "Not these agencies", closes_by: "Closes by",
@@ -28,7 +41,8 @@ const EXAMPLES = ["Only R21 grants that close by 2027-03-01", "Small grants only
 const T = { briefId: null, data: null, mode: "ask", error: null, timer: null, draft: "", sending: false };
 
 export function renderScout(panel, ctx) {
-  if (T.briefId !== ctx.briefId) reset(ctx.briefId);
+  const key = `${ctx.briefId}:${ctx.student ? "s" : "r"}`;
+  if (T.briefId !== key) reset(key);
   if (!ctx.api.scoutStart) {
     fill(panel, h("div", { class: "empty" }, owl("look", "owl-md"), h("div", {},
       h("p", { class: "lede", text: "Scout needs the live server." }),
@@ -42,17 +56,27 @@ export function renderScout(panel, ctx) {
     return;
   }
   const busy = Boolean(T.data && T.data.busy) || T.sending;
+  const last = T.data && T.data.exchanges.length ? T.data.exchanges[T.data.exchanges.length - 1] : null;
   const view = h("div", { class: "scout" },
-    h("div", { class: "scout-intro" },
-      h("p", { class: "lede", text: "Ask Scout to narrow or explain this brief." }),
-      h("p", { class: "hint", text: "Scout can only use Perch’s own tools on public records. It cannot browse the web, send anything or change a record. Every fact in an answer links to its record." })),
-    modeSwitch(ctx),
+    h("div", { class: "scout-intro title-row" },
+      h("p", { class: "lede", text: ctx.student ? "Ask about your options in plain words. Scout uses Perch’s own tools, one card per step."
+        : "Ask about this brief in plain words. Scout uses Perch’s own tools, one card per step." }),
+      modeSwitch(ctx)),
+    !T.data ? h("div", { class: "scout-hello" }, owl("idle", "owl-sm", { button: true }),
+      h("p", { text: "Hello. Try one of the questions under the box, or type your own." })) : null,
     h("ol", { class: "scout-log", "aria-live": "polite" }, ...(T.data ? T.data.exchanges.map((x) => exchange(x, ctx, busy)) : [])),
     T.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: T.error })) : null,
     askForm(ctx, busy),
+    h("p", { class: "hint scout-rules", text: ctx.student
+      ? "Scout cites records. A date or amount not in a cited record is rewritten once, then withheld. It stops after eight model calls, cannot browse the web, send anything or change a record, and runs on a local model, because your CV is in this session. Sample scholarships stay marked as samples. The conversation ends with the session."
+      : "Scout cites records. A date or amount not in a cited record is rewritten once, then withheld. It stops after eight model calls, cannot browse the web, send anything or change a record, and runs on a local model. The conversation ends with the session." }),
     T.data ? h("p", { class: "hint scout-meta", text: `Model ${T.data.model}. ${T.data.tokens.toLocaleString()} tokens so far in this conversation.` }) : null);
+  const aside = h("aside", { "aria-labelledby": "scout-tools-h" },
+    h("h2", { id: "scout-tools-h", text: "What Scout can use" }),
+    h("ul", {}, CAN_USE[ctx.student ? "student" : "researcher"].map((x) => h("li", { text: x }))),
+    h("p", { text: `Steps used this question: ${last ? last.cards.length : 0} of 8` }));
   const focused = document.activeElement && document.activeElement.id;
-  fill(panel, view);
+  fill(panel, h("div", { class: "scout-cols" }, view, aside));
   if (focused === "scout-q") {
     const q = panel.querySelector("#scout-q");
     q.focus();
@@ -66,13 +90,10 @@ function reset(briefId) {
 }
 
 function modeSwitch(ctx) {
-  const opt = (value, label, hint) => h("label", { class: "scout-mode-opt" },
-    h("input", { type: "radio", name: "scout-mode", value, checked: T.mode === value,
-      onchange: () => setMode(value, ctx) }),
-    h("span", {}, h("b", { text: label }), h("span", { class: "hint", text: hint })));
-  return h("fieldset", { class: "scout-mode" }, h("legend", { class: "mini", text: "How Scout works" }),
-    opt("ask", "Ask before every step", "You approve each tool before it runs."),
-    opt("run", "Run and show me", "Tools run at once; you see each one."));
+  const opt = (value, label) => h("button", { type: "button", role: "radio", "aria-checked": String(T.mode === value),
+    "data-key": `scout-${value}`, onclick: () => setMode(value, ctx) }, h("span", { text: label }));
+  return h("div", { class: "seg", role: "radiogroup", "aria-label": "How Scout runs steps" },
+    opt("ask", "Ask before each step"), opt("run", "Run and show me"));
 }
 
 async function setMode(mode, ctx) {
@@ -167,14 +188,14 @@ function leadLabel(id) {
 function askForm(ctx, busy) {
   const waiting = T.data && T.data.exchanges.some((x) => x.status === "awaiting_approval");
   return h("form", { class: "scout-ask", onsubmit: (e) => { e.preventDefault(); send(ctx); } },
-    h("label", { for: "scout-q", class: "mini", text: T.data ? "Ask a follow-up" : "Your question" }),
+    h("label", { for: "scout-q", class: "mini", text: T.data ? "Ask a follow-up" : "Ask Scout" }),
     h("div", { class: "scout-ask-row" },
       h("input", { id: "scout-q", type: "text", maxlength: "1000", autocomplete: "off", value: T.draft,
-        placeholder: "For example: only NIH, ceiling at least $500k", oninput: (e) => { T.draft = e.target.value; } }),
+        placeholder: ctx.student ? "For example: only options with a deadline after March" : "For example: only R21s that close by March", oninput: (e) => { T.draft = e.target.value; } }),
       h("button", { class: "btn primary", type: "submit", disabled: busy || waiting }, h("span", { text: "Ask" }))),
     waiting ? h("p", { class: "hint", text: "Approve or skip Scout’s step above first." }) : null,
     !T.data && ctx.api.recordedQuestion ? h("p", { class: "hint", text: "This preview plays back one recorded question. Tap it below." }) : null,
-    !T.data ? h("ul", { class: "chips" }, ...(ctx.api.recordedQuestion ? [ctx.api.recordedQuestion] : EXAMPLES).map((q) => h("li", {},
+    !T.data ? h("ul", { class: "chips" }, ...(ctx.api.recordedQuestion ? [ctx.api.recordedQuestion] : ctx.student ? STUDENT_EXAMPLES : EXAMPLES).map((q) => h("li", {},
       h("button", { class: "chip", type: "button", onclick: () => { T.draft = q; send(ctx); } }, q)))) : null);
 }
 
