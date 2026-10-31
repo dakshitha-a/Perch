@@ -981,7 +981,12 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         await page.wait_for_timeout(500)
         if not await page.locator("#rail-ev .empty-ev").count():
             w.errors.append(f"{tag}: U9: after a switch to Industry the rail still shows the grant record")
+        await page.locator(".leads > li .title-btn").first.click()
+        await page.wait_for_selector("#rail-ev .rec-title")
         await page.click("[data-key=route-A]")
+        await page.wait_for_timeout(400)
+        if not await page.locator("#rail-ev .empty-ev").count():
+            w.errors.append(f"{tag}: U9: after a switch back to Grants the rail still shows the company record")
         await page.wait_for_timeout(300)
         await page.keyboard.press("Escape")
     # U12: no mask block in the Export menu while the session holds no documents

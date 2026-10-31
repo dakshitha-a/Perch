@@ -957,10 +957,9 @@ function drawRail() {
     let card = rail.querySelector(".shortlist");
     if (!card) {
       card = h("section", { class: "shortlist", "aria-labelledby": "sl-title" });
-      const ev = h("aside", { class: "rail-evidence", id: "rail-ev", "aria-label": "Evidence", tabindex: "0" },
-        h("p", { class: "ev-kind", text: "Evidence" }),
-        h("p", { class: "empty-ev", text: "Pick a card’s title to see its record here. Every value is copied from the record." }));
+      const ev = h("aside", { class: "rail-evidence", id: "rail-ev", "aria-label": "Evidence", tabindex: "0" });
       fill(rail, card, ev);
+      emptyRail();
     }
     const sig = JSON.stringify(kept.map((l) => l.id));
     if (card.dataset.sig !== sig) {
@@ -996,6 +995,25 @@ function drawRail() {
   }
 }
 
+// The rail's Evidence box with nothing picked. A route switch comes back here, so a
+// grant's record never sits beside the industry list (U9).
+function emptyRail() {
+  const ev = $("#rail-ev");
+  if (!ev) return;
+  evidenceAsk++; // a record still loading for the old list is dropped
+  document.querySelectorAll("#panel .lead.selected").forEach((x) => x.classList.remove("selected"));
+  ev.removeAttribute("aria-labelledby");
+  fill(ev, h("p", { class: "ev-kind", text: "Evidence" }),
+    h("p", { class: "empty-ev", text: "Pick a card’s title to see its record here. Every value is copied from the record." }));
+}
+
+function switchRoute(r) {
+  if (S.route !== r) emptyRail();
+  S.route = r;
+  renderPanel();
+  panelFocus(`route-${r}`);
+}
+
 // ----- Student brief (S18, student.js) -----
 
 function renderStudentPanel(panel) {
@@ -1006,7 +1024,7 @@ function renderStudentPanel(panel) {
   panel.dataset.sig = sig;
   const ctx = { brief: d, route: S.route, papers: d.papers || {}, openEvidence, setLead, announce, api,
     offices: (privateInfo() || {}).student_offices || api.studentOffices,
-    briefId: S.briefId, setRoute: (r) => { S.route = r; renderPanel(); panelFocus(`route-${r}`); },
+    briefId: S.briefId, setRoute: switchRoute,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) };
   if (S.tab === "profile") keepFocus(() => fill(panel, ...studentProfile(d, ctx)));
   else if (S.tab === "compare") studentCompare(panel, ctx);
@@ -1262,7 +1280,7 @@ function routeSwitch() {
   const btn = (r, label) => {
     const ready = isDone(r === "A" ? "route_a" : "route_b");
     return h("button", { class: "route-btn", "data-key": `route-${r}`, "aria-pressed": String(S.route === r),
-      onclick: () => { S.route = r; renderPanel(); panelFocus(`route-${r}`); } },
+      onclick: () => switchRoute(r) },
     h("span", { text: label }), ready ? h("span", { class: "route-n", text: String(n(r)) }) : null);
   };
   return h("div", { class: "route-switch", role: "group", "aria-label": "Route" },
