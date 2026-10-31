@@ -39,7 +39,6 @@ import threading
 import time
 from collections import defaultdict, deque
 from collections.abc import Callable
-from datetime import date
 from pathlib import Path
 from typing import Literal
 
@@ -50,7 +49,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from perch import awards as aw
 from perch import compare as cmp
@@ -58,6 +57,7 @@ from perch import egress
 from perch import export as ex
 from perch.config import env
 from perch.jobs import JobRunner
+from perch.request_models import BriefOptions, HandoffRequest, ScoutRequest
 from perch.schemas import (
     USER_KINDS,
     Award,
@@ -82,15 +82,6 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 KEY_PAPERS = 5  # per thread, most recent-weighted first (thread order from perch.profile)
 
 
-class ScoutRequest(BaseModel):
-    question: str = Field("", max_length=1000)
-
-
-class HandoffRequest(BaseModel):
-    office: Literal["research_development", "technology_commercialization"]
-    lead_ids: list[str] = Field(default_factory=list, max_length=25)
-
-
 def draft_json(d: Draft) -> dict:
     return {"office": {"key": d.office.key, "name": d.office.name, "url": d.office.url},
             "to": "", "subject": d.subject, "body": d.body, "lead_ids": d.lead_ids,
@@ -98,25 +89,9 @@ def draft_json(d: Draft) -> dict:
             "withheld": d.withheld}
 
 
-class BriefRequest(BaseModel):
+class BriefRequest(BriefOptions):
     author_id: str = Field(description="OpenAlex author id, e.g. A5023080104")
-    as_of: date | None = None
-    top: int = Field(10, ge=1, le=25)
-    explain: bool = True
-    min_amount: float | None = None
     agencies: list[str] = Field(default_factory=list)
-    # Normal-mode context (Q16), all optional; saved with the brief, used as a query only.
-    direction: str | None = Field(None, max_length=1000)
-    include_keywords: list[str] = Field(default_factory=list, max_length=20)
-    exclude_keywords: list[str] = Field(default_factory=list, max_length=20)
-    career_stage: Literal["early_stage", "established"] | None = None
-
-    def context(self) -> dict:
-        clean = lambda xs: [x.strip()[:60] for x in xs if x.strip()]  # noqa: E731
-        return {"direction": (self.direction or "").strip(),
-                "include_keywords": clean(self.include_keywords),
-                "exclude_keywords": clean(self.exclude_keywords),
-                "career_stage": self.career_stage}
 
 
 class WebFiles(StaticFiles):

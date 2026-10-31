@@ -434,3 +434,18 @@ def test_a_route_b_failure_beside_still_fails_the_brief(tmp_path, monkeypatch):
     st = {s["name"]: s["status"] for s in b["stages"]}
     assert b["status"] == "failed" and st["route_b"] == "failed" and "NIH outage" in b["error"]
     assert st["explanations"] == "done"  # the model stages finished meanwhile
+
+
+def test_request_models_are_defined_once():
+    """Review W15: the session routes reuse the stored-brief API's request models."""
+    from perch import api, request_models
+    from perch.private import routes
+
+    assert issubclass(api.BriefRequest, request_models.BriefOptions)
+    assert issubclass(routes.PrivateBriefRequest, request_models.BriefOptions)
+    assert issubclass(routes.PrivateHandoffRequest, request_models.HandoffRequest)
+    assert api.ScoutRequest is request_models.ScoutRequest and not hasattr(routes, "ScoutReq")
+    src = "".join(Path(m.__file__).read_text() for m in (api, routes, request_models))
+    assert src.count("def context(self)") == 1
+    assert routes.PrivateBriefRequest(author_id=None).author_id is None
+    assert api.BriefRequest(author_id="A1").context()["include_keywords"] == []

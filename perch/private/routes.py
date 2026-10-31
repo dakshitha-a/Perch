@@ -58,6 +58,7 @@ from perch.private.session import (
     TooManyFromAddress,
     add_document,
 )
+from perch.request_models import BriefOptions, HandoffRequest, ScoutRequest
 from perch.schemas import Opportunity, Record, Work, belongs_to
 from perch.sources import openalex as oa
 
@@ -72,24 +73,9 @@ class DocumentRequest(BaseModel):
     data: str | None = Field(None, max_length=MAX_BYTES * 4 // 3 + 8)  # base64
 
 
-class PrivateBriefRequest(BaseModel):
+class PrivateBriefRequest(BriefOptions):
+    # A brief from documents alone needs no author (S13).
     author_id: str | None = Field(None, max_length=100)
-    as_of: date | None = None
-    top: int = Field(10, ge=1, le=25)
-    explain: bool = True
-    min_amount: float | None = Field(None, ge=0)
-    # The optional context fields (Q16): used as a query only, held with the brief.
-    direction: str | None = Field(None, max_length=1000)
-    include_keywords: list[str] = Field(default_factory=list, max_length=20)
-    exclude_keywords: list[str] = Field(default_factory=list, max_length=20)
-    career_stage: Literal["early_stage", "established"] | None = None
-
-    def context(self) -> dict:
-        clean = lambda xs: [x.strip()[:60] for x in xs if x.strip()]  # noqa: E731
-        return {"direction": (self.direction or "").strip(),
-                "include_keywords": clean(self.include_keywords),
-                "exclude_keywords": clean(self.exclude_keywords),
-                "career_stage": self.career_stage}
 
 
 class CloudRequest(BaseModel):
@@ -99,14 +85,8 @@ class CloudRequest(BaseModel):
     confirm: str | None = Field(None, max_length=40)
 
 
-class PrivateHandoffRequest(BaseModel):
-    office: Literal["research_development", "technology_commercialization"]
-    lead_ids: list[str] = Field(default_factory=list, max_length=25)
+class PrivateHandoffRequest(HandoffRequest):
     mask: bool = False
-
-
-class ScoutReq(BaseModel):
-    question: str = Field("", max_length=1000)
 
 
 class TextRequest(BaseModel):
@@ -567,7 +547,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                                 headers={"Retry-After": str(wait)})
 
     @app.post("/private/scout", status_code=202)
-    def scout_start(req: ScoutReq, request: Request,
+    def scout_start(req: ScoutRequest, request: Request,
                     x_perch_private: str | None = Header(None)) -> dict:
         from perch.scout.hub import view
 
@@ -594,7 +574,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         return view(e)
 
     @app.post("/private/scout/{sid}/{action}", status_code=202)
-    def scout_act(sid: str, action: Literal["ask", "stop"], req: ScoutReq, request: Request,
+    def scout_act(sid: str, action: Literal["ask", "stop"], req: ScoutRequest, request: Request,
                   x_perch_private: str | None = Header(None)) -> dict:
         from perch.scout.hub import Busy, view
 
