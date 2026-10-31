@@ -531,8 +531,9 @@ function drawSwitch() {
   if (!b) return;
   if (!privApi.open) { S.cloud = false; S.hasDocs = false; S.cloudDocs = false; }
   const c = cloudInfo();
-  b.querySelector(".chip-word").textContent = S.cloud ? `Cloud: ${c.provider} · nothing stored`
-    : S.hasDocs ? "Local only · nothing stored" : "Local · nothing stored";
+  // The second half folds away on a very narrow screen; the aria-label keeps it all (U22).
+  fill(b.querySelector(".chip-word"), h("span", { text: S.cloud ? `Cloud: ${c.provider}` : S.hasDocs ? "Local only" : "Local" }),
+    h("span", { class: "chip-rest", text: " · nothing stored" }));
   b.setAttribute("aria-label", S.cloud ? `Privacy: nothing stored; Cloud on, text goes to ${c.provider}. Change models`
     : "Privacy: nothing stored, local models. Change models");
   document.body.classList.toggle("cloud-on", S.cloud);

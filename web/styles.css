@@ -1178,3 +1178,8 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
 .common-lines { padding: 10px 14px; border-radius: 10px; background: var(--chip); color: var(--ink-2); font-size: 14px; line-height: 1.5; }
 .common-lines .mini { margin: 0 0 2px; }
 .common-lines ul { margin: 0; padding-left: 18px; }
+/* At 320 px (400 % zoom) the four tabs fit on one row and the chip says only its first word (U22). */
+@media (max-width: 359px) {
+  .tabs .tab { padding: 0 6px; font-size: 14px; flex: 1 1 auto; }
+  .chip-rest { display: none; }
+}
