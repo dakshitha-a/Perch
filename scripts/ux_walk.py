@@ -27,6 +27,7 @@ import asyncio
 import glob
 import json
 import os
+import re
 import sys
 from collections.abc import Awaitable
 from pathlib import Path
@@ -288,6 +289,33 @@ async def sort_stays(w: Walk, page: Page, tag: str) -> None:
         w.errors.append(f"{tag}: sort: layout: the sort switch moves when the sort changes")
 
 
+# Console errors the flows cause on purpose: the browser logs every 4xx answer as a failed
+# resource load (a check that a session ended answers 401, a missing brief 404).
+EXPECTED_CONSOLE = re.compile(r"^Failed to load resource: the server responded with a status "
+                              r"of (401|404|409|422|429)")
+
+
+async def html_export(w: Walk, page: Page, tag: str) -> None:
+    """Print or save as PDF opens the export as a blob: page, which inherits the app's
+    CSP. Its style and print script must run: no console error, the page styled, and the
+    button calls print (review S11)."""
+    async with page.context.expect_page() as got:
+        await page.click(".export-pop button:has-text('Print or save as PDF')")
+    pdf = await got.value
+    w.watch(pdf, f"{tag}: html export")
+    await pdf.wait_for_load_state()
+    await pdf.wait_for_timeout(400)
+    width = await pdf.evaluate("() => getComputedStyle(document.body).maxWidth")
+    if width != "820px":
+        w.errors.append(f"{tag}: html export: its style did not apply (body max-width {width})")
+    await pdf.evaluate("() => { window.__printed = false; window.print = () => { window.__printed = true; }; }")
+    await pdf.click("button.print")
+    if not await pdf.evaluate("() => window.__printed"):
+        w.errors.append(f"{tag}: html export: the print button did nothing")
+    await w.snap(pdf, tag, "html-export")
+    await pdf.close()
+
+
 class Walk:
     def __init__(self, out: Path, axe: str | None) -> None:
         self.out = out
@@ -306,7 +334,9 @@ class Walk:
             self.errors.append(f"{tag}: {name}: layout: {problem}")
         if self.axe:
             if not await page.evaluate("() => Boolean(window.axe)"):
-                await page.add_script_tag(path=self.axe)
+                # Evaluated through the debugger, not as a <script> tag: the app's CSP
+                # (review S11) refuses inline scripts, and that refusal would be logged.
+                await page.evaluate(Path(self.axe).read_text() + "\n;0")
             res = await page.evaluate("""async () => {
               const r = await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] });
               return r.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help, n: v.nodes.length,
@@ -314,6 +344,13 @@ class Walk:
                 summary: v.nodes[0] && v.nodes[0].failureSummary.slice(0, 240) })); }""")
             state["axe"] = res
         self.states.append(state)
+
+    def watch(self, page: Page, tag: str) -> None:
+        """Page errors and console errors are findings. A CSP refusal is only a console
+        error, never a page error (review S11)."""
+        page.on("pageerror", lambda e: self.errors.append(f"{tag}: page error: {e}"))
+        page.on("console", lambda m: self.errors.append(f"{tag}: console error: {m.text[:200]}")
+                if m.type == "error" and not EXPECTED_CONSOLE.search(m.text) else None)
 
     async def step(self, tag: str, what: str, coro: Awaitable) -> bool:
         try:
@@ -411,6 +448,9 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     if await w.step(tag, "export", page.click("[data-key=export]")):
         await page.wait_for_timeout(300)
         await w.snap(page, tag, "export-menu")
+        if tag == "pi-laptop":
+            await w.step(tag, "html export", html_export(w, page, tag))
+            await page.click("[data-key=export]")
         await page.keyboard.press("Escape")
     if tag == "pi-laptop":
         await w.tab_through(page, "routes", 40)
@@ -586,7 +626,7 @@ async def main(base: str, axe: str | None, out: Path, only: list[str]) -> None:
             for tag, view, scheme in (("pi-laptop", LAPTOP, "light"), ("pi-phone", PHONE, "light"),
                                       ("pi-laptop-dark", LAPTOP, "dark"), ("pi-phone-dark", PHONE, "dark")):
                 ctx, page = await new_page(b, view, names, scheme)
-                page.on("pageerror", lambda e, t=tag: w.errors.append(f"{t}: page error: {e}"))
+                w.watch(page, tag)
                 await w.step(tag, "flow", pi_flow(w, page, base, tag))
                 await ctx.close()
             ctx, page = await new_page(b, PHONE, names, motion="reduce")
@@ -599,7 +639,7 @@ async def main(base: str, axe: str | None, out: Path, only: list[str]) -> None:
         if "checks" in only:
             for tag, view in (("checks", LAPTOP), ("checks-phone", PHONE)):
                 ctx, page = await new_page(b, view, names)
-                page.on("pageerror", lambda e, t=tag: w.errors.append(f"{t}: page error: {e}"))
+                w.watch(page, tag)
                 await w.step(tag, "flow", checks_flow(w, page, base, tag))
                 await ctx.close()
         if "student" in only:
@@ -607,12 +647,12 @@ async def main(base: str, axe: str | None, out: Path, only: list[str]) -> None:
                 first = ("phone", PHONE) if i != 1 else ("laptop", LAPTOP)
                 second = ("laptop", LAPTOP) if i != 1 else ("phone", PHONE)
                 ctx, page = await new_page(b, first[1], names, "dark" if i == 2 else "light")
-                page.on("pageerror", lambda e, t=persona: w.errors.append(f"{t}: page error: {e}"))
+                w.watch(page, persona)
                 await w.step(persona, "flow", student_flow(w, page, base, persona, [first, second]))
                 await ctx.close()
         if "private" in only:
             ctx, page = await new_page(b, LAPTOP, names)
-            page.on("pageerror", lambda e: w.errors.append(f"persona-1: page error: {e}"))
+            w.watch(page, "persona-1")
             await w.step("persona-1", "flow", private_flow(w, page, base))
             await ctx.close()
         await b.close()

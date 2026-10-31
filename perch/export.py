@@ -271,13 +271,25 @@ table { min-width: 560px; }
 """
 
 
+# The print button's one script. No inline handler: the app's Content-Security-Policy
+# allows this script and the CSS above by their hashes only (review S11), and a blob:
+# page opened from the app inherits that policy.
+PRINT_JS = 'document.querySelector(".print").addEventListener("click", () => window.print());'
+
+
+def csp_hash(text: str) -> str:
+    import base64
+    import hashlib
+
+    return "'sha256-" + base64.b64encode(hashlib.sha256(text.encode()).digest()).decode() + "'"
+
+
 def to_html(bs: list[Block], title: str) -> str:
     e = html.escape
     parts = [f"<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
              f"<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
              f"<title>{e(title)}</title><style>{CSS}</style></head><body>",
-             "<button class=\"print\" type=\"button\" onclick=\"window.print()\">"
-             "Print or save as PDF</button>"]
+             "<main><button class=\"print\" type=\"button\">Print or save as PDF</button>"]
     for b in bs:
         if b.kind in ("h1", "h2", "h3"):
             parts.append(f"<{b.kind}>{e(b.text)}</{b.kind}>")
@@ -300,5 +312,5 @@ def to_html(bs: list[Block], title: str) -> str:
                          + "</tr></thead><tbody>"
                          + "".join("<tr>" + "".join(f"<td>{e(c)}</td>" for c in r) + "</tr>"
                                    for r in body) + "</tbody></table></div>")
-    parts.append("</body></html>")
+    parts.append(f"</main><script>{PRINT_JS}</script></body></html>")
     return "\n".join(parts)

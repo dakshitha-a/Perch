@@ -9,6 +9,7 @@ export function h(tag, attrs = {}, ...kids) {
     else if (k === "text") el.textContent = v;
     else if (k === "value" && tag === "textarea") el.value = v; // a textarea has no value attribute
     else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
+    else if (k === "style") el.style.cssText = v; // CSSOM: the CSP blocks style attributes
     else if (v === true) el.setAttribute(k, "");
     else el.setAttribute(k, v);
   }

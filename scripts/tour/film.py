@@ -64,7 +64,7 @@ async def alias_responses(page: Page, names: dict[str, str]) -> None:
         try:
             r = await route.fetch()
             ctype = r.headers.get("content-type", "")
-            if "json" not in ctype:
+            if "json" not in ctype and "/export." not in route.request.url:  # exports too
                 await route.fulfill(response=r)
                 return
             body = await r.text()

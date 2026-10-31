@@ -254,3 +254,26 @@ def test_the_app_loads_nothing_from_another_host(tmp_path):
         assert r.status_code == 200 and r.headers["content-type"] == "font/woff2"
     assert (WEB_DIR / "fonts/OFL-Inter.txt").is_file()
     assert (WEB_DIR / "fonts/OFL-Newsreader.txt").is_file()
+
+
+def test_every_response_carries_the_security_headers(tmp_path):
+    """S11: a CSP that allows this server only, no framing, nosniff, no referrer. The HTML
+    export has no inline handler; its one style and one script are allowed by hash."""
+    from perch import export as ex
+
+    c, _ = make(tmp_path)
+    for path in ("/", "/app.js", "/health", "/no-such-page"):
+        r = c.get(path)
+        csp = r.headers["content-security-policy"]
+        assert "default-src 'self'" in csp and "frame-ancestors 'none'" in csp, path
+        assert "'unsafe-inline'" not in csp and "'unsafe-eval'" not in csp
+        assert r.headers["x-frame-options"] == "DENY"
+        assert r.headers["x-content-type-options"] == "nosniff"
+        assert r.headers["referrer-policy"] == "no-referrer"
+    page = ex.to_html([ex.Block("h1", "SYNTHETIC")], "t")
+    assert "onclick" not in page
+    scripts = re.findall(r"<script>(.*?)</script>", page, re.S)
+    styles = re.findall(r"<style>(.*?)</style>", page, re.S)
+    csp = c.get("/").headers["content-security-policy"]
+    assert scripts and all(ex.csp_hash(x) in csp for x in scripts)
+    assert styles and all(ex.csp_hash(x) in csp for x in styles)

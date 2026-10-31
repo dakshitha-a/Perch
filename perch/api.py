@@ -255,6 +255,42 @@ class BodyLimit:
         await self.app(scope, replay, send)
 
 
+def security_headers() -> dict[bytes, bytes]:
+    """Headers on every response (review S11). Scripts, styles, fonts and requests come from
+    this server only; the HTML export's inline style and print script by their hashes."""
+    csp = ("default-src 'self'; "
+           f"script-src 'self' {ex.csp_hash(ex.PRINT_JS)}; "
+           f"style-src 'self' {ex.csp_hash(ex.CSS)}; "
+           "img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; "
+           "object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
+    return {b"content-security-policy": csp.encode(), b"x-frame-options": b"DENY",
+            b"x-content-type-options": b"nosniff", b"referrer-policy": b"no-referrer"}
+
+
+class SecurityHeaders:
+    """Pure ASGI middleware that adds security_headers() to every HTTP response. FastAPI's
+    own /docs page loads its scripts from a CDN, so it gets no CSP."""
+
+    def __init__(self, app: Callable) -> None:
+        self.app, self.headers = app, security_headers()
+
+    async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        docs = scope.get("path", "") in ("/docs", "/redoc", "/docs/oauth2-redirect")
+
+        async def add(message: dict) -> None:
+            if message["type"] == "http.response.start":
+                have = {k.lower() for k, _ in message.get("headers", [])}
+                extra = [(k, v) for k, v in self.headers.items() if k not in have
+                         and not (docs and k == b"content-security-policy")]
+                message = {**message, "headers": [*message.get("headers", []), *extra]}
+            await send(message)
+
+        await self.app(scope, receive, add)
+
+
 class Crashed:
     """Pure ASGI middleware: an unhandled exception becomes a 500 naming its type only,
     and is not raised further, so no server log holds its message or traceback."""
@@ -355,6 +391,7 @@ def create_app(service: BriefService, runner: JobRunner,
     # traceback with its message (review S5).
     app.add_middleware(BodyLimit, limit=MAX_BODY)  # inside Crashed: its 413 stays a 413
     app.add_middleware(Crashed)
+    app.add_middleware(SecurityHeaders)  # outermost, so a 500 or 413 carries them too
 
     origins = [o.strip() for o in (env("PERCH_CORS_ORIGINS") or "").split(",") if o.strip()]
     if origins:  # the web app is same-origin; other origins only when listed
