@@ -1191,6 +1191,11 @@ async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
         for _i in (0, 1):
             await page.locator(".leads > li .btn.keep:not(.on)").first.click()
             await page.wait_for_timeout(300)
+        sl = await page.evaluate("""() => ({ head: document.querySelector('.shortlist-head span').innerText,
+          lists: [...document.querySelectorAll('.shortlist ul')].map(u => [...u.querySelectorAll('.kind-short')].map(k => k.innerText)) })""")
+        if "sample" not in sl["head"] or any(len(set(x)) > 1 for x in sl["lists"]):
+            w.errors.append(f"{tag}: U10: the shortlist mixes public and sample options under one count {sl}")
+        await w.snap(page, tag, "u-shortlist")
         await page.click("#tab-compare")
         await page.wait_for_selector("table.compare", timeout=30000)
         await page.wait_for_timeout(800)

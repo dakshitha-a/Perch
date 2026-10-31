@@ -248,3 +248,24 @@ def test_the_compare_note_is_written_once_on_the_server(tmp_path, monkeypatch):
     js = (ROOT / "web/student.js").read_text()
     assert "/private/student/note" in (ROOT / "web/api.js").read_text()
     assert OFFICES["S"][0] not in js and "I am a student looking at" not in js
+
+
+def test_scout_search_all_keeps_samples_in_their_own_list(monkeypatch):
+    """U10, standing rule 11: with public fellowships and SYNTHETIC samples both found,
+    search_options returns two lists and tells the model to keep them apart."""
+    from types import SimpleNamespace as NS
+
+    from perch.scout import student_tools as st
+
+    leads = [NS(route="F", rank=1, verdict="may be eligible", sample=False, id="f"),
+             NS(route="S", rank=1, verdict="eligible", sample=True, id="s")]
+    monkeypatch.setattr(st, "_brief", lambda ctx: (None, leads))
+    monkeypatch.setattr(st, "_record", lambda ctx, x: None)
+    monkeypatch.setattr(st, "_row",
+                        lambda ctx, x: {"id": x.id, **({"sample": True} if x.sample else {})})
+    got = st.search_options(None, route="all")
+    assert [r["id"] for r in got["fellowships"]] == ["f"]
+    assert [r["id"] for r in got["sample_scholarships"]] == ["s"]
+    assert "options" not in got and "own heading" in got["note"] and got["count"] == 2
+    only = st.search_options(None, route="S")
+    assert [r["id"] for r in only["options"]] == ["s"]

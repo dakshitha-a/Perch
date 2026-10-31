@@ -112,7 +112,16 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
             if not all(w.strip().lower() in text for w in words.split(",") if w.strip()):
                 continue
         rows.append(_row(ctx, x))
-    return {"options": rows[:15], "count": len(rows),
+    rows = rows[:15]
+    public = [r for r in rows if not r.get("sample")]
+    samples = [r for r in rows if r.get("sample")]
+    if public and samples:  # standing rule 11: never one list (U10)
+        return {"fellowships": public, "sample_scholarships": samples, "count": len(rows),
+                "note": "Options in this student brief, checked against the CV by rule. The "
+                "sample scholarships are invented test data: list them under their own "
+                "heading, such as 'Sample scholarships (invented)', never in the same list "
+                "as the public fellowships."}
+    return {"options": rows, "count": len(rows),
             "note": "Options in this student brief, checked against the CV by rule. "
             "Records marked sample are invented test data."}
 

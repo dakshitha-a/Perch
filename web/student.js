@@ -38,6 +38,13 @@ export function resetStudent() {
   Object.assign(NOTE, { office: null, edits: {}, got: {}, keptSig: "" });
 }
 
+// The kept count on a student brief, public and sample apart (U10, standing rule 11):
+// "2 fellowships, 1 sample".
+export function keptWords(kept) {
+  const pub = kept.filter((l) => !l.sample).length, smp = kept.length - pub;
+  return [pub ? f.plural(pub, "fellowship") : null, smp ? f.plural(smp, "sample") : null].filter(Boolean).join(", ");
+}
+
 export function isStudent(brief) {
   return Boolean(brief && brief.brief && brief.brief.options && brief.brief.options.student);
 }
@@ -380,8 +387,7 @@ export function studentCompare(panel, ctx) {
     const d = sch ? r.deadline : r.close_date;
     return h("tr", {},
       h("th", { scope: "row" }, h("span", { class: "row-title", text: sch ? r.name : r.title }),
-        l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null,
-        h("span", { class: "cell-note", text: STUDENT_ROUTES[l.route] })),
+        l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null),
       h("td", {}, verdictChip(l.verdict)),
       h("td", { text: d ? f.formatDate(d) : "Not stated" }),
       h("td", { text: sch ? amountText(r) : "See the record" }),
@@ -404,9 +410,13 @@ export function studentCompare(panel, ctx) {
       got.note ? note(route, got.note, announce)
         : got.error ? h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The note could not be written: ${got.error}` }))
           : h("p", { class: "hint st-note-wait", role: "status", text: "Writing the note…" })),
-    h("div", { class: "table-wrap compare-wrap", role: "region", "aria-label": "Kept options, side by side", tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
-      h("thead", {}, h("tr", {}, ["Option", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
-      h("tbody", {}, kept.map(row))))),
+    // Public fellowships and SYNTHETIC samples never share a table (U10, standing rule 11).
+    ...routes.map((r) => h("section", { class: "compare-group", "aria-labelledby": `cmp-${r}` },
+      h("h2", { class: "section-title", id: `cmp-${r}` }, h("span", { text: STUDENT_ROUTES[r] }),
+        r === "S" ? h("span", { class: "tag sample", text: SAMPLE }) : null),
+      h("div", { class: "table-wrap compare-wrap", role: "region", "aria-labelledby": `cmp-${r}`, tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
+        h("thead", {}, h("tr", {}, [r === "S" ? "Sample option" : "Fellowship", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
+        h("tbody", {}, byOffice[r].map(row))))))),
     h("p", { class: "hint", text: "Each cell is copied from its record or checked against your CV by rule. “Not stated” means the listing leaves it blank." }));
 }
 

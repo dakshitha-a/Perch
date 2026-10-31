@@ -11,7 +11,7 @@ import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
 import { lockLabel, privateAvailable, privateBar, privateInfo, renderPrivate, resetPrivate, setMode } from "./private.js";
 import { createMode, looksPersonal } from "./mode.js";
-import { isStudent, matchPill, resetStudent, usedSample, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
+import { isStudent, keptWords, matchPill, resetStudent, usedSample, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
 
 const publicApi = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
 const privApi = privateApi(window.PERCH_API || "");
@@ -792,11 +792,12 @@ function renderTabs() {
     t.setAttribute("aria-selected", String(on));
     t.tabIndex = on ? 0 : -1;
   }
-  const kept = leadsOf().filter((l) => l.status === "kept").length;
+  const keptLeads = leadsOf().filter((l) => l.status === "kept"), kept = keptLeads.length;
   const k = $("#tab-compare .tab-label");
   if (k) k.textContent = kept ? `Compare (${kept})` : "Compare";
   const kt = $("#tab-compare");
-  if (kt) kt.setAttribute("aria-label", kept ? `Compare, ${kept} kept` : "Compare");
+  // A student's count keeps public and sample apart (U10).
+  if (kt) kt.setAttribute("aria-label", !kept ? "Compare" : isStudent(S.brief) ? `Compare, ${keptWords(keptLeads)} kept` : `Compare, ${kept} kept`);
   $("#panel").setAttribute("aria-labelledby", `tab-${S.tab}`);
 }
 
@@ -966,14 +967,18 @@ function drawRail() {
       card.dataset.sig = sig;
       card.classList.toggle("has", kept.length > 0);
       const focusKey = card.contains(document.activeElement) ? "sl-compare" : null;
+      const item = (l) => h("li", { class: "fade-in" },
+        h("span", { class: "kind-short", text: KIND_SHORT[l.route || "A"] || "Lead" }),
+        h("span", { class: "sl-title", text: leadTitle(l), title: leadTitle(l) }),
+        h("button", { class: "x", type: "button", "aria-label": `Remove from shortlist: ${leadTitle(l)}`,
+          onclick: () => setLead(l.id, "restore") }, "×"));
+      // A student's public fellowships and SYNTHETIC samples are two lists (U10, rule 11).
+      const groups = student ? [["F", "Fellowships"], ["S", "Samples"]].map(([r, t]) => [t, kept.filter((l) => l.route === r)])
+        .filter(([, ls]) => ls.length) : [[null, kept]];
       fill(card,
         h("div", { class: "shortlist-head" }, h("h2", { id: "sl-title", text: "Your shortlist" }),
-          h("span", { text: kept.length ? `${kept.length} kept` : "none yet" })),
-        kept.length ? h("ul", {}, kept.map((l) => h("li", { class: "fade-in" },
-          h("span", { class: "kind-short", text: KIND_SHORT[l.route || "A"] || "Lead" }),
-          h("span", { class: "sl-title", text: leadTitle(l), title: leadTitle(l) }),
-          h("button", { class: "x", type: "button", "aria-label": `Remove from shortlist: ${leadTitle(l)}`,
-            onclick: () => setLead(l.id, "restore") }, "×"))))
+          h("span", { text: !kept.length ? "none yet" : student ? keptWords(kept) : `${kept.length} kept` })),
+        kept.length ? groups.map(([t, ls]) => [t ? h("p", { class: "sl-group", text: t }) : null, h("ul", {}, ls.map(item))])
           : h("p", { text: student ? "Keep fellowships or scholarships and they collect here, ready to compare."
             : "Keep grants or industry leads and they collect here, ready to compare and hand off." }),
         h("button", { class: "btn primary", type: "button", "data-key": "sl-compare", disabled: !kept.length,
@@ -989,7 +994,7 @@ function drawRail() {
   if (float.dataset.sig !== fsig) {
     float.dataset.sig = fsig;
     fill(float, show ? h("div", { class: "keep-float fade-in", role: "region", "aria-label": "Kept" },
-      h("span", { text: `${kept.length} kept` }),
+      h("span", { text: student ? `Kept: ${keptWords(kept)}` : `${kept.length} kept` }),
       h("a", { class: "btn", href: `#/brief/${encodeURIComponent(S.briefId)}/compare`, "data-key": "keep-compare" },
         h("span", { text: "Compare" }))) : null);
   }
