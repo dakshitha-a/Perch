@@ -1242,12 +1242,30 @@ function awardTimeline(awards, asOf) {
       h("ul", { class: "awards" }, rows.slice(SHOW).map(item))) : null);
 }
 
+// How the paper counts on this tab relate, from the code's own rules (U23): OpenAlex's
+// author record counts every work; the threads use the works on file that are research
+// output (perch/profile.py RESEARCH_TYPES) with a title and a date on or before the brief
+// date; Key papers picks from the papers this brief carries, each thread's top papers and
+// those the explanations cite (perch/api.py brief_view).
+function threadsNote() {
+  const d = S.brief, b = d.brief;
+  const n = b.work_ids.filter((id) => !/^private:|^said:/.test(id)).length;
+  if (!n) return null;
+  const all = (d.researcher || {}).works_count;
+  const shown = distinctPapers(Object.values(d.papers || {}).filter((w) => !w.private)).length;
+  return h("p", { class: "hint threads-note", text: [
+    all != null ? `OpenAlex counts ${f.plural(all, "work")} for this researcher.` : null,
+    `These threads group ${f.plural(n, "work")} on file by what they are about: research output, such as articles, preprints and chapters, dated on or before the brief date. Labels are the words that set each group apart.`,
+    shown ? `Key papers picks from the ${shown} this brief shows: each thread’s top papers and those the explanations cite.` : null,
+  ].filter(Boolean).join(" ") });
+}
+
 function threadsSection() {
   const d = S.brief, b = d.brief;
   const title = h("h2", { class: "section-title", text: "Research threads" });
   if (!isDone("profile")) return h("section", { class: "block" }, title, skeleton(3));
   return h("section", { class: "block" }, title,
-    h("p", { class: "hint", text: b.work_ids.length
+    threadsNote() || h("p", { class: "hint", text: b.work_ids.length
       ? `${f.plural(b.work_ids.length, "paper")} grouped by what they are about. Labels are the words that set each group apart.`
       : "No public papers: each private document is one thread. Labels are its most frequent words." }),
     h("ol", { class: "threads" }, b.threads.map((t) => {

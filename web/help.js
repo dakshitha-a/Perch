@@ -179,7 +179,7 @@ function pipeline() {
 // in perch/profile.py, perch/retrieve.py, perch/brief.py, perch/private/ and perch/service.py.
 function scoring() {
   const steps = [
-    ["Threads", "Each paper counts for half as much every 5 years since it came out. Papers that are about the same thing form a thread: one to four in all, and one when there are fewer than 8 papers. A thread’s weight is its share of that recency-weighted work."],
+    ["Threads", "Each paper counts for half as much every 5 years since it came out. Papers that are about the same thing form a thread: one to four in all, and one when there are fewer than 8 papers. A thread’s weight is its share of that recency-weighted work. Only research output counts, such as articles, preprints and chapters, dated on or before the brief date, so the number of papers in the threads can be smaller than the works OpenAlex counts; the Profile tab says both."],
     ["Search", "For each thread, Perch takes the 100 closest opportunities by meaning and the 100 best by shared words. The two lists are merged by rank, and each thread’s results count in proportion to its weight. The top 200 go on."],
     ["Rules", "Anything a university cannot apply to, or that is closed, is removed. Rules never score; they only remove."],
     ["Rank", "The best 100 left are scored by a ranking model, each against the thread it matched best. The 10 with the highest score are the leads, highest first: the default “Score” order on Routes."],
