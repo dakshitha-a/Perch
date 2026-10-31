@@ -7,13 +7,18 @@ disk. A visitor who asks for the same default brief (no documents, no context, l
 models, explanations on) gets a deep copy in their own session at once, with their own
 keep and dismiss state. Nothing about visitors is stored; a copy is dropped when its
 session ends. A warm brief is rebuilt when the day changes, so its as-of date stays today.
+
+Review P5: the builds go through the brief job runner, one brief at a time like any
+visitor's, instead of a thread beside it on the same model; and a timer rebuilds them
+just after midnight, so the first visitor of the day does not find them stale.
 """
 
 from __future__ import annotations
 
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from perch.config import env
 from perch.privacy import PrivateSettings
@@ -34,21 +39,47 @@ def warm_authors() -> list[str]:
     return [a for a in (oa.parse_author_id(x.strip()) for x in raw.split(",")) if a]
 
 
+def seconds_to_rebuild(now: datetime) -> float:
+    """Seconds from `now` to five minutes past the next local midnight."""
+    nxt = datetime.combine(now.date() + timedelta(days=1), datetime.min.time(),
+                           now.tzinfo) + timedelta(minutes=5)
+    return (nxt - now).total_seconds()
+
+
 class WarmBriefs:
     def __init__(self, sessions: PrivateSessions, settings: PrivateSettings,
-                 authors: list[str], today: callable = date.today) -> None:
+                 authors: list[str], today: callable = date.today,
+                 submit: Callable[[str, Callable[[], None]], None] | None = None) -> None:
         self.sessions, self.settings, self.authors, self.today = sessions, settings, authors, today
         self.ready: dict[str, Warm] = {}
         self.lock = threading.Lock()
         self.building = False
+        self.submit = submit  # the brief job runner's submit; a thread of its own if None
+        self.timer: threading.Timer | None = None
 
     def start(self) -> None:
-        """Build every warm brief in one background thread; the server answers meanwhile."""
+        """Build every warm brief in the background; the server answers meanwhile."""
         with self.lock:
             if self.building or not self.authors:
                 return
             self.building = True
-        threading.Thread(target=self._build_all, name="perch-warm", daemon=True).start()
+        if self.submit:
+            self.submit(f"warm-{self.today().isoformat()}", self._build_all)
+        else:
+            threading.Thread(target=self._build_all, name="perch-warm", daemon=True).start()
+
+    def schedule(self) -> None:
+        """Rebuild just after each midnight, before the day's first visitor."""
+        if not self.authors:
+            return
+
+        def tick() -> None:
+            self.start()
+            self.schedule()
+
+        self.timer = threading.Timer(seconds_to_rebuild(datetime.now()), tick)
+        self.timer.daemon = True
+        self.timer.start()
 
     def _build_all(self) -> None:
         try:

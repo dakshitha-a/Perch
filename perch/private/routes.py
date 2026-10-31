@@ -202,9 +202,11 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     app.state.private_sessions = sessions
     from perch.private.warm import WarmBriefs, is_default, warm_authors
 
-    warm = WarmBriefs(sessions, settings, warm_authors() if on else [])
+    warm = WarmBriefs(sessions, settings, warm_authors() if on else [],
+                      submit=runner.submit)
     app.state.warm_briefs = warm
-    warm.start()  # a background thread; the server answers while it builds
+    warm.start()  # a job on the brief runner; the server answers while it builds
+    warm.schedule()
 
     def cloud_info() -> dict:
         p = settings.cloud_provider

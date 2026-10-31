@@ -838,3 +838,22 @@ def test_parallel_cloud_calls_cannot_pass_the_cap_together(tmp_path):
             pass
     with b.reserve(0.001):  # once it has finished, the next call may go
         pass
+
+
+def test_warm_briefs_build_on_the_job_runner_and_again_after_midnight(tmp_path, monkeypatch):
+    """P5: warm briefs queue on the brief runner like a visitor's brief, not on a thread
+    beside it, and a timer rebuilds them just after midnight."""
+    from datetime import datetime
+
+    from perch.private.warm import WarmBriefs, seconds_to_rebuild
+
+    _, service = private_app(tmp_path, monkeypatch)
+    jobs = []
+    sessions = PrivateSessions(service, SETTINGS)
+    w = WarmBriefs(sessions, SETTINGS, ["A5026494099"],
+                   submit=lambda job_id, fn: (jobs.append(job_id), fn()))
+    w.start()
+    assert len(jobs) == 1 and jobs[0].startswith("warm-")
+    assert "A5026494099" in w.ready
+    assert seconds_to_rebuild(datetime(2026, 11, 5, 23, 0)) == 3600 + 300
+    assert seconds_to_rebuild(datetime(2026, 11, 6, 0, 10)) == 24 * 3600 - 300
