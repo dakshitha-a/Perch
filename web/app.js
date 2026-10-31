@@ -2,7 +2,7 @@
 // Plain DOM, no build step. Every value from a record goes in through textContent.
 
 import { liveApi, privateApi, replayApi } from "./api.js";
-import { add, fill, h, icon } from "./dom.js";
+import { add, evMark, fill, h, icon } from "./dom.js";
 import { renderHelp } from "./help.js";
 import { compareOffices, loadCompare, renderCompare } from "./compare.js";
 import { renderHandoff } from "./handoff.js";
@@ -967,7 +967,7 @@ function drawRail() {
       card = h("section", { class: "shortlist", "aria-labelledby": "sl-title" });
       const ev = h("aside", { class: "rail-evidence", id: "rail-ev", "aria-label": "Evidence", tabindex: "0" },
         h("p", { class: "ev-kind", text: "Evidence" }),
-        h("p", { class: "empty-ev", text: "Pick a title or Evidence on a card to see its record here. Every value is copied from the record." }));
+        h("p", { class: "empty-ev", text: "Pick a card’s title to see its record here. Every value is copied from the record." }));
       fill(rail, card, ev);
     }
     const sig = JSON.stringify(kept.map((l) => l.id));
@@ -1440,23 +1440,21 @@ function orgCard(l) {
     h("summary", { "data-key": "why" }, h("span", { text: "Your papers they cite" }),
       h("span", { class: "hint", text: ` ${cited.length}` })),
     h("ul", { class: "findings" }, cited.map((c) => h("li", {}, paperRef(c, papers))))) : null;
-  const evid = h("button", { class: "btn quiet", "data-key": "evidence",
-    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { class: "narrow-hide", text: "Evidence" }));
   const actions = l.status === "dismissed"
     ? [h("button", { class: "btn", "data-key": "restore", onclick: () => setLead(l.id, "restore") },
-      icon("restore"), h("span", { text: "Restore" })), evid]
+      icon("restore"), h("span", { text: "Restore" }))]
     : [h("button", { class: `btn keep${l.status === "kept" ? " on" : ""}`, "data-key": "keep",
       "aria-pressed": String(l.status === "kept"),
       onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") },
     icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
     h("button", { class: "btn", "data-key": "dismiss", onclick: () => setLead(l.id, "dismiss") },
-      icon("dismiss"), h("span", { text: "Dismiss" })), evid];
+      icon("dismiss"), h("span", { text: "Dismiss" }))];
   for (const b of actions) b.setAttribute("aria-describedby", `t-${cssId(l.id)}`);
   return h("li", { class: `card lead org${l.status === "kept" ? " kept" : ""}${l.status === "dismissed" ? " gone" : ""}`,
     "data-id": l.id },
   cardHead(tags, null, actions),
   h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
-    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: name }))),
+    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: name }), evMark())),
   o.aliases && o.aliases.length > 1 ? h("p", { class: "opp-num", text: `Counts ${o.aliases.length} records under this name` }) : null,
   h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Inference" }),
     h("span", { text: l.inference || "Inferred from public signals; not verified." })),
@@ -1539,12 +1537,10 @@ function leadCard(l) {
     explain = explanationBlock(l, parsed, o);
   }
 
-  const evid = h("button", { class: "btn quiet", "data-key": "evidence",
-    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { class: "narrow-hide", text: "Evidence" }));
   let actions;
   if (l.status === "dismissed") {
     actions = [h("button", { class: "btn", "data-key": "restore", onclick: () => setLead(l.id, "restore") },
-      icon("restore"), h("span", { text: "Restore" })), evid];
+      icon("restore"), h("span", { text: "Restore" }))];
   } else {
     actions = [
       h("button", { class: `btn keep${l.status === "kept" ? " on" : ""}`, "data-key": "keep",
@@ -1552,8 +1548,7 @@ function leadCard(l) {
         onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") },
       icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
       h("button", { class: "btn", "data-key": "dismiss", onclick: () => setLead(l.id, "dismiss") },
-        icon("dismiss"), h("span", { text: "Dismiss" })),
-      evid];
+        icon("dismiss"), h("span", { text: "Dismiss" }))];
   }
 
   for (const b of actions) b.setAttribute("aria-describedby", `t-${cssId(l.id)}`);
@@ -1561,7 +1556,7 @@ function leadCard(l) {
     "data-id": l.id },
   cardHead(tags, fit, actions),
   h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
-    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: o.title || l.record_id }))),
+    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: o.title || l.record_id }), evMark())),
   h("p", { class: "opp-num", text: o.opportunity_number || "" }),
   facts, noSize, leadNotes(l), explain);
 }

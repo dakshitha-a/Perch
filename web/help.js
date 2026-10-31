@@ -47,13 +47,13 @@ function picLead() {
       h("div", { class: "pic-row between" },
         h("span", { class: "tags" }, h("span", { class: "tag", text: "NIH" }), h("span", { class: "tag", text: "R01" })),
         h("span", { class: "fit strong" }, n(1), h("span", { class: "fit-k", text: "Match" }), h("span", { text: "strong" }))),
-      h("div", { class: "pic-row" }, n(2), h("span", { class: "pic-title" }, bar(92), bar(64))),
-      h("div", { class: "fact close soon pic-fact" }, n(3), h("span", {}, h("b", { text: "Closes" }), h("span", { class: "rel", text: " date from the record" }))),
-      h("div", { class: "pic-row" }, n(4), h("span", { class: "tag model", text: "Model text" }), bar(50)),
-      h("div", { class: "pic-actions" }, n(5),
+      h("div", { class: "pic-actions" }, n(2),
         h("span", { class: "pic-btn ghost" }, icon("keep"), h("span", { text: "Keep" })),
-        h("span", { class: "pic-btn ghost" }, icon("dismiss"), h("span", { text: "Dismiss" })),
-        h("span", { class: "pic-btn ghost" }, icon("evidence"), h("span", { text: "Evidence" })))));
+        h("span", { class: "pic-btn ghost" }, icon("dismiss"), h("span", { text: "Dismiss" }))),
+      h("div", { class: "pic-row" }, n(3), h("span", { class: "pic-title" }, bar(92), bar(64)),
+        h("span", { class: "ev-mark" }, icon("evidence"), h("span", { text: "Evidence" }))),
+      h("div", { class: "fact close soon pic-fact" }, n(4), h("span", {}, h("b", { text: "Closes" }), h("span", { class: "rel", text: " date from the record" }))),
+      h("div", { class: "pic-row" }, n(5), h("span", { class: "tag model", text: "Model text" }), bar(50))));
 }
 
 function picIndustry() {
@@ -122,10 +122,10 @@ function steps() {
   ];
   const legend = h("ol", { class: "callouts" },
     h("li", { text: "Match is how closely the listing’s text matches the papers, from 0 to 100. Leads are sorted by it, highest first; Closing date sorts them by deadline instead. It is not the odds of funding." }),
-    h("li", { text: "The title, like Evidence, opens the record inside Perch, with a link to Grants.gov." }),
+    h("li", { text: "Keep what is worth a closer look; dismiss what is not. Both sit at the top of the card, beside Match. Dismissed leads can be restored." }),
+    h("li", { text: "The title opens the record inside Perch, with a link to Grants.gov. The small Evidence mark beside it says so." }),
     h("li", { text: "Dates and amounts are copied from the record. Amber means it closes within 30 days. When a close date is more than ten years away, the card shows the record’s own words on the deadline instead, such as “Proposals accepted anytime”: NSF gives such programs a close date decades out. The record view always shows those words." }),
-    h("li", { text: "Text a model wrote is tagged. Open “Why it fits” to see which papers it cites." }),
-    h("li", { text: "Keep what is worth a closer look; dismiss what is not. Dismissed leads can be restored." }));
+    h("li", { text: "Text a model wrote is tagged. Open “Why it fits” to see which papers it cites." }));
   return h("section", { class: "help-block", "aria-labelledby": "h-use" },
     h("h2", { id: "h-use", class: "section-title", text: "How to use Perch" }),
     h("ol", { class: "how-steps" }, items.map(([title, pic, text], i) => h("li", { class: "how-step" },

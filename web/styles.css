@@ -336,6 +336,11 @@ details[open] > summary::before { transform: rotate(45deg); }
 .title-btn { all: unset; cursor: pointer; border-radius: 4px; }
 .title-btn:hover span { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .title-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+/* The title opens the record; this mark beside it says so (review W4). */
+.ev-mark { display: inline-flex; align-items: center; gap: 3px; margin-left: 8px; vertical-align: 2px; white-space: nowrap;
+  font: 600 12px/1 var(--sans); color: var(--accent); }
+.ev-mark .icon { width: 14px; height: 14px; }
+.title-btn:hover .ev-mark span { text-decoration: none; }
 .opp-num { color: var(--ink-3); font-size: 14px; margin-top: -4px; }
 .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 2px 0 0; }
 .facts.one { grid-template-columns: 1fr; }

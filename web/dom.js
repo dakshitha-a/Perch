@@ -17,6 +17,12 @@ export function h(tag, attrs = {}, ...kids) {
   return el;
 }
 
+// The title is the one control that opens a card's record (review W4). This mark says so;
+// it sits inside the title button, so it adds no tab stop, and a screen reader hears the title.
+export function evMark() {
+  return h("span", { class: "ev-mark", "aria-hidden": "true" }, icon("evidence"), h("span", { text: "Evidence" }));
+}
+
 export function add(el, kids) {
   for (const k of kids.flat(Infinity)) {
     if (k === null || k === undefined || k === false) continue;
