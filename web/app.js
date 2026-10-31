@@ -992,7 +992,8 @@ function drawRail() {
     let card = rail.querySelector(".shortlist");
     if (!card) {
       card = h("section", { class: "shortlist", "aria-labelledby": "sl-title" });
-      const ev = h("aside", { class: "rail-evidence", id: "rail-ev", "aria-label": "Evidence", tabindex: "0" });
+      const ev = h("aside", { class: "rail-evidence", id: "rail-ev", "aria-label": "Evidence", tabindex: "0",
+        onscroll: (e) => railFade(e.currentTarget) });
       fill(rail, card, ev);
       emptyRail();
     }
@@ -1045,6 +1046,13 @@ function emptyRail() {
   ev.removeAttribute("aria-labelledby");
   fill(ev, h("p", { class: "ev-kind", text: "Evidence" }),
     h("p", { class: "empty-ev", text: "Pick a card’s title to see its record here. Every value is copied from the record." }));
+  railFade(ev);
+}
+
+// A record longer than the rail fades out at the bottom until it is scrolled to its end,
+// so a cut row does not read as the end of the record (U27).
+function railFade(box) {
+  if (box) box.classList.toggle("more", box.scrollHeight - box.scrollTop - box.clientHeight > 4);
 }
 
 function switchRoute(r) {
@@ -1919,6 +1927,7 @@ async function openInRail(box, id, opener) {
   const card = opener && opener.closest && opener.closest(".lead");
   if (card) card.classList.add("selected");
   const r = await swapRecord(box, id, (...nodes) => fill(box, h("p", { class: "ev-kind", text: "Evidence" }), ...nodes));
+  railFade(box);
   if (!r) return;
   box.querySelector(".ev-kind").textContent = `Evidence · ${KINDS[r.kind] || "Record"}`;
   box.setAttribute("aria-labelledby", "evidence-title");

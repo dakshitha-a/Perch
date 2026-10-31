@@ -1192,3 +1192,7 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
 .filter-chip[aria-pressed="true"] .filter-n { color: var(--on-accent); }
 .filter-chip:hover { border-color: var(--ink-3); }
 @media (pointer: coarse) { .filter-chip { min-height: 44px; } }
+/* The Evidence rail shows that it scrolls: a thin bar that stays visible, and a fade at
+   the bottom while more of the record lies below (U27). */
+.rail-evidence { scrollbar-width: thin; scrollbar-color: var(--ink-3) transparent; }
+.rail-evidence.more { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); }

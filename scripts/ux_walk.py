@@ -1012,7 +1012,7 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
           return { over: b.scrollHeight > b.clientHeight + 2, bar: s.scrollbarColor, width: s.scrollbarWidth,
                    fade: (s.maskImage && s.maskImage !== 'none') || (s.webkitMaskImage && s.webkitMaskImage !== 'none')
                      || (a.content !== 'none' && /gradient/.test(a.backgroundImage)) }; }""")
-        if fade["over"] and (re.search(r"transparent|rgba\(0, 0, 0, 0\)", fade["bar"] or "")
+        if fade["over"] and (re.match(r"transparent|rgba\(0, 0, 0, 0\)", fade["bar"] or "")  # the thumb's colour
                              or fade["width"] == "none" or not fade["fade"]):
             w.errors.append(f"{tag}: U27: the Evidence rail is cut with no visible scroll bar or fade {fade}")
         await w.snap(page, tag, "u-rail")
