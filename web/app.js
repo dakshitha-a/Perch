@@ -1326,8 +1326,8 @@ function renderRoutes(panel) {
     b.setAttribute("aria-pressed", String(b.dataset.key === `sort-${S.sort}`));
   }
   panel.querySelector("#routes-title").textContent = `${f.plural(active.length, "open opportunity", "open opportunities")}`;
+  // The kept count shows in the shortlist, the floating pill and the Compare tab (W3).
   const subBits = [];
-  if (kept) subBits.push(`${kept} kept`);
   if (explaining && S.brief.brief.options.explain) subBits.push(`${explainedCount()} of ${routeLeads("A").length} explained so far`);
   // Only live progress here; what Match means is in its pill and Help (Dakshitha, S27).
   const sub = panel.querySelector(".routes-sub");
@@ -1424,7 +1424,6 @@ function orgCard(l) {
   const papers = S.brief.papers || {};
   const tags = h("span", { class: "tags" },
     l.relationship ? h("span", { class: "tag", text: l.relationship }) : null,
-    l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null,
     h("span", { class: `evidence-level ${l.confidence || ""}`, text: l.confidence === "stronger"
       ? "Three kinds of signal" : "Two kinds of signal" }));
   const signals = h("ul", { class: "signals" }, (l.signal_items || []).map((s) => h("li", {},
@@ -1519,8 +1518,7 @@ function leadCard(l) {
   const tags = h("span", { class: "tags" },
     h("span", { class: "tag", text: f.agencyShort(o.agency, o.parent_agency) }),
     o.activity_code ? h("span", { class: "tag", text: o.activity_code }) : null,
-    o.status && o.status !== "posted" ? h("span", { class: "tag ember", text: o.status === "forecasted" ? "Forecast" : o.status }) : null,
-    l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null);
+    o.status && o.status !== "posted" ? h("span", { class: "tag ember", text: o.status === "forecasted" ? "Forecast" : o.status }) : null);
 
   const facts = h("dl", { class: `facts${size ? "" : " one"}` },
     h("div", { class: `fact close ${urg}` }, h("dt", { text: "Closes" }),
