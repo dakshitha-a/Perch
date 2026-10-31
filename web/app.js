@@ -764,9 +764,7 @@ function exportMenu() {
     h("summary", { "data-key": "export" }, icon("download"), h("span", { text: "Export" })),
     h("div", { class: "export-pop" }, pop));
   det.addEventListener("keydown", (e) => { if (e.key === "Escape" && det.open) { det.open = false; det.querySelector("summary").focus(); e.stopPropagation(); } });
-  // Only a real click outside closes it: a download clicks a link of its own.
-  document.addEventListener("click", (e) => { if (det.open && e.isTrusted && !det.contains(e.target)) det.open = false; });
-  return det;
+  return det; // a click outside closes it: one listener, set in init() (review W17)
 }
 
 function tabButton(key, label, short) {
@@ -1986,6 +1984,13 @@ function init() {
     S.find.q = (window.PERCH_REPLAY.candidates[0] || {}).display_name || "";
   }
   $(".skip").addEventListener("click", (e) => { e.preventDefault(); main().focus(); });
+  // A real click outside the open Export menu closes it; a download clicks a link of its
+  // own. One listener for every brief drawn (review W17).
+  document.addEventListener("click", (e) => {
+    for (const det of document.querySelectorAll("details.export-menu[open]")) {
+      if (e.isTrusted && !det.contains(e.target)) det.open = false;
+    }
+  });
   // The page's scroll bar shows only while the pointer is near it (S27, Dakshitha: a bar
   // that is always there distracts). It keeps its width, so nothing moves when it shows.
   const root = document.documentElement;
@@ -1993,13 +1998,14 @@ function init() {
   root.addEventListener("mouseleave", () => root.classList.remove("bar-near"));
   $("#status-chip").addEventListener("click", openModels);
   $("#end-session").addEventListener("click", endSession);
+  // The first screen is drawn once, after GET /private says whether sessions are offered,
+  // so the Student door is not drawn off and then on again (review W17).
   if (api.mode === "live") {
     privateAvailable(privApi).then((on) => {
       S.privateOn = on;
       mode.setAvailable(on, on ? "" : "It needs every model to run on this server.");
       drawSwitch();
-      if (!S.briefId && !location.hash.startsWith("#/private") && !location.hash.startsWith("#/help")
-        && !location.hash.startsWith("#/student")) route();
+      route();
     });
   } else {
     mode.setAvailable(false, "The preview has no server.");
@@ -2008,7 +2014,7 @@ function init() {
   setBar();
   window.addEventListener("resize", setBar);
   window.addEventListener("hashchange", route);
-  route();
+  if (api.mode !== "live") route();
 }
 
 init();

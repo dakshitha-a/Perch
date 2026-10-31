@@ -640,9 +640,19 @@ async def pick_and_build(page: Page) -> None:
     await page.locator("[data-key=build], [data-key=build-top]").first.click()
 
 
+# Counts each landing drawn into #main from the first script on (W17).
+COUNT_LANDINGS = """new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes)
+  if (n.nodeType === 1 && n.classList.contains('landing')) window.__landings = (window.__landings || 0) + 1; })
+  .observe(document, { childList: true, subtree: true });"""
+
+
 async def workflow_pi(w: Walk, page: Page, base: str, tag: str) -> None:
+    await page.add_init_script(COUNT_LANDINGS)
     await page.goto(base + "/#/")
     await page.wait_for_selector(".landing")
+    await page.wait_for_timeout(1000)
+    if (n := await page.evaluate("() => window.__landings")) != 1:  # W17
+        w.errors.append(f"{tag}: W17: the landing was drawn {n} times on one load")
     await page.fill("#q", AUTHOR)
     await page.click(".searchbox button[type=submit]")
     await page.wait_for_function("() => { const t = document.querySelector('#pick-title');"
