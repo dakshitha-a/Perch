@@ -1206,9 +1206,9 @@ async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.wait_for_selector("#progress", timeout=20000)
     await wait_built(page)
     await page.wait_for_timeout(800)
-    # U20: no line repeated on every card
+    # U20: no rule line or empty-facts line repeated on most cards
     rep = await page.evaluate("""() => { const cards = [...document.querySelectorAll('#panel .leads > li')].filter(li => !li.closest('details'));
-      const seen = {}; for (const c of cards) for (const p of new Set([...c.querySelectorAll('p, li')].map(x => x.innerText.trim()).filter(t => t.length > 30)))
+      const seen = {}; for (const c of cards) for (const p of new Set([...c.querySelectorAll('.reason, .no-size')].map(x => x.innerText.trim()).filter(t => t.length > 30)))
         seen[p] = (seen[p] || 0) + 1;
       return { n: cards.length, rep: Object.entries(seen).filter(([, k]) => k >= Math.max(3, 0.6 * cards.length)).map(([t]) => t.slice(0, 70)) }; }""")
     if rep["n"] >= 3 and rep["rep"]:

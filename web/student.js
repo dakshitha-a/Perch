@@ -240,6 +240,10 @@ export function studentRoutes(panel, ctx) {
   }
   const ok = sortLeads(leads.filter((l) => l.verdict !== "not eligible" && l.status !== "dismissed"));
   const out = leads.filter((l) => l.verdict === "not eligible");
+  // A line most cards repeat word for word is said once above the list instead (U20).
+  const counts = new Map();
+  for (const l of ok) for (const x of new Set(cardLines(l))) counts.set(x, (counts.get(x) || 0) + 1);
+  const common = ok.length >= 3 ? [...counts].filter(([, n]) => n >= 3 && n > ok.length / 2).map(([x]) => x) : [];
   const gone = leads.filter((l) => l.verdict !== "not eligible" && l.status === "dismissed");
   fill(panel, h("div", { class: "route-row" }, sw, sortSwitch(() => studentRoutes(panel, ctx))),
     route === "S" ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }), h("span", { text: ` ${SAMPLE_NOTE}` })) : null,
@@ -249,7 +253,9 @@ export function studentRoutes(panel, ctx) {
     h("p", { class: "hint", text: route === "F"
       ? "Public listings: Temple's Scholar Development and Fellowships Advising list and NIH fellowships. Their own pages set the full rules, so the best verdict here is “may be eligible”."
       : "Checked against your CV by rule. “May be eligible” means the record asks for something your CV does not show." }),
-    h("ol", { class: "leads", "aria-labelledby": "routes-title" }, ok.map((l) => card(l, ctx))),
+    common.length ? h("div", { class: "common-lines" }, h("p", { class: "mini", text: "Unless a card says otherwise" }),
+      h("ul", {}, common.map((x) => h("li", { text: x === NO_FACTS ? "The listing states no deadline or amount." : x })))) : null,
+    h("ol", { class: "leads", "aria-labelledby": "routes-title" }, ok.map((l) => card(l, ctx, common))),
     gone.length ? h("details", { class: "dismissed" }, h("summary", { text: `Dismissed (${gone.length})` }),
       h("ol", { class: "leads" }, gone.map((l) => card(l, ctx)))) : null,
     out.length ? h("details", { class: "dismissed" }, h("summary", { text: `Not eligible by rule (${out.length})` }),
@@ -264,7 +270,16 @@ export function matchPill(score, band, what = "the papers") {
     h("span", { class: "sr-only", text: ` out of 100: how closely the listing’s text matches ${what}, not the odds of funding` }));
 }
 
-function card(l, { openEvidence, setLead, papers }) {
+const NO_FACTS = "no-facts";
+// The lines of a card that can repeat word for word: no deadline or amount, and the rule lines.
+function cardLines(l) {
+  const r = l.record || {};
+  const sch = r.kind === "scholarship";
+  const none = !(sch ? r.deadline : r.close_date) && (!sch || amountText(r) === NOT_STATED);
+  return [none ? NO_FACTS : null, ...(l.verdict_lines.length === 1 ? l.verdict_lines : [])].filter(Boolean);
+}
+
+function card(l, { openEvidence, setLead, papers }, common = []) {
   const r = l.record || {};
   const sch = r.kind === "scholarship";
   const name = sch ? r.name : r.title;
@@ -294,11 +309,11 @@ function card(l, { openEvidence, setLead, papers }) {
     sch && r.sponsor ? h("p", { class: "opp-num", text: r.sponsor }) : null,
     // A listing that states neither field gets one line, not two empty boxes (S22, audit S6).
     !deadline && (!sch || amount === NOT_STATED)
-      ? h("p", { class: "hint no-size", text: sch ? "Deadline and amount: not stated in the record." : "Deadline: not stated in the record." })
+      ? (common.includes(NO_FACTS) ? null : h("p", { class: "hint no-size", text: sch ? "Deadline and amount: not stated in the record." : "Deadline: not stated in the record." }))
       : h("dl", { class: "facts" },
         h("div", { class: "fact" }, h("dt", { text: "Deadline" }), h("dd", { text: deadline ? f.formatDate(deadline) : NOT_STATED })),
         sch ? h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", { text: amount })) : null),
-    l.verdict_lines.length ? h("div", { class: "reason" }, h("b", { text: "Why: " }),
+    l.verdict_lines.length && !(l.verdict_lines.length === 1 && common.includes(l.verdict_lines[0])) ? h("div", { class: "reason" }, h("b", { text: "Why: " }),
       l.verdict_lines.length === 1 ? h("span", { text: l.verdict_lines[0] })
         : h("ul", { class: "notes" }, l.verdict_lines.map((x) => h("li", { text: x })))) : null,
     l.gaps.length ? h("div", { class: "reason" }, h("b", { text: "Still needed: " }), h("span", { text: l.gaps.join("; ") })) : null,
