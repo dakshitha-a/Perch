@@ -145,6 +145,12 @@ def test_numbers_the_user_typed_may_be_repeated():
     assert "2027-03-01" in allowed and "2027" not in allowed
     assert scrub("1. closes 2027-01-07\n2. by 2027-03-01", allowed).split() == [
         "closes", "2027-01-07", "by"]
+    # S14: beside a citation, the user's number passes only as the user's filter
+    big = stated_numbers("anything with a $5,000,000 ceiling?")
+    assert "5000000" in scrub(f"PAR-1 has a $5,000,000 ceiling [{OPP}].", big).replace(",", "")
+    assert "5,000,000" not in scrub(f"Ceilings over $5,000,000: PAR-1 [{OPP}].", big)
+    assert "5,000,000" not in scrub("You asked about a $5,000,000 ceiling.", big)
+    assert "2027-03-01" in scrub(f"It closes 2027-03-01 [{OPP}].", allowed)
 
 
 def test_budget_stops_the_loop(service):

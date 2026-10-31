@@ -146,10 +146,31 @@ def stated_numbers(text: str) -> set[str]:
     return out
 
 
+# Words that make a number the user's filter, not a record's value: "closes by 2027-03-01",
+# "ceilings over $500,000". In a sentence that cites a record, a number the user typed
+# passes only after one of these; "a $5,000,000 ceiling [id]" must match the record
+# (review S14).
+FILTER_RE = re.compile(r"\b(?:by|before|after|until|through|within|under|over|above|below|"
+                       r"least|most|than|up to)\W{0,3}$", re.I)
+SENTENCE_RE = re.compile(r"(?<=[.!?])\s+|\n+")
+
+
 def scrub(text: str, allowed: set[str]) -> str:
     """Remove citations, list markers and the user's own numbers and dates before the
-    validator reads the text. A date is removed whole or kept whole, never cut up."""
-    text = LIST_RE.sub(" ", CITE_RE.sub(" ", text))
+    validator reads the text. A date is removed whole or kept whole, never cut up. In a
+    sentence that cites a record, the user's number is removed only where it reads as
+    the user's filter (FILTER_RE)."""
+    text = LIST_RE.sub(" ", text)
+    return " ".join(_scrub(x, allowed, bool(CITE_RE.search(x)))
+                    for x in SENTENCE_RE.split(text) if x)
+
+
+def _scrub(text: str, allowed: set[str], cites: bool) -> str:
+    text = CITE_RE.sub(" ", text)
+
+    def mine(start: int) -> bool:  # may this occurrence be the user's own number?
+        return not cites or bool(FILTER_RE.search(text[max(0, start - 24):start]))
+
     spans = []
     for rx, _ in DATE_PATTERNS:
         for m in rx.finditer(text):
@@ -159,14 +180,14 @@ def scrub(text: str, allowed: set[str]) -> str:
     out, pos = [], 0
     for m in NUM_RE.finditer(text):
         inside = next((sp for sp in spans if sp[0] <= m.start() < sp[1]), None)
-        if inside or norm_number(m.group(0)) not in allowed:
+        if inside or norm_number(m.group(0)) not in allowed or not mine(m.start()):
             continue
         out += [text[pos:m.start()], " "]
         pos = m.end()
     text = "".join(out) + text[pos:]
     for rx, _ in DATE_PATTERNS:  # user's dates, whole
-        text = rx.sub(lambda m: " " if m.group(0) in allowed or any(
-            d and d.isoformat() in allowed for _, d in find_dates(m.group(0))) else m.group(0),
+        text = rx.sub(lambda m: " " if mine(m.start()) and (m.group(0) in allowed or any(
+            d and d.isoformat() in allowed for _, d in find_dates(m.group(0)))) else m.group(0),
             text)
     return text
 
