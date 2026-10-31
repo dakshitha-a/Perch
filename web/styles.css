@@ -317,6 +317,9 @@ details[open] > summary::before { transform: rotate(45deg); }
 .lead.landed { animation: land .6s ease-out; }
 @keyframes land { from { box-shadow: 0 0 0 3px var(--ember-fill), var(--shadow); } to { box-shadow: 0 0 0 0 transparent, var(--shadow); } }
 .lead-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 8px; }
+/* Keep, Dismiss and Evidence sit in the head beside the Match pill (review W2). */
+.lead-head .head-end { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 8px; margin-left: auto; }
+.lead-head .actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .fit-k { font-weight: 500; color: var(--ink-2); }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .fit { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; font-size: 13px; font-weight: 650; white-space: nowrap; }
@@ -712,7 +715,7 @@ table.compare { border-collapse: collapse; width: 100%; min-width: 640px; font-s
 @media (max-width: 479px) { .compare tbody th { position: static; min-width: 150px; } }
 
 /* ---------- Hand off (S12) ---------- */
-.handoff { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); display: grid; gap: 12px; }
+.handoff { margin: 16px 0 24px; padding: 20px 0 24px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: grid; gap: 12px; }
 .office-pick { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
 .office-pick legend { font-weight: 650; font-size: 15px; margin-bottom: 6px; }
 .office-opt { display: flex; gap: 10px; align-items: flex-start; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--raised); cursor: pointer; }

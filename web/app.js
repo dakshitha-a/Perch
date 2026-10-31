@@ -1422,10 +1422,9 @@ function orgCard(l) {
   const o = l.organisation || {};
   const name = o.name || l.record_id;
   const papers = S.brief.papers || {};
-  const head = h("div", { class: "lead-head" },
-    h("span", { class: "tags" },
-      l.relationship ? h("span", { class: "tag", text: l.relationship }) : null,
-      l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null),
+  const tags = h("span", { class: "tags" },
+    l.relationship ? h("span", { class: "tag", text: l.relationship }) : null,
+    l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null,
     h("span", { class: `evidence-level ${l.confidence || ""}`, text: l.confidence === "stronger"
       ? "Three kinds of signal" : "Two kinds of signal" }));
   const signals = h("ul", { class: "signals" }, (l.signal_items || []).map((s) => h("li", {},
@@ -1456,13 +1455,13 @@ function orgCard(l) {
   for (const b of actions) b.setAttribute("aria-describedby", `t-${cssId(l.id)}`);
   return h("li", { class: `card lead org${l.status === "kept" ? " kept" : ""}${l.status === "dismissed" ? " gone" : ""}`,
     "data-id": l.id },
-  head,
+  cardHead(tags, null, actions),
   h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
     onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: name }))),
   o.aliases && o.aliases.length > 1 ? h("p", { class: "opp-num", text: `Counts ${o.aliases.length} records under this name` }) : null,
   h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Inference" }),
     h("span", { text: l.inference || "Inferred from public signals; not verified." })),
-  signals, yours, h("div", { class: "actions" }, actions));
+  signals, yours);
 }
 
 // The old keep bar (S8) became the shortlist rail and the floating pill (S24).
@@ -1517,13 +1516,11 @@ function leadCard(l) {
     fit = h("span", { class: "fit pending" }, owl("work", "owl-xs"), h("span", { text: "Reading" }));
   }
 
-  const head = h("div", { class: "lead-head" },
-    h("span", { class: "tags" },
-      h("span", { class: "tag", text: f.agencyShort(o.agency, o.parent_agency) }),
-      o.activity_code ? h("span", { class: "tag", text: o.activity_code }) : null,
-      o.status && o.status !== "posted" ? h("span", { class: "tag ember", text: o.status === "forecasted" ? "Forecast" : o.status }) : null,
-      l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null),
-    fit);
+  const tags = h("span", { class: "tags" },
+    h("span", { class: "tag", text: f.agencyShort(o.agency, o.parent_agency) }),
+    o.activity_code ? h("span", { class: "tag", text: o.activity_code }) : null,
+    o.status && o.status !== "posted" ? h("span", { class: "tag ember", text: o.status === "forecasted" ? "Forecast" : o.status }) : null,
+    l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null);
 
   const facts = h("dl", { class: `facts${size ? "" : " one"}` },
     h("div", { class: `fact close ${urg}` }, h("dt", { text: "Closes" }),
@@ -1564,11 +1561,18 @@ function leadCard(l) {
   for (const b of actions) b.setAttribute("aria-describedby", `t-${cssId(l.id)}`);
   return h("li", { class: `card lead${l.status === "kept" ? " kept" : ""}${l.status === "dismissed" ? " gone" : ""}`,
     "data-id": l.id },
-  head,
+  cardHead(tags, fit, actions),
   h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
     onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: o.title || l.record_id }))),
   h("p", { class: "opp-num", text: o.opportunity_number || "" }),
-  facts, noSize, leadNotes(l), explain, h("div", { class: "actions" }, actions));
+  facts, noSize, leadNotes(l), explain);
+}
+
+// The card head: tags on the left; the Match pill and the actions on the right, so Keep
+// is in reach without scrolling past the explanation (review W2).
+function cardHead(tags, fit, actions) {
+  return h("div", { class: "lead-head" }, tags,
+    h("div", { class: "head-end" }, fit || null, h("div", { class: "actions" }, actions)));
 }
 
 // Rule notes written by code: a career-stage unlock, a past sponsor, what the user said.

@@ -93,13 +93,14 @@ export function renderCompare(panel, { keptCount, openEvidence, goRoutes, redraw
       h("h2", { class: "section-title", id: "compare-title", text: `Compare ${rows.length} kept ${rows.length === 1 ? "lead" : "leads"}` }),
       h("p", { class: "hint", text: "Every cell is copied from its record or counted from it by code. "
         + "Press a cell to see the record. Press a column name to sort." }))),
+    // The hand-off comes before the table, so drafting needs no scroll (review W2).
+    handoff ? h("div", { class: "handoff-box" }) : null,
     hasB ? h("p", { class: "notice" }, icon("warn"), h("span", { text: "Industry leads are inferred "
       + "from public signals and not verified. Their records hold no amount or deadline." })) : null,
     h("div", { class: "compare-wrap", role: "region", "aria-labelledby": "compare-title", tabindex: "0" },
       labelCells(h("table", { class: "compare stack" }, h("thead", {}, head), h("tbody", {}, ...body)))),
     h("p", { class: "hint", text: "Money and dates are as each record states them. "
-      + "The office under each lead is the Temple office that handles that route." }),
-    handoff ? h("div", { class: "handoff-box" }) : null);
+      + "The office under each lead is the Temple office that handles that route." }));
 }
 
 export function compareOffices() {

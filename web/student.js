@@ -249,6 +249,14 @@ function card(l, { openEvidence, setLead, papers }) {
   const deadline = sch ? r.deadline : r.close_date;
   const amount = sch ? amountText(r) : null;
   const parsed = f.parseExplanation(l.explanation, l.cited_ids);
+  // Keep, Dismiss and Evidence sit in the card head, next to the Match pill (review W2).
+  const actions = h("div", { class: "actions" },
+    l.status === "dismissed"
+      ? h("button", { class: "btn", "data-key": `restore-${l.id}`, onclick: () => setLead(l.id, "restore") }, icon("restore"), h("span", { text: "Restore" }))
+      : [h("button", { class: `btn keep${l.status === "kept" ? " on" : ""}`, "data-key": `keep-${l.id}`, "aria-pressed": String(l.status === "kept"),
+        onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") }, icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
+      l.verdict !== "not eligible" ? h("button", { class: "btn", "data-key": `dismiss-${l.id}`, onclick: () => setLead(l.id, "dismiss") }, icon("dismiss"), h("span", { text: "Dismiss" })) : null],
+    h("button", { class: "btn quiet", "data-key": `evidence-${l.id}`, onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { text: "Evidence" })));
   return h("li", { class: `card lead${l.sample ? " is-sample" : ""}${l.status === "kept" ? " kept" : ""}`, "data-id": l.id },
     h("div", { class: "lead-head" }, h("span", { class: "tags" },
       l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null,
@@ -257,7 +265,8 @@ function card(l, { openEvidence, setLead, papers }) {
       sch && r.award_type ? h("span", { class: "tag", text: r.award_type }) : null,
       !sch && r.activity_code ? h("span", { class: "tag", text: `NIH ${r.activity_code}` }) : null,
       !sch && r.status === "forecasted" ? h("span", { class: "tag ember", text: "Forecast: not open yet" }) : null,
-      l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null)),
+      l.status === "kept" ? h("span", { class: "tag moss", text: "Kept" }) : null),
+    h("div", { class: "head-end" }, actions)),
     h("h3", { class: "lead-title" }, h("button", { class: "title-btn", onclick: (e) => openEvidence(l.record_id, e.currentTarget) },
       h("span", { text: name || l.record_id }))),
     sch && r.sponsor ? h("p", { class: "opp-num", text: r.sponsor }) : null,
@@ -272,14 +281,7 @@ function card(l, { openEvidence, setLead, papers }) {
         : h("ul", { class: "notes" }, l.verdict_lines.map((x) => h("li", { text: x })))) : null,
     l.gaps.length ? h("div", { class: "reason" }, h("b", { text: "Still needed: " }), h("span", { text: l.gaps.join("; ") })) : null,
     l.flagged ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "The explanation was withheld because it failed the citation checks twice." }))
-      : parsed ? fitReason(l) : null,
-    h("div", { class: "actions" },
-      l.status === "dismissed"
-        ? h("button", { class: "btn", "data-key": `restore-${l.id}`, onclick: () => setLead(l.id, "restore") }, icon("restore"), h("span", { text: "Restore" }))
-        : [h("button", { class: `btn keep${l.status === "kept" ? " on" : ""}`, "data-key": `keep-${l.id}`, "aria-pressed": String(l.status === "kept"),
-          onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") }, icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
-        l.verdict !== "not eligible" ? h("button", { class: "btn", "data-key": `dismiss-${l.id}`, onclick: () => setLead(l.id, "dismiss") }, icon("dismiss"), h("span", { text: "Dismiss" })) : null],
-      h("button", { class: "btn quiet", "data-key": `evidence-${l.id}`, onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { text: "Evidence" }))));
+      : parsed ? fitReason(l) : null);
 }
 
 // The reason it may fit leads, in plain view (S27, Dakshitha: say the reason right
@@ -357,10 +359,7 @@ export function studentCompare(panel, { brief, goRoutes, announce }) {
   fill(panel,
     kept.some((l) => l.sample) ? h("p", { class: "notice warn sample-note", role: "note" }, h("span", { class: "tag sample", text: SAMPLE }),
       h("span", { text: " Your shortlist includes invented sample scholarships. They are not real." })) : null,
-    h("div", { class: "table-wrap compare-wrap", role: "region", "aria-label": "Kept options, side by side", tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
-      h("thead", {}, h("tr", {}, ["Option", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
-      h("tbody", {}, kept.map(row))))),
-    h("p", { class: "hint", text: "Each cell is copied from its record or checked against your CV by rule. “Not stated” means the listing leaves it blank." }),
+    // The note comes before the table, so drafting it needs no scroll (review W2).
     h("section", { class: "handoff" },
       h("h2", { class: "section-title", text: "Draft a note to a Temple office" }),
       h("fieldset", { class: "office-pick" }, h("legend", { text: "Office" }),
@@ -372,7 +371,11 @@ export function studentCompare(panel, { brief, goRoutes, announce }) {
         h("button", { class: "btn primary", type: "button", "data-key": "st-draft", onclick: () => { NOTE.shown = true; draw(); } },
           h("span", { text: NOTE.shown ? "Draft again" : "Draft the note" })),
         h("span", { class: "hint", text: "Code writes this note; no model. Perch never sends it." })),
-      NOTE.shown ? note(NOTE.office, byOffice[NOTE.office], announce) : null));
+      NOTE.shown ? note(NOTE.office, byOffice[NOTE.office], announce) : null),
+    h("div", { class: "table-wrap compare-wrap", role: "region", "aria-label": "Kept options, side by side", tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
+      h("thead", {}, h("tr", {}, ["Option", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
+      h("tbody", {}, kept.map(row))))),
+    h("p", { class: "hint", text: "Each cell is copied from its record or checked against your CV by rule. “Not stated” means the listing leaves it blank." }));
 }
 
 function note(route, leads, announce) {
