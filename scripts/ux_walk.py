@@ -226,6 +226,41 @@ async def checks_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     if grow > 400 and page.viewport_size["width"] >= 700:
         w.errors.append(f"{tag}: scout: chat: the page grows {grow} px past the window; "
                         "older replies should scroll inside the chat")
+    # S28: how Scout read the question sits above the answer, the step cards are folded under
+    # it with where each step ran, and no step names a researcher (Scout is fixed to the brief).
+    read = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x');
+      const x = xs[xs.length - 1]; if (!x) return null;
+      const steps = x.querySelector('details.scout-steps');
+      return {read: Boolean(x.querySelector('.scout-read li')), folded: Boolean(steps && !steps.open),
+        where: x.querySelectorAll('.scout-where').length, cards: x.querySelectorAll('.scout-card').length,
+        researcher: [...x.querySelectorAll('.chip')].some(c => /^Researcher:/.test(c.innerText))}; }""")
+    if not read or not read["read"]:
+        w.errors.append(f"{tag}: scout: no 'How Scout read your question' block above the answer")
+    if not read or not read["folded"]:
+        w.errors.append(f"{tag}: scout: the step cards are not folded under the answer")
+    if read and read["where"] < read["cards"]:
+        w.errors.append(f"{tag}: scout: {read['cards'] - read['where']} step cards do not say where they ran")
+    if read and read["researcher"]:
+        w.errors.append(f"{tag}: scout: a step names a researcher; Scout is fixed to the brief")
+    await w.snap(page, tag, "scout-read")
+    # Stop ends a question between steps; the page says so and a follow-up still works.
+    await page.fill("#scout-q", "Compare my top three leads and explain why the first one fits")
+    await page.click(".scout-ask button[type=submit]")
+    try:
+        await page.wait_for_selector(".scout-stop", timeout=15000)
+        await page.click(".scout-stop")
+    except Exception:  # noqa: BLE001 - reported as a finding
+        w.errors.append(f"{tag}: scout: no Stop button while Scout works")
+    for _ in range(900):
+        if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
+            break
+        await page.wait_for_timeout(100)
+    last = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
+      return {stopped: Boolean(x.querySelector('.scout-stopped')), answer: Boolean(x.querySelector('.scout-answer')),
+        warn: (x.querySelector('.notice') || {}).innerText || ''}; }""")
+    if not (last["stopped"] or last["answer"]) or last["warn"]:
+        w.errors.append(f"{tag}: scout: after Stop the page shows neither the stop note nor an answer {last['warn']!r}")
+    await w.snap(page, tag, "scout-stopped")
     await page.goto(base + "/#/help")
     await page.wait_for_timeout(600)
     if await page.evaluate(GATE):

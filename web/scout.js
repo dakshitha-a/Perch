@@ -40,12 +40,12 @@ const EXAMPLES = ["Only R21 grants that close by 2027-03-01", "Small grants only
 
 // One Scout conversation per brief, kept while the brief is on screen.
 // Scout runs every step as soon as the model asks for it and shows each one (S27, S28).
-const T = { briefId: null, data: null, error: null, timer: null, draft: "", sending: false, stopping: false, seen: 0, stick: true, top: 0 };
+const T = { briefId: null, data: null, error: null, timer: null, draft: "", sending: false, stopping: false, openSteps: new Set(), seen: 0, stick: true, top: 0 };
 
 // Stop polling and forget the conversation when the session has ended (S27).
 export function resetScout() {
   clearTimeout(T.timer);
-  Object.assign(T, { briefId: null, data: null, error: null, timer: null, draft: "", sending: false, stopping: false, seen: 0, stick: true, top: 0 });
+  Object.assign(T, { briefId: null, data: null, error: null, timer: null, draft: "", sending: false, stopping: false, openSteps: new Set(), seen: 0, stick: true, top: 0 });
 }
 
 export function renderScout(panel, ctx) {
@@ -80,7 +80,7 @@ export function renderScout(panel, ctx) {
         T.top = b.scrollTop;
       } },
     welcome(ctx),
-    h("ol", { class: "scout-log", "aria-live": "polite" }, ...(T.data ? T.data.exchanges.map((x, i) => exchange(x, ctx, busy, i >= T.seen)) : [])),
+    h("ol", { class: "scout-log", "aria-live": "polite" }, ...(T.data ? T.data.exchanges.map((x, i) => exchange(x, ctx, busy, i >= T.seen, i)) : [])),
     T.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: T.error })) : null,
     T.data ? h("p", { class: "scout-meta", text: `Model ${T.data.model}. ${T.data.tokens.toLocaleString()} tokens so far in this conversation.` }) : null),
     askForm(ctx, busy));
@@ -143,31 +143,57 @@ window.addEventListener("resize", () => {
 
 function reset(briefId) {
   clearTimeout(T.timer);
-  Object.assign(T, { briefId, data: null, error: null, timer: null, draft: "", sending: false, stopping: false, seen: 0, stick: true, top: 0 });
+  Object.assign(T, { briefId, data: null, error: null, timer: null, draft: "", sending: false, stopping: false, openSteps: new Set(), seen: 0, stick: true, top: 0 });
 }
 
-function exchange(x, ctx, busy, fresh) {
+// One exchange (S28, the spec's section 6): the question, how Scout read it as one line
+// per finished step with its filters, the answer, any hand-off draft to copy, and then
+// the step cards, folded, since nobody needs to act on them.
+function exchange(x, ctx, busy, fresh, i) {
   const running = x.status === "running";
+  const drafts = x.cards.filter((c) => c.draft);
   return h("li", { class: fresh ? "scout-x new" : "scout-x" },
     h("p", { class: "scout-q" }, h("span", { class: "sr-only", text: "You asked: " }), x.question),
-    x.cards.length ? h("ol", { class: "scout-cards" }, ...x.cards.map((c) => card(c, ctx))) : null,
-    answer(x, ctx, running && busy));
+    readAs(x),
+    answer(x, ctx, running && busy),
+    ...drafts.map((c) => draftBlock(c.draft, ctx)),
+    x.cards.length ? h("details", { class: "scout-steps", open: T.openSteps.has(i),
+      ontoggle: (e) => { if (e.target.open) T.openSteps.add(i); else T.openSteps.delete(i); } },
+      h("summary", { text: `Steps (${x.cards.length})` }),
+      h("ol", { class: "scout-cards" }, ...x.cards.map((c) => card(c, ctx)))) : null);
+}
+
+function readAs(x) {
+  const done = x.cards.filter((c) => c.status === "done");
+  const trouble = x.cards.filter((c) => c.status === "refused" || c.status === "error").length;
+  if (!done.length && !trouble) return null;
+  return h("div", { class: "scout-read" },
+    h("p", { class: "mini", text: "How Scout read your question" }),
+    h("ul", {}, ...done.map((c) => h("li", {},
+      h("span", { class: "scout-read-tool", text: TOOLS[c.tool] || c.tool }),
+      ...argList(c).map(([k, v]) => h("span", { class: "chip", text: `${ARGS[k] || k}: ${v}` })),
+      c.detail ? h("span", { class: "scout-read-result", text: `→ ${c.detail}` }) : null))),
+    trouble ? h("p", { class: "hint", text: `${trouble === 1 ? "One step" : `${trouble} steps`} failed or were refused; the steps below say why.` }) : null);
+}
+
+const ROUTES = { A: "Grants", B: "Industry leads" };
+function argList(c) {
+  return Object.entries(c.arguments || {}).filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length))
+    .map(([k, v]) => [k, k === "route" ? ROUTES[v] || v : Array.isArray(v) ? v.join(", ") : v]);
 }
 
 function card(c, ctx) {
-  const args = Object.entries(c.arguments || {}).filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length));
+  const args = argList(c);
   return h("li", { class: `scout-card s-${c.status}` },
     h("div", { class: "scout-card-head" },
       h("span", { class: "scout-tool", text: TOOLS[c.tool] || c.tool }),
       h("code", { class: "scout-tool-name", text: c.tool }),
       whereTag(c),
       h("span", { class: "scout-status", text: STATUS[c.status] || c.status })),
-    args.length ? h("ul", { class: "chips" }, ...args.map(([k, v]) => h("li", { class: "chip",
-      text: `${ARGS[k] || k}: ${Array.isArray(v) ? v.join(", ") : v}` }))) : null,
+    args.length ? h("ul", { class: "chips" }, ...args.map(([k, v]) => h("li", { class: "chip", text: `${ARGS[k] || k}: ${v}` }))) : null,
     c.detail ? h("p", { class: "hint", text: c.detail }) : null,
     c.records && c.records.length ? h("p", { class: "scout-records" }, h("span", { class: "hint", text: "Records: " }),
-      ...c.records.slice(0, 8).map((id) => citeBtn(id, ctx))) : null,
-    c.draft ? draftBlock(c.draft, ctx) : null);
+      ...c.records.slice(0, 8).map((id) => citeBtn(id, ctx))) : null);
 }
 
 // Where a step ran (S28): code, a local model, or a named Cloud provider, matching the
@@ -182,7 +208,7 @@ function whereTag(c) {
 // A hand-off draft from draft_handoff: the full text to copy. Never sent.
 function draftBlock(d, ctx) {
   const text = `Subject: ${d.subject}\n\n${d.body}`;
-  return h("details", { class: "scout-draft" },
+  return h("details", { class: "scout-draft", open: true },
     h("summary", { text: `The draft to ${d.office}` }),
     d.opening_withheld ? h("p", { class: "hint", text: "The model’s opening failed the checks twice; a plain sentence replaces it." }) : null,
     h("pre", { class: "draft-text", text }),
@@ -197,11 +223,13 @@ function draftBlock(d, ctx) {
 
 function answer(x, ctx, thinking) {
   // Stop ends the question between steps; the steps already done stay (S28).
-  if (thinking) return h("div", { class: "scout-wait" }, owl("look", "owl-sm"), h("span", { text: T.stopping ? "Stopping after this step…" : "Scout is working…" }),
+  const now = x.cards.find((c) => c.status === "proposed");
+  if (thinking) return h("div", { class: "scout-wait" }, owl("look", "owl-sm"),
+    h("span", { text: T.stopping ? "Stopping after this step…" : now ? `${TOOLS[now.tool] || now.tool}…` : "Scout is working…" }),
     h("button", { class: "btn quiet scout-stop", type: "button", disabled: T.stopping, onclick: () => stop(ctx) }, icon("stop"), h("span", { text: "Stop" })));
-  if (x.status === "stopped" && x.by_user) return h("p", { class: "hint scout-stopped", text: "You stopped this question. Any step that had already run is shown above; ask again to go on." });
+  if (x.status === "stopped" && x.by_user) return h("p", { class: "hint scout-stopped", text: "You stopped this question. The steps below show what ran; ask again to go on." });
   if (x.answer) return h("div", { class: "scout-answer" }, ...withCites(x.answer, ctx));
-  if (x.flagged) return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "Scout’s answer was withheld: it did not pass the citation check twice. The tool cards above show what it found." }));
+  if (x.flagged) return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "Scout’s answer was withheld: it did not pass the citation check twice. The steps below show what it found." }));
   if (x.status === "stopped" || x.status === "failed") return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: `Scout stopped: ${(x.errors || []).join("; ") || "no answer"}.` }));
   return null;
 }

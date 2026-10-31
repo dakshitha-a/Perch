@@ -631,6 +631,15 @@ body.on-help .banner { display: none; }
 .scout-x { display: grid; gap: 10px; }
 .scout-q { justify-self: end; max-width: 85%; margin: 0; padding: 8px 14px; border-radius: 14px 14px 4px 14px; background: var(--moss-soft); overflow-wrap: anywhere; }
 .scout-cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.scout-read { border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; background: var(--surface); }
+.scout-read .mini { margin: 0 0 6px; text-transform: uppercase; letter-spacing: .04em; font-size: 12px; color: var(--ink-3); }
+.scout-read ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.scout-read li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.scout-read-tool { font-weight: 600; }
+.scout-read-result { color: var(--ink-2); font-size: 14px; }
+.scout-read .hint { margin: 6px 0 0; }
+.scout-steps > summary { cursor: pointer; font-weight: 600; color: var(--ink-2); min-height: 32px; display: flex; align-items: center; }
+.scout-steps > .scout-cards { margin-top: 6px; }
 .scout-card { background: var(--leaf); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; display: grid; gap: 6px; }
 .scout-card.s-proposed { border-left-color: var(--ink-3); }
 .scout-card.s-not_run { border-left-color: var(--line); opacity: .75; }
