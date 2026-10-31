@@ -131,7 +131,9 @@ function pinChat() {
   const view = document.querySelector("#panel > .scout"), tabs = document.querySelector(".tabs-wrap");
   if (!view) return;
   const top = view.getBoundingClientRect().top + window.scrollY;
-  const under = tabs ? tabs.getBoundingClientRect().bottom - Math.min(0, tabs.getBoundingClientRect().top) : 0;
+  // Where the tabs end once they stick, not where they sit now: at the top of the page
+  // they have not stuck yet, and measuring them there left the box below the window.
+  const under = tabs ? (parseFloat(getComputedStyle(tabs).top) || 0) + tabs.offsetHeight : 0;
   window.scrollTo({ top: Math.max(0, top - under - 4) });
 }
 

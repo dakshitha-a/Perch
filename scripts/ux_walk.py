@@ -170,10 +170,20 @@ async def checks_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     if await page.evaluate("() => !document.querySelector('#evidence').hidden"):
         w.errors.append(f"{tag}: evidence: a click outside the Evidence card did not close it")
         await page.keyboard.press("Escape")
+    # Open Scout from the top of the page, as a reader does straight after the brief loads.
+    await page.evaluate("() => window.scrollTo(0, 0)")
+    await page.wait_for_timeout(200)
     await page.click("#tab-scout")
     await page.wait_for_selector("#scout-q")
     if await page.evaluate("() => Boolean(document.querySelector('#panel aside'))"):
         w.errors.append(f"{tag}: scout: a side box sits beside the chat; its content belongs in the welcome")
+    # The question box is on the bottom edge from the first view, before anything is asked (S27).
+    await page.wait_for_timeout(400)
+    box = await page.locator("#scout-q").bounding_box()
+    vh = page.viewport_size["height"]
+    if not box or box["y"] + box["height"] > vh or vh - (box["y"] + box["height"]) > 40:
+        w.errors.append(f"{tag}: scout: chat: on first open the question box is not on the bottom edge of the window "
+                        f"(bottom at {round(box['y'] + box['height']) if box else '?'} px, window {vh} px)")
     await w.snap(page, tag, "scout-welcome")
     await page.wait_for_selector("#scout-q")
     for q in ("Why does the top lead fit?", "Only R21 grants that close by 2027-03-01"):
