@@ -70,8 +70,9 @@ def later_steps(c: TestClient, bid: str, payload: dict, question: str) -> dict:
             break
         time.sleep(1)
         scout = c.get(f"/scout/{sid}").json()
-    watch = c.get("/watch").json()
-    watch["digests"] = [d for d in watch["digests"]
+    r = c.get("/watch")  # shelved since S23 (perch/shelved/monitor): no digests then
+    watch = r.json() if r.status_code == 200 else {"digests": []}
+    watch["digests"] = [d for d in watch.get("digests", [])
                         if d["researcher"]["id"] == payload["brief"]["researcher_id"]]
     return {"kept": keep, "compare": compare, "handoffs": handoffs,
             "scout": {"question": question, "session": scout}, "watch": watch}

@@ -50,8 +50,12 @@ from perch.store.base import VectorIndex
 from perch.store.sqlite import SQLiteRepository
 from perch.validate import Validated
 
-STAGES = ("researcher", "works", "awards", "profile", "route_a", "route_b", "summary",
-          "explanations")
+# Explanations come before the summary: they are what the Routes tab waits for (P2).
+STAGES = ("researcher", "works", "awards", "profile", "route_a", "route_b", "explanations",
+          "summary")
+# Stages that use the network only and nothing later reads: each runs in a thread of its
+# own beside the model stages, and the brief is done when it is too (review P2).
+BACKGROUND = ("route_b",)
 
 
 def brief_options(as_of: date | None = None, top: int = 10, explain: bool = True,
@@ -214,19 +218,49 @@ class BriefService:
         b.status = "running"
         names = [s.name for s in b.stages] or list(STAGES)  # a student brief has its own
         current = names[0]
+        lock = threading.Lock()  # stage writes come from this thread and the background one
+        side: list[threading.Thread] = []
+        side_error: list[tuple[str, Exception]] = []
+
+        def stage(name: str, status: str, detail: str | None = None) -> None:
+            with lock:
+                self._stage(b, name, status, detail)
+
+        def step(name: str) -> None:
+            detail, skipped = getattr(self, f"_run_{name}")(b)
+            stage(name, "skipped" if skipped else "done", detail)
+
+        def beside(name: str) -> None:
+            try:
+                step(name)
+            except Exception as e:  # noqa: BLE001 - raised again by the job thread
+                side_error.append((name, e))
+
         try:
-            for current in names:
-                if self.cancelled(b):
-                    raise Cancelled("Stopped: the session ended, or a newer brief replaced "
-                                    "this one.")
-                self._stage(b, current, "running")
-                detail, skipped = getattr(self, f"_run_{current}")(b)
-                self._stage(b, current, "skipped" if skipped else "done", detail)
+            try:
+                for current in names:
+                    if self.cancelled(b):
+                        raise Cancelled("Stopped: the session ended, or a newer brief "
+                                        "replaced this one.")
+                    stage(current, "running")
+                    if current in BACKGROUND and current != names[-1]:
+                        t = threading.Thread(target=beside, args=(current,), daemon=True,
+                                             name=f"perch-{current}")
+                        t.start()
+                        side.append(t)
+                    else:
+                        step(current)
+            finally:
+                for t in side:
+                    t.join()
+            if side_error:
+                current, err = side_error[0]
+                raise err
             b.status = "done"
         except Exception as e:  # recorded on the brief; the job thread must not die silently
             b.error = (str(e) if isinstance(e, Cancelled) else plain_error(e)
                        if self.quiet_errors else f"{type(e).__name__}: {e}")
-            self._stage(b, current, "failed", b.error)
+            stage(current, "failed", b.error)
             b.status = "failed"
             if not self.quiet_errors:
                 traceback.print_exc()

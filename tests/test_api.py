@@ -51,7 +51,7 @@ def test_brief_end_to_end_reports_stages_and_leads(tmp_path):
     b = got["brief"]
     assert b["status"] == "done", b["error"]
     assert [s["name"] for s in b["stages"]] == ["researcher", "works", "awards", "profile",
-                                                "route_a", "route_b", "summary", "explanations"]
+                                                "route_a", "route_b", "explanations", "summary"]
     assert all(s["status"] in ("done", "skipped") for s in b["stages"])
     assert b["stages"][1]["detail"] == "5 works fetched from OpenAlex"
     assert b["award_horizon"] == "2016-06-30"
@@ -389,3 +389,48 @@ def test_request_bodies_over_the_limit_answer_413(tmp_path, monkeypatch):
     small = (x for x in [b"{}"])
     assert c.post("/private/end", content=small).status_code == 200  # chunked, under the limit
     assert c.get("/health").status_code == 200
+
+
+def test_route_b_runs_beside_the_explanations(tmp_path, monkeypatch):
+    """P2: Route B is network only, so it no longer holds up the explanations; the brief
+    is done when both are."""
+    import threading
+
+    from perch.service import BriefService
+
+    c, _ = make(tmp_path)
+    started = threading.Event()
+    seen = {}
+    real_b, real_x = BriefService._run_route_b, BriefService._run_explanations
+
+    def route_b(self, b):
+        seen["beside"] = started.wait(5)  # explanations start while Route B runs
+        return real_b(self, b)
+
+    def explanations(self, b):
+        started.set()
+        return real_x(self, b)
+
+    monkeypatch.setattr(BriefService, "_run_route_b", route_b)
+    monkeypatch.setattr(BriefService, "_run_explanations", explanations)
+    bid = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28"}).json()["id"]
+    b = c.get(f"/briefs/{bid}").json()["brief"]
+    assert b["status"] == "done", b["error"]
+    assert seen["beside"] is True
+    assert {s["name"]: s["status"] for s in b["stages"]}["route_b"] == "done"
+
+
+def test_a_route_b_failure_beside_still_fails_the_brief(tmp_path, monkeypatch):
+    from perch.service import BriefService
+
+    c, _ = make(tmp_path)
+
+    def boom(self, b):
+        raise RuntimeError("SYNTHETIC NIH outage")
+
+    monkeypatch.setattr(BriefService, "_run_route_b", boom)
+    bid = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28"}).json()["id"]
+    b = c.get(f"/briefs/{bid}").json()["brief"]
+    st = {s["name"]: s["status"] for s in b["stages"]}
+    assert b["status"] == "failed" and st["route_b"] == "failed" and "NIH outage" in b["error"]
+    assert st["explanations"] == "done"  # the model stages finished meanwhile
