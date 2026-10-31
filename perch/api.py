@@ -368,8 +368,10 @@ def create_app(service: BriefService, runner: JobRunner,
         return export_json(brief_id, status)
 
     def export_json(brief_id: str, status: str | None = None, svc: BriefService = service,
-                    masker: egress.Masker | None = None) -> dict:
+                    masker: egress.Masker | None = None, documents: bool = False) -> dict:
+        """`documents`: a session holding documents; every model text counts as private."""
         b, leads = load(brief_id, svc)
+        documents = documents or bool(b.options.get("documents"))
         if status:  # e.g. ?status=kept: the Keep bar's download
             leads = [x for x in leads if x.status == status]
         ids = {b.researcher_id, *(x.record_id for x in leads)}
@@ -389,15 +391,22 @@ def create_app(service: BriefService, runner: JobRunner,
                       # Student mode: rule lines that quote the CV leave like private text.
                       "verdict_lines": [ex._cv_line(v, masker) for v in x.verdict_lines],
                       "gaps": [ex._cv_line(g, masker) for g in x.gaps]} for x in leads]
-        out = {"brief": b.model_dump(mode="json"), "leads": out_leads, "records": records,
+        brief = b.model_dump(mode="json")
+        brief.update(summary=egress.release_model(b.summary, [], masker, documents),
+                     topics=[t for t in (egress.release_model(x, [], masker, documents)
+                                         for x in b.topics) if t != egress.WITHHELD],
+                     threads=[egress.release_thread(t, masker) for t in b.threads])
+        out = {"brief": brief, "leads": out_leads, "records": records,
                "notice": grants_gov.ATTRIBUTION}
         if any(x.sample for x in leads):
             out["sample_notice"] = ex.SAMPLE_BANNER
         return out
 
     def export_blocks(brief_id: str, status: str | None, svc: BriefService = service,
-                      masker: egress.Masker | None = None) -> tuple[list, str]:
+                      masker: egress.Masker | None = None,
+                      documents: bool = False) -> tuple[list, str]:
         b, leads = load(brief_id, svc)
+        documents = documents or bool(b.options.get("documents"))
         if status:
             leads = [x for x in leads if x.status == status]
         if b.options.get("student"):
@@ -419,7 +428,8 @@ def create_app(service: BriefService, runner: JobRunner,
             works = {w.id: w for w in (r.get(Work, i) for i in sorted(wids)) if w}
             rows = cmp.compare(b, leads, r, "kept")
         name = res.display_name if res else b.researcher_id
-        return (ex.blocks(b, res, leads, opps, orgs, works, rows, masker=masker),
+        return (ex.blocks(b, res, leads, opps, orgs, works, rows, masker=masker,
+                          documents=documents),
                 f"Perch brief: {name}")
 
     @app.get("/briefs/{brief_id}/export.md", dependencies=STORED)

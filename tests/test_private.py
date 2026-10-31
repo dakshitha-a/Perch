@@ -521,3 +521,38 @@ def test_hourly_caps_are_read_from_the_environment(tmp_path, monkeypatch):
     office = {"office": "research_development"}
     assert [c.post("/private/handoff", headers=h, json=office).status_code
             for _ in range(2)] == [200, 429]
+
+
+def summary_reply(messages, system, schema):
+    """S1: a summary that draws on the private proposal, then the usual fit reply."""
+    if schema and "summary" in schema.get("properties", {}):
+        return json.dumps({
+            "topics": [{"label": "insole gait sensing", "work_ids": ["private:proposal"]},
+                       {"label": "home monitoring", "work_ids": ["private:proposal"]},
+                       {"label": "ground reaction force", "work_ids": ["private:proposal"]}],
+            "summary": "The proposal builds an insole that records ground reaction force at "
+                       "home [private:proposal]. It aims at early detection [private:proposal].",
+            "cited_ids": ["private:proposal"]})
+    return fit_reply(messages, system, schema)
+
+
+def test_exports_withhold_the_summary_topics_and_private_threads(tmp_path, monkeypatch):
+    """S1: the profile summary, its topics and the private threads' labels are drawn from
+    the documents, so a default export leaves them out; a masked export masks them."""
+    c, _ = private_app(tmp_path, monkeypatch, responder=summary_reply)
+    h = open_with_persona(c)
+    c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"})
+    got = c.get("/private/brief", headers=h).json()["brief"]
+    assert "ground reaction force" in got["summary"]  # on screen in the session
+    labels = [t["label"] for t in got["threads"] if t["private"]]
+    assert labels
+    for ext in ("json", "md", "html"):
+        text = c.get(f"/private/export.{ext}", headers=h).text
+        assert "ground reaction force" not in text, ext
+        assert "insole gait sensing" not in text, ext
+        assert not any(lbl in text for lbl in labels), ext
+    exp = c.get("/private/export.json", headers=h).json()
+    assert exp["brief"]["summary"].startswith("Withheld")
+    masked = c.get("/private/export.json", headers=h, params={"mask": True}).json()
+    assert "PRIVATE-PHRASE" in masked["brief"]["summary"]
+    assert "ground reaction force" not in masked["brief"]["summary"]

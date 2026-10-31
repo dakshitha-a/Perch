@@ -124,6 +124,25 @@ class Masker:
         return text
 
 
+def release_model(text: str | None, cited_ids: Iterable[str], masker: Masker | None = None,
+                  documents: bool = False) -> str | None:
+    """Model-written text as it may leave the app. In a session that holds documents, the
+    documents sit in every model prompt, so the text may paraphrase them while citing only
+    public records: it is treated as private-derived (withheld, or masked on opt-in)."""
+    if text is not None and documents:
+        return masker.mask(text) if masker else WITHHELD
+    return release(text, cited_ids, masker)
+
+
+def release_thread(t: dict, masker: Masker | None = None) -> dict:
+    """A brief thread for export: a private thread's label is made of words from the
+    documents, so it is withheld or masked, and its document ids are dropped."""
+    if not t.get("private"):
+        return t
+    return {**t, "label": masker.mask(t.get("label") or "") if masker else WITHHELD,
+            "work_ids": []}
+
+
 def release(text: str | None, cited_ids: Iterable[str], masker: Masker | None = None
             ) -> str | None:
     """The text as it may leave the app: unchanged if it cites no private record;

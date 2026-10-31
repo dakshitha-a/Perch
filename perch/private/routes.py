@@ -453,14 +453,15 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     def export_j(mask: bool = False, status: Literal["kept"] | None = None,
                  x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
-        return {**export_json(brief_id(s), status, s.service, masker_for(s, mask)),
-                "masked": mask}
+        return {**export_json(brief_id(s), status, s.service, masker_for(s, mask),
+                              bool(s.docs)), "masked": mask}
 
     @app.get("/private/export.md")
     def export_md(mask: bool = False, status: Literal["kept"] | None = None,
                   x_perch_private: str | None = Header(None)) -> Response:
         s = session(x_perch_private)
-        bs, _ = export_blocks(brief_id(s), status, s.service, masker_for(s, mask))
+        bs, _ = export_blocks(brief_id(s), status, s.service, masker_for(s, mask),
+                              bool(s.docs))
         return Response(ex.to_markdown(bs), media_type="text/markdown; charset=utf-8",
                         headers={"Content-Disposition":
                                  'attachment; filename="perch-private-brief.md"'})
@@ -469,7 +470,8 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     def export_html(mask: bool = False, status: Literal["kept"] | None = None,
                     x_perch_private: str | None = Header(None)) -> Response:
         s = session(x_perch_private)
-        bs, title = export_blocks(brief_id(s), status, s.service, masker_for(s, mask))
+        bs, title = export_blocks(brief_id(s), status, s.service, masker_for(s, mask),
+                                  bool(s.docs))
         return Response(ex.to_html(bs, title), media_type="text/html; charset=utf-8")
 
     @app.post("/private/unmask")

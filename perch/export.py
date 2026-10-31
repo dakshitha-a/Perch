@@ -47,8 +47,9 @@ def _work(w: Work) -> str:
 def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
            opps: dict[str, Opportunity], orgs: dict[str, Organisation],
            works: dict[str, Work], compare_rows: list[Row],
-           masker: egress.Masker | None = None) -> list[Block]:
-    """Private-derived text is withheld unless a masker is given (perch.egress)."""
+           masker: egress.Masker | None = None, documents: bool = False) -> list[Block]:
+    """Private-derived text is withheld unless a masker is given (perch.egress).
+    `documents`: the session holds documents, so every model text counts as private."""
     name = researcher.display_name if researcher else brief.researcher_id
     as_of = brief.options.get("as_of") or date.today().isoformat()
     out = [Block("h1", f"Perch brief: {name}"),
@@ -62,9 +63,13 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
 
     out.append(Block("h2", "Research profile"))
     if brief.summary:
-        out.append(Block("model", brief.summary))
+        out.append(Block("model", egress.release_model(brief.summary, [], masker, documents)))
     if brief.topics:
-        out.append(Block("list", items=list(brief.topics)))
+        if documents and masker is None:
+            out.append(Block("note", "Topics withheld: " + egress.WITHHELD))
+        else:
+            out.append(Block("list", items=[egress.release_model(t, [], masker, documents)
+                                            for t in brief.topics]))
     out.append(Block("p", "Public award horizon (end date of the last public award): "
                      + (brief.award_horizon.isoformat() if brief.award_horizon
                         else "no public award found")))
