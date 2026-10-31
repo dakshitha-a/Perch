@@ -155,7 +155,7 @@ function pipeline() {
     ["pen", "Explain each lead", ["model"],
       "A language model writes what the opportunity funds and what the cited papers did. It does not change the order."],
     ["check", "Check every claim", ["rules", "model"],
-      "Code checks that each citation, date and number is in a cited record; text that fails is rewritten once, then withheld. A second model checks each statement against its source; one it cannot match is shown with a warning."],
+      "Code checks that each citation, date and number is in a cited record, and that any link, or a word like click or visit, comes from a cited record too; text that fails is rewritten once, then withheld. A second model checks each statement against its source; one it cannot match is shown with a warning."],
     ["person", "You decide", ["you"],
       "You keep or dismiss leads, compare them and open any record."],
     ["pen", "Draft the hand-off", ["model", "code"],

@@ -65,3 +65,17 @@ def test_unparseable_output_counts_as_an_attempt():
 
     v = generate_validated(gen, lambda o: check("", [], RECS))
     assert v.flagged and "could not be parsed" in v.errors[0]
+
+
+def test_links_and_calls_to_act_must_come_from_a_cited_record():
+    """S16: injected record text can still steer prose that has no number. A link, or
+    the words click and visit, pass only when a cited record holds them."""
+    bad = check("Visit https://evil.example/apply to apply now.", [OPP.id], RECS)
+    assert not bad.ok
+    assert any("link 'https://evil.example/apply'" in e for e in bad.errors)
+    assert any("'visit'" in e for e in bad.errors)
+    assert not check("Click here for the details.", [OPP.id], RECS).ok
+    assert check(f"The listing is at {OPP.source_url}.", [OPP.id], RECS).ok
+    home = Work(id="https://openalex.org/W9", source="openalex", fetched_at=T,
+                source_url="https://openalex.org/W9", title="SYNTHETIC home visits for gait")
+    assert check("The paper used home visits.", [home.id], {home.id: home}).ok

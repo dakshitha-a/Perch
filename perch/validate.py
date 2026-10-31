@@ -4,7 +4,8 @@ A model output passes when:
   1. every cited id is one of the records the model was given, and
   2. every date in its text equals a date field of a cited record, and
   3. every other number (dollar amounts, counts, years, percentages) appears in a
-     cited record's text or numeric fields.
+     cited record's text or numeric fields, and
+  4. every link, and the words click and visit, appear in a cited record (S30).
 Identifiers such as R01, PAR-25-371 or W2741809807 are not numbers. A failed output
 is regenerated once with the errors fed back; a second failure is flagged and the
 lead is shown without its explanation.
@@ -32,6 +33,11 @@ DATE_PATTERNS = [
 ID_RE = re.compile(r"\b(?:[A-Z]{1,4}-\d{2}-\d{3}|[A-Z]{1,3}\d{1,2}[A-Z]?\d*|[WA]\d{6,}|"
                    r"\d{4}-\d{4}-\d{4}-\d{3}[\dX]|[A-Z]+\d+[A-Z]*-\d+|[A-Z]+-\d+)\b")
 NUM_RE = re.compile(r"(?<![\w.])\$?\d[\d,]*(?:\.\d+)?%?")
+# Prompt injection in public record text (review S16): a model that follows it is most
+# useful to an attacker when it adds a link or tells the reader to act. A link, or the
+# words click and visit, must come from a cited record.
+URL_RE = re.compile(r"(?:\bhttps?://|\bwww\.)[^\s\])>\"']+", re.I)
+ACTION_RE = re.compile(r"\b(click\w*|visit\w*)\b", re.I)
 
 
 def _month(s: str) -> int:
@@ -132,6 +138,16 @@ def check(text: str, cited_ids: list[str], records: dict[str, Record]) -> Check:
     for n in find_numbers(text):
         if n not in allowed_nums:
             errors.append(f"number {n!r} is not in any cited record")
+    recs = [records[c] for c in cited_ids if c in records]
+    seen = " ".join([e.text for e in cited] + [r.source_url or "" for r in recs]
+                    + [r.id for r in recs])
+    for u in dict.fromkeys(m.group(0).rstrip(".,;:") for m in URL_RE.finditer(text)):
+        if u.lower() not in seen.lower():
+            errors.append(f"link {u!r} is not in any cited record")
+    for w in dict.fromkeys(m.group(1).lower() for m in ACTION_RE.finditer(text)):
+        if not re.search(rf"\b{re.escape(w)}\b", seen, re.I):
+            errors.append(f"the word {w!r} is not in any cited record: describe the "
+                          "records, do not direct the reader")
     return Check(not errors, errors)
 
 
