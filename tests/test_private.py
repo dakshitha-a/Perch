@@ -653,3 +653,26 @@ def test_docx_bombs_and_broken_xml_are_input_errors(tmp_path, monkeypatch):
         "kind": "direction", "text": "SYNTHETIC gait"}).status_code == 201
     assert c.post("/private/documents", headers=h, json={
         "kind": "direction", "text": "SYNTHETIC gait"}).status_code == 429
+
+
+def test_pdf_parse_failures_are_input_errors(monkeypatch):
+    """S3: any exception from the PDF parser is an InputError, never a 500."""
+    import io
+
+    import pypdf
+    from pypdf import PdfWriter
+
+    buf = io.BytesIO()
+    w = PdfWriter()
+    w.add_blank_page(width=200, height=200)
+    w.write(buf)
+    assert parse_bytes("a.pdf", buf.getvalue()) == ""
+    with pytest.raises(InputError):
+        parse_bytes("a.pdf", buf.getvalue()[:-200])
+
+    def broken(self, *a, **k):
+        raise TypeError("SYNTHETIC parser bug")
+
+    monkeypatch.setattr(pypdf.PageObject, "extract_text", broken)
+    with pytest.raises(InputError, match="not a readable PDF"):
+        parse_bytes("a.pdf", buf.getvalue())

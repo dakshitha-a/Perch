@@ -104,12 +104,11 @@ def docx_text(data: bytes) -> str:
 
 def pdf_text(data: bytes) -> str:
     from pypdf import PdfReader
-    from pypdf.errors import PdfReadError
 
     try:
         reader = PdfReader(io.BytesIO(data))
         return "\n\n".join(page.extract_text() or "" for page in reader.pages)
-    except (PdfReadError, ValueError, KeyError) as e:
+    except Exception as e:  # noqa: BLE001 - any parser failure is a bad upload (review S3)
         raise InputError("the file is not a readable PDF") from e
 
 
