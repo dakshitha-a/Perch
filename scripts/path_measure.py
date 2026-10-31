@@ -298,7 +298,8 @@ async def student_task(d: Driver, base: str) -> None:
     await d.snap("kept")
     await d.click("#tab-compare", "Compare tab")
     await d.page.wait_for_selector("table.compare", timeout=30000)
-    await d.click("[data-key=st-draft]", "Draft the note")
+    if await d.page.locator("[data-key=st-draft]").count():  # shows at once since W8
+        await d.click("[data-key=st-draft]", "Draft the note")
     await d.page.wait_for_selector(".draft textarea", timeout=10000)
     await d.click(".draft .actions button:has-text('Copy')", "Copy")
     await d.snap("note")

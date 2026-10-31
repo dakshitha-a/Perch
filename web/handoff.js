@@ -30,7 +30,7 @@ export async function copy(text, announce) {
   }
 }
 
-function mailto(d) {
+export function mailto(d) {
   const subject = encodeURIComponent(d.subject);
   const body = encodeURIComponent(d.body);
   if (subject.length + body.length <= MAILTO_MAX) return `mailto:?subject=${subject}&body=${body}`;
