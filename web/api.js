@@ -31,8 +31,6 @@ export function liveApi(base = "") {
       `/briefs/${encodeURIComponent(id)}/leads/${encodeURIComponent(leadId)}/${action}`,
       { method: "POST" }),
     record: (id) => call(base, `/records/${encodeURIComponent(id)}`),
-    exportUrl: (id, kind = "json") => `${base}/briefs/${encodeURIComponent(id)}/export.${kind}`,
-    keptUrl: (id) => `${base}/briefs/${encodeURIComponent(id)}/export.json?status=kept`,
     compare: (id) => call(base, `/briefs/${encodeURIComponent(id)}/compare`),
     handoff: (id, body) => call(base, `/briefs/${encodeURIComponent(id)}/handoff`,
       { method: "POST", body: JSON.stringify(body) }),
@@ -119,7 +117,6 @@ export function replayApi(data) {
       const r = find(id);
       return r ? later(clone(r), 120) : Promise.reject(new ApiError(`No record ${id}.`, 404));
     },
-    exportUrl: () => null,
     // Later steps, recorded by scripts/export_replay.py (version 2 files). The comparison
     // is filtered to the kept leads; a hand-off draft and a Scout answer play back only
     // for what was recorded, and say so otherwise.
@@ -162,16 +159,6 @@ export function replayApi(data) {
     } : undefined,
     scoutGet: () => later(clone(data.scout.session)),
     scoutAct: () => Promise.reject(new ApiError("This preview holds one recorded answer. Ask follow-ups in the live app.", 0)),
-    // Same shape as the live export with ?status=kept, built from the saved records.
-    keptUrl: () => {
-      const leads = leadsIn().filter((l) => l.status === "kept");
-      const ids = new Set([final.brief.researcher_id]);
-      for (const l of leads) { ids.add(l.record_id); l.cited_ids.forEach((c) => ids.add(c)); }
-      const records = [...ids].map(find).filter(Boolean);
-      const body = { brief: final.brief, leads, records, notice: final.notice };
-      return URL.createObjectURL(new Blob([JSON.stringify(body, null, 1)],
-        { type: "application/json" }));
-    },
     briefId: final.brief.id,
   };
 }
@@ -229,7 +216,7 @@ export function privateApi(base = "") {
     },
     setLead: (_id, leadId, action) => post(`/private/leads/${encodeURIComponent(leadId)}/${action}`),
     record: (id) => p(`/private/records/${encodeURIComponent(id)}`),
-    exportUrl: () => null, // downloads go through fetch with the header (exportFile)
+    // Downloads go through fetch with the header (exportFile), never a link.
     exportFile: async (kind, mask) => {
       const r = await fetch(`${base}/private/export.${kind}?mask=${mask ? "true" : "false"}`, { headers: hdr() });
       if (!r.ok) lost(new ApiError(`The server answered ${r.status}.`, r.status));

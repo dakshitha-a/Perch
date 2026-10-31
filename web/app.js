@@ -758,21 +758,11 @@ function renderBrief() {
   renderPanel();
 }
 
-// The Export button: a menu with the three exports and, in a session, the mask option.
+// The Export button: a menu with the three exports and the mask option. Only a session
+// brief has one: replay has nothing to download (review W12).
 function exportMenu() {
-  let pop;
-  if (api.mode === "private") pop = privateBar(api, go);
-  else {
-    const url = api.exportUrl(S.briefId);
-    if (!url) return null;
-    pop = h("div", {},
-      h("a", { class: "btn quiet", href: api.exportUrl(S.briefId, "html"), target: "_blank", rel: "noopener" },
-        icon("paper"), h("span", { text: "Print or save as PDF" })),
-      h("a", { class: "btn quiet", href: api.exportUrl(S.briefId, "md"), download: `perch-brief-${S.briefId}.md` },
-        icon("download"), h("span", { text: "Markdown" })),
-      h("a", { class: "btn quiet", href: url, download: `perch-brief-${S.briefId}.json` },
-        icon("download"), h("span", { text: "Records as JSON" })));
-  }
+  if (api.mode !== "private") return null;
+  const pop = privateBar(api, go);
   const det = h("details", { class: "export-menu" },
     h("summary", { "data-key": "export" }, icon("download"), h("span", { text: "Export" })),
     h("div", { class: "export-pop" }, pop));
@@ -1359,6 +1349,7 @@ function renderRoutes(panel) {
 // is written by code from the records; the card says it is an inference.
 function renderIndustry(panel) {
   const st = stage("route_b");
+  // A replay of a stored brief from before Route B has no such step (review W12 kept this).
   if (!S.brief.brief.stages.some((x) => x.name === "route_b")) {
     if (panel.dataset.sig === "oldB") return;
     panel.dataset.sig = "oldB";

@@ -294,3 +294,14 @@ def test_markdown_export_text_cannot_make_links_or_leave_its_quote():
     assert " [click]" not in md and "\\<img src=x\\>" in md and "![x](" not in md
     assert "> **Model:** SYNTHETIC first line. Unlabelled second line \\[W1\\]." in md
     assert "[Record](" not in md and "[Grants.gov](https://www.grants.gov/x)" in md
+
+
+def test_no_front_end_path_that_nothing_reaches():
+    """Review W12: keptUrl had no caller, and the stored-brief export links answered 404
+    with stored briefs off. The stored routes stay for the bench and the replay export; the
+    "built before industry leads" note stays, because a replay of an older stored brief
+    reaches it."""
+    app = (WEB_DIR / "app.js").read_text()
+    api = (WEB_DIR / "api.js").read_text()
+    assert "keptUrl" not in api and "exportUrl" not in api + app
+    assert 'if (api.mode !== "private") return null;' in app  # the export menu
