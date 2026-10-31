@@ -1045,11 +1045,17 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         await page.click("[data-key=route-B]")
         await page.wait_for_timeout(600)
         hit = await page.evaluate("""() => { const p = document.querySelector('.keep-float'), n = document.querySelector('.infer-note');
-          if (!p || !n) return false; const a = p.getBoundingClientRect(), b = n.getBoundingClientRect();
+          if (!p || !n || getComputedStyle(p).visibility === 'hidden') return false;
+          const a = p.getBoundingClientRect(), b = n.getBoundingClientRect();
           return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top; }""")
         if hit:
             w.errors.append(f"{tag}: U16: the kept pill covers the Industry warning")
         await w.snap(page, tag, "u-industry-pill")
+        await page.evaluate("() => window.scrollBy(0, 900)")  # past the warning the pill comes back
+        await page.wait_for_timeout(400)
+        if await page.evaluate("() => { const p = document.querySelector('.keep-float'); return !p || getComputedStyle(p).visibility === 'hidden'; }"):
+            w.errors.append(f"{tag}: U16: the kept pill stays hidden once the warning has scrolled away")
+        await page.evaluate("() => window.scrollTo(0, 0)")
     await page.click("[data-key=route-A]")
     await page.wait_for_timeout(300)
     # U23: the profile says how its paper counts relate

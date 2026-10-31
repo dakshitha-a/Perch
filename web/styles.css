@@ -1170,3 +1170,6 @@ textarea[aria-invalid="true"], input[aria-invalid="true"] { border-color: var(--
   .compare-sort-row { display: flex; }
   .sort-hint-wide { display: none; }
 }
+/* The kept pill steps aside while a warning is on screen (U16). */
+.keep-float { transition: opacity .15s ease, visibility .15s; }
+body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }

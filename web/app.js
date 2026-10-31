@@ -943,6 +943,26 @@ function renderPanel() {
   } else renderRoutes(panel);
 }
 
+// The floating kept pill steps aside while a warning is on screen, so it never covers the
+// Industry "not verified" note (U16).
+const warningsInView = new Set();
+let warningWatch = null;
+function watchWarning(el) {
+  if (!("IntersectionObserver" in window)) return el;
+  warningWatch = warningWatch || new IntersectionObserver((seen) => {
+    for (const e of seen) { if (e.isIntersecting) warningsInView.add(e.target); else warningsInView.delete(e.target); }
+    syncWarnings();
+  });
+  warningWatch.observe(el);
+  return el;
+}
+function syncWarnings() {
+  for (const el of [...warningsInView]) {
+    if (!document.contains(el)) { warningsInView.delete(el); if (warningWatch) warningWatch.unobserve(el); }
+  }
+  document.body.classList.toggle("warn-in-view", warningsInView.size > 0);
+}
+
 // The right rail on the list tab: the shortlist card above the evidence panel. Under
 // 900 px the rail hides and a floating keep pill takes the shortlist's place.
 const KIND_SHORT = { A: "Grant", B: "Industry", F: "Fellowship", S: "Sample" };
@@ -992,6 +1012,7 @@ function drawRail() {
       if (focusKey) { const b = card.querySelector(`[data-key="${focusKey}"]`); if (b && !b.disabled) b.focus(); }
     }
   }
+  syncWarnings(); // a warning that left with the last panel no longer hides the pill
   const float = $("#keep-float");
   // Not on Compare (its own place) or Ask Scout, where it would cover the question box.
   const show = kept.length > 0 && (S.tab === "routes" || S.tab === "profile");
@@ -1415,9 +1436,9 @@ function renderIndustry(panel) {
     panel.dataset.sig = "industry";
     fill(panel, routeSwitch(),
       h("div", { class: "routes-bar" }, h("div", {}, h("h2", { class: "section-title", id: "routes-title" }),
-        h("p", { class: "notice warn infer-note" }, icon("warn"), h("span", {
+        watchWarning(h("p", { class: "notice warn infer-note" }, icon("warn"), h("span", {
           text: "Inferred from public signals; not verified. A company that cites or works near your "
-            + "research may have no interest in funding it. SBIR/STTR covers NIH awards only." })))),
+            + "research may have no interest in funding it. SBIR/STTR covers NIH awards only." }))))),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
       h("div", { class: "dismissed-box" }));
   }
