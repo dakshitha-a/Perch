@@ -1,40 +1,49 @@
 # HANDOFF.md — state for the next context window
 
-Written at the close of S27 (2026-10-31). Dakshitha asked for S28 to start in the same context, so read S28's task file `docs/sessions/S28.md` for how far it got.
+Written at the close of S28 (2026-10-31). S27 and S28 ran in one context because Dakshitha asked for the Scout rebuild before the reviews.
 
-## Last run: S27, funding coverage and ranking tune, run live
+## Last run: S28, Scout redesign phase 1 (and S27 before it)
 
-- **Coverage:** the dev and demo stores hold 1,497 open or forecast Grants.gov listings from every agency, not only NIH and AHRQ (was 679). The parser reads the agency from `agencyDetails`, and an "Others" applicant type counts when the eligibility text names institutions of higher education.
-- **Ranking:** thread queries carry topic names and 100 leads are reranked. NIH back-test, 48 awards with the date cut-off: hit@5 0.104 to 0.188, hit@10 0.146 to 0.208, MRR 0.067 to 0.149. Keyword-only: 0.021, 0.021, 0.027. Rounds are in `bench/results/RESULTS.md`; harness `bench/tune.py`.
-- **One score:** cards show Match, the ranking score on a 0-100 scale (`bench/calibrate.py`). Sort is Score or Closing date on both researcher and student briefs.
-- **Test PIs:** PI-1, PI-130 and PI-132, with second checks PI-7, PI-131 and PI-133. None of them shaped the tuning; only the NIH back-test did.
-- **UI fixes from Dakshitha's review (tasks 8 to 20):**
-  - **Evidence:** the card floats over the page as a drawer and crossfades between records. It closes on a click outside it.
-  - **Scout:** Scout fills the window as a single-column chat with the question box on the bottom edge, from the first view on. Its welcome message lists its tools, example questions and its limits. No approval card shows. The chat has no scroll bar.
-  - **Page scroll bar:** it shows only near the pointer.
-  - **Student cards:** they say why an option may fit. "What this is based on" starts open.
-  - **Researcher cards:** "Why it fits" starts open when a CV or current research is given.
-  - **Timeouts:** an expired session goes back to the start and says why.
-- **Plan:** new S29 to S32, a workflow review and a fresh UI/UX review, each diagnosed then fixed. Freeze and package is now S33.
+- **No gate:** Scout runs each step as soon as the model asks for it. The ask mode, `approve`, `skip` and the mode switch are gone from the loop, the hub, both APIs, the CLI, the bench and the web app. Those three actions now return 422.
+- **Stop:** `POST /scout/{sid}/stop`, or `/private/scout/{sid}/stop`, flags the running question. A step already running finishes. The rest are marked Not run and reported to the model, so the next question's history stays whole. An answer the model is already writing stands (DECISIONS, 2026-10-31).
+- **Fixed to the brief:** Scout's own table is `SESSION_TOOLS` in `perch/scout/tools.py`. It has eight tools, none with `author_id`, and no `resolve_author`. The MCP server keeps `TOOLS` unchanged.
+- **Cloud steps counted:** each session has its own counted providers for `explain_fit` and `draft_handoff` (`CountedProvider` in `perch/llm/audit.py`). Their tokens and dollars count toward the session caps. The grounding check inside `explain_fit` is a separate local decision model and is not counted.
+- **What the person sees:**
+  - **Read-as block:** "How Scout read your question" sits above the answer and lists each finished step with its filters.
+  - **Steps fold:** the step cards fold under the answer. Each card says where it ran: Code, no model; Local model; or Cloud: Anthropic.
+  - **Progress line:** it names the running step, with Stop beside it.
+  - **Hand-off draft:** it shows open under the answer.
+- **Words:** Help, SPEC §8 with its Stack line, and SCOUT_SPEC, where the phase 1 items are marked Built. Canvas version 33 has the new Scout tabs; it was checked with a script, not rendered.
+- **S27 in short:**
+  - **Coverage:** 1,497 listings from every agency.
+  - **Back-test:** hit@5 went from 0.104 to 0.188 and MRR from 0.067 to 0.149. The keyword-only baseline is 0.021 and 0.027.
+  - **Match score:** shown on a 0-100 scale.
+  - **UI fixes:** 13 rounds from Dakshitha's review.
+  - **Plan:** S29 to S32 reviews added.
 
 ## Checks at close
 
-- `make test`: 262 passed.
-- **Walk:** the last full run had 141 states, 0 errors, 0 axe violations and 0 sideways scroll. The later checks, student and private groups, gave 65 states with 0 errors on the public URL.
-- **Walk checks added in S27:** panel shift, Evidence blanking, approval UI, box position on first open and after questions, side box, outside click, scroll bars, reasons open. Each failed on the build before its fix.
-- **Demo:** rebuilt and live on the public URL.
+- `make test`: 265 passed.
+- **Full walk on the dev server:** 145 states, 0 errors, 0 axe violations, 0 sideways scroll.
+- **Live walk on the public URL:** the checks and student groups gave 64 states, 0 errors.
+- **New S28 walk checks:** they cover the read-as block, folded steps, where-tags, no researcher chip, Stop, and a student Scout question with plain filter labels. Each failed on the build before its fix.
+- **Scout bench, today's store:** `bench/results/scout_s28/`.
+  - **Sonnet:** 28 of 28, 0 wrong calls in 27, $0.46.
+  - **Gemma:** 23 of 28. The pre-S28 code on the same store got 21 of 28 the same day.
+  - **S10 baseline:** 25 of 28, on the older NIH-only store.
+- **Anthropic spend:** about $2.56 of $100.
 
-## Next: S28, Scout redesign phase 1
+## Next: S29, workflow review, diagnose
 
-Already done in S27, on the web side: no mode switch, no Approve or Skip buttons, no waiting card. The rest is in PLAN.md S28: the server's ask mode and APIs, Stop, Scout fixed to the brief, Cloud steps counted and labelled, the "how Scout read it" block, the words, and the retest with the Scout bench.
+See PLAN.md S29. Measure the main paths first, then a fresh-context subagent reviews them, and every finding is verified before it goes into `docs/design/WORKFLOW_REVIEW.md`. Nothing is changed in S29. Dakshitha marks each item fix, defer or drop.
 
 ## Known gaps
 
-- **Flaky test:** `tests/test_scout.py::test_route_b_answer_counts_and_dates_pass_the_validator` failed once in a full run and passed five times after. Not investigated.
+- **Gemma counts results:** on bench task t13 it answers "I found 10 R01 grants". The validator rejects the count, so the answer is withheld. It does this on every run since S28 and passed before; Sonnet does not.
+- **Flaky test:** `tests/test_scout.py::test_route_b_answer_counts_and_dates_pass_the_validator` failed once in S27. Not investigated.
 - **Scout search quality:** an R21 question for PI-4, who works on molecular dynamics, returned cancer R21 grants.
-- **Canvas:** the Scout tab on the redesign canvas still shows the old chat layout with a side box.
-- **Media:** the README clips and screenshots predate the S27 UI changes (Q41).
-- **Student Scout is wordy with tools:** on Gemma it checked options one by one before using `compare_options`.
+- **Canvas:** the Scout tabs keep the draft-check panel, which is not built (Q34).
+- **Media:** the README clips and screenshots predate the S27 and S28 UI changes (Q41).
 - **Student retrieval:** 2 of 12 planted positives never reached a brief.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)

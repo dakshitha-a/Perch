@@ -135,14 +135,14 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S28</code> <span class="badge s-in-progress">in progress</span><span>28/34 sessions done</span></div>
+<div class="at-a-glance"><code>S29</code> <span class="badge s-todo">todo</span><span>29/34 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
 <a id="tab-ux" href="#ux">UX</a>
 <a id="tab-current" href="#current">Current</a>
 <a id="tab-master" href="#master">Master</a>
-<a id="tab-archive" href="#archive">Archive<span class="count">28</span></a>
+<a id="tab-archive" href="#archive">Archive<span class="count">29</span></a>
 <a id="tab-persona" href="#persona">Persona</a>
 <a id="tab-decisions" href="#decisions">Decisions</a>
 </nav></div></header>
@@ -669,28 +669,14 @@ details .inner > * { min-width: 0; }
 <ul><li><strong>Recommendation: B.</strong> The audit found defects and a vocabulary problem, not a broken structure. The structure that works (one app, a private state, shared evidence and badges) is exactly what C would throw away. B fixes what a student stalls on and what a PI misreads, and every step can stop at a clean commit.</li></ul>
 </section>
 <section id="view-current" class="view" data-view="current" hidden>
-<div id="s28"><div class="eyebrow">Current session</div>
-<div class="title-row"><h1>S28 · Scout redesign, phase 1</h1><span class="badge s-in-progress">in progress</span></div>
-<div class="meta">Started 2026-10-31 11:50 EDT</div></div>
-<p>Goal: build phase 1 of the Scout spec (<code>docs/design/SCOUT_SPEC.md</code>, section 12), as the mock-up on the redesign canvas shows it. Dakshitha asked for it to start in the same context as S27's close (2026-10-31), before the reviews.</p>
-<section class="panel summary" aria-label="0 of 7 tasks done"><div class="counts"><span><b>0/7</b>tasks done</span><span class="s-todo"><b>7</b>todo</span></div><div class="bar" role="img" aria-label="0 of 7 tasks done"><span class="s-todo" style="width:100.00%" title="todo: 7"></span></div></section>
-<div class="panel scroll"><table>
-<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
-<tbody>
-<tr><td>1</td><td>Remove the per-step gate on the server: the ask mode, <code>approve</code> and <code>skip</code> in the loop and hub, and the two APIs. The web side went in S27.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>2</td><td>Stop: a button ends the current question between steps; done steps stay, the rest show as not run.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>3</td><td>Fix Scout to the brief: no <code>author_id</code> in the web app's researcher tool schemas, no <code>resolve_author</code> in its table. MCP keeps both.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>4</td><td>Count Cloud steps: the session budget adds <code>explain_fit</code> and <code>draft_handoff</code> spend; their cards say Local model or Cloud, the others "Code, no model".</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>5</td><td>How Scout read the question: one block above the answer lists each finished step with its filters as chips; the step cards fold under it.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>6</td><td>Words and docs: Help, the Scout hint, SPEC §8, and the canvas Scout tabs.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-<tr><td>7</td><td>Retest: <code>make test</code>, the UX walk on the Scout tab, and a Scout bench run on the changed loop.</td><td><span class="badge s-todo">todo</span></td><td class="mono"></td><td></td></tr>
-</tbody></table></div>
-<h2>Definition of done</h2>
-<p>Scout runs with no gate on both briefs, Stop works, the read-as block and step labels match the mock-up, tests and the walk pass, and the bench shows no drop against S10's numbers.</p>
+<div id="s29"><div class="eyebrow">Current session</div>
+<div class="title-row"><h1>S29 · Workflow review, diagnose</h1><span class="badge s-todo">todo</span></div>
+<div class="meta">Not started</div></div>
+<div class="panel empty">No task file yet. Perch-dev writes <code>docs/sessions/S29.md</code> when the session starts.</div>
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="28 of 34 sessions done"><div class="counts"><span><b>28/34</b>sessions done</span><span class="s-done"><b>28</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>5</b>todo</span></div><div class="bar" role="img" aria-label="28 of 34 sessions done"><span class="s-done" style="width:82.35%" title="done: 28"></span><span class="s-in-progress" style="width:2.94%" title="in progress: 1"></span><span class="s-todo" style="width:14.71%" title="todo: 5"></span></div></section>
+<section class="panel summary" aria-label="29 of 34 sessions done"><div class="counts"><span><b>29/34</b>sessions done</span><span class="s-done"><b>29</b>done</span><span class="s-todo"><b>5</b>todo</span></div><div class="bar" role="img" aria-label="29 of 34 sessions done"><span class="s-done" style="width:85.29%" title="done: 29"></span><span class="s-todo" style="width:14.71%" title="todo: 5"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -722,8 +708,8 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s25">S25</a></td><td>UI/UX review and full QA test</td><td><span class="badge s-done">done</span></td><td>2026-10-30 04:23 EDT</td><td>2026-10-30 05:23 EDT</td><td class="mono">see git log</td><td>Independent review: 4 must-fix (all fixed), 10 should-fix (9 fixed), 9 could-fix. QA plan: 36 of 36 rows pass after fixes; 4 bugs found by running them and fixed. Walks after fixes: 0 axe violations, 0 sideways scroll, 0 failed steps. Canary ok (45 s, 15 of 15 explained, 0 user rows); student leakage none. Accessibility checklist 12 of 13 (zoom not rerun). 250 tests green.</td></tr>
 <tr class="is-finished"><td><a href="#s26">S26</a></td><td>Media refilm</td><td><span class="badge s-done">done</span></td><td>2026-10-30 05:25 EDT</td><td>2026-10-30 05:38 EDT</td><td class="mono">see git log</td><td>Six README clips refilmed on the redesign, with a new student clip; screenshots retaken; the tracker UI tab plays a SYNTHETIC student brief too; README wording matched. Awaiting Dakshitha's README review. 250 tests green.</td></tr>
 <tr class="is-finished"><td><a href="#s27">S27</a></td><td>Funding coverage and ranking tune</td><td><span class="badge s-done">done</span></td><td>2026-10-30 12:10 EDT</td><td>2026-10-31 11:50 EDT</td><td class="mono">see git log</td><td>1,497 open listings from every agency (was 679, NIH and AHRQ only). NIH back-test hit@5 0.104 to 0.188, hit@10 0.146 to 0.208, MRR 0.067 to 0.149; keyword-only 0.021, 0.021, 0.027. Match score on a 0-100 scale. 13 rounds of UI fixes from Dakshitha's review, each with a walk check that failed first: Evidence drawer, Scout as a full-window chat, no approval card, reasons open. Walk 141 states, 0 errors, 0 axe violations. Plan: S29 to S32 reviews added, freeze is S33. 262 tests green.</td></tr>
-<tr class="is-current"><td><a href="#s28">S28</a></td><td>Scout redesign, phase 1</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-31 11:50 EDT</td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S29</td><td>Workflow review, diagnose</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr class="is-finished"><td><a href="#s28">S28</a></td><td>Scout redesign, phase 1</td><td><span class="badge s-done">done</span></td><td>2026-10-31 11:50 EDT</td><td>2026-10-31 14:10 EDT</td><td class="mono">see git log</td><td>Phase 1 of the Scout spec, live: no ask mode anywhere (approve, skip and mode now 422), a Stop button that ends a question between steps, Scout fixed to its researcher (no author_id, no author search; MCP keeps both), fit and hand-off spend counted in the session budget, "How Scout read your question" above the answer with the steps folded under it and a where-tag on each. Bench on today's store: Sonnet 28/28, 0 wrong calls, $0.46; Gemma 23/28 (pre-S28 code 21/28, same day). Full walk 145 states, 0 errors, 0 axe violations; live 64 states, 0 errors. Canvas version 33. 265 tests green.</td></tr>
+<tr class="is-current"><td>S29</td><td>Workflow review, diagnose</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S30</td><td>Workflow review, fix</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S31</td><td>Fresh UI/UX review, diagnose</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S32</td><td>Fresh UI/UX review, fix</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
@@ -761,7 +747,22 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-archive" class="view" data-view="archive" hidden>
 <div><div class="eyebrow">Finished sessions</div><h1>Archive</h1></div>
-<div><details id="s27"><summary><span><span class="sid">S27</span> <span class="stitle">Funding coverage and ranking tune</span></span><span></span><span class="badge s-done">done</span><span class="smeta">19/19 tasks done · finished 2026-10-31 11:50 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: every route a researcher's work can be funded by shows up, not only NIH, and the order is tuned against real Temple PIs' public funding history. Run live: Dakshitha diagnoses with Perch-dev and closes the session (2026-10-30). Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
+<div><details id="s28"><summary><span><span class="sid">S28</span> <span class="stitle">Scout redesign, phase 1</span></span><span></span><span class="badge s-done">done</span><span class="smeta">7/7 tasks done · finished 2026-10-31 14:10 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: build phase 1 of the Scout spec (<code>docs/design/SCOUT_SPEC.md</code>, section 12), as the mock-up on the redesign canvas shows it. Dakshitha asked for it to start in the same context as S27's close (2026-10-31), before the reviews.</p>
+<section class="panel summary" aria-label="7 of 7 tasks done"><div class="counts"><span><b>7/7</b>tasks done</span><span class="s-done"><b>7</b>done</span></div><div class="bar" role="img" aria-label="7 of 7 tasks done"><span class="s-done" style="width:100.00%" title="done: 7"></span></div></section>
+<div class="panel scroll"><table>
+<thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>Remove the per-step gate on the server: the ask mode, <code>approve</code> and <code>skip</code> in the loop and hub, and the two APIs. The web side went in S27.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>mode</code> is gone from the loop, hub, both APIs, <code>make_scout</code>, the CLI, the bench and the replay client. <code>approve</code>, <code>skip</code> and <code>mode</code> actions now return 422 (test).</td></tr>
+<tr><td>2</td><td>Stop: a button ends the current question between steps; done steps stay, the rest show as not run.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>POST .../stop</code> flags the running question; a step under way finishes, the rest are marked Not run and reported to the model. An answer already being written stands (DECISIONS). Tests: stop mid-step then a follow-up works; answer after Stop stands. Browser check on the dev server: Stop pressed, both cards Not run, then a follow-up answered.</td></tr>
+<tr><td>3</td><td>Fix Scout to the brief: no <code>author_id</code> in the web app's researcher tool schemas, no <code>resolve_author</code> in its table. MCP keeps both.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td><code>SESSION_TOOLS</code> in <code>perch/scout/tools.py</code> is Scout's table for the web app, the CLI and the bench: eight tools, none with <code>author_id</code>. MCP serves <code>TOOLS</code> unchanged. The session line no longer calls a researcher session a student when a table is passed (<code>who</code>). Test: an <code>author_id</code> argument or <code>resolve_author</code> call is refused.</td></tr>
+<tr><td>4</td><td>Count Cloud steps: the session budget adds <code>explain_fit</code> and <code>draft_handoff</code> spend; their cards say Local model or Cloud, the others "Code, no model".</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Each Scout session gets its own counted providers for the two tools (<code>CountedProvider</code> in <code>perch/llm/audit.py</code>), so other sessions' calls are not mixed in. Their tokens and dollars go into the 120,000-token and $0.25 session caps. Not counted: the grounding check inside <code>explain_fit</code>, which is a separate local decision model, not a chat model. Card tag from the provider: Local model, Cloud: Anthropic, or Code, no model. Test for both Local and Cloud.</td></tr>
+<tr><td>5</td><td>How Scout read the question: one block above the answer lists each finished step with its filters as chips; the step cards fold under it.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>The progress line names the step that is running, with Stop beside it. A hand-off draft shows open under the answer, outside the fold. A fold the reader opens stays open across poll redraws. New walk checks (read-as block, folded steps, where-tags, no researcher chip, Stop): 8 errors on the live build, 0 on the fix, laptop and phone.</td></tr>
+<tr><td>6</td><td>Words and docs: Help, the Scout hint, SPEC §8, and the canvas Scout tabs.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>Help's Scout text and picture; SPEC §8, including the Stack line on the borrowed approve-every-action pattern; SCOUT_SPEC phase 1 items marked Built; the plan's never-cut list. Canvas version 33: the ResearcherBrief and StudentBrief Scout tabs are one column with the welcome as Scout's first message, the read-as block, Stop and folded steps; no mode switch or side box. The canvas was checked by running its scripts with a stub, not by rendering it. Its draft-check panel stays, as on the canvas before (Q34).</td></tr>
+<tr><td>7</td><td>Retest: <code>make test</code>, the UX walk on the Scout tab, and a Scout bench run on the changed loop.</td><td><span class="badge s-done">done</span></td><td class="mono">see git log</td><td>265 tests green. Full walk on the dev server: 145 states, 0 errors, 0 axe violations, 0 sideways scroll. A student Scout question added to the walk; it found the student filters shown as raw keys ("deadline_after"), now labelled. Scout bench on today's store (<code>bench/results/scout_s28/</code>): Sonnet 28 of 28, 0 wrong calls in 27, $0.46. Gemma 23 of 28; the pre-S28 code on the same store, run the same day, got 21 of 28, so no drop. S10's 25 of 28 was on the older, NIH-only store. Gemma now fails t13 on every run: it counts the results ("I found 10 R01 grants"), which the validator rejects.</td></tr>
+</tbody></table></div>
+<h2>Definition of done</h2>
+<p>Scout runs with no gate on both briefs, Stop works, the read-as block and step labels match the mock-up, tests and the walk pass, and the bench shows no drop against S10's numbers.</p></div></details>
+<details id="s27"><summary><span><span class="sid">S27</span> <span class="stitle">Funding coverage and ranking tune</span></span><span></span><span class="badge s-done">done</span><span class="smeta">19/19 tasks done · finished 2026-10-31 11:50 EDT · commit <code>see git log</code></span></summary><div class="inner"><p>Goal: every route a researcher's work can be funded by shows up, not only NIH, and the order is tuned against real Temple PIs' public funding history. Run live: Dakshitha diagnoses with Perch-dev and closes the session (2026-10-30). Perch-dev updates this file as each task lands; <code>make tracker</code> renders it.</p>
 <section class="panel summary" aria-label="19 of 19 tasks done"><div class="counts"><span><b>19/19</b>tasks done</span><span class="s-done"><b>19</b>done</span></div><div class="bar" role="img" aria-label="19 of 19 tasks done"><span class="s-done" style="width:100.00%" title="done: 19"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Task</th><th>What</th><th>Status</th><th>Commit</th><th>Notes</th></tr></thead>
@@ -1285,10 +1286,11 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (164)</h2>
+<h2>Decisions (165)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-31</td><td>S28</td><td>Stop ends a Scout question between steps. A model call already under way is not cut off; if it brings the final answer, the answer stands and is shown. Steps the model asked for but that had not run are marked "Not run" and reported to the model, so the next question's history stays whole.</td><td>A model call cannot be interrupted mid-way, and throwing away a finished, validated answer wastes it.</td><td>Perch-dev, under Dakshitha's S28 direction</td></tr>
 <tr><td>2026-10-30</td><td>S27</td><td>Starting a student brief clears the researcher's search and pick, and building a researcher brief clears the student form; redirects from empty screens replace the history entry</td><td>Dakshitha: a back button led from the student side to the researcher screen. In-app back links were right; the browser's Back reached a stale researcher pick screen</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>S27</td><td>Student mode: 100 records reach the ranking model (was 40); options sort by Score (Match) or Closing date on the Fellowships and Scholarships row; shorter visible route names keep that row on one line</td><td>SYNTHETIC student bench: 23 of 24 planted records retrieved against 19, precision and recall unchanged; Dakshitha asked to cascade the researcher changes</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>S27</td><td>One score and one order: Match, the ranking model's score on a 0-100 scale (log-odds -6 to 0, +6 to 100; perch/score.py), computed by code, shown on grant and student cards, and the order. The chat model's fit number is no longer shown; its explanation stays. Sort is Perch's order or Closing soon. Supersedes the fit-order decision above; Q40 answered</td><td>Dakshitha: one holistic score, labelled as a text match. Keeps rule 5 and brief speed; the back-test order is unchanged (10 of 48); calibration on 126 back-test rows put every funded announcement in the top 10 at 80 or more</td><td>Dakshitha</td></tr>
@@ -1454,10 +1456,11 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (37)</h2>
+<h2>Plan change log (38)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-31</td><td>cut order</td><td>"Scout's approve mode (S10)" in the never-cut list becomes "Scout with its allowlist and budgets (S10)"</td><td>S28 removed the approve mode by Dakshitha's direction (SCOUT_SPEC section 4)</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-31</td><td>S28</td><td>Task 1 note updated: the web side of the gate was removed in S27 (switch, Approve and Skip, waiting card); the server side remains. Tasks 2 to 7 are not built, so S28 stays</td><td>Dakshitha asked whether the Scout redesign was already done</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-31</td><td>S29 to S33</td><td>New S29 and S30, a workflow review to remove what is redundant in the UI and workflow, diagnosed then fixed; new S31 and S32, a fresh-context UI/UX review, diagnosed then fixed. Freeze and package becomes S33. S30 and S32 narrow first in the cut order. Older notes that say "S29 task 2" for freeing the dev GPUs mean S33 task 2</td><td>Dakshitha asked for both reviews, each run in two parts, diagnose then fix</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>S27, S28</td><td>The Scout mode switch removed from the web app in S27; Scout runs every step by default. The rest of S28 task 1 (the server's ask mode, Approve and Skip code, both APIs) stays in S28</td><td>Dakshitha: the switch should already be gone, and run should be the default</td><td>Dakshitha</td></tr>
