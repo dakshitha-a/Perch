@@ -231,7 +231,11 @@ function answer(x, ctx, thinking) {
     h("span", { text: T.stopping ? "Stopping after this step…" : now ? `${TOOLS[now.tool] || now.tool}…` : "Scout is working…" }),
     h("button", { class: "btn quiet scout-stop", type: "button", disabled: T.stopping, onclick: () => stop(ctx) }, icon("stop"), h("span", { text: "Stop" })));
   if (x.status === "stopped" && x.by_user) return h("p", { class: "hint scout-stopped", text: "You stopped this question. The steps below show what ran; ask again to go on." });
-  if (x.answer) return h("div", { class: "scout-answer" }, ...withCites(x.answer, ctx));
+  // Model prose says so in words, not by its tint alone (U7).
+  if (x.answer) return h("div", { class: "scout-answer" },
+    h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
+      h("span", { text: "Written by a model; checked against the records it cites." })),
+    ...withCites(x.answer, ctx));
   if (x.flagged) return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "Scout’s answer was withheld: it did not pass the citation check twice. The steps below show what it found." }));
   if (x.status === "stopped" || x.status === "failed") return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: `Scout stopped: ${(x.errors || []).join("; ") || "no answer"}.` }));
   return null;
