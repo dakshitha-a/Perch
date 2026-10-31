@@ -135,7 +135,7 @@ details .inner > * { min-width: 0; }
 <body>
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
-<div class="at-a-glance"><code>S27</code> <span class="badge s-in-progress">in progress</span><span>27/30 sessions done</span></div>
+<div class="at-a-glance"><code>S27</code> <span class="badge s-in-progress">in progress</span><span>27/34 sessions done</span></div>
 <nav aria-label="Tracker views">
 <a id="tab-architecture" href="#architecture" aria-current="page">Architecture</a>
 <a id="tab-bench" href="#bench">Bench</a>
@@ -706,7 +706,7 @@ details .inner > * { min-width: 0; }
 </section>
 <section id="view-master" class="view" data-view="master" hidden>
 <div><div class="eyebrow">All sessions</div><h1>Master tracker</h1></div>
-<section class="panel summary" aria-label="27 of 30 sessions done"><div class="counts"><span><b>27/30</b>sessions done</span><span class="s-done"><b>27</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>2</b>todo</span></div><div class="bar" role="img" aria-label="27 of 30 sessions done"><span class="s-done" style="width:90.00%" title="done: 27"></span><span class="s-in-progress" style="width:3.33%" title="in progress: 1"></span><span class="s-todo" style="width:6.67%" title="todo: 2"></span></div></section>
+<section class="panel summary" aria-label="27 of 34 sessions done"><div class="counts"><span><b>27/34</b>sessions done</span><span class="s-done"><b>27</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span class="s-todo"><b>6</b>todo</span></div><div class="bar" role="img" aria-label="27 of 34 sessions done"><span class="s-done" style="width:79.41%" title="done: 27"></span><span class="s-in-progress" style="width:2.94%" title="in progress: 1"></span><span class="s-todo" style="width:17.65%" title="todo: 6"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Session</th><th>Goal</th><th>Status</th><th>Started</th><th>Finished</th><th>Commit</th><th>Notes (numbers, decisions, blockers)</th></tr></thead>
 <tbody>
@@ -739,14 +739,18 @@ details .inner > * { min-width: 0; }
 <tr class="is-finished"><td><a href="#s26">S26</a></td><td>Media refilm</td><td><span class="badge s-done">done</span></td><td>2026-10-30 05:25 EDT</td><td>2026-10-30 05:38 EDT</td><td class="mono">see git log</td><td>Six README clips refilmed on the redesign, with a new student clip; screenshots retaken; the tracker UI tab plays a SYNTHETIC student brief too; README wording matched. Awaiting Dakshitha's README review. 250 tests green.</td></tr>
 <tr class="is-current"><td><a href="#s27">S27</a></td><td>Funding coverage and ranking tune</td><td><span class="badge s-in-progress">in progress</span></td><td>2026-10-30 12:10 EDT</td><td></td><td class="mono"></td><td></td></tr>
 <tr><td>S28</td><td>Scout redesign, phase 1</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
-<tr><td>S29</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S29</td><td>Workflow review, diagnose</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S30</td><td>Workflow review, fix</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S31</td><td>Fresh UI/UX review, diagnose</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S32</td><td>Fresh UI/UX review, fix</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
+<tr><td>S33</td><td>Freeze and package</td><td><span class="badge s-todo">todo</span></td><td></td><td></td><td class="mono"></td><td></td></tr>
 </tbody></table></div>
 <h2>Milestone readiness</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Milestone</th><th>Date</th><th>Needs</th><th>Ready?</th></tr></thead>
 <tbody>
 <tr><td>Checkup 2</td><td>Tue 3 Nov</td><td>S0–S7</td><td></td></tr>
-<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S29 (after S17–S28, or their cut-order floors)</td><td></td></tr>
+<tr><td>Code freeze</td><td>Thu 5 Nov 12:00</td><td>S33 (after S17–S32, or their cut-order floors)</td><td></td></tr>
 <tr><td>Submission</td><td>Fri 6 Nov 12:00</td><td>ZIP + links</td><td></td></tr>
 </tbody></table></div>
 <h2>Key numbers (keep current)</h2>
@@ -1435,10 +1439,12 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 <tr><td>2026-10-28</td><td>S0</td><td>Repo kept public-ready: no personal details beyond Dakshitha's name and Temple affiliation; git hooks and a test block secrets, local paths, emails and session links; machine notes in gitignored <code>CLAUDE.local.md</code></td><td>Repo goes public after dev; history will not be rewritten later</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-28</td><td>S0</td><td>Flat package layout, <code>perch/</code> at the repo root</td><td>Matches the paths in SPEC and PLAN</td><td>Perch-dev</td></tr>
 </tbody></table></div>
-<h2>Plan change log (35)</h2>
+<h2>Plan change log (37)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Change</th><th>Reason</th><th>Asked by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-31</td><td>S28</td><td>Task 1 note updated: the web side of the gate was removed in S27 (switch, Approve and Skip, waiting card); the server side remains. Tasks 2 to 7 are not built, so S28 stays</td><td>Dakshitha asked whether the Scout redesign was already done</td><td>Dakshitha</td></tr>
+<tr><td>2026-10-31</td><td>S29 to S33</td><td>New S29 and S30, a workflow review to remove what is redundant in the UI and workflow, diagnosed then fixed; new S31 and S32, a fresh-context UI/UX review, diagnosed then fixed. Freeze and package becomes S33. S30 and S32 narrow first in the cut order. Older notes that say "S29 task 2" for freeing the dev GPUs mean S33 task 2</td><td>Dakshitha asked for both reviews, each run in two parts, diagnose then fix</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>S27, S28</td><td>The Scout mode switch removed from the web app in S27; Scout runs every step by default. The rest of S28 task 1 (the server's ask mode, Approve and Skip code, both APIs) stays in S28</td><td>Dakshitha: the switch should already be gone, and run should be the default</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>S27 to S29</td><td>New S27, funding coverage and ranking tune, run live; Scout redesign moves to S28, freeze and package to S29</td><td>Dakshitha found NSF missing in a test and asked for this session to be the current phase</td><td>Dakshitha</td></tr>
 <tr><td>2026-10-30</td><td>S27, S28</td><td>New S27 "Scout redesign, phase 1" from <code>docs/design/SCOUT_SPEC.md</code>; phase 2 waits until after Demo Day. Freeze and package becomes S28. Older notes that say "S27 task 2" for freeing the dev GPUs mean S28 task 2</td><td>Dakshitha approved the Scout spec and mock-up and asked for the redesign in phases, the first in the next session</td><td>Dakshitha</td></tr>

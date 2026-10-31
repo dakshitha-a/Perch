@@ -33,14 +33,18 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S26 | Media refilm | done | 2026-10-30 05:25 EDT | 2026-10-30 05:38 EDT | see git log | Six README clips refilmed on the redesign, with a new student clip; screenshots retaken; the tracker UI tab plays a SYNTHETIC student brief too; README wording matched. Awaiting Dakshitha's README review. 250 tests green. |
 | S27 | Funding coverage and ranking tune | in progress | 2026-10-30 12:10 EDT | | | |
 | S28 | Scout redesign, phase 1 | todo | | | | |
-| S29 | Freeze and package | todo | | | | |
+| S29 | Workflow review, diagnose | todo | | | | |
+| S30 | Workflow review, fix | todo | | | | |
+| S31 | Fresh UI/UX review, diagnose | todo | | | | |
+| S32 | Fresh UI/UX review, fix | todo | | | | |
+| S33 | Freeze and package | todo | | | | |
 
 ## Milestone readiness
 
 | Milestone | Date | Needs | Ready? |
 |---|---|---|---|
 | Checkup 2 | Tue 3 Nov | S0–S7 | |
-| Code freeze | Thu 5 Nov 12:00 | S29 (after S17–S28, or their cut-order floors) | |
+| Code freeze | Thu 5 Nov 12:00 | S33 (after S17–S32, or their cut-order floors) | |
 | Submission | Fri 6 Nov 12:00 | ZIP + links | |
 
 ## Key numbers (keep current)

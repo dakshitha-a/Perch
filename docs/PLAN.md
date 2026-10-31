@@ -13,7 +13,7 @@ This plan is organised by **session**, not by day. A session is a goal set sized
 | Thu 5 Nov 12:00 | Code freeze | everything kept in the cut order |
 | Fri 6 Nov 12:00 | Submission ZIP + links; 3:00 pm demo | S27 |
 
-**Cut order if time runs short:** S22 rebuild narrows to the S21 must-fix list → S16 monitoring (done) → student mode narrows to its floor (S17 corpus and personas, S18 eligibility by rule and the two tabs, S19 scoring; drops the Scout tool and the hand-off) → private mode (S13) narrows to its floor (paste-only input, private threads, session records, self-hosted-endpoint gate, session isolation, no-logs paths, canary test; drops upload parsing, CV eligibility unlock, obfuscated export, MCP private tools) → the Ollama demo moment inside S14 (keep the MCP server) → Route B (S11) narrows to one signal. Never cut: the pipeline (S1–S4), the validator (S5), the web demo (S6–S7), the back-test (S8), Scout's approve mode (S10).
+**Cut order if time runs short:** S30 and S32 narrow to the items marked must-fix → S22 rebuild narrows to the S21 must-fix list → S16 monitoring (done) → student mode narrows to its floor (S17 corpus and personas, S18 eligibility by rule and the two tabs, S19 scoring; drops the Scout tool and the hand-off) → private mode (S13) narrows to its floor (paste-only input, private threads, session records, self-hosted-endpoint gate, session isolation, no-logs paths, canary test; drops upload parsing, CV eligibility unlock, obfuscated export, MCP private tools) → the Ollama demo moment inside S14 (keep the MCP server) → Route B (S11) narrows to one signal. Never cut: the pipeline (S1–S4), the validator (S5), the web demo (S6–S7), the back-test (S8), Scout's approve mode (S10).
 
 **Context budget guidance:** a session should finish with room to spare. If the context is past roughly two-thirds and the definition of done is not close, stop at a clean commit, write `docs/HANDOFF.md`, and mark the session "continued" in the tracker rather than pushing through.
 
@@ -367,13 +367,13 @@ Done when: Dakshitha closes the session.
 
 Goal: build phase 1 of the Scout spec (`docs/design/SCOUT_SPEC.md`, section 12), as the working mock-up on the redesign canvas shows it (`docs/design/redesign/ScoutProposed.dc.html`). Phase 2 waits until after Demo Day.
 
-1. Remove the per-step gate: drop the ask mode, the Approve and Skip buttons and the mode switch, in the loop, the hub, both Scout APIs and `web/scout.js`. Steps run as soon as the model asks for them. *(The web switch was removed in S27 and Scout runs every step by default; the server's ask mode, the Approve and Skip code and the APIs remain for this task.)*
+1. Remove the per-step gate: drop the ask mode, the Approve and Skip buttons and the mode switch, in the loop, the hub, both Scout APIs and `web/scout.js`. Steps run as soon as the model asks for them. *(Done in S27 on the web side: the mode switch, the Approve and Skip buttons and the waiting card are gone, and Scout runs every step. Left for this task: the server's ask mode, `approve` and `skip` in the loop and hub, and the two APIs.)*
 2. Add Stop: a button ends the current question between steps; the steps already done stay on screen, the rest show as not run.
 3. Fix Scout to the brief: drop `author_id` from the web app's researcher tool schemas and drop `resolve_author` from its tool table. The MCP server keeps both.
 4. Count Cloud steps: the session budget adds the tokens and dollars of `explain_fit` and `draft_handoff`. Label those two steps' cards Local model or Cloud, and the code-only steps "Code, no model".
 5. Show how Scout read the question: one block above the answer lists each finished step with its filters as chips; the step cards collapse under the answer.
 6. Words and docs: Help, the Scout hint line, SPEC §8 (replaced by the spec, including its Stack line on the borrowed approval pattern), and the ResearcherBrief and StudentBrief Scout tabs on the canvas.
-7. Retest: `make test`, the UX walk on the Scout tab, and a Scout bench run on the changed loop (the final bench run stays in S29).
+7. Retest: `make test`, the UX walk on the Scout tab, and a Scout bench run on the changed loop (the final bench run stays in S33).
 
 Done when: Scout runs with no gate on both briefs, Stop works, the read-as block and step labels match the mock-up, tests and the walk pass, and the bench shows no drop against S10's numbers.
 
@@ -381,7 +381,52 @@ Done when: Scout runs with no gate on both briefs, Stop works, the read-as block
 
 ---
 
-## S29 — Freeze and package
+## S29 — Workflow review, diagnose
+
+Goal: find what is redundant in the UI and in the user's workflow, so S30 can remove it (Dakshitha, 2026-10-31). Nothing is changed in this session. Run as a live phase with Dakshitha, like S27.
+
+1. **Measure the paths first.** For each task, write the steps as they are now, with the number of screens, clicks, waits and scrolls, measured by a script in `scripts/ux_walk.py` style: a PI finds their brief, reads why the top lead fits, opens its record, keeps two leads, compares them and copies a hand-off. A student does the same with fellowships and sample scholarships. persona-1 does it in private mode with a document. Add asking Scout one question and exporting. These numbers are the baseline S30 is measured against.
+2. **Workflow optimizer review.** A subagent with fresh context gets the public URL, the three audiences, the measured paths and `web/`, but not the earlier audits or this session's guesses. It looks for: the same information shown in two places, controls that do the same thing, steps that can be merged or skipped, labels and hints that repeat each other, screens or panels few users need, and server work or API endpoints the UI never uses.
+3. **Verify every finding.** The main session reproduces each one on the public URL or in the code. A finding that does not reproduce is dropped; one that cannot be decided is marked UNVERIFIED.
+4. **Report.** `docs/design/WORKFLOW_REVIEW.md` lists the verified findings, ranked. Each one gives the evidence (a screenshot, a click count or a file and line), the proposed removal or merge, the steps or clicks it saves, which standing rule it touches if any, and a cost in hours. Provenance, sample badges, the Model and Inference tags and the evidence panel are never removed to save a click.
+5. **Choice.** Dakshitha marks each item fix, defer or drop, in the report or in `bridge/QUESTIONS.md`.
+
+Done when: the baseline paths are measured, the report is written and verified, and Dakshitha has marked the items.
+
+## S30 — Workflow review, fix
+
+Goal: carry out the S29 items Dakshitha marked fix, and prove the paths got shorter.
+
+1. Each fix gets a walk check that fails on the build before it and passes after it, and every changed screenshot is opened.
+2. Rerun the S29 path measurements and report each path's steps and clicks, before and after.
+3. Help, the redesign canvas and the tracker's UI tab are updated to match. `make test` and the full walk pass; the demo is rebuilt and checked on the public URL.
+
+Done when: every item marked fix is done or written down with a reason, the before-and-after numbers are in the tracker, and the demo is live.
+
+## S31 — Fresh UI/UX review, diagnose
+
+Goal: one more UI/UX review of the app as slimmed in S30, by a reviewer with fresh context, so the review is not anchored on the earlier ones (Dakshitha, 2026-10-31). Nothing is changed in this session.
+
+1. **Independent review.** A subagent with fresh context gets the public URL, the three audiences (PIs, the three SYNTHETIC student personas, persona-1 in private mode), phone and laptop sizes, light and dark, and the full walk's screenshots. It is not given the S21 audit, the S25 review or the fix history. It walks every screen and reports what confuses, misleads, slows or excludes each audience, plus accessibility problems the axe run cannot see.
+2. **Verify every finding.** The main session reproduces each one in a fresh browser on the public URL, with a screenshot or a measurement. Findings that do not reproduce are dropped; open questions are marked UNVERIFIED.
+3. **Report.** `docs/design/UX_REVIEW_S31.md` lists the verified findings ranked must-fix, should-fix and could-fix, each with its screenshot, the audience it hurts, a proposed fix and a cost.
+4. **Choice.** Dakshitha marks each item fix, defer or drop.
+
+Done when: the report is written and verified, and Dakshitha has marked the items.
+
+## S32 — Fresh UI/UX review, fix
+
+Goal: carry out the S31 items Dakshitha marked fix.
+
+1. Each fix gets a walk check that fails before and passes after, and every changed screenshot is opened.
+2. The accessibility checklist (`docs/design/A11Y_CHECKLIST.md`) is rerun in full, including zoom, which S25 did not rerun.
+3. Help, the canvas and the tracker's UI tab are updated. `make test` and the full walk pass; the demo is rebuilt and checked live in a fresh browser.
+
+Done when: every item marked fix is done or written down with a reason, the walk is clean, and the demo is live.
+
+---
+
+## S33 — Freeze and package
 
 Goal: ship. The QA fix list and privacy audit moved to S20, the full accessibility pass to S21, and the final UI/UX review and full QA test to S25 (Dakshitha, 2026-10-29).
 
@@ -433,3 +478,5 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-30 | S27, S28 | New S27 "Scout redesign, phase 1" from `docs/design/SCOUT_SPEC.md`; phase 2 waits until after Demo Day. Freeze and package becomes S28. Older notes that say "S27 task 2" for freeing the dev GPUs mean S28 task 2 | Dakshitha approved the Scout spec and mock-up and asked for the redesign in phases, the first in the next session | Dakshitha |
 | 2026-10-30 | S27 to S29 | New S27, funding coverage and ranking tune, run live; Scout redesign moves to S28, freeze and package to S29 | Dakshitha found NSF missing in a test and asked for this session to be the current phase | Dakshitha |
 | 2026-10-30 | S27, S28 | The Scout mode switch removed from the web app in S27; Scout runs every step by default. The rest of S28 task 1 (the server's ask mode, Approve and Skip code, both APIs) stays in S28 | Dakshitha: the switch should already be gone, and run should be the default | Dakshitha |
+| 2026-10-31 | S29 to S33 | New S29 and S30, a workflow review to remove what is redundant in the UI and workflow, diagnosed then fixed; new S31 and S32, a fresh-context UI/UX review, diagnosed then fixed. Freeze and package becomes S33. S30 and S32 narrow first in the cut order. Older notes that say "S29 task 2" for freeing the dev GPUs mean S33 task 2 | Dakshitha asked for both reviews, each run in two parts, diagnose then fix | Dakshitha |
+| 2026-10-31 | S28 | Task 1 note updated: the web side of the gate was removed in S27 (switch, Approve and Skip, waiting card); the server side remains. Tasks 2 to 7 are not built, so S28 stays | Dakshitha asked whether the Scout redesign was already done | Dakshitha |
