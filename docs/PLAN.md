@@ -420,6 +420,7 @@ Goal: a build Dakshitha can freeze and demo.
 3. Demo rebuilt from `main`; full walk with axe on the public URL in a fresh browser; the live canary and the student leakage check rerun; the Scout bench rerun on the demo model.
 4. Media refilmed once (Q41): README clips, screenshots, the tracker's UI tab.
 5. Final numbers into `docs/TRACKER.md` and `docs/RESULTS.md`; README, Help and the canvas match the build; `docs/HANDOFF.md` rewritten for the freeze.
+6. **Last step: the build tracker artifact.** A complete update of the tracker page: every tab checked in a browser (Current, Master, Archive, Decisions, UI, UX, Bench, README), outdated or broken elements fixed in `scripts/render_tracker.py` or the source files, the UI preview refilmed, and the page itself redesigned where Perch-dev has a better idea, then republished (Dakshitha, 2026-10-31).
 
 Done when: the ZIP builds from a clean clone and runs, the demo is live and clean, and the tracker and handoff are complete. The tag is S33.
 

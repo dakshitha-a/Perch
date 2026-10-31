@@ -38,6 +38,7 @@ Required for the final deck's "AI use declaration" slide. One row per tool per p
 | 2026-10-29 | Claude Code 2.1.312 (claude-opus-5-5) | CLI | S17 to S20: student mode (sample corpus, personas, rules, UI), scoring, QA and privacy audit | Perch-dev for Dakshitha |
 | 2026-10-29 | Claude Code 2.1.312 (claude-opus-5-5) | CLI | S23: private by default (sessions for every brief, the Local / Cloud switch, monitoring shelved), docs and tests; one 3-lead cloud brief on claude-sonnet-5-5 ($0.04) to verify Cloud live | Perch-dev for Dakshitha |
 | 2026-10-30 | Claude Code 2.1.314 (claude-opus-5-5) | CLI | S24 to S26: the UI rebuild from the redesign canvas, student Scout, warm briefs, the documents-on-Cloud gate, the draft review evaluation (Clef, Clef-flash, MiniCheck and gemma4:26b-a4b as checkers on SYNTHETIC drafts), an independent UI review by a Claude Code subagent (same model), the QA run and the media refilm; demo models (gemma4:26b-a4b) wrote the briefs filmed. $0 API spend | Perch-dev for Dakshitha |
+| 2026-10-31 | Claude Code 2.1.316 (claude-fable-5-1 orchestrating; claude-opus-5-5 and claude-sonnet-5-5 subagents as reviewers, fixers and QA testers) | CLI | S29 to S32: two independent reviews (workflow, code and security; UI/UX) by Opus subagents with fresh context, the fix passes, the QA cycles and the stabilize session; local models (gemma4:26b-a4b, Clef) ran the briefs under test | Perch-dev for Dakshitha |
 
 Reminders:
 - Record Claude Code's version (`claude --version`) the first time it writes project code.
