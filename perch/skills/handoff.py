@@ -76,6 +76,7 @@ class Draft:
     flagged: bool = False  # the model paragraph was withheld after two failures
     errors: list[str] = field(default_factory=list)
     model: str | None = None
+    withheld: str | None = None  # why the model paragraph stayed in Perch (S8)
 
 
 def lead_key(lead: Lead) -> str:
@@ -167,11 +168,15 @@ def draft_handoff(office: Office, researcher: Researcher,
                   provider: AuditedProvider | None, masker: egress.Masker | None = None,
                   private: list[Work] | None = None) -> Draft:
     """items: the kept leads for this office with their opportunity or organisation.
-    `private`: a private session's documents, which the model may cite. A paragraph that
-    cites a private record is withheld unless masked (perch.egress)."""
+    `private`: a private session's documents, which the model may cite. They sit in the
+    prompt, so with documents the paragraph is private-derived whatever it cites: it is
+    withheld, and no model runs, unless masked (perch.egress, S8)."""
     papers = egress.public_only(papers)[:MAX_PAPERS]
     lead_ids = [x.id for x, _ in items]
     subject = subject_for(items)
+    if provider is not None and private and masker is None:
+        return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers),
+                     lead_ids, withheld=egress.HANDOFF_WITHHELD)
     if provider is None:
         return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers),
                      lead_ids)
@@ -225,6 +230,7 @@ def draft_handoff(office: Office, researcher: Researcher,
         return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers),
                      lead_ids, cited_ids=cited, model=provider.model, flagged=True,
                      errors=[egress.WITHHELD])
-    text = egress.release(text, cited, masker) or FALLBACK
+    text = (egress.release_model(text, cited, masker, bool(private)) if private
+            else egress.release(text, cited, masker)) or FALLBACK
     return Draft(office, subject, assemble(office, researcher, text, items, papers), lead_ids,
                  cited_ids=cited, model=provider.model)

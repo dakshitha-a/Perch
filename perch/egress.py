@@ -124,6 +124,18 @@ class Masker:
         return text
 
 
+def withheld_note(n: int) -> str:
+    """The stated count of model texts left out of an export (S8)."""
+    return (f"{n} {'explanation' if n == 1 else 'explanations'} withheld: this session holds "
+            "documents, and model text may draw on them. Choose masking to include them "
+            "masked.")
+
+
+HANDOFF_WITHHELD = ("1 explanation withheld: this session holds documents, so the model's "
+                    "opening paragraph may draw on them and stays in Perch. Choose masking to "
+                    "include it masked.")
+
+
 def release_model(text: str | None, cited_ids: Iterable[str], masker: Masker | None = None,
                   documents: bool = False) -> str | None:
     """Model-written text as it may leave the app. In a session that holds documents, the

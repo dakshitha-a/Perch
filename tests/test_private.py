@@ -556,3 +556,63 @@ def test_exports_withhold_the_summary_topics_and_private_threads(tmp_path, monke
     masked = c.get("/private/export.json", headers=h, params={"mask": True}).json()
     assert "PRIVATE-PHRASE" in masked["brief"]["summary"]
     assert "ground reaction force" not in masked["brief"]["summary"]
+
+
+PARAPHRASE = "records ground reaction force at home"  # from persona-1's draft aims
+
+
+def public_paraphrase_reply(messages, system, schema):
+    """S8: model text that paraphrases a document while citing only public records."""
+    import re
+
+    props = (schema or {}).get("properties", {})
+    text = (system or "") + " ".join(m.content for m in messages)
+    wid = re.search(r"\[(W\d+)\]", text)
+    opp = re.search(r"\[(PAR-[\w-]+)\]", text)
+    if "fit" in props and wid and opp:
+        return json.dumps({
+            "reasoning": "r", "fit": 70,
+            "opportunity_sentence": f"The announcement funds research projects [{opp[1]}].",
+            "research_findings": [{"paper_id": wid[1], "finding": f"built a sensor that "
+                                   f"{PARAPHRASE}"}],
+            "link_sentence": "The work fits the announcement.",
+            "cited_ids": [opp[1], wid[1]]})
+    if "paragraph" in props and wid and opp:
+        return json.dumps({"paragraph": f"My work built an insole that {PARAPHRASE}. I would "
+                                        "like to discuss the listed announcement.",
+                           "cited_ids": [wid[1], opp[1]]})
+    return ""
+
+
+def test_documents_session_withholds_model_text_that_cites_only_public_ids(tmp_path,
+                                                                           monkeypatch):
+    """S8: in a session holding documents, every model-written text leaves the app as
+    private-derived: withheld with a stated count by default, masked on opt-in. The
+    screen still shows it."""
+    c, _ = private_app(tmp_path, monkeypatch, responder=public_paraphrase_reply)
+    h = open_with_persona(c)
+    c.post("/private/brief", headers=h, json={"author_id": "A5026494099",
+                                              "as_of": "2026-10-28"})
+    got = c.get("/private/brief", headers=h).json()
+    lead = got["leads"][0]
+    assert PARAPHRASE in (lead["explanation"] or ""), lead  # on screen in the session
+    assert not any(i.startswith("private:") for i in lead["cited_ids"])
+    c.post(f"/private/leads/{lead['id']}/keep", headers=h)
+    for ext in ("json", "md", "html"):
+        text = c.get(f"/private/export.{ext}", headers=h).text
+        assert PARAPHRASE not in text, ext
+        assert "explanation withheld: this session holds documents" in text, ext
+    exp = c.get("/private/export.json", headers=h).json()
+    assert exp["withheld"]["explanations"] >= 1
+    masked = c.get("/private/export.json", headers=h, params={"mask": True}).json()
+    assert "[PRIVATE-PHRASE-" in masked["leads"][0]["explanation"]
+    office = {"office": "research_development"}
+    d = c.post("/private/handoff", headers=h, json=office).json()
+    assert PARAPHRASE not in d["body"] and "this session holds documents" in d["withheld"]
+    dm = c.post("/private/handoff", headers=h, json={**office, "mask": True}).json()
+    assert PARAPHRASE not in dm["body"] and "[PRIVATE-PHRASE-" in dm["body"]
+    # A session without documents is unchanged: its explanations leave as written.
+    h2 = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    c.post("/private/brief", headers=h2, json={"author_id": "A5026494099",
+                                               "as_of": "2026-10-28"})
+    assert "withheld" not in c.get("/private/export.json", headers=h2).json()

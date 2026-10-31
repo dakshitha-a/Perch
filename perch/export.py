@@ -56,6 +56,8 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
            Block("p", f"Brief as of {as_of}. Built from public records by Perch. Every date and "
                       "amount is copied from the linked record. A brief is a starting point, "
                       "not advice.")]
+    if documents and masker is None and (n := _withheld(brief, leads)):
+        out.append(Block("note", egress.withheld_note(n)))
     if researcher:
         out.append(Block("link", f"Researcher record ({researcher.source})",
                          href=researcher.id if researcher.id.startswith("https://")
@@ -102,10 +104,11 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
             f"Activity code: {o.activity_code or 'Not in the record'}",
             f"Office: {for_route('A').name}"]))
         if x.explanation and not x.flagged:
-            out.append(Block("model", egress.release(x.explanation, x.cited_ids, masker)))
+            out.append(Block("model", egress.release_model(x.explanation, x.cited_ids, masker,
+                                                           documents)))
             if x.inference:
-                out.append(Block("model", "Inference: "
-                                 + egress.release(x.inference, x.cited_ids, masker)))
+                out.append(Block("model", "Inference: " + egress.release_model(
+                    x.inference, x.cited_ids, masker, documents)))
         elif x.flagged:
             out.append(Block("note", "The explanation was withheld: it failed the checks twice."))
         cited = egress.public_only(works[f"https://openalex.org/{c}"] for c in x.cited_ids
@@ -157,8 +160,15 @@ def _cv_line(text: str, masker: egress.Masker | None) -> str:
                           masker) or ""
 
 
+def _withheld(brief: Brief | None, leads: list[Lead]) -> int:
+    """Model texts a documents session leaves out: the summary and each explanation."""
+    return (bool(brief and brief.summary)
+            + sum(bool(x.explanation and not x.flagged) for x in leads
+                  if x.status != "dismissed" and x.route != "B"))
+
+
 def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
-                   masker: egress.Masker | None = None) -> list[Block]:
+                   masker: egress.Masker | None = None, documents: bool = True) -> list[Block]:
     """A student brief (S18). Verdicts and gaps are code-written; the sample section
     carries the banner. Text drawn from the student's documents is withheld unless
     masked, as for every private export."""
@@ -168,6 +178,8 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
            Block("p", f"Brief as of {as_of}. Eligibility is checked by rule from your CV; "
                       "\"may be eligible\" means Perch could not check everything. A brief is "
                       "a starting point, not advice.")]
+    if documents and masker is None and (n := _withheld(None, shown)):
+        out.append(Block("note", egress.withheld_note(n)))
     if any(x.sample for x in shown):
         out.append(Block("note", SAMPLE_BANNER))
     for route, title, office in (("F", "Fellowships (public)", for_route("F")),
@@ -196,7 +208,8 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
             items.append(f"Office: {office.name}")
             out.append(Block("list", items=[i for i in items if i]))
             if x.explanation and not x.flagged:
-                out.append(Block("model", egress.release(x.explanation, x.cited_ids, masker)))
+                out.append(Block("model", egress.release_model(x.explanation, x.cited_ids,
+                                                               masker, documents)))
             url = getattr(rec, "source_url", None)
             if url and not x.sample:
                 out.append(Block("link", f"Record: {url}", href=url))

@@ -48,7 +48,7 @@ Every local chat model must be an Ollama or OpenAI-compatible server on an allow
    - **Unpublished work:** 0.2 of it.
 4. Add your OpenAlex ID if you want your public papers to count too. Your documents then take 60% of the weight and your papers 40%. Without an ID, the brief runs on your documents alone.
 5. Build the brief. Explanations may cite your documents, and each such citation shows a lock.
-6. Exports and hand-off drafts leave out text drawn from your documents. You can choose to mask it instead: names, contact details, identifiers and phrases found only in your documents become labels such as `[PERSON-1]`, and you can unmask them on screen. Masking cannot hide what your research is about.
+6. Exports and hand-off drafts leave out text drawn from your documents. While the session holds documents, every model-written text counts as drawn from them, because the models read them: exports leave out the summary and the explanations with a stated count, and the hand-off opens with a plain sentence (S8). You can choose to mask it instead: names, contact details, identifiers and phrases found only in your documents become labels such as `[PERSON-1]`, and you can unmask them on screen. Masking cannot hide what your research is about.
 
 ## How it is checked
 
@@ -62,7 +62,7 @@ PERCH_TLS_AT=server PERCH_PRIVATE_OPERATOR="..." PERCH_CLOUD=anthropic:claude-so
 
 ## Student mode
 
-Choose **I'm a student** on the Find screen. Student mode always runs on local models. Add your CV, an interests note and up to five achievements. Code reads the CV by rule (level, year, major, GPA, enrolment, expected graduation, referees); no model reads it. Routes has **Fellowships (public)**, from Temple Scholar Development and Fellowships Advising's list and NIH F-series listings, and **Scholarships and awards (sample)**, from an invented test corpus badged Sample data on every card. Each lead says "eligible", "may be eligible" or "not eligible" by rule, and lists what is still needed. Compare drafts a note to SDFA or Student Financial Services; Perch sends nothing. Exports carry a sample banner and withhold lines that quote the CV unless masked. Scores on planted cases: `bench/results/STUDENT_MODE.md`.
+Choose **I'm a student** on the Find screen. Student mode always runs on local models. Add your CV, an interests note and up to five achievements. Code reads the CV by rule (level, year, major, GPA, enrolment, expected graduation, referees); no model reads it. Routes has **Fellowships (public)**, from Temple Scholar Development and Fellowships Advising's list and NIH F-series listings, and **Scholarships and awards (sample)**, from an invented test corpus badged Sample data on every card. Each lead says "eligible", "may be eligible" or "not eligible" by rule, and lists what is still needed. Compare drafts a note to SDFA or Student Financial Services; Perch sends nothing. Exports carry a sample banner and withhold lines that quote the CV, and the model's explanations, unless masked. Scores on planted cases: `bench/results/STUDENT_MODE.md`.
 
 ## Monitoring is shelved
 

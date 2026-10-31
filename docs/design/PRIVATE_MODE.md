@@ -71,6 +71,7 @@ one named cloud spec through the gate for the three model skills
 ## Leaving the app
 
 - **Default:** nothing derived from private text leaves. This covers exports, hand-off drafts (S12), Scout and MCP.
+- **Model text in a documents session (S30, review S8):** the documents sit in every model prompt, so a model can paraphrase them while citing only public records. While a session holds documents, every model-written text (summary, topics, explanations, inferences, layer 2 flags, the hand-off paragraph) is treated as private-derived in exports and hand-offs: withheld with a stated count, or masked on opt-in. The screen is unaffected. A private thread's label is made of document words, so it leaves the same way.
 - **Opt-in obfuscated export:** the user can include private-derived content in an export, masked, behind a visible warning.
   - **Typed placeholders:** names, emails, phones, ORCIDs, grant numbers, institutions and other identifiers are replaced with placeholders such as `[PERSON-1]` and `[AWARD-1]`, the same placeholder each time.
   - **Novel phrases:** phrases that appear in the private documents and not in any cited public record are replaced with `[PRIVATE-PHRASE-n]`.

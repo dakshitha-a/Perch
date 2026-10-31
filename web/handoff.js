@@ -75,7 +75,7 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
         const d = await api.handoff(briefId, { office: office.key,
           ...(api.mode === "private" ? { mask: maskOn() } : {}) });
         H.drafts[office.key] = { subject: d.subject, body: d.body, flagged: d.flagged, model: d.model,
-          n: d.lead_ids.length };
+          withheld: d.withheld || null, n: d.lead_ids.length };
         announce("The draft is ready below. You can edit it.");
       } catch (e) {
         H.error = `The draft could not be made: ${e.message}`;
@@ -99,7 +99,10 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     const body = h("textarea", { id: "handoff-body", "data-key": "handoff-body", class: "input draft-body", rows: "18",
       oninput: (e) => { draft.body = e.target.value; } });
     body.value = draft.body;
-    const tag = draft.flagged
+    const tag = draft.withheld
+      ? h("p", { class: "notice" }, icon("lock"), h("span", { text: `${draft.withheld} `
+        + "Everything else is written by code from the records." }))
+      : draft.flagged
       ? h("p", { class: "notice" }, icon("warn"), h("span", { text: "The model’s opening failed the checks twice, so this draft "
         + "opens with a plain sentence instead. Everything else is written by code from the records." }))
       : h("p", { class: "hint model-note" }, h("span", { class: "tag model", text: "Model" }),

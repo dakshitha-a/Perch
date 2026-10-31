@@ -91,7 +91,8 @@ class HandoffRequest(BaseModel):
 def draft_json(d: Draft) -> dict:
     return {"office": {"key": d.office.key, "name": d.office.name, "url": d.office.url},
             "to": "", "subject": d.subject, "body": d.body, "lead_ids": d.lead_ids,
-            "cited_ids": d.cited_ids, "flagged": d.flagged, "model": d.model}
+            "cited_ids": d.cited_ids, "flagged": d.flagged, "model": d.model,
+            "withheld": d.withheld}
 
 
 class BriefRequest(BaseModel):
@@ -384,8 +385,13 @@ def create_app(service: BriefService, runner: JobRunner,
             records = [record_json(x) for x in
                        egress.public_only(y for y in (r.get_any(i) for i in sorted(ids)) if y)]
         out_leads = [{**x.model_dump(mode="json"),
-                      "explanation": egress.release(x.explanation, x.cited_ids, masker),
-                      "inference": egress.release(x.inference, x.cited_ids, masker),
+                      "explanation": egress.release_model(x.explanation, x.cited_ids, masker,
+                                                          documents),
+                      "inference": egress.release_model(x.inference, x.cited_ids, masker,
+                                                        documents),
+                      # Layer 2 flags quote the model's own sentences, so they leave alike.
+                      "unsupported": [egress.release_model(u, x.cited_ids, masker, documents)
+                                      for u in x.unsupported],
                       "notes": [egress.release(n, ["private:cv"], masker) if "(private)" in n
                                 else n for n in x.notes],
                       # Student mode: rule lines that quote the CV leave like private text.
@@ -398,6 +404,8 @@ def create_app(service: BriefService, runner: JobRunner,
                      threads=[egress.release_thread(t, masker) for t in b.threads])
         out = {"brief": brief, "leads": out_leads, "records": records,
                "notice": grants_gov.ATTRIBUTION}
+        if documents and masker is None and (n := ex._withheld(b, leads)):
+            out["withheld"] = {"explanations": n, "note": egress.withheld_note(n)}
         if any(x.sample for x in leads):
             out["sample_notice"] = ex.SAMPLE_BANNER
         return out
@@ -415,7 +423,7 @@ def create_app(service: BriefService, runner: JobRunner,
             with svc.repo() as r:
                 recs = {x.record_id: r.get(Scholarship, x.record_id)
                         or r.get(Opportunity, x.record_id) for x in leads}
-            return (ex.student_blocks(b, leads, recs, masker=masker),
+            return (ex.student_blocks(b, leads, recs, masker=masker, documents=documents),
                     "Perch student brief (private)")
         with svc.repo() as r:
             res = r.get(Researcher, b.researcher_id)
