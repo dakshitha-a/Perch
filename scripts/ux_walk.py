@@ -522,6 +522,21 @@ async def student_flow(w: Walk, page: Page, base: str, persona: str, views: list
             await page.click("#tab-scout")
             await page.wait_for_timeout(500)
             await w.snap(page, t, "scout", full=True)
+            if persona == STUDENTS[0]:  # student Scout answers on its own tools (S28)
+                await page.fill("#scout-q", "Only options with a deadline after 2027-03-01")
+                await page.click(".scout-ask button[type=submit]")
+                await page.wait_for_timeout(500)
+                for _ in range(1200):
+                    if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
+                        break
+                    await page.wait_for_timeout(100)
+                got = await page.evaluate("""() => ({read: Boolean(document.querySelector('.scout-read li')),
+                  warn: (document.querySelector('.scout-x .notice') || {}).innerText || '',
+                  code: [...document.querySelectorAll('.scout-where')].every(x => x.textContent === 'Code, no model'),
+                  raw: [...document.querySelectorAll('.scout-read .chip')].some(x => /^[a-z]+_[a-z_]+:/.test(x.textContent))})""")
+                if not got["read"] or got["warn"] or not got["code"] or got["raw"]:
+                    w.errors.append(f"{t}: scout: a student question did not finish cleanly {got}")
+                await w.snap(page, t, "scout-answer", full=True)
     await w.step(tag, "end", end_session(page))
     await page.wait_for_timeout(1200)
     await w.snap(page, tag, "after-end")

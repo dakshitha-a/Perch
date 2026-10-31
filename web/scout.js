@@ -33,6 +33,9 @@ const ARGS = {
   top: "How many", id: "Record", opportunity_id: "Opportunity", opportunity_ids: "Opportunities",
   ids: "Leads", office: "Office",
   name: "Name",
+  // student tools (S28: the read-as line showed their raw keys)
+  deadline_after: "Deadline after", deadline_before: "Deadline before", verdict: "Verdict",
+  words: "Mentions", option_id: "Option",
 };
 const STATUS = { proposed: "Running…", done: "Done", not_run: "Not run", refused: "Refused", error: "Failed", repeated: "Repeat, not run again" };
 const EXAMPLES = ["Only R21 grants that close by 2027-03-01", "Small grants only: a ceiling of $200k or less",
@@ -176,7 +179,7 @@ function readAs(x) {
     trouble ? h("p", { class: "hint", text: `${trouble === 1 ? "One step" : `${trouble} steps`} failed or were refused; the steps below say why.` }) : null);
 }
 
-const ROUTES = { A: "Grants", B: "Industry leads" };
+const ROUTES = { A: "Grants", B: "Industry leads", F: "Fellowships", S: "Scholarships" };
 function argList(c) {
   return Object.entries(c.arguments || {}).filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length))
     .map(([k, v]) => [k, k === "route" ? ROUTES[v] || v : Array.isArray(v) ? v.join(", ") : v]);
