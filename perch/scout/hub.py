@@ -89,7 +89,8 @@ class ScoutHub:
 def view(e: Entry) -> dict:
     s = e.session
     cards = [{"id": c.id, "tool": c.tool, "arguments": c.arguments, "status": c.status,
-              "detail": c.detail, "records": record_ids(c.result), "draft": draft_of(c)}
+              "detail": c.detail, "records": record_ids(c.result), "draft": draft_of(c),
+              "where": c.where, "provider": c.provider}
              for c in s.cards]
     exchanges = []
     for i, x in enumerate(s.exchanges):

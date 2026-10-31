@@ -47,6 +47,7 @@ class ScoutContext:
     as_of: date
     researcher_id: str | None = None
     explainer: AuditedProvider | None = None
+    handoff: AuditedProvider | None = None  # the hand-off model for this session (S28)
     brief_id: str | None = None  # the brief the user is looking at, if any
     profile: Profile | None = None
     route_b: list[Lead] | None = None  # this session's Route B leads, once found
@@ -382,7 +383,7 @@ def draft_handoff(ctx: ScoutContext, office: str | None = None,
     with ctx.service.repo() as r:
         papers = [w for w in (r.get_any(f"https://openalex.org/{c}") for c in wids) if w]
     s = ctx.service
-    d = draft(off, res, items, papers, s._audited("handoff", s.models.handoff_spec))
+    d = draft(off, res, items, papers, ctx.handoff or s._audited("handoff", s.models.handoff_spec))
     for x, rec in items:
         if rec:
             ctx.see(rec)

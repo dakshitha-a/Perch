@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import date
 
 from perch.llm import spec_for_role
-from perch.llm.audit import AuditedProvider, AuditLog
+from perch.llm.audit import AuditedProvider, AuditLog, CountedProvider
 from perch.privacy import PrivateSettings
 from perch.schemas import Brief, Lead, Opportunity
 from perch.scout.log import ScoutLog
@@ -28,10 +28,15 @@ def make_scout(service: object, author_id: str, *, as_of: date | None = None,
     audit = AuditLog(None) if private else service.audit
     provider = AuditedProvider(service.models.provider(llm or spec_for_role("scout")), audit,
                                "scout")
-    explainer = AuditedProvider(service.models.provider(llm or service.models.fit_spec
+    # The two model-backed tools count toward the session budget (S28), so each session
+    # gets its own counted providers for them.
+    explainer = CountedProvider(service.models.provider(llm or service.models.fit_spec
                                                         or spec_for_role("fit_explainer")),
                                 audit, "fit_explainer")
-    ctx = ScoutContext(service, as_of or date.today(), explainer=explainer)
+    handoff = CountedProvider(service.models.provider(service.models.handoff_spec
+                                                      or spec_for_role("handoff")),
+                              audit, "handoff")
+    ctx = ScoutContext(service, as_of or date.today(), explainer=explainer, handoff=handoff)
     # A private brief with no public profile has no OpenAlex id; tools that need one say so.
     ctx.researcher_id = (author_id if author_id.startswith("private:")
                          else ctx.full_author_id(author_id))

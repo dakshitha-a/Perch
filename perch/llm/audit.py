@@ -96,3 +96,21 @@ class AuditedProvider(Provider):
 
     def close(self) -> None:
         self.inner.close()
+
+
+class CountedProvider(AuditedProvider):
+    """An audited provider that also adds up its own calls' tokens and dollars, for one
+    Scout session's budget (S28: a shared audit log would mix in other sessions' calls)."""
+
+    def __init__(self, inner: Provider, log: AuditLog, role: str) -> None:
+        super().__init__(inner, log, role)
+        self.tokens, self.usd = 0, 0.0
+        self._count_lock = threading.Lock()
+
+    def chat(self, messages: list[Message], **kw: object) -> ChatResult:  # type: ignore[override]
+        r = super().chat(messages, **kw)
+        c = cost_usd(r)
+        with self._count_lock:
+            self.tokens += r.usage.input_tokens + r.usage.output_tokens
+            self.usd += c if c == c else 0.0  # unknown price (nan) is reported by the log
+        return r

@@ -639,6 +639,8 @@ body.on-help .banner { display: none; }
 .scout-card .chips { margin: 0; }
 .scout-card .hint { margin: 0; }
 .scout-card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.scout-where { font-weight: 500; color: var(--ink-2); }
+.scout-where.cloud { box-shadow: inset 0 0 0 1px var(--ember); color: var(--ink); }
 .scout-tool { font-weight: 650; }
 .scout-tool-name { font-size: 13px; color: var(--ink-3); }
 .scout-status { margin-left: auto; font-size: 13px; color: var(--ink-2); }

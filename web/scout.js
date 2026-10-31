@@ -160,6 +160,7 @@ function card(c, ctx) {
     h("div", { class: "scout-card-head" },
       h("span", { class: "scout-tool", text: TOOLS[c.tool] || c.tool }),
       h("code", { class: "scout-tool-name", text: c.tool }),
+      whereTag(c),
       h("span", { class: "scout-status", text: STATUS[c.status] || c.status })),
     args.length ? h("ul", { class: "chips" }, ...args.map(([k, v]) => h("li", { class: "chip",
       text: `${ARGS[k] || k}: ${Array.isArray(v) ? v.join(", ") : v}` }))) : null,
@@ -167,6 +168,15 @@ function card(c, ctx) {
     c.records && c.records.length ? h("p", { class: "scout-records" }, h("span", { class: "hint", text: "Records: " }),
       ...c.records.slice(0, 8).map((id) => citeBtn(id, ctx))) : null,
     c.draft ? draftBlock(c.draft, ctx) : null);
+}
+
+// Where a step ran (S28): code, a local model, or a named Cloud provider, matching the
+// header chip. Recordings made before S28 carry no "where" and show no tag.
+const CLOUD_NAMES = { anthropic: "Anthropic" };
+function whereTag(c) {
+  if (!c.where) return null;
+  if (c.where === "cloud") return h("span", { class: "tag cloud scout-where", text: `Cloud: ${CLOUD_NAMES[c.provider] || c.provider}` });
+  return h("span", { class: "tag scout-where", text: c.where === "local" ? "Local model" : "Code, no model" });
 }
 
 // A hand-off draft from draft_handoff: the full text to copy. Never sent.

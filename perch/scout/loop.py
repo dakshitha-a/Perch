@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from typing import Literal
 
 from perch.llm import ChatResult, Message, Provider, ToolCall, ToolResult, cost_usd
-from perch.privacy import PrivateSettings, refuse_if_not_local
+from perch.privacy import LOCAL_ADAPTERS, PrivateSettings, refuse_if_not_local
 from perch.scout.log import ScoutLog, digest
 from perch.scout.tools import ALLOWLIST, SESSION_TOOLS, ScoutContext, ToolError, check_arguments
 from perch.skills import parse_json
@@ -91,6 +91,12 @@ class Card:
     detail: str = ""
     result: dict | None = None
     ms: float = 0.0
+    # Where the step ran (S28): "code", or "local" or "cloud" for a model-backed tool, with
+    # the provider's name and the tokens and dollars it spent, added to the session's budget.
+    where: str = "code"
+    provider: str = ""
+    tokens: int = 0
+    usd: float = 0.0
 
 
 @dataclass
@@ -320,6 +326,9 @@ class Scout:
             c.result = {"error": "bad arguments: " + "; ".join(errs)}
         else:
             args = {k: v for k, v in c.arguments.items() if v is not None}
+            model = {"explain_fit": self.ctx.explainer,
+                     "draft_handoff": self.ctx.handoff}.get(c.tool)
+            before = (model.tokens, model.usd) if hasattr(model, "tokens") else None
             try:
                 c.result = entry[1](self.ctx, **args)
                 c.status = "done"
@@ -329,6 +338,12 @@ class Scout:
             except Exception as e:  # noqa: BLE001 - reported to the model by type only
                 c.status, c.detail = "error", f"{type(e).__name__} in {c.tool}"
                 c.result = {"error": f"the tool failed ({type(e).__name__})"}
+            if before is not None:
+                c.tokens, c.usd = model.tokens - before[0], model.usd - before[1]
+                s.tokens += c.tokens
+                s.usd += c.usd
+                c.provider = model.name
+                c.where = "local" if model.name in LOCAL_ADAPTERS else "cloud"
         c.ms = round((time.perf_counter() - t0) * 1000, 1)
         self._log_tool(s, c)
 

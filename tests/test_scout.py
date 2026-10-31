@@ -326,3 +326,23 @@ def test_scout_is_fixed_to_its_researcher(service):
     assert [c.status for c in s.cards] == ["refused", "refused"]
     assert "researcher https://openalex.org/A5026494099" in fake.calls[0]["system"]
     assert {t.name for t in fake.calls[0]["tools"]} == set(SESSION_TOOLS)
+
+
+def test_a_hand_off_step_counts_toward_the_session_and_says_where_it_ran(service):
+    """S28: draft_handoff's model spend is added to the session budget; its card says
+    Local or Cloud from the provider, and code-only steps say code."""
+    from perch.llm.audit import AuditLog, CountedProvider
+
+    for name, where in (("fake", "local"), ("anthropic", "cloud")):
+        inner = FakeProvider(["Dear office, a plain opening."])
+        inner.name = name
+        c = ctx(service)
+        c.handoff = CountedProvider(inner, AuditLog(None), "handoff")
+        scout_model = CountedProvider(FakeProvider([
+            call("get_record", id=OPP), call("draft_handoff", ids=[OPP]),
+            f"A draft is ready; it closes 2026-11-17 [{OPP}]."]), AuditLog(None), "scout")
+        s = Scout(scout_model, c).start("Draft a hand-off for it")
+        rec, draft = s.cards
+        assert rec.where == "code" and rec.tokens == 0
+        assert draft.status == "done" and draft.where == where and draft.provider == name
+        assert draft.tokens > 0 and s.tokens == scout_model.tokens + draft.tokens
