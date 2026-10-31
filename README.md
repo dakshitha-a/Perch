@@ -214,7 +214,7 @@ Every number here was measured. Each is copied from [bench/results](bench/result
 - **The hand-off opening has one check:** the model-written paragraph passes the citation check, but not the second, grounding check.
 - **Scout on a local model:** Gemma sometimes states a count that the citation check then withholds.
 - **Untested pairing:** the MCP server was tested with Claude Code, not with a local Ollama agent.
-- **Student mode is a demonstration:** its scholarships are invented sample records. In planted tests, the search missed 2 of the 12 records a student could apply for. Public fellowship listings get "may be eligible" at most, because their own pages set the full rules.
+- **Student mode is a demonstration:** its scholarships are invented sample records. In planted tests, the search missed 1 of the 12 records a student could apply for. Public fellowship listings get "may be eligible" at most, because their own pages set the full rules.
 
 ## Learn more
 

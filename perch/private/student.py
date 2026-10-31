@@ -34,7 +34,8 @@ from perch.score import match_score
 from perch.student import StudentFacts, Verdict, check, check_nih, gaps
 
 STUDENT_STAGES = ("student_profile", "fellowships", "scholarships", "student_explanations")
-RETRIEVE = 40
+# 40 until S27: the SYNTHETIC student bench retrieved 23 of 24 planted records at 100, 19 at 40.
+RETRIEVE = 100
 TOP = 10
 SAMPLE_BADGE = "Sample data: an invented record, not a real scholarship"
 

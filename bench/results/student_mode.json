@@ -1,50 +1,50 @@
 {
  "summary": {
   "planted": 24,
-  "retrieved": 19,
+  "retrieved": 23,
   "precision": 1.0,
   "recall": 1.0,
-  "tp": 10,
+  "tp": 11,
   "fp": 0,
   "fn": 0,
-  "verdict_exact": 19,
-  "gaps_exact": 10,
-  "gaps_cases": 10
+  "verdict_exact": 23,
+  "gaps_exact": 11,
+  "gaps_cases": 11
  },
  "personas": {
   "persona-ug": {
    "planted": 8,
-   "retrieved": 6,
+   "retrieved": 7,
    "precision": 1.0,
    "recall": 1.0,
    "tp": 3,
    "fp": 0,
    "fn": 0,
-   "verdict_exact": 6,
+   "verdict_exact": 7,
    "gaps_exact": 3,
    "gaps_cases": 3
   },
   "persona-masters": {
    "planted": 8,
-   "retrieved": 6,
-   "precision": 1.0,
-   "recall": 1.0,
-   "tp": 3,
-   "fp": 0,
-   "fn": 0,
-   "verdict_exact": 6,
-   "gaps_exact": 3,
-   "gaps_cases": 3
-  },
-  "persona-phd": {
-   "planted": 8,
-   "retrieved": 7,
+   "retrieved": 8,
    "precision": 1.0,
    "recall": 1.0,
    "tp": 4,
    "fp": 0,
    "fn": 0,
-   "verdict_exact": 7,
+   "verdict_exact": 8,
+   "gaps_exact": 4,
+   "gaps_cases": 4
+  },
+  "persona-phd": {
+   "planted": 8,
+   "retrieved": 8,
+   "precision": 1.0,
+   "recall": 1.0,
+   "tp": 4,
+   "fp": 0,
+   "fn": 0,
+   "verdict_exact": 8,
    "gaps_exact": 4,
    "gaps_cases": 4
   }
@@ -149,10 +149,10 @@
    "key_verdict": "not eligible",
    "key_reason": "graduation",
    "key_gaps": [],
-   "retrieved": false,
-   "verdict": null,
-   "reason": null,
-   "gaps": null
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "graduation",
+   "gaps": []
   },
   {
    "persona": "persona-ug",
@@ -229,10 +229,13 @@
     "essay",
     "interview"
    ],
-   "retrieved": false,
-   "verdict": null,
+   "retrieved": true,
+   "verdict": "eligible",
    "reason": null,
-   "gaps": null
+   "gaps": [
+    "essay",
+    "interview"
+   ]
   },
   {
    "persona": "persona-masters",
@@ -251,10 +254,10 @@
    "key_verdict": "not eligible",
    "key_reason": "gpa",
    "key_gaps": [],
-   "retrieved": false,
-   "verdict": null,
-   "reason": null,
-   "gaps": null
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "gpa",
+   "gaps": []
   },
   {
    "persona": "persona-masters",
@@ -309,10 +312,10 @@
    "key_verdict": "not eligible",
    "key_reason": "level",
    "key_gaps": [],
-   "retrieved": false,
-   "verdict": null,
-   "reason": null,
-   "gaps": null
+   "retrieved": true,
+   "verdict": "not eligible",
+   "reason": "level",
+   "gaps": []
   },
   {
    "persona": "persona-phd",
@@ -381,8 +384,8 @@
   }
  ],
  "seconds": {
-  "persona-ug": 97,
-  "persona-masters": 75,
-  "persona-phd": 78
+  "persona-ug": 57,
+  "persona-masters": 45,
+  "persona-phd": 45
  }
 }

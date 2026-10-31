@@ -35,7 +35,7 @@ const OPEN = new Set(); // cards whose "Why it may fit" is open; kept across red
 // The brief on screen was built from the SYNTHETIC sample (for its banner).
 export function usedSample() { return Boolean(D.lastSample); }
 // Forget what this module held for a session that has ended (S27).
-export function resetStudent() { Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, sample: false, lastSample: false }); }
+export function resetStudent() { Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, sample: false, lastSample: false }); SORT.by = "order"; }
 
 export function isStudent(brief) {
   return Boolean(brief && brief.brief && brief.brief.options && brief.brief.options.student);
@@ -177,6 +177,23 @@ export function studentProfile(d, { openEvidence }) {
 
 // ----- routes -----
 
+// Score (Match, highest first) or Closing date, as on the researcher side (S27).
+const SORT = { by: "order" };
+const deadlineOf = (l) => { const r = l.record || {}; return (r.kind === "scholarship" ? r.deadline : r.close_date) || "9999"; };
+
+function sortLeads(leads) {
+  const out = [...leads];
+  if (SORT.by === "closing") return out.sort((a, b) => deadlineOf(a).localeCompare(deadlineOf(b)) || a.rank - b.rank);
+  return out.sort((a, b) => (b.match_score ?? -1) - (a.match_score ?? -1) || a.rank - b.rank);
+}
+
+function sortSwitch(redraw) {
+  return h("div", { class: "route-switch sort-switch", role: "group", "aria-label": "Sort options by" },
+    [["order", "Score"], ["closing", "Closing date"]].map(([k, label]) => h("button", { class: "route-btn",
+      "data-key": `sort-${k}`, "aria-pressed": String(SORT.by === k),
+      onclick: () => { SORT.by = k; redraw(); const b = document.querySelector(`#panel [data-key="sort-${k}"]`); if (b) b.focus(); } }, label)));
+}
+
 export function studentRoutes(panel, ctx) {
   const { brief, route, setRoute, openEvidence, setLead } = ctx;
   const leads = brief.leads.filter((l) => l.route === route);
@@ -190,17 +207,19 @@ export function studentRoutes(panel, ctx) {
     ["F", "S"].map((r) => h("button", { class: "route-btn", "data-key": `route-${r}`, "aria-pressed": String(route === r),
       "aria-label": `${STUDENT_ROUTES[r]}${r === "S" ? ", sample data" : ""}${done(r === "F" ? "fellowships" : "scholarships") ? `, ${n(r)}` : ""}`,
       onclick: () => setRoute(r) },
-    h("span", { class: "lbl-long", text: STUDENT_ROUTES[r] }), h("span", { class: "lbl-short", "aria-hidden": "true", text: r === "F" ? "Fellowships" : "Samples" }),
+    // Shorter visible names keep the sort switch on this row at laptop width; the aria-label
+    // keeps the full name, and the Sample data tag marks the sample route (S27).
+    h("span", { class: "lbl-long", "aria-hidden": "true", text: r === "F" ? "Fellowships" : "Scholarships and awards" }), h("span", { class: "lbl-short", "aria-hidden": "true", text: r === "F" ? "Fellowships" : "Samples" }),
     r === "S" ? h("span", { class: "tag sample lbl-long", text: SAMPLE }) : null,
     done(r === "F" ? "fellowships" : "scholarships") ? h("span", { class: "route-n", text: String(n(r)) }) : null)));
   if (!ready) {
     fill(panel, sw, h("p", { class: "hint", text: "Leads appear here when the search finishes." }));
     return;
   }
-  const ok = leads.filter((l) => l.verdict !== "not eligible" && l.status !== "dismissed");
+  const ok = sortLeads(leads.filter((l) => l.verdict !== "not eligible" && l.status !== "dismissed"));
   const out = leads.filter((l) => l.verdict === "not eligible");
   const gone = leads.filter((l) => l.verdict !== "not eligible" && l.status === "dismissed");
-  fill(panel, sw,
+  fill(panel, h("div", { class: "route-row" }, sw, sortSwitch(() => studentRoutes(panel, ctx))),
     route === "S" ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }), h("span", { text: ` ${SAMPLE_NOTE}` })) : null,
     h("h2", { class: "section-title", id: "routes-title",
       text: route === "S" ? `${f.plural(ok.length, "sample option")} (invented, for demonstration)`

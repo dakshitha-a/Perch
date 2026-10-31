@@ -34,6 +34,10 @@ Dakshitha asked for one score and one order. The ranking model's top 20 per awar
 
 Match maps the reranker's log-odds from -6 to 0 and +6 to 100, clipped; the bands stay strong 80+, good 60-79, partial 40-59, weak below 40. On the 126 back-test rows, every funded announcement placed in the top 10 scored 80 or more (most 97 to 100); those ranked 13th or lower scored 30 to 73. The other top-10 leads were 47% strong, 23% good, 17% partial, 12% weak. On today's listings the NIH researchers' top 6 read 85 to 44; the chemists' and physicists' read one or two at 54 to 82 (their NSF programme), then mostly below 30, because NSF programme listings are short and general. The calibration data is all NIH; there is no NSF back-test. The order is unchanged: hit@10 0.208 (10 of 48).
 
+### Student mode: records reaching the ranking model (S27, SYNTHETIC)
+
+`bench/student_mode.py`, 3 personas, 24 planted records, same day, same code but `RETRIEVE`: at 40, 19 of 24 planted records reached a brief; at 100 (**new default**), 23 of 24. Precision and recall of "may apply" stayed 1.0 (10 of 10 at 40, 11 of 11 at 100); every retrieved verdict matched the key; no leakage. A mechanism check on invented records, not a measurement of real use.
+
 ### Proposal stand-in, rerun on the S27 setup
 
 Each award's funded RePORTER abstract as a stand-in draft proposal: hit@10 0.208 to 0.354 (10 to 17 of 48), hit@5 0.188 to 0.271, MRR 0.144 to 0.206; keyword-only 0.042 to 0.083. An upper bound: the abstract is closer to the funded call than a real draft.

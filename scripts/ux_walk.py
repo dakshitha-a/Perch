@@ -120,6 +120,27 @@ EVIDENCE = """() => {
   return out; }"""
 
 
+async def sort_stays(w: Walk, page: Page, tag: str) -> None:
+    """The sort switch must stay put when the sort changes (S27)."""
+    boxes = []
+    for key in ("closing", "order"):
+        btn = page.locator(f"[data-key=sort-{key}]")
+        if await btn.count():
+            await btn.click()
+            await page.wait_for_timeout(150)
+            boxes.append(await page.locator(".sort-switch").bounding_box())
+    # At laptop width the sort switch shares the Grants | Industry (or Fellowships |
+    # Scholarships) row, as Dakshitha asked.
+    toggle = await page.locator(".route-row > .route-switch:not(.sort-switch)").bounding_box()
+    if page.viewport_size["width"] >= 1024 and toggle and boxes and \
+            abs(toggle["y"] - boxes[-1]["y"]) > 2:
+        w.errors.append(f"{tag}: sort: layout: the sort switch is not on the toggle's row")
+    if len(boxes) < 2:
+        w.errors.append(f"{tag}: sort: no sort switch")
+    elif any(abs(b["x"] - boxes[0]["x"]) > 1 or abs(b["y"] - boxes[0]["y"]) > 1 for b in boxes):
+        w.errors.append(f"{tag}: sort: layout: the sort switch moves when the sort changes")
+
+
 class Walk:
     def __init__(self, out: Path, axe: str | None) -> None:
         self.out = out
@@ -211,17 +232,7 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.wait_for_timeout(800)
     await w.snap(page, tag, "routes-grants")
     await w.snap(page, tag, "routes-grants-full", full=True)
-    # The sort switch must stay put while its note changes with each choice (S27).
-    boxes = []
-    for key in ("fit", "closing", "order"):
-        btn = page.locator(f"[data-key=sort-{key}]")
-        if await btn.count():
-            await btn.click()
-            await page.wait_for_timeout(150)
-            boxes.append(await page.locator(".sort-switch").bounding_box())
-    if boxes and any(abs(b["x"] - boxes[0]["x"]) > 1 or abs(b["y"] - boxes[0]["y"]) > 1
-                     for b in boxes):
-        w.errors.append(f"{tag}: sort: layout: the sort switch moves when the sort changes")
+    await sort_stays(w, page, tag)
     lead = page.locator(".leads > li").first
     await w.step(tag, "why", lead.locator("summary[data-key=why]").click())
     await lead.scroll_into_view_if_needed()
@@ -334,6 +345,7 @@ async def student_flow(w: Walk, page: Page, base: str, persona: str, views: list
         await page.click("[data-key=route-S]")
         await page.wait_for_timeout(500)
         await w.snap(page, t, "scholarships")
+        await sort_stays(w, page, t)
         await w.snap(page, t, "scholarships-full", full=True)
         if await w.step(t, "evidence", page.locator(".leads > li .title-btn").first.click()):
             await page.wait_for_selector(".rec-title")

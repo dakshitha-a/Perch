@@ -120,7 +120,7 @@ function route() {
   }
   if (parts[0] === "brief" && parts[1]) {
     const id = decodeURIComponent(parts[1]);
-    if (id === PRIVATE_ID && !privApi.open) { go("#/"); return; }
+    if (id === PRIVATE_ID && !privApi.open) { goReplace("#/"); return; }
     screen("brief");
     api = id === PRIVATE_ID ? privApi : publicApi;
     S.tab = TABS.includes(parts[2]) ? parts[2] : S.tab;
@@ -136,6 +136,13 @@ function route() {
 function go(hash) {
   if (location.hash === hash) route();
   else location.hash = hash;
+}
+
+// For "nothing to show here" redirects: replace the history entry instead of adding one,
+// so the browser's Back keeps moving back instead of landing here again (S27).
+function goReplace(hash) {
+  if (location.hash === hash) route();
+  else location.replace(hash);
 }
 
 function barOwl() { /* the redesign has no owl in the bar (S24) */ }
@@ -210,6 +217,9 @@ async function startStudent() {
   try {
     if (S.cloud) await setCloud(false); // a CV stays on local models
     await mode.enable();
+    // A student brief replaces any researcher pick, so the browser's Back cannot return to
+    // a researcher's pick screen whose Build would replace the student's brief (S27).
+    Object.assign(S.find, { candidates: null, picked: null, searched: "", error: null, nudge: null });
     go("#/student");
   } catch (e) { S.find.error = e.message; renderFind(); }
 }
@@ -294,7 +304,7 @@ const CTX_FIELDS = ["direction", "include", "exclude", "cv", "proposal"];
 
 function renderPick() {
   const F = S.find;
-  if (!F.candidates && !F.error && !F.busy) { go("#/"); return; }
+  if (!F.candidates && !F.error && !F.busy) { goReplace("#/"); return; }
   document.title = "Pick the researcher — Perch";
   const c = F.picked;
   const list = c ? [c] : (F.candidates || []);
@@ -459,6 +469,7 @@ async function pickFile(kind, file) {
 // documents in the session the server keeps Cloud off (S23), so Cloud is turned off first.
 async function build(c) {
   const F = S.find;
+  resetStudent(); // a researcher brief replaces any student one; Back finds an empty form (S27)
   const req = { author_id: f.shortId(c.id), explain: F.explain };
   const words = (x) => x.split(",").map((w) => w.trim()).filter(Boolean);
   if (F.direction.trim()) req.direction = F.direction.trim();
