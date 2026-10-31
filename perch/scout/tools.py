@@ -281,7 +281,11 @@ def explain_fit(ctx: ScoutContext, opportunity_id: str) -> dict:
     for pid in f.cited_ids:  # the fit skill cites papers by short work id
         if pid in papers:
             ctx.see(papers[pid])
-    return {"opportunity": ctx.see(o), "fit": f.fit, "opportunity_sentence":
+    # The step shows the card's Match for this lead, not the model's own fit number (U6).
+    lead = next((x for x in (ctx.service.get(ctx.brief_id) or (None, []))[1]
+                 if x.record_id == o.id), None) if ctx.brief_id else None
+    return {"opportunity": ctx.see(o), "fit": f.fit,
+            "match_on_card": lead.match_score if lead else None, "opportunity_sentence":
             f.opportunity_sentence, "research_sentence": f.research_sentence,
             "inference": f.link_sentence, "unsupported_statements": f.unsupported,
             "cited_ids": [c if c in papers else ctx.see(o) for c in f.cited_ids]}

@@ -46,3 +46,20 @@ def test_research_compare_offers_only_research_offices():
 
     routes = {o["route"] for o in rows_json([])["offices"]}
     assert routes == {"A", "B"}
+
+
+def test_compare_and_scout_show_the_cards_match():
+    """U6: one number for one lead. Compare's evidence cell and Scout's explain step show
+    the card's Match, not the rank or the model's own fit number."""
+    from perch.compare import route_a_row
+    from perch.schemas import Lead
+    from perch.scout.loop import summarise
+
+    lead = Lead(id="b:1", source="grants_gov", source_url="u", fetched_at=T, brief_id="b",
+                route="A", record_id="grants_gov:SYN-1", rank=1, match_score=67,
+                cited_ids=["W1"])
+    cell = route_a_row(lead, opp(), date(2026, 10, 29)).cells["evidence"]
+    assert cell.text.startswith("Match 67 (good)") and "order" not in cell.text
+    assert summarise("explain_fit", {"fit": 85, "match_on_card": 67}) \
+        == "explained; the card says Match 67 (good)"
+    assert "85" not in summarise("explain_fit", {"fit": 85, "match_on_card": None})

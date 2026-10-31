@@ -24,6 +24,7 @@ from typing import Literal
 
 from perch.llm import ChatResult, Message, Provider, ToolCall, ToolResult, cost_usd
 from perch.privacy import LOCAL_ADAPTERS, PrivateSettings, refuse_if_not_local
+from perch.score import match_text
 from perch.scout.log import ScoutLog, digest
 from perch.scout.tools import ALLOWLIST, SESSION_TOOLS, ScoutContext, ToolError, check_arguments
 from perch.skills import parse_json
@@ -478,7 +479,11 @@ def summarise(tool: str, result: dict) -> str:
     if tool == "resolve_author":
         return f"{len(result['candidates'])} candidates"
     if tool == "explain_fit":
-        return "withheld" if result.get("status") == "withheld" else f"fit {result['fit']}"
+        if result.get("status") == "withheld":
+            return "withheld"
+        # The card's Match, never the model's own fit number beside it (U6).
+        m = match_text(result.get("match_on_card"))
+        return f"explained; the card says {m}" if m else "explained and checked"
     if tool == "get_record":
         return f"{result['kind']} {result['record']['id']}"
     if tool == "compare":

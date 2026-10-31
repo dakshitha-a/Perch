@@ -23,3 +23,16 @@ def match_score(p: float | None) -> int | None:
     p = min(max(p, EPS), 1 - EPS)
     logit = math.log(p / (1 - p))
     return round(min(max((logit - LO) / (HI - LO) * 100, 0), 100))
+
+
+def band(score: int | None) -> str | None:
+    """The word on the card's Match pill (web/format.js fitBand): the same thresholds."""
+    if score is None:
+        return None
+    return "strong" if score >= 80 else "good" if score >= 60 else "partial" if score >= 40 \
+        else "weak"
+
+
+def match_text(score: int | None) -> str | None:
+    """'Match 67 (good)', as the card shows it (U6)."""
+    return None if score is None else f"Match {score} ({band(score)})"

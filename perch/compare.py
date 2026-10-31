@@ -19,6 +19,7 @@ from datetime import date
 from perch.datefmt import placeholder_close
 from perch.offices import OFFICES, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation
+from perch.score import match_text
 from perch.store.base import Repository
 
 NONE = "Not in the record"
@@ -83,7 +84,8 @@ def route_a_row(lead: Lead, o: Opportunity | None, as_of: date) -> Row:
         papers = [c for c in lead.cited_ids if c.startswith("W")]
         state = ("explanation withheld" if lead.flagged else
                  "explanation checked" if lead.explanation else "no explanation yet")
-        rank = f"Perch’s order: {lead.rank}" if lead.rank else "Not ranked in a brief"
+        # The card's Match, not the rank: one number for one lead everywhere (U6).
+        rank = match_text(lead.match_score) or "No Match score"
         ev = f"{rank}; cites {len(papers)} of your papers" if papers else rank
         cells = {
             "money": money(o),
@@ -91,7 +93,7 @@ def route_a_row(lead: Lead, o: Opportunity | None, as_of: date) -> Row:
             "code": Cell(o.activity_code or NONE, o.activity_code, rid),
             "kind": Cell(", ".join(o.funding_instruments) or NONE,
                          ", ".join(o.funding_instruments) or None, rid, "funding instrument"),
-            "evidence": Cell(ev, lead.rank, rid, state),
+            "evidence": Cell(ev, lead.match_score, rid, state),
         }
         title = f"{o.opportunity_number}: {o.title}"
     office = for_route("A")
