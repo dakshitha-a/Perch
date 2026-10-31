@@ -22,7 +22,7 @@ Each item is marked:
 - **Nothing is sent (Built):** Scout cannot send email or write to any outside system. Drafts are shown for the person to copy (standing rule 7).
 - **No record changes (Built):** Scout cannot change a stored record. In a private session, store writes stay in the session's memory.
 - **No invented numbers or dates (Built):** a number or date in an answer must come from a record the answer cites, or from the person's own question (standing rule 3).
-- **No other person (Proposed):** a Scout session works on the brief's own researcher or student only. Today the researcher tools accept any OpenAlex author id, and `resolve_author` can look up anyone on OpenAlex. Section 4 removes both from the web app.
+- **No other person (Built, S28):** a Scout session works on the brief's own researcher or student only. Scout's own tools take no author id and it has no author search (section 4); only the MCP server keeps them.
 
 ## 3. The risks Scout actually has, and what controls each
 
@@ -41,27 +41,27 @@ Scout's tools only read records and write text on screen. So the risks are about
 
 - **One brief, one session (Built):** a Scout session belongs to one finished brief. It ends when the person ends their session.
 - **The brief's leads are in context (Built):** the model sees the brief's ranked leads, so "the third one" means something.
-- **Steps run at once (Proposed):** every step runs as soon as the model asks for it. The "Ask before each step" mode and the Approve and Skip buttons are removed.
-- **A Stop button (Proposed):** while Scout works, a Stop button ends the question. The steps already done stay on screen. This is the one control a person needs during a run: to stop waiting.
-- **Fixed subject (Proposed):** in the web app, the researcher tools no longer take an `author_id`. They always use the brief's researcher.
-- **No author search in the web app (Proposed):** `resolve_author` leaves the web app's tool table. A brief already knows its researcher, so the tool has no use there. The MCP server keeps it, because an MCP client starts without a researcher.
+- **Steps run at once (Built, S28):** every step runs as soon as the model asks for it. The "Ask before each step" mode and the Approve and Skip buttons are removed.
+- **A Stop button (Built, S28):** while Scout works, a Stop button ends the question. The steps already done stay on screen. This is the one control a person needs during a run: to stop waiting.
+- **Fixed subject (Built, S28):** in the web app, the researcher tools no longer take an `author_id`. They always use the brief's researcher.
+- **No author search in the web app (Built, S28):** `resolve_author` leaves the web app's tool table. A brief already knows its researcher, so the tool has no use there. The MCP server keeps it, because an MCP client starts without a researcher.
 - **Model policy (Built):** a model with good native tool calling uses it. A small model uses the structured policy, which asks for one JSON step per turn. On the S10 bench, qwen3:8b passed 17 of 20 tasks with native calls and 12 of 20 with the structured policy, so native stays the first choice.
 
 ## 5. Budgets
 
 - **Per question (Built):** 8 model calls, after which Scout stops and says so.
 - **Per session (Built):** 120,000 tokens and $0.25, counted for Scout's own model.
-- **Cloud steps counted (Proposed):** the session budget also counts the tokens and dollars of `explain_fit` and `draft_handoff`. Their model calls already go through the audited provider, so the numbers exist; they are just not added in.
+- **Cloud steps counted (Built, S28):** the session budget also counts the tokens and dollars of `explain_fit` and `draft_handoff`. Their model calls already go through the audited provider, so the numbers exist; they are just not added in.
 - **Per visitor (Built):** 30 Scout questions an hour, counted by IP address. Q35 asks whether per-IP counting suits Demo Day; the same answer applies here.
 
 ## 6. What the person sees
 
-- **How Scout read the question (Proposed):** above the answer, one line lists the steps and their filters as chips, for example "Searched opportunities: activity code R21, closes by 2027-03-01". This is risk 5's control, and it is the first thing the person reads after the question.
+- **How Scout read the question (Built, S28):** above the answer, one line lists the steps and their filters as chips, for example "Searched opportunities: activity code R21, closes by 2027-03-01". This is risk 5's control, and it is the first thing the person reads after the question.
 - **Step cards (Built, changed):** each step stays a card with its tool, filters, result line and records. The cards are collapsed under the "how Scout read it" line by default, because nobody needs to act on them.
-- **Where a step ran (Proposed):** a card for `explain_fit` or `draft_handoff` says "Local" or names the Cloud provider, matching the header chip.
+- **Where a step ran (Built, S28):** a card for `explain_fit` or `draft_handoff` says "Local" or names the Cloud provider, matching the header chip.
 - **The answer (Built):** two to five short sentences. Each citation is a button that opens the record in the evidence rail.
 - **A withheld answer (Built):** if the answer fails the check twice, the page says so plainly, and the step cards still show what Scout found.
-- **Steps used (Built):** the side panel shows the steps used out of 8 for the current question.
+- **Steps used (Removed, S27):** the side panel that counted steps went with the single-column chat. The eight-call limit is stated in Scout's welcome, under "What I will not do".
 - **Lead results you can keep (Proposed, after Demo Day):** a search step's leads appear as short rows with a Keep button, so a filtered result can go straight to the shortlist.
 - **Change a filter without the model (Proposed, after Demo Day):** removing a chip reruns that one search by code, with no model call, and updates the answer's step card.
 
@@ -71,7 +71,7 @@ Scout's tools only read records and write text on screen. So the risks are about
 - **No CV text to the model (Built):** the tools return rule results and the fields read from the CV, never the CV text itself.
 - **Private only (Built):** student Scout runs only in a private session, on a local model.
 - **Samples stay marked (Built):** sample scholarships are marked as samples in every tool result and in the answer's records.
-- **Same changes (Proposed):** steps run at once, the Stop button, and the "how Scout read it" line apply to students too.
+- **Same changes (Built, S28):** steps run at once, the Stop button, and the "how Scout read it" line apply to students too.
 
 ## 8. Records and logs
 
@@ -99,7 +99,7 @@ Scout's tools only read records and write text on screen. So the risks are about
 
 ## 12. What changes from today
 
-**Phase 1, S27, before the freeze:**
+**Phase 1, built in S28, before the freeze:**
 - **Remove the gate:** drop the ask mode, the Approve and Skip buttons and the mode switch, in the loop, the hub, both APIs and `web/scout.js`.
 - **Add Stop:** end the current question between steps and keep what is done.
 - **Fix the subject:** drop `author_id` from the web app's researcher tool schemas and drop `resolve_author` from its tool table, keeping both on MCP.

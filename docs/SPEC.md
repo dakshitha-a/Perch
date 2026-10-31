@@ -83,7 +83,7 @@ Grants.gov + NIH Guide · SBIR.gov         provenance on every row              
                                                               per-thread hybrid search → RRF → eligibility filter → rerank
                                                                                         ↓
                                      Model layer (provider-agnostic: Anthropic · OpenAI-compatible · Ollama/vLLM)
-                                     Scout agent (allowlisted tools, approve mode, budgets) + three bounded skills:
+                                     Scout agent (allowlisted tools, budgets, Stop) + three bounded skills:
                                      1 profile summariser · 2 fit explainer/reranker · 3 hand-off drafter
                                      every output → citation validator (layer 1 deterministic, layer 2 grounding model)
                                                                                         ↓
@@ -94,7 +94,7 @@ Grants.gov + NIH Guide · SBIR.gov         provenance on every row              
 
 Only the model layer runs a language model, and the agent inside it can call nothing but the deterministic functions. Every arrow into the store carries provenance; every arrow out of the model layer passes the validator.
 
-**Stack:** Python 3.12, httpx, pydantic v2; Postgres 16 + pgvector (+ pg_search) in production, SQLite + LanceDB for the demo, behind one repository interface; embeddings chosen by the block benchmark (default Qwen3-Embedding-0.6B, challenger SPECTER2); provider layer `perch/llm/` with three primitives, chat, embed and decide (§8); own 200-line agent loop; MCP server on the official Python SDK **[verify version]**; FastAPI + job runner; React + Vite; Docker Compose with `make demo`. Reuse from NextTex/NexusQC limited to infrastructure and the approve-every-action pattern, disclosed in the AI-use log.
+**Stack:** Python 3.12, httpx, pydantic v2; Postgres 16 + pgvector (+ pg_search) in production, SQLite + LanceDB for the demo, behind one repository interface; embeddings chosen by the block benchmark (default Qwen3-Embedding-0.6B, challenger SPECTER2); provider layer `perch/llm/` with three primitives, chat, embed and decide (§8); own 200-line agent loop; MCP server on the official Python SDK **[verify version]**; FastAPI + job runner; React + Vite; Docker Compose with `make demo`. Reuse from NextTex/NexusQC limited to infrastructure, disclosed in the AI-use log; the approve-every-action pattern borrowed for Scout in S10 was removed in S28 (`docs/design/SCOUT_SPEC.md`).
 
 **API:** `POST /briefs` · `GET /briefs/{id}` (status + partial results) · `POST /briefs/{id}/leads/{lead}/keep` · `POST /briefs/{id}/handoff` · `GET /records/{id}`. Audit log per model call: prompt hash, model, version, tokens, cost, validator result.
 
@@ -122,12 +122,12 @@ Decision models are never used for skills 1–3 (profile summary, fit explanatio
 
 Two layers: the deterministic pipeline (what the back-test measures) and Scout on top.
 
-Scout can: run a brief end to end or one approved step at a time; take plain-language follow-ups ("foundations only, under $200k"); monitor (award within 12 months of ending or new opportunity above threshold → refresh and draft a notification; built in S16, shelved in S23 until users have accounts); explain its ranking from its records.
+Scout can: run a brief end to end, each step as soon as the model asks for it; take plain-language follow-ups ("foundations only, under $200k"); monitor (award within 12 months of ending or new opportunity above threshold → refresh and draft a notification; built in S16, shelved in S23 until users have accounts); explain its ranking from its records.
 A student brief gets its own allowlist instead (S24): search_options, check_option, explain_verdict, read_cv, compare_options, draft_note and get_record. They read only rule results and records, never the CV text, and run only in a private session; the MCP server keeps the researcher tools.
 
 Scout cannot: call anything outside the allowlist (no web, no shell); state a number or date not in a cited record; send email or change a record; exceed the per-brief budget; read anything about a researcher that is not a public record.
-Tools: `resolve_author · build_profile · list_awards · search_opportunities(route, filters) · get_org_signals · explain_fit · compare · draft_handoff · get_record`. Every call logged with args and result hashes; a brief is replayable.
-UI: each tool call is a card; modes *ask before every step* (default) and *run and show me*.
+Tools: `build_profile · list_awards · search_opportunities(route, filters) · get_org_signals · explain_fit · compare · draft_handoff · get_record`, fixed to the brief's researcher; the MCP server adds `resolve_author` and an `author_id` argument, because its client starts without a researcher. Every call logged with args and result hashes; a brief is replayable.
+UI (S28, `docs/design/SCOUT_SPEC.md`): each step runs as soon as the model asks for it; a Stop button ends the question between steps. Above the answer, "How Scout read your question" lists each finished step with its filters; the step cards fold under the answer, each saying where it ran: code, a local model or a named Cloud provider. The fit and hand-off steps' model spend counts toward the session budget.
 
 Provider layer: one interface for chat, tool calling, structured output; adapters for Anthropic, OpenAI-compatible endpoints, Ollama and vLLM; model per role in config; fallback mode (structured prompts + validator) for small local models that tool-call poorly; three models benchmarked on the back-test.
 
