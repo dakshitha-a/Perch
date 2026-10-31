@@ -60,7 +60,8 @@
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; scrollbar-color: transparent transparent; }
+html.bar-near { scrollbar-color: var(--ink-3) transparent; }
 body {
   margin: 0; background: var(--paper); color: var(--ink);
   font: 400 16px/1.5 var(--sans); font-variant-numeric: tabular-nums;
@@ -983,7 +984,8 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 #panel > .scout { display: flex; flex-direction: column; gap: 10px; height: var(--chat-h, 70vh); min-height: 0; padding-top: 4px;
   width: 100%; max-width: 880px; margin: 0 auto; }
 .scout-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 16px;
-  padding: 8px 6px 8px 2px; border-radius: 4px; scrollbar-width: thin; }
+  padding: 8px 6px 8px 2px; border-radius: 4px; scrollbar-width: none; }
+.scout-scroll::-webkit-scrollbar { display: none; }
 .scout-scroll.faded { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 96px); mask-image: linear-gradient(to bottom, transparent 0, #000 96px); }
 .scout-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 #panel > .scout > .scout-ask { flex: none; }

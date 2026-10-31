@@ -185,6 +185,16 @@ async def checks_flow(w: Walk, page: Page, base: str, tag: str) -> None:
         w.errors.append(f"{tag}: scout: chat: on first open the question box is not on the bottom edge of the window "
                         f"(bottom at {round(box['y'] + box['height']) if box else '?'} px, window {vh} px)")
     await w.snap(page, tag, "scout-welcome")
+    # No scroll bar on the chat, and the page's bar shows only near the pointer (S27).
+    if await page.evaluate("() => getComputedStyle(document.querySelector('.scout-scroll')).scrollbarWidth !== 'none'"):
+        w.errors.append(f"{tag}: scout: chat: the conversation shows a scroll bar")
+    vw = page.viewport_size["width"]
+    await page.mouse.move(vw // 2, page.viewport_size["height"] // 2)
+    if not await page.evaluate("() => /transparent|rgba\\(0, 0, 0, 0\\) rgba\\(0, 0, 0, 0\\)/.test(getComputedStyle(document.documentElement).scrollbarColor)"):
+        w.errors.append(f"{tag}: page: the scroll bar shows while the pointer is away from it")
+    await page.mouse.move(vw - 3, page.viewport_size["height"] // 2)
+    if await page.evaluate("() => /rgba\\(0, 0, 0, 0\\) rgba\\(0, 0, 0, 0\\)/.test(getComputedStyle(document.documentElement).scrollbarColor)"):
+        w.errors.append(f"{tag}: page: the scroll bar stays hidden with the pointer over it")
     await page.wait_for_selector("#scout-q")
     for q in ("Why does the top lead fit?", "Only R21 grants that close by 2027-03-01"):
         await page.fill("#scout-q", q)

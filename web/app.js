@@ -1997,6 +1997,11 @@ function init() {
     S.find.q = (window.PERCH_REPLAY.candidates[0] || {}).display_name || "";
   }
   $(".skip").addEventListener("click", (e) => { e.preventDefault(); main().focus(); });
+  // The page's scroll bar shows only while the pointer is near it (S27, Dakshitha: a bar
+  // that is always there distracts). It keeps its width, so nothing moves when it shows.
+  const root = document.documentElement;
+  document.addEventListener("mousemove", (e) => root.classList.toggle("bar-near", e.clientX >= root.clientWidth - 8));
+  root.addEventListener("mouseleave", () => root.classList.remove("bar-near"));
   $("#status-chip").addEventListener("click", openModels);
   $("#end-session").addEventListener("click", endSession);
   if (api.mode === "live") {
