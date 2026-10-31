@@ -378,8 +378,8 @@ def create_app(service: BriefService, runner: JobRunner,
                 found = [c.get_author(q)]
             else:
                 found = c.resolve_by_name(q)
-        with service.repo() as r:
-            r.upsert(found)
+        # Not cached: a search is not a brief, and the pick screen needs only this answer.
+        # The brief's researcher stage fetches the one person picked (review S13).
         return {"candidates": [record_json(x) for x in found]}
 
     limiter = RateLimiter(int(env("PERCH_BRIEFS_PER_HOUR") or 10))

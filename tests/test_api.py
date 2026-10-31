@@ -89,9 +89,13 @@ def test_keep_dismiss_export_records_and_errors(tmp_path):
 
 
 def test_resolve_candidates(tmp_path):
-    c, _ = make(tmp_path)
+    c, service = make(tmp_path)
     cands = c.get("/authors/resolve", params={"q": NAME}).json()["candidates"]
     assert [x["id"] for x in cands] == ["https://openalex.org/A5026494099"]
+    from perch.schemas import Researcher
+
+    with service.repo() as r:  # S13: a search writes nothing
+        assert r.get(Researcher, "https://openalex.org/A5026494099") is None
 
 
 def test_failed_stage_is_recorded(tmp_path):

@@ -45,6 +45,8 @@ def test_a_public_url_needs_a_named_operator():
     assert settings(**pub, operator="Lab IT").problems() == []
     assert settings(enabled=False).problems() == []
     assert "run by Lab IT" in settings(operator="Lab IT").statement()
+    # S13: the cache of public records, and its fetch times, is said, not hidden.
+    assert "cached on the server with the time they were fetched" in settings().statement()
     assert "decrypted by example" in settings(operator="x", tls_at="tunnel:example").statement()
 
 

@@ -6,7 +6,8 @@ Settings, read from the environment:
   PERCH_PRIVATE_MODE       "0" turns sessions off (default on); the web app then has no briefs
   PERCH_CLOUD              a cloud model spec a session may turn on, e.g.
                            "anthropic:claude-sonnet-5-5" (default none: Local only)
-  PERCH_CLOUD_BRIEFS_PER_DAY  cloud briefs the whole server runs per day (default 30)
+  PERCH_CLOUD_BRIEFS_PER_DAY  cloud briefs and hand-off drafts the whole server runs per day
+                              (default 30)
   PERCH_CLOUD_DOCUMENTS    "1" lets a session send its documents to the cloud provider after
                            a second warning (S24, Q30). Default off: standing rule 1 keeps
                            private text on local models until Dakshitha changes it (Q33).
@@ -88,7 +89,10 @@ class PrivateSettings:
     def statement(self) -> str:
         """The promise shown in the UI (docs/design/PRIVATE_MODE.md)."""
         s = (f"Perch keeps nothing about you. Your brief and anything you add are held in memory "
-             f"for this session only and are never saved or logged. With Local on, every model "
+             f"for this session only and are never saved or logged. Public records a brief "
+             f"fetches, such as a researcher's OpenAlex profile, papers and awards, are cached "
+             f"on the server with the time they were fetched, so the operator could see that "
+             f"a researcher was looked up and when. With Local on, every model "
              f"runs on the Perch server, run by {self.operator or 'the operator of this server'}.")
         if self.tls_at and self.tls_at.startswith("tunnel:"):
             s += (f" Your connection is decrypted by {self.tls_at.split(':', 1)[1]} before it "
