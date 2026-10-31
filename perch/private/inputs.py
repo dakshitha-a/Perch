@@ -28,6 +28,9 @@ KINDS = {
 }
 MAX_BYTES = 5_000_000  # one uploaded file
 MAX_CHARS = 60_000  # one document's text after parsing
+# A DOCX's document.xml once inflated. Zip compresses zeros about 1000:1, so the 5 MB
+# upload cap alone lets one request inflate gigabytes (review S2).
+MAX_XML_BYTES = 10_000_000
 FORMATS = (".txt", ".md", ".docx", ".pdf")
 W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
@@ -80,12 +83,21 @@ def parse_bytes(filename: str, data: bytes) -> str:
 
 
 def docx_text(data: bytes) -> str:
+    too_big = InputError(f"the DOCX text is larger than {MAX_XML_BYTES // 1_000_000} MB "
+                         "once unpacked")
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
-            xml = z.read("word/document.xml")
-    except (zipfile.BadZipFile, KeyError) as e:
+            if z.getinfo("word/document.xml").file_size > MAX_XML_BYTES:
+                raise too_big
+            # The header's size can lie, so the read itself is bounded too.
+            with z.open("word/document.xml") as f:
+                xml = f.read(MAX_XML_BYTES + 1)
+        if len(xml) > MAX_XML_BYTES:
+            raise too_big
+        root = ElementTree.fromstring(xml)
+    except (zipfile.BadZipFile, KeyError, ElementTree.ParseError, zipfile.LargeZipFile,
+            NotImplementedError, EOFError, OSError, RuntimeError) as e:
         raise InputError("the file is not a readable DOCX") from e
-    root = ElementTree.fromstring(xml)
     paras = ["".join(t.text or "" for t in p.iter(f"{W_NS}t")) for p in root.iter(f"{W_NS}p")]
     return "\n".join(paras)
 

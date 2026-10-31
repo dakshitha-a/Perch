@@ -182,6 +182,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     open_limit = limiter(per_hour("PERCH_SESSIONS_PER_HOUR", 20))  # new sessions
     brief_limit = limiter(per_hour("PERCH_BRIEFS_PER_HOUR", 10))
     handoff_limit = limiter(per_hour("PERCH_HANDOFF_PER_HOUR", 30))
+    docs_limit = limiter(per_hour("PERCH_DOCUMENTS_PER_HOUR", 60))  # uploads and pastes
     cloud_day = {"day": "", "n": 0}  # cloud briefs today, whole server, in memory only
     cloud_lock = threading.Lock()
     app.state.private_sessions = sessions
@@ -301,8 +302,12 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         return {"cloud": s.cloud, "documents": s.cloud_docs}
 
     @app.post("/private/documents", status_code=201)
-    def add_doc(req: DocumentRequest, x_perch_private: str | None = Header(None)) -> dict:
+    def add_doc(req: DocumentRequest, request: Request,
+                x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
+        if wait := docs_limit.take(client_key(request)):
+            raise HTTPException(429, "Too many documents added this hour.",
+                                headers={"Retry-After": str(wait)})
         if s.cloud and not s.cloud_docs:
             raise HTTPException(409, "Turn Cloud off first: documents stay on local models.")
         try:

@@ -616,3 +616,40 @@ def test_documents_session_withholds_model_text_that_cites_only_public_ids(tmp_p
     c.post("/private/brief", headers=h2, json={"author_id": "A5026494099",
                                                "as_of": "2026-10-28"})
     assert "withheld" not in c.get("/private/export.json", headers=h2).json()
+
+
+def docx_of(xml: bytes) -> bytes:
+    import io
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("word/document.xml", xml)
+    return buf.getvalue()
+
+
+def test_docx_bombs_and_broken_xml_are_input_errors(tmp_path, monkeypatch):
+    """S2: a DOCX that inflates past the cap is refused before it is held in memory; a
+    malformed document.xml is an InputError, not a crash (S5). Uploads are rate limited."""
+    import base64
+
+    from perch.private.inputs import MAX_BYTES, MAX_XML_BYTES
+
+    w = b"http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+    bomb = docx_of(b'<w:document xmlns:w="' + w + b'"><w:body><w:p><w:r><w:t>'
+                   + b"0" * (MAX_XML_BYTES + 10) + b"</w:t></w:r></w:p></w:body></w:document>")
+    assert len(bomb) < MAX_BYTES // 100  # a small upload
+    with pytest.raises(InputError, match="once unpacked"):
+        docx_text(bomb)
+    with pytest.raises(InputError, match="not a readable DOCX"):
+        docx_text(docx_of(b"<w:document><w:body><w:p>"))
+    monkeypatch.setenv("PERCH_DOCUMENTS_PER_HOUR", "2")
+    c, _ = private_app(tmp_path, monkeypatch)
+    h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    up = {"kind": "proposal", "filename": "aims.docx", "data": base64.b64encode(bomb).decode()}
+    r = c.post("/private/documents", headers=h, json=up)
+    assert r.status_code == 422 and "once unpacked" in r.text
+    assert c.post("/private/documents", headers=h, json={
+        "kind": "direction", "text": "SYNTHETIC gait"}).status_code == 201
+    assert c.post("/private/documents", headers=h, json={
+        "kind": "direction", "text": "SYNTHETIC gait"}).status_code == 429
