@@ -1700,10 +1700,35 @@ async function setLead(leadId, action) {
 // ---------- evidence panel ----------
 
 let evidenceOpener = null;
+let evidenceAsk = 0;  // the latest record asked for; an older answer arriving late is dropped
+let evidenceClosing = null;
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Going from record to record crossfades (S27): the old record fades out while the new one
+// is fetched, then the new one fades in. The owl shows only when a fetch is slow.
+async function swapRecord(box, id, show) {
+  const ask = ++evidenceAsk;
+  box.classList.add("swap");
+  const slow = setTimeout(() => {
+    if (ask !== evidenceAsk) return;
+    show(h("div", { class: "loading" }, owl("look", "owl-sm"), h("p", { text: "Fetching the record" })));
+    box.classList.remove("swap");
+  }, 400);
+  let r = null, err = null;
+  try { [r] = await Promise.all([api.record(id), wait(130)]); } catch (e) { err = e; }
+  clearTimeout(slow);
+  if (ask !== evidenceAsk) return null;
+  if (err) show(h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The record could not be opened: ${err.message}` })));
+  else show(...recordView(r));
+  box.scrollTop = 0;
+  box.classList.remove("swap");
+  return r;
+}
 
 async function openEvidence(id, opener) {
   // On a laptop the record opens in the rail beside the list (S24); elsewhere, and on a
-  // phone, in the sheet.
+  // phone, in the sheet. On a laptop the sheet slides in over the page and leaves the page
+  // where it is (S27).
   const railEv = $("#rail-ev");
   if (railEv && railEv.offsetParent !== null && window.matchMedia("(min-width: 901px)").matches) {
     return openInRail(railEv, id, opener);
@@ -1711,49 +1736,49 @@ async function openEvidence(id, opener) {
   evidenceOpener = opener || null;
   const panel = $("#evidence");
   const body = $("#evidence-body");
-  fill(body, h("div", { class: "loading" }, owl("look", "owl-sm"), h("p", { text: "Fetching the record" })));
-  $("#evidence-kind").textContent = "Evidence";
-  const modal = !window.matchMedia("(min-width: 960px)").matches;
-  panel.setAttribute("aria-modal", String(modal));
-  panel.setAttribute("aria-labelledby", "evidence-kind");
-  for (const el of [main(), $(".bar"), $(".foot"), $("#banner")]) el.inert = modal;
-  panel.hidden = false;
-  document.body.classList.add("sheet-open");
-  requestAnimationFrame(() => panel.classList.add("in"));
-  $("#evidence-close").focus();
-  try {
-    const r = await api.record(id);
-    if (panel.hidden) return;
-    $("#evidence-kind").textContent = KINDS[r.kind] || "Record";
-    fill(body, ...recordView(r));
-    panel.setAttribute("aria-labelledby", "evidence-kind evidence-title");
-  } catch (e) {
-    fill(body, h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The record could not be opened: ${e.message}` })));
+  const wasOpen = !panel.hidden && panel.classList.contains("in");
+  clearTimeout(evidenceClosing);
+  if (!wasOpen) {
+    fill(body);
+    $("#evidence-kind").textContent = "Evidence";
+    const modal = !window.matchMedia("(min-width: 960px)").matches;
+    panel.setAttribute("aria-modal", String(modal));
+    panel.setAttribute("aria-labelledby", "evidence-kind");
+    for (const el of [main(), $(".bar"), $(".foot"), $("#banner")]) el.inert = modal;
+    panel.hidden = false;
+    document.body.classList.add("sheet-open");
+    void panel.offsetWidth;  // lay the closed sheet out first, so the slide-in runs
+    panel.classList.add("in");
+    $("#evidence-close").focus();
   }
+  const r = await swapRecord(body, id, (...nodes) => fill(body, ...nodes));
+  if (!r || panel.hidden) return;
+  $("#evidence-kind").textContent = KINDS[r.kind] || "Record";
+  panel.setAttribute("aria-labelledby", "evidence-kind evidence-title");
 }
 
 async function openInRail(box, id, opener) {
   document.querySelectorAll("#panel .lead.selected").forEach((x) => x.classList.remove("selected"));
   const card = opener && opener.closest && opener.closest(".lead");
   if (card) card.classList.add("selected");
-  fill(box, h("p", { class: "ev-kind", text: "Evidence" }), h("div", { class: "loading" }, owl("look", "owl-sm"), h("p", { text: "Fetching the record" })));
-  try {
-    const r = await api.record(id);
-    fill(box, h("p", { class: "ev-kind", text: `Evidence · ${KINDS[r.kind] || "Record"}` }), ...recordView(r));
-    box.setAttribute("aria-labelledby", "evidence-title");
-    announce(`Evidence: ${r.title || r.name || r.display_name || "record"} is in the panel beside the list.`);
-  } catch (e) {
-    fill(box, h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The record could not be opened: ${e.message}` })));
-  }
+  const r = await swapRecord(box, id, (...nodes) => fill(box, h("p", { class: "ev-kind", text: "Evidence" }), ...nodes));
+  if (!r) return;
+  box.querySelector(".ev-kind").textContent = `Evidence · ${KINDS[r.kind] || "Record"}`;
+  box.setAttribute("aria-labelledby", "evidence-title");
+  announce(`Evidence: ${r.title || r.name || r.display_name || "record"} is in the panel beside the list.`);
 }
 
 function closeEvidence() {
   const panel = $("#evidence");
   if (panel.hidden) return;
+  evidenceAsk++;
   panel.classList.remove("in");
   document.body.classList.remove("sheet-open");
   for (const el of [main(), $(".bar"), $(".foot"), $("#banner")]) el.inert = false;
-  panel.hidden = true;
+  // Hide once the slide-out has run; the reduced-motion rule makes that instant.
+  const ms = parseFloat(getComputedStyle(panel).transitionDuration) * 1000 || 0;
+  clearTimeout(evidenceClosing);
+  evidenceClosing = setTimeout(() => { panel.hidden = true; }, ms);
   if (evidenceOpener && document.contains(evidenceOpener)) evidenceOpener.focus();
 }
 

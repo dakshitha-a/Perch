@@ -1,6 +1,7 @@
-// Ask Scout: follow-up questions about a finished brief (S10). Each tool Scout wants to
-// use is a card, and each runs as soon as the model asks for it (S27: the ask-first mode
-// is off). Answers cite records; a citation opens the record.
+// Ask Scout: follow-up questions about a finished brief (S10). Each tool Scout uses is a
+// card, and each runs as soon as the model asks for it (S27: the ask-first mode is gone).
+// Answers cite records; a citation opens the record. The chat reads like a chat window:
+// the question box stays at the bottom and older replies scroll up and fade (S27).
 
 import { h, fill, icon } from "./dom.js";
 import { owl } from "./owl.js";
@@ -33,19 +34,19 @@ const ARGS = {
   ids: "Leads", office: "Office",
   name: "Name",
 };
-const STATUS = { proposed: "Waiting for you", done: "Done", skipped: "Skipped", refused: "Refused", error: "Failed", repeated: "Repeat, not run again" };
+const STATUS = { proposed: "Running…", done: "Done", skipped: "Skipped", refused: "Refused", error: "Failed", repeated: "Repeat, not run again" };
 const EXAMPLES = ["Only R21 grants that close by 2027-03-01", "Small grants only: a ceiling of $200k or less",
   "Drop anything that mentions clinical trials", "Why does the top lead fit?"];
 
 // One Scout conversation per brief, kept while the brief is on screen.
 // Scout runs every step as soon as the model asks for it and shows each one; the ask-first
 // switch is gone (Dakshitha, S27; the server's ask mode goes in S28).
-const T = { briefId: null, data: null, mode: "run", error: null, timer: null, draft: "", sending: false };
+const T = { briefId: null, data: null, mode: "run", error: null, timer: null, draft: "", sending: false, seen: 0, stick: true, top: 0 };
 
 // Stop polling and forget the conversation when the session has ended (S27).
 export function resetScout() {
   clearTimeout(T.timer);
-  Object.assign(T, { briefId: null, data: null, error: null, timer: null, draft: "", sending: false });
+  Object.assign(T, { briefId: null, data: null, error: null, timer: null, draft: "", sending: false, seen: 0, stick: true, top: 0 });
 }
 
 export function renderScout(panel, ctx) {
@@ -63,27 +64,46 @@ export function renderScout(panel, ctx) {
       h("p", { class: "hint", text: "Then ask follow-up questions, such as “only R21s” or “under $200k”." }))));
     return;
   }
+  // Polls redraw only when something changed, so the reader's scroll is left alone.
+  const sig = JSON.stringify([key, T.data, T.error, T.sending]);
+  if (panel.dataset.scoutSig === sig && panel.querySelector(".scout-cols")) return;
+  panel.dataset.scoutSig = sig;
   const busy = Boolean(T.data && T.data.busy) || T.sending;
   const last = T.data && T.data.exchanges.length ? T.data.exchanges[T.data.exchanges.length - 1] : null;
   const view = h("div", { class: "scout" },
-    h("div", { class: "scout-intro title-row" },
+    h("div", { class: "scout-scroll", tabindex: "0", "aria-label": "Conversation with Scout",
+      onscroll: (e) => {
+        const b = e.currentTarget;
+        b.classList.toggle("faded", b.scrollTop > 4);
+        T.stick = b.scrollHeight - b.scrollTop - b.clientHeight < 32;
+        T.top = b.scrollTop;
+      } },
+    h("div", { class: "scout-intro" },
       h("p", { class: "lede", text: ctx.student ? "Ask about your options in plain words. Scout uses Perch’s own tools, one card per step."
         : "Ask about this brief in plain words. Scout uses Perch’s own tools, one card per step." })),
     !T.data ? h("div", { class: "scout-hello" }, owl("idle", "owl-sm", { button: true }),
       h("p", { text: "Hello. Try one of the questions under the box, or type your own." })) : null,
-    h("ol", { class: "scout-log", "aria-live": "polite" }, ...(T.data ? T.data.exchanges.map((x) => exchange(x, ctx, busy)) : [])),
-    T.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: T.error })) : null,
-    askForm(ctx, busy),
-    h("p", { class: "hint scout-rules", text: ctx.student
-      ? "Scout cites records. A date or amount not in a cited record is rewritten once, then withheld. It stops after eight model calls, cannot browse the web, send anything or change a record, and runs on a local model, because your CV is in this session. Sample scholarships stay marked as samples. The conversation ends with the session."
-      : "Scout cites records. A date or amount not in a cited record is rewritten once, then withheld. It stops after eight model calls, cannot browse the web, send anything or change a record, and runs on a local model. The conversation ends with the session." }),
-    T.data ? h("p", { class: "hint scout-meta", text: `Model ${T.data.model}. ${T.data.tokens.toLocaleString()} tokens so far in this conversation.` }) : null);
-  const aside = h("aside", { "aria-labelledby": "scout-tools-h" },
+    h("ol", { class: "scout-log", "aria-live": "polite" }, ...(T.data ? T.data.exchanges.map((x, i) => exchange(x, ctx, busy, i >= T.seen)) : [])),
+    T.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: T.error })) : null),
+    askForm(ctx, busy));
+  const aside = h("aside", { "aria-labelledby": "scout-tools-h", tabindex: "0" },
     h("h2", { id: "scout-tools-h", text: "What Scout can use" }),
     h("ul", {}, CAN_USE[ctx.student ? "student" : "researcher"].map((x) => h("li", { text: x }))),
-    h("p", { text: `Steps used this question: ${last ? last.cards.length : 0} of 8` }));
+    h("p", { text: `Steps used this question: ${last ? last.cards.length : 0} of 8` }),
+    h("p", { class: "scout-rules", text: ctx.student
+      ? "Scout cites records. A date or amount not in a cited record is rewritten once, then withheld. It stops after eight model calls, cannot browse the web, send anything or change a record, and runs on a local model, because your CV is in this session. Sample scholarships stay marked as samples. The conversation ends with the session."
+      : "Scout cites records. A date or amount not in a cited record is rewritten once, then withheld. It stops after eight model calls, cannot browse the web, send anything or change a record, and runs on a local model. The conversation ends with the session." }),
+    T.data ? h("p", { class: "scout-meta", text: `Model ${T.data.model}. ${T.data.tokens.toLocaleString()} tokens so far in this conversation.` }) : null);
   const focused = document.activeElement && document.activeElement.id;
-  fill(panel, h("div", { class: "scout-cols" }, view, aside));
+  const cols = h("div", { class: T.data ? "scout-cols" : "scout-cols empty" }, view, aside);
+  fill(panel, cols);
+  T.seen = T.data ? T.data.exchanges.length : 0;
+  fitChat(cols);
+  const box = cols.querySelector(".scout-scroll");
+  // New replies come in at the bottom, as in a chat window; a reader who scrolled up to
+  // read an older reply stays where they are.
+  box.scrollTop = T.stick ? box.scrollHeight : T.top;
+  box.classList.toggle("faded", box.scrollTop > 4);
   if (focused === "scout-q") {
     const q = panel.querySelector("#scout-q");
     q.focus();
@@ -91,20 +111,47 @@ export function renderScout(panel, ctx) {
   }
 }
 
-function reset(briefId) {
-  clearTimeout(T.timer);
-  Object.assign(T, { briefId, data: null, error: null, timer: null, draft: "", sending: false });
+// Once there is a conversation, the chat fills the window below the tabs, so the question
+// box sits at the bottom of the screen and the page does not grow with the conversation.
+// On a phone the brief's header is tall, so the chat takes the window below the top bar
+// and the tabs instead, and the page scrolls the header away once.
+function fitChat(cols) {
+  const top = cols.getBoundingClientRect().top + window.scrollY;
+  const bar = document.querySelector(".bar");
+  const phone = window.innerWidth < 700 ? window.innerHeight - (bar ? bar.offsetHeight : 64) - 80 : 0;
+  cols.style.setProperty("--chat-h", `${Math.max(380, phone, window.innerHeight - top - 16)}px`);
 }
 
-function exchange(x, ctx, busy) {
-  const running = x.status === "running" || x.status === "awaiting_approval";
-  return h("li", { class: "scout-x" },
+// On a phone, asking scrolls the brief's header away so the whole chat is on screen.
+function phoneScroll() {
+  if (window.innerWidth >= 700) return;
+  requestAnimationFrame(() => {
+    const cols = document.querySelector(".scout-cols"), tabs = document.querySelector(".tabs-wrap");
+    if (!cols) return;
+    const under = tabs ? tabs.getBoundingClientRect().bottom : 0;
+    window.scrollTo({ top: window.scrollY + cols.getBoundingClientRect().top - under - 8, behavior: "smooth" });
+  });
+}
+
+window.addEventListener("resize", () => {
+  const cols = document.querySelector(".scout-cols");
+  if (cols) fitChat(cols);
+});
+
+function reset(briefId) {
+  clearTimeout(T.timer);
+  Object.assign(T, { briefId, data: null, error: null, timer: null, draft: "", sending: false, seen: 0, stick: true, top: 0 });
+}
+
+function exchange(x, ctx, busy, fresh) {
+  const running = x.status === "running";
+  return h("li", { class: fresh ? "scout-x new" : "scout-x" },
     h("p", { class: "scout-q" }, h("span", { class: "sr-only", text: "You asked: " }), x.question),
-    x.cards.length ? h("ol", { class: "scout-cards" }, ...x.cards.map((c) => card(c, ctx, busy))) : null,
+    x.cards.length ? h("ol", { class: "scout-cards" }, ...x.cards.map((c) => card(c, ctx))) : null,
     answer(x, ctx, running && busy));
 }
 
-function card(c, ctx, busy) {
+function card(c, ctx) {
   const args = Object.entries(c.arguments || {}).filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length));
   return h("li", { class: `scout-card s-${c.status}` },
     h("div", { class: "scout-card-head" },
@@ -116,10 +163,7 @@ function card(c, ctx, busy) {
     c.detail ? h("p", { class: "hint", text: c.detail }) : null,
     c.records && c.records.length ? h("p", { class: "scout-records" }, h("span", { class: "hint", text: "Records: " }),
       ...c.records.slice(0, 8).map((id) => citeBtn(id, ctx))) : null,
-    c.draft ? draftBlock(c.draft, ctx) : null,
-    c.status === "proposed" ? h("div", { class: "scout-actions" },
-      h("button", { class: "btn primary", disabled: busy, onclick: () => act(ctx, "approve", c.id) }, icon("keep"), h("span", { text: "Approve" })),
-      h("button", { class: "btn", disabled: busy, onclick: () => act(ctx, "skip", c.id) }, h("span", { text: "Skip" }))) : null);
+    c.draft ? draftBlock(c.draft, ctx) : null);
 }
 
 // A hand-off draft from draft_handoff: the full text to copy. Never sent.
@@ -140,7 +184,6 @@ function draftBlock(d, ctx) {
 
 function answer(x, ctx, thinking) {
   if (thinking) return h("p", { class: "scout-wait" }, owl("look", "owl-sm"), h("span", { text: "Scout is working…" }));
-  if (x.status === "awaiting_approval") return null;
   if (x.answer) return h("div", { class: "scout-answer" }, ...withCites(x.answer, ctx));
   if (x.flagged) return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "Scout’s answer was withheld: it did not pass the citation check twice. The tool cards above show what it found." }));
   if (x.status === "stopped" || x.status === "failed") return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: `Scout stopped: ${(x.errors || []).join("; ") || "no answer"}.` }));
@@ -172,14 +215,12 @@ function leadLabel(id) {
 }
 
 function askForm(ctx, busy) {
-  const waiting = T.data && T.data.exchanges.some((x) => x.status === "awaiting_approval");
   return h("form", { class: "scout-ask", onsubmit: (e) => { e.preventDefault(); send(ctx); } },
     h("label", { for: "scout-q", class: "mini", text: T.data ? "Ask a follow-up" : "Ask Scout" }),
     h("div", { class: "scout-ask-row" },
       h("input", { id: "scout-q", type: "text", maxlength: "1000", autocomplete: "off", value: T.draft,
         placeholder: ctx.student ? "For example: only options with a deadline after March" : "For example: only R21s that close by March", oninput: (e) => { T.draft = e.target.value; } }),
-      h("button", { class: "btn primary", type: "submit", disabled: busy || waiting }, h("span", { text: "Ask" }))),
-    waiting ? h("p", { class: "hint", text: "Approve or skip Scout’s step above first." }) : null,
+      h("button", { class: "btn primary", type: "submit", disabled: busy }, h("span", { text: "Ask" }))),
     !T.data && ctx.api.recordedQuestion ? h("p", { class: "hint", text: "This preview plays back one recorded question. Tap it below." }) : null,
     !T.data ? h("ul", { class: "chips" }, ...(ctx.api.recordedQuestion ? [ctx.api.recordedQuestion] : ctx.student ? STUDENT_EXAMPLES : EXAMPLES).map((q) => h("li", {},
       h("button", { class: "chip", type: "button", onclick: () => { T.draft = q; send(ctx); } }, q)))) : null);
@@ -189,6 +230,7 @@ async function send(ctx) {
   const q = T.draft.trim();
   if (!q || T.sending) return;
   T.sending = true;
+  T.stick = true;  // asking jumps to the newest reply
   T.error = null;
   ctx.rerender();
   try {
@@ -196,22 +238,11 @@ async function send(ctx) {
       : await ctx.api.scoutStart(ctx.briefId, { question: q, mode: T.mode });
     T.draft = "";
     poll(ctx);
+    phoneScroll();
   } catch (e) {
     T.error = e.message;
   }
   T.sending = false;
-  ctx.rerender();
-}
-
-async function act(ctx, action, cardId) {
-  T.error = null;
-  try {
-    T.data = await ctx.api.scoutAct(T.data.id, action, { card_id: cardId });
-    ctx.announce(action === "approve" ? "Approved. Scout is running that step." : "Skipped.");
-    poll(ctx);
-  } catch (e) {
-    T.error = e.message;
-  }
   ctx.rerender();
 }
 
@@ -223,7 +254,7 @@ function poll(ctx) {
     if (T.briefId !== brief) return;
     try {
       T.data = await ctx.api.scoutGet(id);
-      if (!T.data.busy) ctx.announce(T.data.status === "awaiting_approval" ? "Scout has a step for you to approve." : "Scout answered.");
+      if (!T.data.busy) ctx.announce("Scout answered.");
     } catch (e) {
       T.error = e.message;
       T.data = { ...T.data, busy: false };

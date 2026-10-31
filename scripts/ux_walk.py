@@ -120,6 +120,86 @@ EVIDENCE = """() => {
   return out; }"""
 
 
+# Leftovers of the ask-first mode, gone since S27: no Approve or Skip, no "Waiting for you".
+GATE = """() => [...document.querySelectorAll('.scout-card, .help, main')].some(el =>
+  el.querySelector(':scope > .scout-actions') || /Waiting for you|\\bApprove\\b/.test(el.innerText))"""
+# A MutationObserver counts loading placeholders put into an Evidence box that is already
+# open; going from record to record must crossfade, not blank to the owl (S27).
+WATCH_FLASH = """() => { window.__flash = 0; const seen = (n) => n.nodeType === 1 && (n.matches('.loading')
+  || n.querySelector('.loading'));
+  for (const box of document.querySelectorAll('#evidence-body, #rail-ev'))
+    new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (seen(n)) window.__flash++; })
+      .observe(box, { childList: true, subtree: true }); }"""
+
+
+async def checks_flow(w: Walk, page: Page, base: str, tag: str) -> None:
+    """Motion and chat checks the static screenshots missed (S27): opening Evidence must not
+    move the page, going from paper to paper must not flash, Scout shows no approval gate
+    while a step runs, and the question box stays in the window as the chat grows."""
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector(".cand", timeout=20000)
+    await page.locator(".cand button.btn.outline").first.click()
+    await page.wait_for_timeout(400)
+    await page.click("[data-key=build]")
+    await page.wait_for_selector("#tab-routes", timeout=60000)
+    await w.step(tag, "built", wait_built(page))
+    await page.click("#tab-profile")
+    await page.wait_for_timeout(600)
+    papers = page.locator("button.paper")
+    before = await page.locator("#panel").bounding_box()
+    await papers.nth(0).click()
+    await page.wait_for_selector("#evidence .rec-title")
+    await page.wait_for_timeout(500)
+    after = await page.locator("#panel").bounding_box()
+    if abs(before["x"] - after["x"]) > 1 or abs(before["width"] - after["width"]) > 1:
+        w.errors.append(f"{tag}: evidence: motion: opening Evidence moved the page "
+                        f"({round(before['width'])} -> {round(after['width'])} px wide)")
+    await w.snap(page, tag, "evidence-open")
+    await page.evaluate(WATCH_FLASH)
+    for i in (1, 2):
+        await papers.nth(i).click(force=True)
+        await page.wait_for_timeout(700)
+    if n := await page.evaluate("() => window.__flash"):
+        w.errors.append(f"{tag}: evidence: motion: going from paper to paper blanked Evidence {n} times")
+    await page.keyboard.press("Escape")
+    await page.click("#tab-scout")
+    await page.wait_for_selector("#scout-q")
+    for q in ("Why does the top lead fit?", "Only R21 grants that close by 2027-03-01"):
+        await page.fill("#scout-q", q)
+        await page.click(".scout-ask button[type=submit]")
+        gate = False
+        for _ in range(900):  # up to 90 s per question
+            gate = gate or await page.evaluate(GATE)
+            if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
+                break
+            await page.wait_for_timeout(100)
+        if gate:
+            w.errors.append(f"{tag}: scout: an approval card or button showed while Scout ran")
+        await page.wait_for_timeout(300)
+        box = await page.locator("#scout-q").bounding_box()
+        vh = page.viewport_size["height"]
+        if not box or box["y"] + box["height"] > vh or box["y"] < 0:
+            w.errors.append(f"{tag}: scout: chat: the question box is outside the window after {q!r}")
+        seen = await page.evaluate("""() => { const box = document.querySelector('.scout-scroll');
+          const qs = document.querySelectorAll('.scout-x > .scout-q'); if (!box || !qs.length) return false;
+          const b = box.getBoundingClientRect(), r = qs[qs.length - 1].getBoundingClientRect();
+          return box.scrollHeight - box.scrollTop - box.clientHeight < 32 || (r.top >= b.top - 1 && r.top < b.bottom); }""")
+        if not seen:
+            w.errors.append(f"{tag}: scout: chat: the newest reply is not in view after {q!r}")
+        await w.snap(page, tag, "scout-chat")
+    grow = await page.evaluate("() => document.documentElement.scrollHeight - innerHeight")
+    if grow > 400 and page.viewport_size["width"] >= 700:
+        w.errors.append(f"{tag}: scout: chat: the page grows {grow} px past the window; "
+                        "older replies should scroll inside the chat")
+    await page.goto(base + "/#/help")
+    await page.wait_for_timeout(600)
+    if await page.evaluate(GATE):
+        w.errors.append(f"{tag}: help: the Scout picture still shows Approve or Waiting for you")
+
+
 async def sort_stays(w: Walk, page: Page, tag: str) -> None:
     """The sort switch must stay put when the sort changes (S27)."""
     boxes = []
@@ -422,6 +502,12 @@ async def main(base: str, axe: str | None, out: Path, only: list[str]) -> None:
               .map(el => getComputedStyle(el)).filter(s => s.animationName !== 'none' && parseFloat(s.animationDuration) > 0.01
               && s.animationIterationCount !== '1').length""")
             await ctx.close()
+        if "checks" in only:
+            for tag, view in (("checks", LAPTOP), ("checks-phone", PHONE)):
+                ctx, page = await new_page(b, view, names)
+                page.on("pageerror", lambda e, t=tag: w.errors.append(f"{t}: page error: {e}"))
+                await w.step(tag, "flow", checks_flow(w, page, base, tag))
+                await ctx.close()
         if "student" in only:
             for i, persona in enumerate(STUDENTS):
                 first = ("phone", PHONE) if i != 1 else ("laptop", LAPTOP)
@@ -448,6 +534,6 @@ if __name__ == "__main__":
     ap.add_argument("--base", default="http://127.0.0.1:8090")
     ap.add_argument("--axe", default=None)
     ap.add_argument("--out", type=Path, default=ROOT / "build/ux")
-    ap.add_argument("--only", nargs="+", default=["pi", "student", "private"])
+    ap.add_argument("--only", nargs="+", default=["pi", "checks", "student", "private"])
     a = ap.parse_args()
     asyncio.run(main(a.base, a.axe, a.out, a.only))

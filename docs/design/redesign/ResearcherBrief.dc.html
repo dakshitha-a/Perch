@@ -347,12 +347,6 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
                       <span style="font-size: 13px; color: {{m.statusInk}}">{{m.status}}</span>
                     </div>
                     <code style="font-size: 13px; color: {{c.ink2}}; white-space: pre-wrap">{{m.args}}</code>
-                    <sc-if value="{{m.waiting}}" hint-placeholder-val="{{ false }}">
-                      <div style="display: flex; gap: 8px">
-                        <button type="button" onClick="{{m.approve}}" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: {{c.accent}}; color: {{c.onAccent}}; font: 600 14px Inter, sans-serif; cursor: pointer">Approve</button>
-                        <button type="button" onClick="{{m.skip}}" style="min-height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink2}}; font: 600 14px Inter, sans-serif; cursor: pointer">Skip</button>
-                      </div>
-                    </sc-if>
                     <sc-if value="{{m.hasResult}}" hint-placeholder-val="{{ false }}">
                       <p style="margin: 0; font-size: 14px; color: {{c.ink2}}">{{m.result}}</p>
                     </sc-if>
@@ -473,8 +467,8 @@ class Component extends DCLogic {
     const p = this.plan(text);
     const id = Date.now();
     this.setState({ q: '', calls: 1, msgs: [...this.state.msgs, { kind: 'user', text, id: id + 'u' },
-      { kind: 'tool', id, tool: p.tool, args: p.args, result: p.result, answer: p.answer, cites: p.cites, state: 'waiting' }] });
-    if (this.state.mode === 'run') this.later(() => this.approve(id), 700);
+      { kind: 'tool', id, tool: p.tool, args: p.args, result: p.result, answer: p.answer, cites: p.cites, state: 'running' }] });
+    this.approve(id);  // every step runs at once; no approval gate (S27)
   }
   setTool(id, patch) {
     this.setState({ msgs: this.state.msgs.map((m) => (m.id === id ? { ...m, ...patch } : m)) });
@@ -493,8 +487,8 @@ class Component extends DCLogic {
     this.setState({ tab: 'scout', calls: 1, msgs: [...this.state.msgs,
       { kind: 'user', id: id + 'u', text: `Check my draft aims against ${target}` },
       { kind: 'tool', id, tool: 'Check a draft aims', args: `against: ${target}\ntext: your draft aims (private, ${(this.state.rvText || '').length} characters)`,
-        result: 'Read the record’s stated asks and checked each against your text.', review: true, cites: ['[Opportunity number]', 'Your draft (private)'], state: 'waiting' }] });
-    if (this.state.mode === 'run') this.later(() => this.approve(id), 700);
+        result: 'Read the record’s stated asks and checked each against your text.', review: true, cites: ['[Opportunity number]', 'Your draft (private)'], state: 'running' }] });
+    this.approve(id);  // every step runs at once; no approval gate (S27)
   }
   skip(id) {
     this.setTool(id, { state: 'skipped' });
