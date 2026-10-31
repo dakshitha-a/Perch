@@ -272,13 +272,7 @@ function card(l, { openEvidence, setLead, papers }) {
         : h("ul", { class: "notes" }, l.verdict_lines.map((x) => h("li", { text: x })))) : null,
     l.gaps.length ? h("div", { class: "reason" }, h("b", { text: "Still needed: " }), h("span", { text: l.gaps.join("; ") })) : null,
     l.flagged ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "The explanation was withheld because it failed the citation checks twice." }))
-      : parsed ? h("details", { class: "why explain", open: OPEN.has(l.id),
-        ontoggle: (e) => { if (e.target.open) OPEN.add(l.id); else OPEN.delete(l.id); } },
-        h("summary", { "data-key": `why-${l.id}` }, h("span", { text: "Why it may fit" }), h("span", { class: "hint", text: " a model wrote this; each part cites a record" })),
-        h("p", { text: plainExplanation(l.explanation) }),
-        l.inference ? h("p", { class: "inference" }, h("span", { class: "tag", text: "Inference" }), h("span", { text: ` ${plainExplanation(l.inference)}` })) : null,
-        h("p", { class: "cites" }, l.cited_ids.filter((c) => papers[c]).map((c) => h("button", { class: "paper-ref",
-          onclick: (e) => openEvidence(c, e.currentTarget) }, icon("lock"), h("span", { text: papers[c].title }))))) : null,
+      : parsed ? fitReason(l) : null,
     h("div", { class: "actions" },
       l.status === "dismissed"
         ? h("button", { class: "btn", "data-key": `restore-${l.id}`, onclick: () => setLead(l.id, "restore") }, icon("restore"), h("span", { text: "Restore" }))
@@ -286,6 +280,33 @@ function card(l, { openEvidence, setLead, papers }) {
           onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") }, icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
         l.verdict !== "not eligible" ? h("button", { class: "btn", "data-key": `dismiss-${l.id}`, onclick: () => setLead(l.id, "dismiss") }, icon("dismiss"), h("span", { text: "Dismiss" })) : null],
       h("button", { class: "btn quiet", "data-key": `evidence-${l.id}`, onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, icon("evidence"), h("span", { text: "Evidence" }))));
+}
+
+// The reason it may fit leads, in plain view (S27, Dakshitha: say the reason right
+// there). What it rests on, the listing's own sentence and the student's achievements in
+// their own words, sits under it. The achievements are the student's own text, so there
+// are no chips naming them; the records stay cited behind the text.
+function fitReason(l) {
+  const [about, work] = String(l.explanation || "").split(/\s*Cited work:\s*/);
+  const items = (work || "").split(/;\s*/).map((x) => plainExplanation(x.replace(/^\s*(?:private:)?(?:achievement-[a-e]|interests)\s*/, ""))
+    .replace(/\.$/, "")).filter(Boolean);
+  const reason = l.inference ? plainExplanation(you(l.inference)) : null;
+  return h("div", { class: "fit-reason" },
+    reason ? h("p", { class: "fit-why" }, h("b", { text: "Why it may fit: " }), h("span", { text: reason }),
+      h("span", { class: "tag model", text: "Model" })) : null,
+    h("details", { class: "why explain", open: OPEN.has(l.id),
+      ontoggle: (e) => { if (e.target.open) OPEN.add(l.id); else OPEN.delete(l.id); } },
+    h("summary", { "data-key": `why-${l.id}` }, h("span", { text: reason ? "What this is based on" : "Why it may fit" })),
+    about ? h("p", { text: plainExplanation(about) }) : null,
+    items.length ? h("div", {}, h("p", { class: "mini", text: "From your achievements and interests" }),
+      h("ul", { class: "notes" }, items.map((x) => h("li", { text: x })))) : null,
+    h("p", { class: "hint", text: "A model wrote these sentences. Each one was checked against the listing or your own text." })));
+}
+
+// The model is told to say "you"; when it says "the student" anyway, the card says "you".
+function you(text) {
+  return text.replace(/\b([Tt])he student's\b/g, (_, t) => (t === "T" ? "Your" : "your"))
+    .replace(/\b([Tt])he student\b/g, (_, t) => (t === "T" ? "You" : "you"));
 }
 
 // Citation brackets go; a session record's id reads as "your achievement A".

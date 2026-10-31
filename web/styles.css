@@ -745,6 +745,10 @@ table.compare th, table.compare td { border-bottom: 1px solid var(--line); paddi
 .handoff textarea, .handoff input:not([type=radio]) { width: 100%; }
 .table-wrap { overflow-x: auto; max-width: 100%; }
 .cites { display: flex; flex-wrap: wrap; gap: 6px; }
+.fit-reason { display: grid; gap: 6px; }
+.fit-why { margin: 0; line-height: 1.55; }
+.fit-why .tag { margin-left: 8px; vertical-align: 1px; }
+.fit-reason .notes { margin: 4px 0 0; }
 .cites .paper-ref { display: inline-flex; gap: 6px; align-items: center; }
 .route-switch .route-btn { min-width: 0; flex-wrap: wrap; justify-content: center; row-gap: 2px; }
 .route-switch .route-btn .tag.sample { height: 20px; font-size: 12px; }
