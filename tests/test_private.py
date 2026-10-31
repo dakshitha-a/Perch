@@ -676,3 +676,29 @@ def test_pdf_parse_failures_are_input_errors(monkeypatch):
     monkeypatch.setattr(pypdf.PageObject, "extract_text", broken)
     with pytest.raises(InputError, match="not a readable PDF"):
         parse_bytes("a.pdf", buf.getvalue())
+
+
+def test_private_scout_is_rate_limited_and_needs_a_question(tmp_path, monkeypatch):
+    """S4: private Scout questions count per session and per visitor; an empty
+    follow-up is refused as on the public route."""
+    monkeypatch.setenv("PERCH_SCOUT_PER_HOUR", "2")
+    c, _ = private_app(tmp_path, monkeypatch)
+
+    def ready():
+        h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+        assert c.post("/private/brief", headers=h, json={
+            "author_id": "A5026494099", "as_of": "2026-10-28"}).status_code == 202
+        return h
+
+    h = ready()
+    q = {"question": "Which lead fits best?"}
+    first = c.post("/private/scout", headers=h, json=q)
+    assert first.status_code == 202, first.text
+    sid = first.json()["id"]
+    assert c.post(f"/private/scout/{sid}/ask", headers=h,
+                  json={"question": "  "}).status_code == 422
+    assert c.post(f"/private/scout/{sid}/ask", headers=h, json=q).status_code == 202
+    r = c.post(f"/private/scout/{sid}/ask", headers=h, json=q)
+    assert r.status_code == 429 and "2 Scout questions an hour" in r.json()["detail"]
+    h2 = ready()  # a new session from the same address: the visitor's cap still holds
+    assert c.post("/private/scout", headers=h2, json=q).status_code == 429

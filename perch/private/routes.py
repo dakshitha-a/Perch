@@ -183,6 +183,9 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     brief_limit = limiter(per_hour("PERCH_BRIEFS_PER_HOUR", 10))
     handoff_limit = limiter(per_hour("PERCH_HANDOFF_PER_HOUR", 30))
     docs_limit = limiter(per_hour("PERCH_DOCUMENTS_PER_HOUR", 60))  # uploads and pastes
+    # Scout questions, per visitor and per session: each runs up to 8 model turns.
+    scout_limit = limiter(per_hour("PERCH_SCOUT_PER_HOUR", 30))
+    scout_session_limit = limiter(per_hour("PERCH_SCOUT_PER_HOUR", 30))
     cloud_day = {"day": "", "n": 0}  # cloud briefs today, whole server, in memory only
     cloud_lock = threading.Lock()
     app.state.private_sessions = sessions
@@ -495,8 +498,17 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             s.scout = ScoutHub(s.service, scout_runner, None, private=settings)
         return s.scout
 
+    def ask_allowed(s: PrivateSession, request: Request) -> None:
+        wait = (scout_session_limit.take(f"session:{s.token}")
+                or scout_limit.take(client_key(request)))
+        if wait:
+            raise HTTPException(429, f"Limit of {scout_limit.per_hour} Scout questions an "
+                                f"hour reached. Try again in {wait // 60 + 1} minutes.",
+                                headers={"Retry-After": str(wait)})
+
     @app.post("/private/scout", status_code=202)
-    def scout_start(req: ScoutReq, x_perch_private: str | None = Header(None)) -> dict:
+    def scout_start(req: ScoutReq, request: Request,
+                    x_perch_private: str | None = Header(None)) -> dict:
         from perch.scout.hub import view
 
         s = session(x_perch_private)
@@ -505,6 +517,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             raise HTTPException(409, "Scout can start once the brief has finished.")
         if not req.question.strip():
             raise HTTPException(422, "Ask Scout a question.")
+        ask_allowed(s, request)
         try:
             e = hub(s).start(b.id, b.researcher_id, req.question.strip())
         except PermissionError as err:
@@ -521,15 +534,20 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         return view(e)
 
     @app.post("/private/scout/{sid}/{action}", status_code=202)
-    def scout_act(sid: str, action: Literal["ask", "stop"], req: ScoutReq,
+    def scout_act(sid: str, action: Literal["ask", "stop"], req: ScoutReq, request: Request,
                   x_perch_private: str | None = Header(None)) -> dict:
         from perch.scout.hub import Busy, view
 
-        e = hub(session(x_perch_private)).get(sid)
+        s = session(x_perch_private)
+        e = hub(s).get(sid)
         if e is None:
             raise HTTPException(404, "No such Scout session.")
+        if action == "ask":
+            if not req.question.strip():
+                raise HTTPException(422, "Ask Scout a question.")
+            ask_allowed(s, request)
         try:
-            hub(session(x_perch_private)).act(e, action, req.question.strip())
+            hub(s).act(e, action, req.question.strip())
         except Busy as err:
             raise HTTPException(409, str(err)) from err
         return view(e)
