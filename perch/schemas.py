@@ -348,6 +348,17 @@ class Scholarship(Record):
         return self
 
 
+# Records about a visitor: served only to the session or brief they belong to.
+USER_KINDS = ("brief", "lead", "digest")
+
+
+def belongs_to(r: Record, brief_id: str | None) -> bool:
+    """A visitor's record (brief, lead, digest) belongs only to its own brief."""
+    if r.kind not in USER_KINDS:
+        return True
+    return bool(brief_id) and (getattr(r, "brief_id", None) or r.id) == brief_id
+
+
 RECORD_TYPES: tuple[type[Record], ...] = (
     Researcher, Work, Award, Opportunity, Organisation, Lead, Brief, Digest, Scholarship,
 )

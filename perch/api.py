@@ -57,6 +57,7 @@ from perch import export as ex
 from perch.config import env
 from perch.jobs import JobRunner
 from perch.schemas import (
+    USER_KINDS,
     Award,
     Brief,
     Lead,
@@ -76,7 +77,6 @@ from perch.sources import openalex as oa
 from perch.store.base import Repository
 
 WEB_DIR = Path(__file__).resolve().parent.parent / "web"
-USER_KINDS = ("brief", "lead", "digest")  # records about a visitor, never served without a session
 KEY_PAPERS = 5  # per thread, most recent-weighted first (thread order from perch.profile)
 
 

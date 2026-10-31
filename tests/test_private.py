@@ -781,3 +781,30 @@ def test_a_session_holds_one_brief_job_and_ending_it_drops_the_job(tmp_path, mon
     s.service.run(old.id)  # replaced before it ran: it stops at its first stage
     got, _ = s.service.get(old.id)
     assert got.status == "failed" and got.error.startswith("Stopped:")
+
+
+def test_records_route_and_scout_never_serve_another_visitors_brief(tmp_path, monkeypatch):
+    """S9: briefs and leads in the shared store (stored briefs, the bench) are not served
+    through a session's record route or Scout's get_record; the session's own are."""
+    from perch.scout.tools import ScoutContext, ToolError, get_record
+
+    c, service = private_app(tmp_path, monkeypatch)
+    other = Brief(id="otherBrief1", source="perch", source_url="https://example.org/x",
+                  fetched_at="2026-10-28T00:00:00Z", researcher_id="https://openalex.org/A1")
+    lead = Lead(id="otherBrief1:1", source="perch", source_url="https://example.org/x",
+                fetched_at="2026-10-28T00:00:00Z", brief_id="otherBrief1", route="A",
+                record_id="grants_gov:PAR-25-268")
+    with service.repo() as r:
+        r.upsert([other, lead])
+    h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    c.post("/private/brief", headers=h, json={"author_id": "A5026494099",
+                                              "as_of": "2026-10-28", "explain": False})
+    mine = c.get("/private/brief", headers=h).json()["brief"]["id"]
+    for rid in ("otherBrief1", "otherBrief1:1"):
+        assert c.get(f"/private/records/{rid}", headers=h).status_code == 404
+    assert c.get(f"/private/records/{mine}", headers=h).status_code == 200
+    assert c.get("/private/records/PAR-25-268", headers=h).status_code == 200
+    ctx = ScoutContext(service, date(2026, 10, 28), brief_id=mine)
+    with pytest.raises(ToolError):
+        get_record(ctx, "otherBrief1:1")
+    assert get_record(ctx, "grants_gov:PAR-25-268")["kind"] == "opportunity"

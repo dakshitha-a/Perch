@@ -55,7 +55,7 @@ from perch.private.session import (
     TooManyFromAddress,
     add_document,
 )
-from perch.schemas import Opportunity, Record, Work
+from perch.schemas import Opportunity, Record, Work, belongs_to
 from perch.sources import openalex as oa
 
 STUDENT_KINDS = ("interests", "achievements")
@@ -433,7 +433,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         with s.service.repo() as r:
             x: Record | None = (r.get_any(record_id) or r.get_any(f"grants_gov:{record_id}")
                                 or r.get_any(f"https://openalex.org/{record_id}"))
-        if x is None:
+        if x is None or not belongs_to(x, s.brief_id):  # another visitor's (review S9)
             raise HTTPException(404, "no such record")
         return {"kind": x.kind, **x.model_dump(mode="json")}
 

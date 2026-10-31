@@ -21,7 +21,15 @@ from perch.llm import Tool
 from perch.llm.audit import AuditedProvider
 from perch.profile import Profile, build_threads
 from perch.rerank import RerankCache
-from perch.schemas import Award, Lead, Opportunity, Organisation, Record, Researcher
+from perch.schemas import (
+    Award,
+    Lead,
+    Opportunity,
+    Organisation,
+    Record,
+    Researcher,
+    belongs_to,
+)
 from perch.score import match_score
 from perch.sources import openalex as oa
 
@@ -289,7 +297,7 @@ def _opportunity(ctx: ScoutContext, opportunity_id: str) -> Opportunity:
 def get_record(ctx: ScoutContext, id: str) -> dict:
     with ctx.service.repo() as r:
         rec = r.get_any(id) or r.get_any(f"https://openalex.org/{id}")
-    if rec is None:
+    if rec is None or not belongs_to(rec, ctx.brief_id):  # another visitor's (review S9)
         raise ToolError(f"no record {id!r} in the store")
     d = rec.model_dump(mode="json", exclude_none=True)
     for k in ("description", "abstract"):
