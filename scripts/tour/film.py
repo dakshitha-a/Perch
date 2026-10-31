@@ -183,6 +183,8 @@ async def handoff(page: Page, base: str) -> Recorder:
     await rec.hold(700)
     keeps = page.locator(".leads > li [data-key=keep]")
     for i in range(2):
+        if not await keeps.nth(i).is_visible():  # weak matches fold under a count (U24)
+            await click(page, page.locator("details.weak-fold > summary"))
         await rec.focus(page.locator(".leads > li").nth(i), pad=16)
         await click(page, keeps.nth(i))
         await rec.hold(700)

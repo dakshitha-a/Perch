@@ -461,6 +461,7 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.click("[data-key=route-A]")
     await page.wait_for_timeout(400)
     leads = page.locator(".leads > li")
+    await page.evaluate(OPEN_WEAK)
     for i in (0, 1):
         await w.step(tag, f"keep {i}", leads.nth(i).locator(".btn.keep").click())
         await page.wait_for_timeout(300)
@@ -491,6 +492,11 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.goto(base + "/#/help")
     await page.wait_for_timeout(800)
     await w.snap(page, tag, "help", full=True)
+
+
+# Weak matches fold under "Weaker matches (N)" (U24); flows that keep the second lead
+# open the fold first, as a reader would.
+OPEN_WEAK = "() => document.querySelectorAll('details.weak-fold').forEach(d => { d.open = true; })"
 
 
 async def end_session(page: Page) -> None:
@@ -684,6 +690,7 @@ async def workflow_pi(w: Walk, page: Page, base: str, tag: str) -> None:
       return Math.round(k.getBoundingClientRect().top - c.getBoundingClientRect().top); }""")
     if gap is None or gap > 120:
         w.errors.append(f"{tag}: W2: Keep sits {gap} px below the top of its card")
+    await page.evaluate(OPEN_WEAK)
     for i in (0, 1):
         await page.locator(".leads > li .btn.keep").nth(i).click()
         await page.wait_for_timeout(250)
@@ -953,7 +960,7 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         if len({round(x_landing), round(x_help), round(x_brief)}) > 1:
             w.errors.append(f"{tag}: U18: the wordmark moves between screens (landing {x_landing:.0f}, "
                             f"help {x_help:.0f}, brief {x_brief:.0f} px)")
-    await w.snap(page, tag, "u-routes")
+    await w.snap(page, tag, "u-routes", full=not phone)
     if phone:  # U5: the first lead shows in the first view
         top = await page.evaluate("() => document.querySelector('.leads > li').getBoundingClientRect().top + scrollY")
         if top + 140 > vh:
@@ -981,10 +988,20 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
     if not chips:
         w.errors.append(f"{tag}: U25: no filter chips on Routes")
     else:
-        vals = await page.evaluate("""() => [...document.querySelectorAll('#panel .leads > li .tags .tag')].map(t => t.innerText.trim())""")
+        vals = await page.evaluate("""() => [...document.querySelectorAll('#panel .leads > li .tags .tag')].map(t => t.textContent.trim())""")
         stray = [c for c in chips if re.sub(r"\s*\d+$", "", c) not in vals and not c.startswith("All")]
         if stray:
             w.errors.append(f"{tag}: U25: filter chips not built from the leads' own values: {stray}")
+        await page.locator("#panel .filter-chips button").nth(1).click()  # the largest agency
+        await page.wait_for_timeout(300)
+        want = re.sub(r"\s*\d+$", "", chips[1])
+        got = await page.evaluate("""(v) => [...document.querySelectorAll('#panel .leads > li')].map(li =>
+          [...li.querySelectorAll('.tags .tag')].some(t => t.textContent.trim() === v))""", want)
+        if not got or not all(got):
+            w.errors.append(f"{tag}: U25: the {want} chip left other agencies in the list")
+        await w.snap(page, tag, "u-filtered")
+        await page.locator("#panel .filter-chips button").first.click()
+        await page.wait_for_timeout(300)
     # U9 and U27: the rail (laptop only)
     if not phone:
         await page.locator(".leads > li .title-btn").first.click()
@@ -1038,6 +1055,7 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
     if phone:  # U16: the kept pill stays off the Industry warning
         await page.click("[data-key=route-A]")
         await page.wait_for_timeout(300)
+        await page.evaluate(OPEN_WEAK)
         for i in (0, 1):
             await page.locator(".leads > li .btn.keep").nth(i).click()
             await page.wait_for_timeout(250)
@@ -1070,6 +1088,7 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.wait_for_timeout(400)
     if not phone:
         # Keep the first two grants (the review's U3 steps), then Compare and the email
+        await page.evaluate(OPEN_WEAK)
         kept = await page.locator(".leads > li .btn.keep.on").count()
         for _i in range(kept, 2):
             await page.locator(".leads > li .btn.keep:not(.on)").first.click()

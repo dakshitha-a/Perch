@@ -257,6 +257,8 @@ async def pi_task(d: Driver, base: str, live: bool) -> None:
                  timeout=30000)
     await d.snap("evidence")
     for i in (0, 1):
+        if not await d.page.locator(f"{lead} .btn.keep").nth(i).is_visible():
+            await d.click("details.weak-fold > summary", "Weaker matches")  # U24's fold
         await d.click(f"{lead} .btn.keep", f"Keep lead {i + 1}", nth=i)
         await d.page.wait_for_timeout(300)
     await d.click("#tab-compare", "Compare tab")

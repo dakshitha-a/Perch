@@ -392,7 +392,8 @@ details[open] > summary::before { transform: rotate(45deg); }
 .signals > li > p { color: var(--ink-2); }
 .sig-recs { list-style: none; margin: 2px 0 0; padding: 0; display: grid; }
 .signals .mini { margin: 0; }
-.dismissed > ol { margin-top: 8px; }
+.dismissed > ol, .weak-fold > ol { margin-top: 8px; }
+.weak-fold { margin-top: 6px; }
 
 /* ---------- evidence sheet ---------- */
 .scrim { position: fixed; inset: 0; background: rgba(10, 18, 19, .58); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 20; }
@@ -1183,3 +1184,11 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
   .tabs .tab { padding: 0 6px; font-size: 14px; flex: 1 1 auto; }
   .chip-rest { display: none; }
 }
+/* Filter chips on Routes, from the leads' own agency and activity-code values (U25). */
+.filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.filter-chip { min-height: 36px; cursor: pointer; font: inherit; font-size: 14px; font-weight: 600; background: var(--surface); }
+.filter-chip .filter-n { color: var(--ink-3); font-weight: 500; }
+.filter-chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.filter-chip[aria-pressed="true"] .filter-n { color: var(--on-accent); }
+.filter-chip:hover { border-color: var(--ink-3); }
+@media (pointer: coarse) { .filter-chip { min-height: 44px; } }

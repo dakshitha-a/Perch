@@ -49,6 +49,7 @@ const S = {
   tab: "routes",
   sort: "order",
   route: "A", // Routes tab: "A" grants, "B" industry
+  filter: null, // Routes, grants: {kind: "agency" | "code", value} from the leads' own values (U25)
   open: new Set(), // lead ids whose "Why it fits" is open
   shut: new Set(), // with a CV or current research it starts open; ids the reader closed
   stepsOpen: false,
@@ -677,7 +678,7 @@ function stopPolling() {
 
 async function openBrief(id) {
   stopPolling();
-  Object.assign(S, { briefId: id, brief: null, open: new Set(), shut: new Set(), stepsOpen: false,
+  Object.assign(S, { briefId: id, brief: null, filter: null, weakOpen: false, open: new Set(), shut: new Set(), stepsOpen: false,
     failedPolls: 0, seen: { explained: 0, stagesDone: 0 } });
   fill(main(), h("div", { class: "loading" }, owl("work", "owl-md"),
     h("p", { text: "Opening the brief" })));
@@ -1383,7 +1384,8 @@ function renderRoutes(panel) {
     return;
   }
   const leads = sortedLeads();
-  const active = leads.filter((l) => l.status !== "dismissed");
+  const open = leads.filter((l) => l.status !== "dismissed");
+  const active = open.filter(passes);
   const dismissed = leads.filter((l) => l.status === "dismissed");
   const explaining = stage("explanations").status === "running" || stage("explanations").status === "pending";
 
@@ -1396,14 +1398,19 @@ function renderRoutes(panel) {
       h("div", { class: "routes-bar" },
         h("div", {}, h("h2", { class: "section-title", id: "routes-title" }),
           h("p", { class: "hint routes-sub" }))),
+      h("div", { class: "filter-box" }),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
+      h("div", { class: "weak-box" }),
       h("div", { class: "dismissed-box" }));
   }
   updateSwitch(panel);
   for (const b of panel.querySelectorAll(".sort-switch button")) {
     b.setAttribute("aria-pressed", String(b.dataset.key === `sort-${S.sort}`));
   }
-  panel.querySelector("#routes-title").textContent = `${f.plural(active.length, "open opportunity", "open opportunities")}`;
+  panel.querySelector("#routes-title").textContent = active.length === open.length
+    ? f.plural(open.length, "open opportunity", "open opportunities")
+    : `${active.length} of ${f.plural(open.length, "open opportunity", "open opportunities")}`;
+  drawFilters(panel.querySelector(".filter-box"), open);
   // The kept count shows in the shortlist, the floating pill and the Compare tab (W3).
   const subBits = [];
   if (explaining && S.brief.brief.options.explain) subBits.push(`${explainedCount()} of ${routeLeads("A").length} explained so far`);
@@ -1418,7 +1425,23 @@ function renderRoutes(panel) {
         h("p", { class: "hint", text: stage("route_a").detail || "" }))));
     return;
   }
-  syncList(panel.querySelector(".leads"), active);
+  // Good and strong matches first; weak ones fold under a count, so one strong lead is
+  // not lost among nine weak ones (U24). Without a stronger lead nothing folds.
+  const weak = (l) => (f.fitBand(l.match_score) || {}).key === "weak";
+  const folded = active.some((l) => !weak(l)) ? active.filter(weak) : [];
+  syncList(panel.querySelector(".leads"), active.filter((l) => !folded.includes(l)));
+  const wbox = panel.querySelector(".weak-box");
+  if (!folded.length) wbox.replaceChildren();
+  else {
+    let wd = wbox.querySelector("details");
+    if (!wd) {
+      wd = h("details", { class: "weak-fold", open: S.weakOpen,
+        ontoggle: (e) => { S.weakOpen = e.target.open; } }, h("summary", { "data-key": "weak-fold" }), h("ol", { class: "leads" }));
+      fill(wbox, wd);
+    }
+    wd.querySelector("summary").textContent = `Weaker matches (${folded.length})`;
+    syncList(wd.querySelector("ol"), folded);
+  }
   const box = panel.querySelector(".dismissed-box");
   if (!dismissed.length) { box.replaceChildren(); return; }
   let det = box.querySelector("details");
@@ -1428,6 +1451,36 @@ function renderRoutes(panel) {
   }
   det.querySelector("summary").textContent = `Dismissed (${dismissed.length})`;
   syncList(det.querySelector("ol"), dismissed);
+}
+
+// One-click filters (U25), built only from the values on the leads themselves: each
+// agency as its tag reads, and each activity code. One chip at a time; All clears it.
+const agencyOf = (l) => f.agencyShort((l.opportunity || {}).agency, (l.opportunity || {}).parent_agency);
+const codeOf = (l) => (l.opportunity || {}).activity_code || null;
+function passes(l) {
+  const x = S.filter;
+  return !x || (x.kind === "agency" ? agencyOf(l) === x.value : codeOf(l) === x.value);
+}
+
+function drawFilters(box, open) {
+  const tally = (get) => { const m = new Map(); for (const l of open) { const v = get(l); if (v) m.set(v, (m.get(v) || 0) + 1); } return m; };
+  const agencies = tally(agencyOf), codes = tally(codeOf);
+  if (S.filter && !(S.filter.kind === "agency" ? agencies : codes).has(S.filter.value)) S.filter = null;
+  const sig = JSON.stringify([[...agencies], [...codes], S.filter]);
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  if (agencies.size + codes.size < 2) { box.replaceChildren(); return; }
+  const chip = (kind, value, n) => {
+    const on = kind ? Boolean(S.filter && S.filter.kind === kind && S.filter.value === value) : !S.filter;
+    return h("button", { class: "chip filter-chip", type: "button", "aria-pressed": String(on), "data-key": `filter-${kind || "all"}-${value || ""}`,
+      onclick: () => { S.filter = kind && !on ? { kind, value } : null; renderPanel(); panelFocus(`filter-${S.filter ? `${kind}-${value}` : "all-"}`); } },
+    h("span", { text: value || "All" }), n != null ? h("span", { class: "filter-n", text: ` ${n}` }) : null);
+  };
+  const sorted = (m) => [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  fill(box, h("div", { class: "filter-chips", role: "group", "aria-label": "Show only grants from" },
+    chip(null, null, null),
+    ...sorted(agencies).map(([v, n]) => chip("agency", v, n)),
+    ...sorted(codes).map(([v, n]) => chip("code", v, n))));
 }
 
 // Route B: companies with two or more kinds of public signal. Every sentence and count
