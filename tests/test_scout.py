@@ -185,7 +185,7 @@ def test_compare_and_draft_handoff_use_records_and_send_nothing(service):
     assert row["Money"] == "Not in the record" and row["Office"] == "Research Development"
     d = TOOLS["draft_handoff"][1](c, ids=["PAR-25-268"])
     assert d["office"] == "Research Development" and d["to"] == ""
-    assert "PAR-25-268" in d["body"] and "closes 2026-11-17" in d["body"]
+    assert "PAR-25-268" in d["body"] and "closes 17 Nov 2026" in d["body"]
     assert d["opening_withheld"] is True  # the fake model gives nothing usable
     with pytest.raises(ToolError, match="none of these leads"):
         TOOLS["draft_handoff"][1](c, office="technology_commercialization", ids=[OPP])

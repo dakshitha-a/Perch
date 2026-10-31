@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import date
 
+from perch.datefmt import day
 from perch.llm import Tool
 from perch.schemas import Lead, Opportunity, Record, Scholarship
 from perch.scout.tools import ScoutContext, ToolError, _obj, get_record, short_id
@@ -190,6 +191,14 @@ def draft_note(ctx: ScoutContext, route: str | None = None,
             "note": "Written by code from the kept options; no model. Perch never sends it."}
 
 
+def shown_date(v: str) -> str:
+    """An ISO date as the cards show it (U14); "not stated" stays as it is."""
+    try:
+        return day(date.fromisoformat(v))
+    except ValueError:
+        return v
+
+
 def write_note(route: str, rows: list[tuple[Lead, dict]]) -> dict:
     """The note to the Temple office for one route, written by code from the options and
     their record facts (title, deadline). One source for Scout's draft_note and the
@@ -197,7 +206,7 @@ def write_note(route: str, rows: list[tuple[Lead, dict]]) -> dict:
     kind = "fellowships" if route == "F" else "scholarships"
     sample = any(x.sample for x, _ in rows)
     lines = [f"- {f['title']}{' (SAMPLE record, not real)' if x.sample else ''}: "
-             f"{x.verdict}, deadline {f['deadline']}"
+             f"{x.verdict}, deadline {shown_date(f['deadline'])}"
              + (f". Still needed: {'; '.join(x.gaps)}" if x.gaps else "") for x, f in rows]
     demo = (["SAMPLE DATA, A DEMONSTRATION: DO NOT SEND. The scholarships marked SAMPLE are "
              "invented.", ""] if sample else [])

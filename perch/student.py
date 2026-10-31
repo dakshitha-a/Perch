@@ -19,6 +19,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date
 
+from perch.datefmt import day
 from perch.private.cv import sections
 from perch.schemas import Opportunity, Scholarship
 
@@ -138,7 +139,7 @@ class Verdict:
 
 
 def _fmt(d: date) -> str:
-    return d.strftime("%B %-d, %Y")
+    return day(d)  # as the cards show dates (U14)
 
 
 def _major_ok(major: str, wanted: list[str]) -> bool:

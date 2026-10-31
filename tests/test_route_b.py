@@ -72,7 +72,7 @@ def test_two_kinds_of_record_make_a_lead_with_label_and_relationship():
     assert x.cited_works == [MINE[0].id, MINE[1].id]
     assert x.org.name == "Acme Therapeutics"  # two national entities merged
     assert x.sentences[0] == ("1 work with an author at Acme Therapeutics cites 2 of your "
-                              "papers; the newest was published 2026-01-05.")
+                              "papers; the newest was published 5 Jan 2026.")
 
 
 def test_the_researchers_own_papers_are_not_citing_signals():

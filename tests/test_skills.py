@@ -133,7 +133,7 @@ def test_handoff_model_writes_the_paragraph_and_code_writes_the_numbers():
     d = draft_handoff(OFFICES["research_development"], res, items, papers, p)
     assert not d.flagged and d.cited_ids == ["PAR-1", "W1"]
     assert d.body.startswith("Dear Research Development team,\n\nMy work studies")
-    assert "PAR-1: SYNTHETIC ELSI (R01). NIH; closes 2026-11-18; award ceiling $250,000." \
+    assert "PAR-1: SYNTHETIC ELSI (R01). NIH; closes 18 Nov 2026; award ceiling $250,000." \
         in d.body
     assert d.body.endswith("Best regards,\nSYNTHETIC Researcher")
     assert d.subject == "Request to discuss 1 funding opportunity"

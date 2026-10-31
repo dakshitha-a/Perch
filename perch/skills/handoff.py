@@ -111,7 +111,7 @@ def lead_lines(items: list[tuple[Lead, Record | None]]) -> list[str]:
             closes = ("close date not stated in the record" if not rec.close_date
                       # the card's rule: a placeholder date reads as the record's words (U3)
                       else rec.close_date_note or "" if datefmt.placeholder_close(rec)
-                      else f"closes {rec.close_date.isoformat()}")
+                      else f"closes {datefmt.day(rec.close_date)}")  # as the cards say (U14)
             code = (f" ({rec.activity_code})" if rec.activity_code
                     and rec.activity_code not in rec.title else "")
             out.append(f"{i}. {rec.opportunity_number}: {rec.title}{code}. {rec.agency_label()}; "

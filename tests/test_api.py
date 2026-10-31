@@ -223,7 +223,7 @@ def test_route_b_lead_carries_organisation_signals_and_records(tmp_path):
     assert x["organisation"]["name"] == "SYNTHETIC Co"
     item = x["signal_items"][0]
     assert item["text"] == ("4 works with an author at SYNTHETIC Co cite 1 of your papers; the "
-                            "newest was published 2026-01-02.")
+                            "newest was published 2 Jan 2026.")
     assert item["records"][0]["title"] == "SYNTHETIC company paper" and item["more"] == 3
     exported = c.get(f"/briefs/{bid}/export.json").json()
     assert w.id in {r["id"] for r in exported["records"]}

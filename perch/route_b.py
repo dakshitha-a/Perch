@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import TYPE_CHECKING
 
+from perch.datefmt import day
 from perch.schemas import Award, Lead, Organisation, Signal, Work
 
 WEIGHTS = {"citing_works": 3.0, "sbir_sttr": 2.0, "topic_works": 1.0}
@@ -236,15 +237,15 @@ def sentence(s: Signal, name: str, n_cited: int) -> str:
         cite = "cites" if s.count == 1 else "cite"
         what = f"{cite} {n_cited} of your papers" if n_cited else f"{cite} your papers"
         head = f"{s.count} {'work' if s.count == 1 else 'works'} with an author at {name} {what}"
-        tail = f"the newest was published {s.latest.isoformat()}" if s.latest else ""
+        tail = f"the newest was published {day(s.latest)}" if s.latest else ""
     elif s.kind == "sbir_sttr":
         head = (f"{s.count} NIH SBIR/STTR {'project' if s.count == 1 else 'projects'} awarded "
                 f"to {name} {'matches' if s.count == 1 else 'match'} your main topics")
-        tail = f"the newest started {s.latest.isoformat()}" if s.latest else ""
+        tail = f"the newest started {day(s.latest)}" if s.latest else ""
     else:
         head = (f"{s.count} other {'work' if s.count == 1 else 'works'} with an author at "
                 f"{name} {'shares' if s.count == 1 else 'share'} one of your main topics")
-        tail = f"the newest was published {s.latest.isoformat()}" if s.latest else ""
+        tail = f"the newest was published {day(s.latest)}" if s.latest else ""
     return f"{head}; {tail}." if tail else f"{head}."
 
 
