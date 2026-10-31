@@ -50,6 +50,7 @@ const S = {
   sort: "order",
   route: "A", // Routes tab: "A" grants, "B" industry
   open: new Set(), // lead ids whose "Why it fits" is open
+  shut: new Set(), // with a CV or current research it starts open; ids the reader closed
   stepsOpen: false,
   pollTimer: null,
   gen: 0, // bumps whenever the brief on screen changes; stale polls drop out
@@ -666,7 +667,7 @@ function stopPolling() {
 
 async function openBrief(id) {
   stopPolling();
-  Object.assign(S, { briefId: id, brief: null, open: new Set(), stepsOpen: false,
+  Object.assign(S, { briefId: id, brief: null, open: new Set(), shut: new Set(), stepsOpen: false,
     failedPolls: 0, seen: { explained: 0, stagesDone: 0 } });
   fill(main(), h("div", { class: "loading" }, owl("work", "owl-md"),
     h("p", { text: "Opening the brief" })));
@@ -1579,9 +1580,14 @@ function explanationBlock(l, parsed, o) {
     return h("div", { class: "explain" }, modelTag(),
       h("p", { class: "what" }, renderSegs(parsed.raw, ownIds(o))), inferenceBox(l, o));
   }
-  const open = S.open.has(l.id);
+  // With the researcher's CV or current research in the brief, the reasons start open
+  // (S27, Dakshitha), as they do for a student.
+  const own = Object.values(papers).some((w) => w.private);
+  const open = own ? !S.shut.has(l.id) : S.open.has(l.id);
   const why = h("details", { class: "why", open,
-    ontoggle: (e) => { if (e.target.open) S.open.add(l.id); else S.open.delete(l.id); } },
+    ontoggle: (e) => {
+      if (e.target.open) { S.open.add(l.id); S.shut.delete(l.id); } else { S.open.delete(l.id); S.shut.add(l.id); }
+    } },
   h("summary", { "data-key": "why" }, h("span", { text: (l.match_score ?? 100) < 30 ? "How it relates" : "Why it fits" }),
     h("span", { class: "hint", text: ` cites ${f.plural(parsed.findings.length, "paper")} by the researcher` })),
   h("h4", { class: "mini", text: "From the researcher’s papers" }),

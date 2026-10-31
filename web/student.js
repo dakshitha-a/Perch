@@ -30,7 +30,7 @@ const HINTS = {
 };
 const D = { drafts: {}, files: {}, busy: false, error: null, sample: false };
 const NOT_STATED = "Not stated in the record";
-const OPEN = new Set(); // cards whose "Why it may fit" is open; kept across redraws
+const SHUT = new Set(); // cards whose "What this is based on" was closed; it starts open (S27, Dakshitha)
 
 // The brief on screen was built from the SYNTHETIC sample (for its banner).
 export function usedSample() { return Boolean(D.lastSample); }
@@ -294,8 +294,8 @@ function fitReason(l) {
   return h("div", { class: "fit-reason" },
     reason ? h("p", { class: "fit-why" }, h("b", { text: "Why it may fit: " }), h("span", { text: reason }),
       h("span", { class: "tag model", text: "Model" })) : null,
-    h("details", { class: "why explain", open: OPEN.has(l.id),
-      ontoggle: (e) => { if (e.target.open) OPEN.add(l.id); else OPEN.delete(l.id); } },
+    h("details", { class: "why explain", open: !SHUT.has(l.id),
+      ontoggle: (e) => { if (e.target.open) SHUT.delete(l.id); else SHUT.add(l.id); } },
     h("summary", { "data-key": `why-${l.id}` }, h("span", { text: reason ? "What this is based on" : "Why it may fit" })),
     about ? h("p", { text: plainExplanation(about) }) : null,
     items.length ? h("div", {}, h("p", { class: "mini", text: "From your achievements and interests" }),

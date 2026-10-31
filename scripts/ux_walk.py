@@ -423,6 +423,16 @@ async def end_session(page: Page) -> None:
     await page.click("[data-key=end-ok]")
 
 
+async def reasons_open(w: Walk, page: Page, tag: str, sel: str) -> None:
+    """With a CV or current research given, each card's reasons start open (S27, Dakshitha)."""
+    n, shut = await page.evaluate(f"""() => {{ const d = [...document.querySelectorAll('{sel}')];
+      return [d.length, d.filter((x) => !x.open).length]; }}""")
+    if not n:
+        w.errors.append(f"{tag}: reasons: no reason blocks found ({sel})")
+    elif shut:
+        w.errors.append(f"{tag}: reasons: {shut} of {n} reason blocks start closed")
+
+
 async def wait_built(page: Page, timeout: int = 300_000) -> None:
     await page.wait_for_function("""() => { const p = document.querySelector('#progress');
       return p && /ready|finished|failed/i.test(p.innerText) && !/Building|Searching/i.test(p.innerText.split('\\n')[0]); }""",
@@ -454,6 +464,7 @@ async def student_flow(w: Walk, page: Page, base: str, persona: str, views: list
         await page.click("#tab-routes")
         await page.wait_for_timeout(500)
         await w.snap(page, t, "fellowships", full=True)
+        await reasons_open(w, page, t, "details.why.explain")
         await page.click("[data-key=route-S]")
         await page.wait_for_timeout(500)
         await w.snap(page, t, "scholarships")
@@ -506,6 +517,7 @@ async def private_flow(w: Walk, page: Page, base: str) -> None:
     await page.click("#tab-routes")
     await page.wait_for_timeout(500)
     await w.snap(page, tag, "private-routes", full=True)
+    await reasons_open(w, page, tag, ".explain > details.why")
     await page.goto(base + "/#/help")
     await page.wait_for_timeout(600)
     await w.snap(page, tag, "private-on-help")
