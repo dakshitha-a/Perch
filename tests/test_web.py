@@ -238,3 +238,19 @@ console.log(JSON.stringify({ openBefore, openAfter, fired, message,
     assert out["openBefore"] is True and out["openAfter"] is False
     assert out["fired"] == 1 and "timed out" in out["message"]
     assert out["rejected"] and out["on"] is False and out["drafts"] == {}
+
+
+def test_the_app_loads_nothing_from_another_host(tmp_path):
+    """S12: fonts are served from web/fonts, so a page load reaches no third party."""
+    c, _ = make(tmp_path)
+    page = c.get("/").text
+    css = c.get("/styles.css").text
+    assert not re.findall(r'(?:href|src)="(?:https?:)?//', page)
+    assert not re.findall(r"url\((?:[\"']?)(?:https?:)?//", css)
+    fonts = re.findall(r"url\(fonts/([\w-]+\.woff2)\)", css)
+    assert len(fonts) == 4
+    for f in fonts:
+        r = c.get(f"/fonts/{f}")
+        assert r.status_code == 200 and r.headers["content-type"] == "font/woff2"
+    assert (WEB_DIR / "fonts/OFL-Inter.txt").is_file()
+    assert (WEB_DIR / "fonts/OFL-Newsreader.txt").is_file()
