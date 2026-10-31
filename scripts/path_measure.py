@@ -322,7 +322,8 @@ async def private_task(d: Driver, base: str) -> None:
     await d.page.wait_for_selector("#progress", timeout=30000)
     await d.wait("brief build", BUILT, phase="build")
     await d.snap("built")
-    await d.click("#tab-routes", "Routes tab")
+    if not d.page.url.endswith("/routes"):  # lands on Routes since W11
+        await d.click("#tab-routes", "Routes tab")
     await d.page.wait_for_timeout(500)
     await d.snap("routes")
 

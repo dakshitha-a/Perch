@@ -104,7 +104,7 @@ export async function renderPrivate(root, { api, go, announce, mode, endSession 
     try {
       await api.create({ author_id: P.authorId.trim() || null });
       P.busy = false; // Back to this screen finds Build ready again
-      go("#/brief/private/profile");
+      go("#/brief/private/routes"); // every brief lands on Routes (review W11)
     } catch (e) { P.error = e.message; P.busy = false; draw(); }
   }
 
