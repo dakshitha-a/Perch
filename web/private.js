@@ -13,13 +13,14 @@ const KIND_HINTS = {
 };
 const WARNING = "Masking hides names, contact details and identifiers, and phrases that appear only in your private documents. It cannot hide your research direction: a reader can still tell what the work is about.";
 
-const P = { info: null, docs: [], authorId: "", busy: false, error: null, drafts: {} };
+// `mask`: the session's one mask setting, for exports and hand-offs alike (review W6).
+const P = { info: null, docs: [], authorId: "", busy: false, error: null, drafts: {}, mask: false };
 
 let MODE = null; // the app's private-mode state (mode.js); set by app.js
 
 export function setMode(m) { MODE = m; }
 // Forget what this module held for a session that has ended (S27).
-export function resetPrivate() { Object.assign(P, { docs: [], authorId: "", busy: false, error: null, drafts: {} }); }
+export function resetPrivate() { Object.assign(P, { docs: [], authorId: "", busy: false, error: null, drafts: {}, mask: false }); }
 export function privateInfo() { return P.info; }
 
 export async function privateAvailable(api) {
@@ -159,13 +160,11 @@ export function endButton(api, go) {
 
 // The bar on a private brief: lock, end, exports (withheld by default, masked on opt-in)
 // and the unmask view.
-export function privateBar(api, go, briefId) {
-  let mask = false;
-  const warn = h("p", { class: "hint mask-warn", hidden: true, text: WARNING });
+export function privateBar(api, go) {
   const out = h("textarea", { rows: 4, "aria-label": "Masked text to unmask" });
   const shown = h("p", { class: "unmasked" });
   async function download(kind) {
-    const blob = await api.exportFile(kind, mask);
+    const blob = await api.exportFile(kind, P.mask);
     const url = URL.createObjectURL(blob);
     const a = h("a", { href: url, download: `perch-private-brief.${kind}` });
     if (kind === "html") { a.removeAttribute("download"); a.target = "_blank"; a.rel = "noopener"; }
@@ -174,9 +173,7 @@ export function privateBar(api, go, briefId) {
   }
   return h("section", { class: "private-bar" },
     h("p", { class: "hint", text: "Exports leave out text drawn from your documents. Mask it instead to keep that text with names, identifiers and private phrases replaced." }),
-    h("label", { class: "check" }, h("input", { type: "checkbox", onchange: (e) => { mask = e.target.checked; warn.hidden = !mask; } }),
-      h("span", { text: "Mask private text in exports and hand-offs" })),
-    warn,
+    maskToggle(),
     h("p", { class: "export" },
       h("button", { class: "btn quiet", onclick: () => download("html") }, icon("paper"), h("span", { text: "Print or save as PDF" })),
       h("button", { class: "btn quiet", onclick: () => download("md") }, icon("download"), h("span", { text: "Markdown" })),
@@ -185,11 +182,19 @@ export function privateBar(api, go, briefId) {
       h("p", { class: "hint", text: "Paste masked text from an export. The key stays in this session's memory and ends with it." }),
       out, h("button", { class: "btn", onclick: async () => {
         try { shown.textContent = (await api.unmask(out.value)).text; } catch (e) { shown.textContent = e.message; }
-      } }, h("span", { text: "Unmask" })), shown),
-    briefId ? null : null);
+      } }, h("span", { text: "Unmask" })), shown));
 }
 
-export function maskOn() {
-  const box = document.querySelector(".private-bar input[type=checkbox]"); // in the Export menu
-  return Boolean(box && box.checked);
+// The mask setting, shown in the Export menu and beside Draft the email. Both boxes show
+// the one session setting and change it together (review W6).
+export function maskOn() { return P.mask; }
+
+export function maskToggle() {
+  return h("div", { class: "mask-toggle" },
+    h("label", { class: "check" }, h("input", { type: "checkbox", "data-mask": "", checked: P.mask, onchange: (e) => {
+      P.mask = e.target.checked;
+      for (const b of document.querySelectorAll("input[data-mask]")) b.checked = P.mask;
+      for (const w of document.querySelectorAll(".mask-warn")) w.hidden = !P.mask;
+    } }), h("span", { text: "Mask private text in exports and hand-offs" })),
+    h("p", { class: "hint mask-warn", hidden: !P.mask, text: WARNING }));
 }

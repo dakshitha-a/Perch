@@ -2,7 +2,7 @@
 // /briefs/{id}/handoff). A model writes the opening paragraph; code writes the list with
 // dates and amounts copied from the records. Perch never sends it and does not save it.
 
-import { maskOn } from "./private.js";
+import { maskOn, maskToggle } from "./private.js";
 import { h, fill, icon } from "./dom.js";
 
 const WHAT = { A: "grants", B: "industry leads" };
@@ -91,6 +91,8 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     h("p", { class: "office-link" }, h("span", { text: "To: left blank for you. " }),
       h("a", { href: office.url, target: "_blank", rel: "noopener",
       text: `${office.name} contacts on research.temple.edu` })),
+    // The mask setting this draft uses, the same one as the Export menu's (review W6).
+    api.mode === "private" ? maskToggle() : null,
     h("div", { class: "actions" }, make), status];
 
   if (draft) {
