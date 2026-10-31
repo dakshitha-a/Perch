@@ -135,7 +135,7 @@ export async function renderPrivate(root, { api, go, announce, mode, endSession 
                     onchange: (e) => addFile(kind, e.target.files[0]) })))));
       })),
       h("label", { class: "field-label", for: "p-author", text: "Your OpenAlex ID (optional)" }),
-      h("input", { id: "p-author", type: "text", placeholder: "For example A5026494099", value: P.authorId,
+      h("input", { id: "p-author", type: "text", placeholder: "An A followed by digits", value: P.authorId,
         "aria-describedby": "p-author-hint", oninput: (e) => { P.authorId = e.target.value; } }),
       h("p", { id: "p-author-hint", class: "hint", text: "With an ID, your public papers count too: they take 40% of the weight and your documents 60%. Without one, the brief runs on your documents alone." }),
       h("div", { class: "doc-actions" },
