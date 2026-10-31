@@ -1086,6 +1086,8 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
     if phone:  # U15
         if "Press a column name to sort" in sub and not await page.locator("#panel select.compare-sort").count():
             w.errors.append(f"{tag}: U15: on a phone the table has no column names, but the hint says to press one")
+        if await page.evaluate("() => [...document.querySelectorAll('table.compare td')].some(td => /[↕▲▼]/.test(td.dataset.label || ''))"):
+            w.errors.append(f"{tag}: U15: the stacked cells' labels carry the sort mark")
     else:
         if any(not m["mark"].strip() for m in marks if m["btn"]):
             w.errors.append(f"{tag}: U15: sortable headers carry no sort mark until pressed")

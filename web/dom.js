@@ -40,7 +40,11 @@ export function fill(el, ...kids) {
 // Copies each column name onto its cells, so a table can stack into labelled cards on a
 // phone (S25 review).
 export function labelCells(table) {
-  const names = [...table.querySelectorAll("thead th")].map((th) => th.textContent.trim());
+  // The column's name only, without a sort mark (U15).
+  const names = [...table.querySelectorAll("thead th")].map((th) => {
+    const own = th.querySelector(".th-sort > span:first-child");
+    return (own || th).textContent.trim();
+  });
   for (const tr of table.querySelectorAll("tbody tr")) {
     [...tr.children].forEach((cell, i) => { if (names[i]) cell.dataset.label = names[i]; });
   }

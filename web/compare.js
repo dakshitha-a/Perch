@@ -29,7 +29,7 @@ export async function loadCompare(api, briefId, kept, redraw) {
 function sorted(rows) {
   const { key, dir } = C.sort;
   if (!key) return rows;
-  const v = (r) => r.cells[key].sort;
+  const v = (r) => (key === "lead" ? r.title.toLowerCase() : r.cells[key].sort);
   return [...rows].sort((a, b) => {
     const x = v(a), y = v(b);
     if (x === null && y === null) return 0;
@@ -46,7 +46,24 @@ function sortButton(col, redraw) {
       C.sort = on ? { key: col.key, dir: -C.sort.dir } : { key: col.key, dir: 1 };
       redraw(`sort-${col.key}`);
     } }, h("span", { text: col.label }),
-  h("span", { class: "sort-mark", "aria-hidden": "true", text: on ? (C.sort.dir > 0 ? "▲" : "▼") : "" }));
+  // A neutral mark says the column sorts before it is pressed (U15).
+  h("span", { class: `sort-mark${on ? " on" : ""}`, "aria-hidden": "true", text: on ? (C.sort.dir > 0 ? "▲" : "▼") : "↕" }));
+}
+
+// On a phone the table stacks into cards with no column names, so a select sorts (U15).
+function sortSelect(columns, redraw) {
+  const cols = [{ key: "lead", label: "Lead" }, ...columns];
+  const value = C.sort.key ? `${C.sort.key}:${C.sort.dir}` : "";
+  return h("label", { class: "compare-sort-row" }, h("span", { text: "Sort by" }),
+    h("select", { class: "compare-sort", "data-key": "compare-sort",
+      onchange: (e) => {
+        const [key, dir] = e.target.value.split(":");
+        C.sort = key ? { key, dir: Number(dir) } : { key: null, dir: 1 };
+        redraw("compare-sort");
+      } },
+    h("option", { value: "", selected: !value, text: "Perch’s order" }),
+    ...cols.flatMap((c) => [1, -1].map((d) => h("option", { value: `${c.key}:${d}`, selected: value === `${c.key}:${d}`,
+      text: `${c.label}, ${d > 0 ? "A to Z or low to high" : "Z to A or high to low"}` })))));
 }
 
 function cellView(key, cell, rowTitle, label, openEvidence) {
@@ -80,7 +97,8 @@ export function renderCompare(panel, { keptCount, openEvidence, goRoutes, redraw
   }
   const { rows } = C.data;
   const columns = C.data.columns.filter((c) => c.key !== "office"); // shown in the row heading
-  const head = h("tr", {}, h("th", { scope: "col", text: "Lead" }),
+  const sortAria = (key) => (C.sort.key === key ? (C.sort.dir > 0 ? "ascending" : "descending") : null);
+  const head = h("tr", {}, h("th", { scope: "col", "aria-sort": sortAria("lead") }, sortButton({ key: "lead", label: "Lead" }, redraw)),
     ...columns.map((c) => h("th", { scope: "col", "aria-sort": C.sort.key === c.key
       ? (C.sort.dir > 0 ? "ascending" : "descending") : null }, sortButton(c, redraw))));
   const body = sorted(rows).map((r) => h("tr", { class: r.route === "B" ? "row-b" : null },
@@ -92,8 +110,9 @@ export function renderCompare(panel, { keptCount, openEvidence, goRoutes, redraw
   fill(panel,
     h("div", { class: "routes-bar" }, h("div", {},
       h("h2", { class: "section-title", id: "compare-title", text: `Compare ${rows.length} kept ${rows.length === 1 ? "lead" : "leads"}` }),
-      h("p", { class: "hint", text: "Every cell is copied from its record or counted from it by code. "
-        + "Press a cell to see the record. Press a column name to sort." }))),
+      h("p", { class: "hint" }, h("span", { text: "Every cell is copied from its record or counted from it by code. Press a cell to see the record." }),
+        h("span", { class: "sort-hint-wide", text: " Press a column name to sort." })),
+      sortSelect(columns, redraw))),
     // The hand-off comes before the table, so drafting needs no scroll (review W2).
     handoff ? h("div", { class: "handoff-box" }) : null,
     hasB ? h("p", { class: "notice" }, icon("warn"), h("span", { text: "Industry leads are inferred "

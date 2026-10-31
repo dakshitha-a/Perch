@@ -697,7 +697,7 @@ table.compare { border-collapse: collapse; width: 100%; min-width: 640px; font-s
 .compare th, .compare td { text-align: left; vertical-align: top; padding: 0; border-bottom: 1px solid var(--line); }
 .compare tbody tr:last-child > * { border-bottom: 0; }
 .compare thead th { background: var(--sunk); font-size: 14px; color: var(--ink-2); }
-.compare thead th:first-child, .compare tbody th { padding: 10px 12px; }
+.compare tbody th { padding: 10px 12px; }
 .compare tbody th { min-width: 170px; max-width: 220px; font-weight: 600; position: sticky; left: 0; background: var(--raised); }
 .th-sort { all: unset; box-sizing: border-box; display: flex; gap: 6px; align-items: center; width: 100%; min-height: 44px; padding: 8px 12px; cursor: pointer; font-weight: 650; }
 .th-sort:focus-visible, .cell-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
@@ -1162,3 +1162,11 @@ body[data-screen="help"] .bar-in { max-width: 852px; }
 .help h2.section-title { scroll-margin-top: calc(var(--bar-h, 64px) + 12px); }
 /* A box an error names (U4) */
 textarea[aria-invalid="true"], input[aria-invalid="true"] { border-color: var(--brick); }
+/* Compare sorting (U15): a neutral mark until pressed; on a phone a Sort by select. */
+.sort-mark:not(.on) { color: var(--ink-3); }
+.compare-sort-row { display: none; align-items: center; gap: 10px; white-space: nowrap; margin-top: 8px; font-size: 14px; color: var(--ink-2); }
+.compare-sort { min-height: 44px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); flex: 1 1 auto; min-width: 0; }
+@media (max-width: 600px) {
+  .compare-sort-row { display: flex; }
+  .sort-hint-wide { display: none; }
+}
