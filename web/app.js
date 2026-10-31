@@ -1688,7 +1688,8 @@ async function setLead(leadId, action) {
   renderPanel();
   renderTabs();
   if (action === "dismiss") announce("Dismissed. It is in the Dismissed list at the bottom, where you can restore it.");
-  if (action === "keep") announce("Kept. The bar at the bottom of the list opens the comparison.");
+  // The keep bar became the shortlist and the floating pill in S24 (review W7).
+  if (action === "keep") announce("Kept. It is in your shortlist; Compare opens the comparison.");
   try {
     await api.setLead(S.briefId, l.id, action);
   } catch (e) {
