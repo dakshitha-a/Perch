@@ -1034,6 +1034,7 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
     iso = await page.evaluate(r"() => [...document.querySelectorAll('#panel .signals p')].map(p => p.innerText).filter(t => /\d{4}-\d{2}-\d{2}/.test(t))")
     if iso:
         w.errors.append(f"{tag}: U14: industry sentences write dates as {iso[0][:90]!r}")
+    await w.snap(page, tag, "u-industry", full=not phone)
     if phone:  # U16: the kept pill stays off the Industry warning
         await page.click("[data-key=route-A]")
         await page.wait_for_timeout(300)

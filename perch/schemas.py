@@ -137,6 +137,10 @@ class Organisation(Record):
     institution_ids: list[str] = Field(
         default_factory=list, description="OpenAlex institution ids merged into this one"
     )
+    lineage: list[str] = Field(
+        default_factory=list,
+        description="OpenAlex lineage as the source lists it: this institution and its parents",
+    )
 
 
 class Signal(BaseModel):

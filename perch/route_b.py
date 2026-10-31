@@ -120,8 +120,22 @@ def score_leads(researcher_id: str, researcher_works: list[Work],
     by_id: dict[str, Organisation] = {}
     cited_by: dict[str, set[str]] = defaultdict(set)
 
+    # OpenAlex's own parent link (U13): a company whose lineage names another company in
+    # these records joins it, so "Samsung Electronics (South Korea)" counts under
+    # "Samsung (South Korea)". Only when the parent itself is here; never by name alone.
+    present = {o.id: o for _, os_ in [*citing, *topical] for o in os_}
+    parent_of: dict[str, str] = {}  # merge key -> the parent's id, which names the lead
+
+    def key_of(o: Organisation) -> str:
+        for anc in o.lineage:
+            if anc != o.id and anc in present:
+                k = norm_name(present[anc].name)
+                parent_of[k] = anc
+                return k
+        return norm_name(o.name)
+
     def add_org(o: Organisation) -> str:
-        key = norm_name(o.name)
+        key = key_of(o)
         if key not in orgs:
             orgs[key] = o.model_copy(update={"aliases": [], "institution_ids": []})
         m = orgs[key]
@@ -187,6 +201,8 @@ def score_leads(researcher_id: str, researcher_works: list[Work],
         org = orgs[key]
         if org_counts[key]:  # the OpenAlex entity with the most records names the merged org
             b = by_id[org_counts[key].most_common(1)[0][0]]
+            if key in parent_of and parent_of[key] in by_id:  # unless a parent is merged in
+                b = by_id[parent_of[key]]
             # Several national entities merged: the counts cover all of them, so the
             # name drops the one entity's country.
             merged = len(org.institution_ids) > 1

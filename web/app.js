@@ -1484,10 +1484,17 @@ function orgCard(l) {
   cardHead(tags, null, actions),
   h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
     onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: name }), evMark())),
-  o.aliases && o.aliases.length > 1 ? h("p", { class: "opp-num", text: `Counts ${o.aliases.length} records under this name` }) : null,
+  // Names merged into this lead, by exact name or by OpenAlex's parent link (U13).
+  otherNames(o, name).length ? h("p", { class: "opp-num", text: `Also listed as ${otherNames(o, name).join("; ")}` }) : null,
   h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Inference" }),
     h("span", { text: l.inference || "Inferred from public signals; not verified." })),
   signals, yours);
+}
+
+// The other names merged into an industry lead; the name shown, with or without its
+// country, is not repeated.
+function otherNames(o, name) {
+  return (o.aliases || []).filter((a) => a !== name && a.replace(/\s*\([^)]*\)\s*$/, "") !== name);
 }
 
 // Keyed update: a card is rebuilt only when its data changed, so focus and open

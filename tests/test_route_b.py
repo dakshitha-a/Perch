@@ -154,3 +154,22 @@ def test_a_copy_of_the_researchers_own_paper_is_never_evidence():
     leads = rb.score_leads(ME, MINE, [(work(5, cites=[MINE[0].id]), [ACME])],
                            [(big, [ACME])], [], TOPICS, AS_OF, own={big.id})
     assert leads == []
+
+
+def test_a_company_joins_its_openalex_parent_only_when_the_parent_is_there():
+    """U13: OpenAlex lists Samsung (South Korea) in the lineage of Samsung Electronics
+    (South Korea) (checked live, 31 Oct 2026). Records of the child count under the parent,
+    by that link, not by name; a parent missing from the records merges nothing."""
+    parent = org("20", "Parentco (Testland)")
+    child = org("21", "Parentco Devices (Testland)").model_copy(
+        update={"lineage": [parent.id, "https://openalex.org/I21"]})
+    leads = score(citing=[(work(5, cites=[MINE[0].id]), [child])],
+                  topical=[(work(6), [parent])])
+    assert len(leads) == 1
+    x = leads[0]
+    assert x.org.name == "Parentco" and x.org.id == parent.id
+    assert set(x.org.aliases) == {"Parentco (Testland)", "Parentco Devices (Testland)"}
+    assert score(citing=[(work(5, cites=[MINE[0].id]), [child])]) == []  # one signal, no merge
+    other = org("22", "Parentco Devices (Testland)")  # no lineage: stays its own company
+    assert len(score(citing=[(work(5, cites=[MINE[0].id]), [other])],
+                     topical=[(work(6), [parent])])) == 0

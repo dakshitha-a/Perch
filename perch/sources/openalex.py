@@ -127,7 +127,8 @@ def companies_on(raw: dict[str, Any], fetched_at: datetime) -> list[Organisation
                 id=i["id"], source=SOURCE, source_url=f"{API}/institutions/{short_id(i['id'])}",
                 fetched_at=fetched_at, name=i.get("display_name") or short_id(i["id"]),
                 type="company", country=i.get("country_code"),
-                aliases=[i.get("display_name") or ""], institution_ids=[i["id"]])
+                aliases=[i.get("display_name") or ""], institution_ids=[i["id"]],
+                lineage=list(i.get("lineage") or []))
     return list(seen.values())
 
 
