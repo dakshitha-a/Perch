@@ -1253,7 +1253,7 @@ async def ux_sample(w: Walk, page: Page, base: str, tag: str) -> None:
     bad = await page.evaluate("""() => [...document.querySelectorAll('#panel details.why')].filter(d => d.querySelector('.paper-ref.private'))
       .map(d => ({ head: (d.querySelector('h4.mini') || {}).innerText || '',
                    badge: [...d.querySelectorAll('.paper-ref.private')].every(p => p.querySelector('.sample-badge')) }))
-      .filter(x => !/documents/.test(x.head) || !x.badge)""")
+      .filter(x => !/document/.test(x.head) || !x.badge)""")
     if bad:
         w.errors.append(f"{tag}: U11: a card cites the sample document under {bad[0]['head']!r} (badge: {bad[0]['badge']})")
     await w.snap(page, tag, "u-sample-cite", full=True)

@@ -1612,8 +1612,13 @@ function explanationBlock(l, parsed, o) {
       if (e.target.open) { S.open.add(l.id); S.shut.delete(l.id); } else { S.open.delete(l.id); S.shut.add(l.id); }
     } },
   h("summary", { "data-key": "why" }, h("span", { text: (l.match_score ?? 100) < 30 ? "How it relates" : "Why it fits" }),
-    h("span", { class: "hint", text: ` cites ${f.plural(parsed.findings.length, "paper")} by the researcher` })),
-  h("h4", { class: "mini", text: "From the researcher’s papers" }),
+    h("span", { class: "hint", text: parsed.findings.some((x) => (papers[x.paper] || {}).private || /^private:/.test(x.paper))
+      ? ` cites ${f.plural(parsed.findings.length, "paper or document", "papers and documents")}`
+      : ` cites ${f.plural(parsed.findings.length, "paper")} by the researcher` })),
+  // A cited document is not a paper; with the SYNTHETIC sample it is not even theirs (U11).
+  h("h4", { class: "mini", text: parsed.findings.some((x) => (papers[x.paper] || {}).private || /^private:/.test(x.paper))
+    ? (sampleSteered() ? "From the researcher’s papers and the sample document" : "From the researcher’s papers and documents")
+    : "From the researcher’s papers" }),
   h("ul", { class: "findings" }, parsed.findings.map((x) => h("li", {},
     paperRef(x.paper, papers), h("p", { text: `${x.text}.` })))),
   inferenceBox(l, o),
@@ -1673,7 +1678,8 @@ function paperRef(id, papers) {
   const w = papers[`https://openalex.org/${id}`] || papers[id];
   return h("button", { class: `paper-ref${w && w.private ? " private" : ""}`, "data-key": `cite-${id}`,
     onclick: (e) => openEvidence(id, e.currentTarget) },
-  w && w.private ? lockLabel() : null,
+  w && w.private ? lockLabel(sampleSteered() ? "From the sample document, not this researcher’s" : undefined) : null,
+  w && w.private && sampleSteered() ? h("span", { class: "sample-badge", text: "Sample data" }) : null,
   h("span", { class: "paper-ref-title", text: w ? w.title : id }),
   w && w.publication_year ? h("span", { class: "paper-meta", text: [w.publication_year, w.venue].filter(Boolean).join(", ") }) : null);
 }
@@ -1683,8 +1689,9 @@ function cite(id, papers) {
   let label = id;
   if (w && w.private) {
     return h("button", { class: "cite private", "data-key": `cite-${id}`,
-      "aria-label": `Evidence: ${w.title}, from your private document`,
-      onclick: (e) => openEvidence(id, e.currentTarget) }, icon("lock"), h("span", { text: w.title }));
+      "aria-label": `Evidence: ${w.title}, from ${sampleSteered() ? "the SYNTHETIC sample document" : "your private document"}`,
+      onclick: (e) => openEvidence(id, e.currentTarget) }, icon("lock"), h("span", { text: w.title }),
+    sampleSteered() ? h("span", { class: "sample-badge", text: "Sample data" }) : null);
   }
   if (w) {
     const t = w.title.length > 34 ? `${w.title.slice(0, 32).trimEnd()}…` : w.title;
@@ -1693,6 +1700,11 @@ function cite(id, papers) {
   return h("button", { class: `cite${w ? " paper-cite" : ""}`, "data-key": `cite-${id}`,
     "aria-label": `Evidence: ${w ? w.title : id}`,
     onclick: (e) => openEvidence(id, e.currentTarget) }, h("span", { text: label }));
+}
+
+// The brief on screen was steered by the SYNTHETIC sample: its "document" is invented.
+function sampleSteered() {
+  return api.mode === "private" && !isStudent(S.brief) && Boolean(S.sampleBrief || privApi.flag("sample"));
 }
 
 function today() {

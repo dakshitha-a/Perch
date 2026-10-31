@@ -368,6 +368,7 @@ details[open] > summary::before { transform: rotate(45deg); }
 .paper-ref-title { font-family: var(--serif); font-size: 15.5px; line-height: 1.35; color: var(--ink); text-decoration: underline; text-decoration-color: var(--moss); text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .paper-ref:hover .paper-ref-title { text-decoration-thickness: 2px; }
 .paper-ref:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+.paper-ref .sample-badge, .paper-ref .tag.lock { justify-self: start; }
 
 .inference { margin-top: 12px; padding: 10px 12px; border-left: 3px dashed var(--model); background: var(--model-soft); border-radius: 0 10px 10px 0; display: grid; gap: 6px; font-size: 15px; line-height: 1.55; }
 .inference-label { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 13px; color: var(--ink-2); }
