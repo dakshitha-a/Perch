@@ -196,10 +196,13 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
               Your shortlist includes invented sample scholarships. They are not real.
             </p>
           </sc-if>
+          <!-- U10, standing rule 11: public fellowships and sample scholarships in two tables -->
+          <sc-if value="{{anyPublic}}" hint-placeholder-val="{{ true }}">
+          <h2 style="margin: 0; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px">Fellowships (public)</h2>
           <div style="border-radius: 14px; border: 1px solid {{c.line}}; overflow-x: auto">
             <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 760px">
               <thead><tr style="background: {{c.surface}}; text-align: left">
-                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Option</th>
+                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Fellowship</th>
                 <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Your verdict</th>
                 <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Deadline</th>
                 <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Amount</th>
@@ -207,7 +210,7 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
                 <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Temple office</th>
               </tr></thead>
               <tbody>
-                <sc-for list="{{keptList}}" as="k" hint-placeholder-count="2">
+                <sc-for list="{{keptPublic}}" as="k" hint-placeholder-count="2">
                   <tr class="fade-in" style="border-top: 1px solid {{c.line}}">
                     <th scope="row" style="padding: 12px 14px; text-align: left; font-weight: 600">{{k.title}}<div style="font-weight: 400; font-size: 12px; color: {{k.kindInk}}">{{k.kind}}</div></th>
                     <td style="padding: 12px 14px"><span style="display: inline-flex; gap: 6px; padding: 2px 8px; border-radius: 999px; background: {{k.vBg}}; color: {{k.vInk}}; font-size: 12px; font-weight: 600"><span aria-hidden="true">{{k.vMark}}</span>{{k.verdict}}</span></td>
@@ -220,6 +223,34 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
               </tbody>
             </table>
           </div>
+          </sc-if>
+          <sc-if value="{{anySample}}" hint-placeholder-val="{{ true }}">
+          <h2 style="margin: 0; font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px">Scholarships and awards (sample) <span style="padding: 2px 8px; border-radius: 6px; border: 1px dashed {{c.ember}}; color: {{c.ember}}; font-size: 12px; font-weight: 600">Sample data</span></h2>
+          <div style="border-radius: 14px; border: 1px solid {{c.line}}; overflow-x: auto">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 760px">
+              <thead><tr style="background: {{c.surface}}; text-align: left">
+                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Sample option</th>
+                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Your verdict</th>
+                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Deadline</th>
+                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Amount</th>
+                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Still needed</th>
+                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Temple office</th>
+              </tr></thead>
+              <tbody>
+                <sc-for list="{{keptSample}}" as="k" hint-placeholder-count="2">
+                  <tr class="fade-in" style="border-top: 1px solid {{c.line}}">
+                    <th scope="row" style="padding: 12px 14px; text-align: left; font-weight: 600">{{k.title}}<div style="font-weight: 400; font-size: 12px; color: {{k.kindInk}}">{{k.kind}}</div></th>
+                    <td style="padding: 12px 14px"><span style="display: inline-flex; gap: 6px; padding: 2px 8px; border-radius: 999px; background: {{k.vBg}}; color: {{k.vInk}}; font-size: 12px; font-weight: 600"><span aria-hidden="true">{{k.vMark}}</span>{{k.verdict}}</span></td>
+                    <td style="padding: 12px 14px">{{k.deadline}}</td>
+                    <td style="padding: 12px 14px">{{k.amount}}</td>
+                    <td style="padding: 12px 14px; color: {{c.ink2}}">{{k.neededText}}</td>
+                    <td style="padding: 12px 14px; color: {{c.ink2}}">{{k.office}}</td>
+                  </tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+          </sc-if>
           <p style="margin: -8px 0 0; font-size: 13px; color: {{c.ink3}}">Each cell is copied from its record or checked against your CV by rule. “Not stated” means the listing leaves it blank.</p>
 
           <section style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 20px; display: flex; flex-direction: column; gap: 14px">
@@ -588,8 +619,9 @@ class Component extends DCLogic {
       items,
       ev: { kind: sel.kind, title: sel.title, source: sel.source,
         rows: [{ k: 'Level', v: '[as stated]' }, { k: 'Field', v: '[as stated]' }, { k: 'Deadline', v: '[date or not stated]' }, { k: 'Amount', v: '[amount or not stated]' }] },
-      hasKept: nKept > 0, noKept: nKept === 0, keptText: nKept ? `${nKept} kept` : 'none yet',
-      keptList, anySample: keptList.some((k) => k.isSample),
+      hasKept: nKept > 0, noKept: nKept === 0, keptText: nKept ? [[keptList.filter((k) => !k.isSample).length, 'fellowship'], [keptList.filter((k) => k.isSample).length, 'sample']].filter(([n]) => n).map(([n, w]) => `${n} ${w}${n === 1 ? '' : 's'}`).join(', ') : 'none yet',
+      keptList, anySample: keptList.some((k) => k.isSample), anyPublic: keptList.some((k) => !k.isSample),
+      keptPublic: keptList.filter((k) => !k.isSample), keptSample: keptList.filter((k) => k.isSample),
       shortBorder: nKept ? c.accent : c.line,
       shortBtnBg: nKept ? c.accent : c.line, shortBtnInk: nKept ? c.onAccent : c.ink3,
       offices: OFF.map((o) => ({ ...o, aria: String(o.key === office), border: o.key === office ? c.accent : c.line,
