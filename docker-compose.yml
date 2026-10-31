@@ -8,6 +8,13 @@ services:
     image: perch-demo
     network_mode: host
     user: "${PERCH_UID:-1000}:${PERCH_GID:-1000}"
+    # Hardening (review S18): no Linux capabilities (the port is above 1024), no privilege
+    # gain, and a read-only root file system; the app writes only to ./data and /tmp.
+    # read_only is first started at the S32 rebuild: check the container comes up.
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    read_only: true
+    tmpfs: [/tmp]
     env_file:
       - path: .env
         required: false
