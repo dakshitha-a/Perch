@@ -3,8 +3,8 @@
 `OverlayRepository` reads the shared store through a read-only SQLite connection and
 keeps every write in a dict the session owns. A write path that someone forgets to
 route here fails instead of persisting, because the base connection cannot write.
-`ReadOnlyCacheEmbedder` reads the shared embedding cache and never adds to it, so the
-hash of a private text never reaches disk.
+`ReadOnlyCacheEmbedder` reads the shared embedding cache and adds only the vectors of
+public works (P6), so the hash of a private text never reaches disk.
 
 Since S23 every brief runs in a session, so public records fetched for a researcher
 (OpenAlex, NIH RePORTER, NSF) may be written through to the shared store when the
@@ -106,10 +106,13 @@ class OverlayRepository(Repository):
 
 
 class ReadOnlyCacheEmbedder(Embedder):
-    """Cache hits from the shared cache; misses are computed and never written."""
+    """Cache hits from the shared cache; misses are computed and never written, except
+    for a text in `public`: the text of a public work the session's brief is built from
+    (review P6). A document's text, or anything the visitor typed, is never in it."""
 
-    def __init__(self, inner: Embedder) -> None:
+    def __init__(self, inner: Embedder, public: set[str] | None = None) -> None:
         self.inner, self.name, self.dim = inner, inner.name, inner.dim
+        self.public = public if public is not None else set()
 
     def _get(self, texts: list[str], kind: str) -> np.ndarray:
         c = self.inner
@@ -131,6 +134,13 @@ class ReadOnlyCacheEmbedder(Embedder):
                         else c.inner.embed_documents(todo))
                 for i, v in zip(missing, vecs, strict=True):
                     out[i] = v
+                keep = [i for i in missing if texts[i] in self.public]
+                if keep:
+                    with c.conn:
+                        for i in keep:
+                            c.conn.execute("INSERT OR REPLACE INTO vectors VALUES (?, ?, ?, ?)",
+                                           (c.name, kind, content_hash(texts[i]),
+                                            out[i].astype(np.float32).tobytes()))
         return out
 
     def embed_documents(self, texts: list[str]) -> np.ndarray:

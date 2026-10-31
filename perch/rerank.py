@@ -7,13 +7,15 @@ model. Tests use FakeReranker.
 
 from __future__ import annotations
 
+import hashlib
 import re
 import sqlite3
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from perch.profile import Profile
+from perch.profile import Profile, Thread
 from perch.retrieve import QUERY_VERSION, Candidate, opportunity_text, thread_query
 from perch.schemas import Opportunity
 
@@ -87,17 +89,27 @@ class Ranked:
     rerank_score: float
 
 
+def thread_key(t: Thread) -> str:
+    """The cache key of a thread: a score depends only on the thread's query and the
+    record, so briefs that share a thread share its scores (review P6)."""
+    return hashlib.sha256(thread_query(t).encode()).hexdigest()[:16] + ":" + QUERY_VERSION
+
+
 def rerank(cands: list[Candidate], opps: dict[str, Opportunity], profile: Profile,
-           reranker: Reranker, cache: RerankCache | None = None, top: int = TOP_N
+           reranker: Reranker, cache: RerankCache | None = None, top: int = TOP_N,
+           cacheable: Callable[[Thread], bool] = lambda t: True
            ) -> tuple[list[Ranked], int]:
-    """Top `top` by rerank score (ties broken by retrieval order). Returns (ranked, cache hits)."""
+    """Top `top` by rerank score (ties broken by retrieval order). Returns (ranked, cache hits).
+    Only threads that pass `cacheable` are read from or written to the cache (a private
+    session caches its public threads only)."""
     threads = {t.index: t for t in profile.threads}
-    pkey = f"{profile.hash}:{QUERY_VERSION}"
+    keys = {i: thread_key(t) for i, t in threads.items() if cache and cacheable(t)}
     scores: dict[str, float] = {}
     hits = 0
     todo: dict[int, list[Candidate]] = {}
     for c in cands:
-        cached = cache.get(reranker.name, pkey, c.record_id) if cache else None
+        pkey = keys.get(c.best_thread)
+        cached = cache.get(reranker.name, pkey, c.record_id) if pkey else None
         if cached is not None:
             scores[c.record_id] = cached
             hits += 1
@@ -107,7 +119,7 @@ def rerank(cands: list[Candidate], opps: dict[str, Opportunity], profile: Profil
         docs = [opportunity_text(opps[c.record_id])[:2000] for c in group]
         for c, s in zip(group, reranker.score(thread_query(threads[ti]), docs), strict=True):
             scores[c.record_id] = s
-            if cache:
+            if cache and (pkey := keys.get(ti)):
                 cache.put(reranker.name, pkey, c.record_id, s)
     order = {c.record_id: i for i, c in enumerate(cands)}
     best = sorted(cands, key=lambda c: (-scores[c.record_id], order[c.record_id]))[:top]

@@ -6,7 +6,9 @@ brief with a public profile, both with the SYNTHETIC persona-1 documents and a d
 holding its own canary; keeps a lead; compare; hand-off and exports, plain and masked;
 a private Scout question; then ends the session. Afterwards it checks that no canary
 is in any file under data/, in a file under /tmp changed during the run, or in the
-model servers' journals, and that no file under data/ changed.
+model servers' journals, and that no file under data/ changed. Since S30 (review P6) the
+embedding and rerank caches may change, with public keys only: a new vector must be one
+of the researcher's public works, and a new rerank key a thread judged public.
 
 Since S23 every brief is a session, so the run starts with the default path: a brief for
 the public researcher with no documents, as any visitor runs it. With the public cache
@@ -75,6 +77,40 @@ def journals(since: str) -> dict[str, int]:
     return out
 
 
+def cache_keys(db: Path, sql: str) -> set[str]:
+    import sqlite3
+
+    if not db.is_file():
+        return set()
+    with sqlite3.connect(f"file:{db}?mode=ro", uri=True) as con:
+        try:
+            return {r[0] for r in con.execute(sql)}
+        except sqlite3.OperationalError:
+            return set()
+
+
+def cache_check(service, author: str, judged: list, emb_db: Path, rr_db: Path,  # noqa: ANN001
+                emb_before: set[str], rr_before: set[str]) -> dict:
+    """New vectors must be the briefed researcher's public works; new rerank keys must be
+    threads the session judged public, never one from a document (review P6)."""
+    from perch.embed import content_hash
+    from perch.private.store import is_public
+    from perch.profile import work_text
+    from perch.rerank import thread_key
+
+    with service.repo() as r:
+        works = [w for w in r.works_by_author(f"https://openalex.org/{author}")
+                 if is_public(w)]
+    new_emb = cache_keys(emb_db, "SELECT hash FROM vectors") - emb_before
+    new_rr = cache_keys(rr_db, "SELECT profile FROM scores") - rr_before
+    public = {thread_key(t) for t, ok in judged if ok}
+    private = {thread_key(t) for t, ok in judged if not ok}
+    ok = (new_emb <= {content_hash(work_text(w)) for w in works}
+          and new_rr <= public and not (new_rr & private) and bool(private))
+    return {"new_vectors": len(new_emb), "new_rerank_keys": len(new_rr),
+            "threads_judged_private": len(private), "ok": ok}
+
+
 def user_rows(db: Path) -> int:
     import sqlite3
 
@@ -136,6 +172,16 @@ def main(argv: list[str]) -> int:
     data = Path(a.data)
     start, since = time.time(), datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     before = snapshot(data)
+    # P6: sessions may add public works' vectors and public threads' rerank scores to the
+    # shared caches. Record which threads the session judged public, and the keys before.
+    import perch.private.session as ps
+
+    judged: list = []
+    real_public = ps.public_thread
+    ps.public_thread = lambda t: judged.append((t, real_public(t))) or judged[-1][1]
+    emb_db, rr_db = data / "cache/embeddings.db", data / "cache/rerank.db"
+    emb_before = cache_keys(emb_db, "SELECT hash FROM vectors")
+    rr_before = cache_keys(rr_db, "SELECT profile FROM scores")
     service = BriefService(data / "perch.db", default_models(False, data),
                            Clients(openalex=default_client), ROOT / "data/overrides/awards.csv")
     c = TestClient(create_app(service, InlineRunner(), web_dir=None))
@@ -199,6 +245,11 @@ def main(argv: list[str]) -> int:
     demo = str(data / "demo")  # the live demo's own store; it writes on its own schedule
     store = str(data / "perch.db")  # public records may be cached there (S23)
     out["data_changed"] = [k for k in changed if not k.startswith(demo) and k != store]
+    out["cache_check"] = cache_check(service, a.author, judged, emb_db, rr_db, emb_before,
+                                     rr_before)
+    if out["cache_check"]["ok"]:  # the caches changed with public keys only
+        out["data_changed"] = [k for k in out["data_changed"]
+                               if k not in (str(emb_db), str(rr_db))]
     out["user_rows_added"] = user_rows(data / "perch.db") - rows
     out["demo_store_changed_meanwhile"] = [k for k in changed if k.startswith(demo)]
     out["canary_in_data"] = files_with(data)

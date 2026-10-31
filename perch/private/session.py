@@ -40,6 +40,8 @@ from perch.private.cv import CVFacts, parse_cv, sponsor_match
 from perch.private.inputs import KINDS, PrivateDoc
 from perch.private.store import OverlayRepository, ReadOnlyCacheEmbedder
 from perch.private.threads import add_threads
+from perch.profile import Thread
+from perch.rerank import RerankCache
 from perch.schemas import Brief, Lead, Record, Researcher, Stage, Work, utcnow
 from perch.score import match_score
 from perch.service import SAID_ID, STAGES, BriefService, Models, brief_options
@@ -57,6 +59,11 @@ BRIEFS_PER_SESSION = 10
 SPONSOR_BONUS = 0.05  # added to the rerank score for a past sponsor; a default, not measured
 
 
+def public_thread(t: Thread) -> bool:
+    """A thread built from public OpenAlex works only: no document, nothing typed."""
+    return bool(t.work_ids) and all(i.startswith("https://openalex.org/W") for i in t.work_ids)
+
+
 class PrivateModels:
     """The shared models behind the gate. Built models are reused, never rebuilt.
     `cloud` says whether the session has Cloud on; only then do the skills' specs become
@@ -65,6 +72,7 @@ class PrivateModels:
     def __init__(self, base: Models, settings: PrivateSettings,
                  cloud: Callable[[], bool] = lambda: False) -> None:
         self.base, self.settings, self.cloud = base, settings, cloud
+        self.public_texts: set[str] = set()  # public work texts whose vectors may be cached
 
     def _spec(self, local: str | None) -> str | None:
         return self.settings.cloud_spec if self.cloud() and self.settings.cloud_spec else local
@@ -84,7 +92,7 @@ class PrivateModels:
     def get(self, name: str) -> object:
         x = self.base.get(name)
         refuse_endpoints(x, self.settings)
-        return ReadOnlyCacheEmbedder(x) if name == "embedder" else x
+        return ReadOnlyCacheEmbedder(x, self.public_texts) if name == "embedder" else x
 
     def provider(self, spec: str) -> Provider:
         p = self.base.provider(spec)
@@ -156,7 +164,9 @@ class PrivateService(BriefService):
         self.settings = settings
         self.session = session
         self.audit = AuditLog(None)
-        self.rerank_cache = ":memory:"  # type: ignore[assignment]
+        # Public threads' scores go to the shared rerank cache when public records may be
+        # cached (P6); a thread from documents or typed text is never cached.
+        self.rerank_cache = base.rerank_cache if settings.public_cache else None
         self.timings_log = None  # type: ignore[assignment]
         self._ctx = {}
         self.quiet_errors = True
@@ -220,6 +230,13 @@ class PrivateService(BriefService):
         return super()._run_awards(b)
 
     def _run_profile(self, b: Brief) -> tuple[str, bool]:
+        if self.settings.public_cache and not self._alone(b):
+            from perch.private.store import is_public
+            from perch.profile import work_text
+
+            with self.repo() as r:
+                self.models.public_texts.update(
+                    work_text(w) for w in r.works_by_author(b.researcher_id) if is_public(w))
         detail, _ = super()._run_profile(b)
         p = add_threads(self._ctx[b.id]["profile"], list(self.session.docs.values()),
                         self.models.get("embedder"))
@@ -243,10 +260,11 @@ class PrivateService(BriefService):
                         career_stage_ok=esi or o.get("career_stage") == "early_stage")
         with self.repo() as r:
             res = self._researcher(r, b)
+            cache = RerankCache(self.rerank_cache) if self.rerank_cache else None
             brief = route_a(res, r, self.models.get("index"), self.models.get("embedder"),
-                            self.models.get("reranker"), c, None, top=o.get("top", 10),
+                            self.models.get("reranker"), c, cache, top=o.get("top", 10),
                             timings_log=None, profile=self._ctx[b.id]["profile"],
-                            index_new=False)
+                            index_new=False, cacheable=public_thread)
             ranked = []
             for x in brief.leads:
                 notes = []

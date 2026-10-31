@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 
 from perch.eligibility import Constraints, split
 from perch.embed import Embedder
-from perch.profile import Profile, build_threads
+from perch.profile import Profile, Thread, build_threads
 from perch.rerank import Ranked, RerankCache, Reranker, rerank
 from perch.retrieve import index_opportunities, retrieve
 from perch.schemas import Opportunity, Researcher
@@ -41,7 +42,8 @@ def route_a(researcher: Researcher, repo: Repository, index: VectorIndex, embedd
             reranker: Reranker, constraints: Constraints | None = None,
             cache: RerankCache | None = None, top: int = 10,
             timings_log: Path | None = TIMINGS_LOG, profile: Profile | None = None,
-            index_new: bool = True) -> RouteABrief:
+            index_new: bool = True,
+            cacheable: Callable[[Thread], bool] = lambda t: True) -> RouteABrief:
     """`profile` replaces the threads built from the stored works (added threads);
     `index_new=False` skips indexing, so a private session writes nothing."""
     c = constraints or Constraints(as_of=date.today())
@@ -67,7 +69,7 @@ def route_a(researcher: Researcher, repo: Repository, index: VectorIndex, embedd
     ok = {o.id for o in eligible}
     pool = [x for x in r.candidates if x.record_id in ok][:RERANK_IN]
     s = lap("eligibility", s)
-    leads, hits = rerank(pool, opps, profile, reranker, cache, top=top)
+    leads, hits = rerank(pool, opps, profile, reranker, cache, top=top, cacheable=cacheable)
     lap("rerank", s)
     t["total"] = round(sum(v for k, v in t.items() if not k.startswith("retrieve_")), 1)
     brief = RouteABrief(researcher, profile, leads, len(r.candidates), rejected, t, hits)

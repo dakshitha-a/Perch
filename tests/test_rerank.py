@@ -46,5 +46,14 @@ def test_query_carries_thread_topics_and_cache_key_carries_query_version():
     cache = RerankCache(":memory:")
     rerank([Candidate("grants_gov:X", 1.0, 0)], {"grants_gov:X": opp("X", "Quantum")}, p,
            FakeReranker(), cache)
-    assert cache.get("fake-overlap", f"{p.hash}:{QUERY_VERSION}", "grants_gov:X") is not None
-    assert cache.get("fake-overlap", p.hash, "grants_gov:X") is None
+    # P6: keyed by the thread's query (with its version), not by the whole profile
+    from perch.rerank import thread_key
+
+    assert thread_key(t).endswith(f":{QUERY_VERSION}")
+    assert cache.get("fake-overlap", thread_key(t), "grants_gov:X") is not None
+    assert cache.get("fake-overlap", f"{p.hash}:{QUERY_VERSION}", "grants_gov:X") is None
+    # a thread the caller marks uncacheable (from documents) is neither read nor written
+    cache2 = RerankCache(":memory:")
+    rerank([Candidate("grants_gov:X", 1.0, 0)], {"grants_gov:X": opp("X", "Quantum")}, p,
+           FakeReranker(), cache2, cacheable=lambda t: False)
+    assert cache2.get("fake-overlap", thread_key(t), "grants_gov:X") is None

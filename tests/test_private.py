@@ -163,6 +163,18 @@ def files_with(root, tokens, since=None):
     return hits
 
 
+def cache_keys(db, table, column):
+    import sqlite3
+
+    if not Path(db).is_file():
+        return set()
+    with sqlite3.connect(db) as con:
+        try:
+            return {r[0] for r in con.execute(f"SELECT {column} FROM {table}")}
+        except sqlite3.OperationalError:
+            return set()
+
+
 def user_rows(db):
     import sqlite3
 
@@ -190,7 +202,14 @@ def test_canary_leaves_no_trace(tmp_path, monkeypatch, capfd, public_cache):
         return real_send(self, request, **kw)
 
     monkeypatch.setattr(httpx.Client, "send", spy)
+    import perch.private.session as ps
+
+    judged = []  # (thread, public?) as the session decided what may be cached (P6)
+    real_public = ps.public_thread
+    monkeypatch.setattr(ps, "public_thread",
+                        lambda t: judged.append((t, real_public(t))) or judged[-1][1])
     before = snapshot(tmp_path)
+    emb_before = cache_keys(tmp_path / "cache/emb.db", "vectors", "hash")
     rows = user_rows(service.db)
     h = open_with_persona(c)
     assert c.post("/private/documents", headers=h, json={
@@ -214,11 +233,26 @@ def test_canary_leaves_no_trace(tmp_path, monkeypatch, capfd, public_cache):
     assert c.post("/private/end", headers=h).json()["ended"]
     canaries = [*CANARIES, "PERCH-CANARY-DIR-Z5P1"]
     after = snapshot(tmp_path)
-    if public_cache:  # only the store may change, and only with public records
+    if public_cache:  # only the store and caches may change, and only with public data
         after.pop(service.db, None), before.pop(service.db, None)
         assert user_rows(service.db) == rows
         with service.repo() as r:
-            assert r.works_by_author("https://openalex.org/A5026494099"), "public data cached"
+            works = r.works_by_author("https://openalex.org/A5026494099")
+        assert works, "public data cached"
+        from perch.embed import content_hash
+        from perch.profile import work_text
+        from perch.rerank import thread_key
+
+        # P6: new vectors are public works' only; rerank scores are public threads' only.
+        new = cache_keys(tmp_path / "cache/emb.db", "vectors", "hash") - emb_before
+        assert new and new <= {content_hash(work_text(w)) for w in works}
+        ok = {thread_key(t) for t, pub in judged if pub}
+        bad = {thread_key(t) for t, pub in judged if not pub}
+        assert bad, "the private threads were judged too"
+        cached = cache_keys(tmp_path / "cache/rerank.db", "scores", "profile")
+        assert cached and cached <= ok and not cached & bad
+        for f in ("cache/emb.db", "cache/rerank.db"):
+            after.pop(str(tmp_path / f), None), before.pop(str(tmp_path / f), None)
     assert after == before, "a private session wrote to the data directory"
     assert files_with(tmp_path, canaries) == []
     assert files_with("/tmp", canaries, since=start) == []
