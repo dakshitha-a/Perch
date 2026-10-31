@@ -277,3 +277,20 @@ def test_every_response_carries_the_security_headers(tmp_path):
     csp = c.get("/").headers["content-security-policy"]
     assert scripts and all(ex.csp_hash(x) in csp for x in scripts)
     assert styles and all(ex.csp_hash(x) in csp for x in styles)
+
+
+def test_markdown_export_text_cannot_make_links_or_leave_its_quote():
+    """S15: a record title or model sentence with Markdown in it renders as text; a
+    newline cannot break out of the Model quote; only http(s) links become links."""
+    from perch import export as ex
+
+    md = ex.to_markdown([
+        ex.Block("h3", "SYNTHETIC [click](javascript:alert(1)) <img src=x>"),
+        ex.Block("model", "SYNTHETIC first line.\n\nUnlabelled second line [W1]."),
+        ex.Block("list", items=["SYNTHETIC ![x](https://evil.example/p.png)"]),
+        ex.Block("link", "Record", href="javascript:alert(1)"),
+        ex.Block("link", "Grants.gov", href="https://www.grants.gov/x")])
+    assert "\\[click\\](javascript:" in md  # shown as text, not a link
+    assert " [click]" not in md and "\\<img src=x\\>" in md and "![x](" not in md
+    assert "> **Model:** SYNTHETIC first line. Unlabelled second line \\[W1\\]." in md
+    assert "[Record](" not in md and "[Grants.gov](https://www.grants.gov/x)" in md

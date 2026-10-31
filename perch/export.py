@@ -222,25 +222,39 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
     return out
 
 
+def _md_text(s: str) -> str:
+    """Record or model text as Markdown that renders as the same text (review S15): one
+    line, so it cannot leave its quote or list item, and no link, image or HTML of its
+    own. Brackets, angle brackets and backslashes are escaped; so is a leading # or >."""
+    s = " ".join((s or "").split())
+    s = s.replace("\\", "\\\\")
+    for ch in "[]<>`":
+        s = s.replace(ch, "\\" + ch)
+    return "\\" + s if s[:1] in ("#", ">") else s
+
+
 def _md_escape(s: str) -> str:
-    return s.replace("|", "\\|").replace("\n", " ")
+    return _md_text(s).replace("|", "\\|")
 
 
 def to_markdown(bs: list[Block]) -> str:
     lines: list[str] = []
     for b in bs:
+        t = _md_text(b.text)
         if b.kind in ("h1", "h2", "h3"):
-            lines += ["#" * int(b.kind[1]) + " " + b.text, ""]
+            lines += ["#" * int(b.kind[1]) + " " + t, ""]
         elif b.kind == "p":
-            lines += [b.text, ""]
+            lines += [t, ""]
         elif b.kind == "note":
-            lines += [f"> {b.text}", ""]
+            lines += [f"> {t}", ""]
         elif b.kind == "model":
-            lines += [f"> **Model:** {b.text}", ""]
+            lines += [f"> **Model:** {t}", ""]
         elif b.kind == "list":
-            lines += [f"- {i}" for i in b.items] + [""]
+            lines += [f"- {_md_text(i)}" for i in b.items] + [""]
         elif b.kind == "link":
-            lines += [f"[{b.text}]({b.href})", ""]
+            href = b.href or ""
+            ok = href.startswith(("https://", "http://")) and not any(c in href for c in " <>()")
+            lines += [f"[{t}]({href})" if ok else t, ""]
         elif b.kind == "table":
             head, *body = b.rows
             lines.append("| " + " | ".join(_md_escape(c) for c in head) + " |")
