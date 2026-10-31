@@ -1913,7 +1913,6 @@ function recordView(r) {
   out.push(h("div", { class: "source" },
     h("p", {}, h("span", { class: "hint", text: "Source " }), h("b", { text: SOURCES[r.source] || r.source })),
     h("p", { class: "hint", text: `${r.source === "private" ? "Added" : "Fetched"} ${fetched(r.fetched_at)}` }),
-    url ? h("a", { href: url, target: "_blank", rel: "noopener", text: url }) : null,
     r.source === "grants_gov" ? h("p", { class: "attrib", text: S.brief ? S.brief.notice : GRANTS_NOTICE }) : null));
   return out;
 }
