@@ -17,6 +17,10 @@ class JobRunner(ABC):
     def wait(self, job_id: str, timeout: float | None = None) -> None:  # noqa: B027
         """Block until the job finishes (tests and CLI); a no-op where unsupported."""
 
+    def cancel(self, job_id: str) -> bool:
+        """Drop the job if it has not started; False if it runs, ran, or is unknown."""
+        return False
+
 
 class InProcessRunner(JobRunner):
     def __init__(self, workers: int = 1) -> None:
@@ -24,7 +28,13 @@ class InProcessRunner(JobRunner):
         self.futures: dict[str, Future] = {}
 
     def submit(self, job_id: str, fn: Callable[[], None]) -> None:
-        self.futures[job_id] = self.pool.submit(fn)
+        f = self.pool.submit(fn)
+        self.futures[job_id] = f
+        f.add_done_callback(lambda _: self.futures.pop(job_id, None))
+
+    def cancel(self, job_id: str) -> bool:
+        f = self.futures.get(job_id)
+        return bool(f and f.cancel())
 
     def wait(self, job_id: str, timeout: float | None = None) -> None:
         f = self.futures.get(job_id)

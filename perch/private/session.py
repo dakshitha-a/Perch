@@ -109,6 +109,8 @@ class PrivateSession:
     cloud_docs: bool = False  # the second warning was confirmed: documents may go too (S24)
     owner: str = ""  # the visitor's address key, in memory only, for the per-address cap
     used: bool = False  # a request has used the session since it opened
+    ended: bool = False  # ended or expired: its brief job stops before its next stage
+    on_end: Callable[[PrivateSession], None] | None = None  # cancels its queued brief job
 
     @property
     def cv(self) -> CVFacts | None:
@@ -117,6 +119,13 @@ class PrivateSession:
 
     def chars(self) -> int:
         return sum(len(d.abstract or "") for d in self.docs.values())
+
+    def end(self) -> None:
+        """Ended by the user or by idling: stop its brief job, then drop everything."""
+        self.ended = True
+        if self.on_end:
+            self.on_end(self)
+        self.clear()
 
     def clear(self) -> None:
         self.docs.clear()
@@ -181,6 +190,11 @@ class PrivateService(BriefService):
             r.upsert([b])
         self.session.brief_id = bid
         return b
+
+    def cancelled(self, b: Brief) -> bool:
+        """A session runs one brief at a time (review S7): a brief stops once the
+        session ends or a newer brief takes its place."""
+        return self.session.ended or b.id != self.session.brief_id
 
     def _alone(self, b: Brief) -> bool:
         return b.researcher_id == YOU
@@ -417,6 +431,7 @@ class PrivateSessions:
         self.unused, self.per_address = unused, per_address
         self.sessions: dict[str, PrivateSession] = {}
         self.lock = threading.Lock()
+        self.on_end: Callable[[PrivateSession], None] | None = None  # set by the routes
 
     def _limit(self, s: PrivateSession) -> float:
         return self.idle if s.used or s.docs or s.brief_id else min(self.unused, self.idle)
@@ -424,7 +439,7 @@ class PrivateSessions:
     def _sweep(self) -> None:
         now = self.clock()
         for t in [t for t, s in self.sessions.items() if now - s.last_used > self._limit(s)]:
-            self.sessions.pop(t).clear()
+            self.sessions.pop(t).end()
 
     def check_models(self) -> None:
         """PermissionError unless every chat model a session may call is self-hosted on an
@@ -446,7 +461,8 @@ class PrivateSessions:
                     >= self.per_address:
                 raise TooManyFromAddress(f"at most {self.per_address} sessions may be open at "
                                          "once from one address; end one, or try again later")
-            s = PrivateSession(secrets.token_urlsafe(32), self.clock(), owner=owner)
+            s = PrivateSession(secrets.token_urlsafe(32), self.clock(), owner=owner,
+                               on_end=self.on_end)
             s.service = PrivateService(self.base, s, self.settings)
             self.sessions[s.token] = s
             return s
@@ -464,7 +480,7 @@ class PrivateSessions:
         with self.lock:
             s = self.sessions.pop(token or "", None)
         if s:
-            s.clear()
+            s.end()
         return s is not None
 
 

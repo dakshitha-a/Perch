@@ -736,3 +736,48 @@ def test_session_slots_are_capped_per_address_and_unused_ones_end_sooner(tmp_pat
     now[0] = UNUSED_SECONDS + 1
     assert sessions.get(unused.token) is None
     assert sessions.get(used.token) is not None and sessions.get(held.token) is not None
+
+
+def test_a_session_holds_one_brief_job_and_ending_it_drops_the_job(tmp_path, monkeypatch):
+    """S7: on the one brief worker, a newer brief replaces the session's queued one, and
+    ending the session drops its queued job; a brief that is running stops before its
+    next stage once replaced."""
+    import threading
+
+    from fastapi.testclient import TestClient
+
+    from perch.api import create_app
+    from perch.jobs import InProcessRunner
+
+    _, service = private_app(tmp_path, monkeypatch)
+    runner = InProcessRunner()
+    c = TestClient(create_app(service, runner, web_dir=None))
+    gate = threading.Event()
+    runner.submit("blocker", gate.wait)  # the worker is busy with someone else's brief
+    ran = []
+    real_run = type(service).run
+
+    def spy(self, bid):
+        ran.append(bid)
+        return real_run(self, bid)
+
+    monkeypatch.setattr(type(service), "run", spy)
+    req = {"author_id": "A5026494099", "as_of": "2026-10-28", "explain": False}
+    a = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    first = c.post("/private/brief", headers=a, json=req).json()["id"]
+    second = c.post("/private/brief", headers=a, json=req).json()["id"]
+    b = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    dropped = c.post("/private/brief", headers=b, json=req).json()["id"]
+    assert c.post("/private/end", headers=b).json()["ended"]
+    gate.set()
+    runner.wait(f"private-{second}", timeout=60)
+    runner.pool.shutdown(wait=True)
+    assert ran == [second], (first, dropped)
+    assert c.get("/private/brief", headers=a).json()["brief"]["status"] == "done"
+
+    _, _, s = persona_session(tmp_path / "s")
+    old = s.service.create_private(None, as_of=date(2026, 10, 28), explain=False)
+    s.service.create_private(None, as_of=date(2026, 10, 28), explain=False)
+    s.service.run(old.id)  # replaced before it ran: it stops at its first stage
+    got, _ = s.service.get(old.id)
+    assert got.status == "failed" and got.error.startswith("Stopped:")

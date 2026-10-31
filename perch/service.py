@@ -202,6 +202,10 @@ class BriefService:
         with self.repo() as r:
             r.upsert([b])
 
+    def cancelled(self, b: Brief) -> bool:
+        """True when the brief should stop before its next stage (a session's own rule)."""
+        return False
+
     def run(self, brief_id: str) -> None:
         with self.repo() as r:
             b = r.get(Brief, brief_id)
@@ -212,12 +216,16 @@ class BriefService:
         current = names[0]
         try:
             for current in names:
+                if self.cancelled(b):
+                    raise Cancelled("Stopped: the session ended, or a newer brief replaced "
+                                    "this one.")
                 self._stage(b, current, "running")
                 detail, skipped = getattr(self, f"_run_{current}")(b)
                 self._stage(b, current, "skipped" if skipped else "done", detail)
             b.status = "done"
         except Exception as e:  # recorded on the brief; the job thread must not die silently
-            b.error = plain_error(e) if self.quiet_errors else f"{type(e).__name__}: {e}"
+            b.error = (str(e) if isinstance(e, Cancelled) else plain_error(e)
+                       if self.quiet_errors else f"{type(e).__name__}: {e}")
             self._stage(b, current, "failed", b.error)
             b.status = "failed"
             if not self.quiet_errors:
@@ -396,6 +404,10 @@ def said_text(options: dict) -> str:
 
 def _temple(a: Award) -> bool:
     return "temple" in (a.institution or "").lower()
+
+
+class Cancelled(Exception):
+    """A brief stopped between stages; its message is written by code."""
 
 
 def plain_error(e: Exception) -> str:

@@ -177,6 +177,14 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     on = settings.enabled and not problems
     sessions = PrivateSessions(service, settings, per_address=per_hour(
         "PERCH_SESSIONS_PER_ADDRESS", SESSIONS_PER_ADDRESS))
+    # A session's queued brief job is dropped when the session ends or expires, or when
+    # a newer brief replaces it; a running one stops before its next stage (review S7).
+    sessions.on_end = lambda s: s.brief_id and runner.cancel(f"private-{s.brief_id}")
+
+    def submit(s: PrivateSession, old: str | None, bid: str) -> None:
+        if old and old != bid:
+            runner.cancel(f"private-{old}")
+        runner.submit(f"private-{bid}", lambda: s.service.run(bid))
     if on:  # student mode reads the sample store; load it now, outside any session
         from perch.scholarships import ensure_samples
 
@@ -354,6 +362,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         throttle(request)
         if s.cloud and (not s.docs or s.cloud_docs) and req.explain:
             take_cloud()
+        old = s.brief_id
         try:
             b = s.service.create_private(req.author_id, as_of=req.as_of, top=req.top,
                                          explain=req.explain, min_amount=req.min_amount,
@@ -361,7 +370,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         except ValueError as e:
             raise HTTPException(422, "not an OpenAlex author id") from e
         s.briefs_run += 1
-        runner.submit(f"private-{b.id}", lambda: s.service.run(b.id))
+        submit(s, old, b.id)
         return {"id": b.id, "status": b.status}
 
     @app.post("/private/student/brief", status_code=202)
@@ -376,9 +385,10 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             raise HTTPException(429, f"A session runs at most {BRIEFS_PER_SESSION} briefs.")
         throttle(request)
         s.cloud = s.cloud_docs = False  # a student's CV stays on local models
+        old = s.brief_id
         b = s.service.create_student(as_of=req.as_of, top=req.top, explain=req.explain)
         s.briefs_run += 1
-        runner.submit(f"private-{b.id}", lambda: s.service.run(b.id))
+        submit(s, old, b.id)
         return {"id": b.id, "status": b.status}
 
     def throttle(request: Request) -> None:
