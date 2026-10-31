@@ -102,9 +102,10 @@ async def pick(page: Page, rec: Recorder | None = None) -> None:
         await rec.quickly(lambda: card.wait_for())
         await rec.focus(card, pad=30)
         await rec.hold(1200)
-        await click(page, card.locator("button.btn.outline"))
-        await rec.hold(500)
-    else:
+        if await card.locator("button.btn.outline").count():  # an exact id picks itself (W1)
+            await click(page, card.locator("button.btn.outline"))
+            await rec.hold(500)
+    elif await card.locator("button.btn.outline").count():
         await card.locator("button.btn.outline").click()
 
 
@@ -117,7 +118,7 @@ async def hero(page: Page, base: str) -> Recorder:
     await pick(page, rec)
     rec.wide()
     await rec.hold(900)
-    await click(page, page.locator("[data-key=build-top]"))
+    await click(page, page.locator("[data-key=build]"))
     await rec.quickly(lambda: page.locator(".leads > li").first.wait_for(timeout=240_000))
     await page.wait_for_timeout(1200)
     await rec.hold(1200)
@@ -252,6 +253,7 @@ async def private(page: Page, base: str) -> Recorder:
     await rec.hold(600)
     await pick(page, rec)
     panel = page.locator(".more-panel")
+    await click(page, page.locator("[data-key=more-ctx]"))  # folded under Build (W1)
     await rec.focus(panel, pad=10)
     await rec.hold(900)
     await click(page, page.locator("[data-key=fill-sample]"))

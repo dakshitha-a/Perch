@@ -240,10 +240,12 @@ async def pi_task(d: Driver, base: str, live: bool) -> None:
     await d.type("#q", AUTHOR, "researcher id")
     await d.click(".searchbox button[type=submit]", "Find")
     await d.wait("search results", selector=".cand", timeout=30000)
-    await d.click(".cand button.btn.outline", "This is the one")
+    if await d.page.locator(".cand button.btn.outline").count():  # an exact id picks itself (W1)
+        await d.click(".cand button.btn.outline", "This is the one")
     if live:  # any context makes the request non-default, so it is built live
+        await d.click("[data-key=more-ctx]", "Tell Perch more")  # folded since W1
         await d.select("#ctx-stage", "established", "Career stage")
-    await d.click("[data-key=build-top]", "Build brief")
+    await d.click("[data-key=build]", "Build brief")
     await d.page.wait_for_selector("#tab-routes", timeout=60000)
     await d.wait("brief build", BUILT, phase="build")
     await d.snap("built")

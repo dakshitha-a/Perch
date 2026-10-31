@@ -293,7 +293,11 @@ async function search() {
   }
   F.busy = false;
   const n = (F.candidates || []).length;
-  if (F.candidates) announce(n ? `${f.plural(n, "match", "matches")} found.` : "No match found.");
+  // An exact OpenAlex ID or ORCID iD with one match needs no "This is the one" (review W1).
+  if (n === 1 && EXACT_ID.test(q)) {
+    F.picked = F.candidates[0];
+    announce("One match for that ID. Ready to build the brief.");
+  } else if (F.candidates) announce(n ? `${f.plural(n, "match", "matches")} found.` : "No match found.");
   if (location.hash === "#/find") renderPick(); else go("#/find");
   const t = $("#pick-title");
   if (t) t.focus();
@@ -302,6 +306,7 @@ async function search() {
 // ---------- Researcher 2: pick the person, then optional context ----------
 
 const CTX_FIELDS = ["direction", "include", "exclude", "cv", "proposal"];
+const EXACT_ID = /^(?:https?:\/\/(?:openalex\.org\/(?:authors\/)?|orcid\.org\/))?(?:A\d{6,}|\d{4}-\d{4}-\d{4}-\d{3}[\dX])$/i;
 
 function renderPick() {
   const F = S.find;
@@ -331,7 +336,7 @@ function renderPick() {
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page", id: "pick-title", tabindex: "-1", text: title }),
         sub ? h("p", { class: "page-sub", text: sub }) : null),
-      c ? h("button", { class: "btn primary big fade-in", type: "button", "data-key": "build-top", disabled: F.building,
+      c ? h("button", { class: "btn primary big fade-in", type: "button", "data-key": "build", disabled: F.building,
         onclick: () => build(c) }, h("span", { text: F.building ? "Starting" : "Build brief" })) : null),
     F.error ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: F.error })) : null,
     F.busy ? h("div", { class: "shimmer-card" }) : null,
@@ -383,9 +388,13 @@ function contextPanel(c) {
             onchange: (e) => pickFile(kind, e.target.files[0]) })),
         h("span", { class: "hint", text: "Text, Markdown, Word or PDF" })));
   };
-  return h("section", { class: "more-panel fade-in", "aria-labelledby": "more-h" },
-    h("div", {}, h("h2", { id: "more-h", text: "Tell Perch more (optional)" }),
-      h("p", { class: "page-sub", text: "Everything here steers the search and is held in memory for this session only. Your CV and ongoing research stay on local models." })),
+  // Folded under the one Build button (review W1); it opens by itself once it holds anything.
+  const filled = CTX_FIELDS.some((k) => F[k].trim()) || Object.keys(F.files).length > 0 || F.stage || F.minAmount;
+  return h("details", { class: "more-panel fade-in", open: F.moreOpen || Boolean(filled),
+    ontoggle: (e) => { F.moreOpen = e.target.open; } },
+    h("summary", { "data-key": "more-ctx" }, h("h2", { id: "more-h", text: "Tell Perch more (optional)" })),
+    h("div", { class: "more-body" },
+    h("p", { class: "page-sub", text: "Everything here steers the search and is held in memory for this session only. Your CV and ongoing research stay on local models." }),
     ok ? h("div", { class: "sample-row" },
       h("span", { text: "See what helps most: a sample direction, keywords and draft aims. The sample has no CV, because this is a real researcher." }),
       h("button", { class: "btn outline", type: "button", "data-key": "fill-sample", onclick: fillResearcherSample }, h("span", { text: "Fill with a sample" })),
@@ -420,11 +429,7 @@ function contextPanel(c) {
         h("label", { class: "check" },
           h("input", { type: "checkbox", checked: F.explain, onchange: (e) => { F.explain = e.target.checked; } }),
           h("span", {}, h("b", { text: "Explain each lead" }),
-            h("span", { class: "hint", text: " A model writes a short, cited reason for every lead. This is the slow step." }))))),
-    h("div", { class: "go-row" },
-      h("button", { class: "btn primary big", type: "button", "data-key": "build", disabled: F.building, onclick: () => build(c) },
-        h("span", { text: F.building ? "Starting" : "Build brief" })),
-      h("span", { class: "hint", text: "Everything above is optional." })));
+            h("span", { class: "hint", text: " A model writes a short, cited reason for every lead. This is the slow step." })))))));
 }
 
 function sampleStatus() {

@@ -142,9 +142,7 @@ async def checks_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.fill("#q", AUTHOR)
     await page.click(".searchbox button[type=submit]")
     await page.wait_for_selector(".cand", timeout=20000)
-    await page.locator(".cand button.btn.outline").first.click()
-    await page.wait_for_timeout(400)
-    await page.click("[data-key=build]")
+    await pick_and_build(page)
     await page.wait_for_selector("#tab-routes", timeout=60000)
     await w.step(tag, "built", wait_built(page))
     await page.click("#tab-profile")
@@ -401,8 +399,11 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.click(".searchbox button[type=submit]")
     await w.step(tag, "candidate", page.wait_for_selector(".cand", timeout=20000))
     await w.snap(page, tag, "candidate")
-    await page.locator(".cand button.btn.outline").first.click()
-    await page.wait_for_timeout(500)
+    if await page.locator(".cand button.btn.outline").count():  # an exact id picks itself (W1)
+        await page.locator(".cand button.btn.outline").first.click()
+        await page.wait_for_timeout(500)
+    await page.click("[data-key=more-ctx]")  # Tell Perch more starts folded (W1)
+    await page.wait_for_timeout(300)
     await w.snap(page, tag, "context", full=True)
     if tag == "pi-laptop":
         await w.tab_through(page, "context", 30)
@@ -615,6 +616,238 @@ async def private_flow(w: Walk, page: Page, base: str) -> None:
     await page.wait_for_timeout(1000)
 
 
+# ---------- the workflow review's findings (S30, docs/design/WORKFLOW_REVIEW.md W1 to W18) ----------
+# Each check names its finding. Every one failed on the build before its fix.
+
+BUILD_BUTTONS = """() => [...document.querySelectorAll('[data-key=build], [data-key=build-top]')]
+  .filter(b => b.offsetParent).length"""
+
+
+async def doc_click_listeners(page: Page) -> int:
+    """Click listeners on document, read through the debugger (W17)."""
+    cdp = await page.context.new_cdp_session(page)
+    doc = await cdp.send("Runtime.evaluate", {"expression": "document"})
+    got = await cdp.send("DOMDebugger.getEventListeners", {"objectId": doc["result"]["objectId"]})
+    await cdp.detach()
+    return sum(1 for x in got["listeners"] if x["type"] == "click")
+
+
+async def pick_and_build(page: Page) -> None:
+    """From the pick screen to a running brief, whichever presses the screen still needs."""
+    if await page.locator(".cand button.btn.outline").count():
+        await page.locator(".cand button.btn.outline").first.click()
+        await page.wait_for_timeout(300)
+    await page.locator("[data-key=build], [data-key=build-top]").first.click()
+
+
+async def workflow_pi(w: Walk, page: Page, base: str, tag: str) -> None:
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_function("() => { const t = document.querySelector('#pick-title');"
+                                 " return t && !/Searching/.test(t.innerText); }", timeout=20000)
+    # W1: an exact id with one match opens Ready to build, with one Build button.
+    title = await page.locator("#pick-title").inner_text()
+    if not title.startswith("Ready to build"):
+        w.errors.append(f"{tag}: W1: an exact OpenAlex id with one match still asks {title!r}")
+    if await page.locator(".cand button.btn.outline").count():
+        await page.locator(".cand button.btn.outline").first.click()
+        await page.wait_for_timeout(300)
+    if (n := await page.evaluate(BUILD_BUTTONS)) != 1:
+        w.errors.append(f"{tag}: W1: the ready screen shows {n} Build brief buttons")
+    await w.snap(page, tag, "w1-ready", full=True)
+    await page.locator("[data-key=build], [data-key=build-top]").first.click()
+    await page.wait_for_selector("#tab-routes", timeout=60000)
+    await wait_built(page)
+    await page.wait_for_timeout(600)
+    # W4: the title is the one control that opens Evidence; a marker beside it says so.
+    n_ev = await page.locator(".leads > li [data-key=evidence]").count()
+    if n_ev:
+        w.errors.append(f"{tag}: W4: {n_ev} lead cards carry an Evidence button beside the title that opens the same record")
+    if not await page.evaluate("() => [...document.querySelectorAll('.leads > li .lead-title')]"
+                               ".every(t => /Evidence/.test(t.innerText))"):
+        w.errors.append(f"{tag}: W4: a lead title has no visible Evidence marker")
+    # W2: Keep sits in the card head, not under the explanation.
+    gap = await page.evaluate("""() => { const c = document.querySelector('.leads > li');
+      const k = c && c.querySelector('.btn.keep'); if (!k) return null;
+      return Math.round(k.getBoundingClientRect().top - c.getBoundingClientRect().top); }""")
+    if gap is None or gap > 120:
+        w.errors.append(f"{tag}: W2: Keep sits {gap} px below the top of its card")
+    for i in (0, 1):
+        await page.locator(".leads > li .btn.keep").nth(i).click()
+        await page.wait_for_timeout(250)
+        live = await page.locator("#live").inner_text()
+        if "bar at the bottom" in live:  # W7
+            w.errors.append(f"{tag}: W7: after Keep the screen reader hears {live!r}")
+    await page.wait_for_timeout(300)
+    # W3: the kept count is not repeated in the subtitle or as a Kept tag.
+    sub = await page.evaluate("() => (document.querySelector('.routes-sub') || {}).innerText || ''")
+    if "kept" in sub:
+        w.errors.append(f"{tag}: W3: the routes subtitle repeats the kept count: {sub!r}")
+    if n := await page.evaluate("() => [...document.querySelectorAll('.leads .tag')].filter(t => t.innerText.trim() === 'Kept').length"):
+        w.errors.append(f"{tag}: W3: {n} cards carry a Kept tag beside a Kept button")
+    await w.snap(page, tag, "w2-kept")
+    # W5: the Evidence panel links the source once.
+    await page.locator(".leads > li .title-btn").first.click()
+    await page.wait_for_selector("#rail-ev .rec-title, #evidence-body .rec-title")
+    await page.wait_for_timeout(300)
+    dup = await page.evaluate("""() => { const box = document.querySelector('#rail-ev');
+      const top = box && box.querySelector('.source-top a'); if (!top) return 0;
+      return [...box.querySelectorAll('a[href]')].filter(a => a.href === top.href).length; }""")
+    if dup > 1:
+        w.errors.append(f"{tag}: W5: the Evidence panel links the same source URL {dup} times")
+    await w.snap(page, tag, "w5-evidence")
+    # W17: rendering the brief again does not add a document click listener.
+    n0 = await doc_click_listeners(page)
+    for _ in range(3):
+        await page.goto(base + "/#/help")
+        await page.wait_for_timeout(300)
+        await page.goto(base + "/#/brief/private/routes")
+        await page.wait_for_selector("#tab-routes")
+        await page.wait_for_timeout(400)
+    if (n1 := await doc_click_listeners(page)) > n0:
+        w.errors.append(f"{tag}: W17: three more brief renders left {n1 - n0} more click listeners on document")
+    # W6: the hand-off shows the mask setting it uses, and both toggles are one state.
+    await page.click("#tab-compare")
+    await page.wait_for_selector("table.compare", timeout=30000)
+    await page.wait_for_timeout(500)
+    ho, tb = await page.evaluate("""() => [document.querySelector('.handoff'), document.querySelector('table.compare')]
+      .map(x => x ? Math.round(x.getBoundingClientRect().top) : null)""")
+    if ho is None or tb is None or ho > tb:
+        w.errors.append(f"{tag}: W2: the hand-off box sits below the comparison table ({ho} against {tb} px)")
+    mask = page.locator(".handoff input[type=checkbox]")
+    if not await mask.count():
+        w.errors.append(f"{tag}: W6: no mask setting beside Draft the email; it hides in the Export menu")
+    else:
+        await mask.check()
+        await page.click("[data-key=export]")
+        await page.wait_for_timeout(200)
+        if not await page.locator(".export-pop input[type=checkbox]").is_checked():
+            w.errors.append(f"{tag}: W6: the Export menu's mask box does not follow the hand-off's")
+        await page.locator(".export-pop input[type=checkbox]").uncheck()
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(200)
+        if await mask.is_checked():
+            w.errors.append(f"{tag}: W6: the hand-off's mask box does not follow the Export menu's")
+    await w.snap(page, tag, "w6-compare", full=True)
+    # W18: a reload asks first, then resumes the brief; a new tab does not share it.
+    await page.click("#tab-routes")
+    await page.wait_for_timeout(300)
+    seen: list[str] = []
+
+    async def on_dialog(d) -> None:  # noqa: ANN001 - a playwright Dialog
+        seen.append(d.type)
+        await d.accept()
+    page.on("dialog", on_dialog)
+    await page.reload()
+    page.remove_listener("dialog", on_dialog)
+    if "beforeunload" not in seen:
+        w.errors.append(f"{tag}: W18: reloading a brief gave no beforeunload prompt")
+    try:
+        await page.wait_for_selector("#tab-routes", timeout=15000)
+        await wait_built(page, 30000)
+        label = await page.locator("#tab-compare").get_attribute("aria-label")
+        if label != "Compare, 2 kept":
+            w.errors.append(f"{tag}: W18: after a reload the brief came back without its kept leads ({label!r})")
+    except Exception:  # noqa: BLE001 - reported as a finding
+        w.errors.append(f"{tag}: W18: a reload lost the brief (landed on {page.url.split('#')[-1]!r})")
+    await w.snap(page, tag, "w18-reloaded")
+    other = await page.context.new_page()
+    await other.goto(base + "/#/brief/private/routes")
+    await other.wait_for_timeout(1500)
+    if await other.locator("#tab-routes").count():
+        w.errors.append(f"{tag}: W18: a new tab opened the first tab's session")
+    await other.close()
+    token = await page.evaluate("() => { try { return sessionStorage.getItem('perch.session'); } catch { return null; } }")
+    if token:
+        await page.evaluate("""(t) => fetch('/private/end', {method: 'POST', headers: {'X-Perch-Private': t}})""", token)
+        page.on("dialog", on_dialog)
+        await page.reload()
+        page.remove_listener("dialog", on_dialog)
+        try:
+            await page.wait_for_selector(".session-ended", timeout=15000)
+        except Exception:  # noqa: BLE001 - reported as a finding
+            w.errors.append(f"{tag}: W18: after the server ended the session, a reload did not land on the start with the notice")
+        await w.snap(page, tag, "w18-expired")
+
+
+async def workflow_student(w: Walk, page: Page, base: str, tag: str) -> None:
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.click("[data-key=seg-s]")
+    await page.click("[data-key=student]")
+    await page.wait_for_selector("#st-cv", timeout=20000)
+    for kind in ("cv", "interests", "achievements"):
+        await page.fill(f"#st-{kind}", (SYN / "persona-ug" / f"{kind}.md").read_text())
+    await page.click("[data-key=st-build]")
+    await page.wait_for_selector("#progress", timeout=20000)
+    await wait_built(page)
+    await page.wait_for_timeout(500)
+    if n := await page.locator(".leads > li [data-key^=evidence-]").count():
+        w.errors.append(f"{tag}: W4: {n} option cards carry an Evidence button beside the title")
+    await page.locator(".leads > li .btn.keep").first.click()
+    await page.wait_for_timeout(300)
+    await page.click("#tab-compare")
+    await page.wait_for_selector("table.compare", timeout=30000)
+    await page.wait_for_timeout(800)
+    # W8: the note shows at once, has no dead To box, and Open in mail sends the edited text.
+    if not await page.locator(".draft textarea").count():
+        w.errors.append(f"{tag}: W8: the code-written note needs a Draft the note press")
+        if await page.locator("[data-key=st-draft]").count():
+            await page.click("[data-key=st-draft]")
+            await page.wait_for_selector(".draft textarea")
+    if await page.locator("#st-to").count():
+        w.errors.append(f"{tag}: W8: the note has a To box that nothing reads")
+    ho, tb = await page.evaluate("""() => [document.querySelector('.handoff'), document.querySelector('table.compare')]
+      .map(x => x ? Math.round(x.getBoundingClientRect().top) : null)""")
+    if ho is None or tb is None or ho > tb:
+        w.errors.append(f"{tag}: W2: the note sits below the comparison table ({ho} against {tb} px)")
+    await page.locator(".draft textarea").fill((await page.locator(".draft textarea").input_value()) + "\nEDITED-W8")
+    await page.evaluate("""() => window.addEventListener('click', (e) => {
+      const a = e.target.closest('a[href^="mailto"], [data-key=st-mail]');
+      if (a) { window.__mail = a.getAttribute('href'); e.preventDefault(); } })""")
+    mail = page.locator(".draft .actions a:has-text('Open in mail')")
+    if await mail.count():
+        await mail.click()
+        got = await page.evaluate("() => decodeURIComponent(window.__mail || '')")
+        if "EDITED-W8" not in got:
+            w.errors.append(f"{tag}: W8: Open in mail sends the note as first drawn, not as edited")
+    else:
+        w.errors.append(f"{tag}: W8: no Open in mail button on a note about public fellowships")
+    await w.snap(page, tag, "w8-note", full=True)
+    await end_session(page)
+
+
+async def workflow_private(w: Walk, page: Page, base: str, tag: str) -> None:
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.click("[data-key=more-opts]")
+    await page.click("[data-key=docs-link]")
+    await page.click("button:has-text('Start a session')")
+    await page.wait_for_selector("#doc-proposal", timeout=20000)
+    await page.fill("#doc-proposal", (SYN / "persona-1/specific_aims_draft.md").read_text())
+    await page.locator("#doc-proposal ~ .doc-actions button:has-text('Add text')").click()
+    await page.wait_for_function("() => !document.querySelector('#doc-proposal')", timeout=20000)
+    await page.click(".private button:has-text('Build brief')")
+    await page.wait_for_selector("#progress", timeout=20000)
+    await page.wait_for_timeout(500)
+    if not page.url.endswith("/routes"):  # W11
+        w.errors.append(f"{tag}: W11: a private brief lands on {page.url.split('#')[-1]!r}, not on Routes")
+    await wait_built(page)
+    # W10: End session on Your documents asks first, as the header's does.
+    await page.goto(base + "/#/private")
+    await page.wait_for_selector(".private")
+    await page.click(".private .doc-actions button:has-text('End session')")
+    try:
+        await page.wait_for_selector("#models-dialog[open]", timeout=3000)
+        await w.snap(page, tag, "w10-confirm")
+        await page.click("#models-dialog button:has-text('Keep working')")
+        await end_session(page)
+    except Exception:  # noqa: BLE001 - reported as a finding
+        w.errors.append(f"{tag}: W10: End session on Your documents ended the session without asking")
+
+
 async def main(base: str, axe: str | None, out: Path, only: list[str]) -> None:
     out.mkdir(parents=True, exist_ok=True)
     names = aliases()
@@ -655,6 +888,13 @@ async def main(base: str, axe: str | None, out: Path, only: list[str]) -> None:
             w.watch(page, "persona-1")
             await w.step("persona-1", "flow", private_flow(w, page, base))
             await ctx.close()
+        if "workflow" in only:
+            for tag, fn in (("workflow-pi", workflow_pi), ("workflow-student", workflow_student),
+                            ("workflow-private", workflow_private)):
+                ctx, page = await new_page(b, LAPTOP, names)
+                w.watch(page, tag)
+                await w.step(tag, "flow", fn(w, page, base, tag))
+                await ctx.close()
         await b.close()
     report = out / f"report-{'-'.join(only)}.json"
     report.write_text(json.dumps({"states": w.states, "errors": w.errors, "focus": w.focus}, indent=1))
@@ -668,6 +908,6 @@ if __name__ == "__main__":
     ap.add_argument("--base", default="http://127.0.0.1:8090")
     ap.add_argument("--axe", default=None)
     ap.add_argument("--out", type=Path, default=ROOT / "build/ux")
-    ap.add_argument("--only", nargs="+", default=["pi", "checks", "student", "private"])
+    ap.add_argument("--only", nargs="+", default=["pi", "checks", "student", "private", "workflow"])
     a = ap.parse_args()
     asyncio.run(main(a.base, a.axe, a.out, a.only))
