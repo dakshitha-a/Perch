@@ -140,6 +140,18 @@ export function replayApi(data) {
       return Promise.reject(new ApiError("This preview holds the draft for these kept leads only: "
         + `${names.join("; ")}. Keep exactly those to see it.`, 0));
     },
+    // A student preview (scripts/export_student_replay.py) holds the server's note for its
+    // top option on each route, and the office names; other kept sets say so (review W9).
+    studentOffices: data.offices || null,
+    studentNote: (route) => {
+      const rec = (data.notes || {})[route];
+      if (!rec) return Promise.reject(new ApiError("The note needs the live app.", 0));
+      const kept = leadsIn().filter((l) => l.status === "kept" && l.route === route).map((l) => l.id).sort();
+      if (kept.join(",") === [...rec.lead_ids].sort().join(",")) return later(clone(rec.note), 300);
+      const names = rec.lead_ids.map((i) => final.leads.find((l) => l.id === i))
+        .map((l) => (l && l.record ? l.record.name || l.record.title : "")).filter(Boolean);
+      return Promise.reject(new ApiError(`This preview holds the note for these kept options only: ${names.join("; ")}. Keep exactly those to see it.`, 0));
+    },
     recordedQuestion: data.scout ? data.scout.question : null,
     scoutStart: data.scout ? (id, body) => {
       const norm = (q) => q.trim().toLowerCase().replace(/[?.!]+$/, "");
@@ -194,6 +206,7 @@ export function privateApi(base = "") {
     removeDocument: (kind) => post(`/private/documents/${encodeURIComponent(kind)}/remove`),
     create: (req) => post("/private/brief", req),
     createStudent: (req) => post("/private/student/brief", req),
+    studentNote: (route) => p(`/private/student/note?route=${encodeURIComponent(route)}`),
     end: async () => { try { await post("/private/end"); } finally { token = null; last = { token: null, etag: null, body: null }; } },
     // A poll sends the last ETag; 304 means nothing changed, so the last body is reused
     // (P3). Held in memory only, like the token; the server marks the answer no-store.

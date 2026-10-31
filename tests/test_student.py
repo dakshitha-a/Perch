@@ -222,3 +222,29 @@ def test_student_scout_uses_only_the_student_tools(tmp_path, monkeypatch):
     canary = canaries("persona-ug")
     assert not any(t in json.dumps(v) for t in canary)  # no CV text reached Scout's view
     assert c.post("/private/end", headers=h).json()["ended"]
+
+
+def test_the_compare_note_is_written_once_on_the_server(tmp_path, monkeypatch):
+    """Review W9: the Compare tab's note comes from the same code as Scout's draft_note,
+    and the web app keeps no copy of the note or of the office names."""
+    from perch.scout.student_tools import OFFICES
+
+    c, _ = student_app(tmp_path, monkeypatch)
+    h = open_student(c, "persona-ug")
+    c.post("/private/student/brief", headers=h, json={"as_of": "2026-11-06"})
+    got = c.get("/private/brief", headers=h).json()
+    lead = next(x for x in got["leads"] if x["route"] == "S" and x["verdict"] != "not eligible")
+    assert c.get("/private/student/note?route=S", headers=h).status_code == 404  # none kept
+    c.post(f"/private/leads/{lead['id']}/keep", headers=h)
+    n = c.get("/private/student/note?route=S", headers=h).json()
+    assert n["office"] == OFFICES["S"][0] and n["sample"] and n["to"] == ""
+    assert n["body"].startswith("SAMPLE DATA") and "(SAMPLE record, not real)" in n["body"]
+    assert n["subject"] == "Advice on scholarships: 1 on my list"
+    assert c.get("/private").json()["student_offices"]["F"]["name"] == OFFICES["F"][0]
+    # A researcher's brief has no note.
+    t = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    c.post("/private/brief", headers=t, json={"author_id": "A5026494099", "explain": False})
+    assert c.get("/private/student/note?route=F", headers=t).status_code == 422
+    js = (ROOT / "web/student.js").read_text()
+    assert "/private/student/note" in (ROOT / "web/api.js").read_text()
+    assert OFFICES["S"][0] not in js and "I am a student looking at" not in js

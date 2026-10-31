@@ -34,11 +34,15 @@ def _brief(ctx: ScoutContext) -> tuple[object, list[Lead]]:
 
 
 def _record(ctx: ScoutContext, lead: Lead) -> Record | None:
-    with ctx.service.repo() as r:
+    return record_of(ctx.service, lead)
+
+
+def record_of(service: object, lead: Lead) -> Record | None:
+    with service.repo() as r:
         return r.get(Scholarship, lead.record_id) or r.get(Opportunity, lead.record_id)
 
 
-def _facts(rec: Record | None) -> dict:
+def facts_of(rec: Record | None) -> dict:
     """Deadline and amount, copied from the record or marked as not stated."""
     if isinstance(rec, Scholarship):
         amt = (f"{rec.amount_min:,.0f} to {rec.amount_max:,.0f} US dollars"
@@ -60,7 +64,7 @@ def _facts(rec: Record | None) -> dict:
 def _row(ctx: ScoutContext, lead: Lead) -> dict:
     rec = _record(ctx, lead)
     out = {"id": ctx.see(rec) if rec else lead.record_id, "route": ROUTES[lead.route],
-           **_facts(rec), "verdict": lead.verdict, "kept": lead.status == "kept"}
+           **facts_of(rec), "verdict": lead.verdict, "kept": lead.status == "kept"}
     if lead.sample:
         out["sample"] = True
         out["note"] = "SAMPLE record from a test corpus; not a real scholarship"
@@ -102,7 +106,8 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
         if min_amount is not None and (top is None or top < min_amount):
             continue
         if words:
-            text = " ".join(str(v) for v in (_facts(rec).get("title"), getattr(rec, "purpose", ""),
+            text = " ".join(str(v) for v in (facts_of(rec).get("title"),
+                                             getattr(rec, "purpose", ""),
                                              getattr(rec, "description", ""))).lower()
             if not all(w.strip().lower() in text for w in words.split(",") if w.strip()):
                 continue
@@ -170,26 +175,31 @@ def draft_note(ctx: ScoutContext, route: str | None = None,
     if len(routes) > 1:
         raise ToolError("fellowships go to Scholar Development and Fellowships Advising and "
                         "scholarships to Student Financial Services: call once per route")
-    r = routes.pop()
-    kind = "fellowships" if r == "F" else "scholarships"
-    lines = []
-    for x in chosen:
-        f = _row(ctx, x)
-        lines.append(f"- {f['title']}{' (SAMPLE record, not real)' if x.sample else ''}: "
-                     f"{x.verdict}, deadline {f['deadline']}"
-                     + (f". Still needed: {'; '.join(x.gaps)}" if x.gaps else ""))
+    out = write_note(routes.pop(), [(x, _row(ctx, x)) for x in chosen])
+    out.pop("sample")
+    return {**out, "opening_withheld": False,
+            "note": "Written by code from the kept options; no model. Perch never sends it."}
+
+
+def write_note(route: str, rows: list[tuple[Lead, dict]]) -> dict:
+    """The note to the Temple office for one route, written by code from the options and
+    their record facts (title, deadline). One source for Scout's draft_note and the
+    Compare tab's note (review W9)."""
+    kind = "fellowships" if route == "F" else "scholarships"
+    sample = any(x.sample for x, _ in rows)
+    lines = [f"- {f['title']}{' (SAMPLE record, not real)' if x.sample else ''}: "
+             f"{x.verdict}, deadline {f['deadline']}"
+             + (f". Still needed: {'; '.join(x.gaps)}" if x.gaps else "") for x, f in rows]
     demo = (["SAMPLE DATA, A DEMONSTRATION: DO NOT SEND. The scholarships marked SAMPLE are "
-             "invented.", ""] if any(x.sample for x in chosen) else [])
+             "invented.", ""] if sample else [])
     body = "\n".join([*demo, "Hello,", "", f"I am a student looking at the {kind} below and would "
                       "like advice on applying.", "", *lines, "",
                       *(["Note: records marked SAMPLE come from a test corpus in Perch and "
-                         "are not real scholarships.", ""] if any(x.sample for x in chosen)
-                        else []), "Thank you."])
-    name, url = OFFICES[r]
+                         "are not real scholarships.", ""] if sample else []), "Thank you."])
+    name, url = OFFICES[route]
     return {"office": name, "office_page": url, "to": "",
-            "subject": f"Advice on {kind}: {len(chosen)} on my list", "body": body,
-            "opening_withheld": False,
-            "note": "Written by code from the kept options; no model. Perch never sends it."}
+            "subject": f"Advice on {kind}: {len(rows)} on my list", "body": body,
+            "sample": sample}
 
 
 _ID = {"type": "string", "description": "An option id from search_options"}
@@ -258,7 +268,7 @@ def student_brief_note(ctx: ScoutContext, leads: list[Lead]) -> str:
             continue
         rec = _record(ctx, x)
         if rec is not None:
-            title = _facts(rec)["title"]
+            title = facts_of(rec)["title"]
             marks = (", SAMPLE" if x.sample else "") + (", kept" if x.status == "kept" else "")
             lines.append(f"- [{ctx.see(rec)}] {title} ({x.verdict}{marks})")
     return ("\n\nThe student's options in this brief:\n" + "\n".join(lines)) if lines else ""

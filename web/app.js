@@ -1012,7 +1012,8 @@ function renderStudentPanel(panel) {
     d.leads.map((l) => [l.status, Boolean(l.explanation), l.flagged])]);
   if (panel.dataset.sig === sig) return;
   panel.dataset.sig = sig;
-  const ctx = { brief: d, route: S.route, papers: d.papers || {}, openEvidence, setLead, announce,
+  const ctx = { brief: d, route: S.route, papers: d.papers || {}, openEvidence, setLead, announce, api,
+    offices: (privateInfo() || {}).student_offices || api.studentOffices,
     briefId: S.briefId, setRoute: (r) => { S.route = r; renderPanel(); panelFocus(`route-${r}`); },
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) };
   if (S.tab === "profile") keepFocus(() => fill(panel, ...studentProfile(d, ctx)));

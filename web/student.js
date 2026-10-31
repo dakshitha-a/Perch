@@ -20,10 +20,6 @@ export function verdictChip(v) {
   const [cls, mark, word] = VERDICTS[v] || ["", "", v];
   return h("span", { class: `verdict ${cls}` }, h("span", { class: "mk", "aria-hidden": "true", text: mark }), h("span", { text: word }));
 }
-const OFFICES = {
-  F: { name: "Scholar Development and Fellowships Advising", url: "https://undergraduate.temple.edu/fellowships" },
-  S: { name: "Student Financial Services", url: "https://sfs.temple.edu/" },
-};
 const HINTS = {
   cv: "Read by rule only: level, year, major, GPA, enrolment, expected graduation and referees. It is never sent to a model.",
   interests: "A few sentences on what you want to study or work on. This steers the search.",
@@ -39,7 +35,7 @@ export function usedSample() { return Boolean(D.lastSample); }
 export function resetStudent() {
   Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, sample: false, lastSample: false });
   SORT.by = "order";
-  Object.assign(NOTE, { office: null, edits: {}, keptSig: "" });
+  Object.assign(NOTE, { office: null, edits: {}, got: {}, keptSig: "" });
 }
 
 export function isStudent(brief) {
@@ -334,9 +330,13 @@ function amountText(r) {
 // ----- compare and hand-off (code-written; nothing is sent) -----
 
 // The office picked, and the note as edited, per office, for the kept set it was written for.
-const NOTE = { office: null, edits: {}, keptSig: "" };
+// The office picked; per office, the note the server wrote and the note as edited, for the
+// kept set they were written for.
+const NOTE = { office: null, edits: {}, got: {}, keptSig: "" };
 
-export function studentCompare(panel, { brief, goRoutes, announce }) {
+export function studentCompare(panel, ctx) {
+  const { brief, goRoutes, announce, api } = ctx;
+  const offices = ctx.offices || {};
   const kept = brief.leads.filter((l) => l.status === "kept");
   if (!kept.length) {
     fill(panel, h("div", { class: "empty" }, h("div", {}, h("p", { class: "lede", text: "Nothing kept yet." }),
@@ -344,12 +344,22 @@ export function studentCompare(panel, { brief, goRoutes, announce }) {
       h("button", { class: "btn", onclick: goRoutes }, h("span", { text: "Go to Your options" })))));
     return;
   }
-  const draw = () => studentCompare(panel, { brief, goRoutes, announce });
+  const draw = () => studentCompare(panel, ctx);
   const byOffice = { F: kept.filter((l) => l.route === "F"), S: kept.filter((l) => l.route === "S") };
   const routes = ["F", "S"].filter((r) => byOffice[r].length);
   if (!routes.includes(NOTE.office)) NOTE.office = routes[0];
   const keptSig = kept.map((l) => l.id).sort().join(",");
-  if (NOTE.keptSig !== keptSig) { NOTE.edits = {}; NOTE.keptSig = keptSig; }
+  if (NOTE.keptSig !== keptSig) { NOTE.edits = {}; NOTE.got = {}; NOTE.keptSig = keptSig; }
+  // The note is written by the server, by the same code as Scout's draft_note (review W9).
+  const route = NOTE.office;
+  if (!NOTE.got[route]) {
+    NOTE.got[route] = { wait: true };
+    const ask = api && api.studentNote ? api.studentNote(route) : Promise.reject(new Error("The note needs the live app."));
+    ask.then((n) => { NOTE.got[route] = { note: n }; }, (e) => { NOTE.got[route] = { error: e.message }; })
+      .then(() => { if (NOTE.keptSig === keptSig && panel.querySelector(".st-note-wait")) draw(); });
+  }
+  const got = NOTE.got[route];
+  const officeName = (r) => (offices[r] || {}).name || "The Temple office for this route";
   const row = (l) => {
     const r = l.record || {};
     const sch = r.kind === "scholarship";
@@ -362,7 +372,7 @@ export function studentCompare(panel, { brief, goRoutes, announce }) {
       h("td", { text: d ? f.formatDate(d) : "Not stated" }),
       h("td", { text: sch ? amountText(r) : "See the record" }),
       h("td", { text: l.gaps.join("; ") || "Nothing listed" }),
-      h("td", { text: OFFICES[l.route].name }));
+      h("td", { text: officeName(l.route) }));
   };
   fill(panel,
     kept.some((l) => l.sample) ? h("p", { class: "notice warn sample-note", role: "note" }, h("span", { class: "tag sample", text: SAMPLE }),
@@ -373,43 +383,32 @@ export function studentCompare(panel, { brief, goRoutes, announce }) {
       h("fieldset", { class: "office-pick" }, h("legend", { text: "Office" }),
         routes.map((r) => h("label", { class: "office-opt" },
           h("input", { type: "radio", name: "st-office", checked: NOTE.office === r, onchange: () => { NOTE.office = r; draw(); } }),
-          h("span", {}, h("b", { text: OFFICES[r].name }), h("br"),
+          h("span", {}, h("b", { text: officeName(r) }), h("br"),
             h("span", { class: "hint", text: r === "F" ? "For the kept fellowships" : "For the kept sample scholarships" }))))),
       // Code writes the note at once, so it shows without a Draft press (review W8).
       h("p", { class: "hint", text: "Code writes this note; no model. Perch never sends it." }),
-      note(NOTE.office, byOffice[NOTE.office], announce)),
+      got.note ? note(route, got.note, announce)
+        : got.error ? h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The note could not be written: ${got.error}` }))
+          : h("p", { class: "hint st-note-wait", role: "status", text: "Writing the note…" })),
     h("div", { class: "table-wrap compare-wrap", role: "region", "aria-label": "Kept options, side by side", tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
       h("thead", {}, h("tr", {}, ["Option", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
       h("tbody", {}, kept.map(row))))),
     h("p", { class: "hint", text: "Each cell is copied from its record or checked against your CV by rule. “Not stated” means the listing leaves it blank." }));
 }
 
-function note(route, leads, announce) {
-  const o = OFFICES[route];
-  const lines = leads.map((l) => {
-    const r = l.record || {};
-    const name = r.kind === "scholarship" ? r.name : r.title;
-    const d = r.kind === "scholarship" ? r.deadline : r.close_date;
-    return `- ${name}${l.sample ? " (SAMPLE record, not real)" : ""}: ${l.verdict}${d ? `, deadline ${f.formatDate(d)}` : ""}${l.gaps.length ? `. Still needed: ${l.gaps.join("; ")}` : ""}`;
-  });
-  const subject = `Advice on ${route === "F" ? "fellowships" : "scholarships"}: ${leads.length} on my list`;
-  const sample = leads.some((l) => l.sample);
-  const body = [...(sample ? ["SAMPLE DATA, A DEMONSTRATION: DO NOT SEND. The scholarships marked SAMPLE are invented.", ""] : []),
-    `Hello,`, "",
-    `I am a student looking at the ${route === "F" ? "fellowships" : "scholarships"} below and would like advice on applying.`, "",
-    ...lines, "",
-    leads.some((l) => l.sample) ? "Note: records marked SAMPLE come from a test corpus in Perch and are not real scholarships.\n" : "",
-    "Thank you."].join("\n");
-  const box = h("textarea", { class: "input draft-body", rows: 10, "aria-label": `Draft to ${o.name}`,
+// The note as the server wrote it (GET /private/student/note), editable here.
+function note(route, n, announce) {
+  const { subject } = n;
+  const box = h("textarea", { class: "input draft-body", rows: 10, "aria-label": `Draft to ${n.office}`,
     oninput: (e) => { NOTE.edits[route] = e.target.value; } });
-  box.value = NOTE.edits[route] ?? body;
+  box.value = NOTE.edits[route] ?? n.body;
   return h("div", { class: "draft fade-in" },
-    leads.some((l) => l.sample) ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }),
+    n.sample ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }),
       h("span", { text: " This note names invented sample scholarships." })) : null,
     h("p", { class: "office-link", text: "To: left blank for you." }),
     h("p", {}, h("b", { text: "Subject: " }), h("span", { text: subject })),
     box,
-    h("p", { class: "hint" }, h("a", { href: o.url, target: "_blank", rel: "noopener", text: `${o.name} (public page)` })),
+    h("p", { class: "hint" }, h("a", { href: f.safeUrl(n.office_page), target: "_blank", rel: "noopener", text: `${n.office} (public page)` })),
     h("div", { class: "actions" },
       h("button", { class: "btn", type: "button", onclick: async () => {
         try { await navigator.clipboard.writeText(box.value); announce("Note copied."); } catch { box.select(); }
@@ -417,7 +416,7 @@ function note(route, leads, announce) {
       // A note about invented scholarships is a demonstration: there is no mail button.
       // The link is built on the press, from the text as edited (review W8), and the note
       // is copied too, in case the mail app shortens a long one.
-      sample ? null : h("a", { class: "btn", href: "#", "data-key": "st-mail", onclick: async (e) => {
+      n.sample ? null : h("a", { class: "btn", href: "#", "data-key": "st-mail", onclick: async (e) => {
         e.currentTarget.href = mailto({ subject, body: box.value });
         await copy(`Subject: ${subject}\n\n${box.value}`, announce);
       } }, icon("download"), h("span", { text: "Open in mail" }))));

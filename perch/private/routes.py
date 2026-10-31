@@ -165,6 +165,12 @@ SAMPLES: dict[str, Callable[[], dict]] = {"researcher": _researcher_sample,
                                           "student": _student_sample}
 
 
+def student_offices() -> dict:
+    from perch.scout.student_tools import OFFICES
+
+    return {r: {"name": n, "url": u} for r, (n, u) in OFFICES.items()}
+
+
 def per_hour(name: str, default: int) -> int:
     """An hourly cap from the environment, or its default when unset or empty."""
     return int(env(name) or default)
@@ -254,7 +260,10 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                                   "cv": "Your CV or résumé"},
                 "formats": list(FORMATS), "max_bytes": MAX_BYTES,
                 "max_chars": MAX_CHARS, "max_total_chars": MAX_TOTAL_CHARS,
-                "idle_minutes": IDLE_SECONDS // 60, "cloud": cloud_info()}
+                "idle_minutes": IDLE_SECONDS // 60, "cloud": cloud_info(),
+                # The Temple office for each student route; its note comes from
+                # /private/student/note (review W9).
+                "student_offices": student_offices()}
 
     @app.get("/private/samples/{name}")
     def sample(name: Literal["researcher", "student"]) -> dict:
@@ -451,6 +460,22 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         if x is None or not belongs_to(x, s.brief_id):  # another visitor's (review S9)
             raise HTTPException(404, "no such record")
         return {"kind": x.kind, **x.model_dump(mode="json")}
+
+    @app.get("/private/student/note")
+    def student_note(route: Literal["F", "S"],
+                     x_perch_private: str | None = Header(None)) -> dict:
+        """The Compare tab's note for one route, written by code (review W9): the same
+        function as Scout's draft_note, so there is one source."""
+        from perch.scout.student_tools import facts_of, record_of, write_note
+
+        s = session(x_perch_private)
+        b, leads = load(brief_id(s), s.service)
+        if not b.options.get("student"):
+            raise HTTPException(422, "Only a student brief has a note.")
+        kept = [x for x in leads if x.status == "kept" and x.route == route]
+        if not kept:
+            raise HTTPException(404, "Nothing kept for that office.")
+        return write_note(route, [(x, facts_of(record_of(s.service, x))) for x in kept])
 
     @app.get("/private/compare")
     def compare(status: Literal["kept", "all"] = "kept",
