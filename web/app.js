@@ -1033,7 +1033,20 @@ function drawScout() {
   const panel = $("#panel");
   if (!panel || S.tab !== "scout" || !S.brief) return;
   renderScout(panel, { api, briefId: S.briefId, done: S.brief.brief.status === "done", student: isStudent(S.brief),
-    openEvidence, announce, rerender: drawScout });
+    openEvidence, announce, rerender: drawScout, label: recordLabel });
+}
+
+// How Scout names a record of this brief (U8): a grant by its opportunity number; a
+// fellowship or scholarship, whose name the answer already says, as "Evidence", with
+// "(sample)" for a SYNTHETIC one. The full name is the button's label. null: not a lead.
+function recordLabel(id) {
+  const l = leadsOf().find((x) => x.record_id === id || f.shortId(x.record_id) === id
+    || (x.opportunity && x.opportunity.opportunity_number === id));
+  if (!l) return null;
+  const full = leadTitle(l);
+  if (l.sample) return { text: "Evidence (sample)", full: `${full}, sample data`, sample: true, name: `${full} (sample)` };
+  if (l.opportunity && l.opportunity.opportunity_number) return { text: l.opportunity.opportunity_number, full, name: l.opportunity.opportunity_number };
+  return l.route === "B" ? null : { text: "Evidence", full, name: full };
 }
 
 // ----- Profile -----

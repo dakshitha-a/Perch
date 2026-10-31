@@ -5,6 +5,7 @@
 
 import { h, fill, icon } from "./dom.js";
 import { owl } from "./owl.js";
+import { money } from "./format.js";
 
 const POLL_MS = 1200;
 const TOOLS = {
@@ -157,7 +158,7 @@ function exchange(x, ctx, busy, fresh, i) {
   const drafts = x.cards.filter((c) => c.draft);
   return h("li", { class: fresh ? "scout-x new" : "scout-x" },
     h("p", { class: "scout-q" }, h("span", { class: "sr-only", text: "You asked: " }), x.question),
-    readAs(x),
+    readAs(x, ctx),
     answer(x, ctx, running && busy),
     ...drafts.map((c) => draftBlock(c.draft, ctx)),
     x.cards.length ? h("details", { class: "scout-steps", open: T.openSteps.has(i),
@@ -166,7 +167,7 @@ function exchange(x, ctx, busy, fresh, i) {
       h("ol", { class: "scout-cards" }, ...x.cards.map((c) => card(c, ctx)))) : null);
 }
 
-function readAs(x) {
+function readAs(x, ctx) {
   const done = x.cards.filter((c) => c.status === "done");
   const trouble = x.cards.filter((c) => c.status === "refused" || c.status === "error").length;
   if (!done.length && !trouble) return null;
@@ -174,19 +175,25 @@ function readAs(x) {
     h("p", { class: "mini", text: "How Scout read your question" }),
     h("ul", {}, ...done.map((c) => h("li", {},
       h("span", { class: "scout-read-tool", text: TOOLS[c.tool] || c.tool }),
-      ...argList(c).map(([k, v]) => h("span", { class: "chip", text: `${ARGS[k] || k}: ${v}` })),
+      ...argList(c, ctx).map(([k, v]) => h("span", { class: "chip", text: `${ARGS[k] || k}: ${v}` })),
       c.detail ? h("span", { class: "scout-read-result", text: `→ ${c.detail}` }) : null))),
     trouble ? h("p", { class: "hint", text: `${trouble === 1 ? "One step" : `${trouble} steps`} failed or were refused; the steps below say why.` }) : null);
 }
 
 const ROUTES = { A: "Grants", B: "Industry leads", F: "Fellowships", S: "Scholarships" };
-function argList(c) {
+// Record keys in a step's filters read as the brief names them (U8).
+const ID_ARGS = new Set(["id", "ids", "opportunity_id", "opportunity_ids", "option_id"]);
+function argList(c, ctx) {
+  const name = (v) => { const k = ctx && ctx.label ? ctx.label(String(v)) : null;
+    return k ? k.name : leadLabel(String(v)) || String(v).replace(/^grants_gov:/, ""); };
   return Object.entries(c.arguments || {}).filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length))
-    .map(([k, v]) => [k, k === "route" ? ROUTES[v] || v : Array.isArray(v) ? v.join(", ") : v]);
+    .map(([k, v]) => [k, k === "route" ? ROUTES[v] || v
+      : ID_ARGS.has(k) ? [].concat(v).map(name).join(", ")
+        : Array.isArray(v) ? v.join(", ") : v]);
 }
 
 function card(c, ctx) {
-  const args = argList(c);
+  const args = argList(c, ctx);
   return h("li", { class: `scout-card s-${c.status}` },
     h("div", { class: "scout-card-head" },
       h("span", { class: "scout-tool", text: TOOLS[c.tool] || c.tool }),
@@ -241,8 +248,31 @@ function answer(x, ctx, thinking) {
   return null;
 }
 
-// "[id]" and "[id, id]" become buttons that open the record in the evidence panel.
+// The model's text, tidied for reading (U8): lines that start with "* " or "- " become a
+// list, "**" marks go, and amounts read as the cards write them ($200,000, not
+// $200,000.0). "[id]" and "[id, id]" become buttons that open the record.
 function withCites(text, ctx) {
+  const clean = String(text).replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\$(\d[\d,]*(?:\.\d+)?)/g, (m, n) => (Number.isFinite(Number(n.replace(/,/g, ""))) ? money(Number(n.replace(/,/g, ""))) : m));
+  const out = [];
+  let list = null;
+  for (const line of clean.split("\n")) {
+    const item = line.match(/^\s*[*-]\s+(.*)$/);
+    if (item) {
+      if (!list) { list = h("ul", { class: "scout-list" }); out.push(list); }
+      list.append(h("li", {}, ...inline(item[1], ctx)));
+      continue;
+    }
+    const after = list;
+    list = null;
+    if (!line.trim() && after) continue; // no blank line under a list
+    if (out.length && !after) out.push("\n");
+    out.push(...inline(line, ctx));
+  }
+  return out;
+}
+
+function inline(text, ctx) {
   const out = [];
   let last = 0;
   for (const m of text.matchAll(/\[([^[\]]+)\]/g)) {
@@ -254,9 +284,14 @@ function withCites(text, ctx) {
   return out;
 }
 
+// A citation reads as the brief shows the record: an opportunity number, an option's
+// name with "(sample)" for a SYNTHETIC record, or an industry lead's number (U8).
 function citeBtn(id, ctx) {
-  return h("button", { class: "cite", "aria-label": `Evidence: ${id}`, onclick: (e) => ctx.openEvidence(id, e.currentTarget) },
-    h("span", { text: leadLabel(id) || id.replace(/^grants_gov:/, "") }));
+  const known = ctx.label ? ctx.label(id) : null;
+  const text = known ? known.text : leadLabel(id) || id.replace(/^grants_gov:/, "");
+  return h("button", { class: `cite${known && known.sample ? " sample" : ""}`,
+    "aria-label": `Evidence: ${known ? known.full || known.text : id}`, onclick: (e) => ctx.openEvidence(id, e.currentTarget) },
+  h("span", { text }));
 }
 
 // Route B lead ids look like "<brief>:B2"; show them as "Industry lead 2".

@@ -143,6 +143,7 @@ body.cloud-on .status-chip .dot { background: var(--ember-fill); }
   border: 1px solid var(--line); background: var(--sunk); color: var(--ink); box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .cite.paper-cite { font-family: var(--serif); font-style: italic; }
 .cite:hover { border-color: var(--moss); }
+.cite.sample { border-style: dashed; border-color: var(--ember-fill); }
 
 /* ---------- Find ---------- */
 .find { display: grid; gap: 22px; padding-top: 4px; }
@@ -673,6 +674,8 @@ body.on-help .banner { display: none; }
 .scout-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .scout-answer { padding: 12px 14px; border-left: 3px dashed var(--model); background: var(--model-soft); border-radius: 0 10px 10px 0; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
 .scout-answer > .provenance { margin: 0 0 6px; white-space: normal; line-height: 1.4; }
+.scout-answer .scout-list { margin: 2px 0 6px; padding-left: 22px; white-space: normal; }
+.scout-answer .scout-list li + li { margin-top: 2px; }
 .scout-wait { display: flex; gap: 10px; align-items: center; color: var(--ink-2); margin: 0; }
 .scout-wait .scout-stop { margin-left: auto; min-height: 40px; }
 .scout-stopped { margin: 0; }
