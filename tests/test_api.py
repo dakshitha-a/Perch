@@ -297,3 +297,19 @@ def test_markdown_and_print_exports_carry_records_and_the_notice(tmp_path):
     assert page.startswith("<!doctype html>") and "window.print()" in page
     assert "<table>" in page and "not endorsed or certified" in page
     assert c.get("/briefs/nope/export.md").status_code == 404
+
+
+def test_a_crash_answers_500_by_type_and_is_not_raised_to_the_server(tmp_path):
+    """S5: Starlette re-raised after the catch-all handler, so uvicorn logged the
+    traceback and its message. The middleware ends it at a typed 500."""
+    _, service = make(tmp_path)
+    app = create_app(service, InlineRunner(), web_dir=None)
+
+    @app.get("/boom")
+    def boom() -> dict:
+        raise ValueError("SYNTHETIC request text PERCH-CANARY-ERR")
+
+    c = TestClient(app)  # raise_server_exceptions: anything re-raised fails the test
+    r = c.get("/boom")
+    assert r.status_code == 500 and r.json() == {"detail": "internal error (ValueError)"}
+    assert c.get("/health").json() == {"status": "ok"}

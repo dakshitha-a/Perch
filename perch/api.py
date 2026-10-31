@@ -206,6 +206,33 @@ class RateLimiter:
             return 0
 
 
+class Crashed:
+    """Pure ASGI middleware: an unhandled exception becomes a 500 naming its type only,
+    and is not raised further, so no server log holds its message or traceback."""
+
+    def __init__(self, app: Callable) -> None:
+        self.app = app
+
+    async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        started = False
+
+        async def watch(message: dict) -> None:
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, receive, watch)
+        except Exception as exc:  # noqa: BLE001 - every error ends here, by type only
+            if not started:
+                await JSONResponse({"detail": f"internal error ({type(exc).__name__})"},
+                                   status_code=500)(scope, receive, send)
+
+
 def client_key(request: Request) -> str:
     """The visitor's address. Behind the tunnel every request comes from 127.0.0.1, so a
     local request is keyed on the first X-Forwarded-For address the proxy adds."""
@@ -261,11 +288,10 @@ def create_app(service: BriefService, runner: JobRunner,
                   for e in exc.errors()]
         return JSONResponse({"detail": errors}, status_code=422)
 
-    @app.exception_handler(Exception)
-    def crashed(request: Request, exc: Exception) -> JSONResponse:
-        # Exception type only: messages can quote request text.
-        return JSONResponse({"detail": f"internal error ({type(exc).__name__})"},
-                            status_code=500)
+    # Exception type only: messages can quote request text. A middleware, not an exception
+    # handler: Starlette re-raises after its handler runs, and uvicorn then logs the
+    # traceback with its message (review S5).
+    app.add_middleware(Crashed)
 
     origins = [o.strip() for o in (env("PERCH_CORS_ORIGINS") or "").split(",") if o.strip()]
     if origins:  # the web app is same-origin; other origins only when listed
