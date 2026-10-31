@@ -42,6 +42,7 @@ from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 
 from perch import compare as cmp
+from perch import egress
 from perch import export as ex
 from perch.config import env
 from perch.jobs import JobRunner
@@ -261,6 +262,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                 "formats": list(FORMATS), "max_bytes": MAX_BYTES,
                 "max_chars": MAX_CHARS, "max_total_chars": MAX_TOTAL_CHARS,
                 "idle_minutes": IDLE_SECONDS // 60, "cloud": cloud_info(),
+                "mask_warning": egress.WARNING,  # what masking cannot hide (review W14)
                 # The Temple office for each student route; its note comes from
                 # /private/student/note (review W9).
                 "student_offices": student_offices()}

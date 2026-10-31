@@ -146,8 +146,6 @@ function goReplace(hash) {
   else location.replace(hash);
 }
 
-function barOwl() { /* the redesign has no owl in the bar (S24) */ }
-
 // ---------- Landing (S24): Scout on the branch, the headline, Researcher | Student ----------
 
 function keepFocus(render) {
@@ -705,7 +703,6 @@ async function poll() {
 }
 
 function renderMissing(id, msg) {
-  barOwl("worry");
   fill(main(), h("div", { class: "empty" }, owl("worry", "owl-md"),
     h("div", {}, h("p", { class: "lede", text: "This brief could not be opened." }),
       h("p", { class: "hint", text: msg }),
@@ -1297,7 +1294,6 @@ function renderRoutes(panel) {
   const leads = sortedLeads();
   const active = leads.filter((l) => l.status !== "dismissed");
   const dismissed = leads.filter((l) => l.status === "dismissed");
-  const kept = leadsOf().filter((l) => l.status === "kept").length;
   const explaining = stage("explanations").status === "running" || stage("explanations").status === "pending";
 
   const sig = `routes:${isDone("route_b")}`;
@@ -1310,10 +1306,8 @@ function renderRoutes(panel) {
         h("div", {}, h("h2", { class: "section-title", id: "routes-title" }),
           h("p", { class: "hint routes-sub" }))),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
-      h("div", { class: "dismissed-box" }),
-      h("div", { class: "keep-bar-box" }));
+      h("div", { class: "dismissed-box" }));
   }
-  renderKeepBar(panel.querySelector(".keep-bar-box"), kept);
   updateSwitch(panel);
   for (const b of panel.querySelectorAll(".sort-switch button")) {
     b.setAttribute("aria-pressed", String(b.dataset.key === `sort-${S.sort}`));
@@ -1373,7 +1367,6 @@ function renderIndustry(panel) {
   const leads = sortedLeads();
   const active = leads.filter((l) => l.status !== "dismissed");
   const dismissed = leads.filter((l) => l.status === "dismissed");
-  const kept = leadsOf().filter((l) => l.status === "kept").length;
   if (panel.dataset.sig !== "industry") {
     panel.dataset.sig = "industry";
     fill(panel, routeSwitch(),
@@ -1382,10 +1375,8 @@ function renderIndustry(panel) {
           text: "Inferred from public signals; not verified. A company that cites or works near your "
             + "research may have no interest in funding it. SBIR/STTR covers NIH awards only." })))),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
-      h("div", { class: "dismissed-box" }),
-      h("div", { class: "keep-bar-box" }));
+      h("div", { class: "dismissed-box" }));
   }
-  renderKeepBar(panel.querySelector(".keep-bar-box"), kept);
   updateSwitch(panel);
   panel.querySelector("#routes-title").textContent = f.plural(active.length, "industry lead");
   if (!leads.length) {
@@ -1454,9 +1445,6 @@ function orgCard(l) {
     h("span", { text: l.inference || "Inferred from public signals; not verified." })),
   signals, yours);
 }
-
-// The old keep bar (S8) became the shortlist rail and the floating pill (S24).
-function renderKeepBar() { drawRail(); }
 
 // Keyed update: a card is rebuilt only when its data changed, so focus and open
 // sections survive polling.
@@ -1908,11 +1896,10 @@ function recordView(r) {
   out.push(h("div", { class: "source" },
     h("p", {}, h("span", { class: "hint", text: "Source " }), h("b", { text: SOURCES[r.source] || r.source })),
     h("p", { class: "hint", text: `${r.source === "private" ? "Added" : "Fetched"} ${fetched(r.fetched_at)}` }),
-    r.source === "grants_gov" ? h("p", { class: "attrib", text: S.brief ? S.brief.notice : GRANTS_NOTICE }) : null));
+    // The Grants.gov attribution as the server serves it with the brief (review W14).
+    r.source === "grants_gov" && S.brief && S.brief.notice ? h("p", { class: "attrib", text: S.brief.notice }) : null));
   return out;
 }
-
-const GRANTS_NOTICE = "This product uses the Grants.gov API but is not endorsed or certified by the U.S. Department of Health and Human Services.";
 
 function fetched(iso) {
   if (!iso) return "at an unknown time";

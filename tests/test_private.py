@@ -914,3 +914,17 @@ def test_polls_are_gzipped_and_unchanged_briefs_answer_304(tmp_path, monkeypatch
     assert changed.status_code == 200 and changed.headers["etag"] != tag
     assert c.get("/app.js", headers={"Accept-Encoding": "gzip"}).headers[
         "content-encoding"] == "gzip"
+
+
+def test_the_mask_warning_is_served_not_copied(tmp_path, monkeypatch):
+    """Review W14: the web app takes the mask warning from GET /private, and keeps no
+    empty stubs or copies of served text."""
+    from perch import egress
+
+    c, _ = private_app(tmp_path, monkeypatch)
+    assert c.get("/private").json()["mask_warning"] == egress.WARNING
+    web = Path(__file__).resolve().parent.parent / "web"
+    app, private = (web / "app.js").read_text(), (web / "private.js").read_text()
+    assert "cannot hide your research direction" not in private
+    assert not any(x in app for x in ("barOwl", "renderKeepBar", "GRANTS_NOTICE",
+                                      "keep-bar-box"))

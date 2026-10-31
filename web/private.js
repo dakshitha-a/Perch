@@ -11,7 +11,6 @@ const KIND_HINTS = {
   direction: "A few sentences on where your work is going.",
   manuscript: "An abstract or manuscript in preparation.",
 };
-const WARNING = "Masking hides names, contact details and identifiers, and phrases that appear only in your private documents. It cannot hide your research direction: a reader can still tell what the work is about.";
 
 // `mask`: the session's one mask setting, for exports and hand-offs alike (review W6).
 const P = { info: null, docs: [], authorId: "", busy: false, error: null, drafts: {}, mask: false };
@@ -190,5 +189,6 @@ export function maskToggle() {
       for (const b of document.querySelectorAll("input[data-mask]")) b.checked = P.mask;
       for (const w of document.querySelectorAll(".mask-warn")) w.hidden = !P.mask;
     } }), h("span", { text: "Mask private text in exports and hand-offs" })),
-    h("p", { class: "hint mask-warn", hidden: !P.mask, text: WARNING }));
+    // The server's own warning (perch.egress.WARNING), served by GET /private (review W14).
+    h("p", { class: "hint mask-warn", hidden: !P.mask, text: (P.info && P.info.mask_warning) || "" }));
 }
