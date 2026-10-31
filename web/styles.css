@@ -882,7 +882,8 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .box textarea { padding: 10px 12px; line-height: 1.5; resize: vertical; min-height: 96px; font-family: var(--sans); }
 .box .file-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .box .file-row .hint { font-size: 13px; }
-.box .added { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.box .added { display: flex; gap: 4px 8px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+.box .added > span { flex: 1 1 12em; min-width: 0; }
 .go-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .go-row .hint { font-size: 14px; }
 

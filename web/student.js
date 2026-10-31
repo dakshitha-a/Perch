@@ -25,7 +25,7 @@ const HINTS = {
   interests: "A few sentences on what you want to study or work on. This steers the search.",
   achievements: "Up to five, one per line or numbered. Explanations may cite them.",
 };
-const D = { drafts: {}, files: {}, busy: false, error: null, sample: false, missing: false };
+const D = { drafts: {}, files: {}, busy: false, error: null, sample: false, missing: false, replacing: new Set() };
 const NOT_STATED = "Not stated in the record";
 const SHUT = new Set(); // cards whose "What this is based on" was closed; it starts open (S27, Dakshitha)
 
@@ -33,7 +33,7 @@ const SHUT = new Set(); // cards whose "What this is based on" was closed; it st
 export function usedSample() { return Boolean(D.lastSample); }
 // Forget what this module held for a session that has ended (S27).
 export function resetStudent() {
-  Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, sample: false, lastSample: false, missing: false });
+  Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, sample: false, lastSample: false, missing: false, replacing: new Set() });
   SORT.by = "order";
   Object.assign(NOTE, { office: null, edits: {}, got: {}, keptSig: "" });
 }
@@ -88,7 +88,7 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
         if (have.has(kind)) await api.removeDocument(kind);
         await mode.send(body);
       }
-      D.drafts = {}; D.files = {};
+      D.drafts = {}; D.files = {}; D.replacing = new Set();
       D.lastSample = D.sample;
       await api.createStudent({});
       api.flag("studentSample", D.lastSample); // the Sample data banner survives a reload (W18)
@@ -122,19 +122,24 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
   const box = (kind, label, note, rows, need) => {
     const d = docs.find((x) => x.kind === kind);
     const file = D.files[kind];
+    const held = Boolean(d && !text(kind) && !file && !D.replacing.has(kind));
     return h("section", { class: "box" },
       h("div", { class: "box-head" }, h("label", { class: "big", for: `st-${kind}`, text: label }),
         need ? h("span", { class: "local", text: "Needed" }) : null),
       h("p", { class: "note", id: `st-${kind}-note`, text: note }),
-      d && !text(kind) && !file ? h("p", { class: "added" }, icon("lock"),
+      held ? h("p", { class: "added" }, icon("lock"),
         h("span", { text: `Added, ${d.chars.toLocaleString("en-US")} characters, in this session's memory` }),
-        h("button", { class: "btn quiet", type: "button", onclick: async () => { await api.removeDocument(kind); draw(); } }, h("span", { text: "Remove" }))) : null,
-      file ? h("p", { class: "added" }, icon("paper"), h("span", { text: `${file.name}, read on this server when you start` }),
+        // The paste box stays hidden while a document is held; Replace opens it (U21).
+        h("button", { class: "btn quiet", type: "button", "data-key": `st-replace-${kind}`, onclick: () => {
+          D.replacing.add(kind); draw(); const t = document.getElementById(`st-${kind}`); if (t) t.focus();
+        } }, h("span", { text: "Replace" })),
+        h("button", { class: "btn quiet", type: "button", onclick: async () => { await api.removeDocument(kind); D.replacing.delete(kind); draw(); } }, h("span", { text: "Remove" }))) : null,
+      held ? null : file ? h("p", { class: "added" }, icon("paper"), h("span", { text: `${file.name}, read on this server when you start` }),
         h("button", { class: "btn quiet", type: "button", onclick: () => { delete D.files[kind]; draw(); } }, h("span", { text: "Remove" })))
         : h("textarea", { id: `st-${kind}`, rows, placeholder: kind === "achievements" ? "One per line" : kind === "interests" ? "For example, the field you want to work in" : "Paste text here",
           "aria-describedby": invalid(kind) ? `st-${kind}-note st-missing` : `st-${kind}-note`,
           "aria-invalid": invalid(kind) ? "true" : null, value: D.drafts[kind] || "", oninput: set(kind) }),
-      kind === "cv" && !file ? h("div", { class: "file-row" },
+      kind === "cv" && !file && !held ? h("div", { class: "file-row" },
         h("label", { class: "btn" }, h("span", { text: "Or upload a file" }),
           h("input", { type: "file", class: "sr-only", accept: (info.formats || []).join(","), onchange: (e) => pick(kind, e.target.files[0]) })),
         h("span", { class: "hint", text: "Text, Markdown, Word or PDF" })) : null);
