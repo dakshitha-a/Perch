@@ -1303,7 +1303,10 @@ async def ux_queued(w: Walk, page: Page, base: str, tag: str) -> None:
         d["brief"]["status"] = "queued"
         for s in d["brief"]["stages"]:
             s["status"], s["started_at"], s["finished_at"] = "pending", None, None
-        await route.fulfill(response=r, json=d, headers={**r.headers, "etag": "", "content-encoding": ""})
+        body = json.dumps(d)
+        for real, alias in aliases().items():  # this handler replaces film.py's alias filter
+            body = body.replace(real, alias)
+        await route.fulfill(response=r, body=body, headers={**r.headers, "etag": "", "content-encoding": ""})
     await page.goto(base + "/#/")
     await page.wait_for_selector(".landing")
     await page.fill("#q", AUTHOR)

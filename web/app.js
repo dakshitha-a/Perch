@@ -846,13 +846,18 @@ function renderProgress() {
     headline = "Brief ready";
     detail = S.warm && api.mode === "private" ? `Built when the server started · ${stages.length} of ${stages.length} steps`
       : `Built in ${f.elapsed(lastEnd - t0)} · ${stages.length} of ${stages.length} steps`;
+  } else if (b.status === "queued") {
+    // Nothing has started: say it waits, not the first step's name (U19). The server
+    // does not report a place in line, so none is shown.
+    headline = "Waiting in line";
+    detail = `0 of ${stages.length} steps`;
+    sub = "Another brief is building on this server, and briefs run one at a time. Yours starts when that one finishes.";
   } else {
     const i = runningIdx >= 0 ? runningIdx : Math.max(stages.findIndex((x) => x.status === "pending"), 0);
     const s = stages[i];
     headline = `${f.STAGES[s.name] || s.name}…`;
     detail = `Step ${i + 1} of ${stages.length}`;
     if (s.name === "explanations" && isDone("route_a")) detail += ` · ${explainedCount()} of ${routeLeads("A").length} explained`;
-    if (b.status === "queued") sub = "Waiting for the previous brief to finish.";
   }
   const pct = b.status === "done" ? 100 : (doneN / Math.max(stages.length, 1)) * 100;
   let card = box.querySelector(".pcard");
