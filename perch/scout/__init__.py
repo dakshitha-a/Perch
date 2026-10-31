@@ -13,14 +13,14 @@ from perch.llm.audit import AuditedProvider, AuditLog
 from perch.privacy import PrivateSettings
 from perch.schemas import Brief, Lead, Opportunity
 from perch.scout.log import ScoutLog
-from perch.scout.loop import Mode, Policy, Scout, ScoutBudget, Session
+from perch.scout.loop import Policy, Scout, ScoutBudget, Session
 from perch.scout.tools import ScoutContext
 
 __all__ = ["Scout", "ScoutBudget", "ScoutContext", "Session", "make_scout"]
 
 
 def make_scout(service: object, author_id: str, *, as_of: date | None = None,
-               brief_id: str | None = None, llm: str | None = None, mode: Mode = "ask",
+               brief_id: str | None = None, llm: str | None = None,
                policy: Policy | None = None, log: ScoutLog | None = None,
                private: PrivateSettings | None = None,
                budget: ScoutBudget | None = None) -> Scout:
@@ -49,7 +49,7 @@ def make_scout(service: object, author_id: str, *, as_of: date | None = None,
             note = student_brief_note(ctx, leads)
         else:
             note = brief_note(ctx, b, leads)
-    return Scout(provider, ctx, mode=mode, policy=policy, log=None if private else log,
+    return Scout(provider, ctx, policy=policy, log=None if private else log,
                  private=private, brief_note=note, budget=budget, table=table, rules=rules)
 
 

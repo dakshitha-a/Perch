@@ -1,8 +1,8 @@
 """Scout's loop: plan, tool call, observe, until an answer (SPEC section 8).
 
 One session is one conversation about one researcher. Each model turn either asks for
-tools or answers. In "ask" mode every proposed tool call waits as a card until the user
-approves or skips it; in "run" mode calls run as they come. Only allowlisted tools run;
+tools or answers, and each tool call runs as soon as the model asks for it, as a card the
+user can see (the ask-first gate was removed in S28). Only allowlisted tools run;
 a call to anything else is refused and counted. The final answer passes the citation
 validator against the records the tools returned; a failure is rewritten once, then the
 answer is withheld and flagged (standing rules 3 and 5). A budget caps model turns,
@@ -29,7 +29,6 @@ from perch.scout.tools import ALLOWLIST, TOOLS, ScoutContext, ToolError, check_a
 from perch.skills import parse_json
 from perch.validate import DATE_PATTERNS, NUM_RE, check, find_dates, norm_number
 
-Mode = Literal["ask", "run"]
 Policy = Literal["native", "structured"]
 
 RULES = """You are Scout, the agent inside Perch. Perch lays out routes to fund a Temple \
@@ -88,7 +87,7 @@ class Card:
     turn: int
     tool: str
     arguments: dict
-    status: Literal["proposed", "done", "skipped", "refused", "error", "repeated"] = "proposed"
+    status: Literal["proposed", "done", "not_run", "refused", "error", "repeated"] = "proposed"
     detail: str = ""
     result: dict | None = None
     ms: float = 0.0
@@ -97,13 +96,12 @@ class Card:
 @dataclass
 class Session:
     id: str
-    mode: Mode
     policy: Policy
     model: str
     private: bool
     messages: list[Message] = field(default_factory=list)
     cards: list[Card] = field(default_factory=list)
-    status: Literal["running", "awaiting_approval", "done", "stopped", "failed"] = "running"
+    status: Literal["running", "done", "stopped", "failed"] = "running"
     answer: str | None = None
     cited_ids: list[str] = field(default_factory=list)
     flagged: bool = False
@@ -112,6 +110,7 @@ class Session:
     tokens: int = 0
     usd: float = 0.0
     user_numbers: set[str] = field(default_factory=set)
+    stop_asked: bool = False  # Stop was pressed: no further step runs for this question
     # One entry per question: its text, the first card it made, and how it ended. Held in
     # memory for the web app; the log keeps a hash of the question only.
     exchanges: list[dict] = field(default_factory=list)
@@ -167,7 +166,7 @@ def scrub(text: str, allowed: set[str]) -> str:
 
 
 class Scout:
-    def __init__(self, provider: Provider, ctx: ScoutContext, *, mode: Mode = "ask",
+    def __init__(self, provider: Provider, ctx: ScoutContext, *,
                  policy: Policy | None = None, budget: ScoutBudget | None = None,
                  log: ScoutLog | None = None, private: PrivateSettings | None = None,
                  brief_note: str = "", table: dict | None = None,
@@ -177,7 +176,7 @@ class Scout:
         if private is not None:
             refuse_if_not_local(provider, private)
             log = None  # no Scout log (Q14); the tools' caches are S13's job
-        self.provider, self.ctx, self.mode = provider, ctx, mode
+        self.provider, self.ctx = provider, ctx
         self.policy: Policy = policy or ("native" if "tools" in provider.capabilities
                                          else "structured")
         self.budget = budget or ScoutBudget()
@@ -200,11 +199,11 @@ class Scout:
         return self.ask(self.open(), question)
 
     def open(self) -> Session:
-        s = Session(id=secrets.token_urlsafe(9), mode=self.mode, policy=self.policy,
+        s = Session(id=secrets.token_urlsafe(9), policy=self.policy,
                     model=self.provider.spec, private=self.private)
         if self.log:
             self.log.write({"kind": "session", "session": s.id, "model": s.model,
-                            "mode": s.mode, "policy": s.policy,
+                            "policy": s.policy,
                             "researcher": self.ctx.researcher_id,
                             "as_of": self.ctx.as_of.isoformat()})
         return s
@@ -220,31 +219,23 @@ class Scout:
             self.log.write({"kind": "question", "session": s.id, "hash": digest(question)})
         return self.advance(s)
 
-    def approve(self, s: Session, card_id: str | None = None) -> Session:
-        """Approve one waiting card, or all of them."""
-        for c in s.pending():
-            if card_id in (None, c.id):
-                self._execute(s, c)
-        return self.advance(s)
-
-    def skip(self, s: Session, card_id: str | None = None) -> Session:
-        for c in s.pending():
-            if card_id in (None, c.id):
-                c.status, c.detail = "skipped", "skipped by the user"
-                c.result = {"status": "skipped", "detail": "The user skipped this step. Do "
-                            "not call it again unless they ask."}
-                self._log_tool(s, c)
-        return self.advance(s)
+    def stop(self, s: Session) -> None:
+        """Stop the current question between steps (S28). It may be called from another
+        thread while advance() runs: the steps already done stay, the rest are not run. A
+        model call already under way finishes; if it brings the answer, the answer stands.
+        The flag is cleared when the question ends."""
+        s.stop_asked = True
 
     def advance(self, s: Session) -> Session:
         while True:
-            if s.pending():
-                if self.mode == "ask":
-                    s.status = "awaiting_approval"
-                    return s
-                for c in s.pending():
+            for c in s.pending():
+                if s.stop_asked:
+                    self._not_run(s, c)
+                else:
                     self._execute(s, c)
             self._reply_with_results(s)
+            if s.stop_asked:
+                return self._stop(s, "", by_user=True)
             if why := self._over_budget(s):
                 return self._stop(s, why)
             try:
@@ -296,7 +287,7 @@ class Scout:
 
     def _answer_repeat(self, s: Session, c: Card) -> None:
         """A call identical to one already run for this question is not run again: it gets
-        the earlier result back with a note, and is never put to the user for approval.
+        the earlier result back with a note.
         (In S10's first bench run, Sonnet repeated one search up to nine times.)"""
         key = (c.tool, digest(_canonical(c.arguments)))
         start = s.exchanges[-1]["cards_from"] if s.exchanges else 0
@@ -311,6 +302,12 @@ class Scout:
                             "it or call a different tool.", "result": e.result}
                 self._log_tool(s, c)
                 return
+
+    def _not_run(self, s: Session, c: Card) -> None:
+        c.status, c.detail = "not_run", "you stopped the question before this step ran"
+        c.result = {"status": "not run", "detail": "The user stopped this question before this "
+                    "step ran. Do not call it again unless they ask."}
+        self._log_tool(s, c)
 
     def _execute(self, s: Session, c: Card) -> None:
         t0 = time.perf_counter()
@@ -356,10 +353,11 @@ class Scout:
             return f"stopped at the cost budget (${b.max_usd:.2f})"
         return None
 
-    def _stop(self, s: Session, why: str, failed: bool = False) -> Session:
+    def _stop(self, s: Session, why: str, failed: bool = False, by_user: bool = False) -> Session:
         s.status = "failed" if failed else "stopped"
-        s.errors = [why]
-        s.exchanges[-1].update(status=s.status, errors=s.errors)
+        s.errors = [] if by_user else [why]
+        s.exchanges[-1].update(status=s.status, errors=s.errors, by_user=by_user)
+        s.stop_asked = False
         self._log_answer(s, passed=False, attempts=0)
         return s
 
@@ -388,7 +386,7 @@ class Scout:
             s.answer, s.flagged, s.errors, s.cited_ids = None, True, errs, []
         else:
             s.answer, s.cited_ids = text, cited(text)
-        s.status = "done"
+        s.status, s.stop_asked = "done", False
         s.exchanges[-1].update(status="done", answer=s.answer, flagged=s.flagged,
                                errors=s.errors)
         self._log_answer(s, passed=not errs, attempts=attempts)

@@ -176,11 +176,8 @@ def test_scout_session_over_the_api(tmp_path, monkeypatch):
     service.models.provider = lambda spec: fake
     r = c.post(f"/briefs/{bid}/scout", json={"question": "When does it close?"})
     assert r.status_code == 202
-    s = r.json()
-    assert s["status"] == "awaiting_approval" and s["mode"] == "ask" and not s["busy"]
-    card = s["exchanges"][0]["cards"][0]
-    assert card["tool"] == "get_record" and card["status"] == "proposed"
-    s = c.post(f"/scout/{s['id']}/approve", json={"card_id": card["id"]}).json()
+    s = r.json()  # each step runs at once (S28): no approval
+    assert "mode" not in s and not s["busy"]
     x = s["exchanges"][0]
     assert x["status"] == "done" and x["answer"].startswith("It closes 2026-11-17")
     assert x["cards"][0]["status"] == "done" and "grants_gov:PAR-25-268" in x["cards"][0]["records"]
@@ -189,6 +186,9 @@ def test_scout_session_over_the_api(tmp_path, monkeypatch):
     assert c.post(f"/scout/{s['id']}/ask", json={"question": " "}).status_code == 422
     assert c.get("/scout/nope").status_code == 404
     assert c.post(f"/scout/{s['id']}/delete", json={}).status_code == 422
+    for gone in ("approve", "skip", "mode"):  # the ask-first gate is gone (S28)
+        assert c.post(f"/scout/{s['id']}/{gone}", json={}).status_code == 422
+    assert c.post(f"/scout/{s['id']}/stop", json={}).status_code == 202  # idle: nothing to stop
     assert c.post("/briefs/nope/scout", json={"question": "x"}).status_code == 404
 
 

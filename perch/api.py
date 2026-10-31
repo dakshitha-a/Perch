@@ -19,11 +19,11 @@ PERCH_STORED_BRIEFS=1 (development, the bench, replays); otherwise they answer 4
                                                 Temple office about the kept leads (skill 3);
                                                 returned, never stored or sent
   GET  /records/{id}                            a stored public record, with provenance
-  POST /briefs/{id}/scout                       {"question", "mode": "ask"|"run"}: a Scout
-                                                session about the brief (S10)
+  POST /briefs/{id}/scout                       {"question"}: a Scout session about the
+                                                brief (S10); each step runs at once (S28)
   GET  /scout/{session}                         its questions, tool cards and answers
-  POST /scout/{session}/{action}                approve or skip {"card_id"?}, ask
-                                                {"question"}, or mode (toggle)
+  POST /scout/{session}/{action}                ask {"question"}: a follow-up, or stop:
+                                                end the current question between steps
 
   GET  /                                       the web app (web/), when present
 
@@ -81,8 +81,6 @@ KEY_PAPERS = 5  # per thread, most recent-weighted first (thread order from perc
 
 class ScoutRequest(BaseModel):
     question: str = Field("", max_length=1000)
-    mode: Literal["ask", "run"] = "ask"
-    card_id: str | None = None
 
 
 class HandoffRequest(BaseModel):
@@ -488,7 +486,7 @@ def create_app(service: BriefService, runner: JobRunner,
         if not req.question.strip():
             raise HTTPException(422, "Ask Scout a question.")
         ask_allowed(request)
-        return scout_view(hub.start(brief_id, b.researcher_id, req.question.strip(), req.mode))
+        return scout_view(hub.start(brief_id, b.researcher_id, req.question.strip()))
 
     def entry(sid: str):  # noqa: ANN202 - an Entry
         e = hub.get(sid)
@@ -502,7 +500,7 @@ def create_app(service: BriefService, runner: JobRunner,
         return scout_view(entry(sid))
 
     @app.post("/scout/{sid}/{action}", status_code=202, dependencies=STORED)
-    def scout_act(sid: str, action: Literal["approve", "skip", "ask", "mode"],
+    def scout_act(sid: str, action: Literal["ask", "stop"],
                   req: ScoutRequest, request: Request) -> dict:
         e = entry(sid)
         if action == "ask":
@@ -510,7 +508,7 @@ def create_app(service: BriefService, runner: JobRunner,
                 raise HTTPException(422, "Ask Scout a question.")
             ask_allowed(request)
         try:
-            hub.act(e, action, req.card_id, req.question.strip())
+            hub.act(e, action, req.question.strip())
         except Busy as err:
             raise HTTPException(409, str(err)) from err
         return scout_view(e)

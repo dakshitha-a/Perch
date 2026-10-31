@@ -449,7 +449,7 @@ def cmd_scout(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
         return 0 if all(r["match"] is not False for r in rows) else 1
     as_of = date.fromisoformat(args.as_of) if args.as_of else None
     scout = make_scout(service, args.target, as_of=as_of, brief_id=args.brief, llm=args.llm,
-                       mode="run", policy=args.policy, log=log)
+                       policy=args.policy, log=log)
     s = scout.start(args.question)
     for c in s.cards:
         print(f"[{c.status}] {c.tool}({json.dumps(c.arguments)}): {c.detail}")

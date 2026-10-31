@@ -41,7 +41,7 @@ def test_run_mode_calls_tools_answers_with_citations_and_replays(service, tmp_pa
     fake = FakeProvider([call("search_opportunities", route="A", max_amount=500000),
                          f"PAR-25-268 closes 2026-11-17 [{OPP}]. Its record gives no award "
                          f"ceiling [{OPP}]."])
-    s = Scout(fake, ctx(service), mode="run", log=log).start("R01s under $500k?")
+    s = Scout(fake, ctx(service), log=log).start("R01s under $500k?")
     assert s.status == "done" and not s.flagged, s.errors
     assert s.cited_ids == [OPP] and s.cards[0].status == "done"
     assert s.cards[0].result["leads"][0]["id"] == OPP
@@ -58,24 +58,52 @@ def test_run_mode_calls_tools_answers_with_citations_and_replays(service, tmp_pa
                      "match": True}]
 
 
-def test_ask_mode_waits_for_approval_and_skip_is_reported_to_the_model(service):
-    fake = FakeProvider([call("list_awards"), call("get_record", id=OPP),
-                         f"It closes 2026-11-17 [{OPP}]."])
-    scout = Scout(fake, ctx(service), mode="ask")
-    s = scout.start("When does it close?")
-    assert s.status == "awaiting_approval" and [c.tool for c in s.pending()] == ["list_awards"]
-    assert len(fake.calls) == 1  # nothing ran before approval
-    s = scout.skip(s)
-    assert s.cards[0].status == "skipped" and s.status == "awaiting_approval"
-    assert "skipped" in fake.calls[1]["messages"][-1].tool_results[0].content
-    s = scout.approve(s)
-    assert s.cards[1].status == "done" and s.status == "done" and s.answer
+def test_stop_ends_the_question_between_steps_and_a_follow_up_still_works(service):
+    """S28: Stop lands while the first of two steps runs. That step finishes, the second is
+    not run, and both get a tool result, so the next question's history is whole."""
+    fake = FakeProvider([[*call("list_awards"), *call("get_record", id=OPP)],
+                         call("get_record", id=OPP), f"It closes 2026-11-17 [{OPP}]."])
+    scout = Scout(fake, ctx(service))
+    s = scout.open()
+    run = scout._execute
+
+    def run_then_stop(sess, card):
+        run(sess, card)
+        scout.stop(sess)  # pressed while this step ran
+
+    scout._execute = run_then_stop
+    s = scout.ask(s, "When does it close?")
+    assert s.status == "stopped" and not s.errors and s.exchanges[0]["by_user"]
+    assert [c.status for c in s.cards] == ["done", "not_run"] and len(fake.calls) == 1
+    results = s.messages[-1].tool_results
+    assert [r.name for r in results] == ["list_awards", "get_record"]
+    assert "stopped" in results[1].content
+    scout._execute = run
+    s = scout.ask(s, "When does it close?")  # the flag was cleared with the last question
+    assert s.status == "done" and s.answer and not s.stop_asked
+
+
+def test_an_answer_that_arrives_after_stop_stands(service):
+    fake = FakeProvider([call("get_record", id=OPP), f"It closes 2026-11-17 [{OPP}]."])
+    scout = Scout(fake, ctx(service))
+    s = scout.open()
+    chat = fake.chat
+
+    def chat_then_stop(*a, **k):
+        r = chat(*a, **k)
+        if not r.tool_calls:
+            scout.stop(s)  # pressed while the model was writing the answer
+        return r
+
+    fake.chat = chat_then_stop
+    s = scout.ask(s, "When?")
+    assert s.status == "done" and s.answer and not s.stop_asked
 
 
 def test_follow_up_reuses_the_session(service):
     fake = FakeProvider([call("get_record", id=OPP), f"It closes 2026-11-17 [{OPP}].",
                          "It is an R01 [grants_gov:PAR-25-268]."])
-    scout = Scout(fake, ctx(service), mode="run")
+    scout = Scout(fake, ctx(service))
     s = scout.start("When does PAR-25-268 close?")
     s = scout.ask(s, "What activity code?")
     assert s.status == "done" and s.answer.startswith("It is an R01")
@@ -85,7 +113,7 @@ def test_follow_up_reuses_the_session(service):
 def test_unknown_tool_and_bad_arguments_are_refused_not_run(service):
     fake = FakeProvider([call("send_email", to="x"), call("get_record"),
                          "I cannot send email; Perch only drafts."])
-    s = Scout(fake, ctx(service), mode="run").start("Email the program officer")
+    s = Scout(fake, ctx(service)).start("Email the program officer")
     assert [c.status for c in s.cards] == ["refused", "refused"]
     assert "not an allowed tool" in s.cards[0].detail and "missing 'id'" in s.cards[1].detail
     assert s.status == "done" and s.answer
@@ -94,16 +122,16 @@ def test_unknown_tool_and_bad_arguments_are_refused_not_run(service):
 def test_invented_numbers_are_rewritten_once_then_withheld(service):
     bad = f"It closes 2031-01-01 and pays $2,000,000 [{OPP}]."
     s = Scout(FakeProvider([call("get_record", id=OPP), bad, bad]), ctx(service),
-              mode="run").start("When?")
+              ).start("When?")
     assert s.flagged and s.answer is None and s.status == "done"
     assert any("2031-01-01" in e for e in s.errors)
     good = f"It closes 2026-11-17 [{OPP}]."
     s = Scout(FakeProvider([call("get_record", id=OPP), bad, good]), ctx(service),
-              mode="run").start("When?")
+              ).start("When?")
     assert not s.flagged and s.answer == good
     # an id the tools never returned is not a citation
     s = Scout(FakeProvider(["See [grants_gov:PA-99-999].", "See [grants_gov:PA-99-999]."]),
-              ctx(service), mode="run").start("Anything?")
+              ctx(service)).start("Anything?")
     assert s.flagged and "was not in the input" in s.errors[0]
 
 
@@ -121,7 +149,7 @@ def test_numbers_the_user_typed_may_be_repeated():
 
 def test_budget_stops_the_loop(service):
     fake = FakeProvider(responder=lambda m, s, sc: call("get_record", id=OPP))
-    s = Scout(fake, ctx(service), mode="run", budget=ScoutBudget(max_turns=3)).start("loop")
+    s = Scout(fake, ctx(service), budget=ScoutBudget(max_turns=3)).start("loop")
     assert s.status == "stopped" and "3 model turns" in s.errors[0] and len(fake.calls) == 3
 
 
@@ -130,7 +158,7 @@ def test_structured_fallback_for_models_without_tool_calling(service):
     done = {"action": "answer", "tool": "none", "arguments": {},
             "answer": f"It closes 2026-11-17 [{OPP}]."}
     fake = FakeProvider([json.dumps(step), json.dumps(done)])
-    s = Scout(fake, ctx(service), mode="run", policy="structured").start("When?")
+    s = Scout(fake, ctx(service), policy="structured").start("When?")
     assert s.policy == "structured" and s.status == "done" and not s.flagged, s.errors
     assert fake.calls[0]["schema"]["properties"]["tool"]["enum"][-1] == "none"
     assert "get_record" in fake.calls[0]["system"]  # the catalogue is in the prompt
@@ -209,12 +237,12 @@ def test_route_b_answer_counts_and_dates_pass_the_validator(service):
                          f"SYNTHETIC Co is an inferred lead: 4 of its works cite 2 of your "
                          f"papers, the newest published 2026-01-02 [{lead.id}]. This is not "
                          f"verified [{lead.id}]."])
-    s = Scout(fake, c, mode="run").start("Which companies might fund this?")
+    s = Scout(fake, c).start("Which companies might fund this?")
     assert s.status == "done" and not s.flagged, s.errors
     bad = FakeProvider([call("get_org_signals"),
                         f"SYNTHETIC Co: 9 works cite your papers [{lead.id}].",
                         f"SYNTHETIC Co: 9 works cite your papers [{lead.id}]."])
-    assert Scout(bad, c, mode="run").start("Which companies?").flagged
+    assert Scout(bad, c).start("Which companies?").flagged
 
 
 def test_argument_check():
@@ -238,7 +266,7 @@ def test_private_sessions_are_local_only_and_keep_no_scout_log(service, tmp_path
         Scout(remote, ctx(service), private=private)
     log = ScoutLog(tmp_path / "private.jsonl")
     s = Scout(FakeProvider([call("get_record", id=OPP), f"Closes 2026-11-17 [{OPP}]."]),
-              ctx(service), mode="run", log=log, private=private).start("When?")
+              ctx(service), log=log, private=private).start("When?")
     assert s.private and s.status == "done" and not (tmp_path / "private.jsonl").exists()
 
 
@@ -272,7 +300,7 @@ def test_a_repeated_call_is_answered_from_the_earlier_result(service, monkeypatc
                         (real[0], lambda c, **a: runs.append(a) or real[1](c, **a)))
     answer = f"It closes 2026-11-17 [{OPP}]."
     fake = FakeProvider([call("get_record", id=OPP), call("get_record", id=OPP), answer])
-    scout = Scout(fake, ctx(service), mode="run")
+    scout = Scout(fake, ctx(service))
     s = scout.start("When does it close?")
     assert [c.status for c in s.cards] == ["done", "repeated"] and s.status == "done"
     assert len(runs) == 1 and s.cards[1].result["repeat_of"] == s.cards[0].id
@@ -280,10 +308,3 @@ def test_a_repeated_call_is_answered_from_the_earlier_result(service, monkeypatc
     fake.replies = [call("get_record", id=OPP), answer]
     s = scout.ask(s, "And again?")
     assert s.cards[-1].status == "done" and len(runs) == 2
-    # ask mode: the user approves the first call; the repeat is never put to them
-    fake.replies = [call("get_record", id=OPP), call("get_record", id=OPP), answer]
-    ask = Scout(fake, ctx(service), mode="ask")
-    s = ask.start("When does it close?")
-    assert s.status == "awaiting_approval"
-    s = ask.approve(s)
-    assert s.status == "done" and [c.status for c in s.cards] == ["done", "repeated"]

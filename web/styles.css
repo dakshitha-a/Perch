@@ -633,6 +633,7 @@ body.on-help .banner { display: none; }
 .scout-cards { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .scout-card { background: var(--leaf); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; display: grid; gap: 6px; }
 .scout-card.s-proposed { border-left-color: var(--ink-3); }
+.scout-card.s-not_run { border-left-color: var(--line); opacity: .75; }
 .scout-card.s-done { border-left-color: var(--moss); }
 .scout-card.s-refused, .scout-card.s-error { border-left-color: var(--brick); }
 .scout-card .chips { margin: 0; }
@@ -645,6 +646,8 @@ body.on-help .banner { display: none; }
 .scout-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .scout-answer { padding: 12px 14px; border-left: 3px dashed var(--model); background: var(--model-soft); border-radius: 0 10px 10px 0; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
 .scout-wait { display: flex; gap: 10px; align-items: center; color: var(--ink-2); margin: 0; }
+.scout-wait .scout-stop { margin-left: auto; min-height: 40px; }
+.scout-stopped { margin: 0; }
 .scout-ask { display: grid; gap: 6px; }
 .scout-ask .mini { margin: 0; }
 .scout-ask-row { display: flex; gap: 8px; }

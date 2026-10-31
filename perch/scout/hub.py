@@ -1,8 +1,9 @@
 """Live Scout sessions for the API, held in memory (a restart forgets them).
 
 Each session belongs to one brief. Model and tool work runs on a job runner, so the
-API answers at once and the web app polls `view()`. One action at a time per
-session: a second one while the first is running is refused.
+API answers at once and the web app polls `view()`. One question at a time per
+session: a second one while the first is running is refused. Stop is the exception: it
+flags the running question, which ends at the next step.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from dataclasses import dataclass, field
 from perch.jobs import JobRunner
 from perch.scout import make_scout
 from perch.scout.log import ScoutLog
-from perch.scout.loop import Mode, Scout, Session
+from perch.scout.loop import Scout, Session
 
 MAX_SESSIONS = 200
 
@@ -43,8 +44,8 @@ class ScoutHub:
         self.service, self.runner, self.log, self.private = service, runner, log, private
         self.entries: OrderedDict[str, Entry] = OrderedDict()
 
-    def start(self, brief_id: str, researcher_id: str, question: str, mode: Mode) -> Entry:
-        scout = make_scout(self.service, researcher_id, brief_id=brief_id, mode=mode,
+    def start(self, brief_id: str, researcher_id: str, question: str) -> Entry:
+        scout = make_scout(self.service, researcher_id, brief_id=brief_id,
                            log=self.log, private=self.private)
         e = Entry(scout, scout.open(), brief_id)
         self.entries[e.session.id] = e
@@ -56,19 +57,13 @@ class ScoutHub:
     def get(self, sid: str) -> Entry | None:
         return self.entries.get(sid)
 
-    def act(self, e: Entry, action: str, card_id: str | None = None,
-            question: str | None = None) -> None:
+    def act(self, e: Entry, action: str, question: str | None = None) -> None:
         s, scout = e.session, e.scout
         if action == "ask":
             self._run(e, lambda: scout.ask(s, question or ""))
-        elif action == "approve":
-            self._run(e, lambda: scout.approve(s, card_id))
-        elif action == "skip":
-            self._run(e, lambda: scout.skip(s, card_id))
-        elif action == "mode":
-            scout.mode = s.mode = "run" if s.mode == "ask" else "ask"
-            if s.mode == "run" and s.status == "awaiting_approval":
-                self._run(e, lambda: scout.approve(s))
+        elif action == "stop":  # not a job: it flags the one already running
+            if e.busy:
+                scout.stop(s)
         else:
             raise ValueError(f"unknown action {action!r}")
 
@@ -77,6 +72,7 @@ class ScoutHub:
             if e.busy:
                 raise Busy("Scout is still working on the last step.")
             e.busy, e.error = True, None
+            e.session.stop_asked = False  # a Stop meant for the last question
 
         def job() -> None:
             try:
@@ -101,7 +97,7 @@ def view(e: Entry) -> dict:
         exchanges.append({**{k: v for k, v in x.items() if k != "cards_from"},
                           "cards": cards[x["cards_from"]:end]})
     return {"id": s.id, "brief_id": e.brief_id, "status": s.status, "busy": e.busy,
-            "error": e.error, "mode": s.mode, "model": s.model, "policy": s.policy,
+            "error": e.error, "model": s.model, "policy": s.policy,
             "tokens": s.tokens, "usd": round(s.usd, 4), "exchanges": exchanges}
 
 

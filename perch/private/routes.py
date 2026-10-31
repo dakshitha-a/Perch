@@ -102,8 +102,6 @@ class PrivateHandoffRequest(BaseModel):
 
 class ScoutReq(BaseModel):
     question: str = Field("", max_length=1000)
-    mode: Literal["ask", "run"] = "ask"
-    card_id: str | None = None
 
 
 class TextRequest(BaseModel):
@@ -496,7 +494,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         if not req.question.strip():
             raise HTTPException(422, "Ask Scout a question.")
         try:
-            e = hub(s).start(b.id, b.researcher_id, req.question.strip(), req.mode)
+            e = hub(s).start(b.id, b.researcher_id, req.question.strip())
         except PermissionError as err:
             raise HTTPException(403, str(err)) from err
         return view(e)
@@ -511,7 +509,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         return view(e)
 
     @app.post("/private/scout/{sid}/{action}", status_code=202)
-    def scout_act(sid: str, action: Literal["approve", "skip", "ask", "mode"], req: ScoutReq,
+    def scout_act(sid: str, action: Literal["ask", "stop"], req: ScoutReq,
                   x_perch_private: str | None = Header(None)) -> dict:
         from perch.scout.hub import Busy, view
 
@@ -519,7 +517,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         if e is None:
             raise HTTPException(404, "No such Scout session.")
         try:
-            hub(session(x_perch_private)).act(e, action, req.card_id, req.question.strip())
+            hub(session(x_perch_private)).act(e, action, req.question.strip())
         except Busy as err:
             raise HTTPException(409, str(err)) from err
         return view(e)

@@ -1,7 +1,7 @@
 """Scout bench (S10): 20 scripted follow-ups per model, scored by the rules in
 bench/scout_tasks.yaml.
 
-Each task runs in its own session, in "run" mode, against the dev store and models.
+Each task runs in its own session against the dev store and models.
 Tool calls go to data/logs/scout.jsonl and model calls to the usual audit log, so
 tokens and cost come from the same records the app writes. Per-task rows go to
 bench/results/scout_<model>.csv; `--summary` rebuilds bench/results/scout_summary.csv
@@ -90,7 +90,7 @@ def run(spec: str, policy: str | None, only: list[str], max_usd: float = 1.0,
             print(f"stopped: ${spent:.4f} spent, cap ${max_usd:.2f}")
             break
         # Each session may spend what is left under the cap, and at most $0.25.
-        scout = make_scout(service, task["researcher"], as_of=as_of, llm=spec, mode="run",
+        scout = make_scout(service, task["researcher"], as_of=as_of, llm=spec,
                            policy=policy, log=log,
                            budget=ScoutBudget(max_usd=min(0.25, max_usd - spent)))
         t0 = time.perf_counter()

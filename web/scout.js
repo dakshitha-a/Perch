@@ -34,19 +34,18 @@ const ARGS = {
   ids: "Leads", office: "Office",
   name: "Name",
 };
-const STATUS = { proposed: "Running…", done: "Done", skipped: "Skipped", refused: "Refused", error: "Failed", repeated: "Repeat, not run again" };
+const STATUS = { proposed: "Running…", done: "Done", not_run: "Not run", refused: "Refused", error: "Failed", repeated: "Repeat, not run again" };
 const EXAMPLES = ["Only R21 grants that close by 2027-03-01", "Small grants only: a ceiling of $200k or less",
   "Drop anything that mentions clinical trials", "Why does the top lead fit?"];
 
 // One Scout conversation per brief, kept while the brief is on screen.
-// Scout runs every step as soon as the model asks for it and shows each one; the ask-first
-// switch is gone (Dakshitha, S27; the server's ask mode goes in S28).
-const T = { briefId: null, data: null, mode: "run", error: null, timer: null, draft: "", sending: false, seen: 0, stick: true, top: 0 };
+// Scout runs every step as soon as the model asks for it and shows each one (S27, S28).
+const T = { briefId: null, data: null, error: null, timer: null, draft: "", sending: false, stopping: false, seen: 0, stick: true, top: 0 };
 
 // Stop polling and forget the conversation when the session has ended (S27).
 export function resetScout() {
   clearTimeout(T.timer);
-  Object.assign(T, { briefId: null, data: null, error: null, timer: null, draft: "", sending: false, seen: 0, stick: true, top: 0 });
+  Object.assign(T, { briefId: null, data: null, error: null, timer: null, draft: "", sending: false, stopping: false, seen: 0, stick: true, top: 0 });
 }
 
 export function renderScout(panel, ctx) {
@@ -65,7 +64,7 @@ export function renderScout(panel, ctx) {
     return;
   }
   // Polls redraw only when something changed, so the reader's scroll is left alone.
-  const sig = JSON.stringify([key, T.data, T.error, T.sending]);
+  const sig = JSON.stringify([key, T.data, T.error, T.sending, T.stopping]);
   if (panel.dataset.scoutSig === sig && panel.querySelector(".scout")) return;
   panel.dataset.scoutSig = sig;
   const busy = Boolean(T.data && T.data.busy) || T.sending;
@@ -144,7 +143,7 @@ window.addEventListener("resize", () => {
 
 function reset(briefId) {
   clearTimeout(T.timer);
-  Object.assign(T, { briefId, data: null, error: null, timer: null, draft: "", sending: false, seen: 0, stick: true, top: 0 });
+  Object.assign(T, { briefId, data: null, error: null, timer: null, draft: "", sending: false, stopping: false, seen: 0, stick: true, top: 0 });
 }
 
 function exchange(x, ctx, busy, fresh) {
@@ -187,7 +186,10 @@ function draftBlock(d, ctx) {
 }
 
 function answer(x, ctx, thinking) {
-  if (thinking) return h("p", { class: "scout-wait" }, owl("look", "owl-sm"), h("span", { text: "Scout is working…" }));
+  // Stop ends the question between steps; the steps already done stay (S28).
+  if (thinking) return h("div", { class: "scout-wait" }, owl("look", "owl-sm"), h("span", { text: T.stopping ? "Stopping after this step…" : "Scout is working…" }),
+    h("button", { class: "btn quiet scout-stop", type: "button", disabled: T.stopping, onclick: () => stop(ctx) }, icon("stop"), h("span", { text: "Stop" })));
+  if (x.status === "stopped" && x.by_user) return h("p", { class: "hint scout-stopped", text: "You stopped this question. Any step that had already run is shown above; ask again to go on." });
   if (x.answer) return h("div", { class: "scout-answer" }, ...withCites(x.answer, ctx));
   if (x.flagged) return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "Scout’s answer was withheld: it did not pass the citation check twice. The tool cards above show what it found." }));
   if (x.status === "stopped" || x.status === "failed") return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: `Scout stopped: ${(x.errors || []).join("; ") || "no answer"}.` }));
@@ -237,7 +239,7 @@ async function send(ctx) {
   ctx.rerender();
   try {
     T.data = T.data ? await ctx.api.scoutAct(T.data.id, "ask", { question: q })
-      : await ctx.api.scoutStart(ctx.briefId, { question: q, mode: T.mode });
+      : await ctx.api.scoutStart(ctx.briefId, { question: q });
     T.draft = "";
     poll(ctx);
     pinChat();
@@ -245,6 +247,18 @@ async function send(ctx) {
     T.error = e.message;
   }
   T.sending = false;
+  ctx.rerender();
+}
+
+async function stop(ctx) {
+  if (!T.data || T.stopping) return;
+  T.stopping = true;
+  ctx.rerender();
+  try {
+    T.data = await ctx.api.scoutAct(T.data.id, "stop", {});
+  } catch (e) {
+    T.error = e.message;
+  }
   ctx.rerender();
 }
 
@@ -256,7 +270,11 @@ function poll(ctx) {
     if (T.briefId !== brief) return;
     try {
       T.data = await ctx.api.scoutGet(id);
-      if (!T.data.busy) ctx.announce("Scout answered.");
+      if (!T.data.busy) {
+        const last = T.data.exchanges[T.data.exchanges.length - 1];
+        ctx.announce(last && last.by_user ? "Scout stopped." : "Scout answered.");
+        T.stopping = false;
+      }
     } catch (e) {
       T.error = e.message;
       T.data = { ...T.data, busy: false };

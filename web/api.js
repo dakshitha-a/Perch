@@ -52,7 +52,7 @@ const EXPLAIN_STEP = 0.9;
 export function replayApi(data) {
   const final = data.brief;
   const statuses = {};
-  let startedAt = null, startedWall = 0, scoutMode = "ask";
+  let startedAt = null, startedWall = 0;
   const clone = (x) => JSON.parse(JSON.stringify(x));
   const leadsIn = () => final.leads.map((l) => ({ ...l, status: statuses[l.id] || l.status }));
 
@@ -146,15 +146,10 @@ export function replayApi(data) {
       if (norm(body.question) !== norm(data.scout.question)) {
         return Promise.reject(new ApiError(`This preview holds one recorded question: “${data.scout.question}”`, 0));
       }
-      scoutMode = body.mode;
-      return later({ ...clone(data.scout.session), mode: scoutMode }, 900);
+      return later(clone(data.scout.session), 900);
     } : undefined,
-    scoutGet: () => later({ ...clone(data.scout.session), mode: scoutMode }),
-    scoutAct: (sid, action) => {
-      if (action !== "mode") return Promise.reject(new ApiError("This preview holds one recorded answer. Ask follow-ups in the live app.", 0));
-      scoutMode = scoutMode === "run" ? "ask" : "run";
-      return later({ ...clone(data.scout.session), mode: scoutMode });
-    },
+    scoutGet: () => later(clone(data.scout.session)),
+    scoutAct: () => Promise.reject(new ApiError("This preview holds one recorded answer. Ask follow-ups in the live app.", 0)),
     // Same shape as the live export with ?status=kept, built from the saved records.
     keptUrl: () => {
       const leads = leadsIn().filter((l) => l.status === "kept");
