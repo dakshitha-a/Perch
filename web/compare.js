@@ -50,7 +50,8 @@ function sortButton(col, redraw) {
 }
 
 function cellView(key, cell, rowTitle, label, openEvidence) {
-  const text = key === "closes" && cell.sort !== null ? formatDate(cell.text) : cell.text;
+  // A date is formatted; the record's own words for a placeholder date stay as they are (U3).
+  const text = key === "closes" && /^\d{4}-\d{2}-\d{2}$/.test(cell.text) ? formatDate(cell.text) : cell.text;
   const body = [h("span", { class: cell.sort === null ? "cell-none" : "cell-text", text }),
     cell.note ? h("span", { class: "cell-note", text: cell.note }) : null];
   if (!cell.record_id) return h("td", { class: `col-${key}` }, ...body);

@@ -14,7 +14,7 @@ import html
 from dataclasses import dataclass, field
 from datetime import date
 
-from perch import egress
+from perch import datefmt, egress
 from perch.compare import COLUMNS, Row
 from perch.offices import for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
@@ -98,7 +98,9 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
             continue
         mark = " (kept)" if x.status == "kept" else ""
         out.append(Block("h3", f"{x.rank}. {o.opportunity_number}: {o.title}{mark}"))
-        closes = o.close_date.isoformat() if o.close_date else "Not in the record"
+        far = datefmt.placeholder_close(o, date.fromisoformat(as_of))  # the card's rule (U3)
+        closes = ("Not in the record" if not o.close_date
+                  else o.close_date_note or "" if far else o.close_date.isoformat())
         out.append(Block("list", items=[
             f"Agency: {o.agency_label()}", f"Closes: {closes}", f"Money: {_money(o)}",
             f"Activity code: {o.activity_code or 'Not in the record'}",

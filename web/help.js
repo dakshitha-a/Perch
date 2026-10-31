@@ -124,7 +124,7 @@ function steps() {
     h("li", { text: "Match is how closely the listing’s text matches the papers, from 0 to 100. Leads are sorted by it, highest first; Closing date sorts them by deadline instead. It is not the odds of funding." }),
     h("li", { text: "Keep what is worth a closer look; dismiss what is not. Both sit at the top of the card, beside Match. Dismissed leads can be restored." }),
     h("li", { text: "The title opens the record inside Perch, with a link to Grants.gov. The small Evidence mark beside it says so." }),
-    h("li", { text: "Dates and amounts are copied from the record. Amber means it closes within 30 days. When a close date is more than ten years away, the card shows the record’s own words on the deadline instead, such as “Proposals accepted anytime”: NSF gives such programs a close date decades out. The record view always shows those words." }),
+    h("li", { text: "Dates and amounts are copied from the record. Amber means it closes within 30 days. When a close date is more than ten years away, the card shows the record’s own words on the deadline instead, such as “Proposals accepted anytime”: NSF gives such programs a close date decades out. Compare, the hand-off email and the exports follow the same rule, and the record view always shows those words." }),
     h("li", { text: "Text a model wrote is tagged. Open “Why it fits” to see which papers it cites." }));
   return h("section", { class: "help-block", "aria-labelledby": "h-use" },
     h("h2", { id: "h-use", class: "section-title", text: "How to use Perch" }),

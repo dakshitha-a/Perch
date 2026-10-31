@@ -28,6 +28,18 @@ def test_closes_counts_days_from_the_brief_date():
     assert gone.text == NONE and gone.note == "listed as forecasted"
 
 
+def test_a_placeholder_close_date_reads_as_the_record_says():
+    """U3: NSF dates open-anytime programmes decades out. Past ten years, as on the card,
+    Compare shows the record's own words and no day count; it still sorts by the date."""
+    far = opp(close_date=date(2076, 10, 7), close_date_note="Proposals accepted anytime")
+    c = closes(far, date(2026, 10, 29))
+    assert c.text == "Proposals accepted anytime" and "days" not in (c.note or "")
+    assert c.sort == "2076-10-07"
+    near = opp(close_date=date(2027, 1, 7), close_date_note="Proposals accepted anytime")
+    assert closes(near, date(2026, 10, 29)).text == "2027-01-07"
+    assert closes(opp(close_date=date(2076, 10, 7)), date(2026, 10, 29)).text == "2076-10-07"
+
+
 def test_research_compare_offers_only_research_offices():
     """S22, audit M1: the student offices showed on a PI's hand-off as "no kept undefined"."""
     from perch.compare import rows_json

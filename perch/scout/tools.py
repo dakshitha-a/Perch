@@ -16,6 +16,7 @@ from typing import Any
 
 from perch import awards as aw
 from perch.brief import route_a
+from perch.datefmt import placeholder_close
 from perch.eligibility import Constraints
 from perch.llm import Tool
 from perch.llm.audit import AuditedProvider
@@ -179,6 +180,9 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
         leads.append({"rank": i, "id": ctx.see(o), "title": o.title, "agency": o.agency,
                       "activity_code": o.activity_code,
                       "close_date": o.close_date and o.close_date.isoformat(),
+                      # A far-off placeholder date comes with the record's words (U3).
+                      **({"close_date_note": o.close_date_note}
+                         if placeholder_close(o, ctx.as_of) else {}),
                       "award_ceiling": o.award_ceiling,
                       "match": match_score(x.rerank_score),
                       "matched_thread": x.candidate.best_thread + 1})

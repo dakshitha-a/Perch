@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import date
 
+from perch.datefmt import placeholder_close
 from perch.offices import OFFICES, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation
 from perch.store.base import Repository
@@ -63,6 +64,9 @@ def closes(o: Opportunity, as_of: date) -> Cell:
     if not o.close_date:
         note = f"listed as {o.status}" if o.status else None
         return Cell(NONE, None, o.id, note)
+    if placeholder_close(o, as_of):  # the card's rule: the record's words, no day count (U3)
+        return Cell(o.close_date_note or "", o.close_date.isoformat(), o.id,
+                    "as the record states it")
     days = (o.close_date - as_of).days
     note = (f"{days} days after the brief date" if days > 1 else
             "1 day after the brief date" if days == 1 else "on or before the brief date")

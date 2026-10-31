@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from perch import egress
+from perch import datefmt, egress
 from perch.llm import Message
 from perch.llm.audit import AuditedProvider
 from perch.offices import Office
@@ -108,8 +108,10 @@ def lead_lines(items: list[tuple[Lead, Record | None]]) -> list[str]:
     out = []
     for i, (lead, rec) in enumerate(items, 1):
         if isinstance(rec, Opportunity):
-            closes = (f"closes {rec.close_date.isoformat()}" if rec.close_date
-                      else "close date not stated in the record")
+            closes = ("close date not stated in the record" if not rec.close_date
+                      # the card's rule: a placeholder date reads as the record's words (U3)
+                      else rec.close_date_note or "" if datefmt.placeholder_close(rec)
+                      else f"closes {rec.close_date.isoformat()}")
             code = (f" ({rec.activity_code})" if rec.activity_code
                     and rec.activity_code not in rec.title else "")
             out.append(f"{i}. {rec.opportunity_number}: {rec.title}{code}. {rec.agency_label()}; "
