@@ -179,10 +179,12 @@ function renderFind() {
   document.title = "Perch";
   const F = S.find;
   const ok = mode.state.available;
+  // The paste offer stands only while the field holds text that looks personal (U17).
+  if (F.nudge && !looksPersonal(F.q)) F.nudge = null;
   const input = h("input", { id: "q", name: "q", type: "search", autocomplete: "off",
     enterkeyhint: "search", placeholder: "Researcher name, ORCID iD or OpenAlex ID", required: true,
     "aria-describedby": "q-hint", value: F.q,
-    oninput: (e) => { F.q = e.target.value; },
+    oninput: (e) => { F.q = e.target.value; if (F.nudge && !looksPersonal(F.q)) keepFocus(renderFind); },
     onpaste: (e) => pasted(e, "q", "cv") });
   const researcher = h("form", { role: "search", onsubmit: (e) => { e.preventDefault(); search(); } },
     h("label", { for: "q", class: "sr-only", text: "Find a Temple researcher" }),
