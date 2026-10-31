@@ -10,6 +10,7 @@ functions so their names cannot collide; nothing else is changed.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import re
 import sys
@@ -46,6 +47,10 @@ def page(replay: dict) -> str:
     css = (WEB / "styles.css").read_text(encoding="utf-8")
     data = json.dumps(replay, separators=(",", ":")).replace("<", "\\u003c")
     js = bundle().replace("</script", "<\\/script")
+    # The fonts live in web/fonts (review S12); a single page carries them inline.
+    css = re.sub(r"url\(fonts/([\w-]+\.woff2)\)", lambda m: "url(data:font/woff2;base64,"
+                 + base64.b64encode((WEB / "fonts" / m.group(1)).read_bytes()).decode() + ")", css)
+    html = re.sub(r'<link rel="preload"[^>]*>\n', "", html)
     html = html.replace('<link rel="icon" href="favicon.svg" type="image/svg+xml">\n', "")
     html = html.replace('<link rel="stylesheet" href="styles.css">', f"<style>\n{css}</style>")
     html = html.replace('<script type="module" src="app.js"></script>',
