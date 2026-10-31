@@ -132,15 +132,15 @@ def test_stored_brief_routes_are_off_by_default(tmp_path):
 def test_rate_limit_counts_new_briefs_per_forwarded_visitor(tmp_path, monkeypatch):
     monkeypatch.setenv("PERCH_BRIEFS_PER_HOUR", "2")
     c, _ = make(tmp_path)
-    c = TestClient(c.app, client=("127.0.0.1", 50000))  # as the tunnel's local proxy
+    # As uvicorn hands requests on: the visitor's address is already in request.client
+    # (test_client_key_is_the_forwarded_address_under_uvicorn).
+    one = TestClient(c.app, client=("198.51.100.7", 50000))
     req = {"author_id": "A5026494099", "as_of": "2026-10-28"}
-    one = {"x-forwarded-for": "198.51.100.7"}
-    assert [c.post("/briefs", json=req, headers=one).status_code for _ in range(3)] == \
-        [202, 202, 429]
-    r = c.post("/briefs", json=req, headers=one)
+    assert [one.post("/briefs", json=req).status_code for _ in range(3)] == [202, 202, 429]
+    r = one.post("/briefs", json=req, headers={"x-forwarded-for": "198.51.100.9"})
     assert "2 new briefs an hour" in r.json()["detail"] and int(r.headers["retry-after"]) > 0
-    assert c.post("/briefs", json=req, headers={"x-forwarded-for": "198.51.100.8"}) \
-        .status_code == 202
+    two = TestClient(c.app, client=("198.51.100.8", 50000))
+    assert two.post("/briefs", json=req).status_code == 202
 
 
 def test_rate_limiter_window_slides():
@@ -313,3 +313,44 @@ def test_a_crash_answers_500_by_type_and_is_not_raised_to_the_server(tmp_path):
     r = c.get("/boom")
     assert r.status_code == 500 and r.json() == {"detail": "internal error (ValueError)"}
     assert c.get("/health").json() == {"status": "ok"}
+
+
+def test_client_key_is_the_forwarded_address_under_uvicorn(tmp_path):
+    """W16: run as `perch serve` runs it. From loopback (the tunnel), uvicorn puts the
+    X-Forwarded-For address in request.client; from any other address the header is
+    ignored. client_key needs no forwarded-header branch of its own."""
+    import socket
+    import threading
+    import time
+
+    import uvicorn
+    from fastapi import Request
+
+    from perch.api import SERVE_OPTIONS, client_key
+
+    _, service = make(tmp_path)
+    app = create_app(service, InlineRunner(), web_dir=None)
+
+    @app.get("/key")
+    def key(request: Request) -> dict:
+        return {"key": client_key(request)}
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    srv = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning",
+                                        **SERVE_OPTIONS))
+    t = threading.Thread(target=srv.run, daemon=True)
+    t.start()
+    try:
+        for _ in range(100):
+            if srv.started:
+                break
+            time.sleep(0.05)
+        url = f"http://127.0.0.1:{port}/key"
+        assert httpx.get(url, headers={"X-Forwarded-For": "198.51.100.7"}).json() == \
+            {"key": "198.51.100.7"}
+        assert httpx.get(url).json() == {"key": "127.0.0.1"}
+    finally:
+        srv.should_exit = True
+        t.join(5)

@@ -406,7 +406,7 @@ def cmd_mcp(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
 def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     import uvicorn
 
-    from perch.api import create_app
+    from perch.api import SERVE_OPTIONS, create_app
     from perch.jobs import InProcessRunner
     from perch.service import BriefService, Clients, default_models
 
@@ -425,8 +425,8 @@ def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
 
     app = create_app(service, InProcessRunner(), scout_runner=InProcessRunner(workers=2),
                      scout_log=ScoutLog(data / "logs/scout.jsonl"))
-    uvicorn.run(app, host=args.host, port=args.port,
-                log_level=args.log_level)
+    uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level,
+                **SERVE_OPTIONS)
     return 0
 
 

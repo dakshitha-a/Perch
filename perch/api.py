@@ -233,14 +233,16 @@ class Crashed:
                                    status_code=500)(scope, receive, send)
 
 
+# How `perch serve` runs uvicorn. The tunnel connects from loopback and sets
+# X-Forwarded-For to the visitor's address; uvicorn trusts loopback only, so it puts that
+# address in request.client before the app sees the request (review W16).
+SERVE_OPTIONS = {"proxy_headers": True, "forwarded_allow_ips": "127.0.0.1,::1"}
+
+
 def client_key(request: Request) -> str:
-    """The visitor's address. Behind the tunnel every request comes from 127.0.0.1, so a
-    local request is keyed on the first X-Forwarded-For address the proxy adds."""
-    host = request.client.host if request.client else "unknown"
-    fwd = request.headers.get("x-forwarded-for", "")
-    if host in ("127.0.0.1", "::1") and fwd:
-        return fwd.split(",")[0].strip()
-    return host
+    """The visitor's address, as uvicorn's proxy-header handling leaves it. A forwarded
+    header from any other address is ignored, so it cannot reset a visitor's limits."""
+    return request.client.host if request.client else "unknown"
 
 
 def dependencies() -> dict[str, str]:
