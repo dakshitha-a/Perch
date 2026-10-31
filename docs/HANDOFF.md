@@ -1,46 +1,47 @@
 # HANDOFF.md — state for the next context window
 
-Perch-dev rewrites this at the end of every session. Keep it under 60 lines; it is the first thing the next session reads after CLAUDE.md.
+Written at the close of S27 (2026-10-31). Dakshitha asked for S28 to start in the same context, so read S28's task file `docs/sessions/S28.md` for how far it got.
 
-## Last run: S24, S25 and S26 done in one context (Dakshitha asked for all three)
-- **State:** 250 tests pass. API spend: $2.09 of $100 (none in S24 to S26). The demo was rebuilt at the end of S26: warm demo briefs no longer count against the hourly cap, and the replay banner names the student preview.
-- **S25:** independent review (`docs/design/UX_REVIEW_S25.md`; all 4 must-fix fixed), QA plan (`docs/QA_PLAN.md`; 36 of 36 pass after 4 fixes), accessibility checklist rerun, canary and student leakage checks clean.
-- **S26:** README clips refilmed (six, a new student clip), screenshots retaken, the tracker UI tab plays a SYNTHETIC student brief (`scripts/export_student_replay.py`), README wording matched. Dakshitha reviews the README tab.
-- **Test traffic hits the caps:** a visitor may open 20 sessions and 10 briefs an hour. Long walks from one machine hit them; restart the dev server to clear them, and walk the demo at most once an hour.
+## Last run: S27, funding coverage and ranking tune, run live
 
-## What S24 built
-- **Design language:** canvas tokens in `web/styles.css`, with the old names as aliases. Newsreader and Inter from Google Fonts, Georgia and system fallbacks. A big "S24 redesign" section sits at the end of the file.
-- **Screens:** landing `#/`, pick `#/find` (context panel, "Fill with a sample"), briefs with a rail (shortlist above evidence; under 900 px a floating keep pill and the evidence sheet). Tabs: Routes, Profile, Compare, Ask Scout; a brief opens on Routes.
-- **Header:** the status chip opens a real `<dialog>` (Local or Cloud); End session is a dialog too. No owl in the bar.
-- **Samples:** `GET /private/samples/{researcher|student}` reads `data/synthetic/`. The researcher sample leaves the CV empty (persona-1's README; DECISIONS).
-- **Student Scout:** `perch/scout/student_tools.py`, its own allowlist; `make_scout` picks it for a student brief, private sessions only. Researcher Scout and MCP unchanged.
-- **Warm briefs:** `perch/private/warm.py`, `PERCH_WARM_AUTHORS` (PI-5, PI-4, PI-2 on the demo). Built after start in a thread, memory only; a default request gets a copy.
-- **Documents on Cloud:** behind `PERCH_CLOUD_DOCUMENTS=1`, off. Second warning, tick box, a confirm phrase the API checks.
-- **Draft review:** `bench/draft_review/`, results in `bench/results/draft_review/RESULTS.md`. Not built (Q34).
+- **Coverage:** the dev and demo stores hold 1,497 open or forecast Grants.gov listings from every agency, not only NIH and AHRQ (was 679). The parser reads the agency from `agencyDetails`, and an "Others" applicant type counts when the eligibility text names institutions of higher education.
+- **Ranking:** thread queries carry topic names and 100 leads are reranked. NIH back-test, 48 awards with the date cut-off: hit@5 0.104 to 0.188, hit@10 0.146 to 0.208, MRR 0.067 to 0.149. Keyword-only: 0.021, 0.021, 0.027. Rounds are in `bench/results/RESULTS.md`; harness `bench/tune.py`.
+- **One score:** cards show Match, the ranking score on a 0-100 scale (`bench/calibrate.py`). Sort is Score or Closing date on both researcher and student briefs.
+- **Test PIs:** PI-1, PI-130 and PI-132, with second checks PI-7, PI-131 and PI-133. None of them shaped the tuning; only the NIH back-test did.
+- **UI fixes from Dakshitha's review (tasks 8 to 20):**
+  - **Evidence:** the card floats over the page as a drawer and crossfades between records. It closes on a click outside it.
+  - **Scout:** Scout fills the window as a single-column chat with the question box on the bottom edge, from the first view on. Its welcome message lists its tools, example questions and its limits. No approval card shows. The chat has no scroll bar.
+  - **Page scroll bar:** it shows only near the pointer.
+  - **Student cards:** they say why an option may fit. "What this is based on" starts open.
+  - **Researcher cards:** "Why it fits" starts open when a CV or current research is given.
+  - **Timeouts:** an expired session goes back to the start and says why.
+- **Plan:** new S29 to S32, a workflow review and a fresh UI/UX review, each diagnosed then fixed. Freeze and package is now S33.
 
-## Checks
-- **Walk:** `scripts/ux_walk.py` updated for the new selectors and dialogs. Dev server: 125 states; demo: 119 states. 0 axe violations, 0 sideways scroll, 0 failed steps. axe-core 4.10.2 is in this session's scratchpad; refetch from cdnjs if gone.
-- **Canary:** `build/canary-s24.json` ok (default path 15 of 15 explained in 46 s; private-only 10 of 10; 0 user rows; no canary in files or six journals).
-- **Dev server:** a scratch copy of `data/demo` on port 8091 with `PERCH_BRIEFS_PER_HOUR=200` (the walk runs more than 10 briefs). The script is in the scratchpad; stop it with an anchored pkill.
+## Checks at close
 
-## Next: S27, Scout redesign phase 1 (then S28, freeze and package)
+- `make test`: 262 passed.
+- **Walk:** the last full run had 141 states, 0 errors, 0 axe violations and 0 sideways scroll. The later checks, student and private groups, gave 65 states with 0 errors on the public URL.
+- **Walk checks added in S27:** panel shift, Evidence blanking, approval UI, box position on first open and after questions, side box, outside click, scroll bars, reasons open. Each failed on the build before its fix.
+- **Demo:** rebuilt and live on the public URL.
 
-S27 builds phase 1 of `docs/design/SCOUT_SPEC.md`: no per-step gate, a Stop button, Scout fixed to the brief, Cloud steps counted and labelled, and the "how Scout read your question" block. The working mock-up is `docs/design/redesign/ScoutProposed.dc.html` (also on the redesign canvas). The tasks below this line are now S28's; "S27 task 2" in them means S28 task 2.
+## Next: S28, Scout redesign phase 1
 
-### S28, freeze and package
-- Regression pass: the QA rows touched since S25 (the media scripts only, so rows 36 and the README).
-- Task 2 reruns the Scout bench, then frees the dev GPUs (`make decide-down`, then message the uracil session; see local notes).
-- README final, `make package`, tag `v0.1-demo`.
-- Optional, from the S25 review: a restyle of the documents-only screen; could-fix items 16 and 17.
+Already done in S27, on the web side: no mode switch, no Approve or Skip buttons, no waiting card. The rest is in PLAN.md S28: the server's ask mode and APIs, Stop, Scout fixed to the brief, Cloud steps counted and labelled, the "how Scout read it" block, the words, and the retest with the Scout bench.
 
 ## Known gaps
-- **Student Scout is wordy with tools:** on Gemma it checked options one by one before the rules pointed it at `compare_options`.
+
+- **Flaky test:** `tests/test_scout.py::test_route_b_answer_counts_and_dates_pass_the_validator` failed once in a full run and passed five times after. Not investigated.
+- **Scout search quality:** an R21 question for PI-4, who works on molecular dynamics, returned cancer R21 grants.
+- **Canvas:** the Scout tab on the redesign canvas still shows the old chat layout with a side box.
+- **Media:** the README clips and screenshots predate the S27 UI changes (Q41).
+- **Student Scout is wordy with tools:** on Gemma it checked options one by one before using `compare_options`.
 - **Student retrieval:** 2 of 12 planted positives never reached a brief.
-- **Shared Ollama:** the dev Ollama on 11434 reloads gemma when another client asks for a different context size.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
-- **Q36:** Google Fonts reach a third party; keep them, or serve the fonts from the app? Default: keep.
-- **Q35:** per-visitor caps by IP on Demo Day wifi; keep, raise, or count per session? Default: keep.
-- **Q34:** build the draft review anyway (Clef only, records with three or more points)? Default: no.
-- **Q33:** apply the rule 1 change, then set `PERCH_CLOUD_DOCUMENTS=1` on the demo. The rule 5 change is withdrawn.
+
+- **Q41:** refilm the media at the start of S33? Default: yes, once, before the freeze.
+- **Q36:** Google Fonts reach a third party; keep them? Default: keep.
+- **Q35:** per-visitor caps by IP on Demo Day wifi. Default: keep.
+- **Q34:** build the draft review anyway? Default: no.
+- **Q33:** apply the rule 1 change, then set `PERCH_CLOUD_DOCUMENTS=1` on the demo.
 - **Q29:** kept open by Dakshitha.
