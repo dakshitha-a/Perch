@@ -207,6 +207,54 @@ class RateLimiter:
             return 0
 
 
+MAX_BODY = 8_000_000  # bytes; the largest request is a 5 MB file as base64 (about 6.7 MB)
+
+
+class BodyLimit:
+    """Pure ASGI middleware: a request body over MAX_BODY answers 413 before the app reads
+    it (review S10). A declared Content-Length is checked at once; a chunked body is read
+    here up to the limit and then handed on."""
+
+    def __init__(self, app: Callable, limit: int = MAX_BODY) -> None:
+        self.app, self.limit = app, limit
+
+    async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        headers = dict(scope.get("headers") or [])
+        too_big = JSONResponse({"detail": "The request is too large."}, status_code=413)
+        if (n := headers.get(b"content-length")) is not None:
+            if not n.isdigit() or int(n) > self.limit:
+                await too_big(scope, receive, send)
+                return
+            await self.app(scope, receive, send)
+            return
+        if b"chunked" not in headers.get(b"transfer-encoding", b""):
+            await self.app(scope, receive, send)
+            return
+        body, more = bytearray(), True
+        while more:
+            m = await receive()
+            if m["type"] != "http.request":
+                return
+            body += m.get("body", b"")
+            more = m.get("more_body", False)
+            if len(body) > self.limit:
+                await too_big(scope, receive, send)
+                return
+        sent = False
+
+        async def replay() -> dict:
+            nonlocal sent
+            if sent:
+                return await receive()
+            sent = True
+            return {"type": "http.request", "body": bytes(body), "more_body": False}
+
+        await self.app(scope, replay, send)
+
+
 class Crashed:
     """Pure ASGI middleware: an unhandled exception becomes a 500 naming its type only,
     and is not raised further, so no server log holds its message or traceback."""
@@ -305,6 +353,7 @@ def create_app(service: BriefService, runner: JobRunner,
     # Exception type only: messages can quote request text. A middleware, not an exception
     # handler: Starlette re-raises after its handler runs, and uvicorn then logs the
     # traceback with its message (review S5).
+    app.add_middleware(BodyLimit, limit=MAX_BODY)  # inside Crashed: its 413 stays a 413
     app.add_middleware(Crashed)
 
     origins = [o.strip() for o in (env("PERCH_CORS_ORIGINS") or "").split(",") if o.strip()]

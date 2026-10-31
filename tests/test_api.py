@@ -368,3 +368,20 @@ def test_client_key_groups_ipv6_by_its_64():
     assert key("2001:db8:1:2::10") == key("2001:db8:1:2:abcd::1") == "2001:db8:1:2::/64"
     assert key("2001:db8:1:3::10") != key("2001:db8:1:2::10")
     assert key("::ffff:198.51.100.7") == "198.51.100.7" == key("198.51.100.7")
+
+
+def test_request_bodies_over_the_limit_answer_413(tmp_path, monkeypatch):
+    """S10: Starlette buffers a whole body before pydantic's max_length runs, so a huge
+    POST was held in memory. Declared and chunked bodies over 8 MB answer 413."""
+    import perch.api as api
+
+    monkeypatch.setattr(api, "MAX_BODY", 1000)
+    c, _ = make(tmp_path)
+    big = b'{"question": "' + b"x" * 2000 + b'"}'
+    r = c.post("/private/session", content=big, headers={"content-type": "application/json"})
+    assert r.status_code == 413
+    chunks = (big[i:i + 300] for i in range(0, len(big), 300))
+    assert c.post("/private/session", content=chunks).status_code == 413
+    small = (x for x in [b"{}"])
+    assert c.post("/private/end", content=small).status_code == 200  # chunked, under the limit
+    assert c.get("/health").status_code == 200
