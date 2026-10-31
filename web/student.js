@@ -79,6 +79,7 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
       D.drafts = {}; D.files = {};
       D.lastSample = D.sample;
       await api.createStudent({});
+      api.flag("studentSample", D.lastSample); // the Sample data banner survives a reload (W18)
       D.busy = false;
       go("#/brief/private/routes");
     } catch (e) { D.error = e.message; D.busy = false; draw(); }

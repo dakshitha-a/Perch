@@ -62,7 +62,7 @@ one named cloud spec through the gate for the three model skills
 | Python tracebacks | full text | the error handler scrubs request bodies; the job error keeps the exception type only |
 | Ollama server log | method, path, status, timing per request | verified S13: a canary prompt did not reach the journal at default settings; keep `OLLAMA_DEBUG` unset (debug mode not tested) |
 | llama.cpp server log | slot and token counts | verified S13: a canary prompt did not reach the journal at default settings; do not pass `-v` (not tested) |
-| browser storage | tab, theme | no private text in local storage; inputs cleared when the session ends |
+| browser storage | theme (localStorage); the session id and flags (this tab's sessionStorage, review W18) | no private text in either; the session id lets a reload resume the brief, another tab does not see it, and it is cleared when the session ends or the server answers 401 |
 | upload temp files | — | none, because parsing works on bytes |
 | core dumps, swap | system default | core dumps off in the process (`RLIMIT_CORE=0`); swap is not controllable and is documented |
 

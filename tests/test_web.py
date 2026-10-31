@@ -305,3 +305,47 @@ def test_no_front_end_path_that_nothing_reaches():
     api = (WEB_DIR / "api.js").read_text()
     assert "keptUrl" not in api and "exportUrl" not in api + app
     assert 'if (api.mode !== "private") return null;' in app  # the export menu
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
+def test_the_session_id_lives_in_the_tab_only():
+    """Review W18 and U2: the session id sits in this tab's sessionStorage, so a reload
+    finds the brief again. A new client in the same tab resumes it; ending the session, or
+    the server losing it, clears it. Without sessionStorage the client still works."""
+    script = """
+import { privateApi } from './web/api.js';
+const store = new Map();
+globalThis.sessionStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null),
+  setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
+let status = 201;
+globalThis.fetch = async () => ({ ok: status < 400, status,
+  json: async () => status === 201 ? { token: 'SYNTHETIC-token' } : { detail: 'gone' } });
+(async () => {
+const a = privateApi('');
+await a.start();
+a.flag('sample', true);
+const saved = [...store.keys()].sort();
+const b = privateApi('');            // the same tab after a reload
+const resumed = b.open && b.flag('sample') === true;
+status = 401;
+await b.session().catch(() => {});
+const afterLost = { open: b.open, keys: [...store.keys()] };
+status = 201;
+const c = privateApi('');
+await c.start();
+await c.end();
+const afterEnd = [...store.keys()];
+delete globalThis.sessionStorage;    // storage blocked: still works, nothing resumes
+const d = privateApi('');
+await d.start();
+console.log(JSON.stringify({ saved, resumed, afterLost, afterEnd, blocked: d.open,
+  fresh: privateApi('').open }));
+})().catch((e) => { console.error(e); process.exit(1); });
+"""
+    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
+                       text=True, cwd=ROOT, timeout=30)
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["saved"] == ["perch.flags", "perch.session"] and out["resumed"]
+    assert out["afterLost"] == {"open": False, "keys": []}
+    assert out["afterEnd"] == [] and out["blocked"] and not out["fresh"]

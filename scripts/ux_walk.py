@@ -782,6 +782,34 @@ async def workflow_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         await w.snap(page, tag, "w18-expired")
 
 
+async def workflow_sample(w: Walk, page: Page, base: str, tag: str) -> None:
+    """W18 and rule 11: a brief steered by the SYNTHETIC sample keeps its Sample data banner
+    after a reload."""
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector(".cand", timeout=20000)
+    if await page.locator(".cand button.btn.outline").count():
+        await page.locator(".cand button.btn.outline").first.click()
+    await page.click("[data-key=more-ctx]")
+    await page.click("[data-key=fill-sample]")
+    await page.wait_for_selector(".sample-status")
+    await page.click("[data-key=build]")
+    await page.wait_for_selector("#tab-routes", timeout=60000)
+    await wait_built(page)
+    if not await page.locator(".sample-note").count():
+        w.errors.append(f"{tag}: rule 11: a brief steered by the sample has no Sample data banner")
+    page.on("dialog", lambda d: asyncio.ensure_future(d.accept()))
+    await page.reload()
+    await page.wait_for_selector("#tab-routes", timeout=20000)
+    await page.wait_for_timeout(800)
+    if not await page.locator(".sample-note").count():
+        w.errors.append(f"{tag}: W18: after a reload the sample-steered brief lost its Sample data banner")
+    await w.snap(page, tag, "w18-sample-reloaded")
+    await end_session(page)
+
+
 async def workflow_student(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.goto(base + "/#/")
     await page.wait_for_selector(".landing")
@@ -900,7 +928,7 @@ async def main(base: str, axe: str | None, out: Path, only: list[str]) -> None:
             await ctx.close()
         if "workflow" in only:
             for tag, fn in (("workflow-pi", workflow_pi), ("workflow-student", workflow_student),
-                            ("workflow-private", workflow_private)):
+                            ("workflow-private", workflow_private), ("workflow-sample", workflow_sample)):
                 ctx, page = await new_page(b, LAPTOP, names)
                 w.watch(page, tag)
                 await w.step(tag, "flow", fn(w, page, base, tag))

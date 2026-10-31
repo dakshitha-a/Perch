@@ -163,17 +163,38 @@ export function replayApi(data) {
   };
 }
 
+// The session id sits in this tab's sessionStorage (review W18, U2), so a reload finds the
+// brief the server still holds. Another tab does not share it, and closing the tab forgets
+// it. Beside it sit flags only (such as "the brief came from the SYNTHETIC sample"): never
+// text, a brief or a lead. Storage can be blocked; then nothing resumes, and that is all.
+const TAB_KEY = "perch.session";
+const TAB_FLAGS = "perch.flags";
+function tabStore() {
+  try { return typeof sessionStorage === "undefined" ? null : sessionStorage; } catch { return null; }
+}
+function tabGet(key) {
+  try { const s = tabStore(); return s ? s.getItem(key) : null; } catch { return null; }
+}
+function tabSet(key, value) {
+  try {
+    const s = tabStore();
+    if (!s) return;
+    if (value === null) s.removeItem(key); else s.setItem(key, value);
+  } catch { /* storage blocked: a reload starts over */ }
+}
+
 // A session (S13; every brief since S23): the same shape as liveApi, scoped to one session. The session
-// id travels in a header, lives only in this object, and is never written to storage.
+// id travels in a header, never in a path or a query.
 export function privateApi(base = "") {
-  let token = null;
+  let token = tabGet(TAB_KEY);
+  const keep = (t) => { token = t; tabSet(TAB_KEY, t); if (!t) tabSet(TAB_FLAGS, null); };
   const hdr = () => ({ "Content-Type": "application/json", "X-Perch-Private": token || "" });
   // A 401 means the server no longer holds this session (30 minutes idle, or a restart).
   // The token is dropped and `onExpired` runs once, so the app can go home and say so (S27).
   let last = { token: null, etag: null, body: null }; // the last brief answer (P3)
   const lost = (e) => {
     if (e instanceof ApiError && e.status === 401 && token) {
-      token = null;
+      keep(null);
       if (api.onExpired) api.onExpired(e.message);
     }
     throw e;
@@ -186,7 +207,17 @@ export function privateApi(base = "") {
     get open() { return Boolean(token); },
     info: () => call(base, "/private"),
     sample: (name) => call(base, `/private/samples/${encodeURIComponent(name)}`),
-    start: async () => { const r = await call(base, "/private/session", { method: "POST" }); token = r.token; return r; },
+    start: async () => { const r = await call(base, "/private/session", { method: "POST" }); keep(r.token); return r; },
+    // A flag kept with the session id for this tab, e.g. flag("sample", true); flag("sample") reads it.
+    flag: (name, value) => {
+      let all = {};
+      try { all = JSON.parse(tabGet(TAB_FLAGS) || "{}") || {}; } catch { all = {}; }
+      if (value === undefined) return all[name];
+      if (!token) return value;
+      all[name] = value;
+      tabSet(TAB_FLAGS, JSON.stringify(all));
+      return value;
+    },
     session: () => p("/private/session"),
     addDocument: (body) => post("/private/documents", body),
     cloud: (on, confirm, documentsConfirm) => post("/private/cloud", { on, confirm, documents_confirm: documentsConfirm || null }),
@@ -194,7 +225,7 @@ export function privateApi(base = "") {
     create: (req) => post("/private/brief", req),
     createStudent: (req) => post("/private/student/brief", req),
     studentNote: (route) => p(`/private/student/note?route=${encodeURIComponent(route)}`),
-    end: async () => { try { await post("/private/end"); } finally { token = null; last = { token: null, etag: null, body: null }; } },
+    end: async () => { try { await post("/private/end"); } finally { keep(null); last = { token: null, etag: null, body: null }; } },
     // A poll sends the last ETag; 304 means nothing changed, so the last body is reused
     // (P3). Held in memory only, like the token; the server marks the answer no-store.
     brief: async () => {

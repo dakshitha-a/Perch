@@ -102,6 +102,7 @@ export async function renderPrivate(root, { api, go, announce, mode, endSession 
     P.busy = true; P.error = null; draw();
     try {
       await api.create({ author_id: P.authorId.trim() || null });
+      api.flag("sample", false); // no SYNTHETIC sample steers a documents brief
       P.busy = false; // Back to this screen finds Build ready again
       go("#/brief/private/routes"); // every brief lands on Routes (review W11)
     } catch (e) { P.error = e.message; P.busy = false; draw(); }

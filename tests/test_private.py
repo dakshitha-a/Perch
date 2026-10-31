@@ -5,6 +5,7 @@ fakes, so no network and no GPU.
 """
 
 import json
+import re
 from datetime import date
 from pathlib import Path
 
@@ -401,10 +402,23 @@ def test_exclude_keyword_and_self_reported_stage_rules():
 
 
 def test_private_screens_never_use_browser_storage():
+    """Only the session id and flags sit in this tab's sessionStorage (review W18, U2), in
+    api.js alone, under two fixed keys. No screen keeps text in the browser."""
     web = Path(__file__).resolve().parent.parent / "web"
-    src = "".join((web / f).read_text() for f in ("private.js", "api.js", "student.js", "mode.js"))
+    src = "".join((web / f).read_text() for f in ("private.js", "student.js", "mode.js",
+                                                  "handoff.js", "scout.js"))
     assert not any(x in src for x in ("localStorage", "sessionStorage", "indexedDB",
                                       "document.cookie"))
+    app = (web / "app.js").read_text()  # the theme choice is the one thing it keeps
+    assert not any(x in app for x in ("sessionStorage", "indexedDB", "document.cookie"))
+    assert set(re.findall(r"localStorage\.\w+\(\"([^\"]+)\"", app)) == {"perch.theme"}
+    api = (web / "api.js").read_text()
+    assert not any(x in api for x in ("localStorage", "indexedDB", "document.cookie"))
+    code = [x for x in api.splitlines() if "sessionStorage" in x and not x.strip().startswith("//")]
+    assert len(code) == 1 and "typeof sessionStorage" in code[0]  # tabStore() alone
+    assert sorted(re.findall(r'const TAB_\w+ = "([^"]+)"', api)) == ["perch.flags",
+                                                                    "perch.session"]
+    assert api.count("tabSet(") == 4  # the helper and its three writes: id, flags, clear
 
 
 def test_a_brief_needs_no_document_and_carries_the_context_fields(tmp_path, monkeypatch):

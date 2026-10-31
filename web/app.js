@@ -57,6 +57,7 @@ const S = {
   failedPolls: 0,
   seen: { explained: 0, stagesDone: 0 },
   startedHere: false,
+  hasBrief: false, // the session holds a brief: leaving the page asks first (review W18)
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -503,6 +504,7 @@ async function build(c) {
     drawSwitch();
     S.sampleBrief = Boolean(F.sample);
     const made = await privApi.create(req);
+    privApi.flag("sample", S.sampleBrief); // the Sample data banner survives a reload (W18)
     S.warm = Boolean(made && made.warm);
     S.startedHere = true;
     S.tab = "routes";
@@ -617,7 +619,7 @@ async function endSession() {
       h("button", { class: "btn primary", type: "button", "data-key": "end-ok", onclick: () => done(true), text: "End session" })))));
   if (ok) {
     resetScout(); resetPrivate(); resetStudent(); // what the modules held for the session
-    S.cloud = false; S.hasDocs = false; S.sampleBrief = false;
+    S.cloud = false; S.hasDocs = false; S.sampleBrief = false; S.hasBrief = false;
     Object.assign(S.find, { picked: null, files: {}, direction: "", include: "", exclude: "", cv: "", proposal: "", sample: false });
     drawSwitch(); announce("Session ended. Everything in it was discarded."); go("#/");
   }
@@ -640,7 +642,7 @@ function resetSession() {
   stopPolling();
   resetScout(); resetPrivate(); resetStudent();
   mode.expired();
-  S.cloud = false; S.hasDocs = false; S.cloudDocs = false; S.sampleBrief = false;
+  S.cloud = false; S.hasDocs = false; S.cloudDocs = false; S.sampleBrief = false; S.hasBrief = false;
   Object.assign(S.find, { picked: null, files: {}, direction: "", include: "", exclude: "", cv: "",
     proposal: "", sample: false, busy: false, building: false, error: null });
   drawSwitch();
@@ -694,6 +696,7 @@ async function poll() {
   }
   if (gen !== S.gen) return;
   S.failedPolls = 0;
+  if (api.mode === "private") S.hasBrief = true;
   const first = !S.brief;
   S.brief = data;
   if (first) renderBrief();
@@ -737,7 +740,8 @@ function renderBrief() {
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page who", text: name }), h("p", { class: "brief-meta", text: meta })),
       exportMenu()),
-    api.mode === "private" && (student ? usedSample() : S.sampleBrief) ? h("p", { class: "notice sample-note", role: "note" },
+    api.mode === "private" && (student ? usedSample() || privApi.flag("studentSample") : S.sampleBrief || privApi.flag("sample"))
+      ? h("p", { class: "notice sample-note", role: "note" },
       h("span", { class: "sample-badge", text: "Sample data" }),
       h("span", { text: student ? " Built from an invented SYNTHETIC student. Nothing here is about you."
         : " This brief was steered by invented SYNTHETIC text. Anything it cites from “your document” is from the sample, not from this researcher." })) : null,
@@ -1948,6 +1952,28 @@ function initTheme() {
 
 // ---------- start ----------
 
+// After a reload the tab still holds the session id (review W18): ask the server what the
+// session holds, so the chip, Cloud and the documents rule are right again. If the server
+// no longer has it, the 401 goes home with the notice (sessionExpired).
+async function resumeSession() {
+  try {
+    const sess = await privApi.session();
+    await mode.enable(); // the session is open: no new one is started
+    S.cloud = Boolean(sess.cloud);
+    S.hasDocs = sess.documents.length > 0;
+    S.hasBrief = Boolean(sess.brief_id);
+    S.sampleBrief = Boolean(privApi.flag("sample"));
+  } catch { /* a 401 is handled by onExpired */ }
+}
+
+// Leaving or reloading the page while the session holds a brief asks first. A reload in
+// this tab resumes the brief; closing the tab cannot be told apart, so it asks too (W18).
+function confirmLeave(e) {
+  if (!privApi.open || !S.hasBrief) return;
+  e.preventDefault();
+  e.returnValue = "";
+}
+
 function init() {
   document.addEventListener("click", (e) => {
     const o = e.target.closest(".owl");
@@ -2001,9 +2027,10 @@ function init() {
   // The first screen is drawn once, after GET /private says whether sessions are offered,
   // so the Student door is not drawn off and then on again (review W17).
   if (api.mode === "live") {
-    privateAvailable(privApi).then((on) => {
+    privateAvailable(privApi).then(async (on) => {
       S.privateOn = on;
       mode.setAvailable(on, on ? "" : "It needs every model to run on this server.");
+      if (on && privApi.open) await resumeSession();
       drawSwitch();
       route();
     });
@@ -2014,6 +2041,7 @@ function init() {
   setBar();
   window.addEventListener("resize", setBar);
   window.addEventListener("hashchange", route);
+  window.addEventListener("beforeunload", confirmLeave);
   if (api.mode !== "live") route();
 }
 
