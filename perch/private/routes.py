@@ -160,6 +160,11 @@ SAMPLES: dict[str, Callable[[], dict]] = {"researcher": _researcher_sample,
                                           "student": _student_sample}
 
 
+def per_hour(name: str, default: int) -> int:
+    """An hourly cap from the environment, or its default when unset or empty."""
+    return int(env(name) or default)
+
+
 def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                        scout_runner: JobRunner, *, brief_view: Callable, export_json: Callable,
                        export_blocks: Callable, load: Callable, limiter: type,
@@ -173,8 +178,10 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         from perch.scholarships import ensure_samples
 
         ensure_samples()
-    open_limit = limiter(20)  # new sessions an hour per visitor
-    brief_limit = limiter(int(env("PERCH_BRIEFS_PER_HOUR") or 10))
+    # Hourly caps per visitor, each read from the environment (.env.example lists them).
+    open_limit = limiter(per_hour("PERCH_SESSIONS_PER_HOUR", 20))  # new sessions
+    brief_limit = limiter(per_hour("PERCH_BRIEFS_PER_HOUR", 10))
+    handoff_limit = limiter(per_hour("PERCH_HANDOFF_PER_HOUR", 30))
     cloud_day = {"day": "", "n": 0}  # cloud briefs today, whole server, in memory only
     cloud_lock = threading.Lock()
     app.state.private_sessions = sessions
@@ -423,8 +430,6 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             public = [o.description or o.title for x in leads
                       if (o := r.get(Opportunity, x.record_id))]
         return s.make_masker(public)
-
-    handoff_limit = limiter(30)
 
     @app.post("/private/handoff")
     def handoff(req: PrivateHandoffRequest, request: Request,

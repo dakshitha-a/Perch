@@ -504,3 +504,20 @@ def test_failed_steps_read_in_plain_words_and_a_bad_id_costs_no_brief():
 
     assert plain_error(httpx.ConnectError("x")).startswith("A model server did not answer")
     assert "visitor text" not in plain_error(ValueError("visitor text"))
+
+
+def test_hourly_caps_are_read_from_the_environment(tmp_path, monkeypatch):
+    """W13: the session and private hand-off caps follow their variables."""
+    monkeypatch.setenv("PERCH_SESSIONS_PER_HOUR", "2")
+    monkeypatch.setenv("PERCH_HANDOFF_PER_HOUR", "1")
+    c, _ = private_app(tmp_path, monkeypatch)
+    assert [c.post("/private/session").status_code for _ in range(3)] == [201, 201, 429]
+    assert "Too many private sessions" in c.post("/private/session").json()["detail"]
+    monkeypatch.setenv("PERCH_SESSIONS_PER_HOUR", "25")
+    c, _ = private_app(tmp_path / "b", monkeypatch)
+    assert all(c.post("/private/session").status_code == 201 for _ in range(21))
+    h = open_with_persona(c)
+    c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"})
+    office = {"office": "research_development"}
+    assert [c.post("/private/handoff", headers=h, json=office).status_code
+            for _ in range(2)] == [200, 429]
