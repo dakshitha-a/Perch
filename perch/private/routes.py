@@ -229,14 +229,15 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                                       f"ideas. Perch cannot take them back once sent.")
                 if p and settings.cloud_documents else None}
 
-    def take_cloud() -> None:
+    def take_cloud(what: str = "briefs") -> None:
+        """One of today's cloud uses, whole server: a brief or a hand-off draft (S17)."""
         with cloud_lock:
             today = date.today().isoformat()
             if cloud_day["day"] != today:
                 cloud_day.update(day=today, n=0)
             if cloud_day["n"] >= settings.cloud_per_day:
-                raise HTTPException(429, "Cloud briefs for today are used up. Turn Cloud off "
-                                    "to use local models.")
+                raise HTTPException(429, f"Cloud {what} for today are used up. Turn Cloud "
+                                    "off to use local models.")
             cloud_day["n"] += 1
 
     @app.get("/private")
@@ -467,6 +468,8 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         if wait := handoff_limit.take(client_key(request)):
             raise HTTPException(429, "Too many drafts this hour.",
                                 headers={"Retry-After": str(wait)})
+        if s.service.models.cloud():  # the opening paragraph goes to the cloud model
+            take_cloud("hand-off drafts")
         d = s.service.handoff(brief_id(s), req.office, req.lead_ids or None,
                               masker=masker_for(s, req.mask))
         if d is None:

@@ -29,7 +29,7 @@ from perch.llm.base import (
     ToolCall,
     Usage,
 )
-from perch.llm.budget import Budget
+from perch.llm.budget import Budget, call_cost
 
 
 def wire_message(m: Message) -> dict:
@@ -98,7 +98,13 @@ class AnthropicProvider(Provider):
         if self.fallbacks:
             kw["betas"] = [FALLBACK_BETA]
             kw["fallbacks"] = "default"
-        self.budget.check()
+        # The most this call can cost: its prompt at about 4 characters a token, and every
+        # output token it may write. Held against the cap while the call runs.
+        est = call_cost(self.model, Usage(len(json.dumps(kw, default=str)) // 4, max_tokens))
+        with self.budget.reserve(est):
+            return self._send(kw)
+
+    def _send(self, kw: dict) -> ChatResult:
         t0 = time.perf_counter()
         resp = self.client.beta.messages.create(**kw)
         latency = (time.perf_counter() - t0) * 1000

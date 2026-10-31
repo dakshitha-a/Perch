@@ -11,6 +11,9 @@ from __future__ import annotations
 import json
 import math
 import sys
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -24,6 +27,12 @@ WARN_SHARE = 0.8
 
 class BudgetExceeded(ProviderError):
     pass
+
+
+# Spend reserved by calls in flight, per ledger. Parallel calls each checked the ledger
+# before any of them was recorded, so together they could pass the cap (review S17).
+_LOCK = threading.Lock()
+_IN_FLIGHT: dict[str, float] = {}
 
 
 def budget_usd() -> float:
@@ -60,9 +69,24 @@ class Budget:
         self.path = path or ledger_path()
         self._warned = False
 
-    def check(self) -> float:
-        """Raise if the budget is used up; warn once past the warning share. Returns spend."""
-        spent = spent_usd(self.path)
+    @contextmanager
+    def reserve(self, estimate: float) -> Iterator[float]:
+        """Check the cap counting the calls already in flight, then hold `estimate` (the
+        call's largest likely cost) until the call is recorded or fails."""
+        key = str(self.path.resolve())
+        with _LOCK:
+            spent = self.check(_IN_FLIGHT.get(key, 0.0))
+            _IN_FLIGHT[key] = _IN_FLIGHT.get(key, 0.0) + estimate
+        try:
+            yield spent
+        finally:
+            with _LOCK:
+                _IN_FLIGHT[key] -= estimate
+
+    def check(self, in_flight: float = 0.0) -> float:
+        """Raise if the budget is used up; warn once past the warning share. Returns spend.
+        `in_flight`: spend reserved by calls not yet recorded."""
+        spent = spent_usd(self.path) + in_flight
         if spent >= self.limit:
             raise BudgetExceeded(f"Anthropic budget used: ${spent:.2f} of ${self.limit:.2f}. "
                                  "Refusing the call; use a local model or ask Dakshitha.")

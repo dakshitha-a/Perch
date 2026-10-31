@@ -808,3 +808,33 @@ def test_records_route_and_scout_never_serve_another_visitors_brief(tmp_path, mo
     with pytest.raises(ToolError):
         get_record(ctx, "otherBrief1:1")
     assert get_record(ctx, "grants_gov:PAR-25-268")["kind"] == "opportunity"
+
+
+def test_cloud_hand_offs_count_against_the_daily_cap(tmp_path, monkeypatch):
+    """S17: a Cloud hand-off draft is a cloud call too, so it takes one of the day's."""
+    monkeypatch.setenv("PERCH_CLOUD", "anthropic:claude-sonnet-5-5")
+    monkeypatch.setenv("PERCH_CLOUD_BRIEFS_PER_DAY", "1")
+    c, _ = private_app(tmp_path, monkeypatch)
+    h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    c.post("/private/cloud", headers=h, json={"on": True, "confirm": "Anthropic"})
+    body = {"author_id": "A5026494099", "as_of": "2026-10-28", "explain": False}
+    assert c.post("/private/brief", headers=h, json=body).status_code == 202  # no model call
+    office = {"office": "research_development"}
+    assert c.post("/private/handoff", headers=h, json=office).status_code == 200
+    r = c.post("/private/handoff", headers=h, json=office)
+    assert r.status_code == 429 and "hand-off drafts for today" in r.json()["detail"]
+    c.post("/private/cloud", headers=h, json={"on": False})
+    assert c.post("/private/handoff", headers=h, json=office).status_code == 200  # local
+
+
+def test_parallel_cloud_calls_cannot_pass_the_cap_together(tmp_path):
+    """S17: each call reserves its largest likely cost before it is sent, so calls in
+    flight count against the cap."""
+    from perch.llm.budget import Budget, BudgetExceeded
+
+    b = Budget(limit=0.01, path=tmp_path / "spend.jsonl")
+    with b.reserve(0.012):  # one call in flight that may cost more than what is left
+        with pytest.raises(BudgetExceeded), b.reserve(0.001):
+            pass
+    with b.reserve(0.001):  # once it has finished, the next call may go
+        pass
