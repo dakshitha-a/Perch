@@ -1143,9 +1143,9 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .route-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 16px; }
 .tabs-wrap { position: sticky; top: var(--bar-h, 64px); z-index: 5; }
 /* the header lines up with the page column */
-.bar-in { max-width: calc(var(--col) + 32px); padding-left: 16px; padding-right: 16px; }
-body[data-screen="brief"] .bar-in { max-width: 1212px; }
-body[data-screen="help"] .bar-in { max-width: 852px; }
+/* One header width on every screen, the brief's, so the wordmark never moves; only the
+   content column narrows (U18). */
+.bar-in { max-width: 1212px; padding-left: 16px; padding-right: 16px; }
 .scroll-hint { display: none; }
 @media (max-width: 600px) { .scroll-hint { display: block; } }
 @media (max-width: 600px) {
