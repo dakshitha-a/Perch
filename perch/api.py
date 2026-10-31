@@ -32,6 +32,7 @@ Briefs run as background jobs; poll GET /briefs/{id}. Nothing is sent anywhere.
 
 from __future__ import annotations
 
+import ipaddress
 import re
 import threading
 import time
@@ -241,8 +242,19 @@ SERVE_OPTIONS = {"proxy_headers": True, "forwarded_allow_ips": "127.0.0.1,::1"}
 
 def client_key(request: Request) -> str:
     """The visitor's address, as uvicorn's proxy-header handling leaves it. A forwarded
-    header from any other address is ignored, so it cannot reset a visitor's limits."""
-    return request.client.host if request.client else "unknown"
+    header from any other address is ignored, so it cannot reset a visitor's limits.
+    An IPv6 address is keyed by its /64, the block one subscriber usually holds; an
+    IPv4-mapped one by its IPv4 address (review S6)."""
+    host = request.client.host if request.client else "unknown"
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return host
+    if isinstance(ip, ipaddress.IPv6Address):
+        if ip.ipv4_mapped:
+            return str(ip.ipv4_mapped)
+        return str(ipaddress.ip_network(f"{ip}/64", strict=False))
+    return host
 
 
 def dependencies() -> dict[str, str]:

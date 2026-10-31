@@ -514,6 +514,7 @@ def test_hourly_caps_are_read_from_the_environment(tmp_path, monkeypatch):
     assert [c.post("/private/session").status_code for _ in range(3)] == [201, 201, 429]
     assert "Too many private sessions" in c.post("/private/session").json()["detail"]
     monkeypatch.setenv("PERCH_SESSIONS_PER_HOUR", "25")
+    monkeypatch.setenv("PERCH_SESSIONS_PER_ADDRESS", "50")  # S6's cap on open sessions
     c, _ = private_app(tmp_path / "b", monkeypatch)
     assert all(c.post("/private/session").status_code == 201 for _ in range(21))
     h = open_with_persona(c)
@@ -702,3 +703,36 @@ def test_private_scout_is_rate_limited_and_needs_a_question(tmp_path, monkeypatc
     assert r.status_code == 429 and "2 Scout questions an hour" in r.json()["detail"]
     h2 = ready()  # a new session from the same address: the visitor's cap still holds
     assert c.post("/private/scout", headers=h2, json=q).status_code == 429
+
+
+def test_session_slots_are_capped_per_address_and_unused_ones_end_sooner(tmp_path,
+                                                                        monkeypatch):
+    """S6: sessions open at once are capped per visitor address (IPv6 by its /64), and a
+    session opened and never used again ends after 10 minutes, not 30."""
+    from fastapi.testclient import TestClient
+
+    from perch.private.session import UNUSED_SECONDS
+
+    monkeypatch.setenv("PERCH_SESSIONS_PER_ADDRESS", "2")
+    c, _ = private_app(tmp_path, monkeypatch)
+    a = TestClient(c.app, client=("2001:db8:1:2::10", 5000))
+    b = TestClient(c.app, client=("2001:db8:1:2:ffff::99", 5000))  # the same /64
+    other = TestClient(c.app, client=("2001:db8:1:3::10", 5000))
+    t1 = a.post("/private/session").json()["token"]
+    assert b.post("/private/session").status_code == 201
+    r = a.post("/private/session")
+    assert r.status_code == 429 and "at most 2 sessions" in r.json()["detail"]
+    assert other.post("/private/session").status_code == 201
+    a.post("/private/end", headers={"X-Perch-Private": t1})
+    assert b.post("/private/session").status_code == 201  # a slot came back
+
+    _, service = make(tmp_path / "s")
+    service.models.provider = lambda spec: FakeProvider()
+    now = [0.0]
+    sessions = PrivateSessions(service, SETTINGS, clock=lambda: now[0])
+    unused, used, held = sessions.open(), sessions.open(), sessions.open()
+    sessions.get(used.token)
+    add_document(held, make_doc("direction", "SYNTHETIC text"))
+    now[0] = UNUSED_SECONDS + 1
+    assert sessions.get(unused.token) is None
+    assert sessions.get(used.token) is not None and sessions.get(held.token) is not None

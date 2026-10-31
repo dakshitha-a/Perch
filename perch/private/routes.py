@@ -49,8 +49,10 @@ from perch.private.session import (
     BRIEFS_PER_SESSION,
     IDLE_SECONDS,
     MAX_TOTAL_CHARS,
+    SESSIONS_PER_ADDRESS,
     PrivateSession,
     PrivateSessions,
+    TooManyFromAddress,
     add_document,
 )
 from perch.schemas import Opportunity, Record, Work
@@ -173,7 +175,8 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     settings = settings or PrivateSettings.from_env()
     problems = settings.problems()
     on = settings.enabled and not problems
-    sessions = PrivateSessions(service, settings)
+    sessions = PrivateSessions(service, settings, per_address=per_hour(
+        "PERCH_SESSIONS_PER_ADDRESS", SESSIONS_PER_ADDRESS))
     if on:  # student mode reads the sample store; load it now, outside any session
         from perch.scholarships import ensure_samples
 
@@ -263,9 +266,12 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             raise HTTPException(429, "Too many private sessions this hour.",
                                 headers={"Retry-After": str(wait)})
         try:
-            s = sessions.open()
+            s = sessions.open(client_key(request))
         except OverflowError as e:
             raise HTTPException(503, str(e)) from e
+        except TooManyFromAddress as e:
+            raise HTTPException(429, f"Too many open sessions: {e}.",
+                                headers={"Retry-After": "600"}) from e
         except PermissionError as e:
             raise HTTPException(403, f"Private mode refused: {e}") from e
         return {"token": s.token, "idle_minutes": IDLE_SECONDS // 60,

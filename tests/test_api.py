@@ -354,3 +354,17 @@ def test_client_key_is_the_forwarded_address_under_uvicorn(tmp_path):
     finally:
         srv.should_exit = True
         t.join(5)
+
+
+def test_client_key_groups_ipv6_by_its_64():
+    """S6: one subscriber's IPv6 block is one visitor; an IPv4-mapped address is its IPv4."""
+    from starlette.requests import Request
+
+    from perch.api import client_key
+
+    def key(host):
+        return client_key(Request({"type": "http", "client": (host, 1), "headers": []}))
+
+    assert key("2001:db8:1:2::10") == key("2001:db8:1:2:abcd::1") == "2001:db8:1:2::/64"
+    assert key("2001:db8:1:3::10") != key("2001:db8:1:2::10")
+    assert key("::ffff:198.51.100.7") == "198.51.100.7" == key("198.51.100.7")

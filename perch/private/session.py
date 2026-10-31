@@ -46,6 +46,11 @@ from perch.service import SAID_ID, STAGES, BriefService, Models, brief_options
 
 YOU = "private:you"  # the researcher of a brief with no public profile
 IDLE_SECONDS = 30 * 60
+# A session opened and never used again (no documents, no brief, no request since it
+# opened) ends sooner, so opened-and-left sessions free their slot (review S6). The web
+# app opens a session only right before it uses one.
+UNUSED_SECONDS = 10 * 60
+SESSIONS_PER_ADDRESS = 20  # open at once from one visitor address; PERCH_SESSIONS_PER_ADDRESS
 MAX_SESSIONS = 200  # every visitor holds one since S23
 MAX_TOTAL_CHARS = 200_000  # all documents of one session
 BRIEFS_PER_SESSION = 10
@@ -102,6 +107,8 @@ class PrivateSession:
     service: PrivateService | None = None
     cloud: bool = False  # Cloud on: the skills use the cloud provider (S23)
     cloud_docs: bool = False  # the second warning was confirmed: documents may go too (S24)
+    owner: str = ""  # the visitor's address key, in memory only, for the per-address cap
+    used: bool = False  # a request has used the session since it opened
 
     @property
     def cv(self) -> CVFacts | None:
@@ -394,20 +401,29 @@ class PrivateService(BriefService):
         return {d.id: d for d in self.session.docs.values()}
 
 
+class TooManyFromAddress(Exception):
+    """The visitor's address already holds the most sessions it may hold at once."""
+
+
 class PrivateSessions:
     """Every open session, by token. Expired ones are dropped on each access."""
 
     def __init__(self, base: BriefService, settings: PrivateSettings,
                  clock: Callable[[], float] = time.monotonic, idle: float = IDLE_SECONDS,
-                 max_sessions: int = MAX_SESSIONS) -> None:
+                 max_sessions: int = MAX_SESSIONS, unused: float = UNUSED_SECONDS,
+                 per_address: int = SESSIONS_PER_ADDRESS) -> None:
         self.base, self.settings, self.clock = base, settings, clock
         self.idle, self.max_sessions = idle, max_sessions
+        self.unused, self.per_address = unused, per_address
         self.sessions: dict[str, PrivateSession] = {}
         self.lock = threading.Lock()
 
+    def _limit(self, s: PrivateSession) -> float:
+        return self.idle if s.used or s.docs or s.brief_id else min(self.unused, self.idle)
+
     def _sweep(self) -> None:
         now = self.clock()
-        for t in [t for t, s in self.sessions.items() if now - s.last_used > self.idle]:
+        for t in [t for t, s in self.sessions.items() if now - s.last_used > self._limit(s)]:
             self.sessions.pop(t).clear()
 
     def check_models(self) -> None:
@@ -420,13 +436,17 @@ class PrivateSessions:
                            (m.handoff_spec, "handoff"), (None, "scout")):
             refuse_if_not_local(m.provider(spec or spec_for_role(role)), self.settings)
 
-    def open(self) -> PrivateSession:
+    def open(self, owner: str = "") -> PrivateSession:
         self.check_models()
         with self.lock:
             self._sweep()
             if len(self.sessions) >= self.max_sessions:
                 raise OverflowError("too many private sessions are open; try again later")
-            s = PrivateSession(secrets.token_urlsafe(32), self.clock())
+            if owner and sum(x.owner == owner for x in self.sessions.values()) \
+                    >= self.per_address:
+                raise TooManyFromAddress(f"at most {self.per_address} sessions may be open at "
+                                         "once from one address; end one, or try again later")
+            s = PrivateSession(secrets.token_urlsafe(32), self.clock(), owner=owner)
             s.service = PrivateService(self.base, s, self.settings)
             self.sessions[s.token] = s
             return s
@@ -437,6 +457,7 @@ class PrivateSessions:
             s = self.sessions.get(token or "")
             if s:
                 s.last_used = self.clock()
+                s.used = True
             return s
 
     def end(self, token: str | None) -> bool:
