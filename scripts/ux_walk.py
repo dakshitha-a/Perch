@@ -726,7 +726,21 @@ async def workflow_pi(w: Walk, page: Page, base: str, tag: str) -> None:
       .map(x => x ? Math.round(x.getBoundingClientRect().top) : null)""")
     if ho is None or tb is None or ho > tb:
         w.errors.append(f"{tag}: W2: the hand-off box sits below the comparison table ({ho} against {tb} px)")
+    await w.step(tag, "W6", mask_follows(w, page, tag))
+    await w.snap(page, tag, "w6-compare", full=True)
+    await w18_reload(w, page, base, tag)
+
+
+async def mask_follows(w: Walk, page: Page, tag: str) -> None:
+    """W6, in a session that holds documents: the hand-off shows the mask setting it
+    uses, and both boxes are one state. Without documents neither shows (U12)."""
+    held = await page.evaluate("""async () => { const t = sessionStorage.getItem('perch.session');
+      const r = await fetch('/private/session', {headers: {'X-Perch-Private': t}}); return (await r.json()).documents.length; }""")
     mask = page.locator(".handoff input[type=checkbox]")
+    if not held:
+        if await mask.count():
+            w.errors.append(f"{tag}: U12: a mask box beside Draft the email in a session with no documents")
+        return
     if not await mask.count():
         w.errors.append(f"{tag}: W6: no mask setting beside Draft the email; it hides in the Export menu")
     else:
@@ -740,7 +754,9 @@ async def workflow_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         await page.wait_for_timeout(200)
         if await mask.is_checked():
             w.errors.append(f"{tag}: W6: the hand-off's mask box does not follow the Export menu's")
-    await w.snap(page, tag, "w6-compare", full=True)
+
+
+async def w18_reload(w: Walk, page: Page, base: str, tag: str) -> None:
     # W18: a reload asks first, then resumes the brief; a new tab does not share it.
     await page.click("#tab-routes")
     await page.wait_for_timeout(300)
@@ -800,6 +816,12 @@ async def workflow_sample(w: Walk, page: Page, base: str, tag: str) -> None:
     await wait_built(page)
     if not await page.locator(".sample-note").count():
         w.errors.append(f"{tag}: rule 11: a brief steered by the sample has no Sample data banner")
+    await page.locator(".leads > li .btn.keep").first.click()  # the sample's draft aims are a document
+    await page.click("#tab-compare")
+    await page.wait_for_selector(".handoff", timeout=30000)
+    await page.wait_for_timeout(500)
+    await w.step(tag, "W6", mask_follows(w, page, tag))
+    await page.click("#tab-routes")
     page.on("dialog", lambda d: asyncio.ensure_future(d.accept()))
     await page.reload()
     await page.wait_for_selector("#tab-routes", timeout=20000)

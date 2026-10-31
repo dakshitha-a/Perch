@@ -154,7 +154,9 @@ export async function renderPrivate(root, { api, go, announce, mode, endSession 
 
 // The bar on a private brief: lock, end, exports (withheld by default, masked on opt-in)
 // and the unmask view.
-export function privateBar(api, go) {
+// `held`: the session holds documents. Without any, there is nothing to withhold, mask or
+// unmask, so the menu is just the three exports (U12).
+export function privateBar(api, go, held = true) {
   const out = h("textarea", { rows: 4, "aria-label": "Masked text to unmask" });
   const shown = h("p", { class: "unmasked" });
   async function download(kind) {
@@ -166,18 +168,21 @@ export function privateBar(api, go) {
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
   return h("section", { class: "private-bar" },
-    h("p", { class: "hint", text: "Exports leave out text drawn from your documents. Mask it instead to keep that text with names, identifiers and private phrases replaced." }),
-    maskToggle(),
     h("p", { class: "export" },
       h("button", { class: "btn quiet", onclick: () => download("html") }, icon("paper"), h("span", { text: "Print or save as PDF" })),
       h("button", { class: "btn quiet", onclick: () => download("md") }, icon("download"), h("span", { text: "Markdown" })),
       h("button", { class: "btn quiet", onclick: () => download("json") }, icon("download"), h("span", { text: "Records as JSON" }))),
-    h("details", { class: "unmask" }, h("summary", { text: "Unmask text on this screen" }),
+    held ? h("p", { class: "hint", text: "Exports leave out text drawn from your documents. Mask it instead to keep that text with names, identifiers and private phrases replaced." }) : null,
+    held ? maskToggle() : null,
+    held ? h("details", { class: "unmask" }, h("summary", { text: "Unmask text on this screen" }),
       h("p", { class: "hint", text: "Paste masked text from an export. The key stays in this session's memory and ends with it." }),
       out, h("button", { class: "btn", onclick: async () => {
         try { shown.textContent = (await api.unmask(out.value)).text; } catch (e) { shown.textContent = e.message; }
-      } }, h("span", { text: "Unmask" })), shown));
+      } }, h("span", { text: "Unmask" })), shown) : null);
 }
+
+// The documents added on Your documents (the app also knows of a CV or draft aims).
+export function docsHeld() { return P.docs.length > 0; }
 
 // The mask setting, shown in the Export menu and beside Draft the email. Both boxes show
 // the one session setting and change it together (review W6).

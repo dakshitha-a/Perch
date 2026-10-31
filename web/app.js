@@ -9,7 +9,7 @@ import { renderHandoff } from "./handoff.js";
 import { renderScout, resetScout } from "./scout.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
-import { lockLabel, privateAvailable, privateBar, privateInfo, renderPrivate, resetPrivate, setMode } from "./private.js";
+import { docsHeld, lockLabel, privateAvailable, privateBar, privateInfo, renderPrivate, resetPrivate, setMode } from "./private.js";
 import { createMode, looksPersonal } from "./mode.js";
 import { isStudent, keptWords, matchPill, resetStudent, usedSample, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
 
@@ -759,11 +759,16 @@ function renderBrief() {
   renderPanel();
 }
 
+// The session holds documents: a CV or draft aims, Your documents, or a student's CV.
+function holdsDocs() {
+  return S.hasDocs || docsHeld() || isStudent(S.brief);
+}
+
 // The Export button: a menu with the three exports and the mask option. Only a session
 // brief has one: replay has nothing to download (review W12).
 function exportMenu() {
   if (api.mode !== "private") return null;
-  const pop = privateBar(api, go);
+  const pop = privateBar(api, go, holdsDocs());
   const det = h("details", { class: "export-menu" },
     h("summary", { "data-key": "export" }, icon("download"), h("span", { text: "Export" })),
     h("div", { class: "export-pop" }, pop));
@@ -1047,7 +1052,7 @@ function drawCompare(focusKey) {
   renderCompare(panel, { keptCount: kept.length, openEvidence, redraw: drawCompare, handoff: true,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) });
   renderHandoff(panel.querySelector(".handoff-box"), { api, briefId: S.briefId, announce,
-    kept: leadsOf().filter((l) => l.status === "kept"), offices: compareOffices(), redraw: drawCompare });
+    kept: leadsOf().filter((l) => l.status === "kept"), offices: compareOffices(), redraw: drawCompare, docs: holdsDocs() });
   if (kept.length) loadCompare(api, S.briefId, kept, () => drawCompare());
   if (focusKey) panelFocus(focusKey);
 }

@@ -37,7 +37,7 @@ export function mailto(d) {
   return `mailto:?subject=${subject}&body=${encodeURIComponent("(The draft from Perch is copied. Paste it here.)")}`;
 }
 
-export function renderHandoff(box, { api, briefId, kept, offices, announce, redraw }) {
+export function renderHandoff(box, { api, briefId, kept, offices, announce, redraw, docs = true }) {
   if (!box || !offices) return;
   const OFFICES = offices.map((o) => ({ ...o, what: WHAT[o.route] }));
   if (H.briefId !== briefId) reset(briefId);
@@ -92,7 +92,7 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
       h("a", { href: office.url, target: "_blank", rel: "noopener",
       text: `${office.name} contacts on research.temple.edu` })),
     // The mask setting this draft uses, the same one as the Export menu's (review W6).
-    api.mode === "private" ? maskToggle() : null,
+    api.mode === "private" && docs ? maskToggle() : null, // nothing to mask without documents (U12)
     h("div", { class: "actions" }, make), status];
 
   if (draft) {

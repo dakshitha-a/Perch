@@ -896,6 +896,8 @@ body[data-screen="landing"] .foot .promises { display: grid; }
   border-radius: 14px; padding: 12px; display: grid; gap: 6px; box-shadow: 0 10px 30px rgba(0, 0, 0, .18); text-align: left; }
 .export-pop .btn { justify-content: flex-start; }
 .export-pop .hint { font-size: 13px; }
+.export-pop .private-bar { margin: 0; padding: 2px 4px; }
+.export-pop .export { padding-top: 0; flex-direction: column; align-items: stretch; }
 .export-pop .check { min-height: 40px; font-size: 14px; }
 .export-pop details summary { font-size: 14px; }
 .export-pop textarea { width: 100%; min-height: 80px; padding: 8px 10px; font-size: 14px; }
