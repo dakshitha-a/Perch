@@ -164,8 +164,17 @@ async def checks_flow(w: Walk, page: Page, base: str, tag: str) -> None:
         await page.wait_for_timeout(700)
     if n := await page.evaluate("() => window.__flash"):
         w.errors.append(f"{tag}: evidence: motion: going from paper to paper blanked Evidence {n} times")
-    await page.keyboard.press("Escape")
+    # A click anywhere outside the Evidence card closes it (S27).
+    await page.mouse.click(20, 40 if page.viewport_size["width"] < 700 else page.viewport_size["height"] // 2)
+    await page.wait_for_timeout(500)
+    if await page.evaluate("() => !document.querySelector('#evidence').hidden"):
+        w.errors.append(f"{tag}: evidence: a click outside the Evidence card did not close it")
+        await page.keyboard.press("Escape")
     await page.click("#tab-scout")
+    await page.wait_for_selector("#scout-q")
+    if await page.evaluate("() => Boolean(document.querySelector('#panel aside'))"):
+        w.errors.append(f"{tag}: scout: a side box sits beside the chat; its content belongs in the welcome")
+    await w.snap(page, tag, "scout-welcome")
     await page.wait_for_selector("#scout-q")
     for q in ("Why does the top lead fit?", "Only R21 grants that close by 2027-03-01"):
         await page.fill("#scout-q", q)
@@ -183,6 +192,9 @@ async def checks_flow(w: Walk, page: Page, base: str, tag: str) -> None:
         vh = page.viewport_size["height"]
         if not box or box["y"] + box["height"] > vh or box["y"] < 0:
             w.errors.append(f"{tag}: scout: chat: the question box is outside the window after {q!r}")
+        elif vh - (box["y"] + box["height"]) > 40:
+            w.errors.append(f"{tag}: scout: chat: the question box sits {round(vh - box['y'] - box['height'])} px "
+                            "above the bottom of the window")
         seen = await page.evaluate("""() => { const box = document.querySelector('.scout-scroll');
           const qs = document.querySelectorAll('.scout-x > .scout-q'); if (!box || !qs.length) return false;
           const b = box.getBoundingClientRect(), r = qs[qs.length - 1].getBoundingClientRect();

@@ -1702,6 +1702,7 @@ async function setLead(leadId, action) {
 let evidenceOpener = null;
 let evidenceAsk = 0;  // the latest record asked for; an older answer arriving late is dropped
 let evidenceClosing = null;
+let evidenceClick = false;
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Going from record to record crossfades (S27): the old record fades out while the new one
@@ -1734,6 +1735,8 @@ async function openEvidence(id, opener) {
     return openInRail(railEv, id, opener);
   }
   evidenceOpener = opener || null;
+  evidenceClick = true;  // this click opened it; the outside-click check lets it through
+  setTimeout(() => { evidenceClick = false; });
   const panel = $("#evidence");
   const body = $("#evidence-body");
   const wasOpen = !panel.hidden && panel.classList.contains("in");
@@ -1768,7 +1771,7 @@ async function openInRail(box, id, opener) {
   announce(`Evidence: ${r.title || r.name || r.display_name || "record"} is in the panel beside the list.`);
 }
 
-function closeEvidence() {
+function closeEvidence({ refocus = true } = {}) {
   const panel = $("#evidence");
   if (panel.hidden) return;
   evidenceAsk++;
@@ -1779,7 +1782,8 @@ function closeEvidence() {
   const ms = parseFloat(getComputedStyle(panel).transitionDuration) * 1000 || 0;
   clearTimeout(evidenceClosing);
   evidenceClosing = setTimeout(() => { panel.hidden = true; }, ms);
-  if (evidenceOpener && document.contains(evidenceOpener)) evidenceOpener.focus();
+  // Focus goes back to the opener after the close button or Escape, not after a click elsewhere.
+  if (refocus && evidenceOpener && document.contains(evidenceOpener)) evidenceOpener.focus({ preventScroll: true });
 }
 
 function field(label, value) {
@@ -1965,6 +1969,13 @@ function init() {
   initTheme();
   $("#evidence-close").addEventListener("click", closeEvidence);
   $("#evidence-scrim").addEventListener("click", closeEvidence);
+  // A click anywhere outside the open Evidence card closes it (S27, Dakshitha). A click
+  // that opens another record switches the card instead.
+  document.addEventListener("click", (e) => {
+    const panel = $("#evidence");
+    if (panel.hidden || evidenceClick || panel.contains(e.target)) return;
+    closeEvidence({ refocus: false });
+  });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeEvidence();
     if (e.key === "Tab" && !$("#evidence").hidden && window.matchMedia("(max-width: 959px)").matches) {

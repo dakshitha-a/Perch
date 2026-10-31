@@ -621,8 +621,6 @@ body.on-help .banner { display: none; }
 
 /* ---------- Ask Scout (S10) ---------- */
 .scout { display: grid; gap: 16px; padding-top: 12px; }
-.scout-intro .lede { margin: 0 0 4px; }
-.scout-intro .hint { margin: 0; }
 .scout-mode { border: 1px solid var(--line); border-radius: var(--r-card); padding: 8px 14px 12px; margin: 0; display: grid; gap: 8px; background: var(--leaf); }
 .scout-mode legend { padding: 0 4px; margin: 0; }
 .scout-mode-opt { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; min-height: 44px; }
@@ -979,29 +977,30 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .dialog .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .dialog ul { margin: 0; padding-left: 20px; color: var(--ink-2); font-size: 14px; display: grid; gap: 4px; }
 
-/* Ask Scout with a tools rail */
-.scout-cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
-.scout-cols > .scout { flex: 999 1 560px; min-width: 0; padding-top: 0; }
-/* A chat window (S27): the conversation scrolls inside a box that fills the window, the
-   question box stays pinned under it, and older replies fade out at the top. */
-.scout-cols > .scout { display: flex; flex-direction: column; gap: 12px; height: var(--chat-h, 70vh); min-height: 0; }
-.scout-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 16px; padding: 4px 6px 8px 2px; border-radius: 4px; }
-.scout-scroll > :first-child { margin-top: auto; }
+/* Ask Scout as a chat window (S27): one column fills the window under the sticky tabs, the
+   conversation scrolls inside it, the question box sits on the bottom edge of the screen,
+   and older replies fade out at the top. Scout's welcome message lists its tools. */
+#panel > .scout { display: flex; flex-direction: column; gap: 10px; height: var(--chat-h, 70vh); min-height: 0; padding-top: 4px;
+  width: 100%; max-width: 880px; margin: 0 auto; }
+.scout-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 16px;
+  padding: 8px 6px 8px 2px; border-radius: 4px; scrollbar-width: thin; }
 .scout-scroll.faded { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 96px); mask-image: linear-gradient(to bottom, transparent 0, #000 96px); }
 .scout-scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.scout-cols > .scout > .scout-ask { flex: none; padding-top: 12px; border-top: 1px solid var(--line); }
+#panel > .scout > .scout-ask { flex: none; }
+.scout-ask-row input { min-height: 52px; border-radius: 14px; padding: 0 16px; }
+.scout-ask-row .btn { min-height: 52px; border-radius: 14px; padding: 0 22px; }
 .scout-x.new { animation: rise .3s ease-out both; }
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.scout-cols > aside { max-height: var(--chat-h, none); overflow-y: auto; }
-/* Before the first question the chat is as tall as its content. */
-.scout-cols.empty > .scout { height: auto; }
-.scout-cols.empty > .scout > .scout-scroll { overflow: visible; }
-.scout-cols.empty > aside { max-height: none; overflow: visible; }
-.scout-cols > aside:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.scout-cols > aside { flex: 1 1 280px; min-width: 0; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); padding: 18px; display: grid; gap: 10px; }
-.scout-cols > aside h2 { font-size: 16px; font-weight: 600; }
-.scout-cols > aside ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--ink-2); display: grid; gap: 6px; line-height: 1.45; }
-.scout-cols > aside p { font-size: 13px; color: var(--ink-3); }
+.scout-hello { display: flex; gap: 12px; align-items: flex-start; }
+.scout-hello-body { flex: 1; min-width: 0; display: grid; gap: 8px; padding: 12px 16px; border-radius: 4px 14px 14px 14px; background: var(--surface); border: 1px solid var(--line); }
+.scout-hello-body .lede { margin: 0; font-size: 16px; }
+.scout-can { margin: 0; padding-left: 20px; font-size: 14.5px; color: var(--ink-2); display: grid; gap: 4px; line-height: 1.45; }
+.scout-try { margin: 4px 0 0; }
+.scout-try .chip { cursor: pointer; font: inherit; font-size: 14px; }
+.scout-try .chip:hover { border-color: var(--moss); }
+.scout-limits summary { cursor: pointer; font-size: 14px; color: var(--ink-2); min-height: 32px; }
+.scout-limits p { font-size: 13.5px; color: var(--ink-2); line-height: 1.5; margin: 0; }
+.scout-meta { font-size: 12.5px; color: var(--ink-3); margin: 0; text-align: center; }
 
 @media (max-width: 479px) {
   h1.page { font-size: 28px; }
@@ -1038,9 +1037,6 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .reason { font-size: 14px; color: var(--ink-2); line-height: 1.5; }
 .reason b { color: var(--ink); }
 .reason .notes { margin: 2px 0 0; }
-.scout-hello { display: flex; gap: 12px; align-items: center; color: var(--ink-2); }
-.scout-rules { font-size: 13px; line-height: 1.5; }
-.scout-intro .lede { flex: 1 1 320px; font-size: 16px; }
 .dialog .warn-box.strong { background: var(--no-bg); display: grid; gap: 8px; }
 /* Phone header (S24 walk): wordmark, Help and theme on one row; the chip and End session under it. */
 @media (max-width: 479px) {
