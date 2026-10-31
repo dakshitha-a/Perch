@@ -886,7 +886,414 @@ async def workflow_private(w: Walk, page: Page, base: str, tag: str) -> None:
         w.errors.append(f"{tag}: W10: End session on Your documents ended the session without asking")
 
 
-async def main(base: str, axe: str | None, out: Path, only: list[str]) -> None:
+# ---------- the UX review's findings (S30, docs/design/UX_REVIEW_S29.md U1 to U28) ----------
+# Each check names its finding. Every one failed on the build before its fix.
+
+YEAR_NOW = 2026
+
+
+def far_years(text: str) -> list[str]:
+    """Years more than ten years out: a placeholder close date shown as if real (U3)."""
+    return [y for y in re.findall(r"\b(2\d{3})\b", text) if int(y) > YEAR_NOW + 10]
+
+
+async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
+    phone = page.viewport_size["width"] < 700
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    x_landing = (await page.locator(".wordmark").bounding_box())["x"]
+    if not phone:  # U17: the paste nudge clears when the field changes
+        cv = (SYN / "persona-1/cv.md").read_text()
+        await page.evaluate("""(t) => { const q = document.querySelector('#q'); const dt = new DataTransfer();
+          dt.setData('text/plain', t); q.value = t; q.dispatchEvent(new InputEvent('input', {bubbles: true}));
+          q.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true})); }""", cv)
+        await page.wait_for_selector(".nudge", timeout=3000)
+        await page.fill("#q", AUTHOR)
+        await page.wait_for_timeout(200)
+        if await page.locator(".nudge").count() or await page.locator(".searchbox button[type=submit]").is_disabled():
+            w.errors.append(f"{tag}: U17: after the field is cleared and an ID typed, the paste offer stays and Find is disabled")
+            await page.click(".nudge button:has-text('Keep it here')")
+        await page.goto(base + "/#/help")
+        await page.wait_for_timeout(500)
+        x_help = (await page.locator(".wordmark").bounding_box())["x"]
+        await page.goto(base + "/#/")
+        await page.wait_for_selector(".landing")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector(".cand", timeout=20000)
+    await pick_and_build(page)
+    await page.wait_for_selector("#tab-routes", timeout=60000)
+    await wait_built(page)
+    await page.wait_for_timeout(800)
+    vw, vh = page.viewport_size["width"], page.viewport_size["height"]
+    if not phone:  # U18: one header on every screen
+        x_brief = (await page.locator(".wordmark").bounding_box())["x"]
+        if len({round(x_landing), round(x_help), round(x_brief)}) > 1:
+            w.errors.append(f"{tag}: U18: the wordmark moves between screens (landing {x_landing:.0f}, "
+                            f"help {x_help:.0f}, brief {x_brief:.0f} px)")
+    await w.snap(page, tag, "u-routes")
+    if phone:  # U5: the first lead shows in the first view
+        top = await page.evaluate("() => document.querySelector('.leads > li').getBoundingClientRect().top + scrollY")
+        if top + 140 > vh:
+            w.errors.append(f"{tag}: U5: the first lead starts at y = {top:.0f} px on a {vh} px screen")
+    # U24: good and strong matches first, the weak ones folded under a count
+    weak = await page.evaluate("""() => { const ol = document.querySelector('#panel > .leads, #panel .leads');
+      const top = [...document.querySelectorAll('#panel .leads > li')].filter(li => !li.closest('details'));
+      const fold = document.querySelector('#panel details.weak-fold > summary');
+      return { open: top.filter(li => li.querySelector('.fit.weak')).length,
+               strong: top.filter(li => li.querySelector('.fit.good, .fit.strong')).length,
+               fold: fold ? fold.innerText : null }; }""")
+    if weak["open"] and weak["strong"]:
+        w.errors.append(f"{tag}: U24: {weak['open']} weak matches sit in the list beside {weak['strong']} good or strong ones")
+    elif weak["fold"] is not None and not re.search(r"\d", weak["fold"]):
+        w.errors.append(f"{tag}: U24: the weak-match fold does not state its count ({weak['fold']!r})")
+    # U25: filter chips from the leads' own agency and activity-code values
+    chips = await page.evaluate("""() => [...document.querySelectorAll('#panel .filter-chips button')].map(b => b.innerText.trim())""")
+    if not chips:
+        w.errors.append(f"{tag}: U25: no filter chips on Routes")
+    else:
+        vals = await page.evaluate("""() => [...document.querySelectorAll('#panel .leads > li .tags .tag')].map(t => t.innerText.trim())""")
+        stray = [c for c in chips if re.sub(r"\s*\d+$", "", c) not in vals and not c.startswith("All")]
+        if stray:
+            w.errors.append(f"{tag}: U25: filter chips not built from the leads' own values: {stray}")
+    # U9 and U27: the rail (laptop only)
+    if not phone:
+        await page.locator(".leads > li .title-btn").first.click()
+        await page.wait_for_selector("#rail-ev .rec-title")
+        await page.wait_for_timeout(400)
+        fade = await page.evaluate("""() => { const b = document.querySelector('#rail-ev'); const s = getComputedStyle(b);
+          const a = getComputedStyle(b, '::after');
+          return { over: b.scrollHeight > b.clientHeight + 2, bar: s.scrollbarColor, width: s.scrollbarWidth,
+                   fade: (s.maskImage && s.maskImage !== 'none') || (s.webkitMaskImage && s.webkitMaskImage !== 'none')
+                     || (a.content !== 'none' && /gradient/.test(a.backgroundImage)) }; }""")
+        if fade["over"] and (re.search(r"transparent|rgba\(0, 0, 0, 0\)", fade["bar"] or "")
+                             or fade["width"] == "none" or not fade["fade"]):
+            w.errors.append(f"{tag}: U27: the Evidence rail is cut with no visible scroll bar or fade {fade}")
+        await w.snap(page, tag, "u-rail")
+        await page.click("[data-key=route-B]")
+        await page.wait_for_timeout(500)
+        if not await page.locator("#rail-ev .empty-ev").count():
+            w.errors.append(f"{tag}: U9: after a switch to Industry the rail still shows the grant record")
+        await page.click("[data-key=route-A]")
+        await page.wait_for_timeout(300)
+        await page.keyboard.press("Escape")
+    # U12: no mask block in the Export menu while the session holds no documents
+    await page.click("[data-key=export]")
+    await page.wait_for_timeout(300)
+    if phone:  # U1: the menu stays on screen
+        r = await page.locator(".export-pop").bounding_box()
+        if r["x"] < 0 or r["x"] + r["width"] > vw:
+            w.errors.append(f"{tag}: U1: the Export menu runs from x = {r['x']:.0f} to {r['x'] + r['width']:.0f} on a {vw} px screen")
+    if await page.locator(".export-pop input[type=checkbox]").count() or \
+            "Unmask" in await page.locator(".export-pop").inner_text():
+        w.errors.append(f"{tag}: U12: the Export menu shows the mask controls in a session with no documents")
+    await w.snap(page, tag, "u-export")
+    await page.keyboard.press("Escape")
+    # U13 and U14: Industry
+    await page.click("[data-key=route-B]")
+    await page.wait_for_timeout(600)
+    names = await page.evaluate("() => [...document.querySelectorAll('#panel .leads > li .title-btn > span:first-child')].map(s => s.innerText)")
+    keys = [(n.split()[0].lower(), (re.search(r"\(([^)]*)\)\s*$", n) or [None, ""])[1]) for n in names]
+    dup = [n for n, k in zip(names, keys, strict=False) if keys.count(k) > 1]
+    if dup:
+        w.errors.append(f"{tag}: U13: one company shows as separate industry leads: {dup}")
+    iso = await page.evaluate(r"() => [...document.querySelectorAll('#panel .signals p')].map(p => p.innerText).filter(t => /\d{4}-\d{2}-\d{2}/.test(t))")
+    if iso:
+        w.errors.append(f"{tag}: U14: industry sentences write dates as {iso[0][:90]!r}")
+    if phone:  # U16: the kept pill stays off the Industry warning
+        await page.click("[data-key=route-A]")
+        await page.wait_for_timeout(300)
+        for i in (0, 1):
+            await page.locator(".leads > li .btn.keep").nth(i).click()
+            await page.wait_for_timeout(250)
+        await page.evaluate("() => window.scrollTo(0, 0)")
+        await page.click("[data-key=route-B]")
+        await page.wait_for_timeout(600)
+        hit = await page.evaluate("""() => { const p = document.querySelector('.keep-float'), n = document.querySelector('.infer-note');
+          if (!p || !n) return false; const a = p.getBoundingClientRect(), b = n.getBoundingClientRect();
+          return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top; }""")
+        if hit:
+            w.errors.append(f"{tag}: U16: the kept pill covers the Industry warning")
+        await w.snap(page, tag, "u-industry-pill")
+    await page.click("[data-key=route-A]")
+    await page.wait_for_timeout(300)
+    # U23: the profile says how its paper counts relate
+    await page.click("#tab-profile")
+    await page.wait_for_timeout(600)
+    if not phone:
+        note = await page.evaluate("() => (document.querySelector('.threads-note') || {}).innerText || ''")
+        if not re.search(r"\d", note):
+            w.errors.append(f"{tag}: U23: Research threads give no note on how the paper counts relate")
+        await w.snap(page, tag, "u-profile", full=True)
+    await page.click("#tab-routes")
+    await page.wait_for_timeout(400)
+    if not phone:
+        # Keep the first two grants (the review's U3 steps), then Compare and the email
+        kept = await page.locator(".leads > li .btn.keep.on").count()
+        for _i in range(kept, 2):
+            await page.locator(".leads > li .btn.keep:not(.on)").first.click()
+            await page.wait_for_timeout(250)
+    await page.click("#tab-compare")
+    await page.wait_for_selector("table.compare", timeout=30000)
+    await page.wait_for_timeout(600)
+    table = await page.locator("table.compare").inner_text()
+    if far := far_years(table):  # U3
+        w.errors.append(f"{tag}: U3: Compare shows a placeholder close date as real ({far[0]})")
+    if re.search(r"\d{4,} days after", table):
+        w.errors.append(f"{tag}: U3: Compare counts tens of thousands of days to a close date")
+    if "Perch’s order" in table or "Match" not in table:  # U6
+        w.errors.append(f"{tag}: U6: Compare shows Perch's order, not the card's Match")
+    sub = await page.evaluate("() => [...document.querySelectorAll('#panel .hint')].map(x => x.innerText).join(' ')")
+    marks = await page.evaluate("""() => [...document.querySelectorAll('table.compare thead th')].map(th =>
+      ({ text: th.innerText.trim(), btn: Boolean(th.querySelector('button')), mark: (th.querySelector('.sort-mark') || {}).textContent || '',
+         top: Math.round((th.querySelector('button, span') || th).getBoundingClientRect().top),
+         shown: th.getBoundingClientRect().height > 2 }))""")
+    if phone:  # U15
+        if "Press a column name to sort" in sub and not await page.locator("#panel select.compare-sort").count():
+            w.errors.append(f"{tag}: U15: on a phone the table has no column names, but the hint says to press one")
+    else:
+        if any(not m["mark"].strip() for m in marks if m["btn"]):
+            w.errors.append(f"{tag}: U15: sortable headers carry no sort mark until pressed")
+        if len({m["top"] for m in marks}) > 1:
+            w.errors.append(f"{tag}: U15: the header labels do not line up ({sorted({m['top'] for m in marks})})")
+    await w.snap(page, tag, "u-compare", full=True)
+    if not phone:
+        await page.locator("[data-key=handoff-make]").click()
+        await page.wait_for_selector("#handoff-body", timeout=90000)
+        body = await page.locator("#handoff-body").input_value()
+        if far := far_years(body):
+            w.errors.append(f"{tag}: U3: the email says a placeholder close date as real ({far[0]})")
+        if re.search(r"\b\d{4}-\d{2}-\d{2}\b", body):
+            w.errors.append(f"{tag}: U14: the email writes dates as 2026-09-29")
+        await w.snap(page, tag, "u-handoff", full=True)
+    # U22: at 320 px the tabs fit
+    if phone:
+        await page.set_viewport_size({"width": 320, "height": 640})
+        await page.click("#tab-scout")
+        await page.wait_for_timeout(500)
+        clip = await page.evaluate("""() => { const t = document.querySelector('.tabs');
+          const cut = [...t.querySelectorAll('.tab')].filter(b => { const r = b.getBoundingClientRect(), p = t.getBoundingClientRect();
+            return r.left < p.left - 1 || r.right > p.right + 1 || b.scrollWidth > b.clientWidth + 1; }).map(b => b.innerText);
+          const chip = document.querySelector('#status-chip .chip-word');
+          return { cut, scroll: t.scrollWidth > t.clientWidth + 1,
+                   chipLines: Math.round(chip.getBoundingClientRect().height / parseFloat(getComputedStyle(chip).lineHeight || 20)) }; }""")
+        if clip["cut"] or clip["scroll"]:
+            w.errors.append(f"{tag}: U22: at 320 px the tabs are clipped {clip['cut']}")
+        if clip["chipLines"] > 1:
+            w.errors.append(f"{tag}: U22: at 320 px the status chip wraps to {clip['chipLines']} lines")
+        await w.snap(page, tag, "u-320")
+        await page.set_viewport_size(PHONE)
+    await end_session(page)
+
+
+async def scout_ask(page: Page, q: str) -> None:
+    await page.fill("#scout-q", q)
+    await page.click(".scout-ask button[type=submit]")
+    await page.wait_for_timeout(500)
+    for _ in range(1500):  # up to 150 s
+        if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
+            break
+        await page.wait_for_timeout(100)
+
+
+SCOUT_FACTS = r"""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
+  const a = x && x.querySelector('.scout-answer');
+  return { answer: Boolean(a), tagged: Boolean(a && a.querySelector('.tag.model')),
+    text: a ? a.innerText : '', bullets: a ? /(^|\n)\s*[*-] /.test(a.innerText) : false,
+    money: a ? (a.innerText.match(/\$\d[\d,]*\.\d\b/) || [null])[0] : null,
+    raw: [...x.querySelectorAll('.scout-read .chip, .scout-answer .cite')].map(c => c.innerText)
+      .filter(t => /(^|\W)(grants_gov|sample|nih_reporter|openalex):|\bsample:/.test(t)),
+    results: [...x.querySelectorAll('.scout-read-result')].map(r => r.innerText) }; }"""
+
+
+async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
+    """U6, U7 and U8 on a researcher brief: Scout's numbers, model tag and raw ids."""
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector(".cand", timeout=20000)
+    await pick_and_build(page)
+    await page.wait_for_selector("#tab-routes", timeout=60000)
+    await wait_built(page)
+    await page.click("#tab-scout")
+    await page.wait_for_selector("#scout-q")
+    await scout_ask(page, "Compare my top three leads and explain why the first one fits")
+    got = await page.evaluate(SCOUT_FACTS)
+    if got["answer"] and not got["tagged"]:
+        w.errors.append(f"{tag}: U7: Scout's answer carries no Model text tag")
+    if any(re.match(r"→ fit \d+$", r) for r in got["results"]):
+        w.errors.append(f"{tag}: U6: Scout's step shows a fit number unlike the card's Match: {got['results']}")
+    if got["raw"]:
+        w.errors.append(f"{tag}: U8: Scout shows raw record keys: {got['raw'][:3]}")
+    if got["bullets"]:
+        w.errors.append(f"{tag}: U8: Scout's answer shows literal markdown bullets")
+    if got["money"]:
+        w.errors.append(f"{tag}: U8: Scout's answer shows an amount as {got['money']}")
+    if not got["answer"]:
+        w.errors.append(f"{tag}: scout: no answer to check ({got['results']})")
+    await w.snap(page, tag, "u-scout", full=True)
+    await end_session(page)
+
+
+async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
+    """U4, U10, U20, U21 and U8 on the SYNTHETIC student path."""
+    phone = page.viewport_size["width"] < 700
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.click("[data-key=seg-s]")
+    await page.click("[data-key=student]")
+    await page.wait_for_selector("#st-cv", timeout=20000)
+    if phone:  # U4: an empty submit says so where the button is
+        await page.click("[data-key=st-build]")
+        await page.wait_for_timeout(500)
+        got = await page.evaluate("""() => { const e = document.querySelector('.student-start .notice.error, [role=alert]');
+          const r = e && e.getBoundingClientRect(); const a = document.activeElement;
+          return { err: Boolean(e), seen: Boolean(r && r.top >= 0 && r.bottom <= innerHeight),
+                   focus: Boolean(a && e && (e.contains(a) || a.id === 'st-cv')),
+                   invalid: (document.querySelector('#st-cv') || {}).getAttribute('aria-invalid') }; }""")
+        if not got["err"] or not got["seen"]:
+            w.errors.append(f"{tag}: U4: an empty submit shows no error in view {got}")
+        if got["invalid"] != "true":
+            w.errors.append(f"{tag}: U4: the CV box is not marked aria-invalid after an empty submit")
+        await w.snap(page, tag, "u-empty")
+    for kind in ("cv", "interests", "achievements"):
+        await page.fill(f"#st-{kind}", (SYN / "persona-masters" / f"{kind}.md").read_text())
+    await page.click("[data-key=st-build]")
+    await page.wait_for_selector("#progress", timeout=20000)
+    await wait_built(page)
+    await page.wait_for_timeout(800)
+    # U20: no line repeated on every card
+    rep = await page.evaluate("""() => { const cards = [...document.querySelectorAll('#panel .leads > li')].filter(li => !li.closest('details'));
+      const seen = {}; for (const c of cards) for (const p of new Set([...c.querySelectorAll('p, li')].map(x => x.innerText.trim()).filter(t => t.length > 30)))
+        seen[p] = (seen[p] || 0) + 1;
+      return { n: cards.length, rep: Object.entries(seen).filter(([, k]) => k >= Math.max(3, 0.6 * cards.length)).map(([t]) => t.slice(0, 70)) }; }""")
+    if rep["n"] >= 3 and rep["rep"]:
+        w.errors.append(f"{tag}: U20: most option cards repeat the same text: {rep['rep'][:3]}")
+    await w.snap(page, tag, "u-fellowships", full=True)
+    if not phone:
+        await page.locator(".leads > li .btn.keep").first.click()
+        await page.wait_for_timeout(300)
+        await page.click("[data-key=route-S]")
+        await page.wait_for_timeout(500)
+        for _i in (0, 1):
+            await page.locator(".leads > li .btn.keep:not(.on)").first.click()
+            await page.wait_for_timeout(300)
+        await page.click("#tab-compare")
+        await page.wait_for_selector("table.compare", timeout=30000)
+        await page.wait_for_timeout(800)
+        got = await page.evaluate("""() => ({ tables: [...document.querySelectorAll('#panel table.compare')].map(t =>
+            ({ sample: t.querySelectorAll('tbody tr .tag.sample, tbody tr .sample-badge').length, rows: t.querySelectorAll('tbody tr').length })),
+          label: document.querySelector('#tab-compare').getAttribute('aria-label'),
+          sl: (document.querySelector('.shortlist-head span') || {}).innerText || '' })""")
+        mixed = [t for t in got["tables"] if 0 < t["sample"] < t["rows"]]
+        if mixed or len(got["tables"]) < 2:
+            w.errors.append(f"{tag}: U10: one Compare table mixes public fellowships and sample scholarships {got['tables']}")
+        if "sample" not in (got["label"] or ""):
+            w.errors.append(f"{tag}: U10: the kept count does not split public from sample ({got['label']!r})")
+        await w.snap(page, tag, "u-compare", full=True)
+        await page.click("#tab-scout")
+        await page.wait_for_selector("#scout-q")
+        await scout_ask(page, "List all my options, fellowships and scholarships, with a deadline after 2026-11-01")
+        got = await page.evaluate(SCOUT_FACTS)
+        if got["raw"]:
+            w.errors.append(f"{tag}: U8: Scout shows raw record keys: {got['raw'][:3]}")
+        mix = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
+          const a = x && x.querySelector('.scout-answer'); if (!a) return null;
+          const lists = [...a.querySelectorAll('ul, ol, p')];
+          return lists.some(l => /sample/i.test(l.innerText) && l.querySelector(".cite:not(.sample)") && l.querySelector(".cite.sample")); }""")
+        if mix:
+            w.errors.append(f"{tag}: U10: Scout lists sample scholarships with public fellowships under one heading")
+        await w.snap(page, tag, "u-scout", full=True)
+    # U21: back to the documents: a held document shows no empty paste box
+    await page.click(".brief .back")
+    await page.wait_for_selector("#st-cv, .added", timeout=10000)
+    await page.wait_for_timeout(400)
+    both = await page.evaluate("""() => [...document.querySelectorAll('.box')].filter(b => b.querySelector('.added')
+      && [...b.querySelectorAll('textarea')].some(t => t.offsetParent)).length""")
+    if both:
+        w.errors.append(f"{tag}: U21: {both} boxes show a held document and an empty paste box together")
+    await w.snap(page, tag, "u-back-docs", full=True)
+    await end_session(page)
+
+
+async def ux_sample(w: Walk, page: Page, base: str, tag: str) -> None:
+    """U11: a researcher card steered by the SYNTHETIC sample says the cited item is a document."""
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector(".cand", timeout=20000)
+    if await page.locator(".cand button.btn.outline").count():
+        await page.locator(".cand button.btn.outline").first.click()
+    await page.click("[data-key=more-ctx]")
+    await page.click("[data-key=fill-sample]")
+    await page.wait_for_selector(".sample-status")
+    await page.click("[data-key=build]")
+    await page.wait_for_selector("#tab-routes", timeout=60000)
+    await wait_built(page)
+    await page.wait_for_timeout(800)
+    bad = await page.evaluate("""() => [...document.querySelectorAll('#panel details.why')].filter(d => d.querySelector('.paper-ref.private'))
+      .map(d => ({ head: (d.querySelector('h4.mini') || {}).innerText || '',
+                   badge: [...d.querySelectorAll('.paper-ref.private')].every(p => p.querySelector('.sample-badge')) }))
+      .filter(x => !/documents/.test(x.head) || !x.badge)""")
+    if bad:
+        w.errors.append(f"{tag}: U11: a card cites the sample document under {bad[0]['head']!r} (badge: {bad[0]['badge']})")
+    await w.snap(page, tag, "u-sample-cite", full=True)
+    await end_session(page)
+
+
+async def ux_queued(w: Walk, page: Page, base: str, tag: str) -> None:
+    """U19: while a brief waits for another, the headline says it waits. The first brief
+    poll is answered as queued, as the server answers while another brief runs."""
+    async def queued(route: Route) -> None:
+        r = await route.fetch()
+        if r.status != 200:
+            await route.fulfill(response=r)
+            return
+        d = await r.json()
+        d["brief"]["status"] = "queued"
+        for s in d["brief"]["stages"]:
+            s["status"], s["started_at"], s["finished_at"] = "pending", None, None
+        await route.fulfill(response=r, json=d, headers={**r.headers, "etag": "", "content-encoding": ""})
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector(".cand", timeout=20000)
+    await page.route("**/private/brief", queued)
+    await pick_and_build(page)
+    await page.wait_for_selector("#progress .p-head", timeout=20000)
+    await page.wait_for_timeout(500)
+    head = await page.locator("#progress .p-head").inner_text()
+    if not head.startswith("Waiting"):
+        w.errors.append(f"{tag}: U19: a queued brief's headline reads {head!r}")
+    await w.snap(page, tag, "u-queued")
+    await page.unroute("**/private/brief")
+    await end_session(page)
+
+
+async def ux_docs(w: Walk, page: Page, base: str, tag: str) -> None:
+    """U28: the documents-only path shows no real researcher's id as an example."""
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.click("[data-key=more-opts]")
+    await page.click("[data-key=docs-link]")
+    await page.click("button:has-text('Start a session')")
+    await page.wait_for_selector("#p-author", timeout=20000)
+    ph = await page.locator("#p-author").get_attribute("placeholder") or ""
+    if re.search(r"A\d{6,}", ph):
+        w.errors.append(f"{tag}: U28: the OpenAlex ID box's example is a real id ({ph!r})")
+    await w.snap(page, tag, "u-docs")
+    await end_session(page)
+
+
+UX_FLOWS = (("ux-laptop", "LAPTOP", "ux_pi"), ("ux-phone", "PHONE", "ux_pi"), ("ux-scout", "LAPTOP", "ux_scout"),
+            ("ux-student", "LAPTOP", "ux_student"), ("ux-student-phone", "PHONE", "ux_student"),
+            ("ux-sample", "LAPTOP", "ux_sample"), ("ux-queued", "LAPTOP", "ux_queued"), ("ux-docs", "LAPTOP", "ux_docs"))
+
+
+async def main(base: str, axe: str | None, out: Path, only: list[str], ux: list[str] | None = None) -> None:
     out.mkdir(parents=True, exist_ok=True)
     names = aliases()
     exe = sorted(glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome")))[-1]
@@ -933,6 +1340,14 @@ async def main(base: str, axe: str | None, out: Path, only: list[str]) -> None:
                 w.watch(page, tag)
                 await w.step(tag, "flow", fn(w, page, base, tag))
                 await ctx.close()
+        if "ux" in only:
+            for tag, view, fn in UX_FLOWS:
+                if ux and tag not in ux:
+                    continue
+                ctx, page = await new_page(b, globals()[view], names)
+                w.watch(page, tag)
+                await w.step(tag, "flow", globals()[fn](w, page, base, tag))
+                await ctx.close()
         await b.close()
     report = out / f"report-{'-'.join(only)}.json"
     report.write_text(json.dumps({"states": w.states, "errors": w.errors, "focus": w.focus}, indent=1))
@@ -946,6 +1361,7 @@ if __name__ == "__main__":
     ap.add_argument("--base", default="http://127.0.0.1:8090")
     ap.add_argument("--axe", default=None)
     ap.add_argument("--out", type=Path, default=ROOT / "build/ux")
-    ap.add_argument("--only", nargs="+", default=["pi", "checks", "student", "private", "workflow"])
+    ap.add_argument("--only", nargs="+", default=["pi", "checks", "student", "private", "workflow", "ux"])
+    ap.add_argument("--ux", nargs="+", default=None, help="with --only ux: just these flows, e.g. ux-phone")
     a = ap.parse_args()
-    asyncio.run(main(a.base, a.axe, a.out, a.only))
+    asyncio.run(main(a.base, a.axe, a.out, a.only, a.ux))

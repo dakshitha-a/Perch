@@ -893,6 +893,13 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .export-pop .check { min-height: 40px; font-size: 14px; }
 .export-pop details summary { font-size: 14px; }
 .export-pop textarea { width: 100%; min-height: 80px; padding: 8px 10px; font-size: 14px; }
+/* Under 700 px the menu hangs from the title row, full column width, so it never runs off
+   either edge of a phone, wherever the button wraps to (review U1). */
+@media (max-width: 699px) {
+  .brief .title-row { position: relative; }
+  .export-menu { position: static; }
+  .export-pop { left: 0; right: 0; width: auto; }
+}
 .pcard { border-radius: 14px; background: var(--surface); border: 1px solid var(--line); padding: 14px 18px; display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; }
 .pcard .owl-sm { width: 44px; height: 44px; }
 .pcard-main { flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
