@@ -910,6 +910,21 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .pcard.failed { border-color: var(--brick); }
 .pcard .steps { flex: 1 1 100%; margin: 0; }
 .pcard .steps summary { min-height: 36px; font-size: 14px; }
+/* On a phone a finished brief's card is one line, and Export shares the name's row, so
+   the first lead shows in the first view (U5). Opening Steps gives them the full width. */
+@media (max-width: 699px) {
+  .brief .title-row { flex-wrap: nowrap; align-items: flex-start; }
+  .brief .title-row > div:first-child { flex: 1 1 auto; }
+  .pcard.done { padding: 6px 8px 6px 12px; gap: 4px 10px; flex-wrap: wrap; }
+  .pcard.done .owl-sm { width: 32px; height: 32px; }
+  .pcard.done .pcard-main { flex: 1 1 0; gap: 0; }
+  .pcard.done .pcard-line { flex-direction: column; gap: 0; font-size: 14px; }
+  .pcard.done .p-detail { font-size: 13px; }
+  .pcard.done .pbar { display: none; }
+  .pcard.done .progress-steps { flex: 0 0 auto; }
+  .pcard.done .progress-steps:has(details[open]) { flex-basis: 100%; }
+  .pcard.done .steps:not([open]) .steps-n { display: none; }
+}
 .pcard .btn.link { min-height: 40px; border: 0; background: transparent; color: var(--ink-2); text-decoration: underline; font-weight: 500; font-size: 14px; padding: 0 8px; }
 .tabs-wrap { background: var(--bg); padding: 0; margin: 0; border-bottom: 1px solid var(--line); }
 .tabs, .tabs.student { display: flex; gap: 4px; background: transparent; padding: 0; border-radius: 0; overflow-x: auto; scrollbar-width: none; }

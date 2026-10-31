@@ -860,6 +860,7 @@ function renderProgress() {
     fill(box, card);
   }
   card.classList.toggle("failed", b.status === "failed");
+  card.classList.toggle("done", b.status === "done"); // one line on a phone once ready (U5)
   setOwl(card.querySelector(".owl"), state);
   card.querySelector(".owl").classList.toggle("bob", b.status === "running" || b.status === "queued");
   card.querySelector(".p-head").textContent = headline;
@@ -873,7 +874,7 @@ function renderProgress() {
     api.mode === "replay" && b.status === "done" ? h("button", { class: "btn link", type: "button", onclick: replayBuild }, h("span", { text: "Replay the build" })) : null);
   const steps = h("details", { class: "steps", open: S.stepsOpen,
     ontoggle: (e) => { S.stepsOpen = e.target.open; } },
-  h("summary", { text: `Steps (${doneN} of ${stages.length} done)` }),
+  h("summary", {}, h("span", { text: "Steps" }), h("span", { class: "steps-n", text: ` (${doneN} of ${stages.length} done)` })),
   h("ol", {}, stages.map((s) => h("li", { "data-status": s.status },
     h("span", { class: "step-dot", "aria-hidden": "true" }),
     h("span", { class: "step-name" }, h("b", { text: f.STAGES[s.name] || s.name }),

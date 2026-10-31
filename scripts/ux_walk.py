@@ -936,6 +936,13 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         top = await page.evaluate("() => document.querySelector('.leads > li').getBoundingClientRect().top + scrollY")
         if top + 140 > vh:
             w.errors.append(f"{tag}: U5: the first lead starts at y = {top:.0f} px on a {vh} px screen")
+        await page.click(".pcard .steps summary")  # opened, the steps take the card's width
+        await page.wait_for_timeout(200)
+        wide = await page.evaluate("() => document.querySelector('.pcard .steps ol').getBoundingClientRect().width")
+        if wide < vw * 0.7:
+            w.errors.append(f"{tag}: U5: the opened steps are squeezed into {wide:.0f} px")
+        await w.snap(page, tag, "u-steps-open")
+        await page.click(".pcard .steps summary")
     # U24: good and strong matches first, the weak ones folded under a count
     weak = await page.evaluate("""() => { const ol = document.querySelector('#panel > .leads, #panel .leads');
       const top = [...document.querySelectorAll('#panel .leads > li')].filter(li => !li.closest('details'));
