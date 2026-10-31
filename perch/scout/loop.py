@@ -25,7 +25,7 @@ from typing import Literal
 from perch.llm import ChatResult, Message, Provider, ToolCall, ToolResult, cost_usd
 from perch.privacy import PrivateSettings, refuse_if_not_local
 from perch.scout.log import ScoutLog, digest
-from perch.scout.tools import ALLOWLIST, TOOLS, ScoutContext, ToolError, check_arguments
+from perch.scout.tools import ALLOWLIST, SESSION_TOOLS, ScoutContext, ToolError, check_arguments
 from perch.skills import parse_json
 from perch.validate import DATE_PATTERNS, NUM_RE, check, find_dates, norm_number
 
@@ -170,9 +170,10 @@ class Scout:
                  policy: Policy | None = None, budget: ScoutBudget | None = None,
                  log: ScoutLog | None = None, private: PrivateSettings | None = None,
                  brief_note: str = "", table: dict | None = None,
-                 rules: str | None = None) -> None:
-        """`table` and `rules`: another allowlist and rule set, such as the student
-        tools (perch.scout.student_tools); the researcher's nine by default."""
+                 rules: str | None = None, who: str | None = None) -> None:
+        """`table`, `rules` and `who`: another allowlist, rule set and session line, such
+        as the student tools (perch.scout.student_tools). By default the researcher's
+        tools, fixed to the session's researcher (SESSION_TOOLS)."""
         if private is not None:
             refuse_if_not_local(provider, private)
             log = None  # no Scout log (Q14); the tools' caches are S13's job
@@ -182,12 +183,10 @@ class Scout:
         self.budget = budget or ScoutBudget()
         self.log = log
         self.private = private is not None
-        who = ("a researcher with no public profile (private documents only)"
-               if (ctx.researcher_id or "").startswith("private:")
-               else f"researcher {ctx.full_author_id(None)} (OpenAlex)")
-        self.table = table or TOOLS
-        if table is not None:
-            who = "a student (private session)"
+        who = who or ("a researcher with no public profile (private documents only)"
+                      if (ctx.researcher_id or "").startswith("private:")
+                      else f"researcher {ctx.full_author_id(None)} (OpenAlex)")
+        self.table = table or SESSION_TOOLS
         self.system = (f"{rules or RULES}\n\nSession: {who}, as-of date "
                        f"{ctx.as_of.isoformat()}.{brief_note}")
         self.tools = [t for t, _ in self.table.values()]

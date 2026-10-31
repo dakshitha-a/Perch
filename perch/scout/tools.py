@@ -474,6 +474,19 @@ for _tool, _ in TOOLS.values():
     _tool.strict = False  # see perch.llm.base.Tool; check_arguments() runs on every call
 
 
+def _fixed(t: Tool) -> Tool:
+    props = {k: v for k, v in t.parameters["properties"].items() if k != "author_id"}
+    return Tool(t.name, t.description, _obj(props, [r for r in t.parameters["required"]
+                                                     if r != "author_id"]), strict=False)
+
+
+# Scout's own table (S28, SCOUT_SPEC section 4): a Scout session already knows its
+# researcher, so no tool takes an author_id and there is no author search. The MCP server
+# keeps TOOLS, because an MCP client starts without a researcher.
+SESSION_TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
+    name: (_fixed(t), fn) for name, (t, fn) in TOOLS.items() if name != "resolve_author"}
+
+
 def check_arguments(tool: Tool, args: object) -> list[str]:
     """Shape check against the tool's schema: object, required present, no extras, and
     the JSON types of the values. Enough to refuse a malformed call before it runs."""

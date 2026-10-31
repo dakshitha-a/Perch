@@ -295,8 +295,10 @@ def test_bench_scoring_rules():
 
 def test_a_repeated_call_is_answered_from_the_earlier_result(service, monkeypatch):
     runs = []
-    real = TOOLS["get_record"]
-    monkeypatch.setitem(TOOLS, "get_record",
+    from perch.scout.tools import SESSION_TOOLS
+
+    real = SESSION_TOOLS["get_record"]
+    monkeypatch.setitem(SESSION_TOOLS, "get_record",
                         (real[0], lambda c, **a: runs.append(a) or real[1](c, **a)))
     answer = f"It closes 2026-11-17 [{OPP}]."
     fake = FakeProvider([call("get_record", id=OPP), call("get_record", id=OPP), answer])
@@ -308,3 +310,19 @@ def test_a_repeated_call_is_answered_from_the_earlier_result(service, monkeypatc
     fake.replies = [call("get_record", id=OPP), answer]
     s = scout.ask(s, "And again?")
     assert s.cards[-1].status == "done" and len(runs) == 2
+
+
+def test_scout_is_fixed_to_its_researcher(service):
+    """S28: no author search and no author_id in Scout's own tools; MCP keeps both."""
+    from perch.scout.tools import SESSION_TOOLS
+
+    assert "resolve_author" not in SESSION_TOOLS and "resolve_author" in TOOLS
+    for t, _ in SESSION_TOOLS.values():
+        assert "author_id" not in t.parameters["properties"]
+    assert "author_id" in TOOLS["build_profile"][0].parameters["properties"]
+    fake = FakeProvider([call("build_profile", author_id="A5023080104"),
+                         [ToolCall("c-ra", "resolve_author", {"name": "X"})], "No answer."])
+    s = Scout(fake, ctx(service)).start("Someone else's profile?")
+    assert [c.status for c in s.cards] == ["refused", "refused"]
+    assert "researcher https://openalex.org/A5026494099" in fake.calls[0]["system"]
+    assert {t.name for t in fake.calls[0]["tools"]} == set(SESSION_TOOLS)
