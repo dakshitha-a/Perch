@@ -103,7 +103,7 @@ function route() {
   if (parts[0] === "private") {
     leaveBrief();
     screen("form");
-    renderPrivate(main(), { api: privApi, go, announce, mode });
+    renderPrivate(main(), { api: privApi, go, announce, mode, endSession });
     return;
   }
   if (parts[0] === "student") {
@@ -606,9 +606,10 @@ function showError(msg) {
 
 // Ends the session from any screen, after a dialog that lists what goes.
 async function endSession() {
-  let docs = [];
-  try { docs = (await privApi.session()).documents; } catch { /* already ended */ }
-  const list = mode.discards(docs, Boolean(S.briefId === PRIVATE_ID));
+  let docs = [], hasBrief = S.briefId === PRIVATE_ID;
+  // The session's own answer: it holds a brief even on Your documents or the student form.
+  try { const sess = await privApi.session(); docs = sess.documents; hasBrief = hasBrief || Boolean(sess.brief_id); } catch { /* already ended */ }
+  const list = mode.discards(docs, hasBrief);
   const ok = await mode.disable(() => dialog((done) => h("div", { class: "dialog-in" },
     h("h2", { id: "models-title", text: "End this session?" }),
     h("p", { text: "It discards:" }),
@@ -617,6 +618,7 @@ async function endSession() {
       h("button", { class: "btn", type: "button", autofocus: true, onclick: () => done(false), text: "Keep working" }),
       h("button", { class: "btn primary", type: "button", "data-key": "end-ok", onclick: () => done(true), text: "End session" })))));
   if (ok) {
+    resetScout(); resetPrivate(); resetStudent(); // what the modules held for the session
     S.cloud = false; S.hasDocs = false; S.sampleBrief = false;
     Object.assign(S.find, { picked: null, files: {}, direction: "", include: "", exclude: "", cv: "", proposal: "", sample: false });
     drawSwitch(); announce("Session ended. Everything in it was discarded."); go("#/");

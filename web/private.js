@@ -37,7 +37,7 @@ function statement() {
     h("p", { text: (P.info && P.info.statement) || "" }));
 }
 
-export async function renderPrivate(root, { api, go, announce, mode }) {
+export async function renderPrivate(root, { api, go, announce, mode, endSession }) {
   document.title = "Your documents — Perch";
   if (mode) MODE = mode;
   if (!P.info) await privateAvailable(api);
@@ -47,7 +47,7 @@ export async function renderPrivate(root, { api, go, announce, mode }) {
       h("p", {}, h("a", { href: "#/", text: "Back to Find" }))));
     return;
   }
-  const draw = () => renderPrivate(root, { api, go, announce, mode });
+  const draw = () => renderPrivate(root, { api, go, announce, mode, endSession });
   if (MODE) {  // text moved here from a public field waits as an unsent draft
     for (const [k, v] of Object.entries(MODE.state.drafts)) {
       if (v && P.info.kinds[k] && !P.drafts[k]) { P.drafts[k] = v; delete MODE.state.drafts[k]; }
@@ -103,6 +103,7 @@ export async function renderPrivate(root, { api, go, announce, mode }) {
     P.busy = true; P.error = null; draw();
     try {
       await api.create({ author_id: P.authorId.trim() || null });
+      P.busy = false; // Back to this screen finds Build ready again
       go("#/brief/private/profile");
     } catch (e) { P.error = e.message; P.busy = false; draw(); }
   }
@@ -140,7 +141,8 @@ export async function renderPrivate(root, { api, go, announce, mode }) {
       h("div", { class: "doc-actions" },
         h("button", { class: "btn primary", disabled: P.busy || !have.size || (have.size === 1 && have.has("cv")), onclick: build },
           h("span", { text: P.busy ? "Starting" : "Build brief" })),
-        endButton(api, go))];
+        // The header's End session, with its confirm that lists what goes (review W10).
+        h("button", { class: "btn", type: "button", onclick: endSession }, icon("dismiss"), h("span", { text: "End session" })))];
 
   fill(root, h("div", { class: "private" },
     h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
@@ -148,14 +150,6 @@ export async function renderPrivate(root, { api, go, announce, mode }) {
     statement(),
     P.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: P.error })) : null,
     ...body));
-}
-
-export function endButton(api, go) {
-  return h("button", { class: "btn", onclick: async () => {
-    if (MODE) await MODE.disable(null); else await api.end();
-    Object.assign(P, { docs: [], authorId: "", drafts: {}, error: null, busy: false, unmasked: "" });
-    go("#/private");
-  } }, icon("dismiss"), h("span", { text: "End session" }));
 }
 
 // The bar on a private brief: lock, end, exports (withheld by default, masked on opt-in)
