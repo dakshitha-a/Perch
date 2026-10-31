@@ -38,6 +38,7 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 
 from perch import compare as cmp
@@ -412,7 +413,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         """The brief, with an ETag: a poll that sends the last ETag gets 304 and no body
         while nothing changed (review P3)."""
         out = brief_json(session(x_perch_private))
-        body = json.dumps(out, separators=(",", ":"), default=str).encode()
+        body = json.dumps(jsonable_encoder(out), separators=(",", ":")).encode()
         tag = '"' + hashlib.sha256(body).hexdigest()[:20] + '"'
         if request.headers.get("if-none-match") == tag:
             return Response(status_code=304, headers={"ETag": tag})

@@ -33,6 +33,7 @@ Briefs run as background jobs; poll GET /briefs/{id}. Nothing is sent anywhere.
 from __future__ import annotations
 
 import ipaddress
+import logging
 import re
 import threading
 import time
@@ -318,6 +319,8 @@ class Crashed:
         try:
             await self.app(scope, receive, watch)
         except Exception as exc:  # noqa: BLE001 - every error ends here, by type only
+            # The type alone reaches the server log: never the message or a traceback.
+            logging.getLogger("perch").error("internal error (%s)", type(exc).__name__)
             if not started:
                 await JSONResponse({"detail": f"internal error ({type(exc).__name__})"},
                                    status_code=500)(scope, receive, send)
