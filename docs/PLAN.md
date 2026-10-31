@@ -381,61 +381,59 @@ Done when: Scout runs with no gate on both briefs, Stop works, the read-as block
 
 ---
 
-## S29 — Workflow review, diagnose
+## S29 — Review, diagnose (workflow and UI/UX in parallel)
 
-Goal: find what is redundant in the UI and in the user's workflow, so S30 can remove it (Dakshitha, 2026-10-31). Nothing is changed in this session. Run as a live phase with Dakshitha, like S27.
+Goal: two independent reviews of the app as built through S28, run at the same time by reviewers with fresh context, so that S30 can fix what they find. Nothing in the product changes in this session. Perch-dev orchestrates and decides; Dakshitha delegated every product and design decision on 2026-10-31 and asked for no questions.
 
-1. **Measure the paths first.** For each task, write the steps as they are now, with the number of screens, clicks, waits and scrolls, measured by a script in `scripts/ux_walk.py` style: a PI finds their brief, reads why the top lead fits, opens its record, keeps two leads, compares them and copies a hand-off. A student does the same with fellowships and sample scholarships. persona-1 does it in private mode with a document. Add asking Scout one question and exporting. These numbers are the baseline S30 is measured against.
-2. **Workflow optimizer review.** A subagent with fresh context gets the public URL, the three audiences, the measured paths and `web/`, but not the earlier audits or this session's guesses. It looks for: the same information shown in two places, controls that do the same thing, steps that can be merged or skipped, labels and hints that repeat each other, screens or panels few users need, and server work or API endpoints the UI never uses.
-3. **Verify every finding.** The main session reproduces each one on the public URL or in the code. A finding that does not reproduce is dropped; one that cannot be decided is marked UNVERIFIED.
-4. **Report.** `docs/design/WORKFLOW_REVIEW.md` lists the verified findings, ranked. Each one gives the evidence (a screenshot, a click count or a file and line), the proposed removal or merge, the steps or clicks it saves, which standing rule it touches if any, and a cost in hours. Provenance, sample badges, the Model and Inference tags and the evidence panel are never removed to save a click.
-5. **Choice.** Dakshitha marks each item fix, defer or drop, in the report or in `bridge/QUESTIONS.md`.
+1. **Workflow and code review (Opus, fresh context, read-only).** Scope: `perch/`, `web/`, `scripts/`, the public URL and the dev server. It looks for redundancy (the same information shown twice, controls that do the same thing, steps that can be merged or skipped, labels and hints that repeat each other, panels few users need, endpoints the UI never calls, dead code), security issues against OWASP Top 10 and the OWASP LLM Top 10 (prompt injection from fetched record text, session handling, rate limits, upload parsing, egress, exports, MCP argument checks, budget enforcement), and speed (what dominates the 46 s brief, caching, polling, duplicated calls, blocking work in async handlers). It also measures the baseline paths (screens, clicks, waits per task for a PI, a student, persona-1, a Scout question and an export) as `scripts/path_measure.py`, in `ux_walk.py` style. Report: `docs/design/WORKFLOW_REVIEW.md`, every finding with file and line, a timing or a request, ranked, with a cost.
+2. **UI/UX review (Opus, fresh context, read-only).** Scope: every screen for the three audiences (a PI, the three SYNTHETIC student personas, persona-1 in private mode), phone and laptop, light and dark, with Playwright. It is not given the S21 audit, the S25 review or the fix history. It uses Nielsen's heuristics with a 0 to 4 severity scale and the WCAG 2.2 items axe cannot see (zoom and reflow, focus order, colour-only meaning, reading order). Calibration: low cognitive load means progressive disclosure and plain sentences, not stripped vocabulary or a childish register; the readers are researchers and students in higher education. Report: `docs/design/UX_REVIEW_S29.md`, findings ranked must-fix, should-fix and could-fix, each with a screenshot, the audience it hurts, a proposed fix and a cost.
+3. **Triage.** Perch-dev marks each finding fix, defer or drop, with a reason, in the report files; the decisions go to `docs/DECISIONS.md`. Provenance, sample badges, the Model and Inference tags, the evidence panel and every standing rule are never traded for a shorter path.
 
-Done when: the baseline paths are measured, the report is written and verified, and Dakshitha has marked the items.
+Done when: both reports are written with evidence on every finding, and every finding is marked fix, defer or drop.
 
-## S30 — Workflow review, fix
+## S30 — Fix (workflow first, then UI)
 
-Goal: carry out the S29 items Dakshitha marked fix, and prove the paths got shorter.
+Goal: carry out the S29 items marked fix, workflow first and UI second, by two fixers run one after the other.
 
-1. Each fix gets a walk check that fails on the build before it and passes after it, and every changed screenshot is opened.
-2. Rerun the S29 path measurements and report each path's steps and clicks, before and after.
-3. Help, the redesign canvas and the tracker's UI tab are updated to match. `make test` and the full walk pass; the demo is rebuilt and checked on the public URL.
+1. **Workflow fixer (Opus).** Works the workflow report's fix items in rank order. Each finding is reproduced before it is fixed, and one that does not reproduce is recorded as such and dropped. Each fix gets a test or a walk check that fails on the build before it and passes after it. Commits after every item.
+2. **UI fixer (Opus).** The same for the UI/UX report. Every changed screenshot is opened and looked at, not only measured.
+3. **Measure again.** The baseline paths from S29 are rerun; the before and after numbers go in the session file and the tracker. Help, the redesign canvas and the tracker's UI tab are updated to match. `make test` and the full walk with axe pass on the dev server.
 
-Done when: every item marked fix is done or written down with a reason, the before-and-after numbers are in the tracker, and the demo is live.
+Done when: every item marked fix is done or written down with a reason, the before and after numbers are in the tracker, and the walk is clean.
 
-## S31 — Fresh UI/UX review, diagnose
+## S31 — QA cycles (tester, then fixer, up to ten rounds)
 
-Goal: one more UI/UX review of the app as slimmed in S30, by a reviewer with fresh context, so the review is not anchored on the earlier ones (Dakshitha, 2026-10-31). Nothing is changed in this session.
+Goal: find and fix what the reviews and fixes missed, until a round finds nothing worth fixing.
 
-1. **Independent review.** A subagent with fresh context gets the public URL, the three audiences (PIs, the three SYNTHETIC student personas, persona-1 in private mode), phone and laptop sizes, light and dark, and the full walk's screenshots. It is not given the S21 audit, the S25 review or the fix history. It walks every screen and reports what confuses, misleads, slows or excludes each audience, plus accessibility problems the axe run cannot see.
-2. **Verify every finding.** The main session reproduces each one in a fresh browser on the public URL, with a screenshot or a measurement. Findings that do not reproduce are dropped; open questions are marked UNVERIFIED.
-3. **Report.** `docs/design/UX_REVIEW_S31.md` lists the verified findings ranked must-fix, should-fix and could-fix, each with its screenshot, the audience it hurts, a proposed fix and a cost.
-4. **Choice.** Dakshitha marks each item fix, defer or drop.
+1. Each round, a fresh QA tester (Opus for the first rounds, Sonnet once a round returns only could-fix items) tests the dev server end to end as each audience, on phone and laptop, with the public URL for one confirmation pass. It writes `docs/design/qa/CYCLE_<k>.md`: each finding with steps to reproduce, what happened, what was expected, a screenshot and a severity (must-fix, should-fix, could-fix). It also runs `make test` and the full walk with axe.
+2. The fixer from S30 is continued (same context) to fix the round's must-fix and should-fix items, each with a failing check first and a commit per item; could-fix items are fixed when cheap, otherwise recorded.
+3. **Stop rule:** stop when a round returns zero must-fix and zero should-fix items, or when two rounds in a row return only could-fix items, whichever comes first; never more than ten rounds. The rounds and their counts go in the session file.
 
-Done when: the report is written and verified, and Dakshitha has marked the items.
+Done when: the stop rule is met, `make test` is green and the full walk is clean.
 
-## S32 — Fresh UI/UX review, fix
+## S32 — Stabilize for the freeze
 
-Goal: carry out the S31 items Dakshitha marked fix.
+Goal: a build Dakshitha can freeze and demo.
 
-1. Each fix gets a walk check that fails before and passes after, and every changed screenshot is opened.
-2. The accessibility checklist (`docs/design/A11Y_CHECKLIST.md`) is rerun in full, including zoom, which S25 did not rerun.
-3. Help, the canvas and the tracker's UI tab are updated. `make test` and the full walk pass; the demo is rebuilt and checked live in a fresh browser.
+1. `make package` built: the submission ZIP with the README's how-to-run, checked from a clean clone.
+2. Demo Day settings: per-visitor caps raised on the demo compose file (Q35), documents stay Local only (Q33 is Dakshitha's).
+3. Demo rebuilt from `main`; full walk with axe on the public URL in a fresh browser; the live canary and the student leakage check rerun; the Scout bench rerun on the demo model.
+4. Media refilmed once (Q41): README clips, screenshots, the tracker's UI tab.
+5. Final numbers into `docs/TRACKER.md` and `docs/RESULTS.md`; README, Help and the canvas match the build; `docs/HANDOFF.md` rewritten for the freeze.
 
-Done when: every item marked fix is done or written down with a reason, the walk is clean, and the demo is live.
+Done when: the ZIP builds from a clean clone and runs, the demo is live and clean, and the tracker and handoff are complete. The tag is S33.
 
 ---
 
 ## S33 — Freeze and package
 
-Goal: ship. The QA fix list and privacy audit moved to S20, the full accessibility pass to S21, and the final UI/UX review and full QA test to S25 (Dakshitha, 2026-10-29).
+Goal: ship. Everything but the tag is done in S32; Dakshitha runs this session.
 
-1. Regression pass on the frozen build: the S25 QA plan rows touched by any change since S25; the canary and leakage checks rerun.
-2. Rerun the Scout bench on the frozen build with the demo model. Final numbers (back-test, validator rate, cost per brief, Scout completion and wrong-tool rate, student mode as a synthetic mechanism test) into `docs/TRACKER.md` and `docs/RESULTS.md` for the deck. When this last test run is done, free the dev test servers: `make decide-down` stops the dev Clef-flash and Clef units, and the demo's own servers stay up. Then tell the other session sharing the node that those GPUs are free (details in the local notes). The Clef rows of `make bench` need `make decide-up` again after this.
-3. README final; `make package` → submission ZIP with how-to-run.
-4. Freeze: tag `v0.1-demo`; nothing on `main` after that except README typos.
+1. Confirm `make test`, `make package` from a clean clone and the live demo one last time.
+2. Free the dev test servers: `make decide-down` stops the dev Clef-flash and Clef units, and the demo's own servers stay up. Then tell the other session sharing the node that those GPUs are free (details in the local notes). The Clef rows of `make bench` need `make decide-up` again after this.
+3. Freeze: tag `v0.1-demo`; nothing on `main` after that except README typos.
 
-Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
+Done when: tag pushed; tracker complete.
 
 ---
 
@@ -481,3 +479,4 @@ Done when: ZIP builds from a clean clone and runs; tag pushed; tracker complete.
 | 2026-10-31 | S29 to S33 | New S29 and S30, a workflow review to remove what is redundant in the UI and workflow, diagnosed then fixed; new S31 and S32, a fresh-context UI/UX review, diagnosed then fixed. Freeze and package becomes S33. S30 and S32 narrow first in the cut order. Older notes that say "S29 task 2" for freeing the dev GPUs mean S33 task 2 | Dakshitha asked for both reviews, each run in two parts, diagnose then fix | Dakshitha |
 | 2026-10-31 | S28 | Task 1 note updated: the web side of the gate was removed in S27 (switch, Approve and Skip, waiting card); the server side remains. Tasks 2 to 7 are not built, so S28 stays | Dakshitha asked whether the Scout redesign was already done | Dakshitha |
 | 2026-10-31 | cut order | "Scout's approve mode (S10)" in the never-cut list becomes "Scout with its allowlist and budgets (S10)" | S28 removed the approve mode by Dakshitha's direction (SCOUT_SPEC section 4) | Dakshitha |
+| 2026-10-31 | S29 to S33 | S29 becomes both reviews at once (workflow and UI/UX, two fresh-context reviewers in parallel, Perch-dev triages); S30 both fix passes, workflow then UI; S31 QA cycles, tester then fixer, up to ten rounds with a stop rule; S32 stabilize for the freeze (`make package`, Demo Day caps, demo rebuild, walk, canary, bench, media refilm); S33 is the tag and the GPU hand-back. The UX report is `docs/design/UX_REVIEW_S29.md`. The sessions run in one orchestrating context with subagents | Dakshitha delegated every product and design decision to Perch-dev on 2026-10-31, asked for the two diagnoses in parallel, fixes in sequence, then up to ten QA and fix cycles, with no questions back | Dakshitha |
