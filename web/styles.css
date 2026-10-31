@@ -1196,3 +1196,8 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
    the bottom while more of the record lies below (U27). */
 .rail-evidence { scrollbar-width: thin; scrollbar-color: var(--ink-3) transparent; }
 .rail-evidence.more { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 48px), transparent); }
+@media (max-width: 699px) {
+  /* one row that scrolls sideways inside itself, so the first lead stays in the first view (U5, U25) */
+  .filter-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+  .filter-chip { flex: none; white-space: nowrap; }
+}

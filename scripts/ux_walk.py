@@ -681,8 +681,8 @@ async def workflow_pi(w: Walk, page: Page, base: str, tag: str) -> None:
     n_ev = await page.locator(".leads > li [data-key=evidence]").count()
     if n_ev:
         w.errors.append(f"{tag}: W4: {n_ev} lead cards carry an Evidence button beside the title that opens the same record")
-    if not await page.evaluate("() => [...document.querySelectorAll('.leads > li .lead-title')]"
-                               ".every(t => /Evidence/.test(t.innerText))"):
+    if not await page.evaluate("() => [...document.querySelectorAll('.leads > li .lead-title')].filter(t => t.checkVisibility())"
+                               ".every(t => /Evidence/.test(t.innerText))"):  # folded weak matches are not shown (U24)
         w.errors.append(f"{tag}: W4: a lead title has no visible Evidence marker")
     # W2: Keep sits in the card head, not under the explanation.
     gap = await page.evaluate("""() => { const c = document.querySelector('.leads > li');

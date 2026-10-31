@@ -431,7 +431,7 @@ export function studentCompare(panel, ctx) {
         : got.error ? h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The note could not be written: ${got.error}` }))
           : h("p", { class: "hint st-note-wait", role: "status", text: "Writing the note…" })),
     // Public fellowships and SYNTHETIC samples never share a table (U10, standing rule 11).
-    ...routes.map((r) => h("section", { class: "compare-group", "aria-labelledby": `cmp-${r}` },
+    ...routes.map((r) => h("div", { class: "compare-group" }, // the table's region carries the heading as its name
       h("h2", { class: "section-title", id: `cmp-${r}` }, h("span", { text: STUDENT_ROUTES[r] }),
         r === "S" ? h("span", { class: "tag sample", text: SAMPLE }) : null),
       h("div", { class: "table-wrap compare-wrap", role: "region", "aria-labelledby": `cmp-${r}`, tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
