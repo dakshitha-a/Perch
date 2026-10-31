@@ -25,7 +25,7 @@ const HINTS = {
   interests: "A few sentences on what you want to study or work on. This steers the search.",
   achievements: "Up to five, one per line or numbered. Explanations may cite them.",
 };
-const D = { drafts: {}, files: {}, busy: false, error: null, sample: false };
+const D = { drafts: {}, files: {}, busy: false, error: null, sample: false, missing: false };
 const NOT_STATED = "Not stated in the record";
 const SHUT = new Set(); // cards whose "What this is based on" was closed; it starts open (S27, Dakshitha)
 
@@ -33,7 +33,7 @@ const SHUT = new Set(); // cards whose "What this is based on" was closed; it st
 export function usedSample() { return Boolean(D.lastSample); }
 // Forget what this module held for a session that has ended (S27).
 export function resetStudent() {
-  Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, sample: false, lastSample: false });
+  Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, sample: false, lastSample: false, missing: false });
   SORT.by = "order";
   Object.assign(NOTE, { office: null, edits: {}, got: {}, keptSig: "" });
 }
@@ -65,6 +65,11 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
   const ready = () => (text("cv") || D.files.cv || have.has("cv"))
     && (text("interests") || text("achievements") || have.has("interests") || have.has("achievements"));
   const set = (k) => (e) => { D.drafts[k] = e.target.value; if (D.sample) { D.sample = false; drawSample(); } };
+  const noCv = () => !(text("cv") || D.files.cv || have.has("cv"));
+  const noSide = () => !(text("interests") || text("achievements") || have.has("interests") || have.has("achievements"));
+  const missingText = () => noCv() && noSide() ? "Add your CV and either your interests or your achievements."
+    : noCv() ? "Add your CV." : "Add your interests or your achievements.";
+  const invalid = (kind) => D.missing && (kind === "cv" ? noCv() : noSide());
 
   async function build() {
     D.busy = true; D.error = null; draw();
@@ -120,7 +125,8 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
       file ? h("p", { class: "added" }, icon("paper"), h("span", { text: `${file.name}, read on this server when you start` }),
         h("button", { class: "btn quiet", type: "button", onclick: () => { delete D.files[kind]; draw(); } }, h("span", { text: "Remove" })))
         : h("textarea", { id: `st-${kind}`, rows, placeholder: kind === "achievements" ? "One per line" : kind === "interests" ? "For example, the field you want to work in" : "Paste text here",
-          "aria-describedby": `st-${kind}-note`, value: D.drafts[kind] || "", oninput: set(kind) }),
+          "aria-describedby": invalid(kind) ? `st-${kind}-note st-missing` : `st-${kind}-note`,
+          "aria-invalid": invalid(kind) ? "true" : null, value: D.drafts[kind] || "", oninput: set(kind) }),
       kind === "cv" && !file ? h("div", { class: "file-row" },
         h("label", { class: "btn" }, h("span", { text: "Or upload a file" }),
           h("input", { type: "file", class: "sr-only", accept: (info.formats || []).join(","), onchange: (e) => pick(kind, e.target.files[0]) })),
@@ -145,10 +151,17 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
         box("achievements", kinds.achievements || "Your achievements", "Up to five, one per line. Explanations may cite them.", 4))),
     h("div", { class: "go-row" },
       h("button", { class: "btn primary big", type: "button", "data-key": "st-build", disabled: D.busy, onclick: () => {
-        if (!ready()) { D.error = "Add your CV and either your interests or your achievements."; draw(); return; }
+        // The error sits by the button that was pressed, and marks the boxes it names (U4).
+        if (!ready()) {
+          D.missing = true; draw();
+          const b = root.querySelector('[data-key="st-build"]'); if (b) b.focus();
+          return;
+        }
+        D.missing = false;
         build();
       } }, h("span", { text: D.busy ? "Starting" : "Find fellowships and scholarships" })),
-      h("span", { class: "hint", text: "Needs your CV and either your interests or your achievements." }))));
+      D.missing ? h("p", { class: "notice error go-error", id: "st-missing", role: "alert" }, icon("warn"),
+        h("span", { text: missingText() })) : h("span", { class: "hint", text: "Needs your CV and either your interests or your achievements." }))));
 }
 
 // ----- profile -----

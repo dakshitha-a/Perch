@@ -1134,3 +1134,5 @@ body[data-screen="help"] .bar-in { max-width: 852px; }
 }
 .help-jump { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 6px 0 4px; }
 .help h2.section-title { scroll-margin-top: calc(var(--bar-h, 64px) + 12px); }
+/* A box an error names (U4) */
+textarea[aria-invalid="true"], input[aria-invalid="true"] { border-color: var(--brick); }
