@@ -171,6 +171,7 @@ export function privateApi(base = "") {
   const hdr = () => ({ "Content-Type": "application/json", "X-Perch-Private": token || "" });
   // A 401 means the server no longer holds this session (30 minutes idle, or a restart).
   // The token is dropped and `onExpired` runs once, so the app can go home and say so (S27).
+  let last = { token: null, etag: null, body: null }; // the last brief answer (P3)
   const lost = (e) => {
     if (e instanceof ApiError && e.status === 401 && token) {
       token = null;
@@ -193,8 +194,26 @@ export function privateApi(base = "") {
     removeDocument: (kind) => post(`/private/documents/${encodeURIComponent(kind)}/remove`),
     create: (req) => post("/private/brief", req),
     createStudent: (req) => post("/private/student/brief", req),
-    end: async () => { try { await post("/private/end"); } finally { token = null; } },
-    brief: () => p("/private/brief"),
+    end: async () => { try { await post("/private/end"); } finally { token = null; last = { token: null, etag: null, body: null }; } },
+    // A poll sends the last ETag; 304 means nothing changed, so the last body is reused
+    // (P3). Held in memory only, like the token; the server marks the answer no-store.
+    brief: async () => {
+      const tok = token;
+      let r;
+      try {
+        r = await fetch(`${base}/private/brief`, { headers: { ...hdr(),
+          ...(last.etag && last.token === tok ? { "If-None-Match": last.etag } : {}) } });
+      } catch {
+        throw new ApiError("Perch's server did not answer. Check that `perch serve` is running.", 0);
+      }
+      if (r.status === 304 && last.body && last.token === tok) return JSON.parse(last.body);
+      const text = await r.text();
+      let body = {};
+      try { body = JSON.parse(text); } catch { /* not JSON */ }
+      if (!r.ok) lost(new ApiError(typeof body.detail === "string" ? body.detail : `The server answered ${r.status}.`, r.status));
+      last = { token: tok, etag: r.headers.get("ETag"), body: text };
+      return body;
+    },
     setLead: (_id, leadId, action) => post(`/private/leads/${encodeURIComponent(leadId)}/${action}`),
     record: (id) => p(`/private/records/${encodeURIComponent(id)}`),
     exportUrl: () => null, // downloads go through fetch with the header (exportFile)

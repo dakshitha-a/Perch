@@ -891,3 +891,26 @@ def test_warm_briefs_build_on_the_job_runner_and_again_after_midnight(tmp_path, 
     assert "A5026494099" in w.ready
     assert seconds_to_rebuild(datetime(2026, 11, 5, 23, 0)) == 3600 + 300
     assert seconds_to_rebuild(datetime(2026, 11, 6, 0, 10)) == 24 * 3600 - 300
+
+
+def test_polls_are_gzipped_and_unchanged_briefs_answer_304(tmp_path, monkeypatch):
+    """P3: a poll that sends the last ETag gets 304 with no body; answers over 1 KB are
+    gzipped; a session's answers are no-store, so no browser cache keeps them."""
+    c, _ = private_app(tmp_path, monkeypatch)
+    h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    c.post("/private/documents", headers=h, json={  # its records must not change per poll
+        "kind": "achievements", "text": "- SYNTHETIC poster award\n- SYNTHETIC dean's list"})
+    c.post("/private/brief", headers=h, json={"author_id": "A5026494099",
+                                              "as_of": "2026-10-28", "explain": False})
+    first = c.get("/private/brief", headers={**h, "Accept-Encoding": "gzip"})
+    assert first.status_code == 200 and first.headers["content-encoding"] == "gzip"
+    assert first.headers["cache-control"] == "no-store"
+    tag = first.headers["etag"]
+    again = c.get("/private/brief", headers={**h, "If-None-Match": tag})
+    assert again.status_code == 304 and again.content == b""
+    lead = first.json()["leads"][0]["id"]
+    c.post(f"/private/leads/{lead}/keep", headers=h)
+    changed = c.get("/private/brief", headers={**h, "If-None-Match": tag})
+    assert changed.status_code == 200 and changed.headers["etag"] != tag
+    assert c.get("/app.js", headers={"Accept-Encoding": "gzip"}).headers[
+        "content-encoding"] == "gzip"

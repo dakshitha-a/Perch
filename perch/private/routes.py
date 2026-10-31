@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import base64
 import binascii
+import hashlib
 import json
 import threading
 from collections.abc import Callable
@@ -126,7 +127,8 @@ def session_records(s: PrivateSession) -> dict[str, Work]:
 
     out: dict[str, Work] = {d.id: d for d in s.docs.values()}
     if ach := s.docs.get("achievements"):
-        out.update({d.id: d for d in achievement_docs(ach.abstract or "")})
+        # stamped with the upload time, so the answer, and its ETag, stay the same (P3)
+        out.update({d.id: d for d in achievement_docs(ach.abstract or "", ach.fetched_at)})
     return out
 
 
@@ -406,8 +408,17 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         return s.brief_id
 
     @app.get("/private/brief")
-    def get_brief(x_perch_private: str | None = Header(None)) -> dict:
-        s = session(x_perch_private)
+    def get_brief(request: Request, x_perch_private: str | None = Header(None)) -> Response:
+        """The brief, with an ETag: a poll that sends the last ETag gets 304 and no body
+        while nothing changed (review P3)."""
+        out = brief_json(session(x_perch_private))
+        body = json.dumps(out, separators=(",", ":"), default=str).encode()
+        tag = '"' + hashlib.sha256(body).hexdigest()[:20] + '"'
+        if request.headers.get("if-none-match") == tag:
+            return Response(status_code=304, headers={"ETag": tag})
+        return Response(body, media_type="application/json", headers={"ETag": tag})
+
+    def brief_json(s: PrivateSession) -> dict:
         out = brief_view(brief_id(s), s.service)
         out["papers"].update({i: private_record_json(d) for i, d in session_records(s).items()})
         out["private"] = True

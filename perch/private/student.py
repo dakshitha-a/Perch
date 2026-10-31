@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 import numpy as np
 
@@ -50,9 +50,11 @@ def achievements(text: str) -> list[str]:
     return items[:5]
 
 
-def achievement_docs(text: str) -> list[PrivateDoc]:
+def achievement_docs(text: str, fetched_at: datetime | None = None) -> list[PrivateDoc]:
+    """One record per achievement; `fetched_at` is the upload time of the document."""
+    at = fetched_at or utcnow()
     return [PrivateDoc(id=f"private:achievement-{chr(97 + i)}", source="private",
-                       source_url="private://session", fetched_at=utcnow(),
+                       source_url="private://session", fetched_at=at,
                        title=f"Your achievement {chr(65 + i)} (private)", type="private",
                        abstract=a) for i, a in enumerate(achievements(text))]
 

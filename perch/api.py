@@ -46,6 +46,7 @@ import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -279,12 +280,16 @@ class SecurityHeaders:
             await self.app(scope, receive, send)
             return
         docs = scope.get("path", "") in ("/docs", "/redoc", "/docs/oauth2-redirect")
+        # A session's answers are never kept by the browser's HTTP cache (review P3).
+        private = scope.get("path", "").startswith("/private")
 
         async def add(message: dict) -> None:
             if message["type"] == "http.response.start":
                 have = {k.lower() for k, _ in message.get("headers", [])}
                 extra = [(k, v) for k, v in self.headers.items() if k not in have
                          and not (docs and k == b"content-security-policy")]
+                if private and b"cache-control" not in have:
+                    extra.append((b"cache-control", b"no-store"))
                 message = {**message, "headers": [*message.get("headers", []), *extra]}
             await send(message)
 
@@ -389,6 +394,9 @@ def create_app(service: BriefService, runner: JobRunner,
     # Exception type only: messages can quote request text. A middleware, not an exception
     # handler: Starlette re-raises after its handler runs, and uvicorn then logs the
     # traceback with its message (review S5).
+    # Responses over 1 KB are gzipped when the browser asks (review P3): polls and the
+    # app's scripts shrink several times over.
+    app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(BodyLimit, limit=MAX_BODY)  # inside Crashed: its 413 stays a 413
     app.add_middleware(Crashed)
     app.add_middleware(SecurityHeaders)  # outermost, so a 500 or 413 carries them too
