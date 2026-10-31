@@ -36,9 +36,12 @@ function statement() {
     h("p", { text: (P.info && P.info.statement) || "" }));
 }
 
-export async function renderPrivate(root, { api, go, announce, mode, endSession }) {
+// `auto`: this is an arrival on the page, so the session opens by itself, as it does on the
+// researcher and student paths (U41). Redraws pass false.
+export async function renderPrivate(root, { api, go, announce, mode, endSession }, auto = true) {
   document.title = "Your documents — Perch";
   if (mode) MODE = mode;
+  if (auto) P.error = null;
   if (!P.info) await privateAvailable(api);
   if (!P.info || !P.info.enabled) {
     fill(root, h("div", { class: "private" }, h("h1", { text: "Your documents" }),
@@ -46,7 +49,7 @@ export async function renderPrivate(root, { api, go, announce, mode, endSession 
       h("p", {}, h("a", { href: "#/", text: "Back to Find" }))));
     return;
   }
-  const draw = () => renderPrivate(root, { api, go, announce, mode, endSession });
+  const draw = () => renderPrivate(root, { api, go, announce, mode, endSession }, false);
   if (MODE) {  // text moved here from a public field waits as an unsent draft
     for (const [k, v] of Object.entries(MODE.state.drafts)) {
       if (v && P.info.kinds[k] && !P.drafts[k]) { P.drafts[k] = v; delete MODE.state.drafts[k]; }
@@ -109,13 +112,15 @@ export async function renderPrivate(root, { api, go, announce, mode, endSession 
   }
 
   const have = new Set(P.docs.map((d) => d.kind));
+  const intro = [h("p", { class: "lede", text: "Add a CV, a draft proposal, a research direction or unpublished work, and get routes tailored to it." }),
+    h("ul", { class: "plain" },
+      h("li", { text: "Only models running on this server read your documents, even when Cloud is offered." }),
+      h("li", { text: "Nothing you add is saved, logged or sent elsewhere. Ending the session, closing this tab for 30 minutes, or a server restart drops everything." }),
+      h("li", { text: "Exports leave out anything drawn from your documents unless you choose to mask it." }))];
   const body = !api.open
-    ? [h("p", { class: "lede", text: "Add a CV, a draft proposal, a research direction or unpublished work, and get routes tailored to it." }),
-      h("ul", { class: "plain" },
-        h("li", { text: "Only models running on this server read your documents, even when Cloud is offered." }),
-        h("li", { text: "Nothing you add is saved, logged or sent elsewhere. Ending the session, closing this tab for 30 minutes, or a server restart drops everything." }),
-        h("li", { text: "Exports leave out anything drawn from your documents unless you choose to mask it." })),
-      h("button", { class: "btn primary", disabled: P.busy, onclick: start }, icon("lock"), h("span", { text: "Start a session" }))]
+    ? [P.busy
+      ? h("p", { class: "hint", role: "status", text: "Starting your session…" })
+      : h("button", { class: "btn primary", onclick: start }, icon("lock"), h("span", { text: "Start a session" }))]
     : [
       h("ol", { class: "private-docs" }, Object.entries(kinds).map(([kind, label]) => {
         const d = P.docs.find((x) => x.kind === kind);
@@ -149,7 +154,8 @@ export async function renderPrivate(root, { api, go, announce, mode, endSession 
     h("h1", { class: "page", text: "Your documents" }),
     statement(),
     P.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: P.error })) : null,
-    ...body));
+    ...intro, ...body));
+  if (auto && !api.open && !P.busy) start();
 }
 
 // The bar on a private brief: lock, end, exports (withheld by default, masked on opt-in)

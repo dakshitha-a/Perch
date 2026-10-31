@@ -596,9 +596,8 @@ async def private_flow(w: Walk, page: Page, base: str) -> None:
     await page.wait_for_selector(".landing")
     await page.click("[data-key=more-opts]")
     await page.click("[data-key=docs-link]")
-    await page.wait_for_timeout(600)
-    await page.click("button:has-text('Start a session')")
-    await page.wait_for_timeout(1000)
+    await page.wait_for_selector("#doc-cv", timeout=20000)  # the session opens on arrival (U41)
+    await page.wait_for_timeout(500)
     await w.snap(page, tag, "private-start", full=True)
     for kind, name in files.items():
         await page.fill(f"#doc-{kind}", (SYN / "persona-1" / name).read_text())
@@ -891,7 +890,6 @@ async def workflow_private(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.wait_for_selector(".landing")
     await page.click("[data-key=more-opts]")
     await page.click("[data-key=docs-link]")
-    await page.click("button:has-text('Start a session')")
     await page.wait_for_selector("#doc-proposal", timeout=20000)
     await page.fill("#doc-proposal", (SYN / "persona-1/specific_aims_draft.md").read_text())
     await page.locator("#doc-proposal ~ .doc-actions button:has-text('Add text')").click()
@@ -1343,13 +1341,70 @@ async def ux_queued(w: Walk, page: Page, base: str, tag: str) -> None:
     await end_session(page)
 
 
+async def ux_landing(w: Walk, page: Page, base: str, tag: str) -> None:
+    """U29, U30, U31 and U41: the landing screen, the no-match screen and the documents path."""
+    phone = page.viewport_size["width"] < 700
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    if phone:  # U29: the search placeholder is not cut, at 390 and at 320 px
+        for width in (390, 320):
+            await page.set_viewport_size({"width": width, "height": 844})
+            await page.reload()
+            await page.wait_for_selector(".landing")
+            fit = await page.evaluate("""() => { const q = document.querySelector('#q'), s = getComputedStyle(q);
+              const c = document.createElement('canvas').getContext('2d'); c.font = `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`;
+              return { text: q.placeholder, need: c.measureText(q.placeholder).width,
+                       room: q.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight) }; }""")
+            if fit["need"] > fit["room"]:
+                w.errors.append(f"{tag}: U29: at {width} px the placeholder {fit['text']!r} needs {fit['need']:.0f} px "
+                                f"and the box has {fit['room']:.0f}")
+            if width == 390:
+                await w.snap(page, tag, "u-landing")
+        await page.set_viewport_size(PHONE)
+        await page.reload()
+        await page.wait_for_selector(".landing")
+    summary = await page.locator("[data-key=more-opts]").inner_text()  # U31
+    if re.search(r"more options", summary, re.I):
+        w.errors.append(f"{tag}: U31: the fold holds a description and a link but is named {summary!r}")
+    await page.click("[data-key=more-opts]")
+    await w.snap(page, tag, "u-more-opts")
+    await page.fill("#q", "zzqxw florbington")  # U30: the example id stays on one line
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector(".page-sub", timeout=20000)
+    await page.wait_for_timeout(300)
+    lines = await page.evaluate("""() => { const sub = document.querySelector('.page-sub');
+      const tw = document.createTreeWalker(sub, NodeFilter.SHOW_TEXT); const id = '0000-0002-1825-0097';
+      for (let n = tw.nextNode(); n; n = tw.nextNode()) { const i = n.data.indexOf(id); if (i < 0) continue;
+        const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + id.length); return r.getClientRects().length; }
+      return -1; }""")
+    if lines != 1:
+        w.errors.append(f"{tag}: U30: the example ORCID iD is drawn on {lines} lines")
+    await w.snap(page, tag, "u-no-match")
+    if phone:
+        return
+    await page.goto(base + "/#/")  # U41: the documents path opens its session on arrival
+    await page.wait_for_selector(".landing")
+    await page.click("[data-key=more-opts]")
+    await page.click("[data-key=docs-link]")
+    try:
+        await page.wait_for_selector("#p-author", timeout=10000)
+    except Exception:  # noqa: BLE001 - reported as a finding
+        w.errors.append(f"{tag}: U41: the documents path does not open its form without a press on Start a session")
+        return
+    top = await page.evaluate("""() => { const t = document.querySelector('.private-statement, .private .plain');
+      const f = document.querySelector('.private-docs'); return t && f ? t.getBoundingClientRect().bottom <= f.getBoundingClientRect().top : false; }""")
+    if not top:
+        w.errors.append(f"{tag}: U41: the privacy text does not sit above the documents form")
+    await w.snap(page, tag, "u-docs-arrival")
+    await end_session(page)
+
+
 async def ux_docs(w: Walk, page: Page, base: str, tag: str) -> None:
     """U28: the documents-only path shows no real researcher's id as an example."""
     await page.goto(base + "/#/")
     await page.wait_for_selector(".landing")
     await page.click("[data-key=more-opts]")
     await page.click("[data-key=docs-link]")
-    await page.click("button:has-text('Start a session')")
     await page.wait_for_selector("#p-author", timeout=20000)
     ph = await page.locator("#p-author").get_attribute("placeholder") or ""
     if re.search(r"A\d{6,}", ph):
@@ -1360,7 +1415,8 @@ async def ux_docs(w: Walk, page: Page, base: str, tag: str) -> None:
 
 UX_FLOWS = (("ux-laptop", "LAPTOP", "ux_pi"), ("ux-phone", "PHONE", "ux_pi"), ("ux-scout", "LAPTOP", "ux_scout"),
             ("ux-student", "LAPTOP", "ux_student"), ("ux-student-phone", "PHONE", "ux_student"),
-            ("ux-sample", "LAPTOP", "ux_sample"), ("ux-queued", "LAPTOP", "ux_queued"), ("ux-docs", "LAPTOP", "ux_docs"))
+            ("ux-sample", "LAPTOP", "ux_sample"), ("ux-queued", "LAPTOP", "ux_queued"), ("ux-docs", "LAPTOP", "ux_docs"),
+            ("ux-landing", "LAPTOP", "ux_landing"), ("ux-landing-phone", "PHONE", "ux_landing"))
 
 
 async def main(base: str, axe: str | None, out: Path, only: list[str], ux: list[str] | None = None) -> None:

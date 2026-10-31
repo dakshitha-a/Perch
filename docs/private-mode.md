@@ -40,7 +40,7 @@ Every local chat model must be an Ollama or OpenAI-compatible server on an allow
 ## Using your documents
 
 1. Under **I'm a researcher**, follow **Add a CV or unpublished work (optional, Local only)**. If you paste a CV or long text into a box on Find, Perch offers to add it as a document; nothing is sent until you choose.
-2. Start a session. The page shows the privacy statement, which names who runs the server.
+2. The session opens on arrival. The page shows the privacy statement, which names who runs the server.
 3. Paste or upload any of four documents: plain text, Markdown, Word (.docx) or PDF.
    - **Your CV:** checks career-stage rules and past sponsors only. It does not steer the search.
    - **Draft proposal:** the strongest steer, 0.5 of the private weight.

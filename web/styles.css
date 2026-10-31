@@ -813,6 +813,7 @@ body[data-screen="help"] main { max-width: 852px; }
 .back { font-size: 15px; color: var(--ink-2); margin-left: -4px; align-self: flex-start; justify-self: start; }
 .back:hover { color: var(--ink); }
 h1.page { font: 500 34px/1.15 var(--serif); letter-spacing: -.005em; }
+.nowrap { white-space: nowrap; }
 .page-sub { font-size: 16px; color: var(--ink-2); margin-top: 4px; max-width: 64ch; line-height: 1.5; }
 .screen { display: flex; flex-direction: column; gap: 22px; }
 .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }

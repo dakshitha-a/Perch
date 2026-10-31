@@ -183,7 +183,8 @@ function renderFind() {
   // The paste offer stands only while the field holds text that looks personal (U17).
   if (F.nudge && !looksPersonal(F.q)) F.nudge = null;
   const input = h("input", { id: "q", name: "q", type: "search", autocomplete: "off",
-    enterkeyhint: "search", placeholder: "Researcher name, ORCID iD or OpenAlex ID", required: true,
+    enterkeyhint: "search", placeholder: matchMedia("(max-width: 419px)").matches ? "Name, ORCID or OpenAlex ID"
+      : "Researcher name, ORCID iD or OpenAlex ID", required: true,
     "aria-describedby": "q-hint", value: F.q,
     oninput: (e) => { F.q = e.target.value; if (F.nudge && !looksPersonal(F.q)) keepFocus(renderFind); },
     onpaste: (e) => pasted(e, "q", "cv") });
@@ -194,7 +195,7 @@ function renderFind() {
         "aria-busy": F.busy ? "true" : null }, h("span", { text: F.busy ? "Searching" : "Find" }))),
     h("div", { class: "hint-row" },
       h("span", { id: "q-hint", text: "Names search Temple authors; an ID finds anyone." }),
-      h("details", { class: "more-opts" }, h("summary", { "data-key": "more-opts", text: "More options" }),
+      h("details", { class: "more-opts" }, h("summary", { "data-key": "more-opts", text: "What else you can add" }),
         h("p", { text: "After you pick the person, you can tell Perch where your research is going, keywords to search for or leave out, your CV and a draft proposal. All of it is optional and held in memory only." }),
         ok ? h("p", {}, h("a", { href: "#/private", "data-key": "docs-link", text: "No public papers yet? Build a brief from your documents alone." })) : null)));
   const student = h("div", { class: "student-go" },
@@ -321,7 +322,7 @@ function renderPick() {
     : !n ? `No Temple University author matches “${F.searched}”.`
       : n === 1 ? "Is this the right person?" : "Which one is the right person?";
   const sub = c ? "Add anything below to steer it, or build it now."
-    : F.busy ? "" : !n ? "Try the name as it appears on papers, or paste an ORCID iD such as 0000-0002-1825-0097."
+    : F.busy ? "" : !n ? ["Try the name as it appears on papers, or paste an ORCID iD such as ", h("span", { class: "nowrap", text: "0000-0002-1825-0097" }), "."]
       : `${f.plural(n, "Temple author", "Temple authors")} in OpenAlex ${n === 1 ? "matches" : "match"}. Nothing runs until you pick one.`;
   const back = c
     ? h("button", { class: "back btn quiet", type: "button", "data-key": "unpick",
@@ -337,7 +338,7 @@ function renderPick() {
     back, again,
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page", id: "pick-title", tabindex: "-1", text: title }),
-        sub ? h("p", { class: "page-sub", text: sub }) : null),
+        sub ? h("p", { class: "page-sub" }, sub) : null),
       c ? h("button", { class: "btn primary big fade-in", type: "button", "data-key": "build", disabled: F.building,
         onclick: () => build(c) }, h("span", { text: F.building ? "Starting" : "Build brief" })) : null),
     F.error ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: F.error })) : null,

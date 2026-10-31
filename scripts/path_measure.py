@@ -313,7 +313,6 @@ async def private_task(d: Driver, base: str) -> None:
     await d.goto(base + "/#/")
     await d.click("[data-key=more-opts]", "More options")
     await d.click("[data-key=docs-link]", "No public papers yet? link")
-    await d.click("button:has-text('Start a session')", "Start a session")
     await d.wait("session opens", selector="#doc-proposal", timeout=30000)
     await d.type("#doc-proposal", (SYN / "persona-1/specific_aims_draft.md").read_text(),
                  "draft proposal")
