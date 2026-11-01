@@ -1131,6 +1131,15 @@ function drawScout() {
 // fellowship or scholarship, whose name the answer already says, as "Evidence", with
 // "(sample)" for a SYNTHETIC one. The full name is the button's label. null: not a lead.
 function recordLabel(id) {
+  // A paper reads as the card's papers block names it: a short title and the year (Q8).
+  const papers = (S.brief && S.brief.papers) || {};
+  const w = /^W\d+$/.test(id) ? papers[`https://openalex.org/${id}`] || papers[id] : null;
+  if (w && w.title) {
+    const year = w.publication_year ? ` (${w.publication_year})` : "";
+    const short = w.title.length > 48 ? `${w.title.slice(0, 46).replace(/\s+\S*$/, "")}…` : w.title;
+    return { text: `${short}${year}`, full: `${w.title}${year}`, name: `${w.title}${year}` };
+  }
+  if (/^W\d+$/.test(id)) return { text: "A paper", full: "A paper by the researcher; Evidence opens it", name: "a paper" };
   const l = leadsOf().find((x) => x.record_id === id || f.shortId(x.record_id) === id
     || (x.opportunity && x.opportunity.opportunity_number === id));
   if (!l) return null;
