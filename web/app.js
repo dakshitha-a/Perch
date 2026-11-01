@@ -1950,10 +1950,17 @@ function closeEvidence({ refocus = true } = {}) {
   if (refocus && evidenceOpener && document.contains(evidenceOpener)) evidenceOpener.focus({ preventScroll: true });
 }
 
-function field(label, value) {
+function field(label, value, kind) {
   if (value === null || value === undefined || value === "" || (Array.isArray(value) && !value.length)) return null;
-  return h("div", { class: "field" }, h("dt", { text: label }), h("dd", {}, value));
+  return h("div", { class: kind ? `field ${kind}` : "field" }, h("dt", { text: label }), h("dd", {}, value));
 }
+
+// Enum values from the records read as words on screen: "bachelor's" is "Bachelor's" (U33).
+// Display only; the record keeps its own text.
+const titled = (v) => (Array.isArray(v) ? v : [v]).filter(Boolean)
+  .map((x) => String(x).replace(/(^|[\s,/])(\p{L})/gu, (m, a, b) => a + b.toUpperCase())).join(", ");
+// The canary sentence a synthetic record's Purpose ends with. It shows in its own Test marker row.
+const CANARY_TAIL = /\s*SYNTHETIC sample record, canary \S+$/;
 
 function recordView(r) {
   const out = [];
@@ -1975,22 +1982,23 @@ function recordView(r) {
       h("span", { text: " An invented record from a test corpus. Not a real scholarship." })) : null,
     h("h2", { class: "rec-title", id: "evidence-title", text: r.name }),
     h("dl", { class: "fields" },
-      field("Sponsor", r.sponsor), field("Purpose", r.purpose), field("Type", r.award_type),
-      field("Level", (r.level_of_study || []).join(", ") || "Not stated in the record"),
-      field("Field", (r.field_of_study || []).join(", ")),
+      field("Sponsor", r.sponsor), field("Purpose", (r.purpose || "").replace(CANARY_TAIL, "")), field("Type", titled(r.award_type)),
+      field("Level", titled(r.level_of_study) || "Not stated in the record"),
+      field("Field", titled(r.field_of_study)),
       field("Amount", amt),
       field("Deadline", f.formatDate(r.deadline) || "Not stated in the record"),
       field("Minimum GPA", e.gpa_min != null ? e.gpa_min.toFixed(2) : null),
       field("Undergraduate year", (e.class_year || []).join(", ")),
       field("Majors", (e.major || []).join(", ")),
-      field("Enrolment", e.enrolment_status),
+      field("Enrolment", titled(e.enrolment_status)),
       field("Residency", e.residency_state), field("Citizenship", e.citizenship),
       field("Also asks (you decide)", e.targeted_criterion),
       field("Listing notes", e.notes),
       field("Application asks for", items.join(", ")),
       field("May be open to international students", r.international_ok ? "Yes, per the listing" : null),
       field("Source", SOURCES[r.source] || r.source),
-      field("Fetched", f.formatDate(r.fetched_at))),
+      field("Fetched", f.formatDate(r.fetched_at)),
+      r.source === "synthetic" ? field("Test marker", r.canary, "muted") : null),
     r.source !== "synthetic" && f.safeUrl(r.source_url) ? h("p", {}, h("a", { href: f.safeUrl(r.source_url), target: "_blank", rel: "noopener", text: "Open the public page" })) : null);
     return out.filter(Boolean);
   }

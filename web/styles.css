@@ -412,6 +412,7 @@ body.sheet-open .scrim { opacity: 1; pointer-events: auto; }
 .field { display: grid; grid-template-columns: minmax(110px, 40%) 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
 .field dt { color: var(--ink-3); }
 .field dd { margin: 0; overflow-wrap: anywhere; }
+.field.muted, .field.muted dt, .field.muted dd { color: var(--ink-3); font-size: 13px; }
 .elig-list { margin: 0; padding-left: 18px; font-size: 14.5px; color: var(--ink-2); display: grid; gap: 2px; }
 .elig-list .hi { color: var(--ink); font-weight: 600; }
 .long { white-space: pre-line; font-size: 15px; line-height: 1.6; color: var(--ink-2); font-family: var(--serif); overflow-wrap: anywhere; }

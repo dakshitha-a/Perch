@@ -1237,6 +1237,28 @@ async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
     if rep["n"] >= 3 and rep["rep"]:
         w.errors.append(f"{tag}: U20: most option cards repeat the same text: {rep['rep'][:3]}")
     await w.snap(page, tag, "u-fellowships", full=True)
+    # U33: a sample's Evidence keeps the canary out of Purpose, in a muted Test marker row
+    await page.click("[data-key=route-S]")
+    await page.wait_for_timeout(500)
+    await page.locator(".leads > li .title-btn").first.click()
+    await page.wait_for_selector(".rec-title", timeout=10000)
+    await page.wait_for_timeout(500)
+    rows = await page.evaluate("""() => { const box = document.querySelector('#evidence-body .rec-title') && document.querySelector('#evidence').hidden === false
+      ? document.querySelector('#evidence-body') : document.querySelector('#rail-ev');
+      return Object.fromEntries([...box.querySelectorAll('.fields .field')].map(f => [f.querySelector('dt').innerText.trim(), f.querySelector('dd').innerText.trim()])); }""")
+    if "canary" in rows.get("Purpose", "").lower() or "SYNTHETIC sample record" in rows.get("Purpose", ""):
+        w.errors.append(f"{tag}: U33: the Purpose row carries the canary text: {rows['Purpose'][-70:]!r}")
+    if not re.fullmatch(r"PERCH-CANARY-SCH-\d+", rows.get("Test marker", "")):
+        w.errors.append(f"{tag}: U33: no Test marker row with the canary (rows: {sorted(rows)})")
+    raw = [f"{k}={rows[k]!r}" for k in ("Type", "Level", "Field", "Enrolment") if rows.get(k) and rows[k][0].islower()]
+    if raw:
+        w.errors.append(f"{tag}: U33: raw lowercase values in Evidence: {raw}")
+    await w.snap(page, tag, "u-sample-evidence")
+    if phone:
+        await page.click("#evidence-close")
+        await page.wait_for_timeout(400)
+    await page.click("[data-key=route-F]")
+    await page.wait_for_timeout(400)
     if not phone:
         await page.locator(".leads > li .btn.keep").first.click()
         await page.wait_for_timeout(300)
