@@ -215,10 +215,11 @@ function sortLeads(leads) {
 }
 
 function sortSwitch(redraw) {
-  return h("div", { class: "route-switch sort-switch", role: "group", "aria-label": "Sort options by" },
-    [["order", "Score"], ["closing", "Closing date"]].map(([k, label]) => h("button", { class: "route-btn",
-      "data-key": `sort-${k}`, "aria-pressed": String(SORT.by === k),
-      onclick: () => { SORT.by = k; redraw(); const b = document.querySelector(`#panel [data-key="sort-${k}"]`); if (b) b.focus(); } }, label)));
+  return h("div", { class: "sort-group" }, h("span", { class: "sort-label", "aria-hidden": "true", text: "Sort" }),
+    h("div", { class: "route-switch sort-switch", role: "group", "aria-label": "Sort options by" },
+      [["order", "Score"], ["closing", "Closing date"]].map(([k, label]) => h("button", { class: "route-btn",
+        "data-key": `sort-${k}`, "aria-pressed": String(SORT.by === k),
+        onclick: () => { SORT.by = k; redraw(); const b = document.querySelector(`#panel [data-key="sort-${k}"]`); if (b) b.focus(); } }, label))));
 }
 
 export function studentRoutes(panel, ctx) {

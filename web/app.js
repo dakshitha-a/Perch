@@ -1360,10 +1360,12 @@ function routeSwitch() {
 const SORTS = [["order", "Score"], ["closing", "Closing date"]];
 
 function sortSwitch() {
-  return h("div", { class: "route-switch sort-switch", role: "group", "aria-label": "Sort leads by" },
-    ...SORTS.map(([v, label]) => h("button", { class: "route-btn", "data-key": `sort-${v}`,
-      "aria-pressed": String(S.sort === v),
-      onclick: () => { S.sort = v; renderPanel(); panelFocus(`sort-${v}`); } }, label)));
+  // A visible "Sort" label, so the switch does not read as a second filter (U36).
+  return h("div", { class: "sort-group" }, h("span", { class: "sort-label", "aria-hidden": "true", text: "Sort" }),
+    h("div", { class: "route-switch sort-switch", role: "group", "aria-label": "Sort leads by" },
+      ...SORTS.map(([v, label]) => h("button", { class: "route-btn", "data-key": `sort-${v}`,
+        "aria-pressed": String(S.sort === v),
+        onclick: () => { S.sort = v; renderPanel(); panelFocus(`sort-${v}`); } }, label))));
 }
 
 function updateSwitch(panel) {

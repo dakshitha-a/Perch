@@ -1097,7 +1097,13 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .routes-bar .section-title { font-size: 17px; }
 .routes-bar { flex-wrap: wrap; }
 .sort-switch { flex: 0 0 auto; }
-@media (max-width: 559px) { .sort-switch { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); } .sort-switch .route-btn { padding: 0 6px; } }
+.sort-group { display: inline-flex; align-items: center; gap: 8px; }
+.sort-label { font-size: 14px; font-weight: 600; color: var(--ink-3); }
+@media (max-width: 559px) {
+  .sort-group { width: 100%; }
+  .sort-group .sort-switch { flex: 1 1 auto; width: auto; display: grid; grid-template-columns: repeat(2, 1fr); }
+  .sort-switch .route-btn { padding: 0 6px; }
+}
 .st-cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch; }
 .st-cv { flex: 1 1 460px; min-width: 0; display: flex; }
 .st-cv .box { flex: 1; }
