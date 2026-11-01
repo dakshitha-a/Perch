@@ -83,7 +83,7 @@ The agent that built Perch judged 14 leads for 3 researchers against the records
 - **Reviews:** two independent fresh-context reviews, one of workflow and security and one of UI and UX, found 86 findings. 84 were fixed and 2 deferred (`docs/TRACKER.md`, S29 and S30 rows). The reviewers and fixers were Claude Opus agents.
 - **QA rounds:** five rounds, each a fresh tester then a fixer, found 129 findings and fixed 125. Two were partly fixed, one was dropped and one was done at the deploy file (`docs/TRACKER.md`, S31 row).
 - **Checks:** tests rose from 265 to 398. The full browser walk reached 217 states with 0 errors and 0 axe accessibility violations. The privacy canary was clean every round.
-- **Live walk on the public URL after the rebuild (S32, 1 Nov 2026):** 217 states, 0 axe violations, 0 sideways scroll, 1 error: a two-part Scout question's NSF half was withheld after the citation check failed twice, which is the designed fallback, not a crash (`docs/sessions/S32.md`). Rehearsal on the demo 45 of 45; demo questions 5 to 6 s each.
+- **Live walk on the public URL after the rebuild (S32, 1 Nov 2026):** on the final build 219 states, 0 errors, 0 sideways scroll, 2 axe target-size hits from one card title scrolled under the sticky tab bar on the phone (`docs/sessions/S32.md`); an earlier live walk had one error, a two-part Scout question's NSF half withheld by the citation check, the designed fallback. Rehearsal on the demo 45 of 45; demo questions 5 to 6 s each.
 
 ## Limits
 
