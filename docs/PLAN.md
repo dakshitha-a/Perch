@@ -401,15 +401,15 @@ Goal: carry out the S29 items marked fix, workflow first and UI second, by two f
 
 Done when: every item marked fix is done or written down with a reason, the before and after numbers are in the tracker, and the walk is clean.
 
-## S31 — QA cycles (tester, then fixer, up to ten rounds)
+## S31 — QA cycles (tester, then fixer, five rounds)
 
-Goal: find and fix what the reviews and fixes missed, until a round finds nothing worth fixing.
+Goal: find and fix what the reviews and fixes missed, in five rounds (Dakshitha, 2026-11-01).
 
 1. Each round, a fresh QA tester (Opus for the first rounds, Sonnet once a round returns only could-fix items) tests the dev server end to end as each audience, on phone and laptop, with the public URL for one confirmation pass. It writes `docs/design/qa/CYCLE_<k>.md`: each finding with steps to reproduce, what happened, what was expected, a screenshot and a severity (must-fix, should-fix, could-fix). It also runs `make test` and the full walk with axe.
 2. The fixer from S30 is continued (same context) to fix the round's must-fix and should-fix items, each with a failing check first and a commit per item; could-fix items are fixed when cheap, otherwise recorded.
-3. **Stop rule:** stop when a round returns zero must-fix and zero should-fix items, or when two rounds in a row return only could-fix items, whichever comes first; never more than ten rounds. The rounds and their counts go in the session file.
+3. **Five rounds**, whatever a round finds; a round that finds nothing is recorded as such. The rounds and their counts go in the session file.
 
-Done when: the stop rule is met, `make test` is green and the full walk is clean.
+Done when: five rounds are done, `make test` is green and the full walk is clean.
 
 ## S32 — Stabilize for the freeze
 
@@ -481,3 +481,4 @@ Done when: tag pushed; tracker complete.
 | 2026-10-31 | S28 | Task 1 note updated: the web side of the gate was removed in S27 (switch, Approve and Skip, waiting card); the server side remains. Tasks 2 to 7 are not built, so S28 stays | Dakshitha asked whether the Scout redesign was already done | Dakshitha |
 | 2026-10-31 | cut order | "Scout's approve mode (S10)" in the never-cut list becomes "Scout with its allowlist and budgets (S10)" | S28 removed the approve mode by Dakshitha's direction (SCOUT_SPEC section 4) | Dakshitha |
 | 2026-10-31 | S29 to S33 | S29 becomes both reviews at once (workflow and UI/UX, two fresh-context reviewers in parallel, Perch-dev triages); S30 both fix passes, workflow then UI; S31 QA cycles, tester then fixer, up to ten rounds with a stop rule; S32 stabilize for the freeze (`make package`, Demo Day caps, demo rebuild, walk, canary, bench, media refilm); S33 is the tag and the GPU hand-back. The UX report is `docs/design/UX_REVIEW_S29.md`. The sessions run in one orchestrating context with subagents | Dakshitha delegated every product and design decision to Perch-dev on 2026-10-31, asked for the two diagnoses in parallel, fixes in sequence, then up to ten QA and fix cycles, with no questions back | Dakshitha |
+| 2026-11-01 | S31 | Five QA rounds in all, in place of the stop rule and the ten-round cap | Dakshitha: "bring the total no of rounds to 5" | Dakshitha |
