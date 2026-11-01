@@ -819,3 +819,33 @@ def test_a_parent_announcement_expires_and_is_not_a_deadline(service):
     assert closes(parent, AS_OF) == "Expires 7 May 2028" and no_deadline(parent, AS_OF)
     assert closes(std, AS_OF) == "Standard dates apply" and no_deadline(std, AS_OF)
     assert closes(plain, AS_OF) == "1 Feb 2027" and not no_deadline(plain, AS_OF)
+
+
+def test_code_written_rule_lines_back_an_answers_numbers_and_a_withheld_note_is_no_answer(
+        service):
+    """T10: "Which ones am I not eligible for, and why?" now searched and explained, but
+    the answer was withheld: "Open to year 4; your CV says 3" are numbers from rule code,
+    not the record. Lines code wrote about a record back an answer that cites it. And the
+    history's "(answer withheld)" was copied as the next answer: an answer that is only
+    such a note fails the check."""
+    from datetime import UTC, datetime
+
+    from perch.schemas import Opportunity
+    from perch.scout.loop import WITHHELD_NOTE
+
+    t = datetime(2026, 10, 29, tzinfo=UTC)
+    o = Opportunity(id="grants_gov:SYN-F", source="grants_gov", source_url="u", fetched_at=t,
+                    opportunity_number="SYN-F", title="SYNTHETIC fellowship", agency="NSF")
+    c = ctx(service)
+    c.see(o)
+    text = f"It is open to undergraduate year 4, and your CV says 3 [{o.id}]."
+    fake = FakeProvider([text, text])
+    assert Scout(fake, c).start("Why?").flagged
+    c.facts[o.id] = ["Open to undergraduate year 4; your CV says 3"]
+    fake = FakeProvider([text])
+    s = Scout(fake, c).start("Why?")
+    assert s.answer == text and not s.flagged
+    assert "SYNTHETIC fellowship" == c.seen[o.id].title  # the stored record is unchanged
+    fake = FakeProvider([f"(answer withheld) [{o.id}]", "(answer withheld)"])
+    s = Scout(fake, c).start("Why?")
+    assert s.flagged and s.messages[-1].content == WITHHELD_NOTE

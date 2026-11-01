@@ -65,6 +65,9 @@ class ScoutContext:
     profile: Profile | None = None
     route_b: list[Lead] | None = None  # this session's Route B leads, once found
     seen: dict[str, Record] = field(default_factory=dict)
+    # Lines code wrote about a record, such as a student's rule lines ("Open to year 4;
+    # your CV says 3"): an answer citing the record may repeat their numbers (T10).
+    facts: dict[str, list[str]] = field(default_factory=dict)
 
     def see(self, r: Record) -> str:
         sid = short_id(r)

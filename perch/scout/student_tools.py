@@ -223,9 +223,15 @@ def mixed_lists(text: str, seen: dict[str, Record]) -> list[str]:
 SAMPLE_HEADING = re.compile(r"^\W*sample scholarships", re.I | re.M)
 
 
+def _facts(ctx: ScoutContext, row: dict, x: Lead) -> dict:
+    """The option's rule lines and gaps, written by code, may back an answer's numbers."""
+    ctx.facts[row["id"]] = [*x.verdict_lines, *x.gaps]
+    return row
+
+
 def check_option(ctx: ScoutContext, option_id: str) -> dict:
     x = _find(ctx, option_id)
-    return {**_row(ctx, x), "rule_lines": x.verdict_lines, "still_needed": x.gaps,
+    return {**_facts(ctx, _row(ctx, x), x), "rule_lines": x.verdict_lines, "still_needed": x.gaps,
             "note": "Checked by rule code against the fields read from the CV; no model "
             "made this check."}
 
@@ -245,7 +251,7 @@ def explain_verdict(ctx: ScoutContext, option_id: str) -> dict:
             "listing_notes": e.notes if e else None}.items() if v not in (None, "")}
     elif isinstance(rec, Opportunity) and rec.eligibility_notes:
         asks = {"eligibility_notes": rec.eligibility_notes[:800]}
-    return {**_row(ctx, x), "why": x.verdict_lines, "still_needed": x.gaps,
+    return {**_facts(ctx, _row(ctx, x), x), "why": x.verdict_lines, "still_needed": x.gaps,
             "what_the_record_asks": asks,
             "note": "The verdict comes from rule code; the asks are copied from the record."}
 
@@ -265,7 +271,7 @@ def compare_options(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
     chosen = [_find(ctx, i) for i in ids] if ids else [x for x in leads if x.status == "kept"]
     if not chosen:
         raise ToolError("nothing kept: pass option ids from search_options")
-    rows = [{**_row(ctx, x), "still_needed": x.gaps} for x in chosen]
+    rows = [{**_facts(ctx, _row(ctx, x), x), "still_needed": x.gaps} for x in chosen]
     return {**apart(rows, "rows"), "count": len(rows),
             "note": "These are the options compared, not the brief's best ones: for top or "
             "best, use search_options, which lists the brief's own order by Match. Each cell "

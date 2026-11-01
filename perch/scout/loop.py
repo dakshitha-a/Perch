@@ -456,6 +456,20 @@ class Scout:
         s.messages.append(Message("user", nudge))
         return True
 
+    def _with_facts(self, ids: list[str]) -> dict:
+        """The checked records, with the lines code wrote about a cited one (T10) added to
+        a copy of it, so their numbers back the answer."""
+        recs = dict(self.ctx.seen)
+        for i in ids:
+            r, lines = recs.get(i), self.ctx.facts.get(i)
+            if r is None or not lines:
+                continue
+            f = next((f for f in ("description", "purpose", "abstract", "title", "name")
+                      if f in type(r).model_fields), None)
+            if f:
+                recs[i] = r.model_copy(update={f: f"{getattr(r, f) or ''} {' '.join(lines)}"})
+        return recs
+
     def _named(self, question: str) -> str | None:
         """The id of the one record the question names by its short name, such as "MPS
         Chem" for "MPS Chemistry Research Programs (MPS Chem)", among those seen."""
@@ -578,7 +592,10 @@ class Scout:
 
     def _validate(self, s: Session, text: str) -> list[str]:
         ids = cited(text)
-        errs = check(scrub(text, s.user_numbers), ids, self.ctx.seen).errors
+        errs = check(scrub(text, s.user_numbers), ids, self._with_facts(ids)).errors
+        if WITHHELD_RE.match(text):  # the history's note, copied as an answer (T10)
+            errs.append("the answer is only a note that an answer was withheld: answer the "
+                        "question from the tool results")
         if not text.strip():
             errs.append("empty answer")
         question = s.exchanges[-1]["question"] if s.exchanges else ""
@@ -602,7 +619,7 @@ class Scout:
             if self.policy == "structured":
                 text = structured_answer(text)
             errs = self._validate(s, text)
-        s.messages.append(Message("assistant", text if not errs else "(answer withheld)"))
+        s.messages.append(Message("assistant", text if not errs else WITHHELD_NOTE))
         if errs:
             s.answer, s.flagged, s.errors, s.cited_ids = None, True, errs, []
         else:
@@ -649,6 +666,12 @@ def stray_text(text: str, question: str, records: str) -> list[str]:
     return errs
 
 
+# T10: the history's stand-in for a withheld answer. It was "(answer withheld)", which the
+# model copied as its next answer; it is now a note, and an answer that is only such a
+# note fails the check.
+WITHHELD_NOTE = ("[Perch: this answer failed the citation check and was not shown. Answer "
+                 "the next question afresh from tool results.]")
+WITHHELD_RE = re.compile(r"^\W*(?:\(?answer withheld\)?|\[?Perch: this answer failed)", re.I)
 # T6: "the largest ceiling ... $15,000,000" where $15,000,000 is the record's award floor.
 CEILING_RE = re.compile(r"\bceilings?\b", re.I)
 FLOOR_BEFORE = re.compile(r"\b(?:floors?|minimum|at least)\b[^.$]{0,20}$", re.I)
