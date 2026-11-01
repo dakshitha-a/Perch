@@ -11,6 +11,9 @@ Environment=OLLAMA_MODELS=/usr/share/ollama/.ollama/models
 Environment=OLLAMA_NOPRUNE=1
 Environment=OLLAMA_CONTEXT_LENGTH=8192
 Environment=OLLAMA_KEEP_ALIVE=-1
+# Two parallel slots (S30 P1 measurement on GPU 4: explanations 32.3 s with 1, 27.0 s with 2;
+# peak VRAM 19.9 GB with 2, about 27.3 GB on this card with Clef-flash). Applied at the S32 rebuild.
+Environment=OLLAMA_NUM_PARALLEL=2
 ExecStart=/usr/local/bin/ollama serve
 Restart=on-failure
 RestartSec=10
