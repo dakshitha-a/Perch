@@ -130,3 +130,13 @@ def test_student_exports_keep_the_rule_and_drop_the_cv_value():
     assert m.unmask("[CV-VALUE-1]") == "3.40"
     assert egress.release_cv_line("Your CV does not say your level of study.") == \
         "Your CV does not say your level of study."
+
+
+def test_student_record_links_name_their_source_not_the_url():
+    """R19: student record links read "[Record: https://...](https://...)"."""
+    brief, leads, recs = _student_inputs()
+    for r in list(recs.values())[:3]:
+        r.source = "temple_sdfa"
+    md = ex.to_markdown(ex.student_blocks(brief, leads, recs))
+    assert "[Record: Temple Scholar Development and Fellowships Advising list](https://" in md
+    assert "[Record: https://" not in md

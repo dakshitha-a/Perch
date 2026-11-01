@@ -19,7 +19,7 @@ from perch import datefmt, egress
 from perch.compare import COLUMNS, Row, award_size
 from perch.offices import for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
-from perch.sources import grants_gov
+from perch.sources import grants_gov, temple
 
 
 @dataclass
@@ -208,6 +208,17 @@ def _withheld(brief: Brief | None, leads: list[Lead]) -> int:
                   if x.status != "dismissed" and x.route != "B"))
 
 
+def _source_name(rec: object) -> str:
+    """A record link's text, as the researcher export names it (R19): never the bare URL."""
+    if isinstance(rec, Opportunity):
+        return f"Grants.gov {rec.opportunity_number}"
+    if getattr(rec, "source", None) == temple.SOURCE:
+        return "Temple Scholar Development and Fellowships Advising list"
+    from urllib.parse import urlparse
+
+    return urlparse(getattr(rec, "source_url", "") or "").hostname or "the listing"
+
+
 def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
                    masker: egress.Masker | None = None, documents: bool = True) -> list[Block]:
     """A student brief (S18). Verdicts and gaps are code-written; the sample section
@@ -259,7 +270,7 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
                                                                masker, documents)))
             url = getattr(rec, "source_url", None)
             if url and not x.sample:
-                out.append(Block("link", f"Record: {url}", href=url))
+                out.append(Block("link", f"Record: {_source_name(rec)}", href=url))
             elif x.sample:
                 out.append(Block("p", f"Record: {x.record_id} (SYNTHETIC sample, no web page)"))
     out.append(Block("h2", "About this export"))
