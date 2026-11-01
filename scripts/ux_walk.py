@@ -919,6 +919,10 @@ async def workflow_private(w: Walk, page: Page, base: str, tag: str) -> None:
 YEAR_NOW = 2026
 
 
+SECURITY = ("Companies outside the United States may need a research-security review before any "
+            "contact; the office makes that check.")  # Q13's fixed line
+
+
 def far_years(text: str) -> list[str]:
     """Years more than ten years out: a placeholder close date shown as if real (U3)."""
     return [y for y in re.findall(r"\b(2\d{3})\b", text) if int(y) > YEAR_NOW + 10]
@@ -990,17 +994,37 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
       return { label: l ? l.innerText.trim() : null, before: Boolean(l && sw && (l.compareDocumentPosition(sw) & Node.DOCUMENT_POSITION_FOLLOWING)) }; }""")
     if lab["label"] != "Sort" or not lab["before"]:  # U36
         w.errors.append(f"{tag}: U36: the sort switch has no visible Sort label {lab}")
-    # U24: good and strong matches first, the weak ones folded under a count
-    weak = await page.evaluate("""() => { const ol = document.querySelector('#panel > .leads, #panel .leads');
+    # U24 as Q6 decided: the first five cards always show open, whatever their band; the
+    # fold holds only weak cards after the fifth, with its count
+    weak = await page.evaluate("""() => {
       const top = [...document.querySelectorAll('#panel .leads > li')].filter(li => !li.closest('details'));
+      const inFold = [...document.querySelectorAll('#panel details.weak-fold .leads > li')];
       const fold = document.querySelector('#panel details.weak-fold > summary');
-      return { open: top.filter(li => li.querySelector('.fit.weak')).length,
-               strong: top.filter(li => li.querySelector('.fit.good, .fit.strong')).length,
+      return { open: top.length, weakAfter: top.slice(5).filter(li => li.querySelector('.fit.weak')).length,
+               foldNotWeak: inFold.filter(li => !li.querySelector('.fit.weak')).length, inFold: inFold.length,
                fold: fold ? fold.innerText : null }; }""")
-    if weak["open"] and weak["strong"]:
-        w.errors.append(f"{tag}: U24: {weak['open']} weak matches sit in the list beside {weak['strong']} good or strong ones")
+    if weak["open"] < min(5, weak["open"] + weak["inFold"]):
+        w.errors.append(f"{tag}: Q6: only {weak['open']} cards show open before the Weaker matches fold")
+    if weak["weakAfter"] or weak["foldNotWeak"]:
+        w.errors.append(f"{tag}: Q6: weak cards after the fifth sit open, or the fold holds a stronger card {weak}")
     elif weak["fold"] is not None and not re.search(r"\d", weak["fold"]):
         w.errors.append(f"{tag}: U24: the weak-match fold does not state its count ({weak['fold']!r})")
+    # Q3: a placeholder close date never shows on a card; the record's words do
+    cards = await page.evaluate("() => [...document.querySelectorAll('#panel .leads > li .fact.close')].map(x => x.innerText)")
+    if far := [c for c in cards if far_years(c)]:
+        w.errors.append(f"{tag}: Q3: a card shows a placeholder close date as real ({far[0]!r})")
+    # Q27: Home and End move along the tabs (WAI-ARIA tabs)
+    await page.focus("#tab-routes")
+    await page.keyboard.press("End")
+    await page.wait_for_timeout(300)
+    last = await page.evaluate("() => document.activeElement && document.activeElement.id")
+    await page.keyboard.press("Home")
+    await page.wait_for_timeout(300)
+    first = await page.evaluate("() => [document.activeElement && document.activeElement.id, location.hash]")
+    tabs = await page.evaluate("() => [...document.querySelectorAll('[role=tab]')].map(t => t.id)")
+    if last != tabs[-1] or first[0] != tabs[0] or not first[1].endswith("/routes"):
+        w.errors.append(f"{tag}: Q27: End went to {last!r} and Home to {first[0]!r}; the tabs are {tabs}")
+    await page.wait_for_timeout(300)
     # U25: filter chips from the leads' own agency and activity-code values
     chips = await page.evaluate("""() => [...document.querySelectorAll('#panel .filter-chips button')].map(b => b.innerText.trim())""")
     if not chips:
@@ -1074,6 +1098,8 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
       return m && /more in the export/.test(m.innerText) ? [n, m.innerText] : null; }).filter(x => x && x[0] <= 25)""")
     if gone:  # U38
         w.errors.append(f"{tag}: U38: {gone[0][1]!r} on a signal with only {gone[0][0]} records")
+    if SECURITY not in await page.locator("#panel").inner_text():  # Q13
+        w.errors.append(f"{tag}: Q13: the Industry tab does not carry the research-security line")
     await w.snap(page, tag, "u-industry", full=not phone)
     if phone:  # U16: the kept pill stays off the Industry warning
         await page.click("[data-key=route-A]")
@@ -1211,7 +1237,7 @@ async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
     await wait_built(page)
     await page.click("#tab-scout")
     await page.wait_for_selector("#scout-q")
-    await scout_ask(page, "Compare my top three leads and explain why the first one fits")
+    await scout_ask(page, "When is the next NSF deadline, and why does the top lead fit?")
     got = await page.evaluate(SCOUT_FACTS)
     if got["answer"] and not got["tagged"]:
         w.errors.append(f"{tag}: U7: Scout's answer carries no Model text tag")
@@ -1225,12 +1251,21 @@ async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
         w.errors.append(f"{tag}: U8: Scout's answer shows an amount as {got['money']}")
     if not got["answer"]:
         w.errors.append(f"{tag}: scout: no answer to check ({got['results']})")
+    if re.search(r"\b20\d\d-\d\d-\d\d\b", got["text"]):  # Q22: dates as on the cards
+        w.errors.append(f"{tag}: Q22: Scout's answer writes an ISO date: {got['text'][:120]!r}")
     meta = await page.evaluate("""() => ({ line: (document.querySelector('.scout-meta') || {}).innerText || '',
       steps: [...document.querySelectorAll('.scout-steps')].map(d => d.textContent).join(' ') })""")
     if re.search(r"tokens|Model \w+:", meta["line"]) or not re.search(r"Local model|Cloud", meta["line"]):  # U32
         w.errors.append(f"{tag}: U32: the line under the chat reads {meta['line']!r}, not just where the model runs")
     if "tokens" not in meta["steps"]:
         w.errors.append(f"{tag}: U32: the Steps disclosure does not hold the model and token count")
+    # after U32: a follow-up answered from earlier results has no Steps list of its own
+    await scout_ask(page, "Why does the top lead fit?")
+    papers = await page.evaluate(r"""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
+      const all = [...x.querySelectorAll('.scout-answer .cite')].map(c => [c.innerText.trim(), c.getAttribute('aria-label') || '']);
+      return { all: all.length, raw: all.filter(([t, l]) => /^W\d{5,}$/.test(t) || /W\d{5,}/.test(l)) }; }""")
+    if papers["raw"]:  # Q8: papers named by title and year, not by OpenAlex work id
+        w.errors.append(f"{tag}: Q8: Scout cites papers by raw work id {papers['raw'][:2]}")
     await w.snap(page, tag, "u-scout", full=True)
     await end_session(page)
 
@@ -1262,6 +1297,15 @@ async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.wait_for_selector("#progress", timeout=20000)
     await wait_built(page)
     await page.wait_for_timeout(800)
+    chip = await page.evaluate("() => [document.querySelector('#status-chip').innerText.trim(), document.querySelector('#status-chip').getAttribute('aria-label')]")
+    if not chip[0].startswith("Local only") or "only" not in (chip[1] or ""):  # Q7, as U37 on the documents page
+        w.errors.append(f"{tag}: Q7: with the CV held the chip reads {chip[0]!r}")
+    # Q17: below the good band the model's sentence is labelled as how it relates, not why it fits
+    why = await page.evaluate("""() => [...document.querySelectorAll('#panel .leads > li')].filter(li => {
+        const m = li.querySelector('.fit'); const n = m ? parseInt((m.innerText.match(/\\d+/) || [100])[0], 10) : 100;
+        return n < 60 && /Why it may fit/.test((li.querySelector('.fit-reason') || {}).innerText || ''); }).length""")
+    if why:
+        w.errors.append(f"{tag}: Q17: {why} options below the good band say Why it may fit")
     # U20: no rule line or empty-facts line repeated on most cards
     rep = await page.evaluate("""() => { const cards = [...document.querySelectorAll('#panel .leads > li')].filter(li => !li.closest('details'));
       const seen = {}; for (const c of cards) for (const p of new Set([...c.querySelectorAll('.reason, .no-size')].map(x => x.innerText.trim()).filter(t => t.length > 30)))
@@ -1453,6 +1497,25 @@ async def ux_landing(w: Walk, page: Page, base: str, tag: str) -> None:
     if lines != 1:
         w.errors.append(f"{tag}: U30: the example ORCID iD is drawn on {lines} lines")
     await w.snap(page, tag, "u-no-match")
+    if not phone:
+        await page.goto(base + "/#/")  # Q18: a placeholder ORCID iD fails its checksum
+        await page.wait_for_selector(".landing")
+        await page.fill("#q", "0000-0000-0000-0000")
+        await page.click(".searchbox button[type=submit]")
+        await page.wait_for_selector("#pick-title", timeout=20000)
+        await page.wait_for_timeout(500)
+        got = await page.evaluate("() => [document.querySelector('#pick-title').innerText, (document.querySelector('.notice.error') || {}).innerText || '', document.querySelectorAll('[data-key=build]').length]")
+        if got[2] or "not a valid ORCID" not in got[1]:
+            w.errors.append(f"{tag}: Q18: the all-zero ORCID iD gives {got[0]!r} {got[1]!r} and {got[2]} Build buttons")
+        await page.goto(base + "/#/")  # Q19: a lower-case OpenAlex id finds the same person
+        await page.wait_for_selector(".landing")
+        await page.fill("#q", AUTHOR.lower())
+        await page.click(".searchbox button[type=submit]")
+        await page.wait_for_selector("#pick-title", timeout=20000)
+        await page.wait_for_timeout(500)
+        title = await page.locator("#pick-title").inner_text()
+        if not title.startswith("Ready to build"):
+            w.errors.append(f"{tag}: Q19: {AUTHOR.lower()!r} gives {title!r}")
     await page.goto(base + "/#/")  # U40: the owl keeps no "say hello" invitation
     await page.wait_for_selector(".landing")
     owls = await page.evaluate("() => [...document.querySelectorAll('button.owl, .owl[role=button], [aria-label*=Scout]')].map(o => o.getAttribute('aria-label'))")
@@ -1519,13 +1582,89 @@ async def ux_docs(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.wait_for_selector("#doc-proposal", timeout=10000)
     if (await chip()).startswith("Local only"):
         w.errors.append(f"{tag}: U37: the chip still says Local only after the document was removed")
+    text = await page.locator(".private").inner_text()
+    if "closing this tab" in text or "30 minutes without use" not in text:  # Q16
+        w.errors.append(f"{tag}: Q16: Your documents does not say the session ends after 30 minutes without use")
+    # Q25 and Q26: a documents-only brief's hand-off
+    for kind, name in (("cv", "cv.md"), ("proposal", "specific_aims_draft.md")):
+        await page.fill(f"#doc-{kind}", (SYN / "persona-1" / name).read_text())
+        await page.locator(f"#doc-{kind} ~ .doc-actions button:has-text('Add text')").click()
+        await page.wait_for_function(f"() => !document.querySelector('#doc-{kind}')", timeout=20000)
+    await page.click(".private button:has-text('Build brief')")
+    await page.wait_for_selector("#progress", timeout=20000)
+    await wait_built(page)
+    await page.evaluate(OPEN_WEAK)
+    for _i in (0, 1):
+        await page.locator(".leads > li .btn.keep:not(.on)").first.click()
+        await page.wait_for_timeout(300)
+    await page.click("#tab-compare")
+    await page.wait_for_selector("[data-key=handoff-make]", timeout=30000)
+    await page.locator("[data-key=handoff-make]").click()
+    await page.wait_for_selector("#handoff-body", timeout=90000)
+    body = await page.locator("#handoff-body").input_value()
+    if "(private)" in body.splitlines()[-1] or not body.rstrip().endswith("Best regards,"):
+        w.errors.append(f"{tag}: Q26: the email signs off as {body.splitlines()[-1]!r}")
+    await page.locator(".handoff input[type=checkbox]").check()
+    try:
+        await page.wait_for_function("""() => { const n = document.querySelector('.draft .notice, .draft .model-note');
+          return !document.querySelector('.handoff [role=status]') && n && !/Choose masking/.test(n.innerText); }""", timeout=90000)
+    except Exception:  # noqa: BLE001 - reported as a finding
+        note = await page.evaluate("() => (document.querySelector('.draft .notice, .draft .model-note') || {}).innerText || ''")
+        w.errors.append(f"{tag}: Q25: after Mask private text the draft still reads {note[:90]!r}")
+    await w.snap(page, tag, "q-handoff-masked", full=True)
+    await end_session(page)
+
+
+async def ux_zoom(w: Walk, page: Page, base: str, tag: str) -> None:
+    """Q9: laptop at 400% (320 x 215 CSS px): the focused question box is not hidden under
+    the header, and the kept pill does not cover the tabs."""
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector(".cand", timeout=20000)
+    await pick_and_build(page)
+    await page.wait_for_selector("#tab-routes", timeout=60000)
+    await wait_built(page)
+    await page.evaluate(OPEN_WEAK)
+    for i in (0, 1):
+        await page.locator(".leads > li .btn.keep").nth(i).click()
+        await page.wait_for_timeout(250)
+    await page.set_viewport_size({"width": 320, "height": 215})
+    await page.wait_for_timeout(400)
+    for y in (0, 400, 1200):
+        await page.evaluate(f"() => window.scrollTo(0, {y})")
+        await page.wait_for_timeout(300)
+        hit = await page.evaluate("""() => { const p = document.querySelector('.keep-float'), t = document.querySelector('.tabs-wrap');
+          if (!p || !t || getComputedStyle(p).visibility === 'hidden' || getComputedStyle(p).display === 'none') return false;
+          const a = p.getBoundingClientRect(), b = t.getBoundingClientRect();
+          return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top; }""")
+        if hit:
+            w.errors.append(f"{tag}: Q9: at 400% the kept pill covers the tabs (scrolled to {y} px)")
+            break
+    await w.snap(page, tag, "q-zoom-routes")
+    await page.click("#tab-scout")
+    await page.wait_for_selector("#scout-q")
+    await page.focus("#scout-q")
+    await page.wait_for_timeout(400)
+    got = await page.evaluate("""() => { const q = document.querySelector('#scout-q').getBoundingClientRect();
+      let cover = 0; for (const el of document.querySelectorAll('.bar, .tabs-wrap')) {
+        const s = getComputedStyle(el); if (s.position !== 'sticky' && s.position !== 'fixed') continue;
+        const r = el.getBoundingClientRect(); if (r.bottom > cover) cover = r.bottom; }
+      return { top: q.top, bottom: q.bottom, cover, vh: innerHeight }; }""")
+    if got["top"] < got["cover"] or got["bottom"] > got["vh"] or got["top"] < 0:
+        w.errors.append(f"{tag}: Q9: at 400% the focused question box sits at {got['top']:.0f} to {got['bottom']:.0f} px "
+                        f"under a header that ends at {got['cover']:.0f} px of {got['vh']} px")
+    await w.snap(page, tag, "q-zoom-scout")
+    await page.set_viewport_size(LAPTOP)
     await end_session(page)
 
 
 UX_FLOWS = (("ux-laptop", "LAPTOP", "ux_pi"), ("ux-phone", "PHONE", "ux_pi"), ("ux-scout", "LAPTOP", "ux_scout"),
             ("ux-student", "LAPTOP", "ux_student"), ("ux-student-phone", "PHONE", "ux_student"),
             ("ux-sample", "LAPTOP", "ux_sample"), ("ux-queued", "LAPTOP", "ux_queued"), ("ux-docs", "LAPTOP", "ux_docs"),
-            ("ux-landing", "LAPTOP", "ux_landing"), ("ux-landing-phone", "PHONE", "ux_landing"))
+            ("ux-landing", "LAPTOP", "ux_landing"), ("ux-landing-phone", "PHONE", "ux_landing"),
+            ("ux-zoom", "LAPTOP", "ux_zoom"))
 
 
 async def main(base: str, axe: str | None, out: Path, only: list[str], ux: list[str] | None = None) -> None:
