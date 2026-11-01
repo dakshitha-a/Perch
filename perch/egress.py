@@ -25,6 +25,8 @@ WARNING = ("Masking hides names, contact details and identifiers, and phrases th
            "only in your private documents. It cannot hide your research direction: a "
            "reader can still tell what the work is about.")
 PHRASE_WORDS = 4  # a private phrase is at least this many words in a row
+STUB = 3  # words left between a masked phrase and its clause's end that join it (T11)
+BOUNDARY = re.compile(r"[.,;:!?()\[\]\n]")
 
 # Typed identifiers found by pattern. Names and institutions have no reliable pattern;
 # the caller passes them as terms (S13: from the CV parse).
@@ -71,8 +73,10 @@ class Masker:
             w = _words(t)
             public |= {tuple(w[i:i + PHRASE_WORDS]) for i in range(len(w) - PHRASE_WORDS + 1)}
         self._private_grams = set()
+        self._private_words: set[str] = set()
         for t in private_texts:
             w = _words(t)
+            self._private_words |= set(w)
             self._private_grams |= {g for i in range(len(w) - PHRASE_WORDS + 1)
                                     if (g := tuple(w[i:i + PHRASE_WORDS])) not in public}
 
@@ -96,6 +100,23 @@ class Masker:
             if tuple(low[i:i + PHRASE_WORDS]) in self._private_grams:
                 for j in range(i, i + PHRASE_WORDS):
                     hit[j] = True
+        # T11: a model retelling a document drops a word ("along a creek" for "along a
+        # SYNTHETIC creek"), so the last private n-gram can end before the phrase does and
+        # leave its tail ("[PRIVATE-PHRASE-3] creek."). Up to STUB words between a masked
+        # run and the end of its clause, each a word of the documents, join the run.
+        for j in range(len(toks)):
+            if not hit[j] or (j + 1 < len(toks) and hit[j + 1]):
+                continue
+            k = j + 1
+            while k < len(toks) and k - j <= STUB and not BOUNDARY.search(
+                    text[toks[k - 1].end():toks[k].start()]):
+                k += 1
+            tail = range(j + 1, k)
+            end = toks[k - 1].end() if k > j + 1 else toks[j].end()
+            closed = k == len(toks) or BOUNDARY.search(text[end:toks[k].start()])
+            if tail and closed and all(low[t] in self._private_words for t in tail):
+                for t in tail:
+                    hit[t] = True
         out, pos, i = [], 0, 0
         while i < len(toks):
             if not hit[i]:

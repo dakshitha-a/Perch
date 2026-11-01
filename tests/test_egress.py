@@ -62,3 +62,22 @@ def test_handoff_paragraph_citing_a_private_record_falls_back(tmp_path):
     # Until S13 adds session records, the validator rejects a private citation; the
     # egress check in draft_handoff is the second line. Either way the canary stays in.
     assert CANARY not in d2.body and FALLBACK in d2.body and d2.flagged
+
+
+def test_a_masked_phrase_takes_the_rest_of_its_clause():
+    """T11: the student export read "one of your achievements [PRIVATE-PHRASE-3] creek."
+    The model retold "outfalls along a SYNTHETIC creek" as "outfalls along a creek", so the
+    last private n-gram ended at "a". Words of the documents left between a masked run and
+    the clause's end join it; a public word after the clause does not."""
+    from perch.egress import Masker
+
+    ach = ("SYNTHETIC achievement. Built a QGIS map of storm drain outfalls along a SYNTHETIC "
+           "creek that a local volunteer group now uses (invented).")
+    m = Masker([ach], ["A public listing on stream ecology and research."])
+    text = ("Cited work: one of your achievements built a QGIS map of storm drain outfalls "
+            "along a creek [achievement-c]. It fits stream ecology research.")
+    out = m.mask(text)
+    assert "creek" not in out and "outfalls" not in out
+    assert out.startswith("Cited work: one of your achievements [PRIVATE-PHRASE-1] [achievement-c]")
+    assert "It fits stream ecology research." in out
+    assert m.unmask(out) == text
