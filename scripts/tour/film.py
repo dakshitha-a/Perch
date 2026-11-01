@@ -10,9 +10,10 @@ as the replay preview does. Paper titles and records are public and shown as the
 Private mode is filmed with the SYNTHETIC persona-1 files.
 
   uv run --with playwright --with pillow python scripts/tour/film.py \\
-      [--base http://127.0.0.1:8090] [--scenes hero industry handoff scout private]
+      [--base http://127.0.0.1:8090] [--scenes hero industry handoff scout private student]
 
-The demo must be up (`make demo`), with private mode on for the private scene.
+The demo (`make demo`) or a dev server on the same settings must be up, with private mode
+on for the private and student scenes.
 """
 
 from __future__ import annotations
