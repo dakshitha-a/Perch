@@ -78,3 +78,32 @@ def test_compare_and_scout_show_the_cards_match():
     assert summarise("explain_fit", {"fit": 85, "match_on_card": 67}) \
         == "explained; the card says Match 67 (good)"
     assert "85" not in summarise("explain_fit", {"fit": 85, "match_on_card": None})
+
+
+def test_record_phrases_read_lower_case_mid_sentence():
+    """R17: "U.S. National Science Foundation; Proposals accepted anytime; award size ...",
+    "Still needed: A transcript; An essay", "an award ceiling of Up to $250,000"."""
+    from datetime import UTC, date, datetime
+    from types import SimpleNamespace as NS
+
+    from perch.compare import lower_first
+    from perch.schemas import Lead, Opportunity
+    from perch.scout.student_tools import write_note
+    from perch.skills.handoff import lead_lines
+
+    assert [lower_first(x) for x in ("Proposals accepted anytime", "Up to $250,000",
+                                     "An essay", "NIH only", "")] == \
+        ["proposals accepted anytime", "up to $250,000", "an essay", "NIH only", ""]
+    t = datetime(2026, 10, 29, tzinfo=UTC)
+    o = Opportunity(id="grants_gov:SYN-1", source="grants_gov", source_url="https://x.org/1",
+                    fetched_at=t, opportunity_number="SYN-1", title="SYNTHETIC programme",
+                    agency="NSF", close_date=date(2076, 10, 7),
+                    close_date_note="Proposals accepted anytime", award_ceiling=250000)
+    lead = Lead(id="b:1", source="grants_gov", source_url="u", fetched_at=t, brief_id="b",
+                route="A", record_id=o.id)
+    line = lead_lines([(lead, o)])[0]
+    assert "; proposals accepted anytime; award size up to $250,000." in line
+    note = write_note("F", [(NS(sample=False, verdict="may be eligible",
+                                gaps=["A transcript", "An essay"]),
+                             {"title": "SYNTHETIC fellowship", "deadline": "1 Dec 2026"})])
+    assert "Still needed: a transcript; an essay" in note["body"]

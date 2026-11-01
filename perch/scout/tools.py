@@ -16,7 +16,7 @@ from typing import Any
 
 from perch import awards as aw
 from perch.brief import route_a
-from perch.compare import award_size
+from perch.compare import award_size, lower_first
 from perch.datefmt import closes as closes_text
 from perch.datefmt import day, placeholder_close
 from perch.datefmt import shown as shown_day
@@ -226,7 +226,8 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                       # As the cards write it (Q22); a far-off placeholder date reads as
                       # the record's own words (U3, Q20).
                       "close_date": closes_text(o, ctx.as_of),
-                      "award_size": award_size(o) or "not in the record",
+                      # read mid-sentence: "a ceiling of up to $250,000" (R17)
+                      "award_size": lower_first(award_size(o) or "not in the record"),
                       "match": match_score(x.rerank_score),
                       "matched_thread": x.candidate.best_thread + 1})
     if sort == "close_date":  # the soonest first; open-anytime and undated ones last (Q14)
@@ -429,6 +430,7 @@ def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
         for key, label in cmp.COLUMNS:
             c = row.cells[key]
             text = shown_day(c.text) if key == "closes" else c.text  # as on the cards (Q22)
+            text = lower_first(text) if key == "money" else text  # read mid-sentence (R17)
             cells[label] = f"{text} ({c.note})" if c.note else text
         out = {"route": row.route, "title": row.title,
                "record": ctx.see(rec) if rec else row.record_id,

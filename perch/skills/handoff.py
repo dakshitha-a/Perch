@@ -15,7 +15,7 @@ import re
 from dataclasses import dataclass, field
 
 from perch import datefmt, egress
-from perch.compare import award_size
+from perch.compare import award_size, lower_first
 from perch.llm import Message
 from perch.llm.audit import AuditedProvider
 from perch.offices import RESEARCH_SECURITY, Office
@@ -114,7 +114,7 @@ def org_view(lead: Lead, org: Organisation | None) -> str:
 def _money(o: Opportunity) -> str:
     """The card's award size (Q2): a floor-only record reads "from $X"."""
     size = award_size(o)
-    return f"award size {size[0].lower()}{size[1:]}" if size else \
+    return f"award size {lower_first(size)}" if size else \
         "award size not stated in the record"
 
 
@@ -125,7 +125,8 @@ def lead_lines(items: list[tuple[Lead, Record | None]]) -> list[str]:
         if isinstance(rec, Opportunity):
             closes = ("close date not stated in the record" if not rec.close_date
                       # the card's rule: a placeholder date reads as the record's words (U3)
-                      else rec.close_date_note or "" if datefmt.placeholder_close(rec)
+                      else lower_first(rec.close_date_note or "")  # mid-sentence (R17)
+                      if datefmt.placeholder_close(rec)
                       else f"closes {datefmt.day(rec.close_date)}")  # as the cards say (U14)
             code = (f" ({rec.activity_code})" if rec.activity_code
                     and rec.activity_code not in rec.title else "")

@@ -182,7 +182,7 @@ def test_compare_and_draft_handoff_use_records_and_send_nothing(service):
     out = TOOLS["compare"][1](c, ids=[OPP])
     row = out["rows"][0]
     assert row["record"] == OPP and row["Closes"].startswith("17 Nov 2026")  # Q22
-    assert row["Money"] == "Not in the record" and row["Office"] == "Research Development"
+    assert row["Money"] == "not in the record" and row["Office"] == "Research Development"  # R17
     d = TOOLS["draft_handoff"][1](c, ids=["PAR-25-268"])
     assert d["office"] == "Research Development" and d["to"] == ""
     assert "PAR-25-268" in d["body"] and "closes 17 Nov 2026" in d["body"]

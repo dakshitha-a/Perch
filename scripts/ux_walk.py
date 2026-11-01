@@ -1355,6 +1355,10 @@ async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
     # U33: a sample's Evidence keeps the canary out of Purpose, in a muted Test marker row
     await page.click("[data-key=route-S]")
     await page.wait_for_timeout(500)
+    caps = await page.evaluate(r"""() => [...document.querySelectorAll('#panel .reason')].map(r => r.innerText)
+      .filter(t => /^Still needed: .*; [A-Z][a-z]/.test(t)).slice(0, 2)""")
+    if caps:  # R17: joined phrases read lower case mid-sentence (sample cards hold the most)
+        w.errors.append(f"{tag}: R17: a Still needed line has capitals mid-sentence: {caps}")
     await page.locator(".leads > li .title-btn").first.click()
     await page.wait_for_selector(".rec-title", timeout=10000)
     await page.wait_for_timeout(500)

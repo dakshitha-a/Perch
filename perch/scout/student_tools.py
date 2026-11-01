@@ -14,6 +14,7 @@ import re
 from collections.abc import Callable
 from datetime import date
 
+from perch.compare import lower_first
 from perch.datefmt import day
 from perch.llm import Tool
 from perch.schemas import Lead, Opportunity, Record, Scholarship
@@ -284,7 +285,8 @@ def write_note(route: str, rows: list[tuple[Lead, dict]]) -> dict:
     sample = any(x.sample for x, _ in rows)
     lines = [f"- {f['title']}{' (SAMPLE record, not real)' if x.sample else ''}: "
              f"{x.verdict}, deadline {f['deadline']}"
-             + (f". Still needed: {'; '.join(x.gaps)}" if x.gaps else "") for x, f in rows]
+             + (f". Still needed: {'; '.join(map(lower_first, x.gaps))}" if x.gaps else "")
+             for x, f in rows]
     demo = (["SAMPLE DATA, A DEMONSTRATION: DO NOT SEND. The scholarships marked SAMPLE are "
              "invented.", ""] if sample else [])
     body = "\n".join([*demo, "Hello,", "", f"I am a student looking at the {kind} below and would "

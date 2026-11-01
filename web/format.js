@@ -188,6 +188,13 @@ export function elapsed(ms) {
   return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")} s`;
 }
 
+// A code-written phrase joined mid-sentence starts lower case, unless it opens with an
+// acronym (R17; perch.compare.lower_first).
+export function lowerFirst(s) {
+  s = String(s || "");
+  return /^[A-Z](?![A-Z])/.test(s) ? s[0].toLowerCase() + s.slice(1) : s;
+}
+
 export function plural(n, one, many = one + "s") {
   return `${n} ${n === 1 ? one : many}`;
 }

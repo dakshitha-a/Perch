@@ -50,6 +50,14 @@ class Row:
     cells: dict[str, Cell]
 
 
+def lower_first(phrase: str) -> str:
+    """A code-written phrase joined mid-sentence starts lower case ("proposals accepted
+    anytime", "up to $250,000", "an essay"), unless it opens with an acronym (R17)."""
+    if phrase[:1].isupper() and not phrase[1:2].isupper():
+        return phrase[0].lower() + phrase[1:]
+    return phrase
+
+
 def award_size(o: Opportunity) -> str | None:
     """The award size as the card shows it (web/format.js awardSize): "$X to $Y",
     "Up to $Y" or "From $X", copied from the record's floor and ceiling; None when the
