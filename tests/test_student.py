@@ -365,3 +365,21 @@ def test_a_word_search_matches_any_word_and_says_which(monkeypatch):
     assert st.search_words("my stream monitoring work") == ["stream", "monitoring"]
     assert summarise("search_options", got) == "1 option match any of: stream, monitoring"
 
+
+
+def test_every_targeted_criterion_reads_as_a_sentence():
+    """R11: "For a student who first-generation college student." The line reads "For a
+    student who ..." only before a verb, over every sample record's criterion."""
+    from perch.student import VERBS, for_whom
+
+    assert for_whom("first-generation college student") == \
+        "For a first-generation college student."
+    assert for_whom("is a parent or guardian of a dependent child") == \
+        "For a student who is a parent or guardian of a dependent child."
+    crits = {(json.loads(x).get("eligibility") or {}).get("targeted_criterion")
+             for x in (SYN / "scholarships.jsonl").read_text().splitlines() if x.strip()}
+    for c in filter(None, crits):
+        line = for_whom(c)
+        assert line.endswith(".") and not line.endswith("..")
+        assert ("who" in line.split(c)[0]) == (c.split()[0].lower() in VERBS), line
+

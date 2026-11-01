@@ -147,6 +147,25 @@ def _major_ok(major: str, wanted: list[str]) -> bool:
     return any(w.lower() in m or m in w.lower() for w in wanted)
 
 
+# A criterion that opens with one of these reads after "a student who" (R11).
+VERBS = {"is", "has", "was", "are", "have", "identifies", "grew", "lives", "lived", "works",
+         "worked", "holds", "plans", "comes", "came", "speaks", "attends", "attended",
+         "served", "serves", "belongs", "volunteers"}
+
+
+def for_whom(criterion: str) -> str:
+    """The record's targeted criterion as one sentence (R11): "is the first in their
+    family..." reads "For a student who is the first...", and a noun phrase such as
+    "first-generation college student" reads "For a first-generation college student."."""
+    c = criterion.strip().rstrip(".")
+    first = c.split(" ", 1)[0].lower()
+    if first in VERBS:
+        return f"For a student who {c}."
+    if first in ("a", "an", "the", "any", "students", "applicants", "those", "people"):
+        return f"For {c}."
+    return f"For {'an' if first[:1] in 'aeiou' else 'a'} {c}."
+
+
 def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
     """Eligibility by rule for one record. Every value in a line is copied from the
     record or the parsed CV."""
@@ -209,8 +228,8 @@ def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
         unknown.append(("citizenship", f"Asks for: {e.citizenship}. You decide if this "
                                        "applies."))
     if e.targeted_criterion:
-        unknown.append(("targeted", f"For a student who {e.targeted_criterion}. You decide if "
-                                    "this applies."))
+        unknown.append(("targeted", f"{for_whom(e.targeted_criterion)} You decide if this "
+                                    "applies."))
     if broken:
         broken.sort(key=lambda b: RULES.index(b[0]))
         return Verdict("not eligible", broken[0][0], [broken[0][1]])
