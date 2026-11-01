@@ -673,10 +673,12 @@ details .inner > * { min-width: 0; }
 <div class="title-row"><h1>S31 · QA cycles (tester, then fixer, up to ten rounds)</h1><span class="badge s-in-progress">in progress</span></div>
 <div class="meta">Started 2026-10-31 21:09 EDT</div></div>
 <p>Goal: find and fix what the reviews and fixes missed, until a round finds nothing worth fixing. Each round a fresh QA tester tests the dev server end to end as each audience, writes <code>docs/design/qa/CYCLE_&lt;k&gt;.md</code>, then a fixer works the must-fix and should-fix items. Stop rule: a round with zero must-fix and zero should-fix, or two rounds in a row with only could-fix, or ten rounds. Started 2026-10-31 21:09 EDT.</p>
+<section class="panel summary" aria-label="1 of 2 tasks done"><div class="counts"><span><b>1/2</b>tasks done</span><span class="s-done"><b>1</b>done</span><span class="s-in-progress"><b>1</b>in progress</span></div><div class="bar" role="img" aria-label="1 of 2 tasks done"><span class="s-done" style="width:50.00%" title="done: 1"></span><span class="s-in-progress" style="width:50.00%" title="in progress: 1"></span></div></section>
 <div class="panel scroll"><table>
 <thead><tr><th>Round</th><th>Tester</th><th>Must / should / could found</th><th>Fixed</th><th>Status</th><th>Notes</th></tr></thead>
 <tbody>
-<tr><td>1</td><td>Opus</td><td>5 / 15 / 7 (+1 from the S30 close)</td><td></td><td>fixing</td><td>Must: student Scout mixes samples with public fellowships (rule 11); exports and the email miss award floors; the NSF card shows a 2076 date beside "accepted anytime"; Scout's compare ignores the kept leads; Scout loses its tools a few turns in. Machine checks clean: 298 tests, walk 196 states, 0 errors, 0 axe. Demo rebuilt from main before the round.</td></tr>
+<tr><td>1</td><td>Opus</td><td>5 / 15 / 7 (+1 from the S30 close)</td><td>28 of 28</td><td><span class="badge s-done">done</span></td><td>Must: student Scout mixes samples with public fellowships (rule 11); exports and the email miss award floors; the NSF card shows a 2076 date beside "accepted anytime"; Scout's compare ignores the kept leads; Scout loses its tools a few turns in. Machine checks clean: 298 tests, walk 196 states, 0 errors, 0 axe. Demo rebuilt from main before the round. Fixes: 311 tests green (was 299); new ux checks 20 errors before, 0 after; full walk 199 states, 0 errors, 0 sideways scroll (one axe contrast hit from a fade-in, fixed, partial rerun clean); canary ok twice. Q42 raised and decided (CV values withheld in exports).</td></tr>
+<tr><td>2</td><td>Opus</td><td></td><td></td><td><span class="badge s-in-progress">in progress</span></td><td>Q42 fix goes to this round's fixer.</td></tr>
 </tbody></table></div>
 <h2>Definition of done</h2>
 <p>The stop rule is met, <code>make test</code> is green and the full walk is clean.</p>
@@ -1317,10 +1319,12 @@ early marker of Parkinson&#x27;s disease. Authors: R. Vale and SYNTHETIC co-auth
 </section>
 <section id="view-decisions" class="view" data-view="decisions" hidden>
 <div><div class="eyebrow">Why things are the way they are</div><h1>Decisions and plan changes</h1></div>
-<h2>Decisions (197)</h2>
+<h2>Decisions (199)</h2>
 <div class="panel scroll"><table>
 <thead><tr><th>Date</th><th>Session</th><th>Decision</th><th>Reason</th><th>Decided by</th></tr></thead>
 <tbody>
+<tr><td>2026-10-31</td><td>S31</td><td>Student Scout answers may not cite a sample and a public fellowship in one list or sentence; the validator enforces it, one rewrite then withheld (Q1); the grant card shows the record's deadline words in place of a far placeholder date (Q3); the first five cards always show open and only weak cards after the fifth fold (Q6); the Industry tab and hand-off carry one fixed research-security line and name no company (Q13)</td><td>QA round 1</td><td>Perch-dev (delegated)</td></tr>
+<tr><td>2026-10-31</td><td>S31</td><td>Student exports keep each rule line but drop the CV value read by the rule ("your CV value is withheld"), masked on opt-in; the screen is unchanged (Q42)</td><td>Q12 said code-written lines are never withheld, but a CV value in a rule line is text drawn from the document, and the export promise covers it</td><td>Perch-dev (delegated)</td></tr>
 <tr><td>2026-10-31</td><td>S30</td><td>Every close date renders through one rule: a record whose deadline words say proposals are accepted anytime shows those words, never the placeholder date, in cards, Compare, the email and exports</td><td>U3: Compare showed 7 Oct 2076 and an 18,239-day countdown</td><td>Perch-dev (delegated)</td></tr>
 <tr><td>2026-10-31</td><td>S30</td><td>Student Compare shows public fellowships and SYNTHETIC scholarships in two tables with their own headings and a split kept count</td><td>U10 and standing rule 11</td><td>Perch-dev (delegated)</td></tr>
 <tr><td>2026-10-31</td><td>S30</td><td>Weak matches fold under "Weaker matches (N)" with good and strong first; filter chips come from the leads' own agency and activity-code values</td><td>U24 and U25: nine of PI-4's ten grants were weak and took 4,900 px; researchers expect one-click filters</td><td>Perch-dev (delegated)</td></tr>

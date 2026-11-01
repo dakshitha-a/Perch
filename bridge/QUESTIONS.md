@@ -10,7 +10,6 @@ Dakshitha delegated every product and design decision to Perch-dev on 2026-10-31
 
 
 
-42. **Student exports now carry rule lines that quote the CV (QA cycle 1, Q12; on record, not blocking).** The Q12 decision says code-written lines are never withheld, so the export keeps each verdict, rule line and Still needed line. Some of those lines quote what the rules read from the CV, such as "Asks for a GPA of at least 3.50; your CV says 3.40", so these CV facts now leave in every student export, masked or not. Before Q12 the egress filter withheld them. Help says so. **Alternative, if you meant only the rule:** keep the rule part of each line and drop the "; your CV says ..." tail in exports, so the broken rule shows and no CV value leaves. Default: as built, by the Q12 decision.
 
 33. **Standing-rule change to apply (raised 2026-10-30; narrowed in S24).** Standing rules are yours to edit; Perch-dev never edits them. Your answer to Q30 needs this change in `CLAUDE.md`:
 - **Rule 1 (for Q30), proposed addition:** "Exception: when a user turns Cloud on and confirms a second warning, their private documents may go to the configured cloud provider. Tests of that path use SYNTHETIC text only."
@@ -23,6 +22,8 @@ Dakshitha delegated every product and design decision to Perch-dev on 2026-10-31
 
 
 ## Answered
+
+42. **Student exports now carry rule lines that quote the CV (QA cycle 1, Q12; on record, not blocking).** The Q12 decision says code-written lines are never withheld, so the export keeps each verdict, rule line and Still needed line. Some of those lines quote what the rules read from the CV, such as "Asks for a GPA of at least 3.50; your CV says 3.40", so these CV facts now leave in every student export, masked or not. Before Q12 the egress filter withheld them. Help says so. **Alternative, if you meant only the rule:** keep the rule part of each line and drop the "; your CV says ..." tail in exports, so the broken rule shows and no CV value leaves. Default: as built, by the Q12 decision. **Decided 2026-10-31 by Perch-dev under Dakshitha's delegation:** the alternative. Exports keep the rule part of each line and drop the CV value ("Asks for a GPA of at least 3.50; your CV value is withheld"), unless masking is chosen, in which case the value is masked as other private text is. The screen is unchanged. Fixed in QA round 2.
 
 29. **Which S22 option (raised S21, 2026-10-29).** The S21 audit is in `docs/design/UX_AUDIT.md` and on the tracker's UX tab. It found 6 must-fix defects, 12 should-fix items and 4 could-fix items. The options are:
 - **A. Targeted fixes:** the must-fix list and the accessibility items. About 1 session, including refilming.
