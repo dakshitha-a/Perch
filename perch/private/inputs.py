@@ -47,14 +47,23 @@ class PrivateDoc(Work):
     kind = "private"  # type: ignore[assignment]
 
 
-def make_doc(kind: str, text: str) -> PrivateDoc:
+# Every InputError is a plain sentence for the person, shown beside the box they used, on
+# the student form and on Your documents alike (R4). A file is named by its own name.
+def _name(filename: str | None) -> str:
+    name = " ".join((filename or "").split())
+    return (name[:77] + "...") if len(name) > 80 else name or "That file"
+
+
+def make_doc(kind: str, text: str, filename: str | None = None) -> PrivateDoc:
     if kind not in KINDS:
-        raise InputError(f"unknown document kind; use one of {', '.join(KINDS)}")
+        raise InputError(f"Unknown document kind: use one of {', '.join(KINDS)}.")
     text = clean(text)
     if not text:
-        raise InputError("the document is empty")
+        raise InputError(f"{_name(filename)} is empty: it holds no text Perch can read."
+                         if filename else "That text is empty: paste some text first.")
     if len(text) > MAX_CHARS:
-        raise InputError(f"the document is longer than {MAX_CHARS:,} characters")
+        raise InputError(f"{_name(filename) if filename else 'That text'} is longer than "
+                         f"{MAX_CHARS:,} characters: shorten it, then add it again.")
     return PrivateDoc(id=f"private:{kind}", source="private", source_url="private://session",
                       fetched_at=utcnow(), title=f"{KINDS[kind]} (private)", type="private",
                       abstract=text)
@@ -67,24 +76,28 @@ def clean(text: str) -> str:
 
 def parse_bytes(filename: str, data: bytes) -> str:
     """Text from an uploaded file. The extension picks the parser."""
+    shown = _name(filename)
     if len(data) > MAX_BYTES:
-        raise InputError(f"the file is larger than {MAX_BYTES // 1_000_000} MB")
+        raise InputError(f"{shown} is larger than {MAX_BYTES // 1_000_000} MB: choose a "
+                         "smaller file.")
     name = filename.lower()
     if name.endswith((".txt", ".md")):
         try:
             return data.decode("utf-8")
         except UnicodeDecodeError as e:
-            raise InputError("the file is not UTF-8 text") from e
+            raise InputError(f"{shown} could not be read: save it as UTF-8 text, Word (.docx) "
+                             "or PDF, then add it again.") from e
     if name.endswith(".docx"):
-        return docx_text(data)
+        return docx_text(data, shown)
     if name.endswith(".pdf"):
-        return pdf_text(data)
-    raise InputError(f"unsupported file type; use {', '.join(FORMATS)}")
+        return pdf_text(data, shown)
+    raise InputError(f"{shown} is not a file Perch reads: use a text (.txt), Markdown (.md), "
+                     "Word (.docx) or PDF file.")
 
 
-def docx_text(data: bytes) -> str:
-    too_big = InputError(f"the DOCX text is larger than {MAX_XML_BYTES // 1_000_000} MB "
-                         "once unpacked")
+def docx_text(data: bytes, shown: str = "That file") -> str:
+    too_big = InputError(f"{shown} holds more than {MAX_XML_BYTES // 1_000_000} MB of text "
+                         "once unpacked: choose a smaller file.")
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as z:
             if z.getinfo("word/document.xml").file_size > MAX_XML_BYTES:
@@ -97,19 +110,21 @@ def docx_text(data: bytes) -> str:
         root = ElementTree.fromstring(xml)
     except (zipfile.BadZipFile, KeyError, ElementTree.ParseError, zipfile.LargeZipFile,
             NotImplementedError, EOFError, OSError, RuntimeError) as e:
-        raise InputError("the file is not a readable DOCX") from e
+        raise InputError(f"{shown} could not be read as a Word file: save it again as .docx, "
+                         "or as PDF or text.") from e
     paras = ["".join(t.text or "" for t in p.iter(f"{W_NS}t")) for p in root.iter(f"{W_NS}p")]
     return "\n".join(paras)
 
 
-def pdf_text(data: bytes) -> str:
+def pdf_text(data: bytes, shown: str = "That file") -> str:
     from pypdf import PdfReader
 
     try:
         reader = PdfReader(io.BytesIO(data))
         return "\n\n".join(page.extract_text() or "" for page in reader.pages)
     except Exception as e:  # noqa: BLE001 - any parser failure is a bad upload (review S3)
-        raise InputError("the file is not a readable PDF") from e
+        raise InputError(f"{shown} could not be read as a PDF: save it again, or as Word or "
+                         "text.") from e
 
 
 @dataclass
@@ -121,5 +136,6 @@ class Upload:
 
     def doc(self) -> PrivateDoc:
         if self.data is not None:
-            return make_doc(self.kind, parse_bytes(self.filename or "", self.data))
+            return make_doc(self.kind, parse_bytes(self.filename or "", self.data),
+                            self.filename or "That file")
         return make_doc(self.kind, self.text or "")

@@ -508,7 +508,8 @@ def add_document(s: PrivateSession, doc: PrivateDoc) -> None:
     kind = doc.id.split(":", 1)[1]
     others = sum(len(d.abstract or "") for k, d in s.docs.items() if k != kind)
     if others + len(doc.abstract or "") > MAX_TOTAL_CHARS:
-        raise InputError(f"a session holds at most {MAX_TOTAL_CHARS:,} characters in all")
+        raise InputError(f"A session holds at most {MAX_TOTAL_CHARS:,} characters in all: "
+                         "remove a document first.")
     s.docs[kind] = doc
 
 

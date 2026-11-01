@@ -25,7 +25,7 @@ const HINTS = {
   interests: "A few sentences on what you want to study or work on. This steers the search.",
   achievements: "Up to five, one per line or numbered. Explanations may cite them.",
 };
-const D = { drafts: {}, files: {}, busy: false, error: null, sample: false, missing: false, replacing: new Set() };
+const D = { drafts: {}, files: {}, busy: false, error: null, errorAt: null, sample: false, missing: false, replacing: new Set() };
 const NOT_STATED = "Not stated in the record";
 const SHUT = new Set(); // cards whose "More on why it may fit" was closed; it starts open (S27, Dakshitha)
 
@@ -33,7 +33,7 @@ const SHUT = new Set(); // cards whose "More on why it may fit" was closed; it s
 export function usedSample() { return Boolean(D.lastSample); }
 // Forget what this module held for a session that has ended (S27).
 export function resetStudent() {
-  Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, sample: false, lastSample: false, missing: false, replacing: new Set() });
+  Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, errorAt: null, sample: false, lastSample: false, missing: false, replacing: new Set() });
   SORT.by = "order";
   Object.assign(NOTE, { office: null, edits: {}, subjects: {}, got: {}, keptSig: "" });
 }
@@ -96,7 +96,11 @@ export async function renderStudentStart(root, { api, mode, go, announce, info, 
       api.flag("studentSample", D.lastSample); // the Sample data banner survives a reload (W18)
       D.busy = false;
       go("#/brief/private/routes");
-    } catch (e) { D.error = e.message; D.busy = false; draw(); }
+    } catch (e) {
+      // The error sits by the button that was pressed, which takes focus (R4, as U4).
+      D.error = e.message; D.errorAt = "go"; D.busy = false; await draw();
+      const b = root.querySelector('[data-key="st-build"]'); if (b) b.focus();
+    }
   }
   async function fillSample() {
     try {
@@ -104,11 +108,12 @@ export async function renderStudentStart(root, { api, mode, go, announce, info, 
       D.drafts = { cv: x.cv, interests: x.interests, achievements: x.achievements };
       D.files = {}; D.sample = true;
       draw(); announce("Filled with a SYNTHETIC sample.");
-    } catch (e) { D.error = `The sample could not be loaded: ${e.message}`; draw(); }
+    } catch (e) { D.error = `The sample could not be loaded: ${e.message}`; D.errorAt = null; draw(); }
   }
   async function pick(kind, file) {
     if (!file) return;
-    if (file.size > info.max_bytes) { D.error = `That file is larger than ${info.max_bytes / 1e6} MB.`; draw(); return; }
+    if (file.size > info.max_bytes) { D.error = `${file.name} is larger than ${info.max_bytes / 1e6} MB: choose a smaller file.`; D.errorAt = "go"; draw(); return; }
+    if (D.errorAt === "go") D.error = null;
     const data = await new Promise((ok, bad) => {
       const r = new FileReader();
       r.onload = () => ok(String(r.result).split(",", 2)[1] || "");
@@ -157,7 +162,7 @@ export async function renderStudentStart(root, { api, mode, go, announce, info, 
       h("button", { class: "btn ghost", type: "button", "data-key": "st-clear", onclick: () => { D.drafts = {}; D.files = {}; D.sample = false; draw(); announce("Cleared."); } },
         h("span", { text: "Clear" }))),
     h("div", { id: "st-sample" }, sampleLine()),
-    D.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null,
+    D.error && D.errorAt !== "go" ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null,
     h("div", { class: "st-cols" },
       h("div", { class: "st-cv" }, box("cv", kinds.cv, "Level, year, major, GPA, enrolment, graduation date and referees are read from it.", 12, true)),
       h("div", { class: "st-side" },
@@ -175,7 +180,9 @@ export async function renderStudentStart(root, { api, mode, go, announce, info, 
         build();
       } }, h("span", { text: D.busy ? "Starting" : "Find fellowships and scholarships" })),
       D.missing ? h("p", { class: "notice error go-error", id: "st-missing", role: "alert" }, icon("warn"),
-        h("span", { text: missingText() })) : h("span", { class: "hint", text: "Needs your CV and either your interests or your achievements." }))));
+        h("span", { text: missingText() }))
+        : D.error && D.errorAt === "go" ? h("p", { class: "notice error go-error", id: "st-error", role: "alert" }, icon("warn"), h("span", { text: D.error }))
+          : h("span", { class: "hint", text: "Needs your CV and either your interests or your achievements." }))));
 }
 
 // ----- profile -----

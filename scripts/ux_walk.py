@@ -1306,6 +1306,22 @@ async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
         if got["invalid"] != "true":
             w.errors.append(f"{tag}: U4: the CV box is not marked aria-invalid after an empty submit")
         await w.snap(page, tag, "u-empty")
+        # R4: a file Perch cannot read says so by the button, in plain words, with focus moved
+        await page.set_input_files(".st-cv input[type=file]", files=[{
+            "name": "cv.txt", "mimeType": "text/plain", "buffer": "SYNTHETIC caf\u00e9 CV".encode("latin-1")}])
+        await page.fill("#st-interests", "SYNTHETIC interest in watersheds")
+        await page.click("[data-key=st-build]")
+        await page.wait_for_selector(".go-row .notice.error", timeout=20000)
+        await page.wait_for_timeout(300)
+        got = await page.evaluate("""() => { const e = document.querySelector('.go-row .notice.error');
+          const r = e.getBoundingClientRect(); const a = document.activeElement;
+          return { text: e.innerText.trim(), seen: r.top >= 0 && r.bottom <= innerHeight,
+                   focus: a && a.getAttribute('data-key'), top: document.querySelectorAll('.student-start > .notice.error').length }; }""")
+        if not got["seen"] or got["focus"] != "st-build" or got["top"] or not got["text"].startswith("cv.txt could not be read"):
+            w.errors.append(f"{tag}: R4: an unreadable CV file gives {got}")
+        await w.snap(page, tag, "r-file-error")
+        await page.locator(".st-cv .added button:has-text('Remove')").click()
+        await page.wait_for_selector("#st-cv")
     for kind in ("cv", "interests", "achievements"):
         await page.fill(f"#st-{kind}", (SYN / "persona-masters" / f"{kind}.md").read_text())
     await page.click("[data-key=st-build]")
@@ -1584,6 +1600,16 @@ async def ux_docs(w: Walk, page: Page, base: str, tag: str) -> None:
     if re.search(r"A\d{6,}", ph):
         w.errors.append(f"{tag}: U28: the OpenAlex ID box's example is a real id ({ph!r})")
     chip = lambda: page.evaluate("() => document.querySelector('#status-chip').innerText.trim()")  # noqa: E731
+    # R4: an empty file's error sits in its own box, in plain words, and takes focus
+    await page.set_input_files("#doc-proposal ~ .doc-actions input[type=file]", files=[{
+        "name": "aims.md", "mimeType": "text/markdown", "buffer": b""}])
+    await page.wait_for_selector("#doc-proposal-error", timeout=20000)
+    got = await page.evaluate("""() => { const e = document.querySelector('#doc-proposal-error');
+      return { text: e.innerText.trim(), focus: document.activeElement === e,
+               top: document.querySelectorAll('.private > .notice.error').length }; }""")
+    if got["text"] != "aims.md is empty: it holds no text Perch can read." or not got["focus"] or got["top"]:
+        w.errors.append(f"{tag}: R4: an empty file on Your documents gives {got}")
+    await w.snap(page, tag, "r-docs-file-error")
     await page.fill("#doc-proposal", (SYN / "persona-1/specific_aims_draft.md").read_text())
     await page.locator("#doc-proposal ~ .doc-actions button:has-text('Add text')").click()
     await page.wait_for_function("() => !document.querySelector('#doc-proposal')", timeout=20000)

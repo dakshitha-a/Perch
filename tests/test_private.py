@@ -350,7 +350,9 @@ def test_upload_as_base64_and_caps(tmp_path, monkeypatch):
     assert r.status_code == 201 and r.json()["chars"] > 0
     r = c.post("/private/documents", headers=h,
                json={"kind": "proposal", "filename": "aims.exe", "data": data})
-    assert r.status_code == 422 and "aims" not in r.text
+    # the error names the file (R4) but never echoes the document's text
+    assert r.status_code == 422 and "Gait" not in r.text and "SYNTHETIC" not in r.text
+    assert r.json()["detail"].startswith("aims.exe is not a file Perch reads")
     assert c.post("/private/documents", headers=h,
                   json={"kind": "proposal", "data": "!!"}).status_code == 422
 
@@ -690,7 +692,7 @@ def test_docx_bombs_and_broken_xml_are_input_errors(tmp_path, monkeypatch):
     assert len(bomb) < MAX_BYTES // 100  # a small upload
     with pytest.raises(InputError, match="once unpacked"):
         docx_text(bomb)
-    with pytest.raises(InputError, match="not a readable DOCX"):
+    with pytest.raises(InputError, match="could not be read as a Word file"):
         docx_text(docx_of(b"<w:document><w:body><w:p>"))
     monkeypatch.setenv("PERCH_DOCUMENTS_PER_HOUR", "2")
     c, _ = private_app(tmp_path, monkeypatch)
@@ -723,7 +725,7 @@ def test_pdf_parse_failures_are_input_errors(monkeypatch):
         raise TypeError("SYNTHETIC parser bug")
 
     monkeypatch.setattr(pypdf.PageObject, "extract_text", broken)
-    with pytest.raises(InputError, match="not a readable PDF"):
+    with pytest.raises(InputError, match="could not be read as a PDF"):
         parse_bytes("a.pdf", buf.getvalue())
 
 
@@ -942,3 +944,24 @@ def test_the_mask_warning_is_served_not_copied(tmp_path, monkeypatch):
     assert "cannot hide your research direction" not in private
     assert not any(x in app for x in ("barOwl", "renderKeepBar", "GRANTS_NOTICE",
                                       "keep-bar-box"))
+
+
+def test_a_file_perch_cannot_read_gets_a_plain_sentence_with_its_name():
+    """R4: the forms showed raw server text such as "the file is not UTF-8 text". Each
+    error is now a sentence that names the file and says what to do."""
+    from perch.private.inputs import InputError, Upload
+
+    cases = [("cv.txt", "SYNTHETIC café".encode("latin-1"),
+              "cv.txt could not be read: save it as UTF-8 text, Word (.docx) or PDF, then add "
+              "it again."),
+             ("cv.png", b"\x89PNG", "cv.png is not a file Perch reads: use a text (.txt), "
+              "Markdown (.md), Word (.docx) or PDF file."),
+             ("cv.md", b"", "cv.md is empty: it holds no text Perch can read."),
+             ("cv.docx", b"PK", "cv.docx could not be read as a Word file: save it again as "
+              ".docx, or as PDF or text.")]
+    for name, data, said in cases:
+        with pytest.raises(InputError) as e:
+            Upload("cv", filename=name, data=data).doc()
+        assert str(e.value) == said
+    with pytest.raises(InputError, match="^That text is empty: paste some text first.$"):
+        Upload("cv", text="  ").doc()

@@ -331,7 +331,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             with s.lock:
                 add_document(s, doc)
         except binascii.Error as e:
-            raise HTTPException(422, "the file data is not base64") from e
+            raise HTTPException(422, "The file could not be read: choose it again.") from e
         except InputError as e:
             raise HTTPException(422, str(e)) from e
         return doc_json(req.kind, doc)

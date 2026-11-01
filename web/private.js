@@ -75,7 +75,7 @@ export async function renderPrivate(root, ctx, auto = true) {
 
   async function addFile(kind, file) {
     if (!file) return;
-    if (file.size > P.info.max_bytes) { P.error = `That file is larger than ${P.info.max_bytes / 1e6} MB.`; draw(); return; }
+    if (file.size > P.info.max_bytes) { P.error = `${file.name} is larger than ${P.info.max_bytes / 1e6} MB: choose a smaller file.`; P.errorAt = kind; draw(); placeError(); return; }
     const data = await new Promise((ok, bad) => {
       const r = new FileReader();
       r.onload = () => ok(String(r.result).split(",", 2)[1] || "");
@@ -86,15 +86,20 @@ export async function renderPrivate(root, ctx, auto = true) {
   }
 
   async function send(kind, body) {
-    P.busy = true; P.error = null; draw();
+    P.busy = true; P.error = null; P.errorAt = null; draw();
     try {
       await api.addDocument(body);
       P.drafts[kind] = "";
       P.docs = (await api.session()).documents;
       if (onDocs) onDocs(P.docs.length);
       announce(`${kinds[kind]} added.`);
-    } catch (e) { P.error = e.message; }
-    P.busy = false; draw();
+    } catch (e) { P.error = e.message; P.errorAt = kind; }
+    P.busy = false; draw(); placeError();
+  }
+  // A document's error sits in its own box and takes focus, so it is seen (R4).
+  function placeError() {
+    const n = P.errorAt && root.querySelector(`#doc-${P.errorAt}-error`);
+    if (n) n.focus();
   }
 
   async function remove(kind) {
@@ -140,7 +145,9 @@ export async function renderPrivate(root, ctx, auto = true) {
                 h("button", { class: "btn", disabled: P.busy, onclick: () => addText(kind) }, h("span", { text: "Add text" })),
                 h("label", { class: "btn quiet file" }, icon("paper"), h("span", { text: "Or upload a file" }),
                   h("input", { type: "file", class: "sr-only", accept: P.info.formats.join(","),
-                    onchange: (e) => addFile(kind, e.target.files[0]) })))));
+                    onchange: (e) => addFile(kind, e.target.files[0]) }))),
+              P.error && P.errorAt === kind ? h("p", { class: "notice error", id: `doc-${kind}-error`, role: "alert", tabindex: "-1" },
+                icon("warn"), h("span", { text: P.error })) : null));
       })),
       h("label", { class: "field-label", for: "p-author", text: "Your OpenAlex ID (optional)" }),
       h("input", { id: "p-author", type: "text", placeholder: "An A followed by digits", value: P.authorId,
@@ -156,7 +163,7 @@ export async function renderPrivate(root, ctx, auto = true) {
     h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
     h("h1", { class: "page", text: "Your documents" }),
     statement(),
-    P.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: P.error })) : null,
+    P.error && !P.errorAt ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: P.error })) : null,
     ...intro, ...body));
   if (auto && !api.open && !P.busy) start();
 }
