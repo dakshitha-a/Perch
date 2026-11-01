@@ -1210,7 +1210,7 @@ function horizonSection() {
   const left = b.award_horizon ? f.daysBetween(asOf, b.award_horizon) : null;
   return h("section", { class: "block horizon" }, title,
     h("p", { class: "horizon-date" },
-      h("span", { class: "big", text: b.award_horizon ? f.formatDate(b.award_horizon) : "Not stated" }),
+      h("span", { class: "big", text: b.award_horizon ? f.formatDate(b.award_horizon) : "Not stated in the record" }),
       left !== null ? h("span", { class: "hint", text: left < 0 ? "already passed" : f.until(left) }) : null),
     h("p", { class: "hint", text:
       `The end date of the last public federal award found, out of ${f.plural(d.awards.length, "award")}. Nothing about lab finances is inferred.` }),

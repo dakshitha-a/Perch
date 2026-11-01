@@ -27,7 +27,7 @@ const HINTS = {
 };
 const D = { drafts: {}, files: {}, busy: false, error: null, sample: false, missing: false, replacing: new Set() };
 const NOT_STATED = "Not stated in the record";
-const SHUT = new Set(); // cards whose "What this is based on" was closed; it starts open (S27, Dakshitha)
+const SHUT = new Set(); // cards whose "More on why it may fit" was closed; it starts open (S27, Dakshitha)
 
 // The brief on screen was built from the SYNTHETIC sample (for its banner).
 export function usedSample() { return Boolean(D.lastSample); }
@@ -35,7 +35,7 @@ export function usedSample() { return Boolean(D.lastSample); }
 export function resetStudent() {
   Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, sample: false, lastSample: false, missing: false, replacing: new Set() });
   SORT.by = "order";
-  Object.assign(NOTE, { office: null, edits: {}, got: {}, keptSig: "" });
+  Object.assign(NOTE, { office: null, edits: {}, subjects: {}, got: {}, keptSig: "" });
 }
 
 // The kept count on a student brief, public and sample apart (U10, standing rule 11):
@@ -337,10 +337,10 @@ function fitReason(l) {
   const reason = l.inference ? plainExplanation(you(l.inference)) : null;
   return h("div", { class: "fit-reason" },
     reason ? h("p", { class: "fit-why" }, h("b", { text: "Why it may fit: " }), h("span", { text: reason }),
-      h("span", { class: "tag model", text: "Model" })) : null,
+      h("span", { class: "tag model", text: "Model text" })) : null,
     h("details", { class: "why explain", open: !SHUT.has(l.id),
       ontoggle: (e) => { if (e.target.open) SHUT.delete(l.id); else SHUT.add(l.id); } },
-    h("summary", { "data-key": `why-${l.id}` }, h("span", { text: reason ? "What this is based on" : "Why it may fit" })),
+    h("summary", { "data-key": `why-${l.id}` }, h("span", { text: reason ? "More on why it may fit" : "Why it may fit" })),
     about ? h("p", { text: plainExplanation(about) }) : null,
     items.length ? h("div", {}, h("p", { class: "mini", text: "From your achievements and interests" }),
       h("ul", { class: "notes" }, items.map((x) => h("li", { text: x })))) : null,
@@ -373,7 +373,7 @@ function amountText(r) {
 // The office picked, and the note as edited, per office, for the kept set it was written for.
 // The office picked; per office, the note the server wrote and the note as edited, for the
 // kept set they were written for.
-const NOTE = { office: null, edits: {}, got: {}, keptSig: "" };
+const NOTE = { office: null, edits: {}, subjects: {}, got: {}, keptSig: "" };
 
 export function studentCompare(panel, ctx) {
   const { brief, goRoutes, announce, api } = ctx;
@@ -390,7 +390,7 @@ export function studentCompare(panel, ctx) {
   const routes = ["F", "S"].filter((r) => byOffice[r].length);
   if (!routes.includes(NOTE.office)) NOTE.office = routes[0];
   const keptSig = kept.map((l) => l.id).sort().join(",");
-  if (NOTE.keptSig !== keptSig) { NOTE.edits = {}; NOTE.got = {}; NOTE.keptSig = keptSig; }
+  if (NOTE.keptSig !== keptSig) { NOTE.edits = {}; NOTE.subjects = {}; NOTE.got = {}; NOTE.keptSig = keptSig; }
   // The note is written by the server, by the same code as Scout's draft_note (review W9).
   const route = NOTE.office;
   if (!NOTE.got[route]) {
@@ -409,7 +409,7 @@ export function studentCompare(panel, ctx) {
       h("th", { scope: "row" }, h("span", { class: "row-title", text: sch ? r.name : r.title }),
         l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null),
       h("td", {}, verdictChip(l.verdict)),
-      h("td", { text: d ? f.formatDate(d) : "Not stated" }),
+      h("td", { text: d ? f.formatDate(d) : NOT_STATED }),
       h("td", { text: sch ? amountText(r) : "See the record" }),
       h("td", { text: l.gaps.join("; ") || "Nothing listed" }),
       h("td", { text: officeName(l.route) }));
@@ -437,31 +437,35 @@ export function studentCompare(panel, ctx) {
       h("div", { class: "table-wrap compare-wrap", role: "region", "aria-labelledby": `cmp-${r}`, tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
         h("thead", {}, h("tr", {}, [r === "S" ? "Sample option" : "Fellowship", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
         h("tbody", {}, byOffice[r].map(row))))))),
-    h("p", { class: "hint", text: "Each cell is copied from its record or checked against your CV by rule. “Not stated” means the listing leaves it blank." }));
+    h("p", { class: "hint", text: "Each cell is copied from its record or checked against your CV by rule. “Not stated in the record” means the listing leaves it blank." }));
 }
 
 // The note as the server wrote it (GET /private/student/note), editable here.
 function note(route, n, announce) {
-  const { subject } = n;
-  const box = h("textarea", { class: "input draft-body", rows: 10, "aria-label": `Draft to ${n.office}`,
+  const subjectNow = () => NOTE.subjects[route] ?? n.subject;
+  // The subject is editable, as in the researcher's note; the mail link and the copy use the edit.
+  const subject = h("input", { id: "st-subject", "data-key": "st-subject", class: "input", value: subjectNow(),
+    oninput: (e) => { NOTE.subjects[route] = e.target.value; } });
+  const box = h("textarea", { id: "st-body", class: "input draft-body", rows: 10,
     oninput: (e) => { NOTE.edits[route] = e.target.value; } });
   box.value = NOTE.edits[route] ?? n.body;
   return h("div", { class: "draft fade-in" },
     n.sample ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }),
       h("span", { text: " This note names invented sample scholarships." })) : null,
     h("p", { class: "office-link", text: "To: left blank for you." }),
-    h("p", {}, h("b", { text: "Subject: " }), h("span", { text: subject })),
-    box,
+    h("label", { class: "field-label", for: "st-subject", text: "Subject" }), subject,
+    h("label", { class: "field-label", for: "st-body", text: "Note" }), box,
     h("p", { class: "hint" }, h("a", { href: f.safeUrl(n.office_page), target: "_blank", rel: "noopener", text: `${n.office} (public page)` })),
     h("div", { class: "actions" },
       h("button", { class: "btn", type: "button", onclick: async () => {
-        try { await navigator.clipboard.writeText(box.value); announce("Note copied."); } catch { box.select(); }
-      } }, icon("paper"), h("span", { text: "Copy" })),
+        try { await navigator.clipboard.writeText(`Subject: ${subjectNow()}\n\n${box.value}`); announce("The draft is copied."); } catch { box.select(); }
+      } }, icon("paper"), h("span", { text: "Copy the draft" })),
       // A note about invented scholarships is a demonstration: there is no mail button.
       // The link is built on the press, from the text as edited (review W8), and the note
       // is copied too, in case the mail app shortens a long one.
       n.sample ? null : h("a", { class: "btn", href: "#", "data-key": "st-mail", onclick: async (e) => {
-        e.currentTarget.href = mailto({ subject, body: box.value });
-        await copy(`Subject: ${subject}\n\n${box.value}`, announce);
-      } }, icon("download"), h("span", { text: "Open in mail" }))));
+        e.currentTarget.href = mailto({ subject: subjectNow(), body: box.value });
+        await copy(`Subject: ${subjectNow()}\n\n${box.value}`, announce);
+      } }, icon("download"), h("span", { text: "Open in my mail app" }))),
+    n.sample ? null : h("p", { class: "hint", text: "Open in my mail app also copies the draft, in case your mail app shortens a long one." }));
 }

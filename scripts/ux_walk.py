@@ -1327,7 +1327,7 @@ async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
         note = await page.evaluate("""() => ({ subject: Boolean(document.querySelector('.draft input.input')),
           btns: [...document.querySelectorAll('.draft .actions .btn')].map(b => b.innerText.trim()),
           bare: [...document.querySelectorAll('table.compare td')].filter(td => td.innerText.trim() === 'Not stated').length })""")
-        if not note["subject"] or note["btns"] != ["Copy the draft", "Open in my mail app"] or note["bare"]:  # U34
+        if not note["subject"] or note["btns"] not in (["Copy the draft", "Open in my mail app"], ["Copy the draft"]) or note["bare"]:  # U34
             w.errors.append(f"{tag}: U34: the student's note reads {note}")
         await w.snap(page, tag, "u-compare", full=True)
         await page.click("#tab-scout")

@@ -107,7 +107,7 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
       : draft.flagged
       ? h("p", { class: "notice" }, icon("warn"), h("span", { text: "The model’s opening failed the checks twice, so this draft "
         + "opens with a plain sentence instead. Everything else is written by code from the records." }))
-      : h("p", { class: "hint model-note" }, h("span", { class: "tag model", text: "Model" }),
+      : h("p", { class: "hint model-note" }, h("span", { class: "tag model", text: "Model text" }),
         h("span", { text: ` The opening paragraph was written by ${draft.model || "a model"} and checked against the records it cites. `
           + "The list of leads, dates, amounts and papers is written by code." }));
     parts.push(h("div", { class: "draft" }, tag,
