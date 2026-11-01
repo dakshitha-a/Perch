@@ -272,7 +272,9 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
     with s.repo() as r:
         b = route_a(res, r, s.models.get("index"), s.models.get("embedder"),
                     s.models.get("reranker"), c, RerankCache(s.rerank_cache),
-                    top=max(1, min(int(top), 20)), timings_log=None,
+                    # F16: a sort looks at the widest list, then cuts it to top; cut first,
+                    # "top 1 by ceiling" was the best match, whatever its ceiling
+                    top=20 if sort != "match" else max(1, min(int(top), 20)), timings_log=None,
                     index_new=getattr(s, "index_writes", True), **extra)  # a private session: no
     leads = []
     in_brief = {x.record_id: i for i, x in enumerate(_brief_leads(ctx), 1)}
@@ -280,6 +282,7 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
         o = x.opportunity
         leads.append(_lead_row(ctx, i, o, in_brief.get(o.id), match_score(x.rerank_score)))
     _sort(leads, {ctx.see(x.opportunity): x.opportunity for x in b.leads}, sort, ctx.as_of)
+    leads = leads[:max(1, min(int(top), 20))]
     return {"source": "Grants.gov federal opportunities in the store", "scope": "all",
             "as_of": ctx.as_of.isoformat(), "retrieved": b.retrieved,
             "removed_by_filters": len(b.rejected), "top_removal_reasons": _reasons(b.rejected),

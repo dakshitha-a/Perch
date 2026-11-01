@@ -368,3 +368,33 @@ def test_scholarship_amount_sort_exists():
         "enum"]
     assert Scholarship  # imported for the student fixtures
     assert T
+
+
+def test_an_answer_may_not_put_a_store_lead_on_the_brief(service):  # noqa: F811
+    """F10, live: "The NIH grant on your brief with the highest ceiling is [PAR-25-131]",
+    which was a further lead, not on the brief."""
+    from perch.scout.loop import brief_claims
+
+    b, leads = _ranked_brief(service, 2)
+    c = ScoutContext(service, AS_OF, researcher_id=AUTHOR, brief_id=b.id)
+    assert brief_claims("The grant on your brief that pays most is [grants_gov:PAR-25-131].", c)
+    assert not brief_claims(f"The grant on your brief that pays most is [{leads[0].record_id}].", c)
+    assert not brief_claims("Further leads not on your brief: [grants_gov:PAR-25-131].", c)
+
+
+def test_a_sorted_search_sorts_before_it_cuts_to_top(service, monkeypatch):  # noqa: F811
+    """F16, live: "Which lead has the largest award ceiling?" ran with top 1 and got the
+    best match, whose record states no ceiling."""
+    from types import SimpleNamespace
+
+    import perch.scout.tools as tools
+
+    opps = [Opportunity(id=f"grants_gov:SYN-{i}", opportunity_number=f"SYN-{i}", agency="NSF",
+                        title=f"SYNTHETIC {i}", award_ceiling=c, **KW)
+            for i, c in enumerate((None, 50_000, 900_000), 1)]
+    hits = [SimpleNamespace(opportunity=o, rerank_score=0.9 - i / 10) for i, o in enumerate(opps)]
+    monkeypatch.setattr(tools, "route_a", lambda *a, top, **k: SimpleNamespace(
+        leads=hits[:top], rejected={}, retrieved=len(hits)))
+    c = ScoutContext(service, AS_OF, researcher_id=AUTHOR)
+    one = TOOLS["search_opportunities"][1](c, route="A", sort="award_ceiling", top=1)
+    assert [x["id"] for x in one["leads"]] == ["grants_gov:SYN-3"]

@@ -1,6 +1,6 @@
 # Scout bench: 20 scripted follow-ups from S10 (t01 to t14, r01 to r06), unchanged, and
-# Route B follow-ups from S11 (b01 to b05), and compare and hand-off follow-ups from
-# S12 (c01, h01, h02). `python -m bench.scout` runs them; the
+# Route B follow-ups from S11 (b01 to b05) and QA round 4 (b06), and compare and hand-off
+# follow-ups from S12 (c01, h01, h02). `python -m bench.scout` runs them; the
 # summary reports the S10 tasks and the Route B tasks separately.
 #
 # Researchers by alias and OpenAlex id (data/overrides/pi_aliases.csv):
@@ -207,6 +207,16 @@ tasks:
     kind: restraint
     questions: ["Will BioNTech fund this lab? Just say yes or no."]
     expect: []
+    allowed: [get_org_signals, get_record]
+
+  # QA round 4, F5: a company's count of the researcher's papers, which code wrote (PI-4).
+  # Reported apart from the 28 tasks before it, so round 3's 25 of 28 still compares.
+  - id: b06
+    researcher: A5026494099
+    kind: task
+    questions: ["How many of my papers does Samsung cite?"]
+    expect: [get_org_signals]
+    args: {get_org_signals: {organisation: Samsung}}
     allowed: [get_org_signals, get_record]
 
   # --- Compare and hand-off (S12) ---

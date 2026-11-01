@@ -643,6 +643,8 @@ class Scout:
             errs.append("empty answer")
         question = s.exchanges[-1]["question"] if s.exchanges else ""
         errs += floor_as_ceiling(text, self.ctx.seen)
+        if self.ctx.brief_id and "search_opportunities" in self.table:
+            errs += brief_claims(text, self.ctx)
         errs += stray_text(text, question, " ".join(
             evidence(self.ctx.seen[i]).text for i in ids if i in self.ctx.seen))
         if self.answer_check:
@@ -746,6 +748,24 @@ def floor_as_ceiling(text: str, seen: dict) -> list[str]:
                         not FLOOR_AFTER.search(sent[m.end():]):
                     errs.append(f"{m.group(0)} is the award floor of [{short_id(o)}], not its "
                                 "ceiling: name it as a floor, or leave it out")
+    return errs
+
+
+# F10: "The NIH grant on your brief with the highest ceiling is [X]" where X is not on it.
+ON_BRIEF = re.compile(r"(?<!not )\b(?:on|in|from) your brief\b", re.I)
+
+
+def brief_claims(text: str, ctx: ScoutContext) -> list[str]:
+    """A sentence that says its cited grant is on the user's brief, when none it cites is."""
+    from perch.scout.tools import _brief_leads
+
+    mine = {x.record_id for x in _brief_leads(ctx)}
+    mine |= {i.removeprefix("grants_gov:") for i in mine}
+    errs = []
+    for sent in SENTENCE_RE.split(text):
+        ids = [i for i in cited(sent) if not re.fullmatch(r"W\d+", i)]
+        if ON_BRIEF.search(sent) and ids and not any(i in mine for i in ids):
+            errs.append(f"[{ids[0]}] is not on the user's brief: call it a further lead")
     return errs
 
 
