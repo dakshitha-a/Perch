@@ -3,8 +3,9 @@
 The reranker's raw score is a probability squeezed toward 0 and 1, so a good second lead
 can read 0.03. Its log-odds are spread evenly; Match maps log-odds -6 to 0 and +6 to 100,
 clipped. Set from the NIH back-test (bench/calibrate.py, bench/results/calibration.json):
-every funded announcement Perch placed in the top 10 scored 80 or more, and those it
-ranked 13th or lower scored 30 to 73. Match is a monotone function of the ranking score,
+12 of its 126 rows put the funded announcement in the top 10. The 10 targeted ones scored
+80 or more; the 2 parent announcements scored 55 and 70. Those ranked 13th or lower
+scored 30 to 73. Match is a monotone function of the ranking score,
 so sorting by it is Perch's order. It says how closely a listing's text matches the
 papers; it is not the odds of funding. Code computes it; no model writes it.
 """
