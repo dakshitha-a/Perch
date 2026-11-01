@@ -197,12 +197,18 @@ export function docsHeld() { return P.docs.length > 0; }
 // the one session setting and change it together (review W6).
 export function maskOn() { return P.mask; }
 
-export function maskToggle() {
+// One listener for a change of the mask setting, from either box: the hand-off sets it
+// so its draft is made again with the new setting (Q25).
+let maskChanged = null;
+export function onMaskChange(fn) { maskChanged = fn; }
+
+export function maskToggle(key = null) {
   return h("div", { class: "mask-toggle" },
-    h("label", { class: "check" }, h("input", { type: "checkbox", "data-mask": "", checked: P.mask, onchange: (e) => {
+    h("label", { class: "check" }, h("input", { type: "checkbox", "data-mask": "", "data-key": key, checked: P.mask, onchange: (e) => {
       P.mask = e.target.checked;
       for (const b of document.querySelectorAll("input[data-mask]")) b.checked = P.mask;
       for (const w of document.querySelectorAll(".mask-warn")) w.hidden = !P.mask;
+      if (maskChanged) maskChanged(P.mask);
     } }), h("span", { text: "Mask private text in exports and hand-offs" })),
     // The server's own warning (perch.egress.WARNING), served by GET /private (review W14).
     h("p", { class: "hint mask-warn", hidden: !P.mask, text: (P.info && P.info.mask_warning) || "" }));

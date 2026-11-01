@@ -2,7 +2,7 @@
 // /briefs/{id}/handoff). A model writes the opening paragraph; code writes the list with
 // dates and amounts copied from the records. Perch never sends it and does not save it.
 
-import { maskOn, maskToggle } from "./private.js";
+import { maskOn, maskToggle, onMaskChange } from "./private.js";
 import { h, fill, icon } from "./dom.js";
 
 const WHAT = { A: "grants", B: "industry leads" };
@@ -67,22 +67,28 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     ? h("p", { class: "hint", role: "status", text: "A model is writing the opening paragraph. This takes a few seconds…" })
     : H.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: H.error })) : null;
 
+  async function makeDraft(focusKey = "handoff-subject") {
+    H.busy = office.key; H.error = null; redraw(focusKey === "handoff-mask" ? focusKey : "handoff-make");
+    try {
+      const mask = api.mode === "private" ? maskOn() : false;
+      const d = await api.handoff(briefId, { office: office.key, ...(api.mode === "private" ? { mask } : {}) });
+      H.drafts[office.key] = { subject: d.subject, body: d.body, flagged: d.flagged, model: d.model,
+        withheld: d.withheld || null, n: d.lead_ids.length, mask };
+      announce(focusKey === "handoff-mask" ? "The draft was made again with the new mask setting." : "The draft is ready below. You can edit it.");
+    } catch (e) {
+      H.error = `The draft could not be made: ${e.message}`;
+    }
+    H.busy = null;
+    redraw(H.drafts[office.key] ? focusKey : "handoff-make");
+  }
+  // A change of the mask setting makes the shown draft again at once (Q25).
+  onMaskChange((on) => {
+    const d = H.drafts[office.key];
+    if (H.briefId === briefId && d && d.mask !== on && H.busy === null && document.body.contains(box)) makeDraft("handoff-mask");
+  });
   const make = h("button", { class: `btn ${draft ? "" : "primary"}`, type: "button", "data-key": "handoff-make",
-    disabled: H.busy !== null,
-    onclick: async () => {
-      H.busy = office.key; H.error = null; redraw("handoff-make");
-      try {
-        const d = await api.handoff(briefId, { office: office.key,
-          ...(api.mode === "private" ? { mask: maskOn() } : {}) });
-        H.drafts[office.key] = { subject: d.subject, body: d.body, flagged: d.flagged, model: d.model,
-          withheld: d.withheld || null, n: d.lead_ids.length };
-        announce("The draft is ready below. You can edit it.");
-      } catch (e) {
-        H.error = `The draft could not be made: ${e.message}`;
-      }
-      H.busy = null;
-      redraw(H.drafts[office.key] ? "handoff-subject" : "handoff-make");
-    } }, icon("pen"), h("span", { text: draft ? "Draft again" : "Draft the email" }));
+    disabled: H.busy !== null, onclick: () => makeDraft() },
+  icon("pen"), h("span", { text: draft ? "Draft again" : "Draft the email" }));
 
   const parts = [h("h2", { class: "section-title", id: "handoff-title", text: "Hand off" }),
     h("p", { class: "hint", text: "Perch drafts an email to the Temple office for these leads. "
@@ -92,7 +98,7 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
       h("a", { href: office.url, target: "_blank", rel: "noopener",
       text: `${office.name} contacts on research.temple.edu` })),
     // The mask setting this draft uses, the same one as the Export menu's (review W6).
-    api.mode === "private" && docs ? maskToggle() : null, // nothing to mask without documents (U12)
+    api.mode === "private" && docs ? maskToggle("handoff-mask") : null, // nothing to mask without documents (U12)
     h("div", { class: "actions" }, make), status];
 
   if (draft) {
