@@ -1669,12 +1669,14 @@ function leadCard(l) {
     o.activity_code ? h("span", { class: "tag", text: o.activity_code }) : null,
     o.status && o.status !== "posted" ? h("span", { class: "tag ember", text: o.status === "forecasted" ? "Forecast" : o.status }) : null);
 
+  // NSF dates its open-anytime programs decades out: past ten years the record's own
+  // words stand in place of the date (U3, Q3). Evidence keeps both fields.
+  const far = Boolean(o.close_date_note && days !== null && days > 3650);
   const facts = h("dl", { class: `facts${size ? "" : " one"}` },
     h("div", { class: `fact close ${urg}` }, h("dt", { text: "Closes" }),
-      h("dd", {}, o.close_date ? h("span", { text: f.formatDate(o.close_date) }) : h("span", { class: "missing", text: "Not stated in the record" }),
-        // NSF dates its open-anytime programs decades out; the record's words say so.
-        o.close_date_note && days !== null && days > 3650 ? h("span", { class: "rel", text: o.close_date_note })
-          : days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),
+      h("dd", {}, far ? h("span", { text: o.close_date_note })
+        : o.close_date ? h("span", { text: f.formatDate(o.close_date) }) : h("span", { class: "missing", text: "Not stated in the record" }),
+        !far && days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),
     size ? h("div", { class: "fact" }, h("dt", { text: "Award size" }), h("dd", {}, h("span", { text: size }))) : null);
   const noSize = size ? null : h("p", { class: "hint no-size", text: "Award size: not stated in the record." });
 
