@@ -86,12 +86,13 @@ def _find(ctx: ScoutContext, option_id: str) -> Lead:
 
 def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = None,
                    deadline_after: str | None = None, deadline_before: str | None = None,
-                   min_amount: float | None = None, words: str | None = None) -> dict:
+                   min_amount: float | None = None, words: str | None = None,
+                   sort: str = "match") -> dict:
     _, leads = _brief(ctx)
     used = search_words(words)
     after = date.fromisoformat(deadline_after) if deadline_after else None
     before = date.fromisoformat(deadline_before) if deadline_before else None
-    rows = []
+    rows, due_of = [], {}
     for x in sorted(leads, key=lambda x: (x.route, x.rank or 0)):
         if route != "all" and x.route != route:
             continue
@@ -115,6 +116,9 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
             if not any(w in text for w in used):  # any of the words (R7)
                 continue
         rows.append(_row(ctx, x))
+        due_of[rows[-1]["id"]] = due
+    if sort == "deadline":  # the soonest first, undated last, as Q14 for researchers (R13)
+        rows.sort(key=lambda r: (due_of[r["id"]] is None, due_of[r["id"]] or date.max))
     rows = rows[:15]
     return {**apart(rows, "options"), "count": len(rows),
             **({"words_used": used} if used else {}),
@@ -185,7 +189,24 @@ def mixed_lists(text: str, seen: dict[str, Record]) -> list[str]:
             return ["a list or sentence names a sample scholarship together with a public "
                     "fellowship: put the sample scholarships under their own heading, such "
                     "as 'Sample scholarships (invented):', in their own list"]
+    # R13: the answer's lead sentence cites public records only; a sample comes after its
+    # own heading, never as the answer.
+    heading = False
+    for u in units:
+        if SAMPLE_HEADING.search(u):
+            heading = True
+        ids = cited(u)
+        if not ids:
+            continue
+        if not heading and any(is_sample_id(i, seen) for i in ids):
+            return ["the answer opens with a sample scholarship: lead with the public "
+                    "fellowships, or say that none of them answers the question, then give "
+                    "any samples under the heading 'Sample scholarships (invented):'"]
+        break
     return []
+
+
+SAMPLE_HEADING = re.compile(r"^\W*sample scholarships", re.I | re.M)
 
 
 def check_option(ctx: ScoutContext, option_id: str) -> dict:
@@ -292,6 +313,9 @@ STUDENT_TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
                         "enum": ["eligible", "may be eligible", "not eligible"]},
             "deadline_after": _DATE, "deadline_before": _DATE,
             "min_amount": {"type": "number", "description": "US dollars"},
+            "sort": {"type": "string", "enum": ["match", "deadline"],
+                     "description": "match (the brief's order, the default) or deadline, "
+                     "the soonest first"},
             "words": {"type": "string", "description": "Words to look for in the title or "
                       "purpose, separated by commas or spaces; an option matches if it holds "
                       "any of them"}}, [])), search_options),
@@ -341,6 +365,9 @@ with the samples in their own list. Never name a sample in the same list or sent
 a fellowship.
 - Copy dates and dollar amounts exactly as the record gives them and cite that record. \
 Never compute, round, estimate or count. If a record has no value, say it is not stated.
+- "The soonest deadline" means search_options with sort deadline and deadline_after the \
+as-of date. Your first sentence names public fellowships only: if none states a deadline, \
+say so, then give any samples under their own heading.
 - Verdicts come from rule code. Never judge the student's chances or give odds.
 - Answer in two to five short, plain sentences."""
 

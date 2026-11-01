@@ -366,7 +366,6 @@ def test_a_word_search_matches_any_word_and_says_which(monkeypatch):
     assert summarise("search_options", got) == "1 option match any of: stream, monitoring"
 
 
-
 def test_every_targeted_criterion_reads_as_a_sentence():
     """R11: "For a student who first-generation college student." The line reads "For a
     student who ..." only before a verb, over every sample record's criterion."""
@@ -383,3 +382,23 @@ def test_every_targeted_criterion_reads_as_a_sentence():
         assert line.endswith(".") and not line.endswith("..")
         assert ("who" in line.split(c)[0]) == (c.split()[0].lower() in VERBS), line
 
+
+def test_a_student_answer_never_leads_with_a_sample():
+    """R13: "The soonest deadline is 15 Feb 2027 for the Quillmere ... Scholarship
+    (sample)" opened the answer. The lead sentence cites public records only; samples come
+    after their own heading. "Soonest" sorts every option by deadline."""
+    from types import SimpleNamespace as NS
+
+    from perch.scout import student_tools as st
+
+    seen = {"sample:sch-0001": NS(source="synthetic"), "temple_sdfa:a": NS(source="temple_sdfa")}
+    bad = ("The soonest deadline is 15 Feb 2027 for the Quillmere Scholarship (sample) "
+           "[sample:sch-0001].\n\nSample scholarships (invented):\n- Quillmere [sample:sch-0001]")
+    assert st.mixed_lists(bad, seen) and "opens with a sample" in st.mixed_lists(bad, seen)[0]
+    for ok in ("No fellowship on your list states a deadline.\n\nSample scholarships "
+               "(invented):\n- Quillmere, 15 Feb 2027 [sample:sch-0001]",
+               "The soonest is the A fellowship [temple_sdfa:a].\n\nSample scholarships "
+               "(invented):\n- Quillmere [sample:sch-0001]"):
+        assert st.mixed_lists(ok, seen) == [], ok
+    assert "sort" in st.STUDENT_TOOLS["search_options"][0].parameters["properties"]
+    assert "soonest deadline" in " ".join(st.STUDENT_RULES.split())
