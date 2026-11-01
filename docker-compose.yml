@@ -31,10 +31,13 @@ services:
       PERCH_PRIVATE_MODE: "1"
       PERCH_TLS_AT: server
       PERCH_PRIVATE_OPERATOR: Dakshitha, Temple University
-      # Cloud by choice (S23): a visitor may turn it on for a brief with no documents.
-      # The key comes from .env; the adapter's $100 cap and this daily cap both apply.
+      # Cloud by choice (S23). The key comes from .env; the adapter's $100 cap and this
+      # daily cap both apply.
       PERCH_CLOUD: anthropic:claude-sonnet-5-5
       PERCH_CLOUD_BRIEFS_PER_DAY: "30"
+      # Documents on Cloud by the user's informed choice (standing rule 1 as amended, Q33):
+      # only after a second warning that names the provider and lists the documents.
+      PERCH_CLOUD_DOCUMENTS: "1"
       # Demo Day caps (Q35, S29 decision): a room on one wifi NAT shares an address, so the
       # per-address caps are high; the daily Cloud cap and the dollar cap still bound the cost.
       PERCH_BRIEFS_PER_HOUR: "100"
