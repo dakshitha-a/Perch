@@ -264,6 +264,7 @@ class Session:
     scope: str | None = None  # F1: the search scope this question's words set
     amount_q: bool = False  # G2, G12: this question asks for the largest amount
     force: ToolCall | None = None  # G4: the exact call a nudge named, run by code if refused
+    filters: dict = field(default_factory=dict)  # G18: the last search's filters in force
     # One entry per question: its text, the first card it made, and how it ended. Held in
     # memory for the web app; the log keeps a hash of the question only.
     exchanges: list[dict] = field(default_factory=list)
@@ -421,7 +422,7 @@ class Scout:
     def _start_over(self, s: Session, question: str) -> Session:
         """G9: the conversation so far is set aside and the answer is written by code."""
         s.messages.clear()
-        s.last_list, s.scope, s.amount_q = [], None, False
+        s.last_list, s.scope, s.amount_q, s.filters = [], None, False, {}
         s.status, s.flagged, s.errors, s.turns, s.nudged = "done", False, [], 0, False
         s.answer, s.cited_ids = START_OVER_ANSWER, []
         s.exchanges.append({"question": question, "cards_from": len(s.cards), "msgs_from": 0,
@@ -620,6 +621,13 @@ class Scout:
             c.status, c.detail = "refused", "one explanation per question"  # F6
             c.result = {"error": f"{c.tool} runs once per question. search_options with that "
                         "verdict gives each option's reason in why: answer from it."}
+        elif c.tool == "compare_options" and not c.arguments.get("ids") and \
+                not KEPT_Q_RE.search(s.exchanges[-1]["question"] if s.exchanges else ""):
+            # G23: "what can i apply for" listed only the kept options
+            c.status, c.detail = "refused", "not a question about the kept options"
+            c.result = {"error": "This question is not about the kept options: call "
+                        "search_options, which lists the brief's options in its order by "
+                        "Match."}
         elif s.amount_q and c.tool in ("compare", "compare_options") and \
                 (search := next((t for t in SEARCH_TOOLS if t in self.table), None)):
             # G2, G12: the largest award is a sorted search, never the kept leads' compare
@@ -663,6 +671,9 @@ class Scout:
             args["scope"] = s.scope  # F1
         if s.amount_q and c.tool == "search_opportunities":
             args["sort"] = "award_ceiling"
+        if c.tool == "search_opportunities":
+            args = carry_filters(args, s.filters, question)
+            s.filters = {k: args[k] for kind in KINDS.values() for k in kind if args.get(k)}
         if s.amount_q and c.tool == "search_options":
             route = next((r for r, rx in ROUTE_Q if rx.search(question)), "all")
             args.update(sort="amount", route=route)
@@ -991,6 +1002,39 @@ def brief_claims(text: str, ctx: ScoutContext) -> list[str]:
         if ON_BRIEF.search(sent) and ids and not any(i in mine for i in ids):
             errs.append(f"[{ids[0]}] is not on the user's brief: call it a further lead")
     return errs
+
+
+# G18: kinds of filter. A follow-up keeps the earlier search's filters unless it names a
+# new value of the same kind, which replaces that kind; "all", "any" or "everything" clears.
+KINDS = {"agency": ("agencies", "exclude_agencies"), "date": ("closes_by", "closes_after"),
+         "amount": ("min_amount", "max_amount"), "code": ("activity_codes",),
+         "words": ("keywords", "exclude_keywords")}
+CLEAR_RE = {"agency": r"agenc\w*", "date": r"dates?|deadlines?|close dates?",
+            "amount": r"amounts?|sizes?|ceilings?", "code": r"codes?|activity codes?|mechanisms?",
+            "words": r"words?|keywords?|topics?"}
+CLEAR_ALL_RE = re.compile(r"\b(?:everything|all (?:of )?(?:my |the )?(?:leads|grants|opportunities|"
+                          r"of them)|any (?:lead|grant))\b", re.I)
+
+
+def carry_filters(args: dict, before: dict, question: str) -> dict:
+    """The filters of a follow-up search, by kind (G18): a kind the model sends unchanged
+    from the last search stays; one with a new value keeps only what is new; one the
+    question clears ("any agency", "everything") goes."""
+    out = dict(args)
+    for kind, keys in KINDS.items():
+        now = {k: out[k] for k in keys if out.get(k)}
+        old = {k: before[k] for k in keys if before.get(k)}
+        cleared = CLEAR_ALL_RE.search(question) or re.search(
+            rf"\b(?:all|any|every)\s+(?:{CLEAR_RE[kind]})\b", question, re.I)
+        new = {k: v for k, v in now.items() if old.get(k) != v}
+        if cleared:
+            for k in keys:
+                out.pop(k, None)
+        elif new and len(new) < len(now):  # a new value: the carried ones of its kind go
+            for k in now:
+                if k not in new:
+                    out.pop(k)
+    return out
 
 
 def _iso(v: str) -> date | None:

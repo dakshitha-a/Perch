@@ -797,7 +797,7 @@ function renderBrief() {
     : [...(r.institutions || []), `Brief as of ${asOf}`].join(" · ");
   // Back: a student returns to their documents, a researcher to the matches; the
   // session stays open either way (S22, audit S2).
-  const back = student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Back to your documents" }))
+  const back = student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Back" }))
     : h("a", { class: "back", href: S.find.candidates ? "#/find" : "#/" }, icon("back"), h("span", { text: "Back" }));
   const tabs = h("div", { class: `tabs${student ? " student" : ""}`, role: "tablist", "aria-label": "Brief sections" },
     tabButton("routes", student ? "Your options" : "Routes", student ? "Options" : "Routes"),
@@ -1368,7 +1368,8 @@ function threadsSection() {
       return h("li", { class: "thread" },
         h("div", { class: "thread-head" },
           h("h3", { text: t.label }),
-          h("span", { class: "share", text: `${Math.round(t.weight * 100)}% of recent work` })),
+          // G23: the share is of the weight, with recent papers counting more
+          h("span", { class: "share", text: `${Math.round(t.weight * 100)}% of the weight, recent papers counting more` })),
         meter,
         h("p", { class: "hint", text: `${f.plural(t.work_ids.length, "paper")}. Most recent first:` }),
         h("ul", { class: "papers" }, papers.map(paperRow)));

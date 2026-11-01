@@ -493,5 +493,5 @@ function note(route, n, announce) {
         e.currentTarget.href = mailto({ subject: subjectNow(), body: box.value });
         await copy(`Subject: ${subjectNow()}\n\n${box.value}`, announce);
       } }, icon("mail"), h("span", { text: "Open in my mail app" }))),
-    n.sample ? null : h("p", { class: "hint", text: "Open in my mail app also copies the draft, in case your mail app shortens a long one." }));
+    n.sample ? null : h("p", { class: "hint", text: "Open in my mail app also copies the draft. A long draft is too long for a mail link: paste it into the new message." }));
 }

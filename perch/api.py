@@ -547,6 +547,12 @@ def create_app(service: BriefService, runner: JobRunner,
             out["withheld"] = {"texts": n, "note": egress.withheld_note(n)}
         if any(x.sample for x in leads):
             out["sample_notice"] = ex.SAMPLE_BANNER
+            # G23, rule 11: SYNTHETIC samples never share a list with public records
+            out["samples"] = {
+                "leads": [y for x, y in zip(leads, out_leads, strict=True) if x.sample],
+                "records": [r for r in records if r.get("source") == "synthetic"]}
+            out["leads"] = [y for x, y in zip(leads, out_leads, strict=True) if not x.sample]
+            out["records"] = [r for r in records if r.get("source") != "synthetic"]
         return out
 
     def export_blocks(brief_id: str, status: str | None, svc: BriefService = service,

@@ -230,7 +230,9 @@ def test_route_b_tools_return_the_briefs_industry_leads(service):
     out = TOOLS["get_org_signals"][1](c)
     x = out["leads"][0]
     assert out["label"].startswith("Inferred") and x["lead"] == lead.id
-    assert x["organisation"] == "SYNTHETIC Co" and x["organisation_id"] == "I1"
+    assert x["organisation"] == "SYNTHETIC Co"
+    assert "organisation_id" not in x  # G23: on a brief, the lead id is the one to cite
+    assert "I1" in c.seen  # still checkable, and MCP rows (no brief) keep the id
     assert x["signals"][0]["records"] == ["W77"] and x["signals"][0]["works_or_projects"] == 4
     assert TOOLS["get_org_signals"][1](c, organisation="nobody")["leads"] == []
     b = TOOLS["search_opportunities"][1](c, route="B")

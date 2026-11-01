@@ -127,7 +127,7 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
         h("a", { class: "btn", href: "#", "data-key": "handoff-mail",
           onclick: async (e) => { e.currentTarget.href = mailto(draft); await copy(draftText(draft), announce); } },
         h("span", { text: "Open in my mail app" }))),
-      h("p", { class: "hint", text: "Open in my mail app also copies the draft, in case your mail app shortens a long one." })));
+      h("p", { class: "hint", text: "Open in my mail app also copies the draft. A long draft is too long for a mail link: paste it into the new message." })));
   }
   fill(box, h("section", { class: "handoff", "aria-labelledby": "handoff-title" }, ...parts));
 }

@@ -338,3 +338,40 @@ def test_a_paper_is_named_in_full_once_per_lead_and_bare_masked_findings_go():
         "X funds work."
     assert ex.bare_findings_out("X. Cited work: one of your achievements led a survey.") == \
         "X. Cited work: one of your achievements led a survey."
+
+
+# --- G18: a follow-up's filters, by kind ---
+
+def test_a_follow_up_replaces_a_filter_of_the_same_kind_and_keeps_the_rest():
+    """G18: "Leave out Department of Defense grants" after an NSF question ran with NSF and
+    "not DOD" together and found nothing."""
+    from perch.scout.loop import carry_filters
+
+    before = {"agencies": ["NSF"], "closes_by": "2027-03-01", "max_amount": 200000}
+    got = carry_filters({"route": "A", "agencies": ["NSF"], "exclude_agencies": ["DOD"],
+                         "closes_by": "2027-03-01", "max_amount": 200000}, before,
+                        "Leave out Department of Defense grants")
+    assert got == {"route": "A", "exclude_agencies": ["DOD"], "closes_by": "2027-03-01",
+                   "max_amount": 200000}
+    assert carry_filters({"route": "A", "agencies": ["NSF"], "closes_by": "2027-03-01"},
+                         before, "any agency is fine") == {"route": "A",
+                                                           "closes_by": "2027-03-01"}
+    assert carry_filters({"route": "A", "agencies": ["NSF"]}, before, "show me everything") \
+        == {"route": "A"}
+    assert "money(v)" in (WEB / "scout.js").read_text()  # the chip reads $200,000
+
+
+# --- G23: "what can i apply for" is the brief's order, not the kept options ---
+
+def test_a_student_question_not_about_kept_options_does_not_compare_them(service):  # noqa: F811
+    from perch.scout.student_tools import STUDENT_RULES, STUDENT_TOOLS
+
+    c = ScoutContext(service, AS_OF, researcher_id=AUTHOR)
+    fake = FakeProvider([call("compare_options"), "No options here."])
+    s = Scout(fake, c, table=STUDENT_TOOLS, rules=STUDENT_RULES,
+              who="a student").start("what can i apply for")
+    assert s.cards[0].status == "refused" and "search_options" in s.cards[0].result["error"]
+    fake = FakeProvider([call("compare_options"), "Done."])
+    s = Scout(fake, c, table=STUDENT_TOOLS, rules=STUDENT_RULES,
+              who="a student").start("Compare my kept options")
+    assert s.cards[0].status != "refused"

@@ -444,7 +444,9 @@ def get_org_signals(ctx: ScoutContext, author_id: str | None = None,
             # company may repeat them. Citing works and the papers they cite differ.
             ctx.facts[lid] = ctx.facts[oid] = [s["sentence"] for s in signals]
             out.append({"lead": lid, "rank": x.rank, "organisation": name,
-                        "organisation_id": oid, "relationship": x.relationship,
+                        # G23: on a brief, one id form to cite, the lead's; MCP keeps both
+                        **({} if ctx.brief_id else {"organisation_id": oid}),
+                        "relationship": x.relationship,
                         "confidence": x.confidence, "signals": signals,
                         "your_papers_cited": len(x.cited_ids),
                         "researcher_papers_cited": x.cited_ids[:10]})

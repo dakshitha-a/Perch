@@ -21,6 +21,9 @@ hand-off for my top lead". It passes when draft_handoff drafted the top lead alo
 opening was written by code (the session holds documents and no public papers), and the
 draft holds no empty or placeholder citation ("[]", "No papers provided") and no word of
 substance that is in neither the documents, the lead's record nor Perch's own templates.
+Every answer to questions 1 and 2 and the student question also passes a citation check
+(QA round 5, G7): a line that cites one record shares a word with its title, and a line
+that names a short name in parentheses, such as "(Parent F33)", cites that record.
 Student flow, each run in a fresh session: build the SYNTHETIC persona-ug brief and ask
 "Which of these can I apply to before March?". It passes when a search tool ran, the
 answer was not withheld, and any sample scholarship sits under its own heading.
@@ -238,6 +241,48 @@ def check_before_march(ex: dict, as_of: date, closes: dict[str, date | None]) ->
     return errs
 
 
+# G7 (QA round 5): "...Senior Fellowship (Parent F33): ... [PA-25-422]", the F31's id. A
+# sentence or list line that cites one record names that record: it shares a word with
+# its title.
+TITLE_STOP = {"with", "from", "that", "this", "your", "program", "programs", "research",
+              "award", "awards", "grant", "grants", "fellowship", "fellowships", "national",
+              "opportunity", "funding", "scholarship", "scholarships", "sample", "clinical",
+              "trial", "required", "allowed", "optional", "individual", "service"}
+
+
+def check_own_titles(ex: dict, titles: dict[str, str]) -> list[str]:
+    errs = []
+    owners: dict[str, set[str]] = {}  # a short name in parentheses, and the titles with it
+    for i, t in titles.items():
+        for n in re.findall(r"\(([^()]{2,40})\)", t):
+            owners.setdefault(n.lower(), set()).add(i)
+    for u in (x for x in SENTENCE.split(ex.get("answer") or "") if x.strip()):
+        ids = [i for i in cited(u) if i in titles and not i.startswith("W")]
+        for n in re.findall(r"\(([^()]{2,40})\)", CITE.sub(" ", u)):
+            own = owners.get(n.lower(), set())
+            if ids and len(own) == 1 and not own & set(ids):
+                errs.append(f"a line names ({n}), which is [{next(iter(own))}], but cites "
+                            f"{ids}: {u.strip()[:90]!r}")
+        if len(ids) != 1:
+            continue
+        words = set(re.findall(r"[a-z]{4,}", CITE.sub(" ", u).lower()))
+        if not words:
+            continue
+        own = set(re.findall(r"[a-z]{4,}", titles[ids[0]].lower())) - TITLE_STOP
+        if own and not own & words:
+            errs.append(f"a line cites [{ids[0]}] but names none of its title: {u.strip()[:90]!r}")
+    return errs
+
+
+def record_titles(leads: list[dict]) -> dict[str, str]:
+    out = {}
+    for x in leads:
+        rec = x.get("opportunity") or x.get("record") or {}
+        if t := rec.get("title") or rec.get("name"):
+            out[short(x["record_id"])] = t
+    return out
+
+
 def check_draft(ex: dict, top: str, others: list[str]) -> list[str]:
     drafts = [c for c in ex["cards"] if c["tool"] == "draft_handoff" and c["status"] == "done"]
     if not drafts:
@@ -302,8 +347,9 @@ def researcher_run(base: str, n: int, kept: str = "top2") -> dict:
             far = d and o.get("close_date_note") and (d - as_of).days > 3 * 365
             closes[short(x["record_id"])] = None if far else d
         sid = None
-        checks = (lambda ex: check_top_three(ex, top),
-                  lambda ex: check_before_march(ex, as_of, closes),
+        titles = record_titles(g["leads"])
+        checks = (lambda ex: check_top_three(ex, top) + check_own_titles(ex, titles),
+                  lambda ex: check_before_march(ex, as_of, closes) + check_own_titles(ex, titles),
                   lambda ex: check_draft(ex, top[0], [short(x["record_id"]) for x in grants[1:]]))
         for q, check in zip(QUESTIONS, checks, strict=True):
             sid, ex, secs = cl.ask(sid, q)
@@ -326,7 +372,8 @@ def student_run(base: str, n: int) -> dict:
         if g["brief"]["status"] != "done":
             raise RuntimeError("the student brief failed")
         _, ex, secs = cl.ask(None, STUDENT_Q)
-        out["questions"].append(_record(STUDENT_Q, ex, secs, check_student(ex)))
+        out["questions"].append(_record(STUDENT_Q, ex, secs, check_student(ex)
+                                        + check_own_titles(ex, record_titles(g["leads"]))))
     finally:
         cl.end()
     return out

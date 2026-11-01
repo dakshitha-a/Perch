@@ -204,6 +204,7 @@ function argList(c, ctx) {
     .map(([k, v]) => [k, k === "route" ? ROUTES[v] || v
       : k === "scope" ? SCOPES[v] || v
       : k === "sort" ? SORTS[v] || String(v).replace(/_/g, " ")
+      : (k === "min_amount" || k === "max_amount") && Number.isFinite(Number(v)) ? money(v)  // G18: as the cards
         : DATE_ARGS.has(k) && /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? formatDate(String(v))
       : ID_ARGS.has(k) ? [].concat(v).map(name).join(", ")
         : Array.isArray(v) ? v.join(", ") : v]);

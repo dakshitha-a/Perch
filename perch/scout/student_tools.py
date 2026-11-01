@@ -144,7 +144,10 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
         rows.sort(key=lambda r: (due_of[r["id"]] is None, due_of[r["id"]] or date.max))
     elif sort == "amount":  # F15: "pays the most": the largest stated amount first
         rows.sort(key=lambda r: -(amount_of[r["id"]] or -1))
+    total = len(rows)  # G23: how many match, counted by code, before the list is cut
     rows = rows[:15]
+    for r in rows if ctx is not None else []:  # an answer citing a row may repeat the count
+        ctx.facts.setdefault(r["id"], []).append(f"{total} options match these filters")
     extra = {}
     if undated and not any(not r.get("sample") for r in rows):
         # G20: "No public fellowships have deadlines before March" hid that none states one
@@ -165,7 +168,8 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
                      "fellowships_note": "No fellowship's title, purpose or fit sentence holds "
                      "these words. fellowships_by_match are the brief's top fellowships by "
                      "Match, which is read from the student's interests: offer them."}
-    return {**apart(rows, "options"), "count": len(rows), **extra,
+    return {**apart(rows, "options"), "count": total,
+            **({"shown": len(rows)} if total > len(rows) else {}), **extra,
             **({"words_used": used} if used else {}),
             "note": "Options in this student brief, checked against the CV by rule, each "
             "group in the brief's own order by Match, the strongest first. Cite each row's "
