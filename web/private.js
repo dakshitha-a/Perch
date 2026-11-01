@@ -38,7 +38,8 @@ function statement() {
 
 // `auto`: this is an arrival on the page, so the session opens by itself, as it does on the
 // researcher and student paths (U41). Redraws pass false.
-export async function renderPrivate(root, { api, go, announce, mode, endSession }, auto = true) {
+export async function renderPrivate(root, ctx, auto = true) {
+  const { api, go, announce, mode, endSession, onDocs } = ctx;
   document.title = "Your documents — Perch";
   if (mode) MODE = mode;
   if (auto) P.error = null;
@@ -49,7 +50,7 @@ export async function renderPrivate(root, { api, go, announce, mode, endSession 
       h("p", {}, h("a", { href: "#/", text: "Back to Find" }))));
     return;
   }
-  const draw = () => renderPrivate(root, { api, go, announce, mode, endSession }, false);
+  const draw = () => renderPrivate(root, ctx, false);
   if (MODE) {  // text moved here from a public field waits as an unsent draft
     for (const [k, v] of Object.entries(MODE.state.drafts)) {
       if (v && P.info.kinds[k] && !P.drafts[k]) { P.drafts[k] = v; delete MODE.state.drafts[k]; }
@@ -90,6 +91,7 @@ export async function renderPrivate(root, { api, go, announce, mode, endSession 
       await api.addDocument(body);
       P.drafts[kind] = "";
       P.docs = (await api.session()).documents;
+      if (onDocs) onDocs(P.docs.length);
       announce(`${kinds[kind]} added.`);
     } catch (e) { P.error = e.message; }
     P.busy = false; draw();
@@ -98,6 +100,7 @@ export async function renderPrivate(root, { api, go, announce, mode, endSession 
   async function remove(kind) {
     await api.removeDocument(kind);
     P.docs = (await api.session()).documents;
+    if (onDocs) onDocs(P.docs.length);
     draw();
   }
 

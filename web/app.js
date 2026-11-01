@@ -105,7 +105,9 @@ function route() {
   if (parts[0] === "private") {
     leaveBrief();
     screen("form");
-    renderPrivate(main(), { api: privApi, go, announce, mode, endSession });
+    renderPrivate(main(), { api: privApi, go, announce, mode, endSession,
+      // The chip says Local only once the session holds documents, on every path (U37).
+      onDocs: (n) => { S.hasDocs = n > 0; drawSwitch(); } });
     return;
   }
   if (parts[0] === "student") {
@@ -536,8 +538,11 @@ function drawSwitch() {
   // The second half folds away on a very narrow screen; the aria-label keeps it all (U22).
   fill(b.querySelector(".chip-word"), h("span", { text: S.cloud ? `Cloud: ${c.provider}` : S.hasDocs ? "Local only" : "Local" }),
     h("span", { class: "chip-rest", text: " · nothing stored" }));
-  b.setAttribute("aria-label", S.cloud ? `Privacy: nothing stored; Cloud on, text goes to ${c.provider}. Change models`
-    : "Privacy: nothing stored, local models. Change models");
+  const label = S.cloud ? `Privacy: nothing stored; Cloud on, text goes to ${c.provider}. Change models`
+    : S.hasDocs ? "Privacy: nothing stored. Local only: this session holds documents, so every model that reads them runs on this server. Change models"
+      : "Privacy: nothing stored, local models. Change models";
+  b.setAttribute("aria-label", label);
+  b.title = S.hasDocs && !S.cloud ? "Local only: this session holds documents, so every model that reads them runs on this server." : "";
   document.body.classList.toggle("cloud-on", S.cloud);
   $("#end-session").hidden = !privApi.open;
 }
