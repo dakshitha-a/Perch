@@ -809,12 +809,14 @@ function tabButton(key, label, short) {
   return h("button", { role: "tab", id: `tab-${key}`, class: "tab", "aria-controls": "panel", "aria-label": label,
     onclick: () => go(`#/brief/${encodeURIComponent(S.briefId)}/${key}`),
     onkeydown: (e) => {
-      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-        const tabs = TABS.filter((k) => $(`#tab-${k}`));
-        const other = tabs[(tabs.indexOf(key) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
-        go(`#/brief/${encodeURIComponent(S.briefId)}/${other}`);
-        setTimeout(() => $(`#tab-${other}`).focus(), 0);
-      }
+      // The WAI-ARIA tabs keys: arrows move one tab, Home and End to the first and last (Q27).
+      if (!["ArrowRight", "ArrowLeft", "Home", "End"].includes(e.key)) return;
+      e.preventDefault();
+      const tabs = TABS.filter((k) => $(`#tab-${k}`));
+      const other = e.key === "Home" ? tabs[0] : e.key === "End" ? tabs[tabs.length - 1]
+        : tabs[(tabs.indexOf(key) + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+      go(`#/brief/${encodeURIComponent(S.briefId)}/${other}`);
+      setTimeout(() => $(`#tab-${other}`).focus(), 0);
     } }, h("span", { class: "tab-label lbl-long", text: label }), h("span", { class: "lbl-short", "aria-hidden": "true", text: short }));
 }
 
