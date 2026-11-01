@@ -137,9 +137,14 @@ def test_student_record_links_name_their_source_not_the_url():
     brief, leads, recs = _student_inputs()
     for r in list(recs.values())[:3]:
         r.source = "temple_sdfa"
+        r.source_url = "https://undergraduate.temple.edu/fellowships"
     md = ex.to_markdown(ex.student_blocks(brief, leads, recs))
     assert "[Record: Temple Scholar Development and Fellowships Advising list](https://" in md
     assert "[Record: https://" not in md
+    # T26: a listing on Temple's list that links off Temple names where the link goes
+    list(recs.values())[0].source_url = "https://www.btaa.org/srop"
+    md = ex.to_markdown(ex.student_blocks(brief, leads, recs))
+    assert "Fellowships Advising list (links to btaa.org)](https://www.btaa.org/srop)" in md
 
 
 def test_exports_render_citations_as_the_screen_with_no_raw_ids():
@@ -191,7 +196,7 @@ def test_the_documents_banner_counts_every_withheld_text():
     assert "> 1 model text withheld:" in md and md.count(egress.WITHHELD) == 1
 
 
-def test_the_industry_section_says_what_the_tab_says_and_is_left_out_when_empty():
+def test_the_industry_section_says_what_the_tab_says_and_one_line_when_skipped():
     """R18: the export's Industry note read "NIH SBIR/STTR only." with no research-security
     line, and a documents-only export printed an empty "Industry leads (0)"."""
     from pathlib import Path
@@ -209,4 +214,7 @@ def test_the_industry_section_says_what_the_tab_says_and_is_left_out_when_empty(
     assert f'"{ex.INDUSTRY_NOTE}"' in app  # the tab's words, joined across its lines
     brief.stages = [Stage(name="route_b", status="skipped")]
     md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, [], documents=True))
-    assert "Industry leads" not in md and "No company had" not in md
+    # T18: a documents-only brief's Industry section is the tab's one line, no warnings
+    assert "Industry leads (0)" not in md and "No company had" not in md
+    assert ex.INDUSTRY_NEEDS_PAPERS in md and ex.INDUSTRY_NOTE not in md
+    assert f'"{ex.INDUSTRY_NEEDS_PAPERS}"' in app

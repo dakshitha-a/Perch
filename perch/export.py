@@ -22,6 +22,10 @@ from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Sc
 from perch.sources import grants_gov, temple
 
 # The Industry tab's note (web/app.js), word for word (R18).
+# T18: a brief from documents alone has no industry search; the tab and the export say why.
+INDUSTRY_NEEDS_PAPERS = ("Industry leads need public papers: Perch finds companies through the "
+                         "works that cite yours, and this brief has none. Add your OpenAlex ID "
+                         "to see them.")
 INDUSTRY_NOTE = ("Inferred from public signals; not verified. A company that cites or works "
                  "near your research may have no interest in funding it. SBIR/STTR covers NIH "
                  "awards only.")
@@ -223,7 +227,10 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
 
     # A brief with no public papers has no industry search: no empty section (R18).
     skipped = any(s.name == "route_b" and s.status == "skipped" for s in brief.stages)
-    if not (skipped and not b and not any(x.route == "B" for x in gone)):
+    if skipped and not b and not any(x.route == "B" for x in gone):  # T18: the tab's line
+        out.append(Block("h2", "Industry leads"))
+        out.append(Block("p", INDUSTRY_NEEDS_PAPERS))
+    else:
         out.append(Block("h2", f"Industry leads ({len(b)})"))
         out.append(Block("note", INDUSTRY_NOTE))  # the Industry tab's words (R18)
         out.append(Block("note", RESEARCH_SECURITY))
@@ -242,7 +249,8 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
         if x.explanation:
             out.append(Block("p", x.explanation))
         if org:
-            out.append(Block("link", f"Record: {org.source} organisation", href=org.id
+            src = {"openalex": "OpenAlex"}.get(org.source, org.source)  # T20
+            out.append(Block("link", f"Record: {src} organization", href=org.id
                              if org.id.startswith("https://") else org.source_url))
 
     out.append(Block("h2", "About this export"))
@@ -293,11 +301,14 @@ def _source_name(rec: object) -> str:
     """A record link's text, as the researcher export names it (R19): never the bare URL."""
     if isinstance(rec, Opportunity):
         return f"Grants.gov {rec.opportunity_number}"
-    if getattr(rec, "source", None) == temple.SOURCE:
-        return "Temple Scholar Development and Fellowships Advising list"
     from urllib.parse import urlparse
 
-    return urlparse(getattr(rec, "source_url", "") or "").hostname or "the listing"
+    host = (urlparse(getattr(rec, "source_url", "") or "").hostname or "").removeprefix("www.")
+    if getattr(rec, "source", None) == temple.SOURCE:
+        name = "Temple Scholar Development and Fellowships Advising list"
+        # T26: a listing on Temple's list whose link leaves Temple says where it goes
+        return name if not host or host.endswith("temple.edu") else f"{name} (links to {host})"
+    return host or "the listing"
 
 
 def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
