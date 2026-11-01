@@ -17,7 +17,7 @@ Then it drafts a hand-off to the right Temple office, which you send yourself.
 
 **[Quick start](#quick-start)** · **[Tour](#a-quick-tour)** · **[How it works](#how-it-works)** · **[How well it works](#how-well-it-works)** · **[Docs](#learn-more)**
 
-<img src="docs/tour/hero.webp" alt="Finding a researcher by OpenAlex ID, picking them, building their brief, then opening the top grant's reasons and the paper it cites in the evidence panel beside the list." width="880">
+<img src="docs/tour/hero.webp" alt="Finding a researcher by OpenAlex ID, picking them and pressing Build brief, then opening the top grant's reasons and the paper it cites in the evidence panel beside the list. This demo researcher's brief was built when the server started, so it opens at once." width="880">
 
 <sub>Find a researcher, build the brief, and open the record behind any claim.</sub>
 
@@ -107,16 +107,18 @@ send it yourself.
 
 ### Ask Scout a follow-up
 
-"Why does the top lead fit?" or "only R21s that close by March". Scout, the
-agent, answers by calling Perch's own nine tools, each shown as a card. It asks before every
-step unless you let it run. It cannot browse, send anything or change a record.
+"Which of my NSF leads close by 1 Mar 2027?" or "Why does the top lead fit?". Scout,
+the agent, answers by calling Perch's own nine tools. Above each answer, "How Scout read
+your question" lists every step with its filters; the step cards fold under Steps. New
+conversation, beside the question box, starts over. Scout cannot browse, send anything
+or change a record.
 
 On a student brief, Scout has its own rule-based tools instead. Other agents can
 use the researcher tools through Perch's [MCP server](docs/mcp.md), Claude Code
 included.
 
 </td>
-<td><img src="docs/tour/scout.webp" alt="Asking Scout why the top lead fits; its tool runs as a card and the answer cites the opportunity and the papers." width="420"></td>
+<td><img src="docs/tour/scout.webp" alt="Asking Scout which NSF leads close by 1 Mar 2027: How Scout read your question shows the search and its filters, the answer cites the opportunity, and the step card opens under Steps." width="420"></td>
 </tr>
 <tr>
 <td><img src="docs/tour/private.webp" alt="Picking a researcher, filling Tell Perch more with an invented SYNTHETIC sample (a direction, keywords and draft aims), and a brief whose explanations cite the draft with a lock." width="420"></td>
@@ -129,9 +131,9 @@ session held in memory, and only public records are cached. Models run on
 the server. The chip at the top, "Local · nothing stored", opens a choice: the
 model work can go to a cloud provider instead, after a warning that names it.
 
-After picking the researcher, add a direction, keywords, a CV or a draft
-proposal to steer the search. Documents stay on local models, and exports leave
-their text out, or mask it. A canary
+After picking the researcher, open Tell Perch more to add a direction, keywords or
+a draft proposal that steer the search, and a CV that the career-stage rules read.
+Documents stay on local models, and exports leave their text out, or mask it. A canary
 test checks that no trace is left in files, logs or requests.
 [More on privacy →](docs/private-mode.md)
 
@@ -148,12 +150,12 @@ records and scholarships from a sample database. It checks each one against
 your CV by rule, and lists what you would still need. Ask Scout works here too.
 
 Every sample record is invented and badged **Sample data**. On 24 planted test
-cases, the rules matched every case that reached a brief; retrieval missed 2 of
+cases, the rules matched every case that reached a brief; retrieval missed 1 of
 the 12 a student could apply for.
 [Scores →](bench/results/STUDENT_MODE.md)
 
 </td>
-<td><img src="docs/tour/student.webp" alt="Filling the student form with an invented sample, then the Scholarships and awards (sample) tab: Sample data badges, a notice that the records are invented, and a card with its rule check, deadline and amount." width="420"></td>
+<td><img src="docs/tour/student.webp" alt="Filling the student form with an invented sample, then the Scholarships and awards tab, badged Sample data: a sample card with its rule check, Match, deadline, amount and what is still needed." width="420"></td>
 </tr>
 </table>
 
@@ -199,14 +201,14 @@ Every number here was measured. Each is copied from [bench/results](bench/result
 | **Live canary** | no trace in files, logs or model-server journals after full briefs, with and without documents |
 
 - **An upper bound, not an estimate:** each award's own funded abstract was added as a stand-in "draft proposal". With the current setup, it lifted the back-test from 10 to 17 of 48 in the top 10. A real draft is further from the award than its funded abstract.
-- **General calls are hard:** for awards made under broad parent announcements, Perch puts 1 of 78 in the top 10.
+- **General calls are hard:** for awards made under broad parent announcements, Perch puts 2 of 78 in the top 10.
 - **Industry leads, judged once:** the agent that built Perch judged 14 leads: 8 good, 6 thin and 0 wrong. A person has not checked them yet.
 
 ## Known limits
 
 - **No monitoring:** Perch keeps nothing about its users, so it cannot watch a researcher for changes. The weekly watch is shelved in `perch/shelved/monitor/` until a user system exists.
 - **Refresh by hand:** open opportunities are refreshed when the operator runs `perch fetch opportunities` and re-indexes; a researcher's cached papers and awards are not refreshed on their own.
-- **Every brief is live:** nothing is reused, so each brief runs the models again; one brief with explanations took 46 s on the demo models in S23.
+- **Every brief is live:** apart from the demo researchers' briefs, which the server builds when it starts, nothing is reused, so each brief runs the models again; one brief with explanations took 46 s on the demo models in S23.
 - **Cloud is narrow by design:** with Cloud on, only the summary, the fit explanations and the hand-off opening use the cloud model, and never for a session with documents. A real deployment might send more to a cloud provider under a zero-data-retention key; that is not built.
 - **Sessions do not index:** opportunities fetched since the pipeline last indexed are not searched in a brief.
 - **One announcement, several cards:** related announcements of one family (for example, one call with and without a clinical trial) are listed separately.
