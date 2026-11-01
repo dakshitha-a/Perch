@@ -63,8 +63,23 @@ BANNED = re.compile(
     r"|\b(collaborations? with|collaborated with|worked with|have partnered)\b", re.I)
 
 
-# Inline citations a model adds anyway, e.g. " [W123, PAR-26-121]".
-BRACKETED = re.compile(r"\s*\[(?:[A-Z]+[\w-]*\d[\w-]*)(?:\s*,\s*[A-Z]+[\w-]*\d[\w-]*)*\]")
+# Inline citations a model adds anyway, e.g. " [W123, PAR-26-121]", " [26-519]" or
+# " [private:proposal]".
+BRACKETED = re.compile(r"\s*\[([^\[\]]+)\]")
+
+
+def plain_citations(text: str, records: dict[str, Record], listed: set[str]) -> str:
+    """The email is plain prose (Q23): a bracketed citation key goes. A record the list
+    below names is dropped; any other opportunity reads as its number in parentheses. A
+    bracket that holds anything but citation keys stays as written."""
+    def swap(m: re.Match) -> str:
+        keys = [k.strip() for k in m.group(1).split(",")]
+        if not all(k in records or egress.is_private_id(k) for k in keys):
+            return m.group(0)
+        out = [rec.opportunity_number for k in keys if k not in listed
+               and isinstance(rec := records.get(k), Opportunity)]
+        return f" ({', '.join(out)})" if out else ""
+    return BRACKETED.sub(swap, text)
 
 
 @dataclass
@@ -229,7 +244,7 @@ def draft_handoff(office: Office, researcher: Researcher,
         return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers),
                      lead_ids, flagged=True, errors=v.errors, model=provider.model)
     text, cited = v.value
-    text = BRACKETED.sub("", text)  # ids are for the validator, not the reader
+    text = plain_citations(text, records, set(records))  # every record given is listed below
     if egress.uses_private(cited) and masker is None:
         return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers),
                      lead_ids, cited_ids=cited, model=provider.model, flagged=True,

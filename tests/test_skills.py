@@ -170,3 +170,27 @@ def test_sentence_count_ignores_abbreviations():
     assert sentences("It funds catalysis, e.g. SYNTHETIC catalysts, and more.") == 1
     assert sentences("Work by Smith et al. shows X. Then Y.") == 2
     assert sentences("Funds DNA. Also RNA.") == 2
+
+
+def test_handoff_opening_carries_no_citation_keys_and_a_private_researcher_signs_it():
+    """Q23: "[26-519]" and "[private:proposal]" stayed in the email's opening, since the
+    old pattern wanted a leading letter. Q26: "Best regards, You (private)"."""
+    from perch.offices import OFFICES
+    from perch.schemas import Researcher
+    from perch.skills.handoff import draft_handoff, plain_citations
+
+    res, items, papers = _handoff_inputs()
+    p, _ = audited([handoff_reply(
+        "My work studies living kidney donor communication [W1]. I would like to discuss "
+        "SYNTHETIC ELSI [PAR-1], which funds research on these questions.")])
+    d = draft_handoff(OFFICES["research_development"], res, items, papers, p)
+    opening = d.body.split("\n\n")[1]
+    assert "[" not in opening and "communication. I would" in opening
+    recs = {"26-519": items[0][1], "W1": papers[0]}
+    assert plain_citations("Chemistry [26-519] and more [private:proposal, W1].", recs,
+                           {"W1"}) == "Chemistry (PAR-1) and more."
+    assert plain_citations("A note [sic].", recs, set()) == "A note [sic]."
+    you = Researcher(id="private:you", display_name="You (private)", source="private",
+                     source_url="private://session", fetched_at=T)
+    d = draft_handoff(OFFICES["research_development"], you, items, papers, None)
+    assert d.body.endswith("Best regards,\n") and "(private)" not in d.body
