@@ -229,7 +229,8 @@ function draftBlock(d, ctx) {
   return h("details", { class: "scout-draft", open: true },
     h("summary", { text: `The draft to ${d.office}` }),
     d.opening_withheld ? h("p", { class: "hint", text: "The model’s opening failed the checks twice; a plain sentence replaces it." }) : null,
-    h("pre", { class: "draft-text", text }),
+    // Focusable, so a keyboard can scroll a long draft (axe scrollable-region-focusable).
+    h("pre", { class: "draft-text", tabindex: "0", "aria-label": `The draft to ${d.office}`, text }),
     h("div", { class: "scout-actions" },
       h("button", { class: "btn", type: "button", onclick: async () => {
         try { await navigator.clipboard.writeText(text); ctx.announce("The draft is copied."); }
