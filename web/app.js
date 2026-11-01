@@ -439,7 +439,7 @@ function contextPanel(c) {
     const file = F.files[kind];
     return h("div", { class: "box" },
       h("div", { class: "box-head" }, h("label", { class: "big", for: `ctx-${kind}`, text: label }),
-        h("span", { class: "local", text: "Local only" })),
+        h("span", { class: "local", text: "Local by default" })),
       h("p", { class: "note", id: `ctx-${kind}-note`, text: note }),
       file ? h("p", { class: "added" }, icon("paper"), h("span", { text: `${file.name}, read on this server when you build` }),
         h("button", { class: "btn quiet", type: "button", onclick: () => { delete F.files[kind]; renderPick(); } }, h("span", { text: "Remove" })))
@@ -457,7 +457,7 @@ function contextPanel(c) {
     ontoggle: (e) => { F.moreOpen = e.target.open; } },
     h("summary", { "data-key": "more-ctx" }, h("h2", { id: "more-h", text: "Tell Perch more (optional)" })),
     h("div", { class: "more-body" },
-    h("p", { class: "page-sub", text: "Everything here steers the search and is held in memory for this session only. Your CV and ongoing research stay on local models." }),
+    h("p", { class: "page-sub", text: "Everything here steers the search and is held in memory for this session only. Your CV and ongoing research stay on local models unless you choose Cloud and confirm them." }),
     ok ? h("div", { class: "sample-row" },
       h("span", { text: "See what helps most: a sample direction, keywords and draft aims. The sample has no CV, because this is a real researcher." }),
       h("button", { class: "btn outline", type: "button", "data-key": "fill-sample", onclick: fillResearcherSample }, h("span", { text: "Fill with a sample" })),
