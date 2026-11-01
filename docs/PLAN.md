@@ -438,6 +438,18 @@ Done when: tag pushed; tracker complete.
 
 ---
 
+## After Demo Day (roadmap)
+
+Not scheduled. Dakshitha orders these.
+
+1. **Deployment decision:** if Perch is deployed in production, the person deploying chooses the mode (fully local, hybrid or cloud-only) and, with a hosted provider, whether the API key is a zero-data-retention key, if the provider offers one. The architecture, SPEC §4 and §11 and `docs/deploy.md` ("Before a production deployment") describe the decision. A production README and privacy statement follow from it.
+2. **Scout phase 2:** Keep buttons on a search step's leads; removing a filter chip reruns that one search by code with no model call; draft review if Q34 says build it.
+3. **GRANTED and CREST:** check eligibility against Temple (Q39).
+4. **Keyboard shortcuts:** deferred in the S29 triage (U43).
+5. **A second brief worker:** deferred in the S29 triage (P7).
+
+---
+
 ## Change log
 
 | Date | Session | Change | Reason | Asked by |
@@ -482,3 +494,4 @@ Done when: tag pushed; tracker complete.
 | 2026-10-31 | cut order | "Scout's approve mode (S10)" in the never-cut list becomes "Scout with its allowlist and budgets (S10)" | S28 removed the approve mode by Dakshitha's direction (SCOUT_SPEC section 4) | Dakshitha |
 | 2026-10-31 | S29 to S33 | S29 becomes both reviews at once (workflow and UI/UX, two fresh-context reviewers in parallel, Perch-dev triages); S30 both fix passes, workflow then UI; S31 QA cycles, tester then fixer, up to ten rounds with a stop rule; S32 stabilize for the freeze (`make package`, Demo Day caps, demo rebuild, walk, canary, bench, media refilm); S33 is the tag and the GPU hand-back. The UX report is `docs/design/UX_REVIEW_S29.md`. The sessions run in one orchestrating context with subagents | Dakshitha delegated every product and design decision to Perch-dev on 2026-10-31, asked for the two diagnoses in parallel, fixes in sequence, then up to ten QA and fix cycles, with no questions back | Dakshitha |
 | 2026-11-01 | S31 | Five QA rounds in all, in place of the stop rule and the ten-round cap | Dakshitha: "bring the total no of rounds to 5" | Dakshitha |
+| 2026-11-01 | S32 | "After Demo Day (roadmap)" section added, with the deployment decision (fully local, hybrid or cloud-only; zero-data-retention key if cloud) as its first item; ARCHITECTURE, SPEC §4 and §11 and `docs/deploy.md` carry the same decision | Dakshitha: the deployment mode and the key type are the deployer's decision | Dakshitha |

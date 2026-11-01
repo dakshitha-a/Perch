@@ -25,6 +25,19 @@ How Perch fits together, which steps of a brief use a model, what runs where in 
 - **Grounding check:** Clef reads each sentence beside the record it cites, and flags a sentence the record does not support.
 - **Scout and decide:** Scout calls only allowlisted tools. Decide gives typed yes-or-no and score answers with a confidence.
 
+## Deployment choice: local, hybrid or cloud
+
+The person who deploys Perch decides where the models run. This is a deployment decision, not a code change.
+
+- **One path:** every model call goes through `perch/llm/` (standing rule 6). Each model role is chosen by a setting.
+- **The settings:** `PERCH_LLM_DEFAULT` sets all roles. A per-role variable such as `PERCH_LLM_FIT_EXPLAINER` overrides one role. `PERCH_PROFILE` sets the local models. `PERCH_CLOUD` names the hosted model that visitors may turn on.
+- **Fully local:** every role runs on self-hosted models. No API key is needed and no text leaves the server.
+- **Hybrid:** models are local by default. A user may switch a session to Cloud. This is how the demo runs.
+- **Cloud only:** every role runs on a hosted provider. This needs an API key and the deployer's agreement to the provider's terms.
+- **The key type:** if a hosted provider is used, the deployer also decides whether the API key is a zero-data-retention key, if the provider offers one. The privacy statement should say which kind it is.
+- **Documents:** a user's documents reach a hosted provider only by that user's informed consent, given for the session (standing rule 1 as amended on 2026-11-01). The deployer allows the choice with `PERCH_CLOUD_DOCUMENTS`.
+- **Where to set it:** `.env.example` lists the variables. `docs/deploy.md` has the checklist for a production deployment.
+
 ## The demo on two GPUs, and the API swap
 
 ![The two-GPU demo layout. GPU A holds the writing and agent models; each of their roles can move to the Anthropic API with one line in .env. GPU B holds the grounding check and search, which have no cloud path. Private mode refuses the path to the API.](architecture/deployment.svg)

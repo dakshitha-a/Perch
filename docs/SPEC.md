@@ -61,6 +61,7 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 - Citations: private documents are session-only records the validator accepts in the session; numbers and dates still come from a cited record.
 - Leaving the app: by default nothing private-derived leaves; an opt-in export masks identifiers and novel phrases, and says plainly that masking cannot hide the research direction.
 - Evidence: a canary-token test defines "no logs"; a RePORTER-abstract back-test variant measures the mechanism as an upper bound. Tested only with `data/synthetic/` personas.
+- Deployment choice (2026-11-01, Dakshitha): documents go to a hosted provider only when the user chooses it for the session, after an informed warning. The person deploying decides whether Perch is offered fully local, hybrid or cloud-only. If a hosted provider is used, that person also decides whether the API key is a zero-data-retention key, if the provider offers one, and the privacy statement says which. See the architecture section "Deployment choice: local, hybrid or cloud".
 
 ## 5. Walkthrough
 
@@ -176,6 +177,8 @@ Dropped: SEC filings, job postings, press releases.
 - **deploy-1gpu** (default target): everything on GPU 0. One chat model from the Ollama list (default `qwen3:14b`, 8k context), Clef-flash Q4_K_M as the decision model, Qwen3-Embedding-0.6B, Qwen3-Reranker-0.6B and the grounding model. Peak must stay under 28 GB.
 - **deploy-2gpu**: chat model on GPU 0, everything else on GPU 1. This profile permits `qwen3.8:27b` as the chat model.
 - **dev**: the 8-GPU development layout. Ollama on GPU 0 (port 11434, `qwen3.8:27b` stays resident), Clef-flash on GPU 1 (port 8097), Clef on GPU 2 (port 8098), the embed, rerank and grounding service on GPU 3 (port 8099), GPUs 4 and 5 as the bench pool.
+
+**Deployment mode.** The person deploying also chooses the mode: fully local (every model role self-hosted), hybrid (local by default, Cloud by the user's choice per session, as the demo runs) or cloud-only (every role on a hosted provider). With a hosted provider, that person decides whether the API key is a zero-data-retention key, if the provider offers one, and the privacy statement says which. Documents leave only by the user's informed consent for the session (§4, `PERCH_CLOUD_DOCUMENTS`). See `docs/ARCHITECTURE.md`, "Deployment choice: local, hybrid or cloud", and the checklist in `docs/deploy.md`.
 
 Chat-model candidates are the models already in Ollama on the lab node: `qwen3:8b` (5.2 GB), `qwen3:14b` (9.3 GB), `qwen3:30b` (18 GB, mixture-of-experts: cheap to run, large weights) and `qwen3.8:27b` (17 GB), with `qwen3-coder:30b` also present. Sizes are as `ollama list` reports them. `nomic-embed-text` is a benchmark baseline only; the retrieval embedder is still chosen by `make bench`.
 

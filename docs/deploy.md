@@ -20,6 +20,17 @@ make demo-down                     # stop everything
 - **Limits:** each visitor can start 10 new briefs an hour (`PERCH_BRIEFS_PER_HOUR`).
 - **Health:** `GET /health` answers when the app is up; `GET /health?deep=true` checks every model service.
 
+## Before a production deployment
+
+The demo is not a production setup. The person deploying decides each of these. The background is in `docs/ARCHITECTURE.md`, "Deployment choice: local, hybrid or cloud".
+
+- [ ] **Mode:** choose fully local, hybrid or cloud-only. Local: every role on self-hosted models, no key. Hybrid: local by default, Cloud by the user's choice per session. Cloud-only: every role on a hosted provider through `PERCH_LLM_DEFAULT`.
+- [ ] **Key type (hybrid or cloud-only):** decide whether the API key is a zero-data-retention key, if the provider offers one. Record the answer.
+- [ ] **Documents on Cloud:** set `PERCH_CLOUD_DOCUMENTS` to match the mode. Leave it empty if documents must stay on the server. Set it to 1 only if users may choose to send documents to the `PERCH_CLOUD` provider after the warning.
+- [ ] **Privacy statement:** update its text to say the mode, the provider by name and whether the key is a zero-data-retention key.
+- [ ] **Operator:** set `PERCH_PRIVATE_OPERATOR` to name who runs the server. The privacy statement shows it.
+- [ ] **Cost cap:** set `PERCH_CLOUD_BRIEFS_PER_DAY` and `PERCH_ANTHROPIC_BUDGET_USD` if Cloud is offered.
+
 ## Public URL
 
 The demo is published with Tailscale Funnel: `tailscale funnel --bg 8090`. Funnel needs HTTPS certificates, MagicDNS and Funnel turned on for the tailnet, and `sudo tailscale set --operator=$USER` once. HTTPS is decrypted on the node itself, not by Tailscale.
