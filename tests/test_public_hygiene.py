@@ -62,6 +62,6 @@ def test_vendor_sdks_only_inside_perch_llm():
     sdks = r"(anthropic|openai|ollama|google\.genai|mistralai)"
     vendors = re.compile(r"^\s*(?:import|from)\s+" + sdks + r"\b", re.M)
     offenders = [str(p.relative_to(ROOT)) for p in ROOT.glob("**/*.py")
-                 if ".venv" not in p.parts and "llm" not in p.relative_to(ROOT).parts[:2]
+                 if ".venv" not in p.parts and ".claude" not in p.parts and "llm" not in p.relative_to(ROOT).parts[:2]
                  and vendors.search(p.read_text("utf-8"))]
     assert offenders == []

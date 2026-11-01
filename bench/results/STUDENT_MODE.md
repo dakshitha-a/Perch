@@ -16,7 +16,7 @@ The answer keys were written by hand from the rules in data/synthetic/README.md 
 ## Reading these numbers
 
 - **The rules are expected to match.** The keys and the rule code follow the same written rules, so a perfect match shows the code does what the rules say. It is a check of the code, not evidence that the rules are right for real awards.
-- **Retrieval is the real test here.** 1 of 24 planted records never reached a brief, 1 of them ones the student may apply for (sample:sch-0008). The rules never saw them. Each brief keeps the 40 records nearest the interests note out of 500.
+- **Retrieval is the real test here.** 1 of 24 planted records never reached a brief, 1 of them ones the student may apply for (sample:sch-0008). The rules never saw them. Each brief keeps the 100 records nearest the interests note out of 500 (40 before S27).
 - **Precision and recall count only retrieved records.** Counting the missed ones, the student would see 11 of 12 planted records they may apply for (end-to-end recall).
 - **Fellowships are not scored.** They are public listings with no key; the best verdict there is "may be eligible" by design.
 
