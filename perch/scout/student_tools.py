@@ -173,7 +173,7 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
             **({"words_used": used} if used else {}),
             "note": "Options in this student brief, checked against the CV by rule, each "
             "group in the brief's own order by Match, the strongest first. Cite each row's "
-            "own id. "
+            "own id. To say how many match, give count and cite the first row. "
             + ("Every option listed matches: its listing or its fit sentence on the card "
                "holds one of words_used (words_found_in says which). " if used else "")
             + APART_NOTE}
