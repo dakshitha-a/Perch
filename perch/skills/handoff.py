@@ -136,10 +136,20 @@ def lead_lines(items: list[tuple[Lead, Record | None]]) -> list[str]:
                 if lead.relationship else ""
             link = rec.id if rec.id.startswith("https://openalex.org/") else rec.source_url
             out.append(f"{i}. {rec.name}: industry lead, inferred from public signals and not "
-                       f"verified. {lead.explanation or ''}{rel}\n   Record: {link}")
+                       f"verified. {signals_mine(lead, rec.name)}{rel}\n   Record: {link}")
         else:
             out.append(f"{i}. {lead.record_id}")
     return out
+
+
+def signals_mine(lead: Lead, name: str) -> str:
+    """The lead's signal sentences in the researcher's own voice, "cite 2 of my papers":
+    the email goes to the office from the researcher (R12)."""
+    from perch.route_b import sentence
+
+    if not lead.signals:
+        return lead.explanation or ""
+    return " ".join(sentence(s, name, len(lead.cited_ids), person="first") for s in lead.signals)
 
 
 def paper_lines(papers: list[Work]) -> list[str]:

@@ -231,20 +231,23 @@ def score_leads(researcher_id: str, researcher_works: list[Work],
     return leads[:top]
 
 
-def sentence(s: Signal, name: str, n_cited: int) -> str:
-    """One factual sentence per signal. Counts and dates come from the records."""
+def sentence(s: Signal, name: str, n_cited: int, person: str = "second") -> str:
+    """One factual sentence per signal. Counts and dates come from the records. `person`:
+    "second" on screen and in the export ("your papers"); "first" in the hand-off, which
+    the researcher sends in their own voice ("my papers", R12)."""
+    your = "my" if person == "first" else "your"
     if s.kind == "citing_works":
         cite = "cites" if s.count == 1 else "cite"
-        what = f"{cite} {n_cited} of your papers" if n_cited else f"{cite} your papers"
+        what = f"{cite} {n_cited} of {your} papers" if n_cited else f"{cite} {your} papers"
         head = f"{s.count} {'work' if s.count == 1 else 'works'} with an author at {name} {what}"
         tail = f"the newest was published {day(s.latest)}" if s.latest else ""
     elif s.kind == "sbir_sttr":
         head = (f"{s.count} NIH SBIR/STTR {'project' if s.count == 1 else 'projects'} awarded "
-                f"to {name} {'matches' if s.count == 1 else 'match'} your main topics")
+                f"to {name} {'matches' if s.count == 1 else 'match'} {your} main topics")
         tail = f"the newest started {day(s.latest)}" if s.latest else ""
     else:
         head = (f"{s.count} other {'work' if s.count == 1 else 'works'} with an author at "
-                f"{name} {'shares' if s.count == 1 else 'share'} one of your main topics")
+                f"{name} {'shares' if s.count == 1 else 'share'} one of {your} main topics")
         tail = f"the newest was published {day(s.latest)}" if s.latest else ""
     return f"{head}; {tail}." if tail else f"{head}."
 

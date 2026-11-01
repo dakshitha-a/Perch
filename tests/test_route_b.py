@@ -173,3 +173,26 @@ def test_a_company_joins_its_openalex_parent_only_when_the_parent_is_there():
     other = org("22", "Parentco Devices (Testland)")  # no lineage: stays its own company
     assert len(score(citing=[(work(5, cites=[MINE[0].id]), [other])],
                      topical=[(work(6), [parent])])) == 0
+
+
+def test_the_hand_off_lists_industry_signals_in_the_researchers_own_voice():
+    """R12: the email, in the researcher's voice, said "18 works ... cite 2 of your papers";
+    to the office "your" means the office's papers. The screen and export keep "your"."""
+    from datetime import UTC, date, datetime
+
+    from perch.route_b import sentence
+    from perch.schemas import Lead, Organisation, Signal
+    from perch.skills.handoff import lead_lines
+
+    t = datetime(2026, 10, 29, tzinfo=UTC)
+    sigs = [Signal(kind="citing_works", record_ids=["W1"], count=18, latest=date(2026, 1, 2)),
+            Signal(kind="topic_works", record_ids=["W2"], count=3, latest=date(2025, 5, 6))]
+    org = Organisation(id="https://openalex.org/I1", source="openalex", source_url="u",
+                       fetched_at=t, name="SYNTHETIC Co", type="company")
+    lead = Lead(id="b:B1", source="openalex", source_url="u", fetched_at=t, brief_id="b",
+                route="B", record_id=org.id, rank=1, cited_ids=["W7", "W8"], signals=sigs,
+                explanation=" ".join(sentence(s, org.name, 2) for s in sigs))
+    line = lead_lines([(lead, org)])[0]
+    assert "cite 2 of my papers" in line and "one of my main topics" in line
+    assert "your" not in line
+    assert "cite 2 of your papers" in lead.explanation  # the screen and export say "your"
