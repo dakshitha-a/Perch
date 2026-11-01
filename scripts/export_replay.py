@@ -86,7 +86,9 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--question", default="Why does the top lead fit?",
                     help="the Scout question to record")
     args = ap.parse_args(argv[1:])
-    service = BriefService(args.db, default_models(), Clients(openalex=lambda: None))
+    # The store's own index and caches sit beside it, as for the student replay.
+    service = BriefService(args.db, default_models(data_dir=Path(args.db).parent),
+                           Clients(openalex=lambda: None))
     c = TestClient(create_app(service, InlineRunner(), web_dir=None))
     got = c.get(f"/briefs/{args.brief_id}")
     if got.status_code != 200:
