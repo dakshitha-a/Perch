@@ -130,7 +130,7 @@ MONTHS_RE = (r"(?:january|february|march|april|june|july|august|september|octobe
 FILTER_Q_RE = re.compile(r"\b(?:only|closing|closes?|after|before|until|under|over|above|"
                          r"below|at least|more than|less than|soonest|largest|biggest|"
                          r"smallest|highest|lowest|most money|ceilings?|NIH|NSF|DOE|DOD|NASA|"
-                         rf"USDA|[RKFUP]\d\d|eligib\w*|deadlines?|samples?|{MONTHS_RE})\b", re.I)
+                         rf"USDA|[RKFUP]\d\d|eligib\w*|{MONTHS_RE})\b", re.I)
 # G4: a student follow-up that names a code ("f31?") or the samples, answered with no tool,
 # is sent back with the exact call, not a list of filters: in a long conversation the
 # general reminder drew a second refusal.
@@ -945,11 +945,16 @@ SHORT_NAME_RE = re.compile(r"\(([^()]{2,40})\)")
 
 
 def crossed_rows(text: str, seen: dict) -> list[str]:
+    from perch.schemas import Opportunity, Scholarship
+
     owners: dict[str, set[str]] = {}
-    for i, r in seen.items():
+    for i, r in seen.items():  # grants and options only: "(United Kingdom)" names no record
+        if not isinstance(r, Opportunity | Scholarship):
+            continue
         for n in SHORT_NAME_RE.findall(getattr(r, "title", None) or getattr(r, "name", None)
                                        or ""):
-            owners.setdefault(n.lower(), set()).add(i.removeprefix("grants_gov:"))
+            if not re.search(r"clinical|trial", n, re.I):  # NIH's shared suffixes
+                owners.setdefault(n.lower(), set()).add(i.removeprefix("grants_gov:"))
     errs = []
     for line in SENTENCE_RE.split(text):
         ids = {i.removeprefix("grants_gov:") for i in cited(line)}

@@ -378,3 +378,17 @@ def test_a_student_question_not_about_kept_options_does_not_compare_them(service
     s = Scout(fake, c, table=STUDENT_TOOLS, rules=STUDENT_RULES,
               who="a student").start("Compare my kept options")
     assert s.cards[0].status != "refused"
+
+
+def test_shared_suffixes_and_place_names_are_not_short_names():
+    """The bench after G7: "(R01 Clinical Trial Required)" and a company's "(United
+    Kingdom)" were read as one record's short name, and two good answers were withheld."""
+    from perch.schemas import Organisation
+    from perch.scout.loop import crossed_rows
+
+    a = _parent("PAR-SYN-1", "R01 Clinical Trial Required")
+    b = _parent("PAR-SYN-2", "R01 Clinical Trial Optional")
+    org = Organisation(id="I1", name="SYNTHETIC Co (United Kingdom)", **KW)
+    seen = {a.id: a, b.id: b, org.id: org}
+    assert not crossed_rows(f"A grant (R01 Clinical Trial Required) [{b.id}].", seen)
+    assert not crossed_rows("SYNTHETIC Co (United Kingdom) cites you [B1].", seen)
