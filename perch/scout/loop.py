@@ -93,6 +93,17 @@ ACCESS_NUDGE = ("Your answer says you have no access, or asks for an ID or an up
                 "user's public records and any documents they added. Call one of your tools, "
                 "or answer from the results you have. Never ask for an OpenAlex ID or an "
                 "upload.")
+# R21: a follow-up that changes a filter ("now only the ones closing after 1 March 2027")
+# was answered from the last list in memory, so no filter showed and no record backed the
+# dates. Such a question, answered with no tool, is sent back once.
+FILTER_Q_RE = re.compile(r"\b(?:only|closing|closes?|after|before|until|under|over|above|"
+                         r"below|at least|more than|less than|NIH|NSF|DOE|DOD|NASA|USDA|"
+                         r"[RKFUP]\d\d)\b", re.I)
+FILTER_NUDGE = ("This question changes a filter, and you answered from an earlier result "
+                "without calling a tool. Call your search tool again with every filter the "
+                "user has given, such as agencies and closes_after, so the filter shows and "
+                "each date comes from a record. If no tool can apply it, give your answer "
+                "again.")
 # Refusals the rules ask for, which need no tool: they are not nudged.
 CAPABILITY_RE = re.compile(r"\b(e-?mail|send|web|brows\w*|internet|apply for|chances?|odds|"
                            r"percent\w*|likel\w*|foundations?|private[- ](?:sponsor|document)\w*|"
@@ -368,9 +379,15 @@ class Scout:
         start = s.exchanges[-1]["cards_from"] if s.exchanges else 0
         if s.nudged:
             return False
+        question = s.exchanges[-1]["question"] if s.exchanges else ""
         if NO_ACCESS_RE.search(text):  # R6
             nudge = ACCESS_NUDGE
-        elif s.cards[start:] or cited(text) or CAPABILITY_RE.search(text):
+        elif s.cards[start:] or CAPABILITY_RE.search(text):
+            return False
+        elif len(s.exchanges) > 1 and (FILTER_Q_RE.search(question)
+                                       or stated_numbers(question)):  # R21
+            nudge = FILTER_NUDGE
+        elif cited(text):
             return False
         else:
             nudge = NUDGE

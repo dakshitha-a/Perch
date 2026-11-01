@@ -535,3 +535,25 @@ def test_student_top_means_the_briefs_match_order():
         " ".join(STUDENT_RULES.split())
     assert "never the kept options" in " ".join(STUDENT_RULES.split())
     assert "not for the top or best" in STUDENT_TOOLS["compare_options"][0].description
+
+
+def test_a_follow_up_that_changes_a_filter_is_sent_back_to_call_a_tool(service):
+    """R21: "Now only the ones closing after 1 March 2027." was answered from the last list
+    in memory: no step ran, so no filter showed and no record backed the dates. Such a
+    follow-up, answered with no tool, is sent back once; a plain follow-up is not."""
+    fake = FakeProvider([call("get_record", id=OPP), f"It is an NIH listing [{OPP}].",
+                         f"Of those, this one closes after then [{OPP}].",
+                         call("search_opportunities", route="A", closes_after="2027-03-01"),
+                         f"None closes after 1 March 2027; this one closed earlier [{OPP}]."])
+    s = Scout(fake, ctx(service))
+    sess = s.start("Only show NIH grants.")
+    s.ask(sess, "Now only the ones closing after 1 March 2027.")
+    second = sess.cards[sess.exchanges[-1]["cards_from"]:]
+    assert [c.tool for c in second] == ["search_opportunities"]
+    assert any("changes a filter" in m.content for m in sess.messages if m.role == "user")
+    plain = FakeProvider([call("get_record", id=OPP), f"It closes 17 Nov 2026 [{OPP}].",
+                          f"It is the one I named [{OPP}]."])
+    s = Scout(plain, ctx(service))
+    sess = s.start("When does it close?")
+    s.ask(sess, "Which one was that again?")
+    assert sess.turns == 1 and sess.answer.startswith("It is the one I named")
