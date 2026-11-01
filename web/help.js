@@ -142,7 +142,7 @@ function steps() {
 // the section it links to says (U39).
 const QUICK = [
   ["How long does a brief take?",
-    "In tests on the demo models a brief with explanations took 46 to 49 seconds. The demo researchers’ briefs are built when the server starts, so they open at once.",
+    "Measured on 31 Oct 2026, a live brief with explanations took about 40 to 50 seconds on the demo models. The demo researchers’ briefs are built when the server starts, so they open at once.",
     "h-build", "Watch the brief build"],
   ["Is anything kept?",
     "No. Perch saves no brief, no lead and no log of your session. They sit in the server’s memory until you end the session, it has been idle 30 minutes, or the server restarts.",
