@@ -339,3 +339,8 @@ def test_real_tracker_renders_standalone():
     assert "http" not in real.split("<body>")[0]  # standalone page makes no external requests
     assert "Plan change log (0)" not in real and "Decisions (0)" not in real
     assert "Code freeze" in real and "Ready?" in real
+
+
+def test_bold_may_wrap_inline_code_and_code_is_left_alone():
+    assert rt.inline("**the `x<y` file** and `**not bold**`") == (
+        "<strong>the <code>x&lt;y</code> file</strong> and <code>**not bold**</code>")

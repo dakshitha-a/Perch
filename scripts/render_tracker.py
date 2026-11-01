@@ -396,10 +396,15 @@ SCRIPT = """
     if (b) b.addEventListener("click", function () { frame.src = b.getAttribute("data-src"); });
   });
   // README preview: grow the frame to its page when the browser lets us read it.
+  // The page posts its height (works across origins and from disk); reading it directly is a fallback.
   var rf = doc.getElementById("readme-frame");
-  function fit() { try { var h = rf.contentDocument.documentElement.scrollHeight;
-    if (h > 200) rf.style.height = (h + 24) + "px"; } catch (e) {} }
+  function grow(h) { if (rf && h > 200) rf.style.height = (h + 4) + "px"; }
+  function fit() { try { grow(rf.contentDocument.documentElement.scrollHeight); } catch (e) {} }
   if (rf) rf.addEventListener("load", fit);
+  window.addEventListener("message", function (e) {
+    if (rf && e.source === rf.contentWindow && e.data && e.data.perchReadmeHeight)
+      grow(+e.data.perchReadmeHeight);
+  });
 
   // Router.
   var views = [];
@@ -435,26 +440,26 @@ def esc(s: str) -> str:
 
 
 def inline(text: str) -> str:
-    """Escape text, then apply inline code, links, bold and italics."""
-    parts = re.split(r"(`[^`]*`)", text)
-    out = []
-    for part in parts:
-        if len(part) >= 2 and part.startswith("`") and part.endswith("`"):
-            out.append(f"<code>{esc(part[1:-1])}</code>")
-            continue
-        s = esc(part)
+    """Escape text, then apply inline code, links, bold and italics. Code spans are set aside
+    first, so bold may wrap code ('**the `x` file**') and nothing inside code is formatted."""
+    codes: list[str] = []
 
-        def link(m: re.Match) -> str:
-            href = m.group(2)
-            if re.match(r"(?i)\s*(javascript|data|vbscript):", html.unescape(href)):
-                return m.group(1)
-            return f'<a href="{href}">{m.group(1)}</a>'
+    def hold(m: re.Match) -> str:
+        codes.append(f"<code>{esc(m.group(1))}</code>")
+        return f"\x00{len(codes) - 1}\x00"
 
-        s = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", link, s)
-        s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
-        s = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<em>\1</em>", s)
-        out.append(s)
-    return "".join(out)
+    s = esc(re.sub(r"`([^`]*)`", hold, text.replace("\x00", "")))
+
+    def link(m: re.Match) -> str:
+        href = m.group(2)
+        if re.match(r"(?i)\s*(javascript|data|vbscript):", html.unescape(href)):
+            return m.group(1)
+        return f'<a href="{href}">{m.group(1)}</a>'
+
+    s = re.sub(r"\[([^\]]+)\]\(([^)\s\x00]+)\)", link, s)
+    s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
+    s = re.sub(r"(?<![\w*])\*(?!\s)(.+?)(?<!\s)\*(?![\w*])", r"<em>\1</em>", s)
+    return re.sub(r"\x00(\d+)\x00", lambda m: codes[int(m.group(1))], s)
 
 
 def split_row(line: str) -> list[str]:
@@ -1282,7 +1287,7 @@ def view_archive(sessions: list[Session]) -> str:
             bits.append(f"{len(st)} {noun}: " + ", ".join(parts))
         if s.finished:
             bits.append(f"finished {esc(s.finished)}")
-        if s.commit:
+        if s.commit and "git log" not in s.commit:
             bits.append(f"commit {inline(s.commit)}")
         items.append(
             f'<details id="{s.sid.lower()}"><summary><span class="sline"><span class="sid">'

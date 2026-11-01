@@ -42,6 +42,15 @@ sub { color: var(--muted); }
 """
 
 
+# Tells the tracker's README tab how tall the page is, so the frame has no scroll of its own.
+HEIGHT = """(function () {
+  function post() { if (parent !== window) parent.postMessage(
+    { perchReadmeHeight: document.documentElement.scrollHeight }, "*"); }
+  window.addEventListener("load", post); window.addEventListener("resize", post);
+  Array.prototype.forEach.call(document.images, function (i) { i.addEventListener("load", post); });
+})();"""
+
+
 def render(src: str) -> str:
     # GitHub renders Markdown inside HTML blocks when a blank line separates them;
     # python-markdown needs markdown="1" on those blocks to do the same.
@@ -58,7 +67,8 @@ def main() -> None:
             "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
             f"<title>Perch README</title>\n<style>{CSS}</style>\n</head>\n<body><main>\n"
             "<div class=\"bar\">README.md, as GitHub will show it (approximately)</div>\n"
-            f"<article class=\"frame\">\n{body}\n</article></main></body></html>\n")
+            f"<article class=\"frame\">\n{body}\n</article></main>\n<script>{HEIGHT}</script>"
+            "</body></html>\n")
     out = ROOT / a.out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
