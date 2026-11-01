@@ -28,7 +28,7 @@ MAX_OR_VALUES = 100
 COMPANY_SELECT = ("id,title,publication_year,publication_date,doi,type,primary_location,"
                   "authorships,topics,primary_topic,cited_by_count,referenced_works")
 
-ORCID_RE = re.compile(r"(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$")
+ORCID_RE = re.compile(r"(\d{4}-\d{4}-\d{4}-\d{3}[\dXx])$")  # a lower-case x too (R16)
 AUTHOR_RE = re.compile(r"([Aa]\d+)$")  # a lower-case "a5026494099" is the same id (Q19)
 
 
@@ -39,7 +39,7 @@ def short_id(openalex_id: str) -> str:
 
 def parse_orcid(text: str) -> str | None:
     m = ORCID_RE.search(text.strip())
-    return m.group(1) if m else None
+    return m.group(1).upper() if m else None
 
 
 def orcid_ok(oid: str) -> bool:

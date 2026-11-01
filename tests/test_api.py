@@ -497,3 +497,21 @@ def test_an_id_that_is_not_an_openalex_id_is_refused_in_plain_words(tmp_path):
     r = c.get("/authors/resolve", params={"q": "A123456789"})
     assert r.status_code == 404 and "internal error" not in r.text
     assert r.json()["detail"].startswith("No OpenAlex author has that ID.")
+
+
+def test_an_orcid_with_a_lower_case_x_finds_the_same_profile(tmp_path):
+    """R16: an ORCID iD whose check character is X found nobody when typed as x."""
+    base = "0000-0002-1694-233"  # 15 digits whose ISO 7064 check character is X
+    assert oa.orcid_ok(base + "X") and oa.parse_orcid(base + "x") == base + "X"
+    c, service = make(tmp_path)
+    asked = []
+
+    def answer(req):
+        asked.append(req.url.path)
+        return httpx.Response(404, json={})
+
+    service.clients.openalex = lambda: oa.OpenAlexClient(transport=httpx.MockTransport(answer),
+                                                          min_interval=0)
+    for q in (base + "X", base + "x", f"https://orcid.org/{base}x"):
+        c.get("/authors/resolve", params={"q": q})
+    assert asked == [f"/authors/orcid:{base}X"] * 3
