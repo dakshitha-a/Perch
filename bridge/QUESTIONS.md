@@ -10,6 +10,8 @@ Dakshitha delegated every product and design decision to Perch-dev on 2026-10-31
 
 
 
+42. **Student exports now carry rule lines that quote the CV (QA cycle 1, Q12; on record, not blocking).** The Q12 decision says code-written lines are never withheld, so the export keeps each verdict, rule line and Still needed line. Some of those lines quote what the rules read from the CV, such as "Asks for a GPA of at least 3.50; your CV says 3.40", so these CV facts now leave in every student export, masked or not. Before Q12 the egress filter withheld them. Help says so. **Alternative, if you meant only the rule:** keep the rule part of each line and drop the "; your CV says ..." tail in exports, so the broken rule shows and no CV value leaves. Default: as built, by the Q12 decision.
+
 33. **Standing-rule change to apply (raised 2026-10-30; narrowed in S24).** Standing rules are yours to edit; Perch-dev never edits them. Your answer to Q30 needs this change in `CLAUDE.md`:
 - **Rule 1 (for Q30), proposed addition:** "Exception: when a user turns Cloud on and confirms a second warning, their private documents may go to the configured cloud provider. Tests of that path use SYNTHETIC text only."
 - **Built in S24, switched off:** the second warning and the server gate exist. They stay off until you apply this change and set `PERCH_CLOUD_DOCUMENTS=1` on the demo.

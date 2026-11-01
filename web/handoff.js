@@ -81,7 +81,9 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     H.busy = null;
     redraw(H.drafts[office.key] ? focusKey : "handoff-make");
   }
-  // A change of the mask setting makes the shown draft again at once (Q25).
+  // A change of the mask setting makes the shown draft again at once (Q25); so does
+  // coming back to a draft made before the Export menu's box changed it.
+  if (api.mode === "private" && draft && draft.mask !== maskOn() && H.busy === null && !H.error) setTimeout(() => makeDraft("handoff-stale"), 0);
   onMaskChange((on) => {
     const d = H.drafts[office.key];
     if (H.briefId === briefId && d && d.mask !== on && H.busy === null && document.body.contains(box)) makeDraft("handoff-mask");

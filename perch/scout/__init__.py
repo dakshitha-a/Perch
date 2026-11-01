@@ -59,10 +59,10 @@ def make_scout(service: object, author_id: str, *, as_of: date | None = None,
             check = mixed_lists
 
             def note() -> str:  # read again at each question: kept marks change (Q4)
-                return student_brief_note(ctx, service.get(b.id)[1])
+                return student_brief_note(ctx, (service.get(b.id) or (None, []))[1])
         else:
             def note() -> str:
-                return brief_note(ctx, b, service.get(b.id)[1])
+                return brief_note(ctx, b, (service.get(b.id) or (None, []))[1])
     return Scout(provider, ctx, policy=policy, log=None if private else log,
                  private=private, brief_note=note, budget=budget, table=table, rules=rules,
                  who=who, answer_check=check)
