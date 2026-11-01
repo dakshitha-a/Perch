@@ -392,3 +392,30 @@ def test_shared_suffixes_and_place_names_are_not_short_names():
     seen = {a.id: a, b.id: b, org.id: org}
     assert not crossed_rows(f"A grant (R01 Clinical Trial Required) [{b.id}].", seen)
     assert not crossed_rows("SYNTHETIC Co (United Kingdom) cites you [B1].", seen)
+
+
+def test_an_expiry_named_as_one_may_share_a_sentence_with_a_close_date():
+    """After the round 5 fixes: "X closes 20 Dec 2026 [a]; the announcement expires 7 May
+    2028 [b]." is right and must pass, as must the tester's expected G3 wording."""
+    from perch.scout.loop import expiry_as_deadline
+
+    o = _parent()
+    seen = {o.id: o}
+    assert not expiry_as_deadline(f"X closes 20 Dec 2026 [a]; the F31 announcement expires "
+                                  f"7 May 2028 [{o.id}].", seen)
+    assert not expiry_as_deadline(f"The announcement expires on 7 May 2028; F31 applications "
+                                  f"use standard due dates, which the record does not list "
+                                  f"[{o.id}].", seen)
+    assert expiry_as_deadline(f"F31 closes 7 May 2028 [{o.id}].", seen)
+
+
+def test_a_match_question_is_not_an_amount_question():
+    from perch.scout.loop import AMOUNT_Q_RE, KEPT_Q_RE, MATCH_Q_RE
+
+    def amount(q):
+        return bool(AMOUNT_Q_RE.search(q)) and not KEPT_Q_RE.search(q) \
+            and not MATCH_Q_RE.search(q)
+
+    assert not amount("What are the highest scoring leads?")
+    assert not amount("Show my highest-match leads")
+    assert amount("which lead has the largest award?") and amount("which one pays most")

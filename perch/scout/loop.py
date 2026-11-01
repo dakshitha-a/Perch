@@ -189,6 +189,7 @@ AMOUNT_Q_RE = re.compile(r"\b(?:largest|biggest|highest|greatest|max(?:imum)?)\b
                          r"options?|ones?|scholarships?|fellowships?)\b|\bpays? (?:the )?"
                          r"(?:most|best|highest)\b|\bmost money\b", re.I)
 KEPT_Q_RE = re.compile(r"\b(?:kept|shortlist\w*|saved|compar\w*)\b", re.I)
+MATCH_Q_RE = re.compile(r"\b(?:match\w*|scor\w*|rank\w*|fit\w*)\b", re.I)
 ROUTE_Q = (("F", re.compile(r"\bfellowships?\b", re.I)),
            ("S", re.compile(r"\b(?:scholarships?|samples?)\b", re.I)))
 # G19: "my top three leads": compare runs on the brief's top three, not the kept ones.
@@ -400,7 +401,8 @@ class Scout:
             return self._start_over(s, question)
         self.system = self.head + self.note() + last_list_line(s)  # what is kept now (Q4)
         s.scope = question_scope(question)
-        s.amount_q = bool(AMOUNT_Q_RE.search(question)) and not KEPT_Q_RE.search(question)
+        s.amount_q = bool(AMOUNT_Q_RE.search(question)) and not KEPT_Q_RE.search(question) \
+            and not MATCH_Q_RE.search(question)  # "the highest scoring leads" is Match
         if s.amount_q and s.scope is None:  # G2: "the largest award" is among the brief's
             s.scope = "brief"
         compact(s)  # T4: earlier questions' tool results leave the context
@@ -905,8 +907,8 @@ def floor_only_largest(text: str, seen: dict) -> list[str]:
 # it a deadline; "no deadline in the record" may stand.
 DUE_RE = re.compile(r"\b(?:deadlines?|due|closes?|closing|close date)\b", re.I)
 NO_DUE_RE = re.compile(r"\b(?:no|not|without|none|neither|nor)\b[^.;]{0,40}\b(?:deadlines?|due "
-                       r"dates?|close dates?)\b|\b(?:deadlines?|due dates?)\b[^.;]{0,24}\bnot "
-                       r"(?:stated|given|listed|in the record)\b", re.I)
+                       r"dates?|close dates?)\b|\b(?:deadlines?|due dates?)\b[^.;]{0,40}\bnot "
+                       r"(?:stated|given|listed|in the record|(?:state|give|list)\w*)\b", re.I)
 
 
 def expiry_as_deadline(text: str, seen: dict) -> list[str]:
@@ -922,7 +924,9 @@ def expiry_as_deadline(text: str, seen: dict) -> list[str]:
         if sent.lstrip().startswith("|"):
             continue  # tables below
         for o in expiring(cited(sent)):
-            if DUE_RE.search(sent) and not NO_DUE_RE.search(sent) and day(o.close_date) in sent:
+            at = sent.find(day(o.close_date))
+            if at >= 0 and DUE_RE.search(sent) and not NO_DUE_RE.search(sent) and \
+                    "xpir" not in sent[max(0, at - 40):at]:  # "...; it expires 7 May 2028" stands
                 errs.append(f"{day(o.close_date)} is when the announcement [{short_id(o)}] "
                             "expires, not a deadline: say it expires then, and that the record "
                             "states no deadline")
