@@ -26,7 +26,7 @@ const CAN_USE = {
     "What Perch read from your CV", "Compare chosen or kept options", "A note to a Temple office, shown for you to copy"],
 };
 // F18: dates as the app writes them, and examples the demo brief can answer.
-const STUDENT_EXAMPLES = ["Only options with a deadline after 1 Mar 2027", "Why is my top fellowship “may be eligible”?",
+const STUDENT_EXAMPLES = ["Only options with a deadline after 1\u00a0Mar\u00a02027", "Why is my top fellowship “may be eligible”?",
   "What do my kept options still need?", "Draft a note about my kept fellowships"];
 const ARGS = {
   route: "Route", author_id: "Researcher", min_amount: "Ceiling at least", max_amount: "Ceiling at most",
@@ -43,7 +43,7 @@ const ARGS = {
 };
 const SCOPES = { brief: "your brief", all: "all opportunities" };
 const STATUS = { proposed: "Running…", done: "Done", not_run: "Not run", refused: "Refused", error: "Failed", repeated: "Repeat, not run again" };
-const EXAMPLES = ["Which of my NSF leads close by 1 Mar 2027?", "Small grants only: a ceiling of $200k or less",
+const EXAMPLES = ["Which of my NSF leads close by 1\u00a0Mar\u00a02027?", "Small grants only: a ceiling of $200k or less",
   "Leave out Department of Defense grants", "Why does the top lead fit?"];
 // F9: "start over" and its kin open a new conversation, as the button beside the box does.
 const START_OVER = /^\s*(?:please\s+)?(?:start (?:over|again|afresh)|restart|reset|clear (?:the )?(?:chat|conversation)|new (?:conversation|chat)|begin again)\b[\s.!]*$/i;
@@ -373,7 +373,9 @@ function askForm(ctx, busy) {
       h("button", { class: "btn primary", type: "submit", disabled: busy }, h("span", { text: "Ask" })),
       // F9: always there once a conversation has begun, not only at the budget stop.
       T.data ? h("button", { class: "btn quiet scout-new", type: "button", "data-key": "scout-new-any", disabled: busy,
-        title: "Start a new conversation", onclick: () => newConversation(ctx) }, h("span", { text: "New conversation" })) : null));
+        "aria-label": "New conversation", title: "Start a new conversation", onclick: () => newConversation(ctx) },
+      h("span", { class: "new-long", "aria-hidden": "true", text: "New conversation" }),
+      h("span", { class: "new-short", "aria-hidden": "true", text: "New" })) : null));
 }
 
 async function send(ctx) {

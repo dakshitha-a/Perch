@@ -1351,11 +1351,32 @@ async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
     await w.snap(page, tag, "r-scout-draft", full=True)
     # F11: a table in an answer is a table, never raw pipes
     await scout_ask(page, "Compare my kept leads")
-    tab = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const a = xs[xs.length - 1].querySelector('.scout-answer');
+    tab = await page.evaluate(r"""() => { const xs = document.querySelectorAll('.scout-x'); const a = xs[xs.length - 1].querySelector('.scout-answer');
       return a ? { pipes: /^\s*\|.*\|\s*$/m.test(a.innerText.replace(/\t/g, ' ')) && !a.querySelector('table'), table: Boolean(a.querySelector('table')) } : null; }""")
     if tab and tab["pipes"]:
         w.errors.append(f"{tag}: F11: Scout's compare answer shows a raw pipe table")
     await w.snap(page, tag, "f11-scout-compare", full=True)
+
+    # F11: the renderer, whatever the model writes: the next view's answer is a pipe table
+    async def table(route: Route) -> None:
+        r = await route.fetch()
+        v = await r.json()
+        if v.get("exchanges") and not v.get("busy") and v["exchanges"][-1].get("answer"):
+            v["exchanges"][-1]["answer"] = ("Side by side:\n| Lead | Closes |\n| :--- | :--- |\n"
+                                            "| MPS Chem [grants_gov:26-519] | Proposals accepted anytime |\n"
+                                            "| TP [grants_gov:PD-26-366Y] | Proposals accepted anytime |")
+        await route.fulfill(response=r, json=v)
+
+    await page.route("**/private/scout/*", table)
+    await scout_ask(page, "Compare my kept leads in a table")
+    got = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const a = xs[xs.length - 1].querySelector('.scout-answer');
+      const t = a && a.querySelector('table.scout-table');
+      return { rows: t ? t.querySelectorAll('tbody tr').length : 0, cites: t ? t.querySelectorAll('.cite').length : 0,
+               raw: a ? a.innerText.includes('|') : true }; }""")
+    if got != {"rows": 2, "cites": 2, "raw": False}:
+        w.errors.append(f"{tag}: F11: a pipe table in an answer renders as {got}")
+    await w.snap(page, tag, "f11-scout-table", full=True)
+    await page.unroute("**/private/scout/*", table)
     # T4: when the conversation's budget is spent, the chat offers a new conversation. The
     # budget is not spent for real: the next view is marked as the server marks it.
     async def spent(route: Route) -> None:
@@ -1382,7 +1403,7 @@ async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
             if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
                 break
             await page.wait_for_timeout(100)
-        after = await page.evaluate("""() => ({ qs: [...document.querySelectorAll('.scout-x > .scout-q')].map(p => p.innerText.replace('You asked: ', '')),
+        after = await page.evaluate(r"""() => ({ qs: [...document.querySelectorAll('.scout-x > .scout-q')].map(p => p.innerText.replace(/^You asked:\s*/, '')),
           withheld: [...document.querySelectorAll('.scout-x .notice.warn')].some(n => /withheld/.test(n.innerText)) })""")
         if after["qs"] != [q]:
             w.errors.append(f"{tag}: F14: Start a new conversation did not ask the stopped question again: {after['qs']}")

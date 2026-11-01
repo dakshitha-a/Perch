@@ -1245,12 +1245,14 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
 .scout-table th, .scout-table td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
 .scout-table thead th { background: var(--surface); }
 .scout-table tbody th { font-weight: 600; }
-/* F9: New conversation sits beside Ask; on a narrow screen the box takes its own line. */
+/* F9: New conversation sits beside Ask, in one row; on a phone its label is "New", so the
+   question box stays on the bottom edge. */
 .scout-ask-row .scout-new { padding: 0 14px; white-space: nowrap; }
+.scout-new .new-short { display: none; }
 @media (max-width: 479px) {
-  .scout-ask-row:has(.scout-new) { flex-wrap: wrap; }
-  .scout-ask-row:has(.scout-new) input { flex: 1 1 100%; }
-  .scout-ask-row:has(.scout-new) .btn { flex: 1 1 auto; }
+  .scout-ask-row .btn { padding: 0 14px; }
+  .scout-new .new-long { display: none; }
+  .scout-new .new-short { display: inline; }
 }
 /* F25: the hint under Find says what is missing */
 .hint-row .field-error { color: var(--brick); font-weight: 600; }
