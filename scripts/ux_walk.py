@@ -1704,6 +1704,16 @@ async def ux_docs(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.click(".private button:has-text('Build brief')")
     await page.wait_for_selector("#progress", timeout=20000)
     await wait_built(page)
+    # T18: Industry on a documents-only brief is one plain sentence, with no warnings
+    await page.click("[data-key=route-B]")
+    await page.wait_for_timeout(500)
+    got = await page.evaluate("""() => { const p = document.querySelector('#panel');
+      return { text: p ? p.innerText : '', warn: Boolean(p && p.querySelector('.infer-note, .security-note')) }; }""")
+    if "Industry leads need public papers" not in got["text"] or got["warn"] or "0 industry leads" in got["text"]:
+        w.errors.append(f"{tag}: T18: Industry on a documents-only brief reads {got['text'][:160]!r}")
+    await w.snap(page, tag, "t18-docs-industry")
+    await page.click("[data-key=route-A]")
+    await page.wait_for_timeout(300)
     await page.evaluate(OPEN_WEAK)
     for _i in (0, 1):
         await page.locator(".leads > li .btn.keep:not(.on)").first.click()
