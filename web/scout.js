@@ -46,7 +46,9 @@ const STATUS = { proposed: "Running…", done: "Done", not_run: "Not run", refus
 const EXAMPLES = ["Which of my NSF leads close by 1\u00a0Mar\u00a02027?", "Small grants only: a ceiling of $200k or less",
   "Leave out Department of Defense grants", "Why does the top lead fit?"];
 // F9: "start over" and its kin open a new conversation, as the button beside the box does.
-const START_OVER = /^\s*(?:please\s+)?(?:start (?:over|again|afresh)|restart|reset|clear (?:the )?(?:chat|conversation)|new (?:conversation|chat)|begin again)\b[\s.!]*$/i;
+// G9: with polite words around it ("can we start over", "lets start over pls"), as the
+// server's START_OVER_RE (perch/scout/loop.py) reads it.
+const START_OVER = /^\W*(?:(?:ok(?:ay)?|so|hey|um|please|pls|plz|can|could|would|will|we|you|i|let'?s|let|us|want|wanna|to|like|just|now|and|maybe)\W+)*(?:start (?:over|again|afresh)|restart|reset|clear (?:the )?(?:chat|conversation)|new (?:conversation|chat)|begin again)(?:\W+(?:the|this|chat|conversation|please|pls|plz|now|again|thanks|thank you))*\W*$/i;
 
 // One Scout conversation per brief, kept while the brief is on screen.
 // Scout runs every step as soon as the model asks for it and shows each one (S27, S28).

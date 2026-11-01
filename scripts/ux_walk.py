@@ -515,6 +515,25 @@ async def reasons_open(w: Walk, page: Page, tag: str, sel: str) -> None:
         w.errors.append(f"{tag}: reasons: {shut} of {n} reason blocks start closed")
 
 
+async def docs_cards_read_clean(w: Walk, page: Page, tag: str) -> None:
+    """G1 (QA round 5): on a brief built from documents alone, no card holds a raw citation
+    key such as "[proposal]", the reasons name documents, not papers, and the Match pill
+    says it matches the documents."""
+    got = await page.evaluate("""() => {
+      const cards = [...document.querySelectorAll('.leads > li.card.lead')];
+      return { text: cards.map((c) => c.innerText).join('\\n'),
+        hints: cards.map((c) => (c.querySelector('.why > summary .hint') || {}).textContent || ''),
+        heads: cards.map((c) => (c.querySelector('.why h4.mini') || {}).textContent || ''),
+        pills: cards.map((c) => (c.querySelector('.fit') || {}).title || '') }; }""")
+    raw = re.findall(r"[^\n]{0,40}\[[^\]\n]*\][^\n]{0,8}", got["text"])
+    if raw:
+        w.errors.append(f"{tag}: G1: card text holds a raw citation: {raw[:2]}")
+    if bad := [h for h in got["hints"] + got["heads"] if "paper" in h]:
+        w.errors.append(f"{tag}: G1: a documents-only card names papers: {bad[:2]}")
+    if bad := [p for p in got["pills"] if p and "your documents" not in p]:
+        w.errors.append(f"{tag}: G1: the Match pill reads {bad[0]!r}")
+
+
 async def wait_built(page: Page, timeout: int = 300_000) -> None:
     await page.wait_for_function("""() => { const p = document.querySelector('#progress');
       return p && /ready|finished|failed/i.test(p.innerText) && !/Building|Searching/i.test(p.innerText.split('\\n')[0]); }""",
@@ -614,6 +633,7 @@ async def private_flow(w: Walk, page: Page, base: str) -> None:
     await page.wait_for_timeout(500)
     await w.snap(page, tag, "private-routes", full=True)
     await reasons_open(w, page, tag, ".explain > details.why")
+    await docs_cards_read_clean(w, page, tag)
     await page.goto(base + "/#/help")
     await page.wait_for_timeout(600)
     await w.snap(page, tag, "private-on-help")

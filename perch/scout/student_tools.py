@@ -69,8 +69,11 @@ def facts_of(rec: Record | None) -> dict:
 
 def _row(ctx: ScoutContext, lead: Lead) -> dict:
     rec = _record(ctx, lead)
-    out = {"id": ctx.see(rec) if rec else lead.record_id, "route": ROUTES[lead.route],
-           **facts_of(rec), "verdict": lead.verdict, "kept": lead.status == "kept"}
+    facts = facts_of(rec)
+    # G7: the id sits beside its own title, so a line cites its own row
+    out = {"id": ctx.see(rec) if rec else lead.record_id, "title": facts.pop("title"),
+           "route": ROUTES[lead.route], **facts, "verdict": lead.verdict,
+           "kept": lead.status == "kept"}
     if lead.verdict != "eligible" and lead.verdict_lines:  # F6: the rule's reason, by code
         out["why"] = lead.verdict_lines[:2]
         ctx.facts[out["id"]] = [*lead.verdict_lines, *lead.gaps]
@@ -99,7 +102,7 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
     used = search_words(words)
     after = date.fromisoformat(deadline_after) if deadline_after else None
     before = date.fromisoformat(deadline_before) if deadline_before else None
-    rows, due_of, amount_of = [], {}, {}
+    rows, due_of, amount_of, undated = [], {}, {}, 0
     for x in sorted(leads, key=lambda x: (x.route, x.rank or 0)):
         if route != "all" and x.route != route:
             continue
@@ -111,6 +114,7 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
         due = (None if isinstance(rec, Opportunity) and no_deadline(rec)  # T17
                else getattr(rec, "deadline", None) or getattr(rec, "close_date", None))
         if (after or before) and due is None:
+            undated += x.route == "F"
             continue
         if (after and due <= after) or (before and due >= before):
             continue
@@ -142,6 +146,15 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
         rows.sort(key=lambda r: -(amount_of[r["id"]] or -1))
     rows = rows[:15]
     extra = {}
+    if undated and not any(not r.get("sample") for r in rows):
+        # G20: "No public fellowships have deadlines before March" hid that none states one
+        extra["fellowships_note"] = ("None of the public fellowships that pass the other "
+                                     "filters states a deadline: say that in your first "
+                                     "sentence, then give each sample with its deadline.")
+    if sort == "amount":  # G12: what pays the most, the samples too
+        extra["amount_note"] = ("Sorted by amount, the largest first. Name the public "
+                                "fellowships first, saying plainly if none states an amount, "
+                                "then the samples with their amounts under their own heading.")
     if used and route in ("all", "F") and not any(not r.get("sample") for r in rows):
         # T10: no fellowship holds the words; the brief's Match order already reads the
         # student's interests, so its top fellowships are offered instead of "none fit".
@@ -155,7 +168,8 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
     return {**apart(rows, "options"), "count": len(rows), **extra,
             **({"words_used": used} if used else {}),
             "note": "Options in this student brief, checked against the CV by rule, each "
-            "group in the brief's own order by Match, the strongest first. "
+            "group in the brief's own order by Match, the strongest first. Cite each row's "
+            "own id. "
             + ("Every option listed matches: its listing or its fit sentence on the card "
                "holds one of words_used (words_found_in says which). " if used else "")
             + APART_NOTE}

@@ -130,7 +130,13 @@ MONTHS_RE = (r"(?:january|february|march|april|june|july|august|september|octobe
 FILTER_Q_RE = re.compile(r"\b(?:only|closing|closes?|after|before|until|under|over|above|"
                          r"below|at least|more than|less than|soonest|largest|biggest|"
                          r"smallest|highest|lowest|most money|ceilings?|NIH|NSF|DOE|DOD|NASA|"
-                         rf"USDA|[RKFUP]\d\d|eligib\w*|{MONTHS_RE})\b", re.I)
+                         rf"USDA|[RKFUP]\d\d|eligib\w*|deadlines?|samples?|{MONTHS_RE})\b", re.I)
+# G4: a student follow-up that names a code ("f31?") or the samples, answered with no tool,
+# is sent back with the exact call, not a list of filters: in a long conversation the
+# general reminder drew a second refusal.
+CODE_Q_RE = re.compile(r"\b([RKFUPT]\d\d)\b", re.I)
+SAMPLES_Q_RE = re.compile(r"\b(?:drop|no|without|hide|leave out|skip|remove|not)\b[^.?!]{0,20}"
+                          r"\bsamples?\b", re.I)
 FILTER_NUDGE = ("Call {tool} now with every filter in the question, such as {filters}, with "
                 "dates written like 2027-03-01. Reply with the tool call only.")
 FILTERS = {"search_opportunities": "closes_by, closes_after, agencies or sort",
@@ -173,8 +179,31 @@ ORG_NUDGE = ("Call get_org_signals now. It lists the companies whose works cite 
              "tool call only.")
 # T1: a month with no year ("before March") means its next one after the as-of date. Code
 # resolves it and adds the dates to the question the model reads.
-MONTH_Q_RE = re.compile(rf"\b(?:before|after|by|until|till|through|in|from|since|end of)\s+"
+MONTH_Q_RE = re.compile(rf"\b(?:before|befor|b4|after|aftr|by|until|untill|untl|till|til|"
+                        rf"through|thru|in|from|since|end of)\s+"  # G10: as professors type
                         rf"({MONTHS_RE})\b(?!\.?\s*\d)", re.I)
+# G2, G12: "the largest award", "which one pays most": the leads sorted by their stated
+# amount, never a comparison of the kept ones, unless the question is about the kept ones.
+AMOUNT_Q_RE = re.compile(r"\b(?:largest|biggest|highest|greatest|max(?:imum)?)\b[^.?!]{0,30}"
+                         r"\b(?:awards?|ceilings?|amounts?|funding|grants?|leads?|budgets?|money|"
+                         r"options?|ones?|scholarships?|fellowships?)\b|\bpays? (?:the )?"
+                         r"(?:most|best|highest)\b|\bmost money\b", re.I)
+KEPT_Q_RE = re.compile(r"\b(?:kept|shortlist\w*|saved|compar\w*)\b", re.I)
+ROUTE_Q = (("F", re.compile(r"\bfellowships?\b", re.I)),
+           ("S", re.compile(r"\b(?:scholarships?|samples?)\b", re.I)))
+# G19: "my top three leads": compare runs on the brief's top three, not the kept ones.
+TOP_Q_RE = re.compile(r"\b(?:top|best|strongest)\s+(?:(\d|one|two|three|four|five)\s+)?"
+                      r"(leads?|grants?|opportunit\w+|ones?|matches)\b", re.I)
+NUMBER_WORDS = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5}
+# G9: a short question that asks to start over, whatever polite words come around it.
+START_OVER_RE = re.compile(
+    r"^\W*(?:(?:ok(?:ay)?|so|hey|um|please|pls|plz|can|could|would|will|we|you|i|let'?s|let|"
+    r"us|want|wanna|to|like|just|now|and|maybe)\W+)*(?:start (?:over|again|afresh)|restart|"
+    r"reset|clear (?:the )?(?:chat|conversation)|new (?:conversation|chat)|begin again)"
+    r"(?:\W+(?:the|this|chat|conversation|please|pls|plz|now|again|thanks|thank you))*\W*$",
+    re.I)
+START_OVER_ANSWER = ("Starting over: Scout has set aside this conversation's earlier "
+                     "questions. Ask your next question.")
 # Questions that ask for what the rules refuse, which needs no tool: not nudged. Matched on
 # the question, never the answer (T5).
 CAPABILITY_RE = re.compile(r"\b(e-?mail|send|web|brows\w*|internet|apply for|chances?|odds|"
@@ -233,6 +262,7 @@ class Session:
     nudged: bool = False  # this question's no-tool answer was sent back once (Q5)
     last_list: list[str] = field(default_factory=list)  # F15: ids of the last list shown
     scope: str | None = None  # F1: the search scope this question's words set
+    amount_q: bool = False  # G2, G12: this question asks for the largest amount
     # One entry per question: its text, the first card it made, and how it ended. Held in
     # memory for the web app; the log keeps a hash of the question only.
     exchanges: list[dict] = field(default_factory=list)
@@ -364,8 +394,13 @@ class Scout:
 
     def ask(self, s: Session, question: str) -> Session:
         """A question, or a follow-up in the same session."""
+        if START_OVER_RE.match(question):  # G9: on the server too, not only in the page
+            return self._start_over(s, question)
         self.system = self.head + self.note() + last_list_line(s)  # what is kept now (Q4)
         s.scope = question_scope(question)
+        s.amount_q = bool(AMOUNT_Q_RE.search(question)) and not KEPT_Q_RE.search(question)
+        if s.amount_q and s.scope is None:  # G2: "the largest award" is among the brief's
+            s.scope = "brief"
         compact(s)  # T4: earlier questions' tool results leave the context
         msgs_from = len(s.messages)
         months = month_dates(question, self.ctx.as_of)
@@ -381,6 +416,18 @@ class Scout:
         if self.log:
             self.log.write({"kind": "question", "session": s.id, "hash": digest(question)})
         return self.advance(s)
+
+    def _start_over(self, s: Session, question: str) -> Session:
+        """G9: the conversation so far is set aside and the answer is written by code."""
+        s.messages.clear()
+        s.last_list, s.scope, s.amount_q = [], None, False
+        s.status, s.flagged, s.errors, s.turns, s.nudged = "done", False, [], 0, False
+        s.answer, s.cited_ids = START_OVER_ANSWER, []
+        s.exchanges.append({"question": question, "cards_from": len(s.cards), "msgs_from": 0,
+                            "answer": START_OVER_ANSWER, "flagged": False, "errors": [],
+                            "status": "done", "answer_by": "code"})
+        self._log_answer(s, passed=True, attempts=0)
+        return s
 
     def stop(self, s: Session) -> None:
         """Stop the current question between steps (S28). It may be called from another
@@ -474,6 +521,12 @@ class Scout:
         elif ((stated_numbers(question) or not cited(text))
               and (named := self._named(question)) and "get_record" in self.table):
             nudge = RECORD_NUDGE.format(id=named)  # T7: the record answers it, not memory
+        elif search == "search_options" and (codes := CODE_Q_RE.findall(question)):
+            nudge = (f'Call search_options now with words "{" ".join(codes).upper()}". Reply '
+                     "with the tool call only.")  # G4
+        elif search == "search_options" and SAMPLES_Q_RE.search(question):
+            nudge = ('Call search_options now with route "F": the public fellowships, with no '
+                     "sample scholarships. Reply with the tool call only.")  # G4
         elif search and FILTER_Q_RE.search(undated(question)):
             nudge = FILTER_NUDGE.format(tool=search, filters=FILTERS[search])
         elif CAPABILITY_RE.search(question) or (cited(text) and not stated_numbers(question)):
@@ -481,6 +534,7 @@ class Scout:
         else:
             nudge = NUDGE
         s.nudged = True
+        s.exchanges[-1]["nudged"] = True  # shown on the exchange, so a check can see it
         s.messages.append(Message("assistant", text))
         s.messages.append(Message("user", nudge))
         return True
@@ -555,10 +609,14 @@ class Scout:
             c.status, c.detail = "refused", "one explanation per question"  # F6
             c.result = {"error": f"{c.tool} runs once per question. search_options with that "
                         "verdict gives each option's reason in why: answer from it."}
+        elif s.amount_q and c.tool in ("compare", "compare_options") and \
+                (search := next((t for t in SEARCH_TOOLS if t in self.table), None)):
+            # G2, G12: the largest award is a sorted search, never the kept leads' compare
+            c.status, c.detail = "refused", "the largest amount is a sorted search"
+            c.result = {"error": f"For the largest award or what pays the most, call {search} "
+                        "now: it sorts every option by its stated amount."}
         else:
-            if c.tool == "search_opportunities" and s.scope and self.ctx.brief_id and \
-                    "scope" in entry[0].parameters["properties"]:
-                c.arguments = {**c.arguments, "scope": s.scope}  # F1: shown on the card
+            self._steer(s, c, entry[0])
             args = {k: v for k, v in c.arguments.items() if v is not None}
             model = {"explain_fit": self.ctx.explainer,
                      "draft_handoff": self.ctx.handoff}.get(c.tool)
@@ -582,6 +640,38 @@ class Scout:
                 c.where = "local" if model.name in LOCAL_ADAPTERS else "cloud"
         c.ms = round((time.perf_counter() - t0) * 1000, 1)
         self._log_tool(s, c)
+
+    def _steer(self, s: Session, c: Card, tool: object) -> None:
+        """Arguments code sets from the question's words, shown on the card: the scope (F1),
+        the amount sort (G2, G12), a past date rolled to its next year (G10) and the brief's
+        top N for a top-N comparison (G19)."""
+        args, props = dict(c.arguments), tool.parameters["properties"]
+        question = s.exchanges[-1]["question"] if s.exchanges else ""
+        if c.tool == "search_opportunities" and s.scope and self.ctx.brief_id and \
+                "scope" in props:
+            args["scope"] = s.scope  # F1
+        if s.amount_q and c.tool == "search_opportunities":
+            args["sort"] = "award_ceiling"
+        if s.amount_q and c.tool == "search_options":
+            route = next((r for r, rx in ROUTE_Q if rx.search(question)), "all")
+            args.update(sort="amount", route=route)
+        if c.tool == "search_options" and SAMPLES_Q_RE.search(question):
+            args["route"] = "F"  # G4: "drop the samples" is the fellowships alone
+        for k in ("closes_by", "deadline_before"):  # G10: "befor june" ran 2026-06-01
+            if isinstance(v := args.get(k), str) and (d := _iso(v)) and d < self.ctx.as_of:
+                while d < self.ctx.as_of:
+                    d = d.replace(year=d.year + 1)
+                args[k] = d.isoformat()
+                s.user_numbers.add(d.isoformat())
+        if c.tool == "compare" and not args.get("ids") and self.ctx.brief_id and \
+                (m := TOP_Q_RE.search(question)) and not KEPT_Q_RE.search(question):
+            from perch.scout.tools import _brief_leads
+
+            n = int(NUMBER_WORDS.get((m.group(1) or "").lower(), m.group(1) or 0)) or \
+                (3 if m.group(2).lower().endswith(("s", "es")) else 1)
+            if ids := [x.record_id for x in _brief_leads(self.ctx)[:n]]:
+                args["ids"] = ids  # G19: "my top three" are the brief's first three
+        c.arguments = args
 
     def _this_question(self, s: Session) -> list[Card]:
         return s.cards[s.exchanges[-1]["cards_from"]:] if s.exchanges else s.cards
@@ -643,8 +733,12 @@ class Scout:
             errs.append("empty answer")
         question = s.exchanges[-1]["question"] if s.exchanges else ""
         errs += floor_as_ceiling(text, self.ctx.seen)
+        errs += floor_only_largest(text, self.ctx.seen)  # G2
+        errs += expiry_as_deadline(text, self.ctx.seen)  # G3
+        errs += crossed_rows(text, self.ctx.seen)  # G7
         if self.ctx.brief_id and "search_opportunities" in self.table:
             errs += brief_claims(text, self.ctx)
+            errs += further_first(text, self.ctx)  # G11
         errs += stray_text(text, question, " ".join(
             evidence(self.ctx.seen[i]).text for i in ids if i in self.ctx.seen))
         if self.answer_check:
@@ -751,6 +845,125 @@ def floor_as_ceiling(text: str, seen: dict) -> list[str]:
     return errs
 
 
+# G2: "The lead with the largest award ceiling is Expeditions [26-525] ... from $15,000,000":
+# a record that states only a floor is never the largest award or given a ceiling.
+LARGEST_RE = re.compile(r"\b(?:ceilings?|largest|biggest|highest|greatest|pays? (?:the )?most|"
+                        r"most money)\b", re.I)
+NO_CEILING_RE = re.compile(r"\bno (?:award |stated )?ceiling\b|\bnot (?:state|give|list)\w* "
+                           r"(?:a|an|any|its) (?:award )?ceiling\b|\bceiling (?:is )?not "
+                           r"(?:stated|given|in the record)\b|\bonly (?:an? |its )?(?:award )?"
+                           r"floor\b|\bwithout a ceiling\b", re.I)
+
+
+def _opp(seen: dict, i: str) -> object:
+    return seen.get(i) or seen.get(f"grants_gov:{i}")
+
+
+def floor_only_largest(text: str, seen: dict) -> list[str]:
+    from perch.schemas import Opportunity
+
+    errs = []
+    for sent in SENTENCE_RE.split(text):
+        if not LARGEST_RE.search(sent) or NO_CEILING_RE.search(sent):
+            continue
+        for i in cited(sent):
+            o = _opp(seen, i)
+            if isinstance(o, Opportunity) and o.award_floor and not o.award_ceiling:
+                errs.append(f"[{short_id(o)}] states no award ceiling, only a floor: never call "
+                            "it the largest award or give it a ceiling")
+    return list(dict.fromkeys(errs))
+
+
+# G3: "The deadline for the ... (Parent F31) is 7 May 2028": that date is when the
+# announcement expires. A sentence, or a table cell under a Deadline label, may not call
+# it a deadline; "no deadline in the record" may stand.
+DUE_RE = re.compile(r"\b(?:deadlines?|due|closes?|closing|close date)\b", re.I)
+NO_DUE_RE = re.compile(r"\b(?:no|not|without|none|neither|nor)\b[^.;]{0,40}\b(?:deadlines?|due "
+                       r"dates?|close dates?)\b|\b(?:deadlines?|due dates?)\b[^.;]{0,24}\bnot "
+                       r"(?:stated|given|listed|in the record)\b", re.I)
+
+
+def expiry_as_deadline(text: str, seen: dict) -> list[str]:
+    from perch.datefmt import day, expires_only
+    from perch.schemas import Opportunity
+
+    def expiring(ids: list[str]) -> list[Opportunity]:
+        return [o for i in ids if isinstance(o := _opp(seen, i), Opportunity)
+                and expires_only(o)]
+
+    errs = []
+    for sent in SENTENCE_RE.split(text):
+        if sent.lstrip().startswith("|"):
+            continue  # tables below
+        for o in expiring(cited(sent)):
+            if DUE_RE.search(sent) and not NO_DUE_RE.search(sent) and day(o.close_date) in sent:
+                errs.append(f"{day(o.close_date)} is when the announcement [{short_id(o)}] "
+                            "expires, not a deadline: say it expires then, and that the record "
+                            "states no deadline")
+    rows = [[c.strip() for c in ln.strip().strip("|").split("|")]
+            for ln in text.splitlines() if ln.lstrip().startswith("|")]
+    for o in expiring(cited(" ".join(" ".join(r) for r in rows))):
+        when = day(o.close_date)
+        for r in rows:
+            for j, cell in enumerate(r):
+                labels = r[0] + " " + (rows[0][j] if j < len(rows[0]) else "")
+                if when in cell and DUE_RE.search(labels) and "xpir" not in cell + labels:
+                    errs.append(f"the table puts {when}, when [{short_id(o)}] expires, under a "
+                                "deadline label: write \"Expires " + when + "\" in that cell")
+    return list(dict.fromkeys(errs))
+
+
+# G7: "…Senior Fellowship (Parent F33): … [PA-25-422]", the F31's id. A line that names a
+# short name in parentheses that only one checked record's title holds must cite that record.
+SHORT_NAME_RE = re.compile(r"\(([^()]{2,40})\)")
+
+
+def crossed_rows(text: str, seen: dict) -> list[str]:
+    owners: dict[str, set[str]] = {}
+    for i, r in seen.items():
+        for n in SHORT_NAME_RE.findall(getattr(r, "title", None) or getattr(r, "name", None)
+                                       or ""):
+            owners.setdefault(n.lower(), set()).add(i.removeprefix("grants_gov:"))
+    errs = []
+    for line in SENTENCE_RE.split(text):
+        ids = {i.removeprefix("grants_gov:") for i in cited(line)}
+        if not ids:
+            continue
+        for n in SHORT_NAME_RE.findall(line):
+            own = owners.get(n.lower(), set())
+            if len(own) == 1 and not own & ids:
+                errs.append(f"the line naming ({n}) cites [{', '.join(sorted(ids))}], but "
+                            f"({n}) is [{next(iter(own))}]: cite each record's own id")
+    return list(dict.fromkeys(errs))
+
+
+# G11: "The lead with the largest award ceiling is Mid-scale … [24-598]", a record not on the
+# brief, named first with no mark. The first grant an answer names, if it is not on the
+# brief, must be called a further lead (F10), unless the answer already said none of the
+# brief's leads fits.
+FURTHER_RE = re.compile(r"\bfurther\b|\bnot (?:on|in|from) (?:your|the) brief\b|\b(?:outside|"
+                        r"beyond|off) (?:your|the) brief\b|\b(?:none|no)\b[^.]{0,60}\bbrief\b",
+                        re.I)
+
+
+def further_first(text: str, ctx: ScoutContext) -> list[str]:
+    from perch.schemas import Opportunity
+    from perch.scout.tools import _brief_leads
+
+    mine = {x.record_id.removeprefix("grants_gov:") for x in _brief_leads(ctx)}
+    before = ""
+    for sent in SENTENCE_RE.split(text):
+        before += " " + sent
+        ids = [i for i in cited(sent) if isinstance(_opp(ctx.seen, i), Opportunity)]
+        if not ids:
+            continue
+        if any(i.removeprefix("grants_gov:") in mine for i in ids) or FURTHER_RE.search(before):
+            return []
+        return [f"[{ids[0]}] is not on the user's brief and is the first grant the answer "
+                "names: call it a further lead, not on the brief, with its match band"]
+    return []
+
+
 # F10: "The NIH grant on your brief with the highest ceiling is [X]" where X is not on it.
 ON_BRIEF = re.compile(r"(?<!not )\b(?:on|in|from) your brief\b", re.I)
 
@@ -767,6 +980,13 @@ def brief_claims(text: str, ctx: ScoutContext) -> list[str]:
         if ON_BRIEF.search(sent) and ids and not any(i in mine for i in ids):
             errs.append(f"[{ids[0]}] is not on the user's brief: call it a further lead")
     return errs
+
+
+def _iso(v: str) -> date | None:
+    try:
+        return date.fromisoformat(v)
+    except ValueError:
+        return None
 
 
 def undated(text: str) -> str:

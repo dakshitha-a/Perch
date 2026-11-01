@@ -155,13 +155,20 @@ export function ownInPlace(text, own) {
   });
 }
 
+// G1: the fit model cites a document by its short key ("[proposal]"); the record is
+// private:proposal.
+const DOC_KEYS = /^(?:cv|proposal|direction|manuscript)$/;
+export function docId(id, known) {
+  return DOC_KEYS.test(id) && (!known || known.has(`private:${id}`)) ? `private:${id}` : id;
+}
+
 export function segments(text, known = null, own = null) {
   if (own) text = ownInPlace(text, own);
   const out = [];
   let last = 0;
   const isCite = (id) => !known || known.has(id) || /^W\d+$/.test(id) || /^[A-Z]{2,4}(-[A-Z]{2,3})?-\d{2}-\d{3}$/.test(id);
   for (const m of String(text || "").matchAll(TOKEN)) {
-    const ids = m[1] ? m[1].split(/,\s*/) : [m[2]];
+    const ids = (m[1] ? m[1].split(/,\s*/) : [m[2]]).map((id) => docId(id, known));
     if (m[1] && !ids.every(isCite)) continue;
     if (m.index > last) out.push(text.slice(last, m.index));
     for (const id of ids) out.push({ cite: id });
@@ -196,7 +203,8 @@ export function parseExplanation(text, citedIds = [], own = null) {
   const body = s.slice(at + "Cited work: ".length).trim().replace(/\.$/, "");
   const findings = [];
   for (const part of body.split(/;\s+/)) {
-    const m = part.match(/^(W\d+|private:[a-z]+)\s+([\s\S]*?)(?:\s*\[(?:W\d+|private:[a-z]+)\])?$/);
+    // A finding's own trailing citation is dropped: the document or paper heads its line (G1).
+    const m = part.match(/^(W\d+|private:[a-z]+)\s+([\s\S]*?)(?:\s*\[(?:W\d+|private:[a-z]+|cv|proposal|direction|manuscript)\])?$/);
     if (!m || !m[2].trim()) return { raw: segments(s, known) };
     findings.push({ paper: m[1], text: m[2].trim().replace(/\.$/, "") });
   }

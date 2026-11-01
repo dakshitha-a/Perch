@@ -1742,7 +1742,7 @@ function leadCard(l) {
 
   let fit;
   if (band) {
-    fit = matchPill(l.match_score, band);
+    fit = matchPill(l.match_score, band, docsOnly() ? "your documents" : undefined);  // G1
   } else if (pending) {
     fit = h("span", { class: "fit pending" }, owl("work", "owl-xs"), h("span", { text: "Reading" }));
   }
@@ -1824,18 +1824,21 @@ function explanationBlock(l, parsed, o) {
   // (S27, Dakshitha), as they do for a student.
   const own = Object.values(papers).some((w) => w.private);
   const open = own ? !S.shut.has(l.id) : S.open.has(l.id);
+  const n = parsed.findings.length;
+  const docs = parsed.findings.filter((x) => (papers[x.paper] || {}).private || /^private:/.test(x.paper)).length;
   const why = h("details", { class: "why", open,
     ontoggle: (e) => {
       if (e.target.open) { S.open.add(l.id); S.shut.delete(l.id); } else { S.open.delete(l.id); S.shut.add(l.id); }
     } },
   h("summary", { "data-key": "why" }, h("span", { text: (f.fitBand(l.match_score) || {}).key === "weak" ? "How it relates" : "Why it fits" }),
-    h("span", { class: "hint", text: parsed.findings.some((x) => (papers[x.paper] || {}).private || /^private:/.test(x.paper))
-      ? ` cites ${f.plural(parsed.findings.length, "paper or document", "papers and documents")}`
-      : ` cites ${f.plural(parsed.findings.length, "paper")} by the researcher` })),
+    h("span", { class: "hint", text: docs && docs < n
+      ? ` cites ${f.plural(n, "paper or document", "papers and documents")}`
+      : docs ? ` cites ${f.plural(n, "document")}` : ` cites ${f.plural(n, "paper")} by the researcher` })),
   // A cited document is not a paper; with the SYNTHETIC sample it is not even theirs (U11).
-  h("h4", { class: "mini", text: parsed.findings.some((x) => (papers[x.paper] || {}).private || /^private:/.test(x.paper))
+  // With no paper cited, the heading names the documents alone (G1).
+  h("h4", { class: "mini", text: docs && docs < n
     ? (sampleSteered() ? "From the researcher’s papers and the sample document" : "From the researcher’s papers and documents")
-    : "From the researcher’s papers" }),
+    : docs ? (sampleSteered() ? "From the sample document" : "From your documents") : "From the researcher’s papers" }),
   h("ul", { class: "findings" }, parsed.findings.map((x) => h("li", {},
     paperRef(x.paper, papers), h("p", { text: `${x.text}.` })))),
   // Chips for papers the list above already shows are left out (U35).
@@ -1846,6 +1849,11 @@ function explanationBlock(l, parsed, o) {
   eligibilityRows(o));
   return h("div", { class: "explain" }, modelTag(),
     h("p", { class: "what" }, renderSegs(parsed.opportunity, ownIds(o))), why);
+}
+
+// A brief built from the user's documents alone, with no public profile (G1).
+function docsOnly() {
+  return String(((S.brief || {}).brief || {}).researcher_id || "").startsWith("private:");
 }
 
 function modelTag() {

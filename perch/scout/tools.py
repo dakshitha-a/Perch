@@ -16,9 +16,9 @@ from typing import Any
 
 from perch import awards as aw
 from perch.brief import route_a
-from perch.compare import award_size, lower_first
+from perch.compare import lower_first
 from perch.datefmt import closes as closes_text
-from perch.datefmt import day, deadline, no_deadline, placeholder_close
+from perch.datefmt import day, deadline, expires_only, no_deadline, placeholder_close
 from perch.datefmt import shown as shown_day
 from perch.eligibility import Constraints
 from perch.llm import Tool
@@ -258,7 +258,7 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                     activity_codes=[a.upper() for a in activity_codes or []],
                     keywords=keywords or [], exclude_keywords=exclude_keywords or [])
     if scope == "brief":  # F1: "these" and "my leads" are the brief's own leads
-        return _search_brief(ctx, c, sort)
+        return _search_brief(ctx, c, sort, top)
     res = _researcher(ctx, author_id)
     p = _profile(ctx, author_id)  # the works are in the store; a session's documents count
     s = ctx.service
@@ -281,7 +281,8 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
     for i, x in enumerate(b.leads, 1):
         o = x.opportunity
         leads.append(_lead_row(ctx, i, o, in_brief.get(o.id), match_score(x.rerank_score)))
-    _sort(leads, {ctx.see(x.opportunity): x.opportunity for x in b.leads}, sort, ctx.as_of)
+    unstated = _sort(leads, {ctx.see(x.opportunity): x.opportunity for x in b.leads}, sort,
+                     ctx.as_of)
     leads = leads[:max(1, min(int(top), 20))]
     return {"source": "Grants.gov federal opportunities in the store", "scope": "all",
             "as_of": ctx.as_of.isoformat(), "retrieved": b.retrieved,
@@ -293,11 +294,16 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                  if any("brief_rank" in d for d in leads) else
                  "None of these is on the user's brief: say so first, then name each with "
                  "its match band.") if leads else "",
-                CEILING_NOTE if sort == "award_ceiling" else "") if x) or None}
+                CEILING_NOTE if sort == "award_ceiling" else "") if x) or None,
+            **({"no_ceiling_stated": unstated} if unstated else {})}
 
 
-CEILING_NOTE = ("Sorted by award ceiling, the largest first; a lead whose record states no "
-                "ceiling comes last, whatever its floor. A floor is not a ceiling.")
+# G2: the largest ceiling is named from leads that state one. A lead whose record gives
+# only a floor ("from $15,000,000") is listed apart, with no amount, so it is never read
+# as the largest award.
+CEILING_NOTE = ("Sorted by award_ceiling, the largest first. no_ceiling_stated lists leads "
+                "whose record states no ceiling: never call one of them the largest. Name "
+                "each amount by its field, ceiling or floor.")
 
 
 def _lead_row(ctx: ScoutContext, i: int, o: Opportunity, brief_rank: int | None,
@@ -310,20 +316,30 @@ def _lead_row(ctx: ScoutContext, i: int, o: Opportunity, brief_rank: int | None,
             # the record's words for a placeholder date (U3, Q20), or a parent
             # announcement's expiry, which is no deadline (F3, T17).
             "deadline": deadline(o, ctx.as_of),
-            # read mid-sentence: "a ceiling of up to $250,000" (R17)
-            "award_size": lower_first(award_size(o) or "not in the record"),
+            # G2: each amount under the field it is, so a floor is never read as a ceiling
+            "award_ceiling": f"${o.award_ceiling:,.0f}" if o.award_ceiling else "not in the record",
+            **({"award_floor": f"${o.award_floor:,.0f}"} if o.award_floor else {}),
             "match_band": f"{band(match)} match" if match is not None else None}
 
 
-def _sort(leads: list[dict], opp: dict[str, Opportunity], sort: str, as_of: date) -> None:
+def _sort(leads: list[dict], opp: dict[str, Opportunity], sort: str, as_of: date) -> list[dict]:
+    """Sort the rows in place. A sort by award ceiling ranks only the rows whose record
+    states a ceiling; the others leave the list and come back as short rows with no amount
+    ("no ceiling stated", G2)."""
+    unstated: list[dict] = []
     if sort == "close_date":  # the soonest first; open-anytime and undated ones last (Q14)
         leads.sort(key=lambda d: (no_deadline(opp[d["id"]], as_of),
                                   opp[d["id"]].close_date or date.max))
-    elif sort == "award_ceiling":  # the largest ceiling first; none stated last (T6)
-        leads.sort(key=lambda d: -(opp[d["id"]].award_ceiling or -1))
+    elif sort == "award_ceiling":  # the largest ceiling first (T6)
+        unstated = [{"id": d["id"], "title": d["title"], **({"brief_rank": d["brief_rank"]}
+                                                           if "brief_rank" in d else {})}
+                    for d in leads if not opp[d["id"]].award_ceiling]
+        leads[:] = sorted((d for d in leads if opp[d["id"]].award_ceiling),
+                          key=lambda d: -opp[d["id"]].award_ceiling)
     if sort != "match":  # T6: rank is the place in this order
         for i, d in enumerate(leads, 1):
             d["rank"] = i
+    return unstated
 
 
 def _reasons(rejected: dict[str, list[str]]) -> dict[str, int]:
@@ -335,7 +351,7 @@ def _reasons(rejected: dict[str, list[str]]) -> dict[str, int]:
     return dict(sorted(reasons.items(), key=lambda kv: -kv[1])[:6])
 
 
-def _search_brief(ctx: ScoutContext, c: Constraints, sort: str) -> dict:
+def _search_brief(ctx: ScoutContext, c: Constraints, sort: str, top: int = 20) -> dict:
     """F1: the filters applied to the brief's own grant leads, in the brief's order, by the
     same rule code as the search. The brief already settled eligibility, so its
     title rules are not run again."""
@@ -357,14 +373,16 @@ def _search_brief(ctx: ScoutContext, c: Constraints, sort: str) -> dict:
                 continue
             leads.append(_lead_row(ctx, len(leads) + 1, o, i, x.match_score))
             opp[leads[-1]["id"]] = o
-    _sort(leads, opp, sort, ctx.as_of)
+    unstated = _sort(leads, opp, sort, ctx.as_of)
+    leads = leads[:max(1, min(int(top), 20))]  # G2: "top 1 by ceiling" is one lead
     return {"source": "the grant leads on the user's brief", "scope": "brief",
             "as_of": ctx.as_of.isoformat(), "brief_leads": len(leads) + len(rejected),
             "removed_by_filters": len(rejected), "top_removal_reasons": _reasons(rejected),
             "leads": leads, "note": " ".join(x for x in (
                 "Only the brief's own leads; name these and no others." if leads else
                 "None of the brief's leads passes these filters: say so plainly.",
-                CEILING_NOTE if sort == "award_ceiling" else "") if x)}
+                CEILING_NOTE if sort == "award_ceiling" else "") if x),
+            **({"no_ceiling_stated": unstated} if unstated else {})}
 
 
 def _route_b_leads(ctx: ScoutContext, author_id: str | None) -> list[Lead]:
@@ -493,6 +511,11 @@ def get_record(ctx: ScoutContext, id: str) -> dict:
         d.pop("close_date", None)
         d.pop("close_date_note", None)
         d = {"deadline": f"{rec.close_date_note} (the record's own words)", **d}
+    elif isinstance(rec, Opportunity) and expires_only(rec):
+        # G3 (T17, F3 again): a parent announcement's close date is when it expires. Under
+        # close_date the model read it as the deadline, and later turns repeated it.
+        d.pop("close_date", None)
+        d = {"deadline": deadline(rec, ctx.as_of), **d}
     elif isinstance(rec, Opportunity) and rec.close_date:  # as the cards write it (Q22)
         d["close_date"] = closes_text(rec, ctx.as_of)
     for k in ("description", "abstract"):
@@ -593,14 +616,20 @@ def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
             out["lead"] = ctx.see(lead)  # holds the code-written signal sentences
         rows.append(out)
     top = []
-    with ctx.service.repo() as r:
-        for x in _brief_leads(ctx)[:3]:
-            if (o := r.get(Opportunity, x.record_id)) is not None:
-                top.append({"id": ctx.see(o), "title": o.title, **_why(x)})
+    order = [x.record_id for x in _brief_leads(ctx)]
+    if ids and [x.record_id for x, _ in items] == order[:len(items)]:  # G19: the top N
+        head = (f"These rows are the brief's top {len(items)} leads, in its own order by "
+                "Match, the strongest first. ")
+    else:
+        with ctx.service.repo() as r:
+            for x in _brief_leads(ctx)[:3]:
+                if (o := r.get(Opportunity, x.record_id)) is not None:
+                    top.append({"id": ctx.see(o), "title": o.title, **_why(x)})
+        head = ("These rows are the leads compared, not the brief's top leads. "
+                + ("brief_top_leads are the first three in the brief's own order by Match: "
+                   "use them for top or best. " if top else ""))
     return {"rows": rows, **({"brief_top_leads": top} if top else {}),
-            "note": "These rows are the leads compared, not the brief's top leads. "
-            + ("brief_top_leads are the first three in the brief's own order by Match: use "
-               "them for top or best. " if top else "") + "why_it_fits (how_it_relates for a "
+            "note": head + "why_it_fits (how_it_relates for a "
             "weak match) is the lead's checked fit sentence from the brief. Each cell is "
             "copied from the record or counted from it by code. \"Not in the record\" means "
             "the record does not say. Industry leads are inferred from public signals, not "
