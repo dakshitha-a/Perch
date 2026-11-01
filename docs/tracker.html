@@ -271,7 +271,7 @@ svg.arch .k-private, svg.arch .k-private-x { stroke: var(--cut); }
 <div id="s31"><div class="eyebrow">Current session</div>
 <div class="title-row"><h1>S31 · QA cycles (tester, then fixer, up to ten rounds)</h1><span class="badge s-in-progress">in progress</span></div>
 <div class="meta">Started 2026-10-31 21:09 EDT</div></div>
-<section class="glance" aria-label="At a glance"><div class="tile"><span class="k">Code freeze</span><span class="v"><span data-deadline="2026-11-05T12:00:00-05:00">5 Nov</span></span><span class="s">Thu 5 Nov 2026 12:00 EST</span></div><div class="tile"><span class="k">Demo</span><span class="v"><span data-deadline="2026-11-06T15:00:00-05:00">6 Nov</span></span><span class="s">Fri 6 Nov 2026 15:00 EST</span></div><div class="tile"><span class="k">Sessions</span><span class="v">31 of 34</span><span class="s">done</span></div><div class="tile"><span class="k">S31 rounds</span><span class="v">1 of 2</span><span class="s">done</span></div><div class="tile"><span class="k">Tests</span><span class="v">311</span><span class="s">recorded in the S31 task file</span></div><div class="tile"><span class="k">Last commit</span><span class="v">57df5a6</span><span class="s">31 Oct 2026, 23:55</span></div><div class="tile"><span class="k">Anthropic spend</span><span class="v">$2.09 of $100</span><span class="s">key numbers, updated 2026-10-29</span></div><div class="tile"><span class="k">Open questions</span><span class="v">3</span><span class="s">in bridge/QUESTIONS.md</span></div></section>
+<section class="glance" aria-label="At a glance"><div class="tile"><span class="k">Code freeze</span><span class="v"><span data-deadline="2026-11-05T12:00:00-05:00">5 Nov</span></span><span class="s">Thu 5 Nov 2026 12:00 EST</span></div><div class="tile"><span class="k">Demo</span><span class="v"><span data-deadline="2026-11-06T15:00:00-05:00">6 Nov</span></span><span class="s">Fri 6 Nov 2026 15:00 EST</span></div><div class="tile"><span class="k">Sessions</span><span class="v">31 of 34</span><span class="s">done</span></div><div class="tile"><span class="k">S31 rounds</span><span class="v">1 of 2</span><span class="s">done</span></div><div class="tile"><span class="k">Tests</span><span class="v">311</span><span class="s">recorded in the S31 task file</span></div><div class="tile"><span class="k">Last commit</span><span class="v">764ad92</span><span class="s">31 Oct 2026, 23:56</span></div><div class="tile"><span class="k">Anthropic spend</span><span class="v">$2.56 of $100</span><span class="s">362 calls in the ledger, last 31 Oct 2026</span></div><div class="tile"><span class="k">Open questions</span><span class="v">3</span><span class="s">in bridge/QUESTIONS.md</span></div></section>
 <p>Goal: find and fix what the reviews and fixes missed, until a round finds nothing worth fixing. Each round a fresh QA tester tests the dev server end to end as each audience, writes <code>docs/design/qa/CYCLE_&lt;k&gt;.md</code>, then a fixer works the must-fix and should-fix items. Stop rule: a round with zero must-fix and zero should-fix, or two rounds in a row with only could-fix, or ten rounds. Started 2026-10-31 21:09 EDT.</p>
 <section class="panel summary" aria-label="1 of 2 rounds done"><div class="counts"><span class="lead-count"><b>1/2</b>rounds done</span><span class="s-done"><b>1</b>done</span><span class="s-in-progress"><b>1</b>in progress</span><span><b>5</b>must</span><span><b>15</b>should</span><span><b>7</b>could found</span><span><b>28 of 28</b>fixed</span></div><div class="bar" role="img" aria-label="1 of 2 rounds done"><span class="s-done" style="width:50.00%" title="done: 1"></span><span class="s-in-progress" style="width:50.00%" title="in progress: 1"></span></div></section>
 <div class="panel scroll"><table class="rt">
@@ -1317,6 +1317,62 @@ svg.arch .k-private, svg.arch .k-private-x { stroke: var(--cut); }
 <tr><td data-label="Option"><div class="c">C. Full redesign and rebuild</div></td><td data-label="What it covers"><div class="c">A new visual system and new screens for every flow, designed from scratch per audience.</div></td><td data-label="Sessions"><div class="c">About 4: 1 design, 2 build, 1 refilm and regression</div></td><td data-label="Risk"><div class="c">High: freeze is Thu 5 Nov 12:00, and the cut order already names the rebuild first.</div></td></tr>
 </tbody></table></div>
 <ul><li><strong>Recommendation: B.</strong> The audit found defects and a vocabulary problem, not a broken structure. The structure that works (one app, a private state, shared evidence and badges) is exactly what C would throw away. B fixes what a student stalls on and what a PI misreads, and every step can stop at a clean commit.</li></ul></div></details>
+<details><summary><span class="sline"><span class="stitle">QA cycle 2 (round 2 of the final QA cycles)</span></span><span class="smeta"><code>docs/design/qa/CYCLE_2.md</code>, not in git yet</span></summary><div class="inner prose"><h3>How it was done</h3>
+<p>TBD</p>
+<h3>Regression on round 1</h3>
+<div class="panel scroll"><table class="rt">
+<thead><tr><th scope="col">#</th><th scope="col">Result</th><th scope="col">Retest</th></tr></thead>
+<tbody>
+<tr><td class="id" data-label="#"><div class="c">Q1</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q2</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q3</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q4</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q5</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q6</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q7</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q8</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q9</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q10</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q11</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q12</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q13</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q14</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q15</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q16</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q17</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q18</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q19</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q20</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q21</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q22</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q23</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q24</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q25</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q26</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q27</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+<tr><td class="id" data-label="#"><div class="c">Q28</div></td><td class="blank" data-label="Result"></td><td class="blank" data-label="Retest"></td></tr>
+</tbody></table></div>
+<h3>Must-fix</h3>
+<div class="panel scroll"><table class="rt">
+<thead><tr><th scope="col">#</th><th scope="col">Screen</th><th scope="col">Steps to reproduce</th><th scope="col">What happened</th><th scope="col">What was expected</th><th scope="col">Audience</th><th scope="col">Evidence</th><th scope="col">Proposed fix</th><th scope="col">Cost</th><th scope="col">Decision</th></tr></thead>
+<tbody>
+
+</tbody></table></div>
+<h3>Should-fix</h3>
+<div class="panel scroll"><table class="rt">
+<thead><tr><th scope="col">#</th><th scope="col">Screen</th><th scope="col">Steps to reproduce</th><th scope="col">What happened</th><th scope="col">What was expected</th><th scope="col">Audience</th><th scope="col">Evidence</th><th scope="col">Proposed fix</th><th scope="col">Cost</th><th scope="col">Decision</th></tr></thead>
+<tbody>
+
+</tbody></table></div>
+<h3>Could-fix</h3>
+<div class="panel scroll"><table class="rt">
+<thead><tr><th scope="col">#</th><th scope="col">Screen</th><th scope="col">Steps to reproduce</th><th scope="col">What happened</th><th scope="col">What was expected</th><th scope="col">Audience</th><th scope="col">Evidence</th><th scope="col">Proposed fix</th><th scope="col">Cost</th><th scope="col">Decision</th></tr></thead>
+<tbody>
+
+</tbody></table></div>
+<h3>Checked and fine</h3>
+<h3>UNVERIFIED</h3>
+<h3>Ready to demo?</h3></div></details>
 </section>
 <section id="view-bench" class="view" data-view="bench" hidden>
 <div><div class="eyebrow">Measured results, with the keyword-only baseline</div><h1>Bench results</h1></div>
