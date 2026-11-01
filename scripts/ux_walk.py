@@ -948,6 +948,16 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.fill("#q", AUTHOR)
     await page.click(".searchbox button[type=submit]")
     await page.wait_for_selector(".cand", timeout=20000)
+    if await page.locator(".cand button.btn.outline").count():
+        await page.locator(".cand button.btn.outline").first.click()
+        await page.wait_for_timeout(300)
+    near = await page.evaluate("""() => { const c = [...document.querySelectorAll('label.check')].find(l => /Explain each lead/.test(l.innerText));
+      const b = document.querySelector('[data-key=build]'); if (!c || !b) return null;
+      const r = c.getBoundingClientRect(), k = b.getBoundingClientRect();
+      return { inBox: Boolean(c.closest('.box, .more-panel')), gap: Math.max(0, r.top - k.bottom, k.top - r.bottom) }; }""")
+    if near is None or near["inBox"] or near["gap"] > 60:  # U42
+        w.errors.append(f"{tag}: U42: Explain each lead is not beside Build brief {near}")
+    await w.snap(page, tag, "u-pick")
     await pick_and_build(page)
     await page.wait_for_selector("#tab-routes", timeout=60000)
     await wait_built(page)
@@ -970,6 +980,16 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
             w.errors.append(f"{tag}: U5: the opened steps are squeezed into {wide:.0f} px")
         await w.snap(page, tag, "u-steps-open")
         await page.click(".pcard .steps summary")
+    dup = await page.evaluate("""() => [...document.querySelectorAll('#panel details.why')].filter(d => {
+      const inf = [...d.querySelectorAll('.inference .paper-cite')].map(b => b.dataset.key);
+      const own = new Set([...d.querySelectorAll('.findings .paper-ref')].map(b => b.dataset.key));
+      return inf.length && inf.every(k => own.has(k)); }).length""")
+    if dup:  # U35
+        w.errors.append(f"{tag}: U35: {dup} Inference boxes repeat the paper chips listed just above them")
+    lab = await page.evaluate("""() => { const sw = document.querySelector('#panel .route-row .sort-switch'); const l = document.querySelector('#panel .route-row .sort-label');
+      return { label: l ? l.innerText.trim() : null, before: Boolean(l && sw && (l.compareDocumentPosition(sw) & Node.DOCUMENT_POSITION_FOLLOWING)) }; }""")
+    if lab["label"] != "Sort" or not lab["before"]:  # U36
+        w.errors.append(f"{tag}: U36: the sort switch has no visible Sort label {lab}")
     # U24: good and strong matches first, the weak ones folded under a count
     weak = await page.evaluate("""() => { const ol = document.querySelector('#panel > .leads, #panel .leads');
       const top = [...document.querySelectorAll('#panel .leads > li')].filter(li => !li.closest('details'));
@@ -1049,6 +1069,11 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
     iso = await page.evaluate(r"() => [...document.querySelectorAll('#panel .signals p')].map(p => p.innerText).filter(t => /\d{4}-\d{2}-\d{2}/.test(t))")
     if iso:
         w.errors.append(f"{tag}: U14: industry sentences write dates as {iso[0][:90]!r}")
+    gone = await page.evaluate(r"""() => [...document.querySelectorAll('#panel .signals > li')].map(li => {
+      const n = parseInt((li.querySelector('p') || {}).innerText, 10); const m = li.querySelector('.hint');
+      return m && /more in the export/.test(m.innerText) ? [n, m.innerText] : null; }).filter(x => x && x[0] <= 25)""")
+    if gone:  # U38
+        w.errors.append(f"{tag}: U38: {gone[0][1]!r} on a signal with only {gone[0][0]} records")
     await w.snap(page, tag, "u-industry", full=not phone)
     if phone:  # U16: the kept pill stays off the Industry warning
         await page.click("[data-key=route-A]")
@@ -1077,6 +1102,10 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
     # U23: the profile says how its paper counts relate
     await page.click("#tab-profile")
     await page.wait_for_timeout(600)
+    twice = await page.evaluate("""() => [...document.querySelectorAll('#panel .block')].filter(b => /^Summary/.test(b.innerText))
+      .filter(b => b.querySelector('h2 .hint') && b.querySelector('.tag.model')).length""")
+    if twice:  # U35
+        w.errors.append(f"{tag}: U35: the Summary says it is model text in its header and in its tag line")
     if not phone:
         note = await page.evaluate("() => (document.querySelector('.threads-note') || {}).innerText || ''")
         if not re.search(r"\d", note):
@@ -1121,6 +1150,10 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         await page.locator("[data-key=handoff-make]").click()
         await page.wait_for_selector("#handoff-body", timeout=90000)
         body = await page.locator("#handoff-body").input_value()
+        ui = await page.evaluate("""() => ({ tag: (document.querySelector('.draft .model-note .tag') || {}).innerText || null,
+          btns: [...document.querySelectorAll('.draft .actions .btn')].map(b => b.innerText.trim()) })""")
+        if ui["tag"] not in (None, "Model text") or ui["btns"] != ["Copy the draft", "Open in my mail app"]:
+            w.errors.append(f"{tag}: U34: the researcher's note reads {ui}")
         if far := far_years(body):
             w.errors.append(f"{tag}: U3: the email says a placeholder close date as real ({far[0]})")
         if re.search(r"\b\d{4}-\d{2}-\d{2}\b", body):
@@ -1237,6 +1270,13 @@ async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
     if rep["n"] >= 3 and rep["rep"]:
         w.errors.append(f"{tag}: U20: most option cards repeat the same text: {rep['rep'][:3]}")
     await w.snap(page, tag, "u-fellowships", full=True)
+    wording = await page.evaluate("""() => ({ tags: [...new Set([...document.querySelectorAll('#panel .leads .tag.model')].map(t => t.innerText.trim()))],
+      based: [...document.querySelectorAll('#panel .leads summary')].filter(x => /based on/.test(x.innerText)).length,
+      sort: (document.querySelector('#panel .route-row .sort-label') || {}).innerText || null })""")
+    if wording["tags"] not in ([], ["Model text"]) or wording["based"]:  # U34
+        w.errors.append(f"{tag}: U34: student cards use other words than the researcher's {wording}")
+    if wording["sort"] != "Sort":  # U36
+        w.errors.append(f"{tag}: U36: the student sort switch has no visible Sort label")
     # U33: a sample's Evidence keeps the canary out of Purpose, in a muted Test marker row
     await page.click("[data-key=route-S]")
     await page.wait_for_timeout(500)
@@ -1284,6 +1324,11 @@ async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
             w.errors.append(f"{tag}: U10: one Compare table mixes public fellowships and sample scholarships {got['tables']}")
         if "sample" not in (got["label"] or ""):
             w.errors.append(f"{tag}: U10: the kept count does not split public from sample ({got['label']!r})")
+        note = await page.evaluate("""() => ({ subject: Boolean(document.querySelector('.draft input.input')),
+          btns: [...document.querySelectorAll('.draft .actions .btn')].map(b => b.innerText.trim()),
+          bare: [...document.querySelectorAll('table.compare td')].filter(td => td.innerText.trim() === 'Not stated').length })""")
+        if not note["subject"] or note["btns"] != ["Copy the draft", "Open in my mail app"] or note["bare"]:  # U34
+            w.errors.append(f"{tag}: U34: the student's note reads {note}")
         await w.snap(page, tag, "u-compare", full=True)
         await page.click("#tab-scout")
         await page.wait_for_selector("#scout-q")
@@ -1408,6 +1453,29 @@ async def ux_landing(w: Walk, page: Page, base: str, tag: str) -> None:
     if lines != 1:
         w.errors.append(f"{tag}: U30: the example ORCID iD is drawn on {lines} lines")
     await w.snap(page, tag, "u-no-match")
+    await page.goto(base + "/#/")  # U40: the owl keeps no "say hello" invitation
+    await page.wait_for_selector(".landing")
+    owls = await page.evaluate("() => [...document.querySelectorAll('button.owl, .owl[role=button], [aria-label*=Scout]')].map(o => o.getAttribute('aria-label'))")
+    if any(re.search(r"hello", x or "", re.I) for x in owls):
+        w.errors.append(f"{tag}: U40: the owl's label still invites a hello {owls}")
+    await page.goto(base + "/#/help")  # U39: five questions at the top of Help
+    await page.wait_for_selector(".help")
+    await page.wait_for_timeout(400)
+    qa = await page.evaluate("""() => { const q = document.querySelector('.help-quick'); const first = document.querySelector('#h-use');
+      return { n: q ? q.querySelectorAll('li').length : 0, links: q ? q.querySelectorAll('button, a').length : 0,
+               top: q ? Math.round(q.getBoundingClientRect().top + scrollY) : null,
+               above: Boolean(q && first && q.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING),
+               hello: /hello/i.test(document.querySelector('.help').innerText) }; }""")
+    if qa["n"] != 5 or qa["links"] < 5 or not qa["above"] or (qa["top"] or 9999) > 700:
+        w.errors.append(f"{tag}: U39: Help has no five-question block at the top {qa}")
+    if qa["hello"]:
+        w.errors.append(f"{tag}: U40: Help still says hello")
+    await w.snap(page, tag, "u-help-top")
+    if qa["links"]:
+        await page.locator(".help-quick button, .help-quick a").first.click()
+        await page.wait_for_timeout(600)
+        if await page.evaluate("() => scrollY") < 200:
+            w.errors.append(f"{tag}: U39: the first question's link did not move the page")
     if phone:
         return
     await page.goto(base + "/#/")  # U41: the documents path opens its session on arrival
@@ -1437,7 +1505,20 @@ async def ux_docs(w: Walk, page: Page, base: str, tag: str) -> None:
     ph = await page.locator("#p-author").get_attribute("placeholder") or ""
     if re.search(r"A\d{6,}", ph):
         w.errors.append(f"{tag}: U28: the OpenAlex ID box's example is a real id ({ph!r})")
+    chip = lambda: page.evaluate("() => document.querySelector('#status-chip').innerText.trim()")  # noqa: E731
+    await page.fill("#doc-proposal", (SYN / "persona-1/specific_aims_draft.md").read_text())
+    await page.locator("#doc-proposal ~ .doc-actions button:has-text('Add text')").click()
+    await page.wait_for_function("() => !document.querySelector('#doc-proposal')", timeout=20000)
+    if not (await chip()).startswith("Local only"):  # U37
+        w.errors.append(f"{tag}: U37: the chip reads {await chip()!r} with a document held")
+    label = await page.get_attribute("#status-chip", "aria-label")
+    if "only" not in (label or ""):
+        w.errors.append(f"{tag}: U37: the chip's label does not explain 'only' ({label!r})")
     await w.snap(page, tag, "u-docs")
+    await page.locator(".private-docs button:has-text('Remove')").first.click()
+    await page.wait_for_selector("#doc-proposal", timeout=10000)
+    if (await chip()).startswith("Local only"):
+        w.errors.append(f"{tag}: U37: the chip still says Local only after the document was removed")
     await end_session(page)
 
 
