@@ -130,7 +130,7 @@ def student_json(lead: Lead, r: Repository) -> dict:
     return out
 
 
-SIGNAL_RECORDS = 3  # evidence records shown per Route B signal; the rest are counted
+SIGNAL_RECORDS = 25  # records sent per Route B signal, newest first; any beyond are counted (U38)
 
 
 def route_b_json(lead: Lead, r: Repository) -> dict:

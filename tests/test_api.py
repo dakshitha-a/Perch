@@ -449,3 +449,28 @@ def test_request_models_are_defined_once():
     assert src.count("def context(self)") == 1
     assert routes.PrivateBriefRequest(author_id=None).author_id is None
     assert api.BriefRequest(author_id="A1").context()["include_keywords"] == []
+
+
+def test_route_b_sends_up_to_the_cap_of_records_per_signal_and_counts_the_rest():
+    from datetime import UTC, date, datetime
+
+    from perch.api import SIGNAL_RECORDS, route_b_json
+    from perch.schemas import Lead, Signal, Work
+
+    t = datetime(2026, 10, 29, tzinfo=UTC)
+    ids = [f"https://openalex.org/W{i}" for i in range(SIGNAL_RECORDS + 5)]
+    works = {i: Work(id=i, source="openalex", source_url="u", fetched_at=t, title=f"SYNTHETIC {i}",
+                     publication_date=date(2026, 1, 1)) for i in ids}
+
+    class Repo:
+        def get(self, cls, record_id):  # noqa: ANN001, ARG002
+            return None
+
+        def get_any(self, record_id):
+            return works.get(record_id)
+
+    lead = Lead(id="b:B1", source="openalex", source_url="u", fetched_at=t, brief_id="b", route="B",
+                record_id="https://openalex.org/I1", rank=1, inferred=True, inference="x",
+                cited_ids=[], signals=[Signal(kind="citing_works", record_ids=ids, count=len(ids))])
+    item = route_b_json(lead, Repo())["signal_items"][0]  # type: ignore[arg-type]
+    assert len(item["records"]) == SIGNAL_RECORDS and item["more"] == 5
