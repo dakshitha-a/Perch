@@ -181,7 +181,7 @@ def test_compare_and_draft_handoff_use_records_and_send_nothing(service):
         TOOLS["compare"][1](c)
     out = TOOLS["compare"][1](c, ids=[OPP])
     row = out["rows"][0]
-    assert row["record"] == OPP and row["Closes"].startswith("2026-11-17")
+    assert row["record"] == OPP and row["Closes"].startswith("17 Nov 2026")  # Q22
     assert row["Money"] == "Not in the record" and row["Office"] == "Research Development"
     d = TOOLS["draft_handoff"][1](c, ids=["PAR-25-268"])
     assert d["office"] == "Research Development" and d["to"] == ""
@@ -352,3 +352,104 @@ def test_a_hand_off_step_counts_toward_the_session_and_says_where_it_ran(service
         assert rec.where == "code" and rec.tokens == 0
         assert draft.status == "done" and draft.where == where and draft.provider == name
         assert draft.tokens > 0 and s.tokens == scout_model.tokens + draft.tokens
+
+
+def _kept_brief(service, n_kept):
+    """The fixture brief with its first n Route A leads kept."""
+    from perch.schemas import Brief
+
+    with service.repo() as r:
+        b = max(r.list(Brief), key=lambda x: x.created_at)
+    leads = sorted((x for x in service.get(b.id)[1] if x.route == "A"), key=lambda x: x.rank)
+    for x in leads:
+        service.set_lead_status(b.id, x.id, "new")
+    for x in leads[:n_kept]:
+        service.set_lead_status(b.id, x.id, "kept")
+    return b, leads
+
+
+def test_compare_my_kept_leads_compares_the_kept_ones(service):
+    """Q4: Scout's context names the kept leads at each question, so "compare my kept
+    leads" runs compare with no ids and gets exactly those; with none kept it says so
+    and offers the top leads instead of an error."""
+    from perch.scout import make_scout
+
+    b, leads = _kept_brief(service, 0)
+    systems = []
+
+    def reply(messages, system, schema):
+        systems.append(system)
+        if not messages[-1].tool_results:
+            return call("compare")
+        res = json.loads(messages[-1].tool_results[0].content)
+        ids = [x["record"] for x in res["rows"]] or [x["id"] for x in res["top_leads"]]
+        return f"See {', '.join(f'[{i}]' for i in ids)}."
+
+    service.models.provider = lambda spec: FakeProvider(responder=reply)
+    s = make_scout(service, AUTHOR, brief_id=b.id)
+    sess = s.start("Compare my kept leads")
+    res = sess.cards[0].result
+    assert res["rows"] == [] and res["kept"] == 0
+    assert [x["id"] for x in res["top_leads"]] == [x.record_id for x in leads[:3]]
+    assert sess.cards[0].status == "done" and sess.answer and "kept no lead" in systems[-1]
+    service.set_lead_status(b.id, leads[0].id, "kept")
+    s.ask(sess, "Compare my kept leads")  # a follow-up: the note is read again
+    assert "kept 1 lead " in systems[-1] and systems[-1].count("(kept)") == 1
+    got = [r["record"] for r in sess.cards[-1].result["rows"]]
+    assert got == [leads[0].record_id]
+
+
+def test_an_answer_with_no_tool_and_no_citation_is_sent_back_once(service):
+    """Q5: a few questions in, the local model answered "I do not have access to your
+    papers" without calling a tool. Such an answer gets one reminder to call a tool; a
+    refusal the rules ask for (email, the web, odds) does not."""
+    fake = FakeProvider(["I cannot answer this because I do not have access to your papers.",
+                         call("get_record", id=OPP), f"It closes 2026-11-17 [{OPP}]."])
+    sess = Scout(fake, ctx(service)).start("Which company cites my papers the most?")
+    assert [c.tool for c in sess.cards] == ["get_record"] and sess.answer.startswith("It closes")
+    again = FakeProvider(["I do not have that.", "I still do not have that."])
+    sess = Scout(again, ctx(service)).start("Which company cites my papers?")
+    assert sess.answer == "I still do not have that." and sess.turns == 2  # once only
+    plain = FakeProvider(["I cannot send email; Perch never sends anything."])
+    sess = Scout(plain, ctx(service)).start("Email the program officer")
+    assert sess.turns == 1 and sess.answer.startswith("I cannot send email")
+
+
+def test_dates_reach_the_model_as_the_cards_write_them(service):
+    """Q22 and Q20: tool results write dates as the cards do ("17 Nov 2026"), the
+    validator accepts that form against the record's ISO date, and a far placeholder close
+    date reaches the model as the record's own words."""
+    from datetime import UTC, datetime
+
+    from perch.schemas import Opportunity
+
+    c = ctx(service)
+    rec = TOOLS["get_record"][1](c, id=OPP)["record"]
+    assert rec["close_date"] == "17 Nov 2026"
+    fake = FakeProvider([call("get_record", id=OPP), f"It closes 17 Nov 2026 [{OPP}]."])
+    s = Scout(fake, ctx(service)).start("When does it close?")
+    assert s.answer and not s.flagged, s.errors
+    far = Opportunity(id="grants_gov:SYN-26-1", source="grants_gov", source_url="u",
+                      fetched_at=datetime(2026, 10, 29, tzinfo=UTC), opportunity_number="SYN-26-1",
+                      title="SYNTHETIC anytime programme", agency="NSF",
+                      close_date=date(2076, 10, 7), close_date_note="Proposals accepted anytime")
+    with service.repo() as r:
+        r.upsert([far])
+    got = TOOLS["get_record"][1](c, id=far.id)["record"]
+    assert got["close_date"] == "Proposals accepted anytime"
+    assert "placeholder" in got["close_date_placeholder"]
+
+
+def test_next_deadline_sorts_by_close_date_after_the_as_of_date(service):
+    """Q14: "the next deadline" is the soonest close date after today, not closes_by
+    today, which drops every lead."""
+    c = ctx(service)
+    out = TOOLS["search_opportunities"][1](c, route="A", closes_after=AS_OF.isoformat(),
+                                           sort="close_date", top=20)
+    with service.repo() as r:
+        from perch.schemas import Opportunity
+        dates = [r.get(Opportunity, x["id"]).close_date for x in out["leads"]]
+    assert dates and all(d is None or d > AS_OF for d in dates)
+    known = [d for d in dates if d]
+    assert known == sorted(known)
+    assert "closes_after" in TOOLS["search_opportunities"][0].parameters["properties"]

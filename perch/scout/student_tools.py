@@ -53,11 +53,11 @@ def facts_of(rec: Record | None) -> dict:
                else f"{rec.amount_max:,.0f} US dollars" if rec.amount_max is not None
                else NOT_STATED)
         return {"title": rec.name, "sponsor": rec.sponsor,
-                "deadline": rec.deadline.isoformat() if rec.deadline else NOT_STATED,
+                "deadline": day(rec.deadline) if rec.deadline else NOT_STATED,  # Q22
                 "amount": amt}
     if isinstance(rec, Opportunity):
         return {"title": rec.title, "sponsor": rec.agency,
-                "deadline": rec.close_date.isoformat() if rec.close_date else NOT_STATED,
+                "deadline": day(rec.close_date) if rec.close_date else NOT_STATED,
                 "amount": f"{rec.award_ceiling:,.0f} US dollars" if rec.award_ceiling
                 else NOT_STATED}
     return {"title": None, "deadline": NOT_STATED, "amount": NOT_STATED}
@@ -238,14 +238,6 @@ def draft_note(ctx: ScoutContext, route: str | None = None,
             "note": "Written by code from the kept options; no model. Perch never sends it."}
 
 
-def shown_date(v: str) -> str:
-    """An ISO date as the cards show it (U14); "not stated" stays as it is."""
-    try:
-        return day(date.fromisoformat(v))
-    except ValueError:
-        return v
-
-
 def write_note(route: str, rows: list[tuple[Lead, dict]]) -> dict:
     """The note to the Temple office for one route, written by code from the options and
     their record facts (title, deadline). One source for Scout's draft_note and the
@@ -253,7 +245,7 @@ def write_note(route: str, rows: list[tuple[Lead, dict]]) -> dict:
     kind = "fellowships" if route == "F" else "scholarships"
     sample = any(x.sample for x, _ in rows)
     lines = [f"- {f['title']}{' (SAMPLE record, not real)' if x.sample else ''}: "
-             f"{x.verdict}, deadline {shown_date(f['deadline'])}"
+             f"{x.verdict}, deadline {f['deadline']}"
              + (f". Still needed: {'; '.join(x.gaps)}" if x.gaps else "") for x, f in rows]
     demo = (["SAMPLE DATA, A DEMONSTRATION: DO NOT SEND. The scholarships marked SAMPLE are "
              "invented.", ""] if sample else [])

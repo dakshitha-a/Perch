@@ -43,7 +43,11 @@ tool can do, say so plainly in one sentence and do not call a tool.
 - Perch's opportunity records are federal grants from Grants.gov. There are no \
 foundation or private-sponsor records yet; say so if asked for them.
 - Call the fewest tools that answer the question. Do not call a tool again for \
-something an earlier result already shows.
+something an earlier result already shows. The lists in these instructions are a \
+snapshot: for companies, deadlines, amounts or anything else they do not show, call a \
+tool, however long the conversation.
+- "The next deadline" means the soonest close date after the as-of date: call \
+search_opportunities with closes_after set to the as-of date and sort set to close_date.
 - Every fact in your answer comes from a tool result. Cite the record id in square \
 brackets right after the fact, like [grants_gov:PAR-25-123] or [W2741809807].
 - Copy dates and dollar amounts exactly as the record gives them and cite that record. \
@@ -69,6 +73,15 @@ STEP_SCHEMA = {"type": "object", "properties": {
     "answer": {"type": "string"}},
     "required": ["action", "tool", "arguments", "answer"], "additionalProperties": False}
 
+# Q5: the reminder sent once when an answer ran no tool and cites nothing.
+NUDGE = ("You answered without calling a tool, and your answer cites no record. The lists "
+         "in your instructions are a snapshot, and earlier results may be out of date. If "
+         "one of your tools can answer this question, call it now. If no tool can, give "
+         "your answer again.")
+# Refusals the rules ask for, which need no tool: they are not nudged.
+CAPABILITY_RE = re.compile(r"\b(e-?mail|send|web|brows\w*|internet|apply for|chances?|odds|"
+                           r"percent\w*|likel\w*|foundations?|private[- ](?:sponsor|document)\w*|"
+                           r"unpublished|draft proposal|yes or no)\b", re.I)
 CITE_RE = re.compile(r"\[([^\[\]]+)\]")
 LIST_RE = re.compile(r"^\s*\d{1,2}[.)]\s", re.M)  # "1. " at a line start: formatting
 K_RE = re.compile(r"\$?(\d+(?:\.\d+)?)\s*([kKmM])\b")
@@ -119,6 +132,7 @@ class Session:
     usd: float = 0.0
     user_numbers: set[str] = field(default_factory=set)
     stop_asked: bool = False  # Stop was pressed: no further step runs for this question
+    nudged: bool = False  # this question's no-tool answer was sent back once (Q5)
     # One entry per question: its text, the first card it made, and how it ended. Held in
     # memory for the web app; the log keeps a hash of the question only.
     exchanges: list[dict] = field(default_factory=list)
@@ -198,7 +212,7 @@ class Scout:
     def __init__(self, provider: Provider, ctx: ScoutContext, *,
                  policy: Policy | None = None, budget: ScoutBudget | None = None,
                  log: ScoutLog | None = None, private: PrivateSettings | None = None,
-                 brief_note: str = "", table: dict | None = None,
+                 brief_note: str | Callable[[], str] = "", table: dict | None = None,
                  rules: str | None = None, who: str | None = None,
                  answer_check: Callable[[str, dict], list[str]] | None = None) -> None:
         """`table`, `rules` and `who`: another allowlist, rule set and session line, such
@@ -220,8 +234,11 @@ class Scout:
                       else f"researcher {ctx.full_author_id(None)} (OpenAlex)")
         self.table = table or SESSION_TOOLS
         self.answer_check = answer_check
-        self.system = (f"{rules or RULES}\n\nSession: {who}, as-of date "
-                       f"{ctx.as_of.isoformat()}.{brief_note}")
+        # The brief note says which leads are kept. Kept marks change between questions,
+        # so a callable note is read again at each question (Q4).
+        self.note = brief_note if callable(brief_note) else (lambda: brief_note)
+        self.head = f"{rules or RULES}\n\nSession: {who}, as-of date {ctx.as_of.isoformat()}."
+        self.system = self.head + self.note()
         self.tools = [t for t, _ in self.table.values()]
         self.schema = step_schema(tuple(self.table))
 
@@ -242,9 +259,11 @@ class Scout:
 
     def ask(self, s: Session, question: str) -> Session:
         """A question, or a follow-up in the same session."""
+        self.system = self.head + self.note()  # what is kept now (Q4)
         s.messages.append(Message("user", question))
         s.user_numbers |= stated_numbers(question)
         s.status, s.answer, s.flagged, s.errors, s.turns = "running", None, False, [], 0
+        s.nudged = False
         s.exchanges.append({"question": question, "cards_from": len(s.cards), "answer": None,
                             "flagged": False, "errors": [], "status": "running"})
         if self.log:
@@ -282,6 +301,8 @@ class Scout:
                 for c in new:
                     self._answer_repeat(s, c)
                 continue
+            if self._nudge(s, r.text):
+                continue
             return self._finish(s, r.text)
 
     # --- internals ---
@@ -316,6 +337,19 @@ class Scout:
         else:
             r.text = str(d.get("answer") or "")
         return r
+
+    def _nudge(self, s: Session, text: str) -> bool:
+        """Q5: a few questions into a conversation, a small local model starts to answer
+        from the conversation alone, and says it has no access to what its tools hold. An
+        answer to a question for which no tool ran, citing nothing, and not one of the
+        refusals the rules ask for, gets one reminder to call a tool. One per question."""
+        start = s.exchanges[-1]["cards_from"] if s.exchanges else 0
+        if s.nudged or s.cards[start:] or cited(text) or CAPABILITY_RE.search(text):
+            return False
+        s.nudged = True
+        s.messages.append(Message("assistant", text))
+        s.messages.append(Message("user", NUDGE))
+        return True
 
     def _answer_repeat(self, s: Session, c: Card) -> None:
         """A call identical to one already run for this question is not run again: it gets
@@ -494,6 +528,8 @@ def summarise(tool: str, result: dict) -> str:
     if tool == "get_record":
         return f"{result['kind']} {result['record']['id']}"
     if tool == "compare":
+        if not result["rows"] and "kept" in result:
+            return "nothing kept; the top leads offered"
         return f"{len(result['rows'])} leads side by side"
     if tool == "draft_handoff":
         return (f"draft to {result['office']}, not sent"

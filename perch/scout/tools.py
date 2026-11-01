@@ -16,7 +16,9 @@ from typing import Any
 
 from perch import awards as aw
 from perch.brief import route_a
-from perch.datefmt import placeholder_close
+from perch.compare import award_size
+from perch.datefmt import closes as closes_text
+from perch.datefmt import day, placeholder_close
 from perch.eligibility import Constraints
 from perch.llm import Tool
 from perch.llm.audit import AuditedProvider
@@ -139,8 +141,8 @@ def list_awards(ctx: ScoutContext, author_id: str | None = None) -> dict:
         rec = s.end_record or next(a for a in linked if aw.award_key(a) == s.key)
         out.append({"id": ctx.see(rec), "award_number": s.award_number, "title": s.title,
                     "agency": s.agency, "activity_code": s.activity_code,
-                    "start_date": s.start_date and s.start_date.isoformat(),
-                    "end_date": s.end_date and s.end_date.isoformat(),
+                    "start_date": s.start_date and day(s.start_date),
+                    "end_date": s.end_date and day(s.end_date),
                     "matched_by_initial": s.matched_by_initial})
     return {"researcher": ctx.see(res), "awards": out,
             "horizon_award": h and ctx.see(h.end_record or linked[0]),
@@ -153,18 +155,22 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                          exclude_agencies: list[str] | None = None,
                          closes_by: str | None = None, activity_codes: list[str] | None = None,
                          keywords: list[str] | None = None,
-                         exclude_keywords: list[str] | None = None, top: int = 10) -> dict:
+                         exclude_keywords: list[str] | None = None, top: int = 10,
+                         closes_after: str | None = None, sort: str = "match") -> dict:
     if route == "B":
         out = get_org_signals(ctx, author_id, top=top)
         return {**out, "note": out["note"] + " Grant filters (agency, amount, dates, codes, "
                 "keywords) do not apply to route B."}
     try:
         by = date.fromisoformat(closes_by) if closes_by else None
+        after = date.fromisoformat(closes_after) if closes_after else None
     except ValueError as e:
-        raise ToolError(f"closes_by must be a date like 2027-03-01: {closes_by!r}") from e
+        raise ToolError(f"closes_by and closes_after take a date like 2027-03-01: "
+                        f"{closes_by or closes_after!r}") from e
     c = Constraints(as_of=ctx.as_of, min_amount=min_amount, max_amount=max_amount,
                     agencies=agencies or [], exclude_agencies=exclude_agencies or [],
-                    closes_by=by, activity_codes=[a.upper() for a in activity_codes or []],
+                    closes_by=by, closes_after=after,
+                    activity_codes=[a.upper() for a in activity_codes or []],
                     keywords=keywords or [], exclude_keywords=exclude_keywords or [])
     res = _researcher(ctx, author_id)
     _profile(ctx, author_id)  # make sure the works are in the store
@@ -179,13 +185,21 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
         o = x.opportunity
         leads.append({"rank": i, "id": ctx.see(o), "title": o.title, "agency": o.agency,
                       "activity_code": o.activity_code,
-                      "close_date": o.close_date and o.close_date.isoformat(),
-                      # A far-off placeholder date comes with the record's words (U3).
-                      **({"close_date_note": o.close_date_note}
-                         if placeholder_close(o, ctx.as_of) else {}),
-                      "award_ceiling": o.award_ceiling,
+                      # As the cards write it (Q22); a far-off placeholder date reads as
+                      # the record's own words (U3, Q20).
+                      "close_date": closes_text(o, ctx.as_of),
+                      "award_size": award_size(o) or "not in the record",
                       "match": match_score(x.rerank_score),
                       "matched_thread": x.candidate.best_thread + 1})
+    if sort == "close_date":  # the soonest first; open-anytime and undated ones last (Q14)
+        opp = {ctx.see(x.opportunity): x.opportunity for x in b.leads}
+
+        def soon(d: dict) -> tuple[bool, date]:
+            o = opp[d["id"]]
+            return (o.close_date is None or placeholder_close(o, ctx.as_of),
+                    o.close_date or date.max)
+
+        leads.sort(key=soon)
     reasons: dict[str, int] = {}
     for rs in b.rejected.values():
         for why in rs:
@@ -247,7 +261,7 @@ def get_org_signals(ctx: ScoutContext, author_id: str | None = None,
             for sig in x.signals:
                 ev = [r.get_any(i) for i in sig.record_ids[:3]]
                 signals.append({"kind": sig.kind, "count": sig.count,
-                                "latest": sig.latest and sig.latest.isoformat(),
+                                "latest": sig.latest and day(sig.latest),
                                 "sentence": sentence(sig, name, len(x.cited_ids)),
                                 "records": [ctx.see(e) for e in ev if e]})
             out.append({"lead": ctx.see(x), "rank": x.rank, "organisation": name,
@@ -308,6 +322,11 @@ def get_record(ctx: ScoutContext, id: str) -> dict:
     if rec is None or not belongs_to(rec, ctx.brief_id):  # another visitor's (review S9)
         raise ToolError(f"no record {id!r} in the store")
     d = rec.model_dump(mode="json", exclude_none=True)
+    if isinstance(rec, Opportunity) and rec.close_date:  # the card's words (U3, Q20, Q22)
+        d["close_date"] = closes_text(rec, ctx.as_of)
+        if placeholder_close(rec, ctx.as_of):
+            d["close_date_placeholder"] = (f"{rec.close_date.isoformat()}: a far-off "
+                                           "placeholder date; the deadline is close_date")
     for k in ("description", "abstract"):
         if isinstance(d.get(k), str) and len(d[k]) > DESCRIPTION_CHARS:
             d[k] = d[k][:DESCRIPTION_CHARS] + " [truncated]"
@@ -352,6 +371,16 @@ def _items(ctx: ScoutContext, ids: list[str] | None) -> list[tuple[Lead, Record 
 def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
     from perch import compare as cmp
 
+    if not ids and ctx.brief_id and (got := ctx.service.get(ctx.brief_id)) \
+            and not any(x.status == "kept" for x in got[1]):  # Q4
+        top = sorted((x for x in got[1] if x.route == "A" and x.status != "dismissed"),
+                     key=lambda x: x.rank or 0)[:3]
+        with ctx.service.repo() as r:
+            offer = [{"id": ctx.see(o), "title": o.title} for x in top
+                     if (o := r.get(Opportunity, x.record_id)) is not None]
+        return {"rows": [], "kept": 0, "top_leads": offer,
+                "note": "Nothing is kept on the brief, so there is nothing to compare. Say "
+                "so, and offer to compare the top leads listed here."}
     items = _items(ctx, ids)
     rows = []
     for lead, rec in items:
@@ -360,7 +389,8 @@ def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
         cells = {}
         for key, label in cmp.COLUMNS:
             c = row.cells[key]
-            cells[label] = f"{c.text} ({c.note})" if c.note else c.text
+            text = shown_day(c.text) if key == "closes" else c.text  # as on the cards (Q22)
+            cells[label] = f"{text} ({c.note})" if c.note else text
         out = {"route": row.route, "title": row.title,
                "record": ctx.see(rec) if rec else row.record_id, **cells}
         if lead.route == "B":
@@ -411,6 +441,14 @@ def draft_handoff(ctx: ScoutContext, office: str | None = None,
             "the To line is for them to fill in from the office page."}
 
 
+def shown_day(v: str) -> str:
+    """An ISO date as the cards write it ("15 Feb 2027"); any other text as it is."""
+    try:
+        return day(date.fromisoformat(v))
+    except ValueError:
+        return v
+
+
 # --- schemas (strict: no extra properties; optional ones are left out of "required") ---
 
 def _obj(props: dict, required: list[str]) -> dict:
@@ -438,14 +476,20 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
         "search_opportunities",
         "Re-run the funding search with filters. Route A is federal grants (Grants.gov); "
         "route B is industry leads (the same as get_org_signals; the filters below apply to "
-        "route A only). Amounts are US dollars; closes_by is a date like 2027-03-01. Only "
-        "eligible, open opportunities are returned.",
+        "route A only). Amounts are US dollars; dates are like 2027-03-01. Only eligible, "
+        "open opportunities are returned. For the next deadline, set closes_after to the "
+        "as-of date and sort to close_date: closes_by drops every lead that closes after "
+        "its date.",
         _obj({"route": {"type": "string", "enum": ["A", "B"]}, "author_id": AUTHOR,
               "min_amount": {"type": "number", "description": "drop if the ceiling is below"},
               "max_amount": {"type": "number", "description": "drop if the ceiling is above"},
               "agencies": {**STRS, "description": "keep only these agencies, e.g. NIH, NSF"},
               "exclude_agencies": {**STRS, "description": "drop these agencies"},
               "closes_by": {**STR, "description": "drop if it closes after this date"},
+              "closes_after": {**STR, "description": "drop if it closes on or before this "
+                               "date"},
+              "sort": {"type": "string", "enum": ["match", "close_date"],
+                       "description": "match (the default) or close_date, soonest first"},
               "activity_codes": {**STRS, "description": "keep only these, e.g. R21, R01"},
               "keywords": {**STRS, "description": "keep if any is in the title or text"},
               "exclude_keywords": {**STRS, "description": "drop if any is in the title or "
@@ -470,7 +514,8 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
         "compare",
         "Kept or chosen leads side by side: money, close date, activity code, funding "
         "instrument or suggested relationship, evidence and Temple office, each copied from "
-        "its record. Omit ids for the leads the user kept on the brief.",
+        "its record. Omit ids for the leads the user kept on the brief; pass ids only when "
+        "the user names the leads to compare.",
         _obj({"ids": {**STRS, "description": "opportunity ids (e.g. grants_gov:PAR-25-123) "
                       "or industry lead ids from get_org_signals"}}, [])), compare),
     "draft_handoff": (Tool(

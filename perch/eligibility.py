@@ -101,6 +101,7 @@ class Constraints:
     # amount is unknown, and Scout says so rather than guess (S10).
     max_amount: float | None = None
     closes_by: date | None = None  # drop if the record closes after this date
+    closes_after: date | None = None  # drop if the record closes on or before this date (Q14)
     activity_codes: list[str] = field(default_factory=list)  # keep only these, exact
     keywords: list[str] = field(default_factory=list)  # keep if any is in title or description
     exclude_keywords: list[str] = field(default_factory=list)
@@ -157,6 +158,9 @@ def check(o: Opportunity, c: Constraints) -> list[str]:
         reasons.append(f"award ceiling {o.award_ceiling:,.0f} is above {c.max_amount:,.0f}")
     if c.closes_by and o.close_date and o.close_date > c.closes_by:
         reasons.append(f"closes {o.close_date.isoformat()}, after {c.closes_by.isoformat()}")
+    if c.closes_after and o.close_date and o.close_date <= c.closes_after:
+        reasons.append(f"closes {o.close_date.isoformat()}, not after "
+                       f"{c.closes_after.isoformat()}")
     if c.activity_codes and code not in c.activity_codes:
         reasons.append(f"activity code {code or 'none'} not in the chosen codes")
     text = f"{o.title} {o.description or ''}".lower()

@@ -57,20 +57,33 @@ def make_scout(service: object, author_id: str, *, as_of: date | None = None,
                 raise PermissionError("student Scout runs only in a private session")
             table, rules, who = STUDENT_TOOLS, STUDENT_RULES, "a student (private session)"
             check = mixed_lists
-            note = student_brief_note(ctx, leads)
+
+            def note() -> str:  # read again at each question: kept marks change (Q4)
+                return student_brief_note(ctx, service.get(b.id)[1])
         else:
-            note = brief_note(ctx, b, leads)
+            def note() -> str:
+                return brief_note(ctx, b, service.get(b.id)[1])
     return Scout(provider, ctx, policy=policy, log=None if private else log,
                  private=private, brief_note=note, budget=budget, table=table, rules=rules,
                  who=who, answer_check=check)
 
 
 def brief_note(ctx: ScoutContext, b: Brief, leads: list[Lead]) -> str:
-    """The brief's ranked leads, so "the third one" means something to the model."""
-    lines = []
+    """The brief's ranked leads, so "the third one" means something to the model, with
+    the ones kept now marked (Q4)."""
+    lines, kept = [], []
     with ctx.service.repo() as r:
-        for lead in sorted(leads, key=lambda x: x.rank or 0):
+        for lead in sorted((x for x in leads if x.route == "A"), key=lambda x: x.rank or 0):
             if (o := r.get(Opportunity, lead.record_id)) is not None:
-                lines.append(f"{lead.rank}. [{ctx.see(o)}] {o.title}")
+                mark = " (kept)" if lead.status == "kept" else ""
+                lines.append(f"{lead.rank}. [{ctx.see(o)}] {o.title}{mark}")
+        kept = [x for x in leads if x.status == "kept"]
+    if not lines:
+        return ""
+    k = (f"The user has kept {len(kept)} lead{'' if len(kept) == 1 else 's'} on the brief. "
+         "For the kept leads, call compare or draft_handoff with no ids; pass ids only when "
+         "the user names other leads." if kept else
+         "The user has kept no lead on the brief yet. If asked about kept leads, say so and "
+         "offer to compare the top three.")
     return ("\n\nThe user is looking at brief " + b.id + ". Its ranked leads (Route A):\n"
-            + "\n".join(lines)) if lines else ""
+            + "\n".join(lines) + "\n" + k)
