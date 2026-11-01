@@ -532,7 +532,7 @@ def cloud_app(tmp_path, monkeypatch, gate=True):
     class Hosted(FakeProvider):
         name = "anthropic"
 
-    hosted = Hosted(responder=fit_reply)
+    hosted = Hosted(responder=fit_reply, model=CLOUD_SPEC.partition(":")[2])
     service.models.provider = lambda spec: hosted if spec == CLOUD_SPEC else FakeProvider(
         responder=fit_reply)
     return c, hosted
@@ -620,6 +620,9 @@ def test_cloud_with_consent_sends_the_documents_and_a_new_one_turns_it_off(tmp_p
     b = c.get("/private/brief", headers=h).json()["brief"]
     assert b["status"] == "done" and b["options"]["models"] == "cloud"
     assert any(t in sent(hosted) for t in CANARIES)  # the documents went, as confirmed
+    keep_first_grant(c, h)  # a masked hand-off's opening goes to Cloud, and says so
+    d = c.post("/private/handoff", headers=h, json={"office": "research_development", "mask": True}).json()
+    assert d["cloud"] == "Anthropic"
     # The same text added again (a rebuild re-sends it) keeps its consent.
     text = (PERSONA / "cv.md").read_text()
     assert c.post("/private/documents", headers=h,

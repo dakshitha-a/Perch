@@ -1891,6 +1891,88 @@ async def ux_docs(w: Walk, page: Page, base: str, tag: str) -> None:
     await end_session(page)
 
 
+SESSION_GET = """async (path) => { const r = await fetch(path, { headers: { 'X-Perch-Private': sessionStorage.getItem('perch.session') } });
+  return r.json(); }"""
+DOCS_WARNING_PHRASES = ("API terms", "stores nothing", "this session only", "turn Cloud off again",
+                        "nothing more is sent", "until you confirm")
+
+
+async def docs_warning(w: Walk, page: Page, tag: str, expect: list[str], notes: list[str]) -> None:
+    """Q33: the second warning in a documents session names the provider and lists exactly
+    the documents that would leave, with what each carries. The confirm is a plain button,
+    off until the box is ticked, and never has focus. The walk always cancels: no cloud call."""
+    provider = (await page.evaluate("async () => (await (await fetch('/private')).json()).cloud.provider")) or ""
+    await page.click("#status-chip")
+    await page.wait_for_selector("#models-dialog[open]")
+    cloud = page.locator("#models-dialog input[value=cloud]")
+    if await cloud.is_disabled():
+        w.errors.append(f"{tag}: Q33: Cloud is disabled in a documents session")
+        await page.click("#models-dialog [data-key=models-cancel]")
+        return
+    await cloud.check()
+    await page.wait_for_selector("[data-key=docs-warning]", timeout=5000)
+    got = await page.evaluate("""() => { const d = document.querySelector('#models-dialog');
+      const box = d.querySelector('[data-key=docs-warning]'); const ok = d.querySelector('[data-key=models-ok]');
+      return { items: [...box.querySelectorAll('.docs-leave li b')].map(b => b.innerText.trim()),
+               text: box.innerText, title: (box.querySelector('#docs-warn-title') || {}).innerText || '',
+               primary: ok.classList.contains('primary'), disabled: ok.disabled, label: ok.innerText.trim(),
+               focus: (document.activeElement || {}).getAttribute ? document.activeElement.getAttribute('data-key') : null }; }""")
+    if got["items"] != expect:
+        w.errors.append(f"{tag}: Q33: the warning lists {got['items']}, not {expect}")
+    if not provider or provider not in got["title"] or got["label"] != f"Send my documents to {provider}":
+        w.errors.append(f"{tag}: Q33: the warning does not name the provider ({got['title']!r}, {got['label']!r})")
+    missing = [x for x in (*DOCS_WARNING_PHRASES, *notes) if x not in got["text"]]
+    if missing:
+        w.errors.append(f"{tag}: Q33: the warning does not say {missing}")
+    if got["primary"] or not got["disabled"] or got["focus"] == "models-ok":
+        w.errors.append(f"{tag}: Q33: the confirm is the default or on before the tick {got}")
+    await page.check("#models-dialog [data-key=docs-understood]")
+    if await page.locator("#models-dialog [data-key=models-ok]").is_disabled():
+        w.errors.append(f"{tag}: Q33: the confirm stays off after the box is ticked")
+    await w.snap(page, tag, "q33-docs-warning")
+    await page.click("#models-dialog [data-key=models-cancel]")  # never confirm in the walk
+    await page.wait_for_selector("#models-dialog", state="hidden")
+    sess = await page.evaluate(SESSION_GET, "/private/session")
+    chip = await page.evaluate("() => document.querySelector('#status-chip').innerText.trim()")
+    if sess.get("cloud") or sess.get("cloud_documents") or not chip.startswith("Local only"):
+        w.errors.append(f"{tag}: Q33: after Cancel the session reads cloud={sess.get('cloud')}, chip {chip!r}")
+
+
+async def ux_cloud_docs(w: Walk, page: Page, base: str, tag: str) -> None:
+    """Q33 on SYNTHETIC documents: persona-1 on Your documents (a CV file and pasted text),
+    then persona-ug on the student form. Opens the second warning and cancels."""
+    await page.goto(base + "/#/private")
+    await page.wait_for_selector("#doc-cv", timeout=20000)
+    await page.set_input_files("#doc-cv ~ .doc-actions input[type=file]", files=[{
+        "name": "cv.md", "mimeType": "text/markdown", "buffer": (SYN / "persona-1/cv.md").read_bytes()}])
+    await page.wait_for_function("() => !document.querySelector('#doc-cv')", timeout=20000)
+    for kind, name in (("proposal", "specific_aims_draft.md"), ("manuscript", "unpublished_manuscript.md")):
+        await page.fill(f"#doc-{kind}", (SYN / "persona-1" / name).read_text())
+        await page.locator(f"#doc-{kind} ~ .doc-actions button:has-text('Add text')").click()
+        await page.wait_for_function(f"() => !document.querySelector('#doc-{kind}')", timeout=20000)
+    await docs_warning(w, page, tag, ["your CV (cv.md)", "your draft proposal (pasted text)",
+                                      "your unpublished manuscript (pasted text)"],
+                       ["contact details and career facts", "unpublished research"])
+    await end_session(page)
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.click("[data-key=seg-s]")
+    await page.click("[data-key=student]")
+    await page.wait_for_selector("#st-cv", timeout=20000)
+    for kind in ("cv", "interests", "achievements"):
+        r = await page.evaluate("""async ([kind, text]) => (await fetch('/private/documents', { method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Perch-Private': sessionStorage.getItem('perch.session') },
+          body: JSON.stringify({ kind, text }) })).status""", [kind, (SYN / "persona-ug" / f"{kind}.md").read_text()])
+        if r != 201:
+            w.errors.append(f"{tag}: persona-ug {kind} was not added ({r})")
+    await page.evaluate("() => { location.hash = '#/'; }")  # the chip reads the session afresh
+    await page.wait_for_selector(".landing")
+    await docs_warning(w, page, tag, ["your CV (pasted text)", "your interests note (pasted text)",
+                                      "your achievements (pasted text)"],
+                       ["contact details and career facts"])
+    await end_session(page)
+
+
 async def focus_trace(page: Page, steps: int) -> tuple[list[dict], list[str]]:
     """Press Tab `steps` times. Returns the focus steps hidden under the sticky header,
     off the screen or under the kept pill (T12, G8), and the cells under the sticky Lead
@@ -1995,7 +2077,8 @@ UX_FLOWS = (("ux-laptop", "LAPTOP", "ux_pi"), ("ux-phone", "PHONE", "ux_pi"), ("
             ("ux-student", "LAPTOP", "ux_student"), ("ux-student-phone", "PHONE", "ux_student"),
             ("ux-sample", "LAPTOP", "ux_sample"), ("ux-queued", "LAPTOP", "ux_queued"), ("ux-docs", "LAPTOP", "ux_docs"),
             ("ux-landing", "LAPTOP", "ux_landing"), ("ux-landing-phone", "PHONE", "ux_landing"),
-            ("ux-zoom", "LAPTOP", "ux_zoom"))
+            ("ux-zoom", "LAPTOP", "ux_zoom"), ("ux-cloud-docs", "LAPTOP", "ux_cloud_docs"),
+            ("ux-cloud-docs-phone", "PHONE", "ux_cloud_docs"))
 
 
 async def main(base: str, axe: str | None, out: Path, only: list[str], ux: list[str] | None = None) -> None:

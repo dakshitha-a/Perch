@@ -122,7 +122,7 @@ export async function renderPrivate(root, ctx, auto = true) {
   const have = new Set(P.docs.map((d) => d.kind));
   const intro = [h("p", { class: "lede", text: "Add a CV, a draft proposal, a research direction or unpublished work, and get routes tailored to it." }),
     h("ul", { class: "plain" },
-      h("li", { text: "Only models running on this server read your documents, even when Cloud is offered." }),
+      h("li", { text: "Only models running on this server read your documents, unless you turn Cloud on and confirm which of them go to the cloud provider." }),
       h("li", { text: "Nothing you add is saved, logged or sent elsewhere. Ending the session, 30 minutes without use, or a server restart drops everything." }),
       h("li", { text: "Exports leave out anything drawn from your documents unless you choose to mask it." }))];
   const body = !api.open

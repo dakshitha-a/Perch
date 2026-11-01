@@ -72,7 +72,7 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     try {
       const mask = api.mode === "private" ? maskOn() : false;
       const d = await api.handoff(briefId, { office: office.key, ...(api.mode === "private" ? { mask } : {}) });
-      H.drafts[office.key] = { subject: d.subject, body: d.body, flagged: d.flagged, model: d.model,
+      H.drafts[office.key] = { subject: d.subject, body: d.body, flagged: d.flagged, model: d.model, cloud: d.cloud || null,
         withheld: d.withheld || null, n: d.lead_ids.length, mask };
       announce(focusKey === "handoff-mask" ? "The draft was made again with the new mask setting." : "The draft is ready below. You can edit it.");
     } catch (e) {
@@ -115,8 +115,8 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
       : draft.flagged
       ? h("p", { class: "notice" }, icon("warn"), h("span", { text: "The model’s opening failed the checks twice, so this draft "
         + "opens with a plain sentence instead. Everything else is written by code from the records." }))
-      : h("p", { class: "hint model-note" }, h("span", { class: "tag model", text: "Model text" }),
-        h("span", { text: ` The opening paragraph was written by ${draft.model || "a model"} and checked against the records it cites. `
+      : h("p", { class: "hint model-note" }, h("span", { class: `tag model${draft.cloud ? " cloud" : ""}`, text: draft.cloud ? `Cloud: ${draft.cloud}` : "Model text" }),
+        h("span", { text: ` The opening paragraph was written by ${draft.model || "a model"}${draft.cloud ? `, sent to ${draft.cloud} through its API,` : ""} and checked against the records it cites. `
           + "The list of leads, dates, amounts and papers is written by code." }));
     parts.push(h("div", { class: "draft" }, tag,
       h("label", { class: "field-label", for: "handoff-subject", text: "Subject" }), subject,

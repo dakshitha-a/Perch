@@ -231,8 +231,11 @@ function sortSwitch(redraw) {
         onclick: () => { SORT.by = k; redraw(); const b = document.querySelector(`#panel [data-key="sort-${k}"]`); if (b) b.focus(); } }, label))));
 }
 
+let CLOUD = null; // the Cloud provider's name when the brief on screen ran on Cloud (Q33)
+
 export function studentRoutes(panel, ctx) {
   const { brief, route, setRoute, openEvidence, setLead } = ctx;
+  CLOUD = ctx.cloud || null;
   const leads = brief.leads.filter((l) => l.route === route);
   const done = (name) => {
     const s = brief.brief.stages.find((x) => x.name === name);
@@ -362,7 +365,7 @@ function fitReason(l) {
   const label = weak ? "How it relates" : "Why it may fit";
   return h("div", { class: "fit-reason" },
     reason ? h("p", { class: "fit-why" }, h("b", { text: `${label}: ` }), h("span", { text: reason }),
-      h("span", { class: "tag model", text: "Model text" })) : null,
+      h("span", { class: `tag model${CLOUD ? " cloud" : ""}`, text: CLOUD ? `Cloud: ${CLOUD}` : "Model text" })) : null,
     h("details", { class: "why explain", open: !SHUT.has(l.id),
       ontoggle: (e) => { if (e.target.open) SHUT.delete(l.id); else SHUT.add(l.id); } },
     h("summary", { "data-key": `why-${l.id}` }, h("span", { text: reason ? `More on ${label.toLowerCase()}` : label })),

@@ -546,7 +546,11 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             raise HTTPException(422, str(e)) from e
         if d is None:
             raise HTTPException(404, "No private brief yet.")
-        return {**draft_json(d), "masked": req.mask}
+        # The provider the opening went to, for the "Cloud: <provider>" tag (Q33).
+        cloud_model = (settings.cloud_spec or "").partition(":")[2]
+        on_cloud = s.service.models.cloud() and d.model == cloud_model
+        return {**draft_json(d), "masked": req.mask,
+                "cloud": settings.cloud_provider if on_cloud else None}
 
     @app.get("/private/export.json")
     def export_j(mask: bool = False, status: Literal["kept"] | None = None,

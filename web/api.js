@@ -220,7 +220,8 @@ export function privateApi(base = "") {
     },
     session: () => p("/private/session"),
     addDocument: (body) => post("/private/documents", body),
-    cloud: (on, confirm, documentsConfirm) => post("/private/cloud", { on, confirm, documents_confirm: documentsConfirm || null }),
+    // documents: the refs of the documents the second warning listed (Q33)
+    cloud: (on, confirm, documentsConfirm, documents = []) => post("/private/cloud", { on, confirm, documents_confirm: documentsConfirm || null, documents }),
     removeDocument: (kind) => post(`/private/documents/${encodeURIComponent(kind)}/remove`),
     create: (req) => post("/private/brief", req),
     createStudent: (req) => post("/private/student/brief", req),

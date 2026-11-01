@@ -40,10 +40,11 @@ const S = {
     picked: null, cv: "", proposal: "", files: {}, sample: false, building: false },
   who: "r", // the landing's Researcher | Student control
   notice: null, // a message for the landing, e.g. that the session ended (S27)
-  hasDocs: false, // the session holds documents: Cloud stays off
+  hasDocs: false, // the session holds documents: Cloud only after the second warning (Q33)
   sampleBrief: false, // the brief on screen was steered by SYNTHETIC sample text
   privateOn: false, // the server offers sessions
   cloud: false, // Cloud on for this session
+  cloudDocs: false, // the user confirmed this session's documents for Cloud (Q33)
   brief: null, // last GET /briefs payload
   briefId: null,
   tab: "routes",
@@ -107,7 +108,7 @@ function route() {
     screen("form");
     renderPrivate(main(), { api: privApi, go, announce, mode, endSession,
       // The chip says Local only once the session holds documents, on every path (U37).
-      onDocs: (n) => { S.hasDocs = n > 0; drawSwitch(); } });
+      onDocs: docsChanged });
     return;
   }
   if (parts[0] === "student") {
@@ -115,7 +116,7 @@ function route() {
     screen("form");
     renderStudentStart(main(), { api: privApi, mode, go, announce, info: privateInfo() || {},
       // The CV is a session document: the chip says Local only, as on Your documents (U37, Q7).
-      onDocs: (n) => { S.hasDocs = n > 0; drawSwitch(); } });
+      onDocs: docsChanged });
     return;
   }
   if (parts[0] === "find") {
@@ -226,8 +227,7 @@ function renderFind() {
 
 async function startStudent() {
   try {
-    if (S.cloud) await setCloud(false); // a CV stays on local models
-    await mode.enable();
+    await mode.enable(); // a CV goes to Cloud only after the second warning (Q33)
     // A student brief replaces any researcher pick, so the browser's Back cannot return to
     // a researcher's pick screen whose Build would replace the student's brief (S27).
     Object.assign(S.find, { candidates: null, picked: null, searched: "", error: null, nudge: null });
@@ -250,13 +250,12 @@ function nudgeBox() {
   if (!n) return null;
   const F = S.find;
   return h("div", { class: "notice nudge", role: "alert" }, icon("lock"),
-    h("div", {}, h("p", { text: "This looks like personal text, such as a CV. Add it as a document instead? Documents stay on local models. Nothing has been sent." }),
+    h("div", {}, h("p", { text: "This looks like personal text, such as a CV. Add it as a document instead? Documents stay on local models unless you choose Cloud and confirm them. Nothing has been sent." }),
       h("div", { class: "doc-actions" },
         h("button", { class: "btn primary", type: "button", onclick: async () => {
           const text = F.q;
           try {
-            if (S.cloud) await setCloud(false);
-            await mode.move(n.kind, text);
+            await mode.move(n.kind, text); // an unsent draft; adding it later asks before Cloud (Q33)
             F.q = "";
             F.nudge = null;
             go("#/student");
@@ -531,8 +530,9 @@ async function pickFile(kind, file) {
   announce(`${file.name} will be read on this server when you build.`);
 }
 
-// Order matters (S24): open the session, send the documents, then start the brief. With
-// documents in the session the server keeps Cloud off (S23), so Cloud is turned off first.
+// Order matters (S24): open the session, send the documents, then start the brief. A
+// document the user has not confirmed for Cloud turns Cloud off on the server (Q33); the
+// same text sent again keeps its consent.
 async function build(c) {
   const F = S.find;
   resetStudent(); // a researcher brief replaces any student one; Back finds an empty form (S27)
@@ -557,12 +557,10 @@ async function build(c) {
       return;
     }
     await mode.enable(); // every brief is a session (S23); nothing is stored
-    if (docs.length && S.cloud && !S.cloudDocs) { await setCloud(false); announce("Cloud is off: documents stay on local models."); }
     const have = (await privApi.session()).documents.map((d) => d.kind);
     for (const kind of ["cv", "proposal"]) if (have.includes(kind)) await privApi.removeDocument(kind);
     for (const d of docs) await privApi.addDocument(d);
-    S.hasDocs = docs.length > 0 || have.some((k) => !["cv", "proposal"].includes(k));
-    drawSwitch();
+    await docsChanged((await privApi.session()).documents.length);
     S.sampleBrief = Boolean(F.sample);
     const made = await privApi.create(req);
     privApi.flag("sample", S.sampleBrief); // the Sample data banner survives a reload (W18)
@@ -585,6 +583,23 @@ async function build(c) {
 
 const cloudInfo = () => (privateInfo() && privateInfo().cloud) || {};
 
+// The session's documents changed. A document the user has not confirmed for Cloud turns
+// Cloud off on the server until they do (Q33), so the chip follows the server and says why.
+async function docsChanged(n) {
+  S.hasDocs = n > 0;
+  if (S.cloud && privApi.open) {
+    try {
+      const sess = await privApi.session();
+      S.cloudDocs = Boolean(sess.cloud_documents);
+      if (!sess.cloud) {
+        S.cloud = false;
+        announce(`Cloud is off. A document you added has not been confirmed for ${cloudInfo().provider}, so it stays on local models. Open Local or Cloud at the top to confirm it.`);
+      }
+    } catch { /* a 401 is handled by onExpired */ }
+  }
+  drawSwitch();
+}
+
 function drawSwitch() {
   const b = $("#status-chip");
   if (!b) return;
@@ -593,11 +608,11 @@ function drawSwitch() {
   // The second half folds away on a very narrow screen; the aria-label keeps it all (U22).
   fill(b.querySelector(".chip-word"), h("span", { text: S.cloud ? `Cloud: ${c.provider}` : S.hasDocs ? "Local only" : "Local" }),
     h("span", { class: "chip-rest", text: " · nothing stored" }));
-  const label = S.cloud ? `Privacy: nothing stored; Cloud on, text goes to ${c.provider}. Change models`
+  const label = S.cloud ? `Privacy: nothing stored; Cloud on, text goes to ${c.provider}${S.cloudDocs ? ", with the documents you confirmed" : ""}. Change models`
     : S.hasDocs ? "Privacy: nothing stored. Local only: this session holds documents, so every model that reads them runs on this server. Change models"
       : "Privacy: nothing stored, local models. Change models";
   b.setAttribute("aria-label", label);
-  b.title = S.hasDocs && !S.cloud ? "Local only: this session holds documents, so every model that reads them runs on this server." : "";
+  b.title = S.hasDocs && !S.cloud ? "Local only: this session holds documents, so every model that reads them runs on this server unless you choose Cloud and confirm them." : "";
   document.body.classList.toggle("cloud-on", S.cloud);
   $("#end-session").hidden = !privApi.open;
 }
@@ -618,49 +633,67 @@ function dialog(build) {
 
 async function openModels() {
   const c = cloudInfo();
+  let consent = null; // the second warning, written by the server for this session's documents (Q33)
   if (privApi.open) {
-    try { S.hasDocs = (await privApi.session()).documents.length > 0; } catch { S.hasDocs = false; }
+    try {
+      const sess = await privApi.session();
+      S.hasDocs = sess.documents.length > 0;
+      consent = sess.cloud_consent || null;
+    } catch { S.hasDocs = false; }
+    drawSwitch(); // the chip follows what the session holds
   }
-  const studentOn = Boolean(S.brief && isStudent(S.brief));
-  const docsCloud = S.hasDocs && !studentOn && c.documents; // Q30, behind the server switch
+  const docsCloud = Boolean(S.hasDocs && c.documents && consent);
   const blocked = !c.available ? "This server runs local models only."
-    : studentOn || (S.hasDocs && !c.documents) ? "Off while this session holds documents: they stay on local models." : "";
+    : S.hasDocs && !c.documents ? "Off while this session holds documents: they stay on local models." : "";
   let choice = S.cloud ? "cloud" : "local";
   let understood = false;
   const opener = $("#status-chip");
+  const asking = () => choice === "cloud" && !S.cloud && docsCloud; // the second warning shows
   const ok = await dialog((done) => {
     const box = h("div", { class: "dialog-in" });
-    const draw = () => fill(box,
-      h("h2", { id: "models-title", text: "Which models write the text?" }),
-      h("p", { class: "hint", text: "Perch stores nothing about you either way. With Cloud on, the provider’s API terms apply to the text it receives. Search, ranking, the rules and Scout’s own model always run on this server. With Cloud on, the fit explanations and drafts Scout asks for use the cloud model, marked Cloud on their step." }),
-      h("div", { role: "radiogroup", "aria-labelledby": "models-title", class: "dialog-opts" },
-        h("label", { class: `opt${choice === "local" ? " on" : ""}` },
-          h("input", { type: "radio", name: "models", value: "local", checked: choice === "local", autofocus: true,
-            onchange: () => { choice = "local"; draw(); } }),
-          h("span", {}, h("b", { text: "Local models" }),
-            h("span", { text: "Models on this server write the summary, the fit explanations and hand-off openings. Nothing leaves the server." }))),
-        h("label", { class: `opt${choice === "cloud" ? " on" : ""}${blocked ? " off" : ""}` },
-          h("input", { type: "radio", name: "models", value: "cloud", checked: choice === "cloud", disabled: Boolean(blocked),
-            onchange: () => { choice = "cloud"; draw(); } }),
-          h("span", {}, h("b", { text: c.provider ? `Cloud: ${c.provider}` : "Cloud" }),
-            h("span", { text: blocked || `${c.provider} writes those three texts instead. Faster, but your text leaves this server.` })))),
-      choice === "cloud" && !S.cloud ? h("p", { class: "warn-box", role: "note" }, h("b", { text: "Before you turn Cloud on: " }), h("span", { text: c.warning || "" })) : null,
-      choice === "cloud" && !S.cloud && docsCloud ? h("div", { class: "warn-box strong", role: "note" },
-        h("p", {}, h("b", { text: "Second warning: your documents. " }), h("span", { text: c.documents_warning || "" })),
-        h("label", { class: "check" }, h("input", { type: "checkbox", checked: understood, "data-key": "docs-understood",
-          onchange: (e) => { understood = e.target.checked; draw(); } }),
-        h("span", { text: `I understand. Send my documents to ${c.provider}.` }))) : null,
-      h("div", { class: "row" },
-        h("button", { class: "btn", type: "button", onclick: () => done(false), text: "Cancel" }),
-        h("button", { class: "btn primary", type: "button", "data-key": "models-ok", onclick: () => done(true),
-          disabled: choice === "cloud" && !S.cloud && docsCloud && !understood,
-          text: choice === "cloud" ? (S.cloud ? "Keep Cloud on" : docsCloud ? `Turn Cloud on, with my documents` : "Turn Cloud on") : "Use local models" })));
+    const draw = (focusKey) => {
+      fill(box,
+        h("h2", { id: "models-title", text: "Which models write the text?" }),
+        h("p", { class: "hint", text: "Perch stores nothing about you either way. With Cloud on, the provider’s API terms apply to the text it receives. Search, ranking, the rules and Scout’s own model always run on this server. With Cloud on, the fit explanations and drafts Scout asks for use the cloud model, marked Cloud on their step." }),
+        h("div", { role: "radiogroup", "aria-labelledby": "models-title", class: "dialog-opts" },
+          h("label", { class: `opt${choice === "local" ? " on" : ""}` },
+            h("input", { type: "radio", name: "models", value: "local", checked: choice === "local", autofocus: true,
+              "data-key": "models-local", onchange: () => { choice = "local"; understood = false; draw("models-local"); } }),
+            h("span", {}, h("b", { text: "Local models" }),
+              h("span", { text: "Models on this server write the summary, the fit explanations and hand-off openings. Nothing leaves the server." }))),
+          h("label", { class: `opt${choice === "cloud" ? " on" : ""}${blocked ? " off" : ""}` },
+            h("input", { type: "radio", name: "models", value: "cloud", checked: choice === "cloud", disabled: Boolean(blocked),
+              "data-key": "models-cloud", onchange: () => { choice = "cloud"; draw("models-cloud"); } }),
+            h("span", {}, h("b", { text: c.provider ? `Cloud: ${c.provider}` : "Cloud" }),
+              h("span", { text: blocked || `${c.provider} writes those three texts instead. Faster, but your text leaves this server.` })))),
+        choice === "cloud" && !S.cloud ? h("p", { class: "warn-box", role: "note" }, h("b", { text: "Before you turn Cloud on: " }), h("span", { text: c.warning || "" })) : null,
+        asking() ? h("div", { class: "warn-box strong", role: "note", "aria-labelledby": "docs-warn-title", "data-key": "docs-warning" },
+          h("p", {}, h("b", { id: "docs-warn-title", text: `Second warning: your documents would go to ${consent.provider}.` })),
+          h("p", { text: consent.lead }),
+          h("ul", { class: "docs-leave" }, consent.items.map((x) => h("li", {},
+            h("b", { text: x.text }), h("span", { text: ` ${x.note}` })))),
+          consent.after.map((t) => h("p", { text: t })),
+          h("label", { class: "check" }, h("input", { type: "checkbox", checked: understood, "data-key": "docs-understood",
+            onchange: (e) => { understood = e.target.checked; draw("docs-understood"); } }),
+          h("span", { text: consent.check }))) : null,
+        h("div", { class: "row" },
+          h("button", { class: "btn", type: "button", "data-key": "models-cancel", onclick: () => done(false), text: "Cancel" }),
+          // With documents, the confirm is never the default: a plain button, off until the box is ticked.
+          h("button", { class: asking() ? "btn" : "btn primary", type: "button", "data-key": "models-ok", onclick: () => done(true),
+            disabled: asking() && !understood,
+            text: choice === "cloud" ? (S.cloud ? "Keep Cloud on" : asking() ? consent.confirm : "Turn Cloud on") : "Use local models" })));
+      // The redraw replaces the controls; focus goes back to the one the user just used.
+      const back = focusKey && box.querySelector(`[data-key="${focusKey}"]`);
+      if (back) back.focus();
+    };
     draw();
     return box;
   });
   if (opener) opener.focus();
   if (!ok || (choice === "cloud") === S.cloud) return;
-  try { await setCloud(choice === "cloud", docsCloud); } catch (e) { announce(e.message); showError(e.message); }
+  // Consent covers the documents the warning listed; the server refuses if they changed since.
+  const refs = choice === "cloud" && docsCloud ? consent.items.map((x) => x.ref) : null;
+  try { await setCloud(choice === "cloud", refs); } catch (e) { announce(e.message); showError(e.message); }
 }
 
 function showError(msg) {
@@ -714,18 +747,19 @@ function resetSession() {
 }
 
 // Cloud on for this session; the dialog above is the warning that names the provider.
-async function setCloud(on, withDocs = false) {
+async function setCloud(on, refs = null) {
   const c = cloudInfo();
   if (on) {
     await mode.enable();
-    S.cloudDocs = Boolean((await privApi.cloud(true, c.provider, withDocs ? c.documents_phrase : null)).documents);
+    S.cloudDocs = Boolean((await privApi.cloud(true, c.provider, refs ? c.documents_phrase : null, refs || [])).documents);
   } else {
     S.cloudDocs = false;
     if (privApi.open) await privApi.cloud(false);
   }
   S.cloud = on;
   drawSwitch();
-  announce(on ? `Cloud on. ${c.provider} writes the explanations for your next brief.` : "Local models on.");
+  announce(on ? `Cloud on for this session. ${c.provider} writes the explanations for your next brief${S.cloudDocs ? ", and reads the documents you confirmed" : ""}.`
+    : "Local models on. Nothing more is sent to the cloud provider.");
   return true;
 }
 
@@ -1138,6 +1172,8 @@ function renderStudentPanel(panel) {
   const ctx = { brief: d, route: S.route, papers: d.papers || {}, openEvidence, setLead, announce, api,
     offices: (privateInfo() || {}).student_offices || api.studentOffices,
     briefId: S.briefId, setRoute: switchRoute,
+    // The provider's name when this brief ran on Cloud, for the model text's tag (Q33).
+    cloud: d.brief.options.models === "cloud" ? cloudInfo().provider || null : null,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) };
   if (S.tab === "profile") keepFocus(() => fill(panel, ...studentProfile(d, ctx)));
   else if (S.tab === "compare") studentCompare(panel, ctx);
@@ -1240,7 +1276,7 @@ function summarySection() {
     body = [h("p", { class: "summary" }, renderSegs(citedOnly(f.segments(b.summary)))),
       b.topics.length ? h("ul", { class: "chips", "aria-label": "Topics" },
         b.topics.map((t) => h("li", { class: "chip", text: t }))) : null,
-      h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
+      h("p", { class: "provenance" }, modelWord(),
         h("span", { text: "Written by a model and checked against the papers it cites." }))];
   } else if (st.status === "skipped") {
     body = [h("p", { class: "hint", text: "The model summary is turned off for this brief. The threads below come from the papers alone." }), openAlexTopics()];
@@ -1858,8 +1894,15 @@ function docsOnly() {
 }
 
 function modelTag() {
-  return h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
+  return h("p", { class: "provenance" }, modelWord(),
     h("span", { text: "Checked against the records it cites." }));
+}
+
+// The tag on model text: "Cloud: <provider>" when the brief ran on Cloud, as the chip and
+// Scout's steps say, or "Model text" for local models.
+function modelWord() {
+  const cloud = (((S.brief || {}).brief || {}).options || {}).models === "cloud" && cloudInfo().provider;
+  return cloud ? h("span", { class: "tag model cloud", text: `Cloud: ${cloud}` }) : h("span", { class: "tag model", text: "Model text" });
 }
 
 function ownIds(o) {
@@ -2256,6 +2299,7 @@ async function resumeSession() {
     const sess = await privApi.session();
     await mode.enable(); // the session is open: no new one is started
     S.cloud = Boolean(sess.cloud);
+    S.cloudDocs = Boolean(sess.cloud_documents);
     S.hasDocs = sess.documents.length > 0;
     S.hasBrief = Boolean(sess.brief_id);
     S.sampleBrief = Boolean(privApi.flag("sample"));
