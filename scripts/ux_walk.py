@@ -1017,6 +1017,30 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
             w.errors.append(f"{tag}: U5: the opened steps are squeezed into {wide:.0f} px")
         await w.snap(page, tag, "u-steps-open")
         await page.click(".pcard .steps summary")
+    # F12: a card's inference and fit texts speak to the researcher, as the export and
+    # Scout do: no "The researcher's" (it read so while the export said "Your")
+    third = await page.evaluate("""() => { const out = { boxes: 0, hits: [] };
+      for (const el of document.querySelectorAll('#panel .leads > li .inference > p:not(.inference-label), '
+          + '#panel .leads > li .explain p.what, #panel .leads > li ul.findings li > p')) {
+        if (el.closest('.inference')) out.boxes++;
+        if (/\\b[Tt]he researcher\\b/.test(el.textContent)) out.hits.push(el.textContent.slice(0, 90)); }
+      return out; }""")
+    if not third["boxes"]:
+        w.errors.append(f"{tag}: F12: no card shows an inference, so its wording went unchecked")
+    elif third["hits"]:
+        w.errors.append(f"{tag}: F12: {len(third['hits'])} card texts say the researcher, not you: "
+                        f"{third['hits'][:2]}")
+    card = page.locator("#panel .leads > li").filter(has=page.locator(".inference")).first
+    if await card.count():  # the card with its inference open, to look at
+        why = card.locator("details.why > summary")
+        shut = await why.count() and not await card.locator("details.why").evaluate("d => d.open")
+        if shut:
+            await why.click()
+        await card.locator(".inference").scroll_into_view_if_needed()
+        await w.snap(page, tag, "u-card-inference")
+        if shut:
+            await why.click()
+        await page.evaluate("() => window.scrollTo(0, 0)")
     dup = await page.evaluate("""() => [...document.querySelectorAll('#panel details.why')].filter(d => {
       const inf = [...d.querySelectorAll('.inference .paper-cite')].map(b => b.dataset.key);
       const own = new Set([...d.querySelectorAll('.findings .paper-ref')].map(b => b.dataset.key));

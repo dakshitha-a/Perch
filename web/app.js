@@ -1739,7 +1739,7 @@ function leadCard(l) {
   const size = f.awardSize(o);
   const band = f.fitBand(l.match_score);
   const pending = isPending(l);
-  const parsed = f.parseExplanation(l.explanation, l.cited_ids, ownIds(o));
+  const parsed = f.parseExplanation(f.secondPerson(l.explanation), l.cited_ids, ownIds(o));
 
   let fit;
   if (band) {
@@ -1872,7 +1872,7 @@ function inferenceBox(l, o = {}, listed = new Set()) {
   return h("div", { class: "inference" },
     h("p", { class: "inference-label" }, h("span", { class: "tag model", text: "Inference" }),
       h("span", { text: "A model’s reading of the fit, not a fact from a record." })),
-    h("p", {}, renderSegs(f.segments(l.inference, new Set(l.cited_ids), ownIds(o)), skip)));
+    h("p", {}, renderSegs(f.segments(f.secondPerson(l.inference), new Set(l.cited_ids), ownIds(o)), skip)));
 }
 
 function eligibilityRows(o) {

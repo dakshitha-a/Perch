@@ -155,6 +155,26 @@ export function ownInPlace(text, own) {
   });
 }
 
+// F12: a researcher card's fit and inference texts speak to the researcher, as the export
+// and Scout do (perch.scout.tools.second_person): "The researcher's" reads "Your", a
+// mid-sentence one "your", and "the researcher" as a subject "you", its verb agreeing.
+const YOU_VERB = new Map([["has", "have"], ["is", "are"], ["was", "were"], ["does", "do"], ["focuses", "focus"]]);
+export function secondPerson(text) {
+  if (!text) return text;
+  const verb = (t, v) => {
+    const you = t === "T" ? "You" : "you";
+    if (YOU_VERB.has(v)) v = YOU_VERB.get(v);
+    else if (/^\w+(?:ss|sh|ch|x|z|o)es$/.test(v)) v = v.slice(0, -2);
+    else if (v.endsWith("ies") && v.length > 4) v = `${v.slice(0, -3)}y`;
+    else if (v.endsWith("s") && !v.endsWith("ss")) v = v.slice(0, -1);
+    return `${you} ${v}`;
+  };
+  return text
+    .replace(/\b([Tt])he researcher['’]s\b/g, (_, t) => (t === "T" ? "Your" : "your"))
+    .replace(/\b([Tt])he researcher (\w*[a-z]s)\b/g, (_, t, v) => verb(t, v))
+    .replace(/\b([Tt])he researcher\b/g, (_, t) => (t === "T" ? "You" : "you"));
+}
+
 // G1: the fit model cites a document by its short key ("[proposal]"); the record is
 // private:proposal.
 const DOC_KEYS = /^(?:cv|proposal|direction|manuscript)$/;

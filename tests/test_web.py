@@ -360,3 +360,26 @@ def test_the_research_security_line_is_one_fixed_line():
 
     assert f'"{RESEARCH_SECURITY}"' in (ROOT / "web/app.js").read_text()
     assert RESEARCH_SECURITY in (ROOT / "web/help.js").read_text()
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
+def test_the_cards_second_person_matches_the_exports():
+    """F12: the researcher card's inference reads "Your", as the export and Scout do: the
+    web rewrite gives the same text as perch.scout.tools.second_person."""
+    from perch.scout.tools import second_person
+
+    cases = ["The researcher's work on brain organoids aligns with it [W1, PAR-25-073].",
+             "It fits the researcher's aims; the researcher develops tools and the "
+             "researcher focuses on HIV-1.",
+             "The researcher studies, the researcher watches, the researcher has data.",
+             "The researcher’s model of the researchers' data.", "", "No subject here."]
+    script = """
+import { secondPerson } from "MODULE";
+console.log(JSON.stringify(CASES.map((t) => secondPerson(t))));
+""".replace("MODULE", (WEB_DIR / "format.js").as_uri()).replace("CASES", json.dumps(cases))
+    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
+                       text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    got = json.loads(r.stdout)
+    assert got == [second_person(t) for t in cases]
+    assert got[0].startswith("Your work") and "you develop" in got[1] and "you focus" in got[1]
