@@ -632,7 +632,7 @@ async function openModels() {
     const box = h("div", { class: "dialog-in" });
     const draw = () => fill(box,
       h("h2", { id: "models-title", text: "Which models write the text?" }),
-      h("p", { class: "hint", text: "Perch stores nothing about you either way. With Cloud on, the provider’s API terms apply to the text it receives. Search, ranking, the rules and Scout always run on this server." }),
+      h("p", { class: "hint", text: "Perch stores nothing about you either way. With Cloud on, the provider’s API terms apply to the text it receives. Search, ranking, the rules and Scout’s own model always run on this server. With Cloud on, the fit explanations and drafts Scout asks for use the cloud model, marked Cloud on their step." }),
       h("div", { role: "radiogroup", "aria-labelledby": "models-title", class: "dialog-opts" },
         h("label", { class: `opt${choice === "local" ? " on" : ""}` },
           h("input", { type: "radio", name: "models", value: "local", checked: choice === "local", autofocus: true,

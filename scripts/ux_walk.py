@@ -1867,6 +1867,39 @@ async def ux_docs(w: Walk, page: Page, base: str, tag: str) -> None:
     await end_session(page)
 
 
+async def focus_trace(page: Page, steps: int) -> tuple[list[dict], list[str]]:
+    """Press Tab `steps` times. Returns the focus steps hidden under the sticky header,
+    off the screen or under the kept pill (T12, G8), and the cells under the sticky Lead
+    column (F24)."""
+    hidden, side = [], []
+    for _ in range(steps):
+        await page.keyboard.press("Tab")
+        got = await page.evaluate("""() => { const el = document.activeElement; if (!el || el === document.body) return null;
+          const r = el.getBoundingClientRect(); let cover = 0;
+          // a control inside the sticky header is part of it, not under it (G8 at 320 px)
+          if (el.closest('.bar, .tabs-wrap') || el.classList.contains('skip')) return null;
+          // a sticky bar covers what lies below its top; the tabs still in place lower down
+          // the page cover nothing above them (G8 at 320 px)
+          for (const x of document.querySelectorAll('.bar, .tabs-wrap')) { const s = getComputedStyle(x);
+            if (s.position !== 'sticky' && s.position !== 'fixed') continue; const b = x.getBoundingClientRect();
+            if (b.top <= r.top && b.bottom > cover) cover = b.bottom; }
+          const p = document.querySelector('.keep-float'); let pill = false;
+          if (p && getComputedStyle(p).visibility !== 'hidden' && getComputedStyle(p).display !== 'none' && !p.contains(el)) {
+            const a = p.getBoundingClientRect(); pill = a.left < r.right && a.right > r.left && a.top < r.bottom && a.bottom > r.top; }
+          // F24: a focused cell is not half under the sticky Lead column
+          const cell = el.closest('table.compare td'); let side = false;
+          if (cell) { const row = cell.closest('tr').querySelector('th');
+            if (row && getComputedStyle(row).position === 'sticky') side = r.left < row.getBoundingClientRect().right - 1; }
+          // WCAG 2.4.11: hidden means none of it shows, under the header or off the screen
+          return { el: (el.innerText || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30),
+            under: r.bottom <= cover + 1 || r.bottom <= 0 || r.top >= innerHeight, pill, side }; }""")
+        if got and (got["under"] or got["pill"]):
+            hidden.append(got)
+        if got and got.get("side"):
+            side.append(got["el"])
+    return hidden, side
+
+
 async def ux_zoom(w: Walk, page: Page, base: str, tag: str) -> None:
     """Q9: laptop at 400% (320 x 215 CSS px): the focused question box is not hidden under
     the header, and the kept pill does not cover the tabs."""
@@ -1914,30 +1947,22 @@ async def ux_zoom(w: Walk, page: Page, base: str, tag: str) -> None:
     for tab in ("#tab-compare", "#tab-profile"):
         await page.click(tab)
         await page.wait_for_timeout(800)
-        hidden = []
-        for _ in range(30):
-            await page.keyboard.press("Tab")
-            got = await page.evaluate("""() => { const el = document.activeElement; if (!el || el === document.body) return null;
-              const r = el.getBoundingClientRect(); let cover = 0;
-              for (const x of document.querySelectorAll('.bar, .tabs-wrap')) { const s = getComputedStyle(x);
-                if (s.position !== 'sticky' && s.position !== 'fixed') continue; const b = x.getBoundingClientRect(); if (b.bottom > cover) cover = b.bottom; }
-              const p = document.querySelector('.keep-float'); let pill = false;
-              if (p && getComputedStyle(p).visibility !== 'hidden' && getComputedStyle(p).display !== 'none' && !p.contains(el)) {
-                const a = p.getBoundingClientRect(); pill = a.left < r.right && a.right > r.left && a.top < r.bottom && a.bottom > r.top; }
-              // F24: a focused cell is not half under the sticky Lead column
-              const cell = el.closest('table.compare td'); let side = false;
-              if (cell) { const row = cell.closest('tr').querySelector('th');
-                if (row && getComputedStyle(row).position === 'sticky') side = r.left < row.getBoundingClientRect().right - 1; }
-              // WCAG 2.4.11: hidden means none of it shows, under the header or off the screen
-              return { el: (el.innerText || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30),
-                under: r.bottom <= cover + 1 || r.bottom <= 0 || r.top >= innerHeight, pill, side }; }""")
-            if got and (got["under"] or got["pill"]):
-                hidden.append(got)
-            if got and got.get("side"):
-                w.errors.append(f"{tag}: F24: at 200% the focused cell {got['el']!r} sits under the sticky Lead column")
+        hidden, side = await focus_trace(page, 30)
+        for el in side:
+            w.errors.append(f"{tag}: F24: at 200% the focused cell {el!r} sits under the sticky Lead column")
         if hidden:
             w.errors.append(f"{tag}: T12: at 200% {len(hidden)} focus steps on {tab} are hidden, e.g. {hidden[:2]}")
         await w.snap(page, tag, f"t12-zoom200-{tab[5:]}")
+    # G8: at 320 x 640 the kept pill shows; no focus step lands under it (WCAG 2.4.11)
+    await page.set_viewport_size({"width": 320, "height": 640})
+    for tab in ("#tab-routes", "#tab-profile", "#tab-compare"):
+        await page.click(tab)
+        await page.wait_for_timeout(800)
+        await page.evaluate("() => window.scrollTo(0, 0)")
+        hidden, _ = await focus_trace(page, 40)
+        if hidden:
+            w.errors.append(f"{tag}: G8: at 320 x 640 {len(hidden)} focus steps on {tab} are hidden, e.g. {hidden[:2]}")
+        await w.snap(page, tag, f"g8-320-{tab[5:]}")
     await page.set_viewport_size(LAPTOP)
     await end_session(page)
 

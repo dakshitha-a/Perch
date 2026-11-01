@@ -296,7 +296,7 @@ def test_markdown_and_print_exports_carry_records_and_the_notice(tmp_path):
     assert md.headers["content-type"].startswith("text/markdown")
     t = md.text
     assert t.startswith("# Perch brief: ") and "## Kept leads compared (1)" in t
-    assert "PAR-25-268" in t and "(kept)" in t and "not endorsed or certified" in t
+    assert "PAR-25-268" in t and ", kept" in t and "not endorsed or certified" in t
     assert "| Lead | Money | Closes |" in t and "https://www.grants.gov/" in t
     page = c.get(f"/briefs/{bid}/export.html", params={"status": "kept"}).text
     assert page.startswith("<!doctype html>") and "window.print()" in page

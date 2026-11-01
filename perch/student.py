@@ -166,6 +166,21 @@ def for_whom(criterion: str) -> str:
     return f"For {'an' if first[:1] in 'aeiou' else 'a'} {c}."
 
 
+def _and(xs: list[str]) -> str:
+    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
+
+
+def _levels(levels: list[str]) -> str:
+    """G21: "associate degree and bachelor's", not "associate, bachelor's"."""
+    return _and([f"{x} degree" if x == "associate" else x for x in levels])
+
+
+def _years(years: list[int]) -> str:
+    """G21: "years 1 and 2", not "year 1, 2"."""
+    return (f"year {years[0]}" if len(years) == 1
+            else "years " + _and([str(y) for y in years]))
+
+
 def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
     """Eligibility by rule for one record. Every value in a line is copied from the
     record or the parsed CV."""
@@ -178,16 +193,16 @@ def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
         if not f.level:
             unknown.append(("level_unstated", "Your CV does not say your level of study."))
         elif f.level not in s.level_of_study:
-            broken.append(("level", f"Open to {', '.join(s.level_of_study)} students; your CV "
+            broken.append(("level", f"Open to {_levels(s.level_of_study)} students; your CV "
                                     f"says {f.level}."))
     if e.class_year and f.level == "bachelor's":
-        years = ", ".join(str(y) for y in e.class_year)
+        years = _years(e.class_year)
         if f.class_year is None:
             unknown.append(("class_year_unstated",
-                            f"Open to undergraduate year {years}; your CV does not say "
+                            f"Open to undergraduate {years}; your CV does not say "
                             "your year."))
         elif f.class_year not in e.class_year:
-            broken.append(("class_year", f"Open to undergraduate year {years}; your CV says "
+            broken.append(("class_year", f"Open to undergraduate {years}; your CV says "
                                          f"year {f.class_year}."))
     if e.graduation_by or e.graduation_after:
         if not f.graduation:

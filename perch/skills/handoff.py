@@ -216,9 +216,10 @@ def documents_opening(items: list[tuple[Lead, Record | None]], private: list[Wor
     model call: the leads by title and the documents by kind. Nothing about their content."""
     names = [rec.title if isinstance(rec, Opportunity) else rec.name
              for _, rec in items if isinstance(rec, Opportunity | Organisation)]
-    kinds = list(dict.fromkeys(
-        MY_DOCUMENTS.get(d.id.removeprefix("private:").split("-")[0].split("#")[0], "my documents")
-        for d in private))
+    # G22: the CV steers no search (it is read for eligibility only), so the lead was not
+    # matched "from my CV"
+    keys = [d.id.removeprefix("private:").split("-")[0].split("#")[0] for d in private]
+    kinds = list(dict.fromkeys(MY_DOCUMENTS.get(k, "my documents") for k in keys if k != "cv"))
     sources = (["my published papers"] if papers else []) + kinds
     what = (_and(names) if 0 < len(names) <= 2
             else f"the {len(items)} leads listed below" if items else "the leads listed below")

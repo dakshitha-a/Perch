@@ -18,7 +18,9 @@ researcher are written through to the shared store (perch.private.store.is_publi
 session may turn Cloud on: then the three model skills (summary, fit, hand-off) use the
 cloud spec, and the gate lets that one provider through for that session only. Cloud is
 refused while the session holds documents, so private text stays on local models
-(standing rule 1); the embedder, reranker, grounder and Scout always stay local.
+(standing rule 1); the embedder, reranker, grounder and Scout's own model always stay local.
+Scout's explain_fit and draft_handoff steps use this session's fit and hand-off models, so
+they use the cloud model when Cloud is on, counted in the session budget (G6).
 """
 
 from __future__ import annotations

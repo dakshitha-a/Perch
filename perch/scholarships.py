@@ -191,7 +191,8 @@ NIH_FELLOWSHIP_LEVEL = {"F30": "graduate", "F31": "graduate", "F99": "graduate",
 
 def nih_fellowships(repo: Repository) -> list[Opportunity]:
     return [o for o in repo.list(Opportunity)
-            if (o.activity_code or "") in NIH_FELLOWSHIP_LEVEL]
+            if (o.activity_code or "") in NIH_FELLOWSHIP_LEVEL
+            and o.status != "forecasted"]  # G13: not yet open, as Help says
 
 
 def dump_jsonl(records: Iterable[Scholarship], path: Path) -> None:

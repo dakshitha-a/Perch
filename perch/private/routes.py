@@ -210,7 +210,9 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                                if settings.cloud_documents else
                                f"Documents you add never go to {p}: Cloud stays off while a "
                                f"session holds documents. ")
-                            + "Search, ranking and Scout stay on local models.")
+                            + "Search, ranking and Scout's own model stay on local models; "
+                            f"the fit explanations and hand-off drafts Scout asks for use {p} "
+                            "and are marked Cloud on their step.")  # G6
                 if p else None,
                 # Documents on Cloud after a second warning (S24, Q30), off by default.
                 "documents": bool(p) and on and settings.cloud_documents,

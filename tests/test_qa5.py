@@ -150,12 +150,15 @@ def test_a_code_follow_up_is_sent_back_naming_the_call(service):  # noqa: F811
 
     c = ScoutContext(service, AS_OF, researcher_id=AUTHOR)
     refusal = "I cannot fulfill this request."
-    for q, want in (("f31?", 'words "F31"'), ("whats the deadline for the f31", 'words "F31"'),
-                    ("drop the samples", 'route "F"')):
-        fake = FakeProvider([refusal, refusal])
+    for q, want, args in (("f31?", 'words "F31"', {"words": "F31"}),
+                          ("whats the deadline for the f31", 'words "F31"', {"words": "F31"}),
+                          ("drop the samples", 'route "F"', {"route": "F"})):
+        fake = FakeProvider([refusal, refusal, "No student brief here."])
         s = Scout(fake, c, table=STUDENT_TOOLS, rules=STUDENT_RULES, who="a student").start(q)
         assert s.exchanges[-1]["nudged"]
         assert want in fake.calls[1]["messages"][-1].content, q
+        # refused twice in a long conversation (C12S turns 6 and 13): code makes the call
+        assert [(x.tool, x.arguments) for x in s.cards] == [("search_options", args)], q
 
 
 # --- G7: each line cites its own record ---
@@ -240,3 +243,98 @@ def test_the_page_reads_start_over_as_the_server_does():
     assert r.returncode == 0, r.stderr
     assert json.loads(r.stdout) == [bool(START_OVER_RE.match(q)) for q in phrases]
     assert json.loads(r.stdout)[:4] == [True] * 4
+
+
+# --- G13 to G17, G21, G22: exports and student options ---
+
+def test_student_mode_leaves_out_forecasted_nih_fellowships():
+    """G13: a forecast (FOR-NS-25-004) showed as "may be eligible"; Help says forecasts
+    are not shown."""
+    from perch.scholarships import nih_fellowships
+
+    mk = lambda n, status: Opportunity(id=f"grants_gov:{n}", opportunity_number=n,  # noqa: E731
+                                       title=f"SYNTHETIC {n}", agency="NIH", activity_code="F31",
+                                       status=status, **KW)
+
+    class Repo:
+        def list(self, kind):
+            return [mk("PA-SYN-1", "posted"), mk("FOR-SYN-2", "forecasted")]
+
+    assert [o.opportunity_number for o in nih_fellowships(Repo())] == ["PA-SYN-1"]
+
+
+def test_student_export_one_line_not_eligible_withheld_note_and_announcement_label():
+    """G14: about 1,100 of 1,391 lines were the not-eligible lists. G15: a withheld
+    explanation had no note. G17: an expiry read "Deadline: Expires 7 May 2028". G21: two
+    capitalised "Still needed" bullets and "(Parent F31) (kept)"."""
+    from perch import export as ex
+
+    from .test_export import _student_inputs
+
+    brief, leads, recs = _student_inputs()
+    f31 = _parent()
+    recs[f31.id] = f31
+    leads.append(leads[0].model_copy(update={
+        "id": "s:F31", "record_id": f31.id, "rank": 9, "status": "kept", "flagged": True,
+        "verdict": "may be eligible", "explanation": None, "gaps": ["A transcript", "An essay"]}))
+    leads.append(leads[0].model_copy(update={
+        "id": "s:F9", "record_id": "temple_sdfa:f1", "rank": 10, "verdict": "not eligible",
+        "verdict_lines": ["Open to undergraduate years 1 and 2; your CV says year 4."],
+        "match_score": 35, "status": "kept"}))
+    md = ex.to_markdown(ex.student_blocks(brief, leads, recs))
+    part = md[md.index("### 3. SYNTHETIC Predoctoral"):]
+    assert part.startswith("### 3. SYNTHETIC Predoctoral Fellowship (Parent F31), kept")
+    assert "- Announcement: Expires 7 May 2028" in part and "Deadline: Expires" not in md
+    assert "- Still needed: a transcript; an essay" in part
+    assert "> The explanation was withheld: it failed the checks twice." in part
+    assert "One line each: the option, the rule it does not meet, and its Match." in md
+    assert ("- SYNTHETIC fellowship 1, kept: Open to undergraduate years 1 and 2; your CV "
+            "value is withheld. Match 35 (weak).") in md
+
+
+def test_rule_lines_join_years_and_levels_in_words():
+    from perch.student import _levels, _years
+
+    assert _years([1, 2]) == "years 1 and 2" and _years([4]) == "year 4"
+    assert _levels(["associate"]) == "associate degree"
+    assert _levels(["bachelor's", "graduate"]) == "bachelor's and graduate"
+
+
+def test_a_documents_export_has_no_bare_record_line_or_award_horizon():
+    """G16: persona-1's export held "Public award horizon: no public award found", from a
+    search that never ran, and a bare "Researcher record (private)" line."""
+    from perch import export as ex
+    from perch.schemas import Researcher
+
+    from .test_export import _inputs
+
+    brief, leads, opps, works = _inputs()
+    brief.researcher_id, brief.topics = "private:you", []
+    you = Researcher(id="private:you", display_name="You (private)",
+                     **{**KW, "source": "private", "source_url": "private://session"})
+    md = ex.to_markdown(ex.blocks(brief, you, leads, opps, {}, works, [], documents=True))
+    assert "award horizon" not in md and "Researcher record" not in md
+    assert "## Research profile" not in md
+    b2, l2, o2, w2 = _inputs()
+    md = ex.to_markdown(ex.blocks(b2, None, l2, o2, {}, w2, []))
+    assert "Public award horizon" in md and "## Research profile" in md
+
+
+def test_a_paper_is_named_in_full_once_per_lead_and_bare_masked_findings_go():
+    """G21: every PI-4 grant named the same two papers by full title in the Model text and
+    the Inference; masked student descriptions all ended "Cited work: one of your
+    achievements [PRIVATE-PHRASE-1]; ..."."""
+    from perch import export as ex
+
+    from .test_export import _inputs
+
+    brief, leads, opps, works = _inputs()
+    works["https://openalex.org/W1234567"].title = "A SYNTHETIC paper on six word titles"
+    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, []))
+    assert md.count("“A SYNTHETIC paper on six word titles”") == 1
+    assert "Inference: The tool fits (“A SYNTHETIC paper on six…”)." in md
+    assert ex.bare_findings_out("X funds work. Cited work: one of your achievements "
+                                "[PRIVATE-PHRASE-1]; your CV [PRIVATE-PHRASE-2].") == \
+        "X funds work."
+    assert ex.bare_findings_out("X. Cited work: one of your achievements led a survey.") == \
+        "X. Cited work: one of your achievements led a survey."

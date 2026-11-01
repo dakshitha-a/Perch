@@ -1256,3 +1256,9 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
 }
 /* F25: the hint under Find says what is missing */
 .hint-row .field-error { color: var(--brick); font-weight: 600; }
+/* G8: Tab never leaves a control under the kept pill (WCAG 2.4.11). While the pill shows
+   (up to 900 px wide, taller than 500 px), the page scrolls focus clear of its 60 px, the
+   16 px it sits above the edge, and a gap. */
+@media (max-width: 900px) and (min-height: 501px) {
+  html:has(#keep-float .keep-float) { scroll-padding-bottom: 92px; }
+}

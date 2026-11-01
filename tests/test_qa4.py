@@ -141,7 +141,7 @@ def test_a_parent_announcement_expires_everywhere_and_is_no_deadline():
         ex.blocks(brief, None, leads, opps, {}, works, []))
     s_brief, s_leads, recs = _student_inputs()
     recs["temple_sdfa:f1"] = o.model_copy(update={"id": "temple_sdfa:f1"})
-    assert "Deadline: Expires 7 May 2028" in ex.to_markdown(
+    assert "Announcement: Expires 7 May 2028" in ex.to_markdown(  # G17
         ex.student_blocks(s_brief, s_leads, recs))
 
 
@@ -189,7 +189,9 @@ def test_the_student_export_groups_as_the_screen_and_names_no_own_record():
     assert "Why it may fit: It suits your survey work, the focus of this opportunity." in md
     plain = ex.to_markdown(ex.student_blocks(brief, leads, recs))
     n = plain.count("Why it may fit withheld:")
-    assert n == 5  # four options you may apply for, one not eligible: counted in the banner
+    assert n == 4  # the four you may apply for; the not-eligible one is one line (G14)
+    assert "- SYNTHETIC fellowship 4: The listing says who may apply. Match 50 (partial)." \
+        in plain
     assert f"> {egress.withheld_note(plain.count(egress.WITHHELD) + n)}" in plain
 
 
@@ -303,7 +305,8 @@ def test_scouts_hand_off_on_a_documents_brief_opens_by_code(tmp_path, monkeypatc
     opening = d["body"].split("\n\n")[1]
     assert d["opening_by"] == "code" and not asked  # no model ran for the opening
     assert opening.startswith("I would like to talk with your team about ")
-    assert "my CV" in opening and "[" not in d["body"]
+    # G22: the CV steers no search, so the lead was not matched "from my CV"
+    assert "my draft proposal" in opening and "my CV" not in opening and "[" not in d["body"]
     assert "These are the leads I would like to discuss:" in d["body"]  # F8: none kept
     assert "Perch drafted this from your documents and public records." in d["body"]  # F19
 

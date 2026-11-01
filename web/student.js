@@ -333,7 +333,8 @@ function card(l, { openEvidence, setLead, papers }, common = []) {
     !deadline && (!sch || amount === NOT_STATED)
       ? (common.includes(NO_FACTS) ? null : h("p", { class: "hint no-size", text: sch ? "Deadline and amount: not stated in the record." : "Deadline: not stated in the record." }))
       : h("dl", { class: "facts" },
-        h("div", { class: "fact" }, h("dt", { text: "Deadline" }), h("dd", { text: dueText(r, deadline) })),
+        // G17: an expiry sits under its own label, as on the researcher card (F20)
+        h("div", { class: "fact" }, h("dt", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? "Announcement" : "Deadline" }), h("dd", { text: dueText(r, deadline) })),
         sch ? h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", { text: amount })) : null),
     l.verdict_lines.length && !(l.verdict_lines.length === 1 && common.includes(l.verdict_lines[0])) ? h("div", { class: "reason" }, h("b", { text: l.verdict === "not eligible" ? "Why not: " : "To check: " }), // T23: not a second "Why"
       l.verdict_lines.length === 1 ? h("span", { text: l.verdict_lines[0] })
@@ -433,7 +434,8 @@ export function studentCompare(panel, ctx) {
       h("th", { scope: "row" }, h("span", { class: "row-title", text: sch ? r.name : r.title }),
         l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null),
       h("td", {}, verdictChip(l.verdict)),
-      h("td", { text: dueText(r, d) }),
+      // G17: under the Deadline column an expiry says it is none
+      h("td", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? `None stated; the announcement expires ${f.formatDate(d)}` : dueText(r, d) }),
       h("td", { text: sch ? amountText(r) : "See the record" }),
       h("td", { text: l.gaps.map((x, i) => (i ? f.lowerFirst(x) : x)).join("; ") || "Nothing listed" }), // R17, T24
       h("td", { text: officeName(l.route) }));

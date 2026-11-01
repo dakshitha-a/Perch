@@ -95,7 +95,7 @@ def _student_inputs():
                   verdict="may be eligible", verdict_lines=["The listing says who may apply."],
                   **pub) for i in (1, 2, 3)]
     leads.append(Lead(id="s:S1", brief_id="s", route="S", record_id="sample:sch-0001", rank=1,
-                      sample=True, verdict="not eligible",
+                      sample=True, verdict="may be eligible",  # a full block (G14)
                       verdict_lines=["Asks for a GPA of at least 3.50; your CV says 3.40."],
                       gaps=["2 letters of recommendation; your CV lists 1 referee", "An essay"],
                       explanation="[sch-0001] supports undergraduates. Cited work: "
@@ -111,7 +111,7 @@ def test_the_student_export_numbers_without_gaps_and_counts_dismissed():
     its footer said only how many were shown (Q11's fix covered researchers only)."""
     brief, leads, recs = _student_inputs()
     md = ex.to_markdown(ex.student_blocks(brief, leads, recs))
-    assert "### 1. SYNTHETIC fellowship 1" in md and "### 2. SYNTHETIC fellowship 3 (kept)" in md
+    assert "### 1. SYNTHETIC fellowship 1" in md and "### 2. SYNTHETIC fellowship 3, kept" in md
     assert "fellowship 2" not in md and "1 dismissed option is left out." in md
     assert "1 kept, 3 shown, 1 dismissed." in md
 
@@ -123,7 +123,8 @@ def test_student_exports_keep_the_rule_and_drop_the_cv_value():
     md = ex.to_markdown(ex.student_blocks(brief, leads, recs))
     assert "Asks for a GPA of at least 3.50; your CV value is withheld." in md
     assert "2 letters of recommendation; your CV value is withheld" in md
-    assert "3.40" not in md and "1 referee" not in md and "Still needed: An essay" in md
+    assert "3.40" not in md and "1 referee" not in md
+    assert "Still needed: 2 letters of recommendation; your CV value is withheld; an essay" in md
     m = egress.Masker()
     md = ex.to_markdown(ex.student_blocks(brief, leads, recs, masker=m))
     assert "your CV says \\[CV-VALUE-1\\]." in md and "3.40" not in md
