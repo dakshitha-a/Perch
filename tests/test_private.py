@@ -965,3 +965,47 @@ def test_a_file_perch_cannot_read_gets_a_plain_sentence_with_its_name():
         assert str(e.value) == said
     with pytest.raises(InputError, match="^That text is empty: paste some text first.$"):
         Upload("cv", text="  ").doc()
+
+
+def test_scout_on_a_documents_only_brief_works_from_the_documents(tmp_path, monkeypatch):
+    """R6: on a brief built from documents alone, Scout's profile and explain tools failed
+    with "pass an OpenAlex author id", and Scout told the user it had no access and asked
+    for an id or an upload. The tools now use the documents brief, and an answer that says
+    it has no access is sent back once."""
+    import re
+    import time
+
+    from perch.llm import ToolCall
+
+    turns = []
+
+    def reply(messages, system, schema):
+        if system and system.startswith("You are Scout"):
+            opp = re.search(r"\n1\. \[([^\]]+)\]", system).group(1)
+            turns.append(system)
+            return [
+                "I cannot explain the fit because I do not have access to your research profile "
+                "or draft aims. Please provide your OpenAlex author ID or upload your profile.",
+                [ToolCall("c1", "build_profile", {})],
+                [ToolCall("c2", "explain_fit", {"opportunity_id": opp})],
+                [ToolCall("c3", "search_opportunities", {"route": "A", "top": 3})],
+                f"The top lead fits your draft aims [{opp}]."][len(turns) - 1]
+        return fit_reply(messages, system, schema)
+
+    c, _ = private_app(tmp_path, monkeypatch, responder=reply)
+    h = open_with_persona(c)
+    assert c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"}).status_code == 202
+    assert c.get("/private/brief", headers=h).json()["brief"]["status"] == "done"
+    v = c.post("/private/scout", headers=h,
+               json={"question": "Why does my top lead fit? Quote my draft aims."}).json()
+    for _ in range(100):
+        v = c.get(f"/private/scout/{v['id']}", headers=h).json()
+        if not v["busy"] and v["status"] != "running":
+            break
+        time.sleep(0.1)
+    x = v["exchanges"][0]
+    cards = {k["tool"]: k for k in x["cards"]}
+    assert [k["status"] for k in x["cards"]] == ["done", "done", "done"], x["cards"]
+    assert "private:proposal" in cards["build_profile"]["records"]
+    assert "never ask for an OpenAlex ID" in turns[0] and "documents they added" in turns[0]
+    assert x["answer"].startswith("The top lead fits") and not x["flagged"]

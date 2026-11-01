@@ -38,7 +38,7 @@ University researcher's work, from public records only.
 
 Rules:
 - Use only the tools you are given. You cannot browse the web, send email, apply for \
-anything, change a record, or read private documents. If the user asks for something no \
+anything, change a record, or quote private documents. If the user asks for something no \
 tool can do, say so plainly in one sentence and do not call a tool.
 - Perch's opportunity records are federal grants from Grants.gov. There are no \
 foundation or private-sponsor records yet; say so if asked for them.
@@ -83,6 +83,16 @@ NUDGE = ("You answered without calling a tool, and your answer cites no record. 
          "in your instructions are a snapshot, and earlier results may be out of date. If "
          "one of your tools can answer this question, call it now. If no tool can, give "
          "your answer again.")
+# R6: an answer that says Scout has no access, or asks for an id or an upload, is sent
+# back once whatever ran: the tools work on this brief, documents and all.
+NO_ACCESS_RE = re.compile(r"\b(?:no|not have|don'?t have|lack)\s+(?:any\s+)?access\b|"
+                          r"\bprovide (?:your|an|the) (?:OpenAlex|ORCID|author)|\bupload\b",
+                          re.I)
+ACCESS_NUDGE = ("Your answer says you have no access, or asks for an ID or an upload. You have "
+                "what you need: your tools work on this brief, which was built from the "
+                "user's public records and any documents they added. Call one of your tools, "
+                "or answer from the results you have. Never ask for an OpenAlex ID or an "
+                "upload.")
 # Refusals the rules ask for, which need no tool: they are not nudged.
 CAPABILITY_RE = re.compile(r"\b(e-?mail|send|web|brows\w*|internet|apply for|chances?|odds|"
                            r"percent\w*|likel\w*|foundations?|private[- ](?:sponsor|document)\w*|"
@@ -234,8 +244,12 @@ class Scout:
         self.budget = budget or ScoutBudget()
         self.log = log
         self.private = private is not None
-        who = who or ("a researcher with no public profile (private documents only)"
-                      if (ctx.researcher_id or "").startswith("private:")
+        who = who or ("a researcher with no public profile; the brief was built from the "
+                      "documents they added, and build_profile, explain_fit and "
+                      "search_opportunities use those documents. If asked to quote a "
+                      "document, say only that Scout does not quote private documents. "
+                      "Never say you have no access to them, and never ask for an OpenAlex "
+                      "ID or an upload" if (ctx.researcher_id or "").startswith("private:")
                       else f"researcher {ctx.full_author_id(None)} (OpenAlex)")
         self.table = table or SESSION_TOOLS
         self.answer_check = answer_check
@@ -352,11 +366,17 @@ class Scout:
         answer to a question for which no tool ran, citing nothing, and not one of the
         refusals the rules ask for, gets one reminder to call a tool. One per question."""
         start = s.exchanges[-1]["cards_from"] if s.exchanges else 0
-        if s.nudged or s.cards[start:] or cited(text) or CAPABILITY_RE.search(text):
+        if s.nudged:
             return False
+        if NO_ACCESS_RE.search(text):  # R6
+            nudge = ACCESS_NUDGE
+        elif s.cards[start:] or cited(text) or CAPABILITY_RE.search(text):
+            return False
+        else:
+            nudge = NUDGE
         s.nudged = True
         s.messages.append(Message("assistant", text))
-        s.messages.append(Message("user", NUDGE))
+        s.messages.append(Message("user", nudge))
         return True
 
     def _answer_repeat(self, s: Session, c: Card) -> None:

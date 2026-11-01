@@ -32,6 +32,7 @@ from perch.schemas import (
     Organisation,
     Record,
     Researcher,
+    Work,
     belongs_to,
 )
 from perch.score import match_score
@@ -77,7 +78,25 @@ class ScoutContext:
         return f"https://openalex.org/{aid}"
 
 
+def _private(ctx: ScoutContext) -> bool:
+    """A brief built from the user's documents alone, with no public profile (R6)."""
+    return (ctx.researcher_id or "").startswith("private:")
+
+
+def _session_docs(ctx: ScoutContext) -> list[Work]:
+    """The documents of a private session, which its brief's threads come from (R6)."""
+    records = getattr(ctx.service, "private_records", None)
+    return list(records().values()) if records else []
+
+
 def _researcher(ctx: ScoutContext, author_id: str | None) -> Researcher:
+    if author_id is None and _private(ctx):  # R6: the documents brief's own researcher
+        with ctx.service.repo() as r:
+            res = r.get(Researcher, ctx.researcher_id)
+        if res is None:
+            raise ToolError("this brief was built from the user's documents and has no "
+                            "public profile; answer from the brief's leads")
+        return res
     full = ctx.full_author_id(author_id)
     with ctx.service.repo() as r:
         res = r.get(Researcher, full)
@@ -94,12 +113,18 @@ def _profile(ctx: ScoutContext, author_id: str | None) -> Profile:
         return ctx.profile
     with ctx.service.repo() as r:
         works = r.works_by_author(res.id)
-        if not works:
+        if not works and not _private(ctx):
             with ctx.service.clients.openalex() as c:
                 works = list(c.iter_works(res.id))
             r.upsert(works)
     ctx.researcher_id = res.id
-    ctx.profile = build_threads(res.id, works, ctx.service.models.get("embedder"), ctx.as_of)
+    embedder = ctx.service.models.get("embedder")
+    p = build_threads(res.id, works, embedder, ctx.as_of)
+    if docs := _session_docs(ctx):  # R6: the documents' threads, as the brief built them
+        from perch.private.threads import add_threads
+
+        p = add_threads(p, docs, embedder)
+    ctx.profile = p
     return ctx.profile
 
 
@@ -119,6 +144,7 @@ def build_profile(ctx: ScoutContext, author_id: str | None = None) -> dict:
     p = _profile(ctx, author_id)
     with ctx.service.repo() as r:
         works = {w.id: w for w in r.works_by_author(p.researcher_id)}
+    works.update({d.id: d for d in _session_docs(ctx)})
     threads = []
     for t in p.threads:
         papers = [{"id": ctx.see(works[w]), "title": works[w].title,
@@ -132,6 +158,10 @@ def build_profile(ctx: ScoutContext, author_id: str | None = None) -> dict:
 
 def list_awards(ctx: ScoutContext, author_id: str | None = None) -> dict:
     res = _researcher(ctx, author_id)
+    if _private(ctx) and author_id is None:
+        return {"researcher": ctx.see(res), "awards": [], "horizon_award": None,
+                "note": "This brief was built from the user's documents, with no public "
+                "profile, so no public award is linked."}
     with ctx.service.repo() as r:
         ov = aw.load_overrides(res.id, ctx.service.overrides)
         linked = aw.link_stored(res, r.list(Award), ov)
@@ -174,13 +204,20 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                     activity_codes=[a.upper() for a in activity_codes or []],
                     keywords=keywords or [], exclude_keywords=exclude_keywords or [])
     res = _researcher(ctx, author_id)
-    _profile(ctx, author_id)  # make sure the works are in the store
+    p = _profile(ctx, author_id)  # the works are in the store; a session's documents count
     s = ctx.service
+    extra = {}
+    if _session_docs(ctx):  # a document's thread is never cached (P6, R6)
+        from perch.private.session import public_thread
+
+        extra = {"profile": p, "cacheable": public_thread}
+    elif _private(ctx):
+        extra = {"profile": p}
     with s.repo() as r:
         b = route_a(res, r, s.models.get("index"), s.models.get("embedder"),
                     s.models.get("reranker"), c, RerankCache(s.rerank_cache),
                     top=max(1, min(int(top), 20)), timings_log=None,
-                    index_new=getattr(s, "index_writes", True))  # a private session: no
+                    index_new=getattr(s, "index_writes", True), **extra)  # a private session: no
     leads = []
     for i, x in enumerate(b.leads, 1):
         o = x.opportunity
@@ -287,6 +324,7 @@ def explain_fit(ctx: ScoutContext, opportunity_id: str) -> dict:
     p = _profile(ctx, None)
     with ctx.service.repo() as r:
         works = {w.id: w for w in r.works_by_author(p.researcher_id)}
+    works.update({d.id: d for d in _session_docs(ctx)})  # R6: as the brief explained it
     system, papers = profile_prompt(p, works)
     v = explain_one(o, system, papers, ctx.explainer, ctx.service.models.get("grounder"))
     if not v.value:
