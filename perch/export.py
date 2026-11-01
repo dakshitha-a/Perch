@@ -429,6 +429,13 @@ def _common_lines(xs: list[Lead], records: dict[str, object]) -> list[str]:
     return [c for c, n in counts.items() if n >= 3 and n > len(xs) / 2]
 
 
+def you(text: str) -> str:
+    """web/student.js you(): the card says "you" where the model said "the student"."""
+    text = re.sub(r"\b([Tt])he student's\b", lambda m: "Your" if m.group(1) == "T" else "your",
+                  text)
+    return re.sub(r"\b([Tt])he student\b", lambda m: "You" if m.group(1) == "T" else "you", text)
+
+
 def _student_option(i: int, x: Lead, rec: object, office: object, names: dict[str, str],
                     common: list[str], masker: egress.Masker | None,
                     documents: bool) -> list[Block]:
@@ -459,10 +466,10 @@ def _student_option(i: int, x: Lead, rec: object, office: object, names: dict[st
     if x.explanation and not x.flagged:
         out.append(Block("model", egress.release_model(
             name_papers(x.explanation, {}, names, skip=own), x.cited_ids, masker, documents)))
-        if x.inference:  # F4: the fit sentence under the card's label
+        if x.inference:  # F4: the fit sentence under the card's label, worded as the card
             label = "How it relates" if band(x.match_score) == "weak" else "Why it may fit"
             out.append(labelled(label, egress.release_model(
-                name_papers(x.inference, {}, names, skip=own), x.cited_ids, masker,
+                name_papers(you(x.inference), {}, names, skip=own), x.cited_ids, masker,
                 documents)))
     url = getattr(rec, "source_url", None)
     if url and not x.sample:

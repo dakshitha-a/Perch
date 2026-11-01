@@ -171,7 +171,8 @@ def test_the_student_export_groups_as_the_screen_and_names_no_own_record():
         "id": "temple_sdfa:f5", "name": "SYNTHETIC fellowship 5"})
     for x in (y for y in leads if y.route == "F"):
         x.explanation = f"The fellowship funds SYNTHETIC study [{x.record_id.split(':')[1]}]."
-        x.inference = f"It suits your survey work, the focus of [{x.record_id.split(':')[1]}]."
+        key = x.record_id.split(":")[1]
+        x.inference = f"It suits the student's survey work, the focus of [{key}]."
         x.match_score = 50
         x.status = "new"
     m = egress.Masker()
