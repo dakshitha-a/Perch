@@ -2,14 +2,16 @@
 
   uv run --with markdown python scripts/build_readme_preview.py [--out build/artifacts/readme.html]
 
-Images keep their repo-relative paths (docs/tour/*.webp, docs/architecture/*.svg), so the
-tracker artifact publishes those files beside the page. `markdown` is used only here.
+Images keep their repo-relative paths (docs/tour/*.webp, docs/architecture/*.svg); they are
+copied beside the page so it also works opened from disk, and the tracker artifact publishes
+them at the same paths. `markdown` is used only here.
 """
 
 from __future__ import annotations
 
 import argparse
 import re
+import shutil
 from pathlib import Path
 
 import markdown
@@ -60,7 +62,21 @@ def main() -> None:
     out = ROOT / a.out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(page, encoding="utf-8")
+    copy_assets(body, out.parent)
     print(f"wrote {out}")
+
+
+def copy_assets(body: str, dest: Path) -> None:
+    """Copy each repo-relative image or clip the README references to the same path under dest."""
+    refs = re.findall(r'(?:src|srcset)="([^"]+)"', body)
+    for ref in sorted(set(refs)):
+        rel = ref.split()[0]
+        if re.match(r"[a-z]+:|/|#", rel):
+            continue
+        src, target = ROOT / rel, dest / rel
+        if src.is_file() and src.resolve() != target.resolve():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, target)
 
 
 if __name__ == "__main__":

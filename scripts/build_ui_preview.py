@@ -4,7 +4,8 @@
 
 The page runs the real app in replay mode: no server, no network. It feeds the tracker
 artifact's UI tab, the screenshots and the Demo Day fallback. Modules are wrapped in
-functions so their names cannot collide; nothing else is changed.
+functions so their names cannot collide; nothing else is changed. Beside the page it
+writes <out>.json (the replay file name and the brief's created_at) for the tracker's UI tab.
 """
 
 from __future__ import annotations
@@ -74,7 +75,13 @@ def main(argv: list[str]) -> int:
         src = found[-1]
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(page(json.loads(src.read_text(encoding="utf-8"))), encoding="utf-8")
+    replay = json.loads(src.read_text(encoding="utf-8"))
+    out.write_text(page(replay), encoding="utf-8")
+    # A small sidecar for the tracker's UI tab: which replay, and when it was saved.
+    brief = (replay.get("brief") or {}).get("brief") or {}
+    side = {"replay": f"build/replay/{src.name}", "created_at": brief.get("created_at", ""),
+            "student": bool(replay.get("student"))}
+    out.with_suffix(".json").write_text(json.dumps(side, indent=1) + "\n", encoding="utf-8")
     print(f"wrote {out} from {src}")
     return 0
 
