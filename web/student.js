@@ -348,10 +348,12 @@ function card(l, { openEvidence, setLead, papers }, common = []) {
 // their own words, sits under it. The achievements are the student's own text, so there
 // are no chips naming them; the records stay cited behind the text.
 function fitReason(l) {
-  const [about, work] = String(l.explanation || "").split(/\s*Cited work:\s*/);
+  // F2: the card's own record, cited where a noun stands, reads "this opportunity".
+  const own = new Set([l.record_id, String(l.record_id || "").split(":").pop()]);
+  const [about, work] = f.ownInPlace(String(l.explanation || ""), own).split(/\s*Cited work:\s*/);
   const items = (work || "").split(/;\s*/).map((x) => plainExplanation(x.replace(/^\s*(?:private:)?(?:achievement-[a-e]|interests)\s*/, ""))
     .replace(/\.$/, "")).filter(Boolean);
-  const reason = l.inference ? plainExplanation(you(l.inference)) : null;
+  const reason = l.inference ? plainExplanation(you(f.ownInPlace(l.inference, own))) : null;
   // In the weak band the model's sentence may say it does not fit, so the label does not
   // promise a fit: "How it relates", as on the researcher's weak cards (Q17, T15: one
   // rule on both paths, the band's).

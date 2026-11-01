@@ -188,9 +188,10 @@ function renderFind() {
   if (F.nudge && !looksPersonal(F.q)) F.nudge = null;
   const input = h("input", { id: "q", name: "q", type: "search", autocomplete: "off",
     enterkeyhint: "search", placeholder: matchMedia("(max-width: 419px)").matches ? "Name, ORCID or OpenAlex ID"
-      : "Researcher name, ORCID iD or OpenAlex ID", required: true,
-    "aria-describedby": "q-hint", value: F.q,
-    oninput: (e) => { F.q = e.target.value; if (F.nudge && !looksPersonal(F.q)) keepFocus(renderFind); },
+      : "Researcher name, ORCID iD or OpenAlex ID",
+    "aria-describedby": "q-hint", "aria-invalid": F.empty ? "true" : null, value: F.q,
+    oninput: (e) => { F.q = e.target.value; const was = F.empty; F.empty = false;
+      if (was || (F.nudge && !looksPersonal(F.q))) keepFocus(renderFind); },
     onpaste: (e) => pasted(e, "q", "cv") });
   const researcher = h("form", { role: "search", onsubmit: (e) => { e.preventDefault(); search(); } },
     h("label", { for: "q", class: "sr-only", text: "Find a Temple researcher" }),
@@ -198,7 +199,9 @@ function renderFind() {
       h("button", { class: "btn primary", type: "submit", disabled: F.busy || Boolean(F.nudge),
         "aria-busy": F.busy ? "true" : null }, h("span", { text: F.busy ? "Searching" : "Find" }))),
     h("div", { class: "hint-row" },
-      h("span", { id: "q-hint", text: "Names search Temple authors; an ID finds anyone." }),
+      // F25: an empty Find says what to type, in the hint the box points to.
+      h("span", { id: "q-hint", class: F.empty ? "field-error" : null,
+        text: F.empty ? "Type a name, ORCID iD or OpenAlex ID." : "Names search Temple authors; an ID finds anyone." }),
       h("details", { class: "more-opts" }, h("summary", { "data-key": "more-opts", text: "What else you can add" }),
         h("p", { text: "After you pick the person, you can tell Perch where your research is going, keywords to search for or leave out, your CV and a draft proposal. All of it is optional and held in memory only." }),
         ok ? h("p", {}, h("a", { href: "#/private", "data-key": "docs-link", text: "No public papers yet? Build a brief from your documents alone." })) : null)));
@@ -288,7 +291,14 @@ function heroArt() {
 async function search() {
   const F = S.find;
   const q = F.q.trim();
-  if (!q) { $("#q").focus(); return; }
+  if (!q) {  // F25: say what is missing, not nothing
+    F.empty = true;
+    if (location.hash !== "#/find") keepFocus(renderFind);
+    const box = $("#q");
+    if (box) box.focus();
+    announce("Type a name, ORCID iD or OpenAlex ID.");
+    return;
+  }
   const oid = (q.match(ORCID) || [])[1];
   if (oid && !f.orcidOk(oid)) { // checked before any lookup (Q18)
     Object.assign(F, { busy: false, candidates: [], searched: q, picked: null, badOrcid: true, badId: false, unknownId: false,
@@ -781,8 +791,10 @@ function renderBrief() {
   document.title = `${name} — Perch`;
   if (student && !["F", "S"].includes(S.route)) S.route = "F";
   if (!student && !["A", "B"].includes(S.route)) S.route = "A";
-  const meta = student ? `Fellowships and sample scholarships, checked against your CV by rule · as of ${f.formatDate(d.brief.options.as_of)}`
-    : [...(r.institutions || []), `Brief as of ${f.formatDate(d.brief.options.as_of)}`].join(" · ");
+  // F23: the date's parts never part at a line end ("1" / "Nov 2026").
+  const asOf = f.formatDate(d.brief.options.as_of).replace(/ /g, "\u00a0");
+  const meta = student ? `Fellowships and sample scholarships, checked against your CV by rule · as of ${asOf}`
+    : [...(r.institutions || []), `Brief as of ${asOf}`].join(" · ");
   // Back: a student returns to their documents, a researcher to the matches; the
   // session stays open either way (S22, audit S2).
   const back = student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Back to your documents" }))
@@ -1726,7 +1738,7 @@ function leadCard(l) {
   const size = f.awardSize(o);
   const band = f.fitBand(l.match_score);
   const pending = isPending(l);
-  const parsed = f.parseExplanation(l.explanation, l.cited_ids);
+  const parsed = f.parseExplanation(l.explanation, l.cited_ids, ownIds(o));
 
   let fit;
   if (band) {
@@ -1745,7 +1757,8 @@ function leadCard(l) {
   const far = Boolean(o.close_date_note && days !== null && days > 3650) || f.standardDates(o);
   const expires = f.expiresOnly(o);  // T17: a parent announcement's date is its expiry
   const facts = h("dl", { class: `facts${size ? "" : " one"}` },
-    h("div", { class: `fact close ${urg}` }, h("dt", { text: "Closes" }),
+    // F20: an expiry date sits under its own label, not under "Closes".
+    h("div", { class: `fact close ${urg}` }, h("dt", { text: expires && !far ? "Announcement" : "Closes" }),
       h("dd", {}, far ? h("span", { text: o.close_date_note })
         : o.close_date ? h("span", { text: `${expires ? "Expires " : ""}${f.formatDate(o.close_date)}` }) : h("span", { class: "missing", text: "Not stated in the record" }),
         !far && !expires && days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),
@@ -1841,7 +1854,7 @@ function modelTag() {
 }
 
 function ownIds(o) {
-  return new Set([o.opportunity_number].filter(Boolean));
+  return new Set([o.opportunity_number, o.id].filter(Boolean));
 }
 
 function inferenceBox(l, o = {}, listed = new Set()) {
@@ -1850,7 +1863,7 @@ function inferenceBox(l, o = {}, listed = new Set()) {
   return h("div", { class: "inference" },
     h("p", { class: "inference-label" }, h("span", { class: "tag model", text: "Inference" }),
       h("span", { text: "A model’s reading of the fit, not a fact from a record." })),
-    h("p", {}, renderSegs(f.segments(l.inference, new Set(l.cited_ids)), skip)));
+    h("p", {}, renderSegs(f.segments(l.inference, new Set(l.cited_ids), ownIds(o)), skip)));
 }
 
 function eligibilityRows(o) {
@@ -2171,9 +2184,9 @@ function recordView(r) {
   }
   out.push(h("div", { class: "source" },
     h("p", {}, h("span", { class: "hint", text: "Source " }), h("b", { text: SOURCES[r.source] || r.source })),
-    h("p", { class: "hint", text: `${r.source === "private" ? "Added" : "Fetched"} ${fetched(r.fetched_at)}` }),
-    // The Grants.gov attribution as the server serves it with the brief (review W14).
-    r.source === "grants_gov" && S.brief && S.brief.notice ? h("p", { class: "attrib", text: S.brief.notice }) : null));
+    // F21: the Grants.gov attribution is the page footer's, on every screen; the panel no
+    // longer prints it a second time.
+    h("p", { class: "hint", text: `${r.source === "private" ? "Added" : "Fetched"} ${fetched(r.fetched_at)}` })));
   return out;
 }
 

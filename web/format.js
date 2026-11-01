@@ -139,7 +139,24 @@ export function shortId(id) {
 const ID = "[A-Za-z0-9][A-Za-z0-9.:\\-]*"; // private ids carry a colon (private:proposal)
 const TOKEN = new RegExp(`\\[(${ID}(?:,\\s*${ID})*)\\]|\\b(W\\d{5,})\\b`, "g");
 
-export function segments(text, known = null) {
+// F2: a card's citation of its own record that stands in a sentence as a noun ("the aims
+// of [26-523].") reads "this opportunity"; dropped, it left "the aims of." Any other own
+// citation is dropped as before. Mirrors perch.export.own_in_place.
+const DANGLE = /(\b(?:of|in|with|by|for|to|from|at|on|into|about|under|than|as|via|within|across|through|towards?|and|or)\s+)?(?:(the|a|an)\s+)?\[([^[\]]+)\]/gi;
+export function ownInPlace(text, own) {
+  if (!own || !own.size) return String(text || "");
+  return String(text || "").replace(DANGLE, (m, lead, art, ids) => {
+    if (!lead && !art) return m;
+    const keys = ids.split(/[,;]\s*/).map((k) => k.trim()).filter(Boolean);
+    const bare = (k) => k.replace(/^grants_gov:/, "");
+    if (!keys.some((k) => own.has(k) || own.has(bare(k)))) return m;
+    const rest = keys.filter((k) => !own.has(k) && !own.has(bare(k)));
+    return `${lead || ""}this opportunity${rest.length ? ` [${rest.join(", ")}]` : ""}`;
+  });
+}
+
+export function segments(text, known = null, own = null) {
+  if (own) text = ownInPlace(text, own);
   const out = [];
   let last = 0;
   const isCite = (id) => !known || known.has(id) || /^W\d+$/.test(id) || /^[A-Z]{2,4}(-[A-Z]{2,3})?-\d{2}-\d{3}$/.test(id);
@@ -169,9 +186,9 @@ function tidy(parts) {
 // The fit explanation is "<opportunity sentence> Cited work: W1 clause; W2 clause."
 // (built by code in perch/skills/fit.py). Returns {opportunity, findings} or, when the
 // text does not have that shape, {raw} so nothing the model wrote is lost.
-export function parseExplanation(text, citedIds = []) {
+export function parseExplanation(text, citedIds = [], own = null) {
   const known = new Set(citedIds);
-  const s = String(text || "").trim();
+  const s = ownInPlace(String(text || "").trim(), own);
   const at = s.indexOf("Cited work: ");
   if (!s) return null;
   if (at < 0) return { raw: segments(s, known) };

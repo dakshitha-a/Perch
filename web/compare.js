@@ -117,7 +117,10 @@ export function renderCompare(panel, { keptCount, openEvidence, goRoutes, redraw
     handoff ? h("div", { class: "handoff-box" }) : null,
     hasB ? h("p", { class: "notice" }, icon("warn"), h("span", { text: "Industry leads are inferred "
       + "from public signals and not verified. Their records hold no amount or deadline." })) : null,
-    h("div", { class: "compare-wrap", role: "region", "aria-labelledby": "compare-title", tabindex: "0" },
+    // The table scrolls sideways only when it is a table; stacked into cards on a phone it
+    // does not, so it is no tab stop there (F13).
+    h("div", { class: "compare-wrap", role: "region", "aria-labelledby": "compare-title",
+      tabindex: window.matchMedia("(max-width: 600px)").matches ? null : "0" },
       labelCells(h("table", { class: "compare stack" }, h("thead", {}, head), h("tbody", {}, ...body)))),
     h("p", { class: "hint", text: "Money and dates are as each record states them. "
       + "The office under each lead is the Temple office that handles that route." }));

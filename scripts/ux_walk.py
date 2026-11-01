@@ -978,6 +978,13 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         const s = li.querySelector('details.why > summary'); return n < 40 && s && /Why it fits/.test(s.innerText); }).length""")
     if weak:
         w.errors.append(f"{tag}: T15: {weak} weak cards say Why it fits")
+    # F2: a card's model sentence never stops on a word that needs a noun after it
+    hang = await page.evaluate(DANGLING)
+    if hang:
+        w.errors.append(f"{tag}: F2: card sentences end on a dangling word: {hang[:2]}")
+    meta = await page.evaluate("() => (document.querySelector('.brief-meta') || {}).textContent || ''")
+    if re.search(r"Brief as of \d+ ", meta):  # F23: the date's parts never part
+        w.errors.append(f"{tag}: F23: the brief date can break inside: {meta[-30:]!r}")
     await w.snap(page, tag, "u-routes", full=not phone)
     if phone:  # U5: the first lead shows in the first view
         top = await page.evaluate("() => document.querySelector('.leads > li').getBoundingClientRect().top + scrollY")
@@ -1063,6 +1070,9 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         if fade["over"] and (re.match(r"transparent|rgba\(0, 0, 0, 0\)", fade["bar"] or "")  # the thumb's colour
                              or fade["width"] == "none" or not fade["fade"]):
             w.errors.append(f"{tag}: U27: the Evidence rail is cut with no visible scroll bar or fade {fade}")
+        once = await page.evaluate("() => document.body.innerText.split('is not endorsed or certified by').length - 1")
+        if once != 1:  # F21: the Grants.gov line prints once, in the footer
+            w.errors.append(f"{tag}: F21: the Grants.gov attribution prints {once} times with a record open")
         await w.snap(page, tag, "u-rail")
         await page.click("[data-key=route-B]")
         await page.wait_for_timeout(500)
@@ -1178,6 +1188,28 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         if len({m["top"] for m in marks}) > 1:
             w.errors.append(f"{tag}: U15: the header labels do not line up ({sorted({m['top'] for m in marks})})")
     await w.snap(page, tag, "u-compare", full=True)
+    if phone:  # F13: Tab never stops on the hidden header row or an unseen element
+        await page.focus("#tab-compare")
+        lost = []
+        for _ in range(14):
+            await page.keyboard.press("Tab")
+            got = await page.evaluate("""() => { const el = document.activeElement; if (!el || el === document.body) return null;
+              const r = el.getBoundingClientRect();
+              return { el: (el.innerText || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30),
+                head: Boolean(el.closest('thead')), unseen: r.width < 2 || r.height < 2 }; }""")
+            if got and (got["head"] or got["unseen"]):
+                lost.append(got)
+        if lost:
+            w.errors.append(f"{tag}: F13: {len(lost)} Tab stops on Compare are hidden, e.g. {lost[:2]}")
+        await page.set_viewport_size({"width": 320, "height": 640})
+        await page.wait_for_timeout(400)
+        cut = await page.evaluate("""() => [...document.querySelectorAll('table.compare td .cell-text')]
+          .filter(c => c.scrollWidth > c.clientWidth + 1 || c.getBoundingClientRect().right > innerWidth + 1).map(c => c.innerText)""")
+        if cut:
+            w.errors.append(f"{tag}: F13: at 320 px Compare cuts its cells: {cut[:2]}")
+        await w.snap(page, tag, "f13-compare-320")
+        await page.set_viewport_size(PHONE)
+        await page.wait_for_timeout(300)
     if not phone:
         await page.locator("[data-key=handoff-make]").click()
         await page.wait_for_selector("#handoff-body", timeout=90000)
@@ -1221,6 +1253,12 @@ async def scout_ask(page: Page, q: str) -> None:
         await page.wait_for_timeout(100)
 
 
+# F2: the last word of each card sentence, when it is a word that needs a noun after it
+DANGLING = r"""() => [...document.querySelectorAll('#panel .explain p.what, #panel .inference p:last-child, #panel .fit-why > span:not(.tag)')]
+  .map(p => p.innerText.trim()).filter(t => /\b(of|in|with|by|for|to|the|a|an|from|at|on|into|than)\s*\.$/i.test(t))
+  .map(t => t.slice(-50))"""
+
+
 SCOUT_FACTS = r"""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
   const a = x && x.querySelector('.scout-answer');
   return { answer: Boolean(a), tagged: Boolean(a && a.querySelector('.tag.model')),
@@ -1243,6 +1281,20 @@ async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
     await wait_built(page)
     await page.click("#tab-scout")
     await page.wait_for_selector("#scout-q")
+    iso = await page.evaluate(r"() => [...document.querySelectorAll('.scout-try .chip')].map(c => c.innerText).filter(t => /\d{4}-\d{2}-\d{2}/.test(t))")
+    if iso:  # F18: dates as the app writes them
+        w.errors.append(f"{tag}: F18: example chips write ISO dates: {iso}")
+    await scout_ask(page, "What are my top three leads and why?")
+    got = await page.evaluate(SCOUT_FACTS)
+    if re.search(r"\bthe researcher\b", got["text"], re.I):  # F12
+        w.errors.append(f"{tag}: F12: demo question 1 speaks of the researcher: {got['text'][:120]!r}")
+    if re.search(r"\b(of|in|with|by|for|to|the)\s*\.(\s|$)", re.sub(r"\s+", " ", got["text"])):  # F2
+        w.errors.append(f"{tag}: F2: demo question 1 has a sentence that stops on a dangling word")
+    await scout_ask(page, "Which of these close before March?")
+    scoped = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
+      return [...x.querySelectorAll('.scout-read .chip')].map(c => c.innerText); }""")
+    if "Within: your brief" not in scoped:  # F1: "these" searched the brief alone
+        w.errors.append(f"{tag}: F1: demo question 2 did not search the brief alone: {scoped}")
     await scout_ask(page, "When is the next NSF deadline, and why does the top lead fit?")
     got = await page.evaluate(SCOUT_FACTS)
     if got["answer"] and not got["tagged"]:
@@ -1292,7 +1344,18 @@ async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
         draft: Boolean(x.querySelector('.scout-draft')) }; }""")
     if not got["draft"] or got["model"] or "is below. Perch never sends it" not in got["text"]:
         w.errors.append(f"{tag}: R3: after the draft step the answer reads {got['text'][:140]!r} (Model text tag: {got['model']})")
+    label = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const d = xs[xs.length - 1].querySelector('.scout-draft');
+      return d ? [...d.querySelectorAll('.provenance .tag')].map(t => t.innerText) : []; }""")
+    if len(label) != 1:  # F7: Scout's draft says who wrote its opening, model or code
+        w.errors.append(f"{tag}: F7: Scout's draft of a public brief labels its opening {label}")
     await w.snap(page, tag, "r-scout-draft", full=True)
+    # F11: a table in an answer is a table, never raw pipes
+    await scout_ask(page, "Compare my kept leads")
+    tab = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const a = xs[xs.length - 1].querySelector('.scout-answer');
+      return a ? { pipes: /^\s*\|.*\|\s*$/m.test(a.innerText.replace(/\t/g, ' ')) && !a.querySelector('table'), table: Boolean(a.querySelector('table')) } : null; }""")
+    if tab and tab["pipes"]:
+        w.errors.append(f"{tag}: F11: Scout's compare answer shows a raw pipe table")
+    await w.snap(page, tag, "f11-scout-compare", full=True)
     # T4: when the conversation's budget is spent, the chat offers a new conversation. The
     # budget is not spent for real: the next view is marked as the server marks it.
     async def spent(route: Route) -> None:
@@ -1304,20 +1367,39 @@ async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
         await route.fulfill(response=r, json=v)
 
     await page.route("**/private/scout/*", spent)
-    await scout_ask(page, "Which lead has the largest award ceiling?")
+    q = "Which lead has the largest award ceiling?"
+    await scout_ask(page, q)
     got = await page.evaluate("""() => { const b = document.querySelector('.scout-limit [data-key=scout-new]');
       return { button: Boolean(b), text: (document.querySelector('.scout-limit') || {}).innerText || '' }; }""")
     await w.snap(page, tag, "t4-scout-limit", full=True)
+    await page.unroute("**/private/scout/*", spent)
     if not got["button"] or "Start a new conversation" not in got["text"]:
         w.errors.append(f"{tag}: T4: a spent conversation offers no new one: {got['text'][:120]!r}")
-    else:
+    else:  # F14: the stopped question is asked again in the new conversation
         await page.click(".scout-limit [data-key=scout-new]")
-        await page.wait_for_timeout(300)
-        after = await page.evaluate("""() => ({ xs: document.querySelectorAll('.scout-x').length,
-          tries: document.querySelectorAll('.scout-try .chip').length, focus: document.activeElement && document.activeElement.id })""")
-        if after["xs"] or not after["tries"] or after["focus"] != "scout-q":
-            w.errors.append(f"{tag}: T4: Start a new conversation left {after}")
-    await page.unroute("**/private/scout/*", spent)
+        await page.wait_for_timeout(500)
+        for _ in range(1500):
+            if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
+                break
+            await page.wait_for_timeout(100)
+        after = await page.evaluate("""() => ({ qs: [...document.querySelectorAll('.scout-x > .scout-q')].map(p => p.innerText.replace('You asked: ', '')),
+          withheld: [...document.querySelectorAll('.scout-x .notice.warn')].some(n => /withheld/.test(n.innerText)) })""")
+        if after["qs"] != [q]:
+            w.errors.append(f"{tag}: F14: Start a new conversation did not ask the stopped question again: {after['qs']}")
+        if after["withheld"]:  # F16: the largest-ceiling answer passes the check
+            w.errors.append(f"{tag}: F16: the largest-ceiling answer was withheld")
+        await w.snap(page, tag, "f14-scout-asked-again", full=True)
+    # F9: New conversation is always beside the box, and "start over" opens one
+    if not await page.locator("[data-key=scout-new-any]").count():
+        w.errors.append(f"{tag}: F9: no New conversation control beside the question box")
+    await page.fill("#scout-q", "start over")
+    await page.click(".scout-ask button[type=submit]")
+    await page.wait_for_timeout(500)
+    after = await page.evaluate("""() => ({ xs: document.querySelectorAll('.scout-x').length,
+      tries: document.querySelectorAll('.scout-try .chip').length, focus: document.activeElement && document.activeElement.id })""")
+    if after["xs"] or not after["tries"] or after["focus"] != "scout-q":
+        w.errors.append(f"{tag}: F9: \"start over\" left {after}")
+    await w.snap(page, tag, "f9-scout-start-over", full=True)
     await end_session(page)
 
 
@@ -1551,6 +1633,14 @@ async def ux_landing(w: Walk, page: Page, base: str, tag: str) -> None:
         await page.set_viewport_size(PHONE)
         await page.reload()
         await page.wait_for_selector(".landing")
+    await page.fill("#q", "   ")  # F25: an empty Find says what to type
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_timeout(300)
+    hint = await page.evaluate("() => [(document.querySelector('#q-hint') || {}).innerText, document.querySelector('#q').getAttribute('aria-invalid')]")
+    if hint != ["Type a name, ORCID iD or OpenAlex ID.", "true"]:
+        w.errors.append(f"{tag}: F25: an empty Find says {hint}")
+    await w.snap(page, tag, "f25-empty-find")
+    await page.fill("#q", "")
     summary = await page.locator("[data-key=more-opts]").inner_text()  # U31
     if re.search(r"more options", summary, re.I):
         w.errors.append(f"{tag}: U31: the fold holds a description and a link but is named {summary!r}")
@@ -1793,11 +1883,17 @@ async def ux_zoom(w: Walk, page: Page, base: str, tag: str) -> None:
               const p = document.querySelector('.keep-float'); let pill = false;
               if (p && getComputedStyle(p).visibility !== 'hidden' && getComputedStyle(p).display !== 'none' && !p.contains(el)) {
                 const a = p.getBoundingClientRect(); pill = a.left < r.right && a.right > r.left && a.top < r.bottom && a.bottom > r.top; }
+              // F24: a focused cell is not half under the sticky Lead column
+              const cell = el.closest('table.compare td'); let side = false;
+              if (cell) { const row = cell.closest('tr').querySelector('th');
+                if (row && getComputedStyle(row).position === 'sticky') side = r.left < row.getBoundingClientRect().right - 1; }
               // WCAG 2.4.11: hidden means none of it shows, under the header or off the screen
               return { el: (el.innerText || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30),
-                under: r.bottom <= cover + 1 || r.bottom <= 0 || r.top >= innerHeight, pill }; }""")
+                under: r.bottom <= cover + 1 || r.bottom <= 0 || r.top >= innerHeight, pill, side }; }""")
             if got and (got["under"] or got["pill"]):
                 hidden.append(got)
+            if got and got.get("side"):
+                w.errors.append(f"{tag}: F24: at 200% the focused cell {got['el']!r} sits under the sticky Lead column")
         if hidden:
             w.errors.append(f"{tag}: T12: at 200% {len(hidden)} focus steps on {tab} are hidden, e.g. {hidden[:2]}")
         await w.snap(page, tag, f"t12-zoom200-{tab[5:]}")

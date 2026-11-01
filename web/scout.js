@@ -25,7 +25,8 @@ const CAN_USE = {
     "Check one option against your CV by rule", "Explain a verdict and what is still needed",
     "What Perch read from your CV", "Compare chosen or kept options", "A note to a Temple office, shown for you to copy"],
 };
-const STUDENT_EXAMPLES = ["Only options with a deadline after 2027-03-01", "Why is my top fellowship “may be eligible”?",
+// F18: dates as the app writes them, and examples the demo brief can answer.
+const STUDENT_EXAMPLES = ["Only options with a deadline after 1 Mar 2027", "Why is my top fellowship “may be eligible”?",
   "What do my kept options still need?", "Draft a note about my kept fellowships"];
 const ARGS = {
   route: "Route", author_id: "Researcher", min_amount: "Ceiling at least", max_amount: "Ceiling at most",
@@ -38,10 +39,14 @@ const ARGS = {
   // student tools (S28: the read-as line showed their raw keys)
   deadline_after: "Deadline after", deadline_before: "Deadline before", verdict: "Verdict",
   words: "Mentions", option_id: "Option",
+  scope: "Within",  // F1: the brief's leads, or every opportunity in the store
 };
+const SCOPES = { brief: "your brief", all: "all opportunities" };
 const STATUS = { proposed: "Running…", done: "Done", not_run: "Not run", refused: "Refused", error: "Failed", repeated: "Repeat, not run again" };
-const EXAMPLES = ["Only R21 grants that close by 2027-03-01", "Small grants only: a ceiling of $200k or less",
-  "Drop anything that mentions clinical trials", "Why does the top lead fit?"];
+const EXAMPLES = ["Which of my NSF leads close by 1 Mar 2027?", "Small grants only: a ceiling of $200k or less",
+  "Leave out Department of Defense grants", "Why does the top lead fit?"];
+// F9: "start over" and its kin open a new conversation, as the button beside the box does.
+const START_OVER = /^\s*(?:please\s+)?(?:start (?:over|again|afresh)|restart|reset|clear (?:the )?(?:chat|conversation)|new (?:conversation|chat)|begin again)\b[\s.!]*$/i;
 
 // One Scout conversation per brief, kept while the brief is on screen.
 // Scout runs every step as soon as the model asks for it and shows each one (S27, S28).
@@ -195,6 +200,7 @@ function argList(c, ctx) {
     return k ? k.name : leadLabel(String(v)) || String(v).replace(/^grants_gov:/, ""); };
   return Object.entries(c.arguments || {}).filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length))
     .map(([k, v]) => [k, k === "route" ? ROUTES[v] || v
+      : k === "scope" ? SCOPES[v] || v
       : k === "sort" ? SORTS[v] || String(v).replace(/_/g, " ")
         : DATE_ARGS.has(k) && /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? formatDate(String(v))
       : ID_ARGS.has(k) ? [].concat(v).map(name).join(", ")
@@ -234,6 +240,11 @@ function draftBlock(d, ctx) {
   const text = `Subject: ${d.subject}\n\n${d.body}`;
   return h("details", { class: "scout-draft", open: true },
     h("summary", { text: `The draft to ${d.office}` }),
+    // F7: who wrote the opening paragraph; code writes the rest of every draft.
+    d.opening_by === "model" ? h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
+      h("span", { text: "The opening paragraph is written by a model and checked against the records it cites. The rest is Perch’s code." }))
+      : d.opening_by === "code" ? h("p", { class: "provenance" }, h("span", { class: "tag", text: "Code, no model" }),
+        h("span", { text: d.opening_note || "Every line is written by Perch’s code." })) : null,
     d.opening_withheld ? h("p", { class: "hint", text: "The model’s opening failed the checks twice; a plain sentence replaces it." }) : null,
     // Focusable, so a keyboard can scroll a long draft (axe scrollable-region-focusable).
     h("pre", { class: "draft-text", tabindex: "0", "aria-label": `The draft to ${d.office}`, text }),
@@ -268,15 +279,18 @@ function answer(x, ctx, thinking) {
   // brief and starts Scout's history afresh.
   if (x.limit) return h("div", { class: "notice warn scout-limit" }, icon("warn"),
     h("div", {}, h("p", { text: "Scout has reached its limit for this conversation. Start a new conversation to keep asking; your brief, kept leads and drafts stay as they are." }),
-      h("button", { class: "btn", type: "button", "data-key": "scout-new", onclick: () => newConversation(ctx) }, h("span", { text: "Start a new conversation" }))));
+      h("button", { class: "btn", type: "button", "data-key": "scout-new", onclick: () => newConversation(ctx, x.question) }, h("span", { text: "Start a new conversation and ask again" }))));
   if (x.status === "stopped" || x.status === "failed") return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: `Scout stopped: ${(x.errors || []).join("; ") || "no answer"}.` }));
   return null;
 }
 
 // T4: forget this conversation on the page; the next question opens a new Scout session
-// on the same brief.
-function newConversation(ctx) {
+// on the same brief. F14: a question the budget stopped is asked again in the new one.
+function newConversation(ctx, again = "") {
+  const typed = T.draft;
   reset(T.briefId);
+  T.draft = again || typed;
+  if (again) { send(ctx); ctx.announce("New conversation. Scout is asking your question again."); return; }
   ctx.rerender();
   const q = document.getElementById("scout-q");
   if (q) q.focus();
@@ -290,8 +304,22 @@ function withCites(text, ctx) {
   const clean = String(text).replace(/\*\*(.+?)\*\*/g, "$1")
     .replace(/\$(\d[\d,]*(?:\.\d+)?)/g, (m, n) => (Number.isFinite(Number(n.replace(/,/g, ""))) ? money(Number(n.replace(/,/g, ""))) : m));
   const out = [];
-  let list = null;
+  let list = null, table = null;
   for (const line of clean.split("\n")) {
+    // F11: a pipe table becomes a table; its |---| rule line is dropped.
+    const row = line.match(/^\s*\|(.*)\|\s*$/);
+    if (row) {
+      list = null;
+      const cells = row[1].split("|").map((c) => c.trim());
+      if (cells.every((c) => /^:?-{2,}:?$/.test(c) || !c)) continue;
+      if (!table) {
+        table = h("table", { class: "scout-table" }, h("thead", {}, h("tr", {}, ...cells.map((c) => h("th", { scope: "col" }, ...inline(c, ctx))))), h("tbody"));
+        out.push(h("div", { class: "scout-table-wrap", tabindex: "0", role: "region", "aria-label": "Table in Scout’s answer" }, table));
+      } else table.tBodies[0].append(h("tr", {}, ...cells.map((c, i) => h(i ? "td" : "th", i ? {} : { scope: "row" }, ...inline(c, ctx)))));
+      continue;
+    }
+    if (table && !line.trim()) continue;
+    table = null;
     const item = line.match(/^\s*[*-]\s+(.*)$/);
     if (item) {
       if (!list) { list = h("ul", { class: "scout-list" }); out.push(list); }
@@ -342,12 +370,16 @@ function askForm(ctx, busy) {
       h("input", { id: "scout-q", type: "text", maxlength: "1000", autocomplete: "off", value: T.draft,
         placeholder: T.data ? "Ask a follow-up" : ctx.student ? "Ask Scout, for example: only options with a deadline after March" : "Ask Scout, for example: only R21s that close by March",
         oninput: (e) => { T.draft = e.target.value; } }),
-      h("button", { class: "btn primary", type: "submit", disabled: busy }, h("span", { text: "Ask" }))));
+      h("button", { class: "btn primary", type: "submit", disabled: busy }, h("span", { text: "Ask" })),
+      // F9: always there once a conversation has begun, not only at the budget stop.
+      T.data ? h("button", { class: "btn quiet scout-new", type: "button", "data-key": "scout-new-any", disabled: busy,
+        title: "Start a new conversation", onclick: () => newConversation(ctx) }, h("span", { text: "New conversation" })) : null));
 }
 
 async function send(ctx) {
   const q = T.draft.trim();
   if (!q || T.sending) return;
+  if (START_OVER.test(q) && T.data) { T.draft = ""; newConversation(ctx); return; }
   T.sending = true;
   T.stick = true;  // asking jumps to the newest reply
   T.error = null;

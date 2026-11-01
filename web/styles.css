@@ -694,7 +694,8 @@ body.on-help .banner { display: none; }
 
 /* ---------- Compare (S12) ---------- */
 @media (max-width: 479px) { .tab { font-size: 14px; gap: 4px; padding: 0 2px; white-space: nowrap; } .tabs.student .tab { white-space: normal; text-align: center; } }
-.compare-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--raised); margin: 12px 0; }
+.compare-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--raised); margin: 12px 0;
+  scroll-padding-left: 220px; }  /* F24: a focused cell scrolls clear of the sticky Lead column */
 .compare-wrap:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 table.compare { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 15px; }
 .compare th, .compare td { text-align: left; vertical-align: top; padding: 0; border-bottom: 1px solid var(--line); }
@@ -1166,7 +1167,10 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 @media (max-width: 600px) {
   .compare-wrap { overflow: visible; border: 0; background: transparent; }
   table.compare.stack { min-width: 0; }
-  table.compare.stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  /* F13: the cards carry each cell's name, and Sort by sorts, so the hidden header row and its
+     sort buttons leave the page and the tab order. */
+  table.compare.stack thead { display: none; }
+  table.compare.stack .col-closes .cell-text { white-space: normal; }
   table.compare.stack, table.compare.stack tbody, table.compare.stack tr, table.compare.stack th, table.compare.stack td { display: block; }
   table.compare.stack tr { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); margin-bottom: 12px; overflow: hidden; }
   table.compare.stack tbody th { position: static; max-width: none; background: var(--chip); }
@@ -1234,3 +1238,19 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
 .scout-limit p { margin: 0; }
 /* T24: the sample tag in a Compare row is as wide as its words, not the cell. */
 .compare tbody th .tag.sample { display: inline-flex; width: fit-content; margin-top: 4px; }
+/* F11: a pipe table in Scout's answer reads as a table; it scrolls inside its own box. */
+.scout-table-wrap { overflow-x: auto; margin: 4px 0 8px; white-space: normal; border-radius: 6px; }
+.scout-table-wrap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.scout-table { border-collapse: collapse; font-size: 14px; line-height: 1.4; min-width: 100%; }
+.scout-table th, .scout-table td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+.scout-table thead th { background: var(--surface); }
+.scout-table tbody th { font-weight: 600; }
+/* F9: New conversation sits beside Ask; on a narrow screen the box takes its own line. */
+.scout-ask-row .scout-new { padding: 0 14px; white-space: nowrap; }
+@media (max-width: 479px) {
+  .scout-ask-row:has(.scout-new) { flex-wrap: wrap; }
+  .scout-ask-row:has(.scout-new) input { flex: 1 1 100%; }
+  .scout-ask-row:has(.scout-new) .btn { flex: 1 1 auto; }
+}
+/* F25: the hint under Find says what is missing */
+.hint-row .field-error { color: var(--brick); font-weight: 600; }
