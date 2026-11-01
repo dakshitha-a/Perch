@@ -1783,7 +1783,9 @@ async def ux_zoom(w: Walk, page: Page, base: str, tag: str) -> None:
               const p = document.querySelector('.keep-float'); let pill = false;
               if (p && getComputedStyle(p).visibility !== 'hidden' && getComputedStyle(p).display !== 'none' && !p.contains(el)) {
                 const a = p.getBoundingClientRect(); pill = a.left < r.right && a.right > r.left && a.top < r.bottom && a.bottom > r.top; }
-              return { el: (el.innerText || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30), under: r.top < cover - 1, pill }; }""")
+              // WCAG 2.4.11: hidden means none of it shows, under the header or off the screen
+              return { el: (el.innerText || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30),
+                under: r.bottom <= cover + 1 || r.bottom <= 0 || r.top >= innerHeight, pill }; }""")
             if got and (got["under"] or got["pill"]):
                 hidden.append(got)
         if hidden:
