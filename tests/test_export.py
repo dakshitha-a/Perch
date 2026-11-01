@@ -74,3 +74,43 @@ def test_the_kept_leads_table_writes_closes_as_the_screen():
     assert "2027-09-30" not in md
     page = ex.to_html(ex.blocks(brief, None, leads, opps, {}, works, rows), "t")
     assert "2027-09-30" not in page and "<td>30 Sep 2027</td>" in page
+
+
+def _student_inputs():
+    """A SYNTHETIC student brief: three fellowships (the second dismissed) and one sample."""
+    from perch.schemas import Scholarship, ScholarshipEligibility
+
+    brief = Brief(id="s", researcher_id="private:student", options={"as_of": "2026-10-31",
+                                                                     "student": True}, **KW)
+    pub = {"source": "temple_sdfa", "source_url": "https://undergraduate.temple.edu/x",
+           "fetched_at": T}
+    recs = {f"temple_sdfa:f{i}": Scholarship(id=f"temple_sdfa:f{i}", name=f"SYNTHETIC "
+                                             f"fellowship {i}", **pub) for i in (1, 2, 3)}
+    recs["sample:sch-0001"] = Scholarship(
+        id="sample:sch-0001", name="Quillfen SYNTHETIC Award", source="synthetic",
+        source_url="synthetic://sample/sch-0001", fetched_at=T, canary="PERCH-SAMPLE-TEST",
+        eligibility=ScholarshipEligibility(gpa_min=3.5))
+    leads = [Lead(id=f"s:F{i}", brief_id="s", route="F", record_id=f"temple_sdfa:f{i}",
+                  rank=i, status="dismissed" if i == 2 else "kept" if i == 3 else "new",
+                  verdict="may be eligible", verdict_lines=["The listing says who may apply."],
+                  **pub) for i in (1, 2, 3)]
+    leads.append(Lead(id="s:S1", brief_id="s", route="S", record_id="sample:sch-0001", rank=1,
+                      sample=True, verdict="not eligible",
+                      verdict_lines=["Asks for a GPA of at least 3.50; your CV says 3.40."],
+                      gaps=["2 letters of recommendation; your CV lists 1 referee", "An essay"],
+                      explanation="[sch-0001] supports undergraduates. Cited work: "
+                      "private:achievement-a led a SYNTHETIC survey [achievement-a].",
+                      cited_ids=["sample:sch-0001", "private:achievement-a"],
+                      source="synthetic", source_url="synthetic://sample/sch-0001",
+                      fetched_at=T))
+    return brief, leads, recs
+
+
+def test_the_student_export_numbers_without_gaps_and_counts_dismissed():
+    """R8: the student export ran 1, 2, 4, 5 with no line about the dismissed option, and
+    its footer said only how many were shown (Q11's fix covered researchers only)."""
+    brief, leads, recs = _student_inputs()
+    md = ex.to_markdown(ex.student_blocks(brief, leads, recs))
+    assert "### 1. SYNTHETIC fellowship 1" in md and "### 2. SYNTHETIC fellowship 3 (kept)" in md
+    assert "fellowship 2" not in md and "1 dismissed option is left out." in md
+    assert "1 kept, 3 shown, 1 dismissed." in md

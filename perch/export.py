@@ -215,6 +215,8 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
     masked, as for every private export."""
     as_of = brief.options.get("as_of") or date.today().isoformat()
     shown = [x for x in leads if x.status != "dismissed"]
+    gone = [x for x in leads if x.status == "dismissed"]
+    kept = [x for x in leads if x.status == "kept"]
     out = [Block("h1", "Perch student brief (private)"),
            Block("p", f"Brief as of {_day(as_of)}. Eligibility is checked by rule from your CV; "
                       "\"may be eligible\" means Perch could not check everything. A brief is "
@@ -225,16 +227,19 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
         out.append(Block("note", SAMPLE_BANNER))
     for route, title, office in (("F", "Fellowships (public)", for_route("F")),
                                  ("S", "Scholarships and awards (sample)", for_route("S"))):
-        xs = [x for x in shown if x.route == route]
+        xs = sorted((x for x in shown if x.route == route), key=lambda x: x.rank or 0)
         out.append(Block("h2", f"{title} ({len(xs)})"))
         if route == "S":
             out.append(Block("note", SAMPLE_BANNER))
-        for x in xs:
+        if n := sum(x.route == route for x in gone):  # numbered 1 to n, as Q11 (R8)
+            out.append(Block("p", f"{n} dismissed {'option is' if n == 1 else 'options are'} "
+                                  "left out."))
+        for i, x in enumerate(xs, 1):
             rec = records.get(x.record_id)
             name = getattr(rec, "name", None) or getattr(rec, "title", x.record_id)
             mark = " (kept)" if x.status == "kept" else ""
             badge = " [SAMPLE]" if x.sample else ""
-            out.append(Block("h3", f"{x.rank}. {name}{badge}{mark}"))
+            out.append(Block("h3", f"{i}. {name}{badge}{mark}"))
             # The verdict, its rule lines and the gaps are written by code from the rules
             # and the record: they are never withheld; only model text is (Q12).
             items = [f"Verdict: {x.verdict}", *x.verdict_lines]
@@ -256,8 +261,9 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
             elif x.sample:
                 out.append(Block("p", f"Record: {x.record_id} (SYNTHETIC sample, no web page)"))
     out.append(Block("h2", "About this export"))
-    out.append(Block("p", f"{len(shown)} shown. Text marked Model was written by a language "
-                     "model and checked against the records it cites."))
+    out.append(Block("p", f"{len(kept)} kept, {len(shown)} shown"
+                     + (f", {len(gone)} dismissed" if gone else "") + ". Text marked Model was "
+                     "written by a language model and checked against the records it cites."))
     out.append(Block("p", grants_gov.ATTRIBUTION))
     return out
 
