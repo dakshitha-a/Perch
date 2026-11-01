@@ -100,6 +100,13 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
             </sc-if>
           </div>
           <p style="margin: 0; font-size: 14px; line-height: 1.5; color: {{c.ink3}}">{{orderNote}}</p>
+          <sc-if value="{{hasChips}}" hint-placeholder-val="{{ true }}">
+            <div role="group" aria-label="Show only grants from" style="display: flex; flex-wrap: wrap; gap: 6px">
+              <sc-for list="{{chips}}" as="ch" hint-placeholder-count="5">
+                <button type="button" aria-pressed="{{ch.on}}" onClick="{{ch.pick}}" style="min-height: 36px; padding: 4px 10px; border-radius: 999px; border: 1px solid {{ch.border}}; background: {{ch.bg}}; color: {{ch.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer"><span>{{ch.label}}</span><span style="font-weight: 500; color: {{ch.nInk}}">{{ch.n}}</span></button>
+              </sc-for>
+            </div>
+          </sc-if>
 
           <sc-if value="{{waiting}}" hint-placeholder-val="{{ false }}">
             <div style="display: flex; flex-direction: column; gap: 12px">
@@ -109,7 +116,7 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
           </sc-if>
 
           <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px">
-            <sc-for list="{{leads}}" as="l" hint-placeholder-count="3">
+            <sc-for list="{{mainLeads}}" as="l" hint-placeholder-count="3">
               <li class="fade-in" style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{l.border}}; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
                 <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap">
                   <sc-for list="{{l.tags}}" as="tg" hint-placeholder-count="2">
@@ -144,6 +151,47 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
               </li>
             </sc-for>
           </ul>
+          <sc-if value="{{hasWeak}}" hint-placeholder-val="{{ true }}">
+            <details style="margin-top: 6px">
+              <summary style="cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: {{c.accent}}">{{weakLabel}}</summary>
+              <ul style="list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px">
+                <sc-for list="{{weakLeads}}" as="l" hint-placeholder-count="3">
+                  <li class="fade-in" style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{l.border}}; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap">
+                      <sc-for list="{{l.tags}}" as="tg" hint-placeholder-count="2">
+                        <span style="padding: 3px 8px; border-radius: 6px; background: {{c.chip}}; font-size: 12px; font-weight: 600">{{tg}}</span>
+                      </sc-for>
+                      <sc-if value="{{l.hasFit}}" hint-placeholder-val="{{ true }}">
+                        <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; background: {{l.pillBg}}; color: {{l.pillInk}}; font-size: 13px; font-weight: 650; white-space: nowrap"><span style="font-weight: 500; color: {{c.ink2}}">Match</span>{{l.band}}<b style="min-width: 28px; height: 22px; border-radius: 999px; display: inline-grid; place-items: center; padding: 0 6px; font-size: 13px; background: {{l.badgeBg}}; color: {{l.badgeInk}}; box-shadow: {{l.badgeRing}}">{{l.score}}</b></span>
+                      </sc-if>
+                      <sc-if value="{{l.plainRight}}" hint-placeholder-val="{{ false }}">
+                        <span style="margin-left: auto; font-size: 13px; color: {{c.ink2}}">{{l.rightLabel}} <b style="color: {{c.ink}}">{{l.rightValue}}</b></span>
+                      </sc-if>
+                    </div>
+                    <button type="button" onClick="{{l.select}}" style="text-align: left; padding: 0; border: 0; background: transparent; color: {{c.ink}}; font: 600 19px/1.3 Newsreader, Georgia, serif; cursor: pointer">{{l.title}}</button>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; color: {{c.ink2}}">
+                      <span>{{l.fact1}}</span>
+                      <span>{{l.fact2}}</span>
+                    </div>
+                    <details style="border-top: 1px solid {{c.line}}; padding-top: 8px">
+                      <summary style="cursor: pointer; min-height: 40px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: {{c.accent}}">{{l.whyLabel}}</summary>
+                      <sc-if value="{{l.explained}}" hint-placeholder-val="{{ true }}">
+                        <p style="margin: 4px 0 0; font-size: 14px; line-height: 1.55; color: {{c.ink2}}">{{l.why}} <span style="padding: 2px 7px; border-radius: 999px; border: 1px solid {{c.accent}}; color: {{c.accent}}; font-size: 12px; font-weight: 600">Paper 1</span> <span style="padding: 2px 7px; border-radius: 999px; border: 1px solid {{c.accent}}; color: {{c.accent}}; font-size: 12px; font-weight: 600">Paper 2</span></p>
+                      </sc-if>
+                      <sc-if value="{{l.pending}}" hint-placeholder-val="{{ false }}">
+                        <p style="margin: 4px 0 0; font-size: 14px; color: {{c.ink3}}">A model is writing this now. It is checked against the cited papers before it shows.</p>
+                      </sc-if>
+                    </details>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                      <button type="button" onClick="{{l.keep}}" aria-pressed="{{l.keptAria}}" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid {{l.keepBorder}}; background: {{l.keepBg}}; color: {{l.keepInk}}; font: 600 14px Inter, sans-serif; cursor: pointer">{{l.keepLabel}}</button>
+                      <button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink2}}; font: 600 14px Inter, sans-serif; cursor: pointer">Dismiss</button>
+                      <button type="button" onClick="{{l.select}}" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 0; background: transparent; color: {{c.ink2}}; font: 600 14px Inter, sans-serif; cursor: pointer; text-decoration: underline">Evidence</button>
+                    </div>
+                  </li>
+                </sc-for>
+              </ul>
+            </details>
+          </sc-if>
         </section>
 
         <div class="rail" style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px; position: sticky; top: 16px; max-height: calc(100vh - 32px)">
@@ -471,7 +519,7 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
 class Component extends DCLogic {
   constructor(p) {
     super(p);
-    this.state = { step: 0, tab: 'routes', route: 'A', sort: 'order', evOpen: false, sel: 0, kept: {}, office: 'rd', draft: false, msgs: [], q: '', rvTarget: ['[Kept grant 1]', '[Kept grant 2]', '[Top grant in Routes]'][0], rvText: '' };
+    this.state = { step: 0, tab: 'routes', route: 'A', sort: 'order', filter: null, evOpen: false, sel: 0, kept: {}, office: 'rd', draft: false, msgs: [], q: '', rvTarget: ['[Kept grant 1]', '[Kept grant 2]', '[Top grant in Routes]'][0], rvText: '' };
     this.timers = [];
     this.xt = {};
     this.timer = null;
@@ -568,6 +616,8 @@ class Component extends DCLogic {
       { tags: ['NIH', '[Activity code]'], band: 'strong', agency: 'National Institutes of Health', dept: 'Department of Health and Human Services', closes: 'Closes [close date] · in [N] days', note: null },
       { tags: ['NSF'], band: 'good', agency: 'U.S. National Science Foundation', dept: null, closes: 'Closes [date decades out] · Proposals accepted anytime', note: 'Proposals accepted anytime' },
       { tags: ['DOD · [sub-agency]'], band: 'partial', agency: '[sub-agency]', dept: 'Department of Defense', closes: 'Closes [close date] · in [N] days', note: null },
+      { tags: ['NIH', '[Activity code]'], band: 'weak', agency: 'National Institutes of Health', dept: 'Department of Health and Human Services', closes: 'Closes [close date] · in [N] days', note: null },
+      { tags: ['NSF'], band: 'weak', agency: 'U.S. National Science Foundation', dept: null, closes: 'Closes [close date] · in [N] days', note: null },
     ];
     const grants = G.map((g, i) => ({
       id: 'a' + i, kind: 'Funding opportunity', source: 'Grants.gov',
@@ -592,8 +642,17 @@ class Component extends DCLogic {
     }));
     const sorted = st.sort === 'closing' ? [...grants].sort((a, b) => a.closeRank - b.closeRank)
       : grants;
-    const list = st.route === 'A' ? (grantsIn ? sorted : []) : (industryIn ? industry : []);
-    const pool = st.route === 'A' ? sorted : industry;
+    // One-click filters (U25): each agency as its tag reads and each activity code, counted from the
+    // grants on screen. One chip at a time; All clears it. The chip row sits under the sort switch.
+    const tally = (get) => { const m = new Map(); grants.forEach((g) => { const v = get(g); if (v) m.set(v, (m.get(v) || 0) + 1); }); return m; };
+    const agencies = tally((g) => g.tags[0]), codes = tally((g) => g.tags[1]);
+    const byCount = (m, kind) => [...m].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([value, n]) => ({ kind, value, n }));
+    const chipDefs = [{ kind: null, value: 'All', n: null }, ...byCount(agencies, 'agency'), ...byCount(codes, 'code')];
+    const filt = st.filter;
+    const passes = (g) => !filt || (filt.kind === 'agency' ? g.tags[0] === filt.value : g.tags[1] === filt.value);
+    const shown = sorted.filter(passes);
+    const list = st.route === 'A' ? (grantsIn ? shown : []) : (industryIn ? industry : []);
+    const pool = st.route === 'A' ? shown : industry;
     const sel = pool[Math.min(st.sel, pool.length - 1)];
     const keptList = [...grants, ...industry].filter((l) => st.kept[l.id]).map((l) => ({
       title: l.title, kind: l.kind, kindShort: l.id[0] === 'a' ? 'Grant' : 'Industry',
@@ -612,14 +671,26 @@ class Component extends DCLogic {
         explained: l.id[0] === 'b' || explained, pending: l.id[0] === 'a' && !explained,
         hasFit: l.id[0] === 'a', plainRight: l.id[0] === 'b',
         score: '[score]',
-        pillBg: l.band === 'partial' ? c.chip : c.accentSoft, pillInk: l.band === 'partial' ? c.ink2 : c.ink,
+        pillBg: l.band === 'partial' || l.band === 'weak' ? c.chip : c.accentSoft, pillInk: l.band === 'partial' || l.band === 'weak' ? c.ink2 : c.ink,
         badgeBg: l.band === 'strong' ? c.accent : c.surface, badgeInk: l.band === 'strong' ? c.onAccent : l.band === 'good' ? c.ink : c.ink2,
-        badgeRing: l.band === 'good' ? `inset 0 0 0 2px ${c.accent}` : l.band === 'partial' ? `inset 0 0 0 1px ${c.line}` : 'none',
+        badgeRing: l.band === 'good' ? `inset 0 0 0 2px ${c.accent}` : l.band === 'partial' || l.band === 'weak' ? `inset 0 0 0 1px ${c.line}` : 'none',
         keptAria: String(k), keepLabel: k ? 'Kept' : 'Keep',
         keepBorder: k ? c.accent : c.line, keepBg: k ? c.accent : 'transparent', keepInk: k ? c.onAccent : c.ink,
         keep: () => this.setState({ kept: { ...st.kept, [l.id]: !k }, draft: false }),
         select: () => this.setState({ sel: i }),
       };
+    });
+    // Good and strong matches first; weak ones (Match below 40) fold under a count (U24).
+    // Without a stronger lead nothing folds.
+    const folds = st.route === 'A' && leads.some((l) => l.band !== 'weak');
+    const weakLeads = folds ? leads.filter((l) => l.band === 'weak') : [];
+    const mainLeads = folds ? leads.filter((l) => l.band !== 'weak') : leads;
+    const chips = chipDefs.map((d) => {
+      const on = d.kind ? !!filt && filt.kind === d.kind && filt.value === d.value : !filt;
+      return { label: d.value, n: d.n != null ? ' ' + d.n : '', on: String(on),
+        border: on ? c.accent : c.line, bg: on ? c.accent : c.surface, ink: on ? c.onAccent : c.ink,
+        nInk: on ? c.onAccent : c.ink3,
+        pick: () => this.setState({ filter: d.kind && !on ? { kind: d.kind, value: d.value } : null, sel: 0 }) };
     });
     const OFF = [
       { key: 'rd', name: 'Research Development', note: 'For the kept grants' },
@@ -740,7 +811,8 @@ class Component extends DCLogic {
           : 'In Perch’s order: highest match first. Match is how closely each listing’s text matches the papers, from 0 to 100. It is not the odds of funding.')
         : 'Companies with at least two kinds of public signal, counted by code. A lead is an inference, not a verified interest in funding.',
       waiting: list.length === 0,
-      leads,
+      mainLeads, weakLeads, hasWeak: weakLeads.length > 0, weakLabel: `Weaker matches (${weakLeads.length})`,
+      chips, hasChips: st.route === 'A' && grantsIn && agencies.size + codes.size >= 2,
       ev: { kind: sel.kind, title: sel.title, rows: sel.rows, source: sel.source, notes: sel.notes || '', hasNotes: !!sel.notes },
       evNotesCls: st.evOpen ? '' : 'clamp', evOpenAria: String(!!st.evOpen),
       evNotesLabel: st.evOpen ? 'Show less' : 'Show the full text',
