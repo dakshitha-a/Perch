@@ -219,3 +219,18 @@ def test_the_industry_section_says_what_the_tab_says_and_one_line_when_skipped()
     assert "Industry leads (0)" not in md and "No company had" not in md
     assert ex.INDUSTRY_NEEDS_PAPERS in md and ex.INDUSTRY_NOTE not in md
     assert f'"{ex.INDUSTRY_NEEDS_PAPERS}"' in app
+
+
+def test_researcher_export_inference_speaks_to_the_researcher():
+    """S32 live check: the Markdown and print exports' Inference lines said "The
+    researcher's", where Scout says "your" (F12). The same rewrite applies there."""
+    brief, leads, opps, works = _inputs()
+    leads[0] = leads[0].model_copy(update={
+        "inference": "The researcher's SYNTHETIC tool fits, and the researcher builds it "
+                     "[W1234567]."})
+    bs = ex.blocks(brief, None, leads, opps, {}, works, [])
+    md, page = ex.to_markdown(bs), ex.to_html(bs, "SYNTHETIC")
+    for out in (md, page):
+        assert "researcher&#x27;s SYNTHETIC" not in out
+        assert "researcher's SYNTHETIC" not in out
+        assert "Your SYNTHETIC tool fits, and you build it" in out

@@ -194,6 +194,8 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
            masker: egress.Masker | None = None, documents: bool = False) -> list[Block]:
     """Private-derived text is withheld unless a masker is given (perch.egress).
     `documents`: the session holds documents, so every model text counts as private."""
+    from perch.scout.tools import second_person  # lazy: perch.scout imports this module
+
     name = researcher.display_name if researcher else brief.researcher_id
     if brief.researcher_id.startswith("private:"):  # F27: a brief from documents alone
         name = "your documents"
@@ -263,10 +265,10 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
             out.append(Block("model", egress.release_model(
                 name_papers(x.explanation, works, skip=own, said=said), x.cited_ids, masker,
                 documents)))
-            if x.inference:
+            if x.inference:  # spoken to the researcher, as Scout says it (F12)
                 out.append(labelled("Inference", egress.release_model(
-                    name_papers(x.inference, works, skip=own, said=said), x.cited_ids,
-                    masker, documents)))
+                    name_papers(second_person(x.inference), works, skip=own, said=said),
+                    x.cited_ids, masker, documents)))
         elif x.flagged:
             out.append(Block("note", "The explanation was withheld: it failed the checks twice."))
         cited = egress.public_only(works[f"https://openalex.org/{c}"] for c in x.cited_ids
