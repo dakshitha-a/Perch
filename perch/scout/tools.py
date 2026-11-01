@@ -128,6 +128,23 @@ def _profile(ctx: ScoutContext, author_id: str | None) -> Profile:
     return ctx.profile
 
 
+def fit_sentence(lead: Lead) -> str | None:
+    """The lead's checked fit sentence from the brief, as its card shows it, without the
+    citation brackets (T8): one sentence of why, with no model call."""
+    import re
+
+    if not lead.inference or lead.flagged:
+        return None
+    return " ".join(re.sub(r"\s*\[[^\[\]]*\]", "", lead.inference).split()) or None
+
+
+def _brief_leads(ctx: ScoutContext) -> list[Lead]:
+    """The brief's grant leads in its own order by Match, dismissed ones left out."""
+    got = ctx.service.get(ctx.brief_id) if ctx.brief_id else None
+    return sorted((x for x in (got[1] if got else []) if x.route == "A"
+                   and x.status != "dismissed"), key=lambda x: x.rank or 0)
+
+
 # --- the tools ---
 
 def resolve_author(ctx: ScoutContext, name: str) -> dict:
@@ -219,9 +236,12 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                     top=max(1, min(int(top), 20)), timings_log=None,
                     index_new=getattr(s, "index_writes", True), **extra)  # a private session: no
     leads = []
+    in_brief = {x.record_id: i for i, x in enumerate(_brief_leads(ctx), 1)}
     for i, x in enumerate(b.leads, 1):
         o = x.opportunity
         leads.append({"rank": i, "id": ctx.see(o), "title": o.title, "agency": o.agency,
+                      # "these" are the brief's leads (T1): its own place in the brief
+                      **({"brief_rank": in_brief[o.id]} if o.id in in_brief else {}),
                       "activity_code": o.activity_code,
                       # As the cards write it (Q22); a far-off placeholder date reads as
                       # the record's own words (U3, Q20).
@@ -239,6 +259,9 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                     o.close_date or date.max)
 
         leads.sort(key=soon)
+    elif sort == "award_ceiling":  # the largest ceiling first; none stated last (T6)
+        top = {ctx.see(x.opportunity): x.opportunity.award_ceiling for x in b.leads}
+        leads.sort(key=lambda d: -(top[d["id"]] or -1))
     reasons: dict[str, int] = {}
     for rs in b.rejected.values():
         for why in rs:
@@ -247,7 +270,10 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
     top_reasons = dict(sorted(reasons.items(), key=lambda kv: -kv[1])[:6])
     return {"source": "Grants.gov federal opportunities in the store", "as_of":
             ctx.as_of.isoformat(), "retrieved": b.retrieved, "removed_by_filters":
-            len(b.rejected), "top_removal_reasons": top_reasons, "leads": leads}
+            len(b.rejected), "top_removal_reasons": top_reasons, "leads": leads,
+            **({"note": "A lead with brief_rank is on the user's brief, at that place. For "
+                "\"these\" or \"my\" leads, name those first, then any others as further "
+                "leads."} if in_brief else {})}
 
 
 def _route_b_leads(ctx: ScoutContext, author_id: str | None) -> list[Lead]:
@@ -362,11 +388,14 @@ def get_record(ctx: ScoutContext, id: str) -> dict:
     if rec is None or not belongs_to(rec, ctx.brief_id):  # another visitor's (review S9)
         raise ToolError(f"no record {id!r} in the store")
     d = rec.model_dump(mode="json", exclude_none=True)
-    if isinstance(rec, Opportunity) and rec.close_date:  # the card's words (U3, Q20, Q22)
+    if isinstance(rec, Opportunity) and placeholder_close(rec, ctx.as_of):
+        # T7 (Q20 again): the record's own words come first and no close date is given,
+        # so the model quotes the words and cannot say the date is missing or far off.
+        d.pop("close_date", None)
+        d.pop("close_date_note", None)
+        d = {"deadline": f"{rec.close_date_note} (the record's own words)", **d}
+    elif isinstance(rec, Opportunity) and rec.close_date:  # as the cards write it (Q22)
         d["close_date"] = closes_text(rec, ctx.as_of)
-        if placeholder_close(rec, ctx.as_of):
-            d["close_date_placeholder"] = (f"{rec.close_date.isoformat()}: a far-off "
-                                           "placeholder date; the deadline is close_date")
     for k in ("description", "abstract"):
         if isinstance(d.get(k), str) and len(d[k]) > DESCRIPTION_CHARS:
             d[k] = d[k][:DESCRIPTION_CHARS] + " [truncated]"
@@ -408,15 +437,21 @@ def _items(ctx: ScoutContext, ids: list[str] | None) -> list[tuple[Lead, Record 
                 for x in chosen]
 
 
+def _why(lead: Lead) -> dict:
+    """T8: the lead's fit sentence from the brief, labelled as the card labels it."""
+    if lead.route != "A" or not (w := fit_sentence(lead)):
+        return {}
+    return {"why_it_fits": w}
+
+
 def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
     from perch import compare as cmp
 
     if not ids and ctx.brief_id and (got := ctx.service.get(ctx.brief_id)) \
             and not any(x.status == "kept" for x in got[1]):  # Q4
-        top = sorted((x for x in got[1] if x.route == "A" and x.status != "dismissed"),
-                     key=lambda x: x.rank or 0)[:3]
+        top = _brief_leads(ctx)[:3]
         with ctx.service.repo() as r:
-            offer = [{"id": ctx.see(o), "title": o.title} for x in top
+            offer = [{"id": ctx.see(o), "title": o.title, **_why(x)} for x in top
                      if (o := r.get(Opportunity, x.record_id)) is not None]
         return {"rows": [], "kept": 0, "top_leads": offer,
                 "note": "Nothing is kept on the brief, so there is nothing to compare. Say "
@@ -434,22 +469,21 @@ def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
             cells[label] = f"{text} ({c.note})" if c.note else text
         out = {"route": row.route, "title": row.title,
                "record": ctx.see(rec) if rec else row.record_id,
-               "kept": lead.status == "kept", **cells}
+               "kept": lead.status == "kept", **cells, **_why(lead)}
         if lead.route == "B":
             out["lead"] = ctx.see(lead)  # holds the code-written signal sentences
         rows.append(out)
-    order = [x for x in (ctx.service.get(ctx.brief_id) or (None, []))[1]
-             if x.route == "A" and x.status != "dismissed"] if ctx.brief_id else []
-    order.sort(key=lambda x: x.rank or 0)
     top = []
     with ctx.service.repo() as r:
-        for x in order[:3]:
+        for x in _brief_leads(ctx)[:3]:
             if (o := r.get(Opportunity, x.record_id)) is not None:
-                top.append({"id": ctx.see(o), "title": o.title})
+                top.append({"id": ctx.see(o), "title": o.title, **_why(x)})
     return {"rows": rows, **({"brief_top_leads": top} if top else {}),
             "note": "These rows are the leads compared, not the brief's top leads. "
             + ("brief_top_leads are the first three in the brief's own order by Match: use "
-               "them for top or best. " if top else "") + "Each cell is copied from the "
+               "them for top or best. " if top else "") + "why_it_fits is the lead's checked "
+            "fit sentence from the brief: use it for why a lead fits. Each cell is copied "
+            "from the "
             "record or counted from it by code. \"Not in the record\" means the record does "
             "not say. Industry leads "
             "are inferred from public signals, not verified. There is no effort, IP or "
@@ -525,7 +559,8 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
         "route A only). Amounts are US dollars; dates are like 2027-03-01. Only eligible, "
         "open opportunities are returned. For the next deadline, set closes_after to the "
         "as-of date and sort to close_date: closes_by drops every lead that closes after "
-        "its date.",
+        "its date. For the largest award, set sort to award_ceiling; an award floor is not "
+        "a ceiling.",
         _obj({"route": {"type": "string", "enum": ["A", "B"]}, "author_id": AUTHOR,
               "min_amount": {"type": "number", "description": "drop if the ceiling is below"},
               "max_amount": {"type": "number", "description": "drop if the ceiling is above"},
@@ -534,8 +569,9 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
               "closes_by": {**STR, "description": "drop if it closes after this date"},
               "closes_after": {**STR, "description": "drop if it closes on or before this "
                                "date"},
-              "sort": {"type": "string", "enum": ["match", "close_date"],
-                       "description": "match (the default) or close_date, soonest first"},
+              "sort": {"type": "string", "enum": ["match", "close_date", "award_ceiling"],
+                       "description": "match (the default), close_date (the soonest first) "
+                       "or award_ceiling (the largest ceiling first)"},
               "activity_codes": {**STRS, "description": "keep only these, e.g. R21, R01"},
               "keywords": {**STRS, "description": "keep if any is in the title or text"},
               "exclude_keywords": {**STRS, "description": "drop if any is in the title or "
@@ -594,6 +630,20 @@ def _fixed(t: Tool) -> Tool:
 # keeps TOOLS, because an MCP client starts without a researcher.
 SESSION_TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
     name: (_fixed(t), fn) for name, (t, fn) in TOOLS.items() if name != "resolve_author"}
+# T3: "Draft the hand-off for my top lead" drafted the two kept leads, because the draft
+# took the kept leads when no ids came. In a session the model names the leads: the top
+# lead is the first in the brief's order by Match; kept leads only when the user says so.
+SESSION_TOOLS["draft_handoff"] = (Tool(
+    "draft_handoff",
+    "Draft an email to a Temple office about the leads named in ids: research_development "
+    "for grants, technology_commercialization for industry leads. \"My top lead\" is the "
+    "first lead in the brief's order by Match, alone; \"my top three\" the first three. "
+    "Pass the kept leads' ids only when the user asks about the kept leads or the "
+    "shortlist. Returns the draft for the user to edit; Perch never sends anything.",
+    _obj({"ids": {**STRS, "description": "the leads to write about: opportunity ids such as "
+                  "grants_gov:PAR-25-123, or industry lead ids from get_org_signals"},
+          "office": TOOLS["draft_handoff"][0].parameters["properties"]["office"]}, ["ids"]),
+    strict=False), draft_handoff)
 
 
 def check_arguments(tool: Tool, args: object) -> list[str]:

@@ -11,7 +11,7 @@ from datetime import date
 from perch.llm import spec_for_role
 from perch.llm.audit import AuditedProvider, AuditLog, CountedProvider
 from perch.privacy import PrivateSettings
-from perch.schemas import Brief, Lead, Opportunity
+from perch.schemas import Brief, Lead, Opportunity, Organisation
 from perch.scout.log import ScoutLog
 from perch.scout.loop import Policy, Scout, ScoutBudget, Session
 from perch.scout.tools import ScoutContext
@@ -70,26 +70,44 @@ def make_scout(service: object, author_id: str, *, as_of: date | None = None,
 
 def brief_note(ctx: ScoutContext, b: Brief, leads: list[Lead]) -> str:
     """The brief's ranked leads, so "the third one" means something to the model, with
-    the ones kept now marked (Q4)."""
+    the ones kept now marked (Q4), each lead's deadline as its card writes it (T1, T7),
+    the top three's fit sentences (T8) and the industry leads by name (T5)."""
+    from perch.datefmt import closes
+    from perch.scout.tools import fit_sentence
+
     lines, kept = [], []
     with ctx.service.repo() as r:
         for lead in sorted((x for x in leads if x.route == "A" and x.status != "dismissed"),
                            key=lambda x: x.rank or 0):
             if (o := r.get(Opportunity, lead.record_id)) is not None:
                 mark = " (kept)" if lead.status == "kept" else ""
-                lines.append(f"{len(lines) + 1}. [{ctx.see(o)}] {o.title}{mark}")
+                due = closes(o, ctx.as_of) or "no close date in the record"
+                line = f"{len(lines) + 1}. [{ctx.see(o)}] {o.title}{mark}. Closes: {due}."
+                if len(lines) < 3 and (why := fit_sentence(lead)):
+                    line += f" Why it fits: {why}"
+                lines.append(line)
         kept = [x for x in leads if x.status == "kept"]
+        orgs = [org.name for x in sorted((x for x in leads if x.route == "B"
+                                          and x.status != "dismissed"),
+                                         key=lambda x: x.rank or 0)
+                if (org := r.get(Organisation, x.record_id)) is not None]
     if not lines:
         return ""
     k = (f"The user has kept {len(kept)} lead{'' if len(kept) == 1 else 's'} on the brief. "
-         "For questions about the kept leads, the shortlist or a comparison, call compare or "
-         "draft_handoff with no ids; pass ids only when the user names other leads."
+         "For questions about the kept leads, the shortlist or a comparison, call compare "
+         "with no ids, or draft_handoff with the kept ids; pass other ids when the user "
+         "names other leads."
          if kept else "The user has kept no lead on the brief yet. If asked about kept "
          "leads, say so and offer to compare the top three.")
     # R2: "top" and "best" mean this order, never the kept list.
     top = ("\"Top\", \"best\" or \"strongest\" leads mean this order: the first ones in this "
-           "list, whatever is kept. Answer such a question from this list and cite each lead; "
-           "do not call compare for it. Do not state Match scores or positions as numbers.")
+           "list, whatever is kept, and \"my top lead\" is lead 1 alone. Answer such a "
+           "question from this list, one sentence per lead with its Why it fits, and cite each "
+           "lead; do not call compare for it. Do not state Match scores or positions as "
+           "numbers.")
+    industry = (f"\nIndustry leads (Route B), companies whose works cite or share the "
+                f"researcher's topics: {'; '.join(orgs)}. For their counts, call "
+                "get_org_signals." if orgs else "")
     return ("\n\nThe user is looking at brief " + b.id + ". Its grant leads (Route A), in the "
             "brief's own order by Match, the strongest first (dismissed leads left out):\n"
-            + "\n".join(lines) + "\n" + top + "\n" + k)
+            + "\n".join(lines) + "\n" + top + "\n" + k + industry)

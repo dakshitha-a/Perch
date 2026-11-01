@@ -21,7 +21,11 @@ writes the answers to build/rehearsal/. Researchers are named by alias in everyt
 prints or writes. It never turns Cloud on: every session stays on local models.
 
   uv run python scripts/demo_rehearsal.py [--base http://127.0.0.1:8091] [--runs 3]
-      [--only researcher student]
+      [--only researcher student] [--kept top2|none|weak2]
+
+--kept varies what is kept before the questions (the demo keeps the top two); the model
+runs at temperature 0, so repeated runs of one conversation agree, and varying the kept
+leads is the better test of a fix.
 
 Exit code 1 unless every run of every question passes.
 """
@@ -248,16 +252,20 @@ def check_student(ex: dict) -> list[str]:
     return errs
 
 
-def researcher_run(base: str, n: int) -> dict:
+def researcher_run(base: str, n: int, kept: str = "top2") -> dict:
+    """kept: top2 (the demo, and the gate), none, or weak2 (the two weakest grants and the
+    top two companies, as QA round 3 varied it)."""
     cl = Client(base)
-    out: dict = {"run": n, "questions": []}
+    out: dict = {"run": n, "kept": kept, "questions": []}
     try:
         cl.post("/private/brief", {"author_id": AUTHOR})
         g = cl.wait_brief()
         as_of = date.fromisoformat(g["brief"]["options"]["as_of"])
         grants = sorted((x for x in g["leads"] if x["route"] == "A"
                          and x["status"] != "dismissed"), key=lambda x: x["rank"] or 0)
-        for x in grants[:2]:
+        orgs = sorted((x for x in g["leads"] if x["route"] == "B"), key=lambda x: x["rank"] or 0)
+        keep = {"top2": grants[:2], "none": [], "weak2": grants[-2:] + orgs[:2]}[kept]
+        for x in keep:
             cl.post(f"/private/leads/{x['id']}/keep")
         top = [short(x["record_id"]) for x in grants[:3]]
         closes: dict[str, date | None] = {}
@@ -312,6 +320,8 @@ def main() -> int:
     ap.add_argument("--runs", type=int, default=3)
     ap.add_argument("--only", nargs="+", default=["researcher", "student"])
     ap.add_argument("--label", default="")
+    ap.add_argument("--kept", default="top2", choices=["top2", "none", "weak2"],
+                    help="what the researcher runs keep before asking; top2 is the demo")
     a = ap.parse_args()
     report: dict = {"base": a.base, "runs": a.runs, "researcher": [], "student": []}
     for flow, fn in (("researcher", researcher_run), ("student", student_run)):
@@ -319,7 +329,7 @@ def main() -> int:
             continue
         for n in range(1, a.runs + 1):
             try:
-                r = fn(a.base, n)
+                r = fn(a.base, n, a.kept) if flow == "researcher" else fn(a.base, n)
             except Exception as e:  # noqa: BLE001 - a failed run counts as failed questions
                 r = {"run": n, "error": f"{type(e).__name__}: {alias(str(e))[:200]}",
                      "questions": []}

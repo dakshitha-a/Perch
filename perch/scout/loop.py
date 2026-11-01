@@ -21,15 +21,32 @@ import secrets
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 from typing import Literal
 
+from perch.datefmt import day
 from perch.llm import ChatResult, Message, Provider, ToolCall, ToolResult, cost_usd
 from perch.privacy import LOCAL_ADAPTERS, PrivateSettings, refuse_if_not_local
 from perch.score import match_text
 from perch.scout.log import ScoutLog, digest
-from perch.scout.tools import ALLOWLIST, SESSION_TOOLS, ScoutContext, ToolError, check_arguments
+from perch.scout.tools import (
+    ALLOWLIST,
+    SESSION_TOOLS,
+    ScoutContext,
+    ToolError,
+    check_arguments,
+    short_id,
+)
 from perch.skills import parse_json
-from perch.validate import DATE_PATTERNS, NUM_RE, check, find_dates, norm_number
+from perch.validate import (
+    DATE_PATTERNS,
+    NUM_RE,
+    _month,
+    check,
+    evidence,
+    find_dates,
+    norm_number,
+)
 
 Policy = Literal["native", "structured"]
 
@@ -40,23 +57,30 @@ Rules:
 - Use only the tools you are given. You cannot browse the web, send email, apply for \
 anything, change a record, or quote private documents. If the user asks for something no \
 tool can do, say so plainly in one sentence and do not call a tool.
-- Perch's opportunity records are federal grants from Grants.gov. There are no \
-foundation or private-sponsor records yet; say so if asked for them.
-- Call the fewest tools that answer the question. Do not call a tool again for \
-something an earlier result already shows. The lists in these instructions are a \
+- Perch's grant records are federal opportunities from Grants.gov; it has no foundation \
+records yet. Companies whose works cite the researcher's papers are industry leads: \
+get_org_signals lists them with their counts.
+- Call the fewest tools that answer the question. The lists in these instructions are a \
 snapshot: for companies, deadlines, amounts or anything else they do not show, call a \
 tool, however long the conversation.
+- A question that filters by a date, an amount, an agency or a code always runs \
+search_opportunities with those filters, even when an earlier result showed the same \
+leads. "These", "them" or "those" in such a question mean the brief's leads, kept or not.
+- Today is the as-of date. A month named with no year means its next one after today: \
+"before March" means closes_by set to the 1st of the next March.
 - "Top", "best" or "strongest" leads mean the brief's own order by Match, the strongest \
 first, never the kept leads. Only a question about the kept leads, the shortlist or a \
 comparison uses the kept leads.
 - "The next deadline" means the soonest close date after the as-of date: call \
 search_opportunities with closes_after set to the as-of date and sort set to close_date.
+- When a record gives its deadline in words, such as "Proposals accepted anytime", quote \
+those words.
 - Every fact in your answer comes from a tool result. Cite the record id in square \
 brackets right after the fact, like [grants_gov:PAR-25-123] or [W2741809807].
 - Copy dates and dollar amounts exactly as the record gives them and cite that record. \
 Never compute, round, estimate or count. If a record has no value for something, say \
 that it is not in the record.
-- Answer in two to five short, plain sentences."""
+- Do not apologise. Answer in two to five short, plain sentences."""
 
 STRUCTURED = """You work in steps. Each reply is one JSON object:
 {"action": "call", "tool": "<tool name>", "arguments": {...}, "answer": ""} to call one \
@@ -78,6 +102,7 @@ STEP_SCHEMA = {"type": "object", "properties": {
 
 # Steps whose result is a draft for the user to copy: the answer line is code (R3, R20).
 DRAFT_TOOLS = ("draft_handoff", "draft_note")
+SEARCH_TOOLS = ("search_opportunities", "search_options")
 # Q5: the reminder sent once when an answer ran no tool and cites nothing.
 NUDGE = ("You answered without calling a tool, and your answer cites no record. The lists "
          "in your instructions are a snapshot, and earlier results may be out of date. If "
@@ -93,18 +118,36 @@ ACCESS_NUDGE = ("Your answer says you have no access, or asks for an ID or an up
                 "user's public records and any documents they added. Call one of your tools, "
                 "or answer from the results you have. Never ask for an OpenAlex ID or an "
                 "upload.")
-# R21: a follow-up that changes a filter ("now only the ones closing after 1 March 2027")
-# was answered from the last list in memory, so no filter showed and no record backed the
-# dates. Such a question, answered with no tool, is sent back once.
+# R21, T1, T6: a question that filters ("now only the ones closing after 1 March 2027",
+# "which of these close before March?", "the largest ceiling") answered with no tool, gave
+# no filter to see and no record behind its dates. It is sent back once, naming the search
+# tool. The reminder is an instruction, not a complaint: worded as "you answered from an
+# earlier result", it drew an apology and no call (T1).
+MONTHS_RE = (r"(?:january|february|march|april|june|july|august|september|october|november|"
+             r"december|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec|(?-i:May))")
 FILTER_Q_RE = re.compile(r"\b(?:only|closing|closes?|after|before|until|under|over|above|"
-                         r"below|at least|more than|less than|NIH|NSF|DOE|DOD|NASA|USDA|"
-                         r"[RKFUP]\d\d)\b", re.I)
-FILTER_NUDGE = ("This question changes a filter, and you answered from an earlier result "
-                "without calling a tool. Call your search tool again with every filter the "
-                "user has given, such as agencies and closes_after, so the filter shows and "
-                "each date comes from a record. If no tool can apply it, give your answer "
-                "again.")
-# Refusals the rules ask for, which need no tool: they are not nudged.
+                         r"below|at least|more than|less than|soonest|largest|biggest|"
+                         r"smallest|highest|lowest|most money|ceilings?|NIH|NSF|DOE|DOD|NASA|"
+                         rf"USDA|[RKFUP]\d\d|eligib\w*|{MONTHS_RE})\b", re.I)
+FILTER_NUDGE = ("Call {tool} now with every filter in the question, such as {filters}, with "
+                "dates written like 2027-03-01. Reply with the tool call only.")
+FILTERS = {"search_opportunities": "closes_by, closes_after, agencies or sort",
+           "search_options": "verdict, deadline_after, deadline_before, route, words or sort"}
+# T5 (Q5 again): "Which company cites my papers the most?" drew "Perch only has federal
+# grant records ... no foundation or private-sponsor records", which the refusal list
+# below let through, since it was matched on the answer's words. A question about
+# companies or citations, answered with no tool, is sent back naming get_org_signals.
+ORG_Q_RE = re.compile(r"\b(?:compan(?:y|ies)|industr\w*|firms?|cit(?:e|es|ed|ing|ations?))\b",
+                      re.I)
+ORG_NUDGE = ("Call get_org_signals now. It lists the companies whose works cite the "
+             "researcher's papers, with the number of citing works for each. Reply with the "
+             "tool call only.")
+# T1: a month with no year ("before March") means its next one after the as-of date. Code
+# resolves it and adds the dates to the question the model reads.
+MONTH_Q_RE = re.compile(rf"\b(?:before|after|by|until|till|through|in|from|since|end of)\s+"
+                        rf"({MONTHS_RE})\b(?!\.?\s*\d)", re.I)
+# Questions that ask for what the rules refuse, which needs no tool: not nudged. Matched on
+# the question, never the answer (T5).
 CAPABILITY_RE = re.compile(r"\b(e-?mail|send|web|brows\w*|internet|apply for|chances?|odds|"
                            r"percent\w*|likel\w*|foundations?|private[- ](?:sponsor|document)\w*|"
                            r"unpublished|draft proposal|yes or no)\b", re.I)
@@ -267,7 +310,8 @@ class Scout:
         # The brief note says which leads are kept. Kept marks change between questions,
         # so a callable note is read again at each question (Q4).
         self.note = brief_note if callable(brief_note) else (lambda: brief_note)
-        self.head = f"{rules or RULES}\n\nSession: {who}, as-of date {ctx.as_of.isoformat()}."
+        self.head = (f"{rules or RULES}\n\nSession: {who}, as-of date {ctx.as_of.isoformat()}. "
+                     f"Today is {day(ctx.as_of)}.")
         self.system = self.head + self.note()
         self.tools = [t for t, _ in self.table.values()]
         self.schema = step_schema(tuple(self.table))
@@ -290,8 +334,12 @@ class Scout:
     def ask(self, s: Session, question: str) -> Session:
         """A question, or a follow-up in the same session."""
         self.system = self.head + self.note()  # what is kept now (Q4)
-        s.messages.append(Message("user", question))
+        compact(s)  # T4: earlier questions' tool results leave the context
+        months = month_dates(question, self.ctx.as_of)
+        s.messages.append(Message("user", question + months_line(months, self.ctx.as_of)))
         s.user_numbers |= stated_numbers(question)
+        s.user_numbers |= {d.isoformat() for _, first, last in months for d in (first, last)}
+        s.user_numbers.add(self.ctx.as_of.isoformat())  # "today", as the session line says
         s.status, s.answer, s.flagged, s.errors, s.turns = "running", None, False, [], 0
         s.nudged = False
         s.exchanges.append({"question": question, "cards_from": len(s.cards), "answer": None,
@@ -374,20 +422,23 @@ class Scout:
     def _nudge(self, s: Session, text: str) -> bool:
         """Q5: a few questions into a conversation, a small local model starts to answer
         from the conversation alone, and says it has no access to what its tools hold. An
-        answer to a question for which no tool ran, citing nothing, and not one of the
-        refusals the rules ask for, gets one reminder to call a tool. One per question."""
-        start = s.exchanges[-1]["cards_from"] if s.exchanges else 0
-        if s.nudged:
+        answer to a question for which no tool ran gets one reminder to call a tool: the
+        search tool for a question that filters (R21, T1), get_org_signals for one about
+        companies (T5), any tool otherwise, unless the answer cites a record or the
+        question asks for what the rules refuse. One per question."""
+        if s.nudged or not s.exchanges:
             return False
-        question = s.exchanges[-1]["question"] if s.exchanges else ""
+        question, start = s.exchanges[-1]["question"], s.exchanges[-1]["cards_from"]
+        search = next((t for t in SEARCH_TOOLS if t in self.table), None)
         if NO_ACCESS_RE.search(text):  # R6
             nudge = ACCESS_NUDGE
-        elif s.cards[start:] or CAPABILITY_RE.search(text):
+        elif s.cards[start:]:
             return False
-        elif len(s.exchanges) > 1 and (FILTER_Q_RE.search(question)
-                                       or stated_numbers(question)):  # R21
-            nudge = FILTER_NUDGE
-        elif cited(text):
+        elif ORG_Q_RE.search(question) and "get_org_signals" in self.table:
+            nudge = ORG_NUDGE
+        elif search and FILTER_Q_RE.search(question):
+            nudge = FILTER_NUDGE.format(tool=search, filters=FILTERS[search])
+        elif CAPABILITY_RE.search(question) or (cited(text) and not stated_numbers(question)):
             return False
         else:
             nudge = NUDGE
@@ -477,6 +528,8 @@ class Scout:
         s.status = "failed" if failed else "stopped"
         s.errors = [] if by_user else [why]
         s.exchanges[-1].update(status=s.status, errors=s.errors, by_user=by_user)
+        if "budget" in why:  # T4: the session's budget, not this question's: start anew
+            s.exchanges[-1]["limit"] = True
         s.stop_asked = False
         self._log_answer(s, passed=False, attempts=0)
         return s
@@ -503,6 +556,10 @@ class Scout:
         errs = check(scrub(text, s.user_numbers), ids, self.ctx.seen).errors
         if not text.strip():
             errs.append("empty answer")
+        question = s.exchanges[-1]["question"] if s.exchanges else ""
+        errs += floor_as_ceiling(text, self.ctx.seen)
+        errs += stray_text(text, question, " ".join(
+            evidence(self.ctx.seen[i]).text for i in ids if i in self.ctx.seen))
         if self.answer_check:
             errs += self.answer_check(text, self.ctx.seen)
         return errs
@@ -545,6 +602,103 @@ class Scout:
                             "cited": s.cited_ids, "turns": s.turns, "tokens": s.tokens,
                             "usd": round(s.usd, 5),
                             "answer_hash": digest(s.answer) if s.answer else None})
+
+
+# T2: reasoning that reached the answer: a line that is only "thought" or "thinking", or
+# characters from a script that neither the question nor a cited record holds.
+STRAY_LINE = re.compile(r"^\W*(?:thought|thinking)\W*$", re.I | re.M)
+SCRIPTS = {"CJK": "\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff",
+           "Cyrillic": "\u0400-\u04ff", "Greek": "\u0370-\u03ff", "Hebrew": "\u0590-\u05ff",
+           "Arabic": "\u0600-\u06ff", "Devanagari": "\u0900-\u097f", "Thai": "\u0e00-\u0e7f"}
+
+
+def stray_text(text: str, question: str, records: str) -> list[str]:
+    errs = []
+    if STRAY_LINE.search(text):
+        errs.append("a line holds only the word thought or thinking: give the answer only")
+    for name, chars in SCRIPTS.items():
+        rx = re.compile(f"[{chars}]")
+        if rx.search(text) and not rx.search(question) and not rx.search(records):
+            errs.append(f"{name} characters that are not in the question or a cited record: "
+                        "write in English only")
+    return errs
+
+
+# T6: "the largest ceiling ... $15,000,000" where $15,000,000 is the record's award floor.
+CEILING_RE = re.compile(r"\bceilings?\b", re.I)
+FLOOR_BEFORE = re.compile(r"\bfloors?\b[^.$]{0,20}$", re.I)
+
+
+def floor_as_ceiling(text: str, seen: dict) -> list[str]:
+    """In a sentence about a ceiling, an amount that is a cited record's award floor and
+    not its ceiling must be named as a floor."""
+    from perch.schemas import Opportunity
+
+    errs = []
+    for sent in SENTENCE_RE.split(text):
+        if not CEILING_RE.search(sent):
+            continue
+        recs = [seen[i] for i in cited(sent) if isinstance(seen.get(i), Opportunity)]
+        for m in NUM_RE.finditer(sent):
+            if not m.group(0).startswith("$"):
+                continue
+            v = float(norm_number(m.group(0)))
+            for o in recs:
+                if o.award_floor == v and o.award_ceiling != v and \
+                        not FLOOR_BEFORE.search(sent[:m.start()]):
+                    errs.append(f"{m.group(0)} is the award floor of [{short_id(o)}], not its "
+                                "ceiling: name it as a floor, or leave it out")
+    return errs
+
+
+def month_dates(question: str, as_of: date) -> list[tuple[str, date, date]]:
+    """T1: each month the question names with no year, as its next one after the as-of
+    date: (the word, its first day, its last day)."""
+    out = []
+    for m in MONTH_Q_RE.finditer(question):
+        word = m.group(1)
+        n = _month(word)
+        year = as_of.year + (n <= as_of.month)
+        last = (date(year + (n == 12), n % 12 + 1, 1) - timedelta(days=1))
+        if all(w != word for w, _, _ in out):
+            out.append((word, date(year, n, 1), last))
+    return out
+
+
+def months_line(months: list[tuple[str, date, date]], as_of: date) -> str:
+    """The resolved months, added to the question the model reads (not the one shown)."""
+    if not months:
+        return ""
+    parts = [f'"{w}" means {day(a)} ({a.isoformat()}) to {day(b)} ({b.isoformat()})'
+             for w, a, b in months]
+    return (f"\n\n(Perch: today is {day(as_of)}. With no year, " + "; ".join(parts)
+            + ". \"Before\" a month means closes_by its first day.)")
+
+
+def compact(s: Session) -> None:
+    """T4: before a new question, the tool results of earlier questions are cut to the
+    step's result line and the records it named. The questions, the steps asked for and
+    the answers stay, and every record stays in the session's checked set, so a question
+    costs about the same however long the conversation."""
+    cards = {c.id: c for c in s.cards}
+    for m in s.messages:
+        if not m.tool_results or all(r.content.startswith(COMPACT) for r in m.tool_results):
+            continue
+        m.tool_results = [ToolResult(r.call_id, r.name, r.content if r.content.startswith(
+            COMPACT) else json.dumps({"earlier_result": True, **_brief_of(
+                cards.get(r.call_id))}), r.is_error) for r in m.tool_results]
+
+
+COMPACT = '{"earlier_result": true'
+
+
+def _brief_of(c: Card | None) -> dict:
+    from perch.scout.hub import record_ids
+
+    if c is None:
+        return {"note": "an earlier step; call the tool again for its result"}
+    return {"result": c.detail or c.status, "records": record_ids(c.result),
+            "note": "An earlier step, shortened. Call the tool again for its fields."}
 
 
 def _canonical(args: dict) -> dict:

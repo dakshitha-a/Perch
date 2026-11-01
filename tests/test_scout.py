@@ -436,8 +436,10 @@ def test_dates_reach_the_model_as_the_cards_write_them(service):
     with service.repo() as r:
         r.upsert([far])
     got = TOOLS["get_record"][1](c, id=far.id)["record"]
-    assert got["close_date"] == "Proposals accepted anytime"
-    assert "placeholder" in got["close_date_placeholder"]
+    # T7: the record's words come first, and no close date reaches the model to call missing
+    assert next(iter(got)) == "deadline"
+    assert got["deadline"] == "Proposals accepted anytime (the record's own words)"
+    assert "2076" not in json.dumps(got) and "placeholder" not in json.dumps(got)
 
 
 def test_next_deadline_sorts_by_close_date_after_the_as_of_date(service):
@@ -550,10 +552,195 @@ def test_a_follow_up_that_changes_a_filter_is_sent_back_to_call_a_tool(service):
     s.ask(sess, "Now only the ones closing after 1 March 2027.")
     second = sess.cards[sess.exchanges[-1]["cards_from"]:]
     assert [c.tool for c in second] == ["search_opportunities"]
-    assert any("changes a filter" in m.content for m in sess.messages if m.role == "user")
+    assert any(m.content.startswith("Call search_opportunities now") for m in sess.messages
+               if m.role == "user")
     plain = FakeProvider([call("get_record", id=OPP), f"It closes 17 Nov 2026 [{OPP}].",
                           f"It is the one I named [{OPP}]."])
     s = Scout(plain, ctx(service))
     sess = s.start("When does it close?")
     s.ask(sess, "Which one was that again?")
     assert sess.turns == 1 and sess.answer.startswith("It is the one I named")
+
+
+def test_a_month_with_no_year_is_its_next_one_and_the_model_reads_the_dates(service):
+    """T1: "Which of these close before March?" ran no search, or ran closes_after
+    2026-03-01, a past date. Code resolves a month with no year to its next one after the
+    as-of date and adds the dates to the question the model reads; the question shown and
+    the session line keep today's date."""
+    from perch.scout.loop import month_dates
+
+    nov = date(2026, 11, 1)
+    got = month_dates("Which of these close before March?", nov)
+    assert got == [("March", date(2027, 3, 1), date(2027, 3, 31))]
+    assert month_dates("Due by December?", nov)[0][1] == date(2026, 12, 1)
+    assert month_dates("Which may be eligible before 1 March 2027?", nov) == []
+    fake = FakeProvider([call("search_opportunities", route="A", closes_by="2027-03-01"),
+                         f"It closes before 1 March 2027 [{OPP}]."])
+    s = Scout(fake, ScoutContext(service, nov, researcher_id=AUTHOR))
+    sess = s.start("Which of these close before March?")
+    read = fake.calls[0]["messages"][0].content
+    assert "1 Mar 2027 (2027-03-01)" in read and "closes_by its first day" in read
+    assert sess.exchanges[0]["question"] == "Which of these close before March?"
+    assert "Today is 1 Nov 2026" in fake.calls[0]["system"]
+    assert sess.answer and not sess.flagged, sess.errors  # the resolved date is the user's
+
+
+def test_a_filter_question_answered_with_no_search_is_sent_back_naming_the_search(service):
+    """T1: with leads kept, the filter question was answered from the context, and the
+    R21 reminder ("you answered from an earlier result") drew "I apologize for the error"
+    and no call. The reminder is now an instruction that names the tool, and it applies
+    to a first question too, even when the answer cites a record."""
+    from perch.scout.loop import RULES
+
+    fake = FakeProvider([f"None of them closes before March [{OPP}].",
+                         call("search_opportunities", route="A", closes_by="2027-03-01"),
+                         f"It closes 17 Nov 2026 [{OPP}]."])
+    sess = Scout(fake, ctx(service)).start("Which of these close before March?")
+    assert [c.tool for c in sess.cards] == ["search_opportunities"]
+    nudge = fake.calls[1]["messages"][-1].content
+    assert nudge.startswith("Call search_opportunities now") and "apolog" not in nudge
+    assert "Do not apologise" in RULES and "even when an earlier result showed" in RULES
+    assert '"before March" means closes_by' in " ".join(RULES.split())
+
+
+def test_draft_handoff_in_a_session_names_its_leads_and_top_means_the_first(service):
+    """T3: "Draft the hand-off for my top lead" drafted the two kept leads, because the
+    draft took the kept leads when no ids came. In a session the model must name the
+    leads, and the tool says the top lead is the first by Match, alone."""
+    from perch.scout.tools import SESSION_TOOLS
+
+    t = SESSION_TOOLS["draft_handoff"][0]
+    assert t.parameters["required"] == ["ids"]
+    assert '"My top lead" is the first lead in the brief\'s order by Match, alone' in \
+        t.description
+    assert check_arguments(t, {"office": "research_development"}) == ["missing 'ids'"]
+    b, leads = _ranked_brief(service, 3)
+    for x in leads[1:3]:  # the top lead is not kept
+        service.set_lead_status(b.id, x.id, "kept")
+    c = ScoutContext(service, AS_OF, researcher_id=AUTHOR, brief_id=b.id)
+    fake = FakeProvider([call("draft_handoff", ids=[leads[0].record_id])])
+    sess = Scout(fake, c).start("Draft the hand-off for my top lead")
+    d = sess.cards[0].result
+    assert sess.cards[0].status == "done" and "1 funding opportunit" in d["subject"]
+    assert "SYNTHETIC grant 1" in d["body"] and "SYNTHETIC grant 2" not in d["body"]
+
+
+def test_compare_and_the_brief_note_carry_each_leads_fit_sentence(service):
+    """T8: "What are my top three leads and why?" ran compare and answered "All three
+    cite three of your papers", with no reason. The brief note gives the top three's
+    checked fit sentences and each lead's deadline as the card writes it; compare's rows
+    and brief_top_leads carry the fit sentence, without its citation brackets."""
+    from perch.scout import brief_note
+
+    b, leads = _ranked_brief(service, 4)
+    with service.repo() as r:
+        r.upsert([x.model_copy(update={"inference": f"Grant {i} fits the dynamics work "
+                                       f"[{x.record_id}, W1]."})
+                  for i, x in enumerate(leads, 1)])
+    service.set_lead_status(b.id, leads[3].id, "kept")
+    c = ScoutContext(service, AS_OF, researcher_id=AUTHOR, brief_id=b.id)
+    note = brief_note(c, b, service.get(b.id)[1])
+    assert "1. [grants_gov:SYN-1] SYNTHETIC grant 1. Closes: 1 Mar 2027. Why it fits: " \
+           "Grant 1 fits the dynamics work." in note
+    assert "Grant 4 fits" not in note  # the top three only
+    assert '"my top lead" is lead 1 alone' in note
+    res = TOOLS["compare"][1](c)
+    assert res["rows"][0]["why_it_fits"] == "Grant 4 fits the dynamics work."
+    assert [x["why_it_fits"] for x in res["brief_top_leads"]] == [
+        f"Grant {i} fits the dynamics work." for i in (1, 2, 3)]
+
+
+def test_a_company_question_refused_with_the_foundations_line_is_sent_back(service):
+    """T5 (Q5 again): "Which company cites my papers the most?" drew "Perch only contains
+    federal grant records ... no foundation or private-sponsor records yet". The refusal
+    list was matched on the answer's words, so this one was let through. It is now
+    matched on the question, and a company question is sent back to get_org_signals."""
+    from perch.scout.loop import RULES
+
+    fake = FakeProvider(["Perch only contains federal grant records from Grants.gov, and there "
+                         "are no foundation or private-sponsor records yet.",
+                         call("get_org_signals"), "None found."])
+    sess = Scout(fake, ctx(service)).start("Which company cites my papers the most, and how "
+                                           "many works?")
+    assert [c.tool for c in sess.cards] == ["get_org_signals"]
+    assert fake.calls[1]["messages"][-1].content.startswith("Call get_org_signals now")
+    assert "private-sponsor" not in RULES and "get_org_signals lists them" in RULES
+    plain = FakeProvider(["Perch cannot search foundations; it has no foundation records."])
+    sess = Scout(plain, ctx(service)).start("Which foundations fund this?")
+    assert sess.turns == 1  # a refusal the rules ask for is not sent back
+
+
+def test_earlier_tool_results_are_compacted_so_a_question_costs_the_same(service):
+    """T4: from question 10 on, every question stopped at the token budget, because each
+    question carried every earlier tool result. Before a new question, earlier results
+    are cut to their result line and record ids; the questions, the calls and the answers
+    stay, and the records stay in the checked set."""
+    replies = []
+    for i in range(4):
+        replies += [[ToolCall(f"c{i}", "search_opportunities", {"route": "A"})], f"See [{OPP}]."]
+    fake = FakeProvider(replies)
+    s = Scout(fake, ctx(service))
+    sess = s.start("Grants for my work?")
+    for _ in range(3):
+        s.ask(sess, "And again, grants for my work?")
+    first = [m for m in sess.messages if m.tool_results]
+    assert all(m.tool_results[0].content.startswith('{"earlier_result": true')
+               for m in first[:-1])
+    assert not first[-1].tool_results[0].content.startswith('{"earlier_result"')
+    short = json.loads(first[0].tool_results[0].content)
+    assert OPP in short["records"] and "removed by" in short["result"]
+    assert [m.content for m in sess.messages if m.role == "assistant" and not m.tool_calls] \
+        == [f"See [{OPP}]."] * 4
+    inputs = [c for c in fake.calls]  # the input of each question's first call
+    size = [sum(len(m.content) + sum(len(r.content) for r in m.tool_results)
+                for m in inputs[i]["messages"]) for i in (2, 4, 6)]
+    assert size[2] - size[1] == size[1] - size[0] < 600  # a small, steady step
+
+
+def test_an_answer_with_a_thought_line_or_a_stray_script_fails_the_check(service):
+    """T2: the validator also rejects reasoning that reached an answer, whichever adapter
+    it came through: a line that is only "thought", or characters from a script that is
+    in neither the question nor a cited record."""
+    from perch.scout.loop import stray_text
+
+    assert stray_text("thought\n探\nIt closes 17 Nov 2026.", "When?", "")[0].startswith(
+        "a line holds only the word thought")
+    assert "CJK" in stray_text("It closes 探 soon.", "When?", "")[0]
+    assert stray_text("The TGF-β grant fits.", "When?", "TGF-β signalling") == []
+    assert stray_text("Thoughtful work fits.", "When?", "") == []
+    fake = FakeProvider([call("get_record", id=OPP), f"thought\n探\nIt closes 17 Nov 2026 [{OPP}].",
+                         f"It closes 17 Nov 2026 [{OPP}]."])
+    s = Scout(fake, ctx(service)).start("When does it close?")
+    assert s.answer == f"It closes 17 Nov 2026 [{OPP}]." and not s.flagged
+
+
+def test_largest_ceiling_sorts_by_ceiling_and_a_floor_is_not_a_ceiling(service):
+    """T6: "Which lead has the largest award ceiling?" gave three answers, one naming an
+    award floor as the largest ceiling, and no tool ran. The search sorts by ceiling, the
+    question is a filter question, and a floor in a sentence about a ceiling must be named
+    as a floor."""
+    from datetime import UTC, datetime
+
+    from perch.schemas import Opportunity
+    from perch.scout.loop import floor_as_ceiling
+
+    c = ctx(service)
+    out = TOOLS["search_opportunities"][1](c, route="A", sort="award_ceiling", top=20)
+    with service.repo() as r:
+        tops = [r.get(Opportunity, x["id"]).award_ceiling for x in out["leads"]]
+    known = [t for t in tops if t]
+    assert known == sorted(known, reverse=True) and tops[:len(known)] == known
+    t = datetime(2026, 10, 29, tzinfo=UTC)
+    fl = Opportunity(id="grants_gov:SYN-FL", source="grants_gov", source_url="u", fetched_at=t,
+                     opportunity_number="SYN-FL", title="SYNTHETIC floor", agency="NSF",
+                     award_floor=15_000_000)
+    seen = {fl.id: fl}
+    bad = f"The largest ceiling is $15,000,000 [{fl.id}]."
+    assert "award floor" in floor_as_ceiling(bad, seen)[0]
+    assert floor_as_ceiling(f"Its ceiling is not stated; it has an award floor of $15,000,000 "
+                            f"[{fl.id}].", seen) == []
+    fake = FakeProvider(["The largest is the NSF one.",
+                         call("search_opportunities", route="A", sort="award_ceiling"),
+                         f"See [{OPP}]."])
+    sess = Scout(fake, ctx(service)).start("Which lead has the largest award ceiling?")
+    assert [x.tool for x in sess.cards] == ["search_opportunities"]

@@ -110,10 +110,11 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
         top = getattr(rec, "amount_max", None) or getattr(rec, "award_ceiling", None)
         if min_amount is not None and (top is None or top < min_amount):
             continue
-        if used:
+        if used:  # T10: the card's own fit sentence counts, as the student reads it
             text = " ".join(str(v) for v in (facts_of(rec).get("title"),
                                              getattr(rec, "purpose", ""),
-                                             getattr(rec, "description", ""))).lower()
+                                             getattr(rec, "description", ""),
+                                             getattr(x, "inference", None) or "")).lower()
             if not any(w in text for w in used):  # any of the words (R7)
                 continue
         rows.append(_row(ctx, x))
@@ -121,7 +122,18 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
     if sort == "deadline":  # the soonest first, undated last, as Q14 for researchers (R13)
         rows.sort(key=lambda r: (due_of[r["id"]] is None, due_of[r["id"]] or date.max))
     rows = rows[:15]
-    return {**apart(rows, "options"), "count": len(rows),
+    extra = {}
+    if used and route in ("all", "F") and not any(not r.get("sample") for r in rows):
+        # T10: no fellowship holds the words; the brief's Match order already reads the
+        # student's interests, so its top fellowships are offered instead of "none fit".
+        top = [x for x in sorted(leads, key=lambda x: x.rank or 0)
+               if x.route == "F" and x.verdict != "not eligible"][:3]
+        if top:
+            extra = {"fellowships_by_match": [_row(ctx, x) for x in top],
+                     "fellowships_note": "No fellowship's title, purpose or fit sentence holds "
+                     "these words. fellowships_by_match are the brief's top fellowships by "
+                     "Match, which is read from the student's interests: offer them."}
+    return {**apart(rows, "options"), "count": len(rows), **extra,
             **({"words_used": used} if used else {}),
             "note": "Options in this student brief, checked against the CV by rule, each "
             "group in the brief's own order by Match, the strongest first. "
@@ -370,6 +382,11 @@ Never compute, round, estimate or count. If a record has no value, say it is not
 - "The soonest deadline" means search_options with sort deadline and deadline_after the \
 as-of date. Your first sentence names public fellowships only: if none states a deadline, \
 say so, then give any samples under their own heading.
+- A question that filters by verdict, deadline, amount or words always runs \
+search_options with those filters. Not-eligible options are in the brief too, left out of \
+the list below: search_options with verdict "not eligible" lists them, and \
+explain_verdict says why one is not eligible. Never say there are none without searching.
+- Today is the as-of date. A month named with no year means its next one after today.
 - Verdicts come from rule code. Never judge the student's chances or give odds.
 - Answer in two to five short, plain sentences."""
 
@@ -384,8 +401,12 @@ def student_brief_note(ctx: ScoutContext, leads: list[Lead]) -> str:
             title = facts_of(rec)["title"]
             marks = (", SAMPLE" if x.sample else "") + (", kept" if x.status == "kept" else "")
             lines.append(f"- [{ctx.see(rec)}] {title} ({x.verdict}{marks})")
+    out = sum(1 for x in leads if x.route in ROUTES and x.verdict == "not eligible")
+    hidden = (f"\nThe brief also holds {out} not-eligible option{'' if out == 1 else 's'}, "
+              "not listed here: search_options with verdict \"not eligible\" lists them, and "
+              "explain_verdict says why." if out else "")
     return ("\n\nThe student's options in this brief, each group in the brief's own order "
-            "by Match, the strongest first:\n" + "\n".join(lines)) if lines else ""
+            "by Match, the strongest first:\n" + "\n".join(lines) + hidden) if lines else ""
 
 
 __all__ = ["STUDENT_ALLOWLIST", "STUDENT_RULES", "STUDENT_TOOLS", "mixed_lists", "short_id",
