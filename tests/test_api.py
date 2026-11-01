@@ -474,3 +474,10 @@ def test_route_b_sends_up_to_the_cap_of_records_per_signal_and_counts_the_rest()
                 cited_ids=[], signals=[Signal(kind="citing_works", record_ids=ids, count=len(ids))])
     item = route_b_json(lead, Repo())["signal_items"][0]  # type: ignore[arg-type]
     assert len(item["records"]) == SIGNAL_RECORDS and item["more"] == 5
+
+
+def test_an_orcid_id_that_fails_its_check_is_refused_before_any_lookup(tmp_path):
+    """Q18: the placeholder 0000-0000-0000-0000 found a stranger's profile."""
+    c, _ = make(tmp_path)
+    r = c.get("/authors/resolve", params={"q": "0000-0000-0000-0000"})
+    assert r.status_code == 422 and "not a valid ORCID" in r.json()["detail"]

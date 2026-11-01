@@ -287,7 +287,17 @@ async function search() {
   const F = S.find;
   const q = F.q.trim();
   if (!q) { $("#q").focus(); return; }
-  Object.assign(F, { busy: true, error: null, candidates: null, searched: q, picked: null });
+  const oid = (q.match(ORCID) || [])[1];
+  if (oid && !f.orcidOk(oid)) { // checked before any lookup (Q18)
+    Object.assign(F, { busy: false, candidates: [], searched: q, picked: null, badOrcid: true,
+      error: "That is not a valid ORCID iD: its last character does not match the rest. Check it on orcid.org." });
+    announce(F.error);
+    if (location.hash === "#/find") renderPick(); else go("#/find");
+    const t = $("#pick-title");
+    if (t) t.focus();
+    return;
+  }
+  Object.assign(F, { busy: true, error: null, candidates: null, searched: q, picked: null, badOrcid: false });
   keepFocus(location.hash === "#/find" ? renderPick : renderFind);
   try {
     const r = await api.resolve(q);
@@ -298,8 +308,9 @@ async function search() {
   }
   F.busy = false;
   const n = (F.candidates || []).length;
-  // An exact OpenAlex ID or ORCID iD with one match needs no "This is the one" (review W1).
-  if (n === 1 && EXACT_ID.test(q)) {
+  // An exact OpenAlex ID or ORCID iD with one Temple match needs no "This is the one"
+  // (review W1). An ID finds anyone, so a match outside Temple always asks first (Q18).
+  if (n === 1 && EXACT_ID.test(q) && atTemple(F.candidates[0])) {
     F.picked = F.candidates[0];
     announce("One match for that ID. Ready to build the brief.");
   } else if (F.candidates) announce(n ? `${f.plural(n, "match", "matches")} found.` : "No match found.");
@@ -312,6 +323,8 @@ async function search() {
 
 const CTX_FIELDS = ["direction", "include", "exclude", "cv", "proposal"];
 const EXACT_ID = /^(?:https?:\/\/(?:openalex\.org\/(?:authors\/)?|orcid\.org\/))?(?:A\d{6,}|\d{4}-\d{4}-\d{4}-\d{3}[\dX])$/i;
+const ORCID = /^(?:https?:\/\/orcid\.org\/)?(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$/i;
+const atTemple = (c) => (c.institutions || []).some((i) => /temple university/i.test(i));
 
 function renderPick() {
   const F = S.find;
@@ -321,11 +334,13 @@ function renderPick() {
   const list = c ? [c] : (F.candidates || []);
   const n = (F.candidates || []).length;
   const title = c ? "Ready to build the brief." : F.busy ? "Searching OpenAlex…"
+    : F.badOrcid ? "That is not a valid ORCID iD."
     : !n ? `No Temple University author matches “${F.searched}”.`
       : n === 1 ? "Is this the right person?" : "Which one is the right person?";
   const sub = c ? "Add anything below to steer it, or build it now."
     : F.busy ? "" : !n ? ["Try the name as it appears on papers, or paste an ORCID iD such as ", h("span", { class: "nowrap", text: "0000-0002-1825-0097" }), "."]
-      : `${f.plural(n, "Temple author", "Temple authors")} in OpenAlex ${n === 1 ? "matches" : "match"}. Nothing runs until you pick one.`;
+      : n === 1 && !atTemple(F.candidates[0]) ? "This profile does not list Temple University. An ID finds anyone, so check that it is the right person. Nothing runs until you pick it."
+        : `${f.plural(n, "Temple author", "Temple authors")} in OpenAlex ${n === 1 ? "matches" : "match"}. Nothing runs until you pick one.`;
   const back = c
     ? h("button", { class: "back btn quiet", type: "button", "data-key": "unpick",
       onclick: () => { F.picked = null; renderPick(); const t = $("#pick-title"); if (t) t.focus(); } },
@@ -358,7 +373,7 @@ function renderPick() {
 function candidateCard(c, best) {
   const id = f.shortId(c.id);
   const chosen = S.find.picked === c;
-  const temple = (c.institutions || []).some((i) => /temple university/i.test(i));
+  const temple = atTemple(c);
   const meta = [
     (c.institutions || []).filter((i) => !/temple university/i.test(i)).join(", ") || null,
     c.works_count != null ? `${c.works_count.toLocaleString("en-US")} works` : null,

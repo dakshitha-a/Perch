@@ -394,6 +394,9 @@ def create_app(service: BriefService, runner: JobRunner,
 
     @app.get("/authors/resolve")
     def resolve(q: str) -> dict:
+        if (oid := oa.parse_orcid(q)) and not oa.orcid_ok(oid):  # Q18
+            raise HTTPException(422, "That is not a valid ORCID iD: its last character does "
+                                "not match the rest. Check it on orcid.org.")
         with service.clients.openalex() as c:
             if oa.parse_orcid(q):
                 found = [c.resolve_by_orcid(q)]

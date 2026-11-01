@@ -130,3 +130,13 @@ def test_queried_author_kept_when_authorships_are_truncated():
     with oa.OpenAlexClient(transport=transport, min_interval=0) as c:
         (w,) = list(c.iter_works(AUTHOR))
     assert AUTHOR in w.author_ids
+
+
+def test_orcid_check_character_and_lower_case_author_ids():
+    """Q18: ISO 7064 mod 11-2; the all-zero placeholder fails. Q19: a lower-case
+    OpenAlex id is the same id."""
+    assert oa.orcid_ok("0000-0002-1825-0097") and oa.orcid_ok("0000-0001-6204-6475")
+    assert not oa.orcid_ok("0000-0000-0000-0000") and oa.orcid_ok("0000-0000-0000-0001")
+    assert not oa.orcid_ok("0000-0002-1825-009X")
+    assert oa.parse_author_id("a5026494099") == "A5026494099"
+    assert oa.parse_author_id("https://openalex.org/a5026494099") == "A5026494099"

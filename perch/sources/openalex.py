@@ -29,7 +29,7 @@ COMPANY_SELECT = ("id,title,publication_year,publication_date,doi,type,primary_l
                   "authorships,topics,primary_topic,cited_by_count,referenced_works")
 
 ORCID_RE = re.compile(r"(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$")
-AUTHOR_RE = re.compile(r"(A\d+)$")
+AUTHOR_RE = re.compile(r"([Aa]\d+)$")  # a lower-case "a5026494099" is the same id (Q19)
 
 
 def short_id(openalex_id: str) -> str:
@@ -42,9 +42,20 @@ def parse_orcid(text: str) -> str | None:
     return m.group(1) if m else None
 
 
+def orcid_ok(oid: str) -> bool:
+    """The ORCID check character, ISO 7064 mod 11-2 over the first 15 digits (Q18). The
+    all-zero placeholder fails it: its check digit would be 1."""
+    digits = oid.replace("-", "")
+    total = 0
+    for d in digits[:15]:
+        total = (total + int(d)) * 2
+    check = (12 - total % 11) % 11
+    return digits[15:] == ("X" if check == 10 else str(check))
+
+
 def parse_author_id(text: str) -> str | None:
     m = AUTHOR_RE.search(text.strip())
-    return m.group(1) if m else None
+    return m.group(1).upper() if m else None
 
 
 def reconstruct_abstract(inverted: dict[str, list[int]] | None) -> str | None:

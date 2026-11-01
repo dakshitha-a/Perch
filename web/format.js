@@ -111,6 +111,15 @@ export function higherEdRows(rows) {
     && !/other than institutions of higher education/i.test(r));
 }
 
+// The ORCID check character, ISO 7064 mod 11-2 (Q18): the same rule as the server's.
+export function orcidOk(oid) {
+  const d = String(oid).replace(/-/g, "").toUpperCase();
+  let total = 0;
+  for (const c of d.slice(0, 15)) total = (total + Number(c)) * 2;
+  const check = (12 - (total % 11)) % 11;
+  return d.slice(15) === (check === 10 ? "X" : String(check));
+}
+
 export function shortId(id) {
   return String(id || "").replace(/^https?:\/\/openalex\.org\//, "").replace(/^grants_gov:/, "");
 }
