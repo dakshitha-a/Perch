@@ -5,10 +5,21 @@ Verified live on Ollama 0.32.13 (2026-10-28): `format` takes a JSON schema,
 `logprobs` with `top_logprobs` returns per-token alternatives. Leave `num_ctx`
 unset unless configured: changing it reloads the model, and the dev profile keeps
 a model resident on GPU 0.
+
+Reasoning (QA round 3, T2), checked on a raw call to gemma4:26b-a4b on Ollama 0.32.13
+(1 Nov 2026): the model's own renderer and parser are on; with `think: false` the reply
+has no `thinking` field, and with `think: true` the reasoning comes back in
+`message.thinking`, apart from `content`. Now and then, with thinking off, the model opens
+its thought channel anyway; the parser does not expect it and passes it through, so the
+content starts with a line "thought", then the thought, then the answer. Such a reply is
+asked again once with thinking on, so the parser puts the thought in `thinking`, which is
+dropped; a leftover "thought" line and any <think> block are stripped as well. Only the
+answer text leaves the adapter.
 """
 
 from __future__ import annotations
 
+import re
 import time
 import uuid
 
@@ -25,6 +36,19 @@ from perch.llm.base import (
     ToolCall,
     Usage,
 )
+
+# A leaked thought channel: a first line that is only the channel's name.
+THOUGHT_LINE = re.compile(r"\A\s*(?:<\|?channel\|?>\s*)?(?:thought|thinking)\s*(?:\n|\Z)", re.I)
+THINK_BLOCK = re.compile(r"<think>.*?</think>\s*", re.S | re.I)
+
+
+def leaked_thought(text: str) -> bool:
+    return bool(THOUGHT_LINE.match(text) or THINK_BLOCK.search(text))
+
+
+def strip_reasoning(text: str) -> str:
+    """The answer only: no <think> block and no leading thought-channel line."""
+    return THOUGHT_LINE.sub("", THINK_BLOCK.sub("", text), count=1).lstrip()
 
 
 def wire_messages(m: Message) -> list[dict]:
@@ -55,6 +79,15 @@ class OllamaProvider(Provider):
     def close(self) -> None:
         self.http.close()
 
+    def _post(self, body: dict) -> dict:
+        r = self.http.post("/api/chat", json=body)
+        if r.status_code != 200:
+            raise ProviderError(f"ollama {r.status_code}: {r.text[:300]}")
+        d = r.json()
+        if d.get("error"):
+            raise ProviderError(f"ollama: {d['error']}")
+        return d
+
     def chat(self, messages: list[Message], *, system: str | None = None,
              tools: list[Tool] | None = None, schema: JsonSchema | None = None,
              max_tokens: int = 2048, logprobs: int = 0,
@@ -76,14 +109,14 @@ class OllamaProvider(Provider):
             body["logprobs"] = True
             body["top_logprobs"] = logprobs
         t0 = time.perf_counter()
-        r = self.http.post("/api/chat", json=body)
-        latency = (time.perf_counter() - t0) * 1000
-        if r.status_code != 200:
-            raise ProviderError(f"ollama {r.status_code}: {r.text[:300]}")
-        d = r.json()
-        if d.get("error"):
-            raise ProviderError(f"ollama: {d['error']}")
+        d = self._post(body)
         msg = d.get("message") or {}
+        spent = 0
+        if not body["think"] and not schema and leaked_thought(msg.get("content") or ""):
+            spent = (d.get("prompt_eval_count") or 0) + (d.get("eval_count") or 0)
+            d = self._post({**body, "think": True})  # T2: the parser now splits it off
+            msg = d.get("message") or {}
+        latency = (time.perf_counter() - t0) * 1000
         calls = [ToolCall(c.get("id") or uuid.uuid4().hex[:8], c["function"]["name"],
                           c["function"].get("arguments") or {})
                  for c in msg.get("tool_calls") or []]
@@ -92,7 +125,8 @@ class OllamaProvider(Provider):
             lps = [[TokenChoice(a["token"], float(a["logprob"]))
                     for a in tok.get("top_logprobs") or [tok]] for tok in d["logprobs"]]
         return ChatResult(
-            text=msg.get("content") or "", model=d.get("model") or self.model, provider=self.name,
-            usage=Usage(d.get("prompt_eval_count") or 0, d.get("eval_count") or 0),
+            text=strip_reasoning(msg.get("content") or ""),
+            model=d.get("model") or self.model, provider=self.name,
+            usage=Usage((d.get("prompt_eval_count") or 0) + spent, d.get("eval_count") or 0),
             tool_calls=calls, stop_reason=d.get("done_reason"), latency_ms=latency,
             top_logprobs=lps)

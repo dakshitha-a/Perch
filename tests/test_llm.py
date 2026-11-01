@@ -208,3 +208,32 @@ def test_anthropic_schema_goes_through_transform(tmp_path):
     p.chat([Message("user", "q")], schema=SCHEMA, tools=[TOOL])
     assert seen == [TOOL.parameters, SCHEMA]
     assert client.kw["output_config"]["format"]["schema"] == {"type": "object"}
+
+
+def test_ollama_strips_a_leaked_thought_channel_and_asks_again_with_thinking_on():
+    """T2: now and then gemma4 opens its thought channel with thinking off. The parser
+    passes it through, so the content read "thought\\n探\\nNone of the leads ..." and the
+    two stray lines showed on screen as checked model text. The adapter asks again once
+    with think on, which puts the thought in `thinking`, and returns the answer only."""
+    sent = []
+    replies = [{"role": "assistant", "content": "thought\n探\nNone of the leads closes "
+                "before March [grants_gov:26-519]."},
+               {"role": "assistant", "content": "None of the leads closes before March "
+                "[grants_gov:26-519].", "thinking": "The user asks which close before March."}]
+
+    def handler(req):
+        sent.append(json.loads(req.content))
+        return httpx.Response(200, json={"model": "gemma4:26b-a4b",
+                                         "message": replies[len(sent) - 1], "done_reason": "stop",
+                                         "prompt_eval_count": 100, "eval_count": 20})
+
+    p = OllamaProvider("gemma4:26b-a4b", transport=httpx.MockTransport(handler))
+    r = p.chat([Message("user", "Which of these close before March?")])
+    assert [b["think"] for b in sent] == [False, True]
+    assert r.text == "None of the leads closes before March [grants_gov:26-519]."
+    assert r.usage.input_tokens == 220  # both calls count
+    from perch.llm.ollama import strip_reasoning
+
+    assert strip_reasoning("thought\nThe answer.") == "The answer."
+    assert strip_reasoning("<think>why</think>\nThe answer.") == "The answer."
+    assert strip_reasoning("Thoughtful programs fit.") == "Thoughtful programs fit."
