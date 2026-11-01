@@ -851,3 +851,23 @@ def test_code_written_rule_lines_back_an_answers_numbers_and_a_withheld_note_is_
     fake = FakeProvider([f"(answer withheld) [{o.id}]", "(answer withheld)"])
     s = Scout(fake, c).start("Why?")
     assert s.flagged and s.messages[-1].content == WITHHELD_NOTE
+
+
+def test_a_tool_name_cited_as_a_record_is_dropped_and_the_rest_still_checked(service):
+    """S32 bench t06: the model cited [build_profile], the tool, as if it were a record,
+    and every run was withheld. That citation names no record: it is dropped from the
+    answer, and the rest is checked as before."""
+    steps = [*call("build_profile"), *call("get_record", id=OPP)]
+    text = (f"Their papers fall into public research threads [build_profile]. PAR-25-268 "
+            f"closes 2026-11-17 [{OPP}; build_profile].")
+    s = Scout(FakeProvider([steps, text, text]), ctx(service)).start("Main threads?")
+    assert not s.flagged and s.status == "done", s.errors
+    assert s.answer == ("Their papers fall into public research threads. PAR-25-268 closes "
+                        f"2026-11-17 [{OPP}].")
+    assert s.cited_ids == [OPP]
+    # a number that no cited record holds is still withheld once the tool name is gone
+    bad = "Their main thread pays $2,000,000 [build_profile, step 1]."
+    s = Scout(FakeProvider([call("build_profile"), bad, bad]), ctx(service)).start("Threads?")
+    assert s.flagged and s.answer is None
+    assert any("2,000,000" in e or "2000000" in e for e in s.errors), s.errors
+    assert not any("build_profile" in e for e in s.errors)

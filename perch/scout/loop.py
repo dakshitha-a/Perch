@@ -281,6 +281,24 @@ def cited(text: str) -> list[str]:
     return list(dict.fromkeys(ids))
 
 
+# A citation of a tool's name or a step ("[build_profile]", "[step 2]") names no record:
+# it is dropped from the answer before the check, which then reads the rest as before.
+BRACKET_RE = re.compile(r"([ \t]*)\[([^\[\]]+)\]")
+STEP_RE = re.compile(r"^step\s*\d{1,2}$", re.I)
+
+
+def strip_tool_cites(text: str, names: set[str]) -> str:
+    """Remove ids that are a tool's name, a step's id or a step label from each citation;
+    a citation left empty goes, with the space before it."""
+    def fix(m: re.Match) -> str:
+        ids = [x.strip() for x in re.split(r"[,;]", m.group(2)) if x.strip()]
+        keep = [x for x in ids if x not in names and not STEP_RE.match(x)]
+        if len(keep) == len(ids):
+            return m.group(0)
+        return f"{m.group(1)}[{', '.join(keep)}]" if keep else ""
+    return BRACKET_RE.sub(fix, text)
+
+
 def stated_numbers(text: str) -> set[str]:
     """Numbers and dates the user typed: repeating them is not inventing them. Dates are
     kept whole (as their matched text and ISO form)."""
@@ -774,6 +792,8 @@ class Scout:
         return errs
 
     def _finish(self, s: Session, text: str) -> Session:
+        steps = {*self.table, *(c.id for c in s.cards)}
+        text = strip_tool_cites(text, steps)
         errs = self._validate(s, text)
         attempts = 1
         if errs:
@@ -785,6 +805,7 @@ class Scout:
             text = self._next(s, tools=False).text
             if self.policy == "structured":
                 text = structured_answer(text)
+            text = strip_tool_cites(text, steps)
             errs = self._validate(s, text)
         s.messages.append(Message("assistant", text if not errs else WITHHELD_NOTE))
         if errs:
