@@ -2,7 +2,7 @@
 
 [Back to the README](../README.md)
 
-Perch has no user accounts, so since S23 it keeps nothing about the people who use it. Every brief runs in a session held in the server's memory. Models run on the server unless a user turns Cloud on. Your own documents (a CV, a draft proposal, unpublished work) are read only by local models. Design and limits: `docs/design/PRIVATE_MODE.md`.
+Perch has no user accounts, so since S23 it keeps nothing about the people who use it. Every brief runs in a session held in the server's memory. Models run on the server unless a user turns Cloud on. Your own documents (a CV, a draft proposal, unpublished work) stay on local models unless you choose Cloud and confirm which documents leave. Design and limits: `docs/design/PRIVATE_MODE.md`.
 
 ## What is stored, and what is not
 
@@ -23,7 +23,7 @@ PERCH_TLS_AT=server          # needed on a public URL; or tunnel:<provider>
 PERCH_PRIVATE_ENDPOINTS=     # model hosts a session may call; default loopback
 PERCH_CLOUD=                 # e.g. anthropic:claude-sonnet-5-5 to offer Cloud; empty is Local only
 PERCH_CLOUD_BRIEFS_PER_DAY=30
-PERCH_CLOUD_DOCUMENTS=       # "1": documents may go to Cloud after a second warning (off; see below)
+PERCH_CLOUD_DOCUMENTS=       # "1": a user may send their documents to Cloud after a second warning (the demo sets it)
 PERCH_WARM_AUTHORS=          # OpenAlex ids whose default briefs are built at start, in memory
 ```
 
@@ -33,8 +33,9 @@ Every local chat model must be an Ollama or OpenAI-compatible server on an allow
 
 - **Local is the default.** Every model runs on the Perch server.
 - **Cloud is a choice.** Where `PERCH_CLOUD` is set, the chip at the top opens a dialog that offers it. Before it turns on, a warning names the company and says what is sent: what you type (the researcher and any direction or keywords) and the text of the public papers and listings in your brief. The user confirms first; the API checks that the confirm names the provider.
-- **What Cloud changes:** only the three model skills, the profile summary, the fit explanations and the hand-off opening, use the cloud model. Search, ranking, the citation checks and Scout stay local.
-- **Documents never go to the cloud.** Cloud cannot turn on while a session holds documents, documents cannot be added while Cloud is on, and student mode turns Cloud off. This keeps the challenge rule that private text is used only on local models. A real deployment could choose otherwise, for example with a zero-data-retention cloud key. S24 built that path behind `PERCH_CLOUD_DOCUMENTS=1`: a second, stronger warning about the documents, a box to tick, and a second confirm the API checks ("send my documents to <provider>"). It stays off until the standing rule changes (Q33); tests use SYNTHETIC text only.
+- **What Cloud changes:** only the three model skills, the profile summary, the fit explanations and the hand-off opening, use the cloud model, and their text is tagged "Cloud: <provider>". Search, ranking, the citation checks and Scout's own model stay local; Scout's fit and draft steps follow the session's choice and say so on their step.
+- **Documents go to the cloud only by your choice.** Documents stay on local models unless you turn Cloud on and confirm a second warning (standing rule 1 as amended, Q33; `PERCH_CLOUD_DOCUMENTS=1`, set on the demo). The warning names the provider and lists each document in the session as you added it, such as "your CV (cv.pdf)" or "your draft proposal (pasted text)". It says that a CV carries contact details and career facts, that a draft proposal or unpublished manuscript is unpublished research, that the provider's API terms then apply and Perch stores nothing, and that the choice lasts for this session and can be turned off. The confirm is a plain button that stays off until you tick a box; nothing is sent before it. Student sessions get the same warning with the CV wording.
+- **How consent is held:** the server records consent per document, by a hash of its kind and text, in the session's memory only. A cloud call passes the gate only while every document the session holds has consent, so a document added or replaced later turns Cloud off until you confirm it too; the same text added again keeps its consent. Turning Cloud off or ending the session clears it, and nothing more is sent. Without `PERCH_CLOUD_DOCUMENTS=1`, Cloud cannot turn on while a session holds documents. Tests use SYNTHETIC text only.
 - **Spend:** the Anthropic adapter's $100 cap still applies, and the server allows `PERCH_CLOUD_BRIEFS_PER_DAY` cloud briefs a day. The adapter's spend ledger records tokens and cost per call, with no text.
 
 ## Using your documents
@@ -53,7 +54,7 @@ Every local chat model must be an Ollama or OpenAI-compatible server on an allow
 ## How it is checked
 
 - **Canary tests:** each SYNTHETIC test document carries a unique token. After a full session, no token may appear in any file, log, temporary file or outbound request off the allowlist, and the store gains no brief or lead row (`tests/test_private.py`, with the public cache on and off).
-- **Live canary:** `scripts/private_canary.py` runs on the real store and models: a visitor's brief with no documents, the Cloud refusal check, and two briefs with the persona-1 documents.
+- **Live canary:** `scripts/private_canary.py` runs on the real store and models: a visitor's brief with no documents, the Cloud consent check (a document added with Cloud on turns Cloud off, with no cloud call), and two briefs with the persona-1 documents.
 
 ```
 PERCH_TLS_AT=server PERCH_PRIVATE_OPERATOR="..." PERCH_CLOUD=anthropic:claude-sonnet-5-5 \
@@ -62,7 +63,7 @@ PERCH_TLS_AT=server PERCH_PRIVATE_OPERATOR="..." PERCH_CLOUD=anthropic:claude-so
 
 ## Student mode
 
-Choose **I'm a student** on the Find screen. Student mode always runs on local models. Add your CV, an interests note and up to five achievements. Code reads the CV by rule (level, year, major, GPA, enrolment, expected graduation, referees); no model reads it. Routes has **Fellowships (public)**, from Temple Scholar Development and Fellowships Advising's list and NIH F-series listings, and **Scholarships and awards (sample)**, from an invented test corpus badged Sample data on every card. Each lead says "eligible", "may be eligible" or "not eligible" by rule, and lists what is still needed. Compare drafts a note to SDFA or Student Financial Services; Perch sends nothing. Exports carry a sample banner and withhold lines that quote the CV, and the model's explanations, unless masked. Scores on planted cases: `bench/results/STUDENT_MODE.md`.
+Choose **I'm a student** on the Find screen. Student mode runs on local models unless you choose Cloud and confirm the second warning, which names your CV. Add your CV, an interests note and up to five achievements. Code reads the CV by rule (level, year, major, GPA, enrolment, expected graduation, referees); no model reads it. Routes has **Fellowships (public)**, from Temple Scholar Development and Fellowships Advising's list and NIH F-series listings, and **Scholarships and awards (sample)**, from an invented test corpus badged Sample data on every card. Each lead says "eligible", "may be eligible" or "not eligible" by rule, and lists what is still needed. Compare drafts a note to SDFA or Student Financial Services; Perch sends nothing. Exports carry a sample banner and withhold lines that quote the CV, and the model's explanations, unless masked. Scores on planted cases: `bench/results/STUDENT_MODE.md`.
 
 ## Monitoring is shelved
 

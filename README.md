@@ -133,7 +133,8 @@ model work can go to a cloud provider instead, after a warning that names it.
 
 After picking the researcher, open Tell Perch more to add a direction, keywords or
 a draft proposal that steer the search, and a CV that the career-stage rules read.
-Documents stay on local models, and exports leave their text out, or mask it. A canary
+Documents stay on local models unless you choose Cloud and confirm, in a second
+warning that lists them, which documents leave. Exports leave their text out, or mask it. A canary
 test checks that no trace is left in files, logs or requests.
 [More on privacy →](docs/private-mode.md)
 
@@ -209,7 +210,7 @@ Every number here was measured. Each is copied from [bench/results](bench/result
 - **No monitoring:** Perch keeps nothing about its users, so it cannot watch a researcher for changes. The weekly watch is shelved in `perch/shelved/monitor/` until a user system exists.
 - **Refresh by hand:** open opportunities are refreshed when the operator runs `perch fetch opportunities` and re-indexes; a researcher's cached papers and awards are not refreshed on their own.
 - **Every brief is live:** apart from the demo researchers' briefs, which the server builds when it starts, nothing is reused, so each brief runs the models again; one brief with explanations took 46 s on the demo models in S23.
-- **Cloud is narrow by design:** with Cloud on, only the summary, the fit explanations and the hand-off opening use the cloud model, and never for a session with documents. A real deployment might send more to a cloud provider under a zero-data-retention key; that is not built.
+- **Cloud is narrow by design:** with Cloud on, only the summary, the fit explanations and the hand-off opening use the cloud model. A session's documents go with them only after the user confirms a second warning that lists each one; that consent lasts for the session. A zero-data-retention cloud key is not built.
 - **Sessions do not index:** opportunities fetched since the pipeline last indexed are not searched in a brief.
 - **One announcement, several cards:** related announcements of one family (for example, one call with and without a clinical trial) are listed separately.
 - **Company names are not merged:** two names for one company can appear as two industry leads.
