@@ -33,6 +33,7 @@ from pathlib import Path
 from playwright.async_api import Page, Route, async_playwright
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from names import swap_names  # noqa: E402
 from recorder import Recorder, click  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -69,15 +70,8 @@ async def alias_responses(page: Page, names: dict[str, str]) -> None:
             if "json" not in ctype and "/export." not in route.request.url:  # exports too
                 await route.fulfill(response=r)
                 return
-            body = await r.text()
-            for real, alias in names.items():
-                body = body.replace(real, alias)
-            # Model text can name a researcher by surname alone ("Dr. ..."), so the
-            # surnames go too, as whole words.
-            for real, alias in names.items():
-                last = real.split()[-1]
-                if len(last) > 2:
-                    body = re.sub(rf"\b{re.escape(last)}\b", alias, body)
+            # Every form of each name: as typed, NFC or NFD, HTML-escaped (names.py).
+            body = swap_names(await r.text(), names)
             # An ORCID leads straight to the person, so it goes too, as in the replay.
             body = re.sub(r'"orcid":\s*"[^"]*"', '"orcid": null', body)
             await route.fulfill(response=r, body=body)
