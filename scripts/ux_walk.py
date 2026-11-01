@@ -1192,6 +1192,12 @@ async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
         w.errors.append(f"{tag}: U8: Scout's answer shows an amount as {got['money']}")
     if not got["answer"]:
         w.errors.append(f"{tag}: scout: no answer to check ({got['results']})")
+    meta = await page.evaluate("""() => ({ line: (document.querySelector('.scout-meta') || {}).innerText || '',
+      steps: [...document.querySelectorAll('.scout-steps')].map(d => d.textContent).join(' ') })""")
+    if re.search(r"tokens|Model \w+:", meta["line"]) or not re.search(r"Local model|Cloud", meta["line"]):  # U32
+        w.errors.append(f"{tag}: U32: the line under the chat reads {meta['line']!r}, not just where the model runs")
+    if "tokens" not in meta["steps"]:
+        w.errors.append(f"{tag}: U32: the Steps disclosure does not hold the model and token count")
     await w.snap(page, tag, "u-scout", full=True)
     await end_session(page)
 

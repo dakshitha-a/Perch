@@ -86,7 +86,8 @@ export function renderScout(panel, ctx) {
     welcome(ctx),
     h("ol", { class: "scout-log", "aria-live": "polite" }, ...(T.data ? T.data.exchanges.map((x, i) => exchange(x, ctx, busy, i >= T.seen, i)) : [])),
     T.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: T.error })) : null,
-    T.data ? h("p", { class: "scout-meta", text: `Model ${T.data.model}. ${T.data.tokens.toLocaleString()} tokens so far in this conversation.` }) : null),
+    // Where the model runs stays in view; its name and the token count sit in the Steps (U32).
+    T.data && T.data.exchanges.length ? h("p", { class: "scout-meta", text: modelWhere(T.data.model) }) : null),
     askForm(ctx, busy));
   const focused = document.activeElement && document.activeElement.id;
   fill(panel, view);
@@ -154,6 +155,7 @@ function reset(briefId) {
 // per finished step with its filters, the answer, any hand-off draft to copy, and then
 // the step cards, folded, since nobody needs to act on them.
 function exchange(x, ctx, busy, fresh, i) {
+  const last = T.data && i === T.data.exchanges.length - 1;
   const running = x.status === "running";
   const drafts = x.cards.filter((c) => c.draft);
   return h("li", { class: fresh ? "scout-x new" : "scout-x" },
@@ -164,7 +166,8 @@ function exchange(x, ctx, busy, fresh, i) {
     x.cards.length ? h("details", { class: "scout-steps", open: T.openSteps.has(i),
       ontoggle: (e) => { if (e.target.open) T.openSteps.add(i); else T.openSteps.delete(i); } },
       h("summary", { text: `Steps (${x.cards.length})` }),
-      h("ol", { class: "scout-cards" }, ...x.cards.map((c) => card(c, ctx)))) : null);
+      h("ol", { class: "scout-cards" }, ...x.cards.map((c) => card(c, ctx))),
+      last && T.data.model ? h("p", { class: "hint scout-model", text: `Model ${T.data.model}.${T.data.tokens ? ` ${T.data.tokens.toLocaleString()} tokens so far in this conversation.` : ""}` }) : null) : null);
 }
 
 function readAs(x, ctx) {
@@ -209,6 +212,11 @@ function card(c, ctx) {
 // Where a step ran (S28): code, a local model, or a named Cloud provider, matching the
 // header chip. Recordings made before S28 carry no "where" and show no tag.
 const CLOUD_NAMES = { anthropic: "Anthropic" };
+// The planner's model string reads "provider:model"; only a named Cloud provider is Cloud (U32).
+function modelWhere(model) {
+  const p = String(model || "").split(":")[0];
+  return CLOUD_NAMES[p] ? `Cloud: ${CLOUD_NAMES[p]}` : "Local model";
+}
 function whereTag(c) {
   if (!c.where) return null;
   if (c.where === "cloud") return h("span", { class: "tag cloud scout-where", text: `Cloud: ${CLOUD_NAMES[c.provider] || c.provider}` });
