@@ -73,7 +73,7 @@ How the numbers moved (before, then after the W fixes, then now; screens/clicks/
 - **pi:** 5/14/5/18.1 s, then 5/13/3/17.1 s, now 5/14/3/17.6 s. Scrolls hold at 3. Clicks rose by one, because the second kept lead sits in the Weaker matches fold and the fold needs one press (U24).
 - **pi-live:** 5/15/4/68.6 s, then 5/15/3/56.2 s, now 5/16/3/64.0 s. The extra click is the same fold press. The wall time is the live build, which moves by several seconds from run to run.
 - **student:** 5/14/5/58.0 s, then 5/13/2/57.8 s, now 5/13/2/59.6 s. Nothing changed after the W fixes.
-- **private:** 4/6/2/34.0 s, then 3/5/3/33.6 s, now 3/4/2/35.2 s. One click and one scroll fewer than after the W fixes. The scroll count on Your documents moves with the window height and the page, so treat a difference of one as noise.
+- **private:** 4/6/2/34.0 s, then 3/5/3/33.6 s, now 3/4/2/35.2 s. One click and one scroll fewer than after the W fixes. The scroll count on Your documents also differed between earlier runs of the same code, so treat a difference of one as noise.
 - **Requests and kilobytes:** 46/606.0 KB, then 45/259.1 KB, now 45/269.3 KB for the warm PI path. The student polls stay near 409 KB, against 7356 KB before P3.
 - **The warm PI row on a cold server:** the first run, started right after the dev server restarted, took 194.4 s with 114 build polls, because the warm brief was not ready yet. It is not a result; the table uses the second run.
 - **Waits:** single runs; treat the seconds as ±0.5 s for the short waits and ±5 s for a live build.
