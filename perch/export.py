@@ -38,25 +38,79 @@ def _money(o: Opportunity) -> str:
 # How a document is named in an export's model text, in place of its private id (Q10).
 DOCUMENTS = {"proposal": "your draft proposal", "direction": "your research direction",
              "manuscript": "your unpublished work", "cv": "your CV",
-             "interests": "your interests note", "achievement": "your achievements"}
+             "interests": "your interests note", "achievement": "your achievements",
+             "achievements": "your achievements"}
 WORK_ID = re.compile(r"\b(W\d{5,})\b|\b(private:[a-z]+)(?:-[a-z0-9]+)?(?:#\d+)?")
+GROUP = re.compile(r"\s?\[([^\[\]]+)\]")
+MASK_LABEL = re.compile(r"(?:EMAIL|ORCID|PHONE|AWARD|URL|PERSON|INSTITUTION|PRIVATE-PHRASE|"
+                        r"CV-VALUE)-\d+")  # the Masker's placeholders (perch.egress)
+PRIVATE_KEY = re.compile(r"(?:private:)?([a-z]+)(-[a-z0-9]+)?(?:#\d+)?")
+# "Cited work: W1 developed a tool [W1]": the bracket repeats the clause's subject (R9).
+REPEAT = re.compile(r"\b(?P<id>W\d{5,}|private:(?P<k>[a-z]+(?:-[a-z0-9]+)?))\b(?P<mid>[^\[\];]*?)"
+                    r"\s*\[(?:(?P=id)|(?P=k))\]")
 
 
-def name_papers(text: str | None, works: dict[str, Work]) -> str | None:
-    """Model text with each OpenAlex work id named as the screen names it, by title and
-    year, and each private id named by its kind of document, never by its title (Q10)."""
+def _paper(w: Work | None, inline: bool) -> str:
+    if w is None:
+        return "a paper on file"
+    if inline:
+        return f"\u201c{w.title}\u201d" + (f", {w.publication_year}" if w.publication_year else "")
+    return f"\u201c{w.title}\u201d" + (f" ({w.publication_year})" if w.publication_year else "")
+
+
+def _document(key: str) -> str | None:
+    m = PRIVATE_KEY.fullmatch(key)
+    if not m or m.group(1) not in DOCUMENTS:
+        return "your document" if key.startswith("private:") else None
+    if m.group(1) == "achievement" and m.group(2):
+        return "one of your achievements"
+    return DOCUMENTS[m.group(1)]
+
+
+def _cite(key: str, works: dict[str, Work], names: dict[str, str]) -> str:
+    """One cited id as the screen names it: a paper by title and year, a document by its
+    kind, an option by its name, an opportunity by its number (R9)."""
+    if re.fullmatch(r"W\d{5,}", key):
+        return _paper(works.get(f"https://openalex.org/{key}"), inline=True)
+    if key in names or key.rsplit(":", 1)[-1] in names:
+        return names.get(key) or names[key.rsplit(":", 1)[-1]]
+    if (doc := _document(key)) is not None:
+        return doc
+    return key.removeprefix("grants_gov:")
+
+
+def name_papers(text: str | None, works: dict[str, Work], names: dict[str, str] | None = None,
+                skip: set[str] = frozenset()) -> str | None:
+    """Model text with citations rendered as the screen renders them (Q10, R9): each
+    OpenAlex work by its title and year, each private id by its kind of document (never by
+    its title), a student option by its name, an opportunity by its number. A bracket
+    group of keys reads as one parenthesis; a group that only repeats the clause's subject,
+    or cites the lead's own record (`skip`), goes, as on the card. Masked labels such as
+    [PRIVATE-PHRASE-1] stay."""
     if not text:
         return text
+    names = names or {}
+    text = REPEAT.sub(lambda m: m.group(0)[:m.start("mid") - m.start()] + m.group("mid"), text)
+
+    def group(m: re.Match) -> str:
+        keys = [k.strip() for k in re.split(r"[,;]", m.group(1)) if k.strip()]
+        if any(MASK_LABEL.fullmatch(k) for k in keys):
+            return m.group(0)
+        keep = [k for k in keys if k not in skip and k.removeprefix("grants_gov:") not in skip]
+        if not keep:
+            return ""
+        said = "; ".join(dict.fromkeys(_cite(k, works, names) for k in keep))
+        before = m.string[:m.start()].rstrip()
+        if not before or before.endswith((".", "!", "?", ":")):  # the sentence's subject
+            return m.group(0)[:len(m.group(0)) - len(m.group(0).lstrip())] + said
+        return f" ({said})"
+
+    text = GROUP.sub(group, text).lstrip()
 
     def named(m: re.Match) -> str:
         if m.group(1):
-            w = works.get(f"https://openalex.org/{m.group(1)}")
-            if w is None:
-                return m.group(0)
-            year = f" ({w.publication_year})" if w.publication_year else ""
-            return f"\u201c{w.title}\u201d{year}"
-        kind = m.group(2).split(":", 1)[1]
-        return DOCUMENTS.get(kind, "your document")
+            return _paper(works.get(f"https://openalex.org/{m.group(1)}"), inline=False)
+        return _document(m.group(0)) or "your document"
 
     return WORK_ID.sub(named, text)
 
@@ -104,7 +158,8 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
 
     out.append(Block("h2", "Research profile"))
     if brief.summary:
-        out.append(Block("model", egress.release_model(brief.summary, [], masker, documents)))
+        out.append(Block("model", egress.release_model(name_papers(brief.summary, works), [],
+                                                       masker, documents)))
     if brief.topics:
         if documents and masker is None:
             out.append(labelled("Topics", egress.WITHHELD))
@@ -148,11 +203,13 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
             f"Activity code: {o.activity_code or 'Not in the record'}",
             f"Office: {for_route('A').name}"]))
         if x.explanation and not x.flagged:
+            own = {o.id, o.opportunity_number}  # the card drops its own record's citation
             out.append(Block("model", egress.release_model(
-                name_papers(x.explanation, works), x.cited_ids, masker, documents)))
+                name_papers(x.explanation, works, skip=own), x.cited_ids, masker, documents)))
             if x.inference:
                 out.append(labelled("Inference", egress.release_model(
-                    name_papers(x.inference, works), x.cited_ids, masker, documents)))
+                    name_papers(x.inference, works, skip=own), x.cited_ids, masker,
+                    documents)))
         elif x.flagged:
             out.append(Block("note", "The explanation was withheld: it failed the checks twice."))
         cited = egress.public_only(works[f"https://openalex.org/{c}"] for c in x.cited_ids
@@ -236,6 +293,12 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
         out.append(Block("note", egress.withheld_note(n)))
     if any(x.sample for x in shown):
         out.append(Block("note", SAMPLE_BANNER))
+    names = {}  # a cited option reads as its name, as on the card (R9)
+    for rid, rec in records.items():
+        nm = getattr(rec, "name", None) or getattr(rec, "title", None)
+        if nm:
+            names[rid] = names[rid.rsplit(":", 1)[-1]] = (
+                f"{nm} (sample)" if rid.startswith("sample:") else nm)
     for route, title, office in (("F", "Fellowships (public)", for_route("F")),
                                  ("S", "Scholarships and awards (sample)", for_route("S"))):
         xs = sorted((x for x in shown if x.route == route), key=lambda x: x.rank or 0)
@@ -266,8 +329,8 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
             items.append(f"Office: {office.name}")
             out.append(Block("list", items=[i for i in items if i]))
             if x.explanation and not x.flagged:
-                out.append(Block("model", egress.release_model(x.explanation, x.cited_ids,
-                                                               masker, documents)))
+                out.append(Block("model", egress.release_model(
+                    name_papers(x.explanation, {}, names), x.cited_ids, masker, documents)))
             url = getattr(rec, "source_url", None)
             if url and not x.sample:
                 out.append(Block("link", f"Record: {_source_name(rec)}", href=url))

@@ -140,3 +140,36 @@ def test_student_record_links_name_their_source_not_the_url():
     md = ex.to_markdown(ex.student_blocks(brief, leads, recs))
     assert "[Record: Temple Scholar Development and Fellowships Advising list](https://" in md
     assert "[Record: https://" not in md
+
+
+def test_exports_render_citations_as_the_screen_with_no_raw_ids():
+    """R9: the profile summary kept "[W7166556526, ...]", a documents export kept
+    "[private:manuscript]" and "[HT942526PRPIIRA, proposal, manuscript]", and a masked
+    student export kept "[sch-0001] supports ..." and "private:achievement-a [...]"."""
+    import re
+
+    brief, leads, opps, works = _inputs()
+    brief.summary = "The researcher builds SYNTHETIC tools [W1234567, W7654321]."
+    leads[0].explanation = ("The program funds SYNTHETIC work [SYN-1]. Cited work: W1234567 "
+                            "developed a SYNTHETIC tool [W1234567].")
+    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, []))
+    assert "SYNTHETIC tools (“A SYNTHETIC paper”, 2024; a paper on file)." in md
+    assert "The program funds SYNTHETIC work. Cited work: “A SYNTHETIC paper” (2024) " \
+        "developed a SYNTHETIC tool." in md  # its own number and the repeat go, as on the card
+    assert not re.search(r"\bW\d{5,}|private:", md)
+    text = ex.name_papers("Fits [HT942526PRPIIRA, proposal, manuscript] and "
+                          "[private:manuscript].", works)
+    assert text == "Fits (HT942526PRPIIRA; your draft proposal; your unpublished work) and " \
+        "(your unpublished work)."
+    m = egress.Masker()
+    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, [], masker=m,
+                                  documents=True))
+    assert not re.search(r"\bW\d{5,}|private:", md)
+    s_brief, s_leads, recs = _student_inputs()
+    m = egress.Masker()
+    md = ex.to_markdown(ex.student_blocks(s_brief, s_leads, recs, masker=m))
+    assert "Quillfen SYNTHETIC Award (sample) supports undergraduates." in md
+    assert "Cited work: one of your achievements led a SYNTHETIC survey." in md
+    model = "\n".join(x for x in md.splitlines() if x.startswith("> **Model:**"))
+    assert not re.search(r"\bsch-\d|private:|\[achievement", model)
+    assert ex.name_papers("A [PRIVATE-PHRASE-1] phrase.", {}) == "A [PRIVATE-PHRASE-1] phrase."

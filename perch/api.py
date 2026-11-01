@@ -552,6 +552,9 @@ def create_app(service: BriefService, runner: JobRunner,
                     and (o := r.get(Organisation, x.record_id))}
             wids = {f"https://openalex.org/{c}" for x in leads for c in x.cited_ids
                     if c.startswith("W")}
+            # the summary cites papers too, named by title in the export (R9)
+            wids |= {f"https://openalex.org/{c}" for c in re.findall(r"\bW\d{5,}\b",
+                                                                      b.summary or "")}
             works = {w.id: w for w in (r.get(Work, i) for i in sorted(wids)) if w}
             rows = cmp.compare(b, leads, r, "kept")
         name = res.display_name if res else b.researcher_id
