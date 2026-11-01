@@ -1553,6 +1553,21 @@ async def ux_landing(w: Walk, page: Page, base: str, tag: str) -> None:
                 w.errors.append(f"{tag}: R5: {q!r} gives {got}")
             if q == "A12":
                 await w.snap(page, tag, "r-bad-id")
+        # R14: one work and no citations read in the singular (SYNTHETIC candidates, served here)
+        syn = [{"id": f"https://openalex.org/A900000000{i}", "display_name": f"SYNTHETIC Person {i}",
+                "institutions": ["Temple University"], "works_count": n, "cited_by_count": k,
+                "source": "openalex", "source_url": "https://api.openalex.org/authors", "fetched_at": "2026-11-01T00:00:00Z"}
+               for i, n, k in ((1, 44, 15161), (2, 1, 1))]
+        await page.route("**/authors/resolve*", lambda r: r.fulfill(json={"candidates": syn}))
+        await page.goto(base + "/#/")
+        await page.wait_for_selector(".landing")
+        await page.fill("#q", "SYNTHETIC surname")
+        await page.click(".searchbox button[type=submit]")
+        await page.wait_for_selector(".cand", timeout=20000)
+        metas = await page.locator(".cand-meta2").all_inner_texts()
+        await page.unroute("**/authors/resolve*")
+        if not any("1 work ·" in m and "1 citation ·" in m for m in metas) or any(re.search(r"\b1 works\b|\b1 citations\b", m) for m in metas):
+            w.errors.append(f"{tag}: R14: the candidate cards read {metas}")
         await page.goto(base + "/#/")  # Q19: a lower-case OpenAlex id finds the same person
         await page.wait_for_selector(".landing")
         await page.fill("#q", AUTHOR.lower())

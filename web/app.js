@@ -404,8 +404,8 @@ function candidateCard(c, best) {
   const temple = atTemple(c);
   const meta = [
     (c.institutions || []).filter((i) => !/temple university/i.test(i)).join(", ") || null,
-    c.works_count != null ? `${c.works_count.toLocaleString("en-US")} works` : null,
-    c.cited_by_count != null ? `${c.cited_by_count.toLocaleString("en-US")} citations` : null,
+    c.works_count != null ? `${c.works_count.toLocaleString("en-US")} ${c.works_count === 1 ? "work" : "works"}` : null, // R14
+    c.cited_by_count != null ? `${c.cited_by_count.toLocaleString("en-US")} ${c.cited_by_count === 1 ? "citation" : "citations"}` : null,
     `OpenAlex ${id}`].filter(Boolean);
   return h("li", { class: `cand${chosen ? " chosen fade-in" : best ? " best" : ""}` },
     h("div", { class: "cand-body" },
