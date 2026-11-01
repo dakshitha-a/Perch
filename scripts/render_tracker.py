@@ -193,7 +193,8 @@ th { background: var(--raised); font-weight: 600; font-size: var(--t-xs); text-t
   letter-spacing: 0.05em; color: var(--muted); }
 td.id { font-family: var(--mono); font-weight: 600; white-space: nowrap; }
 td.mono { font-family: var(--mono); font-size: var(--t-xs); white-space: nowrap; }
-td.date { font-size: var(--t-xs); color: var(--muted); min-width: 7em; }
+td.date { font-size: var(--t-xs); color: var(--muted); }
+.nw { white-space: nowrap; }
 td.st { white-space: nowrap; }
 td .c { overflow-wrap: break-word; }
 tr.is-current td { background: var(--accent-soft); }
@@ -763,7 +764,8 @@ def render_table(t: Table, row_class: dict[int, str] | None = None,
                     body = f'<span class="cardlabel">{labels[k]} </span>{body}'
                 cells.append(f'<td class="id"{attrs}><div class="c">{body}</div></td>')
             elif k in date_cols:
-                cells.append(f'<td class="date"{attrs}><div class="c">{inline(c)}</div></td>')
+                day = re.sub(r"(\d{4}-\d{2}-\d{2})", r'<span class="nw">\1</span>', inline(c))
+                cells.append(f'<td class="date"{attrs}><div class="c">{day}</div></td>')
             else:
                 cells.append(f"<td{attrs}>{cell(inline(c), c)}</td>")
         rc = (row_class or {}).get(n)
