@@ -39,5 +39,11 @@ OFFICES: dict[str, Office] = {
 }
 
 
+# One fixed line on the Industry tab and in every industry hand-off (QA cycle 1, Q13). It
+# names no company and claims nothing about any: the office makes the check (rule 10).
+RESEARCH_SECURITY = ("Companies outside the United States may need a research-security "
+                     "review before any contact; the office makes that check.")
+
+
 def for_route(route: str) -> Office:
     return next(o for o in OFFICES.values() if o.route == route)

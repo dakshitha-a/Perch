@@ -1538,7 +1538,9 @@ function renderIndustry(panel) {
       h("div", { class: "routes-bar" }, h("div", {}, h("h2", { class: "section-title", id: "routes-title" }),
         watchWarning(h("p", { class: "notice warn infer-note" }, icon("warn"), h("span", {
           text: "Inferred from public signals; not verified. A company that cites or works near your "
-            + "research may have no interest in funding it. SBIR/STTR covers NIH awards only." }))))),
+            + "research may have no interest in funding it. SBIR/STTR covers NIH awards only." }))),
+        // One fixed line, the same as in the industry hand-off (perch/offices.py, Q13).
+        h("p", { class: "hint security-note", text: RESEARCH_SECURITY }))),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
       h("div", { class: "dismissed-box" }));
   }

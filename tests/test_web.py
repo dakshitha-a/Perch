@@ -349,3 +349,12 @@ console.log(JSON.stringify({ saved, resumed, afterLost, afterEnd, blocked: d.ope
     assert out["saved"] == ["perch.flags", "perch.session"] and out["resumed"]
     assert out["afterLost"] == {"open": False, "keys": []}
     assert out["afterEnd"] == [] and out["blocked"] and not out["fresh"]
+
+
+def test_the_research_security_line_is_one_fixed_line():
+    """Q13: the Industry tab and the industry hand-off carry the same code-written line,
+    naming no company."""
+    from perch.offices import RESEARCH_SECURITY
+
+    assert f'"{RESEARCH_SECURITY}"' in (ROOT / "web/app.js").read_text()
+    assert RESEARCH_SECURITY in (ROOT / "web/help.js").read_text()

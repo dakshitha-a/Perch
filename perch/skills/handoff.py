@@ -18,7 +18,7 @@ from perch import datefmt, egress
 from perch.compare import award_size
 from perch.llm import Message
 from perch.llm.audit import AuditedProvider
-from perch.offices import Office
+from perch.offices import RESEARCH_SECURITY, Office
 from perch.schemas import Lead, Opportunity, Organisation, Record, Researcher, Work
 from perch.skills import (
     GROUND_RULES,
@@ -156,9 +156,11 @@ def assemble(office: Office, researcher: Researcher, opening: str,
     note = ("Perch drafted this from public records. Each date and amount above is copied "
             "from the linked record.")
     if any(x.route == "B" for x, _ in items):
-        note += " Industry leads are inferences from public signals, not verified interest."
-    blocks += [note,
-               f"Best regards,\n{researcher.display_name}"]
+        note += (" Industry leads are inferences from public signals, not verified interest. "
+                 + RESEARCH_SECURITY)
+    # A researcher with no public profile signs the email themselves (Q26).
+    name = "" if researcher.id.startswith("private:") else researcher.display_name
+    blocks += [note, f"Best regards,\n{name}"]
     return "\n\n".join(blocks)
 
 
