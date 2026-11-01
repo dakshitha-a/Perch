@@ -22,7 +22,7 @@ The plan is organised by **session**, each sized to one context window. Dakshith
 
 ## Standing rules (never break these)
 
-1. **Public data only.** No private or unpublished text in the repo, fixtures, tests, logs, or examples. Any sample data is synthetic and labelled `SYNTHETIC`. The private-context feature (SPEC §Private context) is exercised only with synthetic text on a local model.
+1. **Public data only.** No private or unpublished text in the repo, fixtures, tests, logs, or examples. Any sample data is synthetic and labelled `SYNTHETIC`. The private-context feature (SPEC §Private context) is exercised only with synthetic text on a local model. Exception (Dakshitha, 2026-11-01): a user may send their own documents to the configured cloud provider when they choose to, after a second warning that names the provider and lists which documents would leave; the choice is theirs and per session, and a CV and unpublished research are named separately in that warning. Tests of that path use SYNTHETIC text only.
 2. **Never assume an API capability.** A fetcher is done only after it has been verified against a live response. Save one real response per source under `tests/fixtures/<source>/` and write the parser against it. Record exact endpoints, fields, rate limits and terms in `docs/SOURCES.md`. If access is unclear, stop and write a question; do not scrape around it.
 3. **Numbers and dates are copied, never generated.** Award sizes, deadlines, dates and eligibility are rendered from record fields by code. No model output may introduce a number, date or dollar amount that is not in a record it cites.
 4. **Provenance on every row.** Every stored record carries `source`, `source_url`, `fetched_at`. A claim without a record is not shown.

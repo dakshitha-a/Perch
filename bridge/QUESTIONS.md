@@ -11,14 +11,13 @@ Dakshitha delegated every product and design decision to Perch-dev on 2026-10-31
 
 
 
+
+## Answered
+
 33. **Standing-rule change to apply (raised 2026-10-30; narrowed in S24).** Standing rules are yours to edit; Perch-dev never edits them. Your answer to Q30 needs this change in `CLAUDE.md`:
 - **Rule 1 (for Q30), proposed addition:** "Exception: when a user turns Cloud on and confirms a second warning, their private documents may go to the configured cloud provider. Tests of that path use SYNTHETIC text only."
 - **Built in S24, switched off:** the second warning and the server gate exist. They stay off until you apply this change and set `PERCH_CLOUD_DOCUMENTS=1` on the demo.
-- **Rule 5:** no change needed. The S24 evaluation used decision-only checkers (Q34).
-
-
-
-## Answered
+- **Rule 5:** no change needed. The S24 evaluation used decision-only checkers (Q34). **Answered 2026-11-01 by Dakshitha:** documents may go to Cloud only when the user chooses to, with informed consent; a student's CV matters less than a PI's unpublished research, but it is the user's choice either way. Rule 1 amended in CLAUDE.md; the gate is switched on in S32 with a consent warning that lists the documents that would leave.
 
 30. **Documents and Cloud (raised S23, 2026-10-29; not blocking).** S23 built Cloud by choice, but only for briefs without documents: Cloud cannot turn on while a session holds a CV, proposal or unpublished work, and student mode turns it off. Reason: standing rule 1 says the private-context feature is used only with synthetic text on a local model. Your S23 note says a real deployment may rely on zero-data-retention cloud keys. **Ask:** keep documents Local only for Demo Day (the default), or allow them on Cloud after a second, stronger warning? The second option needs a standing-rule change from you. Default: Local only. **Answered 2026-10-30 by Dakshitha:** allow documents on Cloud after a second, stronger warning. This needs a change to standing rule 1, which Dakshitha applies herself; proposed text in Q33. Until the rule is changed, the build keeps documents Local only and tests use SYNTHETIC text only. Plan: S24 task 8.
 
