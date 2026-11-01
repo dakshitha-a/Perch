@@ -1,0 +1,360 @@
+"""Rehearse the Demo Day Scout flow against a running server and check each answer by rule
+(QA round 3, T29).
+
+Researcher flow, each run in a fresh session: build the warm PI-4 brief (A5026494099), keep
+the top two grant leads, then ask the three demo questions in order:
+  1. "What are my top three leads and why?"  passes when the answer names the brief's first
+     three grant leads in Match order, each in its own sentence or line with a reason, and
+     does not refuse or apologise.
+  2. "Which of these close before March?"    passes when a search tool ran with closes_by
+     after today and no later than the next 1 March, and the answer cites only leads that
+     close before that March (a lead cited as accepting proposals anytime is allowed), or
+     says none do when that is true of the brief's records. No apology.
+  3. "Draft the hand-off for my top lead"    passes when draft_handoff ran and the draft is
+     about the top lead alone.
+Student flow, each run in a fresh session: build the SYNTHETIC persona-ug brief and ask
+"Which of these can I apply to before March?". It passes when a search tool ran, the
+answer was not withheld, and any sample scholarship sits under its own heading.
+
+Each flow runs three times by default; the script prints pass counts per question and
+writes the answers to build/rehearsal/. Researchers are named by alias in everything it
+prints or writes. It never turns Cloud on: every session stays on local models.
+
+  uv run python scripts/demo_rehearsal.py [--base http://127.0.0.1:8091] [--runs 3]
+      [--only researcher student]
+
+Exit code 1 unless every run of every question passes.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import re
+import sqlite3
+import sys
+import time
+from datetime import date
+from pathlib import Path
+
+import httpx
+
+ROOT = Path(__file__).resolve().parents[1]
+AUTHOR = "A5026494099"  # PI-4, the demo researcher
+PERSONA = ROOT / "data/synthetic/persona-ug"
+QUESTIONS = ("What are my top three leads and why?", "Which of these close before March?",
+             "Draft the hand-off for my top lead")
+STUDENT_Q = "Which of these can I apply to before March?"
+SEARCH_TOOLS = ("search_opportunities", "search_options")
+CITE = re.compile(r"\[([^\[\]]+)\]")
+SENTENCE = re.compile(r"(?<=[.!?])\s+|\n+")
+REFUSAL = re.compile(r"\b(apolog\w*|sorry|cannot|can't|can not|unable|not able|do not have "
+                     r"access|don't have access)\b", re.I)
+REASON = re.compile(r"\b(fit\w*|match\w*|align\w*|relat\w*|because|since|support\w*|focus\w*|"
+                    r"your|you|research|papers?|work)\b", re.I)
+NO_DEADLINE = re.compile(r"\b(anytime|any time|no fixed|no set|no deadline|no close date|"
+                         r"not close before|do not close|does not close|don't close|placeholder|"
+                         r"rolling)\b", re.I)
+NONE_CLOSE = re.compile(r"\b(none|no lead|no leads|no grant|nothing|not any)\b", re.I)
+
+
+def aliases() -> dict[str, str]:
+    """Real display name -> alias, as scripts/tour/film.py and scripts/ux_walk.py use."""
+    ids = {}
+    with (ROOT / "data/overrides/pi_aliases.csv").open() as f:
+        for r in csv.DictReader(f):
+            ids[f"https://openalex.org/{r['openalex_id']}"] = r["alias"]
+    out = {}
+    for db in (ROOT / "build/devdemo/perch.db", ROOT / "data/demo/perch.db",
+               ROOT / "data/perch.db"):
+        if db.is_file():
+            con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
+            for i, data in con.execute("SELECT id, data FROM records WHERE kind='researcher'"):
+                if i in ids:
+                    out[json.loads(data)["display_name"]] = ids[i]
+            con.close()
+    return out
+
+
+NAMES = aliases()
+
+
+def alias(text: str) -> str:
+    for real, a in NAMES.items():
+        text = text.replace(real, a)
+    return text
+
+
+def short(i: str) -> str:
+    return i.strip().removeprefix("grants_gov:")
+
+
+def cited(text: str) -> list[str]:
+    out = []
+    for g in CITE.findall(text):
+        out += [short(x) for x in re.split(r"[,;]", g) if x.strip()]
+    return list(dict.fromkeys(out))
+
+
+def next_march(as_of: date) -> date:
+    return date(as_of.year + (as_of.month >= 3), 3, 1)
+
+
+class Client:
+    def __init__(self, base: str) -> None:
+        self.c = httpx.Client(base_url=base, timeout=180)
+        self.h = {"X-Perch-Private": self.c.post("/private/session").json()["token"]}
+
+    def get(self, path: str) -> dict:
+        r = self.c.get(path, headers=self.h)
+        r.raise_for_status()
+        return r.json()
+
+    def post(self, path: str, body: dict | None = None) -> dict:
+        r = self.c.post(path, headers=self.h, json=body or {})
+        r.raise_for_status()
+        return r.json() if r.content else {}
+
+    def wait_brief(self, limit: float = 300) -> dict:
+        t0 = time.time()
+        while time.time() - t0 < limit:
+            g = self.get("/private/brief")
+            if g["brief"]["status"] in ("done", "failed"):
+                return g
+            time.sleep(2)
+        raise TimeoutError("the brief did not finish")
+
+    def ask(self, sid: str | None, question: str) -> tuple[str, dict, float]:
+        t0 = time.time()
+        v = (self.post("/private/scout", {"question": question}) if sid is None
+             else self.post(f"/private/scout/{sid}/ask", {"question": question}))
+        sid = v["id"]
+        while v["busy"] or v["status"] == "running":
+            time.sleep(1)
+            v = self.get(f"/private/scout/{sid}")
+            if time.time() - t0 > 300:
+                raise TimeoutError("Scout did not finish")
+        return sid, v["exchanges"][-1], time.time() - t0
+
+    def end(self) -> None:
+        try:
+            self.post("/private/end")
+        finally:
+            self.c.close()
+
+
+def check_top_three(ex: dict, top: list[str]) -> list[str]:
+    a = ex.get("answer") or ""
+    if not a:
+        return [f"no answer ({ex.get('status')}; {'; '.join(ex.get('errors') or [])})"]
+    errs = []
+    if REFUSAL.search(a):
+        errs.append("refuses or apologises")
+    ids = [i for i in cited(a) if i in top or re.match(r"^[A-Z0-9-]+$", i)]
+    grants = [i for i in ids if not i.startswith("W")]
+    if grants[:3] != top:
+        errs.append(f"names {grants[:3]}, not {top} in Match order")
+    units = [u for u in SENTENCE.split(a) if u.strip()]
+    for t in top:
+        mine = [u for u in units if t in cited(u)]
+        if not mine:
+            continue
+        own = [u for u in mine if not any(o in cited(u) for o in top if o != t)]
+        if not own:
+            errs.append(f"{t} shares its only sentence with another lead, so no reason of its own")
+        elif not any(REASON.search(CITE.sub(" ", u)) and len(CITE.sub(" ", u).split()) >= 6
+                     for u in own):
+            errs.append(f"{t} has no reason")
+    return errs
+
+
+def check_before_march(ex: dict, as_of: date, closes: dict[str, date | None]) -> list[str]:
+    """closes: each brief lead's real close date, None for none or a placeholder."""
+    march = next_march(as_of)
+    errs = []
+    searched = [c for c in ex["cards"] if c["tool"] in SEARCH_TOOLS and c["status"] == "done"]
+    good = False
+    for c in searched:
+        by = c["arguments"].get("closes_by")
+        try:
+            good |= bool(by) and as_of < date.fromisoformat(by) <= march
+        except ValueError:
+            pass
+    if not good:
+        errs.append("no search with closes_by after today and by the next March: "
+                    + json.dumps([c["arguments"] for c in searched]))
+    a = ex.get("answer") or ""
+    if not a:
+        return [*errs, f"no answer ({ex.get('status')}; {'; '.join(ex.get('errors') or [])})"]
+    if REFUSAL.search(a):
+        errs.append("refuses or apologises")
+    before = {i for i, d in closes.items() if d and as_of < d < march}
+    named_before = set()
+    for u in (u for u in SENTENCE.split(a) if u.strip()):
+        for i in cited(u):
+            if i.startswith("W"):
+                continue
+            if i in before:
+                named_before.add(i)
+            elif i in closes and not NO_DEADLINE.search(u):
+                errs.append(f"cites {i}, which does not close before {march.isoformat()}, "
+                            "as if it did")
+    if before and not named_before:
+        errs.append(f"names none of {sorted(before)}, which close before {march.isoformat()}")
+    if not before and not NONE_CLOSE.search(a):
+        errs.append("does not say that none close before March")
+    return errs
+
+
+def check_draft(ex: dict, top: str, others: list[str]) -> list[str]:
+    drafts = [c for c in ex["cards"] if c["tool"] == "draft_handoff" and c["status"] == "done"]
+    if not drafts:
+        return ["no draft_handoff step: " + json.dumps(
+            [(c["tool"], c["status"], c["arguments"]) for c in ex["cards"]])]
+    d = drafts[-1]["draft"] or {}
+    text = f"{d.get('subject', '')}\n{d.get('body', '')}"
+    errs = []
+    if top not in text:
+        errs.append(f"the draft does not name the top lead {top}")
+    if extra := [o for o in others if o in text]:
+        errs.append(f"the draft also names {extra}")
+    if "1 funding opportunity" not in d.get("subject", ""):
+        errs.append(f"subject reads {d.get('subject')!r}")
+    return errs
+
+
+def check_student(ex: dict) -> list[str]:
+    errs = []
+    if not any(c["tool"] in SEARCH_TOOLS and c["status"] == "done" for c in ex["cards"]):
+        errs.append("no search step")
+    a = ex.get("answer") or ""
+    if not a:
+        return [*errs, f"no answer ({ex.get('status')}; {'; '.join(ex.get('errors') or [])})"]
+    if REFUSAL.search(a) and not cited(a):
+        errs.append("refuses")
+    heading = False
+    for line in a.splitlines():
+        if re.match(r"^\W*sample scholarships", line, re.I):
+            heading = True
+        ids = [i for i in cited(line)]
+        if any(i.startswith("sample:") for i in ids):
+            if not heading:
+                errs.append("a sample is cited before its own heading")
+                break
+            if any(not i.startswith("sample:") for i in ids):
+                errs.append("a sample shares a line with a public record")
+                break
+    return errs
+
+
+def researcher_run(base: str, n: int) -> dict:
+    cl = Client(base)
+    out: dict = {"run": n, "questions": []}
+    try:
+        cl.post("/private/brief", {"author_id": AUTHOR})
+        g = cl.wait_brief()
+        as_of = date.fromisoformat(g["brief"]["options"]["as_of"])
+        grants = sorted((x for x in g["leads"] if x["route"] == "A"
+                         and x["status"] != "dismissed"), key=lambda x: x["rank"] or 0)
+        for x in grants[:2]:
+            cl.post(f"/private/leads/{x['id']}/keep")
+        top = [short(x["record_id"]) for x in grants[:3]]
+        closes: dict[str, date | None] = {}
+        for x in grants:
+            o = x.get("opportunity") or {}
+            d = date.fromisoformat(o["close_date"]) if o.get("close_date") else None
+            far = d and o.get("close_date_note") and (d - as_of).days > 3 * 365
+            closes[short(x["record_id"])] = None if far else d
+        sid = None
+        checks = (lambda ex: check_top_three(ex, top),
+                  lambda ex: check_before_march(ex, as_of, closes),
+                  lambda ex: check_draft(ex, top[0], [short(x["record_id"]) for x in grants[1:]]))
+        for q, check in zip(QUESTIONS, checks, strict=True):
+            sid, ex, secs = cl.ask(sid, q)
+            errs = check(ex)
+            out["questions"].append(_record(q, ex, secs, errs))
+    finally:
+        cl.end()
+    return out
+
+
+def student_run(base: str, n: int) -> dict:
+    cl = Client(base)
+    out: dict = {"run": n, "questions": []}
+    try:
+        for kind in ("cv", "interests", "achievements"):
+            cl.post("/private/documents", {"kind": kind,
+                                           "text": (PERSONA / f"{kind}.md").read_text()})
+        cl.post("/private/student/brief", {})
+        g = cl.wait_brief(limit=600)
+        if g["brief"]["status"] != "done":
+            raise RuntimeError("the student brief failed")
+        _, ex, secs = cl.ask(None, STUDENT_Q)
+        out["questions"].append(_record(STUDENT_Q, ex, secs, check_student(ex)))
+    finally:
+        cl.end()
+    return out
+
+
+def _record(q: str, ex: dict, secs: float, errs: list[str]) -> dict:
+    return {"question": q, "pass": not errs, "errors": [alias(e) for e in errs],
+            "seconds": round(secs, 1), "status": ex.get("status"),
+            "answer": alias(ex.get("answer") or ""), "flagged": ex.get("flagged"),
+            "steps": [{"tool": c["tool"], "status": c["status"], "arguments": c["arguments"],
+                       **({"subject": alias(c["draft"]["subject"])} if c.get("draft") else {})}
+                      for c in ex["cards"]]}
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--base", default="http://127.0.0.1:8091")
+    ap.add_argument("--runs", type=int, default=3)
+    ap.add_argument("--only", nargs="+", default=["researcher", "student"])
+    ap.add_argument("--label", default="")
+    a = ap.parse_args()
+    report: dict = {"base": a.base, "runs": a.runs, "researcher": [], "student": []}
+    for flow, fn in (("researcher", researcher_run), ("student", student_run)):
+        if flow not in a.only:
+            continue
+        for n in range(1, a.runs + 1):
+            try:
+                r = fn(a.base, n)
+            except Exception as e:  # noqa: BLE001 - a failed run counts as failed questions
+                r = {"run": n, "error": f"{type(e).__name__}: {alias(str(e))[:200]}",
+                     "questions": []}
+            report[flow].append(r)
+            for q in r["questions"]:
+                mark = "pass" if q["pass"] else "FAIL"
+                print(f"{flow} run {n} | {mark} | {q['seconds']:>5}s | {q['question']}")
+                for e in q["errors"]:
+                    print(f"    - {e}")
+                print("    steps: " + "; ".join(f"{s['tool']}({json.dumps(s['arguments'])})"
+                                                for s in q["steps"]))
+                print("    answer: " + q["answer"].replace("\n", " / ")[:600])
+            if r.get("error"):
+                print(f"{flow} run {n} | ERROR | {r['error']}")
+            sys.stdout.flush()
+    print("\nPass counts")
+    total = ok = 0
+    for flow, qs in (("researcher", QUESTIONS), ("student", (STUDENT_Q,))):
+        if flow not in a.only:
+            continue
+        for i, q in enumerate(qs):
+            got = [r["questions"][i]["pass"] if len(r["questions"]) > i else False
+                   for r in report[flow]]
+            print(f"  {flow:10} Q{i + 1} {sum(got)} of {len(got)}  {q}")
+            total += len(got)
+            ok += sum(got)
+    print(f"  all {ok} of {total}")
+    out = ROOT / "build/rehearsal"
+    out.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S") + (f"-{a.label}" if a.label else "")
+    path = out / f"rehearsal-{stamp}.json"
+    path.write_text(json.dumps(report, indent=1))
+    print(f"  report: {path.relative_to(ROOT)}")
+    return 0 if ok == total else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
