@@ -338,12 +338,16 @@ function fitReason(l) {
   const items = (work || "").split(/;\s*/).map((x) => plainExplanation(x.replace(/^\s*(?:private:)?(?:achievement-[a-e]|interests)\s*/, ""))
     .replace(/\.$/, "")).filter(Boolean);
   const reason = l.inference ? plainExplanation(you(l.inference)) : null;
+  // Below the good band the model's sentence may say it does not fit, so the label does
+  // not promise a fit: "How it relates", as on the researcher's weaker cards (Q17).
+  const good = (l.match_score ?? 100) >= 60;
+  const label = good ? "Why it may fit" : "How it relates";
   return h("div", { class: "fit-reason" },
-    reason ? h("p", { class: "fit-why" }, h("b", { text: "Why it may fit: " }), h("span", { text: reason }),
+    reason ? h("p", { class: "fit-why" }, h("b", { text: `${label}: ` }), h("span", { text: reason }),
       h("span", { class: "tag model", text: "Model text" })) : null,
     h("details", { class: "why explain", open: !SHUT.has(l.id),
       ontoggle: (e) => { if (e.target.open) SHUT.delete(l.id); else SHUT.add(l.id); } },
-    h("summary", { "data-key": `why-${l.id}` }, h("span", { text: reason ? "More on why it may fit" : "Why it may fit" })),
+    h("summary", { "data-key": `why-${l.id}` }, h("span", { text: reason ? `More on ${label.toLowerCase()}` : label })),
     about ? h("p", { text: plainExplanation(about) }) : null,
     items.length ? h("div", {}, h("p", { class: "mini", text: "From your achievements and interests" }),
       h("ul", { class: "notes" }, items.map((x) => h("li", { text: x })))) : null,
