@@ -51,7 +51,7 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 
 ## 4. Private context: CV and unpublished directions
 
-**Private by default** (S23, 2026-10-29, Dakshitha). With no user accounts, every brief is a session held in memory: no stored briefs, no reuse, no browser history, no per-user logs. Public records fetched for a brief stay cached. Models are local by default; a Local / Cloud switch sends the three model skills to a named cloud provider after a warning the user confirms, never for a session with documents. Monitoring is shelved until a user system exists (`perch/shelved/monitor/`). User guide: `docs/private-mode.md`.
+**Private by default** (S23, 2026-10-29, Dakshitha). With no user accounts, every brief is a session held in memory: no stored briefs, no reuse, no browser history, no per-user logs. Public records fetched for a brief stay cached. Models are local by default; a Local / Cloud switch sends the three model skills to a named cloud provider after a warning the user confirms; a session that holds documents gets a second warning that lists which documents would leave, and nothing leaves until the user confirms it (rule 1 as amended 2026-11-01; the deployer may also disable this with `PERCH_CLOUD_DOCUMENTS`). Monitoring is shelved until a user system exists (`perch/shelved/monitor/`). User guide: `docs/private-mode.md`.
 
 **Private mode** (expanded 2026-10-29 at Dakshitha's request; full design in `docs/design/PRIVATE_MODE.md`; since S23 the documents part of every session). A researcher adds a current CV, a research summary, an unfinished proposal or unpublished work, and the routes are tailored to it.
 
