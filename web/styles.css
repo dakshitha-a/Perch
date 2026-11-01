@@ -819,6 +819,10 @@ h1.page { font: 500 34px/1.15 var(--serif); letter-spacing: -.005em; }
 .screen { display: flex; flex-direction: column; gap: 22px; }
 .title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
 .title-row > div:first-child { flex: 1 1 420px; min-width: 0; }
+.build-box { display: grid; gap: 4px; justify-items: end; max-width: 340px; }
+.explain-check { min-height: 32px; font-size: 14px; gap: 8px; }
+.explain-check input { width: 20px; height: 20px; }
+@media (max-width: 699px) { .build-box { justify-items: stretch; max-width: none; width: 100%; } }
 
 /* segmented control: a 4 px padded pill holding two buttons, the chosen one in accent */
 .seg { display: inline-flex; padding: 4px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); max-width: 100%; }

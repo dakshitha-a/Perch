@@ -341,8 +341,14 @@ function renderPick() {
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page", id: "pick-title", tabindex: "-1", text: title }),
         sub ? h("p", { class: "page-sub" }, sub) : null),
-      c ? h("button", { class: "btn primary big fade-in", type: "button", "data-key": "build", disabled: F.building,
-        onclick: () => build(c) }, h("span", { text: F.building ? "Starting" : "Build brief" })) : null),
+      // Explain each lead sets how the brief is built, so it sits with the Build button (U42).
+      c ? h("div", { class: "build-box fade-in" },
+        h("button", { class: "btn primary big", type: "button", "data-key": "build", disabled: F.building,
+          onclick: () => build(c) }, h("span", { text: F.building ? "Starting" : "Build brief" })),
+        h("label", { class: "check explain-check" },
+          h("input", { type: "checkbox", checked: F.explain, onchange: (e) => { F.explain = e.target.checked; } }),
+          h("span", {}, h("b", { text: "Explain each lead" }),
+            h("span", { class: "hint", text: " A model writes a short, cited reason for every lead. This is the slow step." })))) : null),
     F.error ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: F.error })) : null,
     F.busy ? h("div", { class: "shimmer-card" }) : null,
     list.length ? h("ul", { class: "cand-list" }, list.map((x, i) => candidateCard(x, i === 0 && !c && n > 1))) : null,
@@ -430,11 +436,7 @@ function contextPanel(c) {
         h("label", { class: "big", for: "ctx-min", text: "Leave out awards smaller than (US dollars)" }),
         h("input", { id: "ctx-min", type: "number", inputmode: "numeric", min: "0", step: "any", placeholder: "Any",
           value: F.minAmount, "aria-describedby": "min-hint", oninput: (e) => { F.minAmount = e.target.value; } }),
-        h("p", { class: "note", id: "min-hint", text: "Compared with the award ceiling in each record. Records that state no amount stay in." }),
-        h("label", { class: "check" },
-          h("input", { type: "checkbox", checked: F.explain, onchange: (e) => { F.explain = e.target.checked; } }),
-          h("span", {}, h("b", { text: "Explain each lead" }),
-            h("span", { class: "hint", text: " A model writes a short, cited reason for every lead. This is the slow step." })))))));
+        h("p", { class: "note", id: "min-hint", text: "Compared with the award ceiling in each record. Records that state no amount stay in." })))));
 }
 
 function sampleStatus() {

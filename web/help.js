@@ -99,7 +99,7 @@ function steps() {
     ["Find the researcher", picFind(),
       "Choose Researcher on the first screen, then type a name, an ORCID iD or an OpenAlex ID. Names are searched among authors whose latest institution in OpenAlex is Temple University; if a name is not found, paste the ORCID iD."],
     ["Confirm it is the right person", picConfirm(),
-      "Check the institution, topics and paper count, then press This is the one. An OpenAlex ID or ORCID iD with exactly one match is picked for you. Nothing runs until you press Build brief. Back to the matches undoes the pick."],
+      "Check the institution, topics and paper count, then press This is the one. An OpenAlex ID or ORCID iD with exactly one match is picked for you. Nothing runs until you press Build brief. Explain each lead sits under that button; it asks a model to write a short, cited reason for every lead, and it is the slow step. Back to the matches undoes the pick."],
     ["Watch the brief build", picWatch(),
       "The brief opens on Routes. A card at the top names the step, counts the steps and fills a bar as each one finishes; grant cards shimmer until the leads arrive. On a phone, once the brief is ready, the card shrinks to one line, and Steps opens the list. Briefs run one at a time on this server, so if another is building, the card says Waiting in line until yours starts. In tests on the demo models a brief with explanations took 46 to 49 seconds. The demo researchers’ default briefs are built when the server starts and held in its memory, so they open at once; each visitor gets their own copy, and nothing about the visitor is stored."],
     ["Read the routes and decide", picLead(), null],
