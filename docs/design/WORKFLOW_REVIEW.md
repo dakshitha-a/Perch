@@ -57,6 +57,27 @@ How the numbers moved:
 - **Waits:** single runs; treat the seconds as ±0.5 s, as before.
 - **Remaining scrolls:** "Why it fits", the second Keep and "Copy the draft" (pi); the student Build button and Copy.
 
+## Paths after all S30 fixes
+
+Run on 31 October 2026 after W1 to W18, S1 to S18, P1 to P6 and U1 to U42 (S30 task 5), with the same command and a freshly restarted dev server: `uv run --no-project --with playwright python scripts/path_measure.py --base http://127.0.0.1:8091`. The student and private rows come from the full run. The two PI rows come from a second run with `--only pi pi-live`, because the first run started while the restarted server was still building its warm briefs. The script now opens the Weaker matches fold before it keeps the second lead, because that lead is a weak match for PI-4 and the fold hides it (U24).
+
+| Task | Screens | Clicks | Typed | Waits ≥1 s (s) | Scrolls | Wall s | Requests | KB | Build polls (KB) |
+|---|---|---|---|---|---|---|---|---|---|
+| pi: PI-4 (A5026494099): warm default brief, why, evidence, keep 2, compare, hand-off, Scout, export | 5 | 14 | 2 | 2 (12.6) | 3 | 17.6 | 45 | 269.3 | 0 (0.0) |
+| pi-live: PI-4 (A5026494099): same path, brief built live (career stage set) | 5 | 16 | 2 | 3 (58.9) | 3 | 64.0 | 75 | 445.9 | 30 (192.6) |
+| student: SYNTHETIC persona-ug: fellowships and sample scholarships, note, Scout, export | 5 | 13 | 4 | 2 (54.7) | 2 | 59.6 | 75 | 660.1 | 33 (409.2) |
+| private: SYNTHETIC persona-1: private brief from one document, no OpenAlex id | 3 | 4 | 1 | 1 (33.5) | 2 | 35.2 | 50 | 297.7 | 22 (59.0) |
+
+How the numbers moved (before, then after the W fixes, then now; screens/clicks/scrolls/wall seconds):
+
+- **pi:** 5/14/5/18.1 s, then 5/13/3/17.1 s, now 5/14/3/17.6 s. Scrolls hold at 3. Clicks rose by one, because the second kept lead sits in the Weaker matches fold and the fold needs one press (U24).
+- **pi-live:** 5/15/4/68.6 s, then 5/15/3/56.2 s, now 5/16/3/64.0 s. The extra click is the same fold press. The wall time is the live build, which moves by several seconds from run to run.
+- **student:** 5/14/5/58.0 s, then 5/13/2/57.8 s, now 5/13/2/59.6 s. Nothing changed after the W fixes.
+- **private:** 4/6/2/34.0 s, then 3/5/3/33.6 s, now 3/4/2/35.2 s. One click and one scroll fewer than after the W fixes. The scroll count on Your documents moves with the window height and the page, so treat a difference of one as noise.
+- **Requests and kilobytes:** 46/606.0 KB, then 45/259.1 KB, now 45/269.3 KB for the warm PI path. The student polls stay near 409 KB, against 7356 KB before P3.
+- **The warm PI row on a cold server:** the first run, started right after the dev server restarted, took 194.4 s with 114 build polls, because the warm brief was not ready yet. It is not a result; the table uses the second run.
+- **Waits:** single runs; treat the seconds as ±0.5 s for the short waits and ±5 s for a live build.
+
 ## Findings: redundancy and workflow
 
 | # | Finding | Evidence | Proposed change | Saves or risk | Cost | Decision |
