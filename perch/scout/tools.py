@@ -248,8 +248,7 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                       "close_date": closes_text(o, ctx.as_of),
                       # read mid-sentence: "a ceiling of up to $250,000" (R17)
                       "award_size": lower_first(award_size(o) or "not in the record"),
-                      "match": match_score(x.rerank_score),
-                      "matched_thread": x.candidate.best_thread + 1})
+                      "match": match_score(x.rerank_score)})
     if sort == "close_date":  # the soonest first; open-anytime and undated ones last (Q14)
         opp = {ctx.see(x.opportunity): x.opportunity for x in b.leads}
 
@@ -261,6 +260,9 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
     elif sort == "award_ceiling":  # the largest ceiling first; none stated last (T6)
         top = {ctx.see(x.opportunity): x.opportunity.award_ceiling for x in b.leads}
         leads.sort(key=lambda d: -(top[d["id"]] or -1))
+    if sort != "match":  # T6: rank is the place in this order; Match order is in "match"
+        for i, d in enumerate(leads, 1):
+            d["rank"] = i
     reasons: dict[str, int] = {}
     for rs in b.rejected.values():
         for why in rs:

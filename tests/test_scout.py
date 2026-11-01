@@ -730,6 +730,7 @@ def test_largest_ceiling_sorts_by_ceiling_and_a_floor_is_not_a_ceiling(service):
         tops = [r.get(Opportunity, x["id"]).award_ceiling for x in out["leads"]]
     known = [t for t in tops if t]
     assert known == sorted(known, reverse=True) and tops[:len(known)] == known
+    assert [x["rank"] for x in out["leads"]] == list(range(1, len(tops) + 1))
     t = datetime(2026, 10, 29, tzinfo=UTC)
     fl = Opportunity(id="grants_gov:SYN-FL", source="grants_gov", source_url="u", fetched_at=t,
                      opportunity_number="SYN-FL", title="SYNTHETIC floor", agency="NSF",
@@ -777,7 +778,7 @@ def test_a_question_that_names_one_record_is_sent_to_that_record(service):
 
 
 def test_older_answers_are_shortened_and_old_reminders_go(service):
-    """T4: an answer older than the last question's is cut to 400 characters, and an
+    """T4: an answer older than the last question's is cut to 300 characters, and an
     earlier question's reminder and rejected draft leave the history."""
     long = f"It closes 17 Nov 2026 [{OPP}]. " + "More words here. " * 60
     fake = FakeProvider(["No tool used.", [ToolCall("a", "get_record", {"id": OPP})], long,
@@ -790,7 +791,7 @@ def test_older_answers_are_shortened_and_old_reminders_go(service):
     texts = [m.content for m in sess.messages]
     assert "No tool used." not in texts and not any("snapshot" in t for t in texts)
     first = [t for t in texts if t.startswith("It closes")][0]
-    assert first.endswith("… (shortened)") and len(first) < 420
+    assert first.endswith("… (shortened)") and len(first) < 320
     assert f"Again [{OPP}]." in texts  # the last question's answer stays whole
     assert sess.answer == f"Third [{OPP}]." and [x["question"] for x in sess.exchanges] == [
         "When does PAR-25-268 close?", "And its code?", "And its agency?"]

@@ -711,13 +711,13 @@ def months_line(months: list[tuple[str, date, date]], as_of: date) -> str:
             + ". \"Before\" a month means closes_by its first day.)")
 
 
-ANSWER_CHARS = 400  # an older answer, as later questions see it (T4)
+ANSWER_CHARS = 300  # an older answer, as later questions see it (T4)
 
 
 def compact(s: Session) -> None:
     """T4: before a new question, the tool results of earlier questions are cut to the
     step's result line and the records it named. Answers older than the last question's
-    are cut to their first 400 characters, and the reminders and rejected drafts of
+    are cut to their first 300 characters, and the reminders and rejected drafts of
     earlier questions go. The questions, the steps asked for and the answers' openings
     stay, and every record stays in the session's checked set, so a question costs about
     the same however long the conversation, and each model call stays well inside the
