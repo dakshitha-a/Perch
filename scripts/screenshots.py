@@ -31,7 +31,11 @@ def find_chrome() -> str | None:
 
 async def walk(page: Page, url: str, out: Path, tag: str, errors: list[str]) -> None:
     async def snap(name: str, full: bool = False) -> None:
-        await page.screenshot(path=str(out / f"{tag}-{name}.png"), full_page=full)
+        if full:  # from the top, or the sticky bar and rail are drawn mid-page
+            await page.evaluate("window.scrollTo(0, 0)")
+            await page.wait_for_timeout(300)
+        await page.screenshot(path=str(out / f"{tag}-{name}.png"), full_page=full,
+                              animations="disabled" if full else "allow")
 
     page.on("pageerror", lambda e: errors.append(f"{tag}: {e}"))
     await page.goto(url)
