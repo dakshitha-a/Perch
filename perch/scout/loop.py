@@ -263,6 +263,7 @@ class Session:
     last_list: list[str] = field(default_factory=list)  # F15: ids of the last list shown
     scope: str | None = None  # F1: the search scope this question's words set
     amount_q: bool = False  # G2, G12: this question asks for the largest amount
+    force: ToolCall | None = None  # G4: the exact call a nudge named, run by code if refused
     # One entry per question: its text, the first card it made, and how it ended. Held in
     # memory for the web app; the log keeps a hash of the question only.
     exchanges: list[dict] = field(default_factory=list)
@@ -409,7 +410,7 @@ class Scout:
         s.user_numbers |= {d.isoformat() for _, first, last in months for d in (first, last)}
         s.user_numbers.add(self.ctx.as_of.isoformat())  # "today", as the session line says
         s.status, s.answer, s.flagged, s.errors, s.turns = "running", None, False, [], 0
-        s.nudged = False
+        s.nudged, s.force = False, None
         s.exchanges.append({"question": question, "cards_from": len(s.cards),
                             "msgs_from": msgs_from, "answer": None,
                             "flagged": False, "errors": [], "status": "running"})
@@ -464,6 +465,13 @@ class Scout:
                     self._answer_repeat(s, c)
                 continue
             if self._nudge(s, r.text):
+                continue
+            if s.force and not self._this_question(s):
+                # G4: the nudge named the exact call and the model refused again: code makes
+                # that one call, shown as a step, and the model answers from its result
+                call, s.force = s.force, None
+                s.messages.append(Message("assistant", r.text, tool_calls=[call]))
+                s.cards.append(Card(call.id, s.turns, call.name, call.arguments))
                 continue
             return self._finish(s, r.text)
 
@@ -522,11 +530,14 @@ class Scout:
               and (named := self._named(question)) and "get_record" in self.table):
             nudge = RECORD_NUDGE.format(id=named)  # T7: the record answers it, not memory
         elif search == "search_options" and (codes := CODE_Q_RE.findall(question)):
-            nudge = (f'Call search_options now with words "{" ".join(codes).upper()}". Reply '
-                     "with the tool call only.")  # G4
+            words = " ".join(dict.fromkeys(c.upper() for c in codes))
+            nudge = (f'Call search_options now with words "{words}". Reply with the tool call '
+                     "only.")  # G4
+            s.force = ToolCall(secrets.token_hex(4), "search_options", {"words": words})
         elif search == "search_options" and SAMPLES_Q_RE.search(question):
             nudge = ('Call search_options now with route "F": the public fellowships, with no '
                      "sample scholarships. Reply with the tool call only.")  # G4
+            s.force = ToolCall(secrets.token_hex(4), "search_options", {"route": "F"})
         elif search and FILTER_Q_RE.search(undated(question)):
             nudge = FILTER_NUDGE.format(tool=search, filters=FILTERS[search])
         elif CAPABILITY_RE.search(question) or (cited(text) and not stated_numbers(question)):
