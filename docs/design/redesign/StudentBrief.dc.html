@@ -730,7 +730,7 @@ class Component extends DCLogic {
       const k = !!st.kept[o.id], bd = BANDS[o.band] || BANDS.partial, none = !/Closes|Deadline/.test(o.facts);
       const weak = o.band === 'weak';
       return {
-        ...o, ...V[o.v], ...factsOf(o),
+        ...o, ...V[o.v], ...factsOf({ ...o, isSample: isS }),
         sample: isS, borderStyle: isS ? 'dashed' : 'solid',
         border: o === sel ? c.accent : (isS ? c.ember : c.line),
         hasTag: !!o.tag, tag: o.tag || '',
