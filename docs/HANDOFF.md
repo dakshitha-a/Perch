@@ -4,10 +4,10 @@ Written at the close of S32 (2026-11-01). S29 to S32 ran in one orchestrating co
 
 ## Where things stand
 
-- **The build is ready to freeze.** `main` holds every review fix and five QA rounds. 398 tests green. Full walk with axe 217 states, 0 errors, 0 axe violations, 0 sideways scroll on the dev server; on the public URL after the final rebuild 219 states, 0 errors, 0 sideways scroll, 2 axe target-size hits that are one card title scrolled partly under the sticky tab bar on the phone (a scroll-position artifact; the dev-store walk is clean). An earlier live walk on 52e75b0 had one error: a two-part Scout question's NSF half withheld by the citation check, the designed fallback. Canary clean. `make package` on the final commit builds the submission ZIP (33.5 MB, 441 files, tracked files only plus SUBMISSION.md); the tests passed inside an unzipped copy at 2d1ed4b and the app serves from a clean unzip of the final ZIP with the fake models.
+- **The build is ready to freeze.** `main` holds every review fix and five QA rounds. 408 tests green. Full walk with axe 217 states, 0 errors, 0 axe violations, 0 sideways scroll on the dev server; on the public URL after the final rebuild 219 states, 0 errors, 0 sideways scroll, 2 axe target-size hits that are one card title scrolled partly under the sticky tab bar on the phone (a scroll-position artifact; the dev-store walk is clean). An earlier live walk on 52e75b0 had one error: a two-part Scout question's NSF half withheld by the citation check, the designed fallback. Canary clean. `make package` on the final commit builds the submission ZIP (33.5 MB, 441 files, tracked files only plus SUBMISSION.md); the tests passed inside an unzipped copy at 2d1ed4b and the app serves from a clean unzip of the final ZIP with the fake models.
 - **The demo is live on the rebuilt build** (container rebuilt from the final `main`, eeb7d3b, on 2026-11-01; the model units were restarted once earlier that day with the new settings). The chat model runs with a 12,288-token context and two slots; GPU 6 sits flat at about 27,490 MiB. Demo Day caps are set in the compose file (100 briefs, 200 sessions, 300 hand-offs and Scout questions an hour per address). The three warm briefs take about 4 min 39 s to build after a restart, so restart the demo well before the slot.
 - **The demo script passes every run.** `scripts/demo_rehearsal.py` runs the three researcher questions, the student question and the documents hand-off in fresh sessions, three times each, on three kept-leads variants: 45 of 45 on the demo. Questions take 5 to 6 s on a quiet server.
-- **What the presenter should know** (from the round 5 report, `docs/design/qa/CYCLE_5.md`, "Fix round"): the demo researchers' briefs open at once because they were built at server start, and the card says so; a live brief takes about 40 s, longer behind another build; Scout's session budget allows about 12 to 14 questions, then "Start a new conversation"; persona-1's top lead closes on 6 Nov, so check that brief on the morning; keep Cloud off; show the researcher export rather than the student one; avoid asking Scout "how many of my options are samples".
+- **What the presenter should know** (from the round 5 report, `docs/design/qa/CYCLE_5.md`, "Fix round"): the demo researchers' briefs open at once because they were built at server start, and the card says so; a live brief takes about 40 s, longer behind another build; Scout's session budget allows about 12 to 14 questions, then "Start a new conversation"; persona-1's top lead closes on 6 Nov, so check that brief on the morning; Cloud stays off unless a visitor chooses it (documents then need the second confirmation); show the researcher export rather than the student one; avoid asking Scout "how many of my options are samples".
 
 ## What S29 to S32 did
 
@@ -23,7 +23,7 @@ Written at the close of S32 (2026-11-01). S29 to S32 ran in one orchestrating co
 - **A two-part Scout question** ("next NSF deadline, and why does the top lead fit?") had its NSF half withheld on the public URL once; it passes on the dev server.
 - **Student retrieval:** 1 of 12 planted positives never reaches a brief (SYNTHETIC, a mechanism test).
 - **Back-test tuning** used the same 48 targeted rows it reports, so the S27 gain is partly fitted (RESULTS.md says so).
-- **Q33** is still Dakshitha's: documents stay Local only until standing rule 1 is changed and `PERCH_CLOUD_DOCUMENTS=1` is set.
+- **Documents on Cloud (Q33, answered 2026-11-01):** by the user's informed, per-session choice. The second warning lists each document that would leave, with a CV and unpublished research named separately; consent is per document and a document added later turns Cloud off until confirmed. The demo runs with the gate on. The deployer's decisions (fully local, hybrid or cloud only; whether the key is a zero-data-retention key) are written in ARCHITECTURE.md, SPEC.md, deploy.md and the README; the roadmap in PLAN.md lists them first.
 - **GRANTED and CREST** eligibility against Temple is unchecked (Q39, after Demo Day).
 
 ## Next: S33, freeze (Dakshitha)
@@ -34,5 +34,4 @@ Written at the close of S32 (2026-11-01). S29 to S32 ran in one orchestrating co
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 
-- **Q33:** standing-rule 1 change for documents on Cloud; default: documents stay Local only.
-- Everything else was closed under the delegation (Q29, Q34, Q35, Q36, Q41, Q42) with the decisions in DECISIONS.md.
+- **None.** Q33 was answered by Dakshitha on 2026-11-01 and built; everything else was closed under the delegation (Q29, Q34, Q35, Q36, Q41, Q42) with the decisions in DECISIONS.md.
