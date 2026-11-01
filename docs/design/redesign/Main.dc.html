@@ -149,11 +149,15 @@ input::placeholder{color:#7f8f89}
           <label for="qa" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Find a Temple researcher</label>
           <div style="display: flex; gap: 8px; padding: 6px; border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}">
             <input id="qa" type="search" placeholder="Researcher name, ORCID iD or OpenAlex ID" style="flex: 1; min-width: 0; min-height: 48px; padding: 0 14px; border: 0; background: transparent; color: {{c.ink}}; font: 400 17px Inter, sans-serif; outline-offset: 2px">
-            <a href="ResearcherPick.dc.html" style="min-height: 48px; display: inline-flex; align-items: center; padding: 0 22px; border-radius: 10px; background: {{c.accent}}; color: {{c.onAccent}}; font: 600 16px Inter, sans-serif; text-decoration: none">Find</a>
+            <button type="submit" onClick="{{goPick}}" style="min-height: 48px; display: inline-flex; align-items: center; padding: 0 22px; border-radius: 10px; background: {{c.accent}}; color: {{c.onAccent}}; font: 600 16px Inter, sans-serif; text-decoration: none; border: 0; cursor: pointer">Find</button>
           </div>
           <div style="display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 14px; color: {{c.ink3}}">
             <span>Names search Temple authors; an ID finds anyone.</span>
-            <a href="#" style="color: {{c.ink2}}">More options</a>
+            <details style="text-align: left; max-width: 420px">
+              <summary style="cursor: pointer; min-height: 24px; color: {{c.ink2}}; text-align: right">What else you can add</summary>
+              <p style="margin: 8px 0 0; line-height: 1.5">After you pick the person, you can tell Perch where your research is going, keywords to search for or leave out, your CV and a draft proposal. All of it is optional and held in memory only.</p>
+              <p style="margin: 8px 0 0; line-height: 1.5"><a href="#" style="color: {{c.accent}}">No public papers yet? Build a brief from your documents alone.</a></p>
+            </details>
           </div>
         </form>
       </sc-if>
@@ -220,6 +224,8 @@ class Component extends DCLogic {
       pokeClass: p ? `poke-${p}` : '',
       hoot: p === 'hoot', love: p === 'love',
       poke: () => this.doPoke(),
+      // Find is a submit button in the build; here it opens the next canvas page.
+      goPick: (e) => { if (e && e.preventDefault) e.preventDefault(); window.location.href = 'ResearcherPick.dc.html'; },
     };
   }
 }
