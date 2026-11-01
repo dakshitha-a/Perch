@@ -19,6 +19,7 @@ import json
 import re
 import secrets
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -198,10 +199,13 @@ class Scout:
                  policy: Policy | None = None, budget: ScoutBudget | None = None,
                  log: ScoutLog | None = None, private: PrivateSettings | None = None,
                  brief_note: str = "", table: dict | None = None,
-                 rules: str | None = None, who: str | None = None) -> None:
+                 rules: str | None = None, who: str | None = None,
+                 answer_check: Callable[[str, dict], list[str]] | None = None) -> None:
         """`table`, `rules` and `who`: another allowlist, rule set and session line, such
         as the student tools (perch.scout.student_tools). By default the researcher's
-        tools, fixed to the session's researcher (SESSION_TOOLS)."""
+        tools, fixed to the session's researcher (SESSION_TOOLS). `answer_check`: one more
+        check on the answer, with the records the tools returned, such as the student's
+        rule that samples never share a list with public records (Q1)."""
         if private is not None:
             refuse_if_not_local(provider, private)
             log = None  # no Scout log (Q14); the tools' caches are S13's job
@@ -215,6 +219,7 @@ class Scout:
                       if (ctx.researcher_id or "").startswith("private:")
                       else f"researcher {ctx.full_author_id(None)} (OpenAlex)")
         self.table = table or SESSION_TOOLS
+        self.answer_check = answer_check
         self.system = (f"{rules or RULES}\n\nSession: {who}, as-of date "
                        f"{ctx.as_of.isoformat()}.{brief_note}")
         self.tools = [t for t, _ in self.table.values()]
@@ -402,6 +407,8 @@ class Scout:
         errs = check(scrub(text, s.user_numbers), ids, self.ctx.seen).errors
         if not text.strip():
             errs.append("empty answer")
+        if self.answer_check:
+            errs += self.answer_check(text, self.ctx.seen)
         return errs
 
     def _finish(self, s: Session, text: str) -> Session:
@@ -498,7 +505,7 @@ def summarise(tool: str, result: dict) -> str:
     if tool == "read_cv":
         return f"{len(result['fields'])} fields read by rule"
     if tool == "compare_options":
-        return f"{len(result['rows'])} options side by side"
+        return f"{result['count']} options side by side"
     if tool == "draft_note":
         return f"note to {result['office']}, written by code, not sent"
     return "done"

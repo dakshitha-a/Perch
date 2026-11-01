@@ -40,23 +40,29 @@ def make_scout(service: object, author_id: str, *, as_of: date | None = None,
     # A private brief with no public profile has no OpenAlex id; tools that need one say so.
     ctx.researcher_id = (author_id if author_id.startswith("private:")
                          else ctx.full_author_id(author_id))
-    note, table, rules, who = "", None, None, None
+    note, table, rules, who, check = "", None, None, None, None
     if brief_id and (got := service.get(brief_id)):
         b, leads = got
         ctx.as_of = date.fromisoformat(b.options["as_of"])
         ctx.brief_id = b.id
         if b.options.get("student"):  # a student brief gets the student tools (S24)
-            from perch.scout.student_tools import STUDENT_RULES, STUDENT_TOOLS, student_brief_note
+            from perch.scout.student_tools import (
+                STUDENT_RULES,
+                STUDENT_TOOLS,
+                mixed_lists,
+                student_brief_note,
+            )
 
             if private is None:
                 raise PermissionError("student Scout runs only in a private session")
             table, rules, who = STUDENT_TOOLS, STUDENT_RULES, "a student (private session)"
+            check = mixed_lists
             note = student_brief_note(ctx, leads)
         else:
             note = brief_note(ctx, b, leads)
     return Scout(provider, ctx, policy=policy, log=None if private else log,
                  private=private, brief_note=note, budget=budget, table=table, rules=rules,
-                 who=who)
+                 who=who, answer_check=check)
 
 
 def brief_note(ctx: ScoutContext, b: Brief, leads: list[Lead]) -> str:

@@ -269,3 +269,61 @@ def test_scout_search_all_keeps_samples_in_their_own_list(monkeypatch):
     assert "options" not in got and "own heading" in got["note"] and got["count"] == 2
     only = st.search_options(None, route="S")
     assert [r["id"] for r in only["options"]] == ["s"]
+
+
+def _scout_answers(c, service, h, answers):
+    """Keep one fellowship and one sample, ask Scout to compare them; the fake model calls
+    compare_options, then gives each answer in turn, built from the tool result's ids."""
+    from perch.llm import ToolCall
+
+    got = c.get("/private/brief", headers=h).json()
+    for route in ("F", "S"):
+        lead = next(x for x in got["leads"] if x["route"] == route
+                    and x["verdict"] != "not eligible")
+        c.post(f"/private/leads/{lead['id']}/keep", headers=h)
+    seen: dict = {}
+
+    def reply(messages, system, schema):
+        if system and system.startswith("You are Scout"):
+            last = messages[-1]
+            if last.tool_results:
+                res = json.loads(last.tool_results[0].content)
+                seen["result"] = res
+                rows = [r for k in ("rows", "fellowships", "sample_scholarships")
+                        for r in res.get(k, [])]
+                seen["f"] = next(r["id"] for r in rows if not r.get("sample"))
+                seen["s"] = next(r["id"] for r in rows if r.get("sample"))
+            if not seen:
+                return [ToolCall("c1", "compare_options", {})]
+            return next(answers).format(f=seen["f"], s=seen["s"])
+        return student_reply(messages, system, schema)
+
+    service.models.provider = lambda spec: FakeProvider(responder=reply)
+    v = c.post("/private/scout", headers=h, json={"question": "Compare my kept options"}).json()
+    for _ in range(50):
+        v = c.get(f"/private/scout/{v['id']}", headers=h).json()
+        if not v["busy"] and v["status"] != "running":
+            break
+        time.sleep(0.1)
+    return v["exchanges"][-1], seen["result"]
+
+
+def test_scout_never_lists_samples_with_public_fellowships(tmp_path, monkeypatch):
+    """Q1, standing rule 11, enforced by code: compare_options returns two groups, and an
+    answer whose list or sentence cites a sample with a public record is rewritten once,
+    then withheld."""
+    c, service = student_app(tmp_path, monkeypatch)
+    h = open_student(c, "persona-ug")
+    c.post("/private/student/brief", headers=h, json={"as_of": "2026-11-06"})
+    mixed = "Your kept options:\n- A fellowship [{f}]\n- A sample scholarship [{s}]"
+    x, res = _scout_answers(c, service, h, iter([mixed, mixed]))
+    assert "rows" not in res and res["fellowships"] and res["sample_scholarships"]
+    assert x["answer"] is None and x["flagged"]
+    assert any("sample" in e for e in x["errors"])
+    one = "The fellowship [{f}] and the sample scholarship [{s}] are kept."
+    x, _ = _scout_answers(c, service, h, iter([one, one]))
+    assert x["answer"] is None and x["flagged"]
+    apart = ("Fellowships:\n- A fellowship [{f}]\n\nSample scholarships (invented):\n"
+             "- A sample scholarship [{s}]")
+    x, _ = _scout_answers(c, service, h, iter([apart]))
+    assert x["answer"] and not x["flagged"], x["errors"]

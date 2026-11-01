@@ -10,6 +10,7 @@ as on the Compare tab. Sample records keep their `sample: true` flag and their
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from datetime import date
 
@@ -114,17 +115,61 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
                 continue
         rows.append(_row(ctx, x))
     rows = rows[:15]
+    return {**apart(rows, "options"), "count": len(rows),
+            "note": "Options in this student brief, checked against the CV by rule. "
+            + APART_NOTE}
+
+
+APART_NOTE = ("Records marked sample are invented test data. When both groups are present, "
+              "list the sample scholarships under their own heading, such as 'Sample "
+              "scholarships (invented)', never in the same list or sentence as the public "
+              "fellowships.")
+
+
+def apart(rows: list[dict], key: str) -> dict:
+    """Standing rule 11 (U10, Q1): public options and SYNTHETIC samples come back as two
+    groups whenever both are present, never as one list."""
     public = [r for r in rows if not r.get("sample")]
     samples = [r for r in rows if r.get("sample")]
-    if public and samples:  # standing rule 11: never one list (U10)
-        return {"fellowships": public, "sample_scholarships": samples, "count": len(rows),
-                "note": "Options in this student brief, checked against the CV by rule. The "
-                "sample scholarships are invented test data: list them under their own "
-                "heading, such as 'Sample scholarships (invented)', never in the same list "
-                "as the public fellowships."}
-    return {"options": rows, "count": len(rows),
-            "note": "Options in this student brief, checked against the CV by rule. "
-            "Records marked sample are invented test data."}
+    if public and samples:
+        return {"fellowships": public, "sample_scholarships": samples}
+    return {key: rows}
+
+
+def is_sample_id(i: str, seen: dict[str, Record]) -> bool:
+    r = seen.get(i)
+    return i.startswith("sample:") or bool(r is not None and r.source == "synthetic")
+
+
+LIST_LINE = re.compile(r"^\s*(?:[*-]|\d{1,2}[.)])\s")
+
+
+def mixed_lists(text: str, seen: dict[str, Record]) -> list[str]:
+    """Q1, standing rule 11 enforced by code: a list (consecutive list lines) or a sentence
+    that cites a sample record together with a public one. The model's answer is
+    rewritten once, then withheld (rule 5)."""
+    from perch.scout.loop import SENTENCE_RE, cited
+
+    units: list[str] = []
+    block: list[str] = []
+    for line in text.splitlines():
+        if LIST_LINE.match(line):
+            block.append(line)
+            continue
+        if block:
+            units.append("\n".join(block))
+            block = []
+        units += [x for x in SENTENCE_RE.split(line) if x.strip()]
+    if block:
+        units.append("\n".join(block))
+    for u in units:
+        ids = cited(u)
+        if any(is_sample_id(i, seen) for i in ids) and not all(is_sample_id(i, seen)
+                                                                for i in ids):
+            return ["a list or sentence names a sample scholarship together with a public "
+                    "fellowship: put the sample scholarships under their own heading, such "
+                    "as 'Sample scholarships (invented):', in their own list"]
+    return []
 
 
 def check_option(ctx: ScoutContext, option_id: str) -> dict:
@@ -169,8 +214,10 @@ def compare_options(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
     chosen = [_find(ctx, i) for i in ids] if ids else [x for x in leads if x.status == "kept"]
     if not chosen:
         raise ToolError("nothing kept: pass option ids from search_options")
-    return {"rows": [{**_row(ctx, x), "still_needed": x.gaps} for x in chosen],
-            "note": "Each cell is copied from its record or checked against the CV by rule."}
+    rows = [{**_row(ctx, x), "still_needed": x.gaps} for x in chosen]
+    return {**apart(rows, "rows"), "count": len(rows),
+            "note": "Each cell is copied from its record or checked against the CV by rule. "
+            + APART_NOTE}
 
 
 def draft_note(ctx: ScoutContext, route: str | None = None,
@@ -272,7 +319,10 @@ plainly in one sentence and do not call a tool.
 - Every fact in your answer comes from a tool result. Cite the record id in square \
 brackets right after the fact, like [sample:sch-0001] or [temple_sdfa:nsf-reu].
 - A record marked sample is invented test data. Say "sample" whenever you name one. \
-Never suggest applying to a sample record.
+Never suggest applying to a sample record. When an answer covers fellowships and sample \
+scholarships, give the fellowships first, then a line "Sample scholarships (invented):" \
+with the samples in their own list. Never name a sample in the same list or sentence as \
+a fellowship.
 - Copy dates and dollar amounts exactly as the record gives them and cite that record. \
 Never compute, round, estimate or count. If a record has no value, say it is not stated.
 - Verdicts come from rule code. Never judge the student's chances or give odds.
@@ -292,5 +342,5 @@ def student_brief_note(ctx: ScoutContext, leads: list[Lead]) -> str:
     return ("\n\nThe student's options in this brief:\n" + "\n".join(lines)) if lines else ""
 
 
-__all__ = ["STUDENT_ALLOWLIST", "STUDENT_RULES", "STUDENT_TOOLS", "short_id",
+__all__ = ["STUDENT_ALLOWLIST", "STUDENT_RULES", "STUDENT_TOOLS", "mixed_lists", "short_id",
            "student_brief_note"]
