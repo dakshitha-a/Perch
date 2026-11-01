@@ -118,10 +118,29 @@ class Masker:
                               text, flags=re.I)
         return self._phrases(text)
 
+    def label(self, kind: str, original: str) -> str:
+        """A typed placeholder for a value the caller found, such as a CV value (Q42)."""
+        return self._placeholder(kind, original)
+
     def unmask(self, text: str) -> str:
         for ph, original in sorted(self.key.items(), key=lambda kv: -len(kv[0])):
             text = text.replace(ph, original)
         return text
+
+
+# Q42: a student's rule line keeps the rule and drops the value the rule read from the CV
+# ("Asks for a GPA of at least 3.50; your CV says 3.40."), in every export; masked on opt-in.
+CV_VALUE = re.compile(r"(; your CV (?:says|lists) )(.+?)(\.?)$")
+CV_WITHHELD = "your CV value is withheld"
+
+
+def release_cv_line(line: str, masker: Masker | None = None) -> str:
+    m = CV_VALUE.search(line)
+    if not m:
+        return line
+    if masker:
+        return line[:m.start()] + m.group(1) + masker.label("CV-VALUE", m.group(2)) + m.group(3)
+    return f"{line[:m.start()]}; {CV_WITHHELD}{m.group(3)}"
 
 
 def withheld_note(n: int) -> str:

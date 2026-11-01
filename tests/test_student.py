@@ -131,6 +131,8 @@ def test_student_canary_leaves_no_trace(tmp_path, monkeypatch, capfd):
         for ext in ("json", "md", "html"):
             e = c.get(f"/private/export.{ext}", headers=h).text
             assert "SAMPLE DATA" in e, ext  # every export carries the banner
+            # Q42: no value read from the CV leaves in a rule line
+            assert "; your CV says" not in e and "; your CV lists" not in e, ext
             # Q12: verdicts and rule lines are written by code and stay; only model text
             # is withheld, and the banner counts those.
             if ext != "json":

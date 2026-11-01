@@ -241,15 +241,17 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
             badge = " [SAMPLE]" if x.sample else ""
             out.append(Block("h3", f"{i}. {name}{badge}{mark}"))
             # The verdict, its rule lines and the gaps are written by code from the rules
-            # and the record: they are never withheld; only model text is (Q12).
-            items = [f"Verdict: {x.verdict}", *x.verdict_lines]
+            # and the record: they stay; only model text is withheld (Q12). A value a rule
+            # read from the CV is dropped, or masked on opt-in (Q42).
+            items = [f"Verdict: {x.verdict}",
+                     *(egress.release_cv_line(v, masker) for v in x.verdict_lines)]
             if isinstance(rec, Scholarship):
                 items.append(f"Sponsor: {rec.sponsor or 'Not in the record'}")
                 items.append(f"Deadline: {_day(rec.deadline)}")
                 items.append(f"Amount: {_amount(rec)}")
             elif isinstance(rec, Opportunity):
                 items.append(f"Closes: {_day(rec.close_date)}")
-            items += [f"Still needed: {g}" for g in x.gaps]
+            items += [f"Still needed: {egress.release_cv_line(g, masker)}" for g in x.gaps]
             items.append(f"Office: {office.name}")
             out.append(Block("list", items=[i for i in items if i]))
             if x.explanation and not x.flagged:

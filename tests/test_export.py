@@ -114,3 +114,19 @@ def test_the_student_export_numbers_without_gaps_and_counts_dismissed():
     assert "### 1. SYNTHETIC fellowship 1" in md and "### 2. SYNTHETIC fellowship 3 (kept)" in md
     assert "fellowship 2" not in md and "1 dismissed option is left out." in md
     assert "1 kept, 3 shown, 1 dismissed." in md
+
+
+def test_student_exports_keep_the_rule_and_drop_the_cv_value():
+    """Q42: a rule line in a student export keeps the rule and drops the value the rule
+    read from the CV; with masking chosen the value is masked, with its key in memory."""
+    brief, leads, recs = _student_inputs()
+    md = ex.to_markdown(ex.student_blocks(brief, leads, recs))
+    assert "Asks for a GPA of at least 3.50; your CV value is withheld." in md
+    assert "2 letters of recommendation; your CV value is withheld" in md
+    assert "3.40" not in md and "1 referee" not in md and "Still needed: An essay" in md
+    m = egress.Masker()
+    md = ex.to_markdown(ex.student_blocks(brief, leads, recs, masker=m))
+    assert "your CV says \\[CV-VALUE-1\\]." in md and "3.40" not in md
+    assert m.unmask("[CV-VALUE-1]") == "3.40"
+    assert egress.release_cv_line("Your CV does not say your level of study.") == \
+        "Your CV does not say your level of study."

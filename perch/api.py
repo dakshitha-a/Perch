@@ -510,7 +510,11 @@ def create_app(service: BriefService, runner: JobRunner,
                       "notes": [egress.release(n, ["private:cv"], masker) if "(private)" in n
                                 else n for n in x.notes],
                       # Student mode: the rule lines and gaps are written by code, so they
-                      # leave as they are; only model text is withheld (Q12).
+                      # stay; only model text is withheld (Q12). A CV value in a line is
+                      # dropped, or masked on opt-in (Q42).
+                      "verdict_lines": [egress.release_cv_line(v, masker)
+                                        for v in x.verdict_lines],
+                      "gaps": [egress.release_cv_line(g, masker) for g in x.gaps],
                       } for x in leads]
         brief = b.model_dump(mode="json")
         brief.update(summary=egress.release_model(b.summary, [], masker, documents),
