@@ -9,6 +9,7 @@ never sent or stored.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
@@ -68,6 +69,12 @@ class ScoutContext:
     # Lines code wrote about a record, such as a student's rule lines ("Open to year 4;
     # your CV says 3"): an answer citing the record may repeat their numbers (T10).
     facts: dict[str, list[str]] = field(default_factory=dict)
+    # The record a step's code-written values are attributed to, by tool name: an answer
+    # citing the step, such as "[build_profile]", is checked as citing that record (t06).
+    step_records: dict[str, str] = field(default_factory=dict)
+    # Label terms code wrote that carry a digit, such as "hiv-1" in a thread label: a name,
+    # not a number, so the check does not read the 1 in it (t06).
+    labels: set[str] = field(default_factory=set)
 
     def see(self, r: Record) -> str:
         sid = short_id(r)
@@ -198,15 +205,29 @@ def build_profile(ctx: ScoutContext, author_id: str | None = None) -> dict:
     with ctx.service.repo() as r:
         works = {w.id: w for w in r.works_by_author(p.researcher_id)}
     works.update({d.id: d for d in _session_docs(ctx)})
+    rid = ctx.see(_researcher(ctx, author_id))
     threads = []
+    # t06: the labels, shares and counts are written by code, so an answer citing the
+    # profile step, the researcher or a thread's paper may repeat them, as compare's cells.
+    # The label text stays out of these lines: its digits are names, not numbers.
+    lines = [f"{len(p.work_ids)} papers in the profile", f"{len(p.threads)} research threads"]
     for t in p.threads:
         papers = [{"id": ctx.see(works[w]), "title": works[w].title,
                    "year": works[w].publication_year}
                   for w in t.work_ids[:3] if w in works]
+        share = f"{t.weight:.0%}"
         threads.append({"thread": t.index + 1, "label": t.label,
-                        "share_of_recent_work": f"{t.weight:.0%}", "top_papers": papers})
-    return {"researcher": ctx.see(_researcher(ctx, author_id)), "papers": len(p.work_ids),
-            "threads": threads}
+                        "share_of_recent_work": share, "papers_in_thread": len(t.work_ids),
+                        "top_papers": papers})
+        line = f"thread {t.index + 1}: {share} of recent work, {len(t.work_ids)} papers"
+        lines.append(line)
+        for x in papers:
+            ctx.facts[x["id"]] = [line]
+        ctx.labels |= {term for term in (w.strip().lower() for w in t.label.split(","))
+                       if re.search(r"\d", term)}
+    ctx.facts[rid] = lines
+    ctx.step_records["build_profile"] = rid
+    return {"researcher": rid, "papers": len(p.work_ids), "threads": threads}
 
 
 def list_awards(ctx: ScoutContext, author_id: str | None = None) -> dict:

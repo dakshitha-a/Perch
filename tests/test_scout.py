@@ -871,3 +871,57 @@ def test_a_tool_name_cited_as_a_record_is_dropped_and_the_rest_still_checked(ser
     assert s.flagged and s.answer is None
     assert any("2,000,000" in e or "2000000" in e for e in s.errors), s.errors
     assert not any("build_profile" in e for e in s.errors)
+
+
+def _hand_profile(service):
+    """A SYNTHETIC two-thread profile over the fixture researcher's own works, with a
+    label term that carries a digit, as PI-2's "hiv-1" does."""
+    import numpy as np
+
+    from perch.profile import Profile, Thread
+
+    with service.repo() as r:
+        works = [w.id for w in r.works_by_author(AUTHOR)]
+    assert len(works) >= 4
+    head, tail = works[:-2], works[-2:]
+    threads = [Thread(0, np.zeros(4), head, 0.93, "synthetic, barrier, hiv-1, human"),
+               Thread(1, np.zeros(4), tail, 0.07, "synthetic, corpus, digital, pathology")]
+    return Profile(AUTHOR, AS_OF, "fake", threads, works), len(head), len(tail), len(works)
+
+
+def test_the_profile_steps_code_written_values_back_an_answer_that_cites_it(service):
+    """S32 bench t06: build_profile's labels, shares and counts are written by code, but
+    an answer citing the profile step was withheld 3 of 3 on the shares and on "hiv-1"
+    read as the number 1. They are facts of the profile step, as compare's cells are."""
+    c = ctx(service)
+    c.profile, n_head, n_tail, n_all = _hand_profile(service)
+    good = ("The main thread is synthetic, barrier, hiv-1 and human, 93% of recent work "
+            f"across {n_head} papers [build_profile]. A second thread, corpus, digital and "
+            f"pathology, is 7% [build_profile]. There are {n_all} papers in all [build_profile].")
+    s = Scout(FakeProvider([call("build_profile"), good, good]), c).start("Main threads?")
+    assert s.status == "done" and not s.flagged, s.errors
+    assert "[build_profile]" not in s.answer and "93%" in s.answer
+    t = s.cards[0].result["threads"]
+    assert [x["papers_in_thread"] for x in t] == [n_head, n_tail]
+    # the label alone, uncited, is a registered label and not the number 1
+    bare = "The main thread is barrier, hiv-1 and human. The second is corpus and pathology."
+    c = ctx(service)
+    c.profile = _hand_profile(service)[0]
+    s = Scout(FakeProvider([call("build_profile"), bare, bare]), c).start("Main threads?")
+    assert s.status == "done" and not s.flagged, s.errors
+    # a share or a count the profile does not hold is still withheld; uncited, even the
+    # profile's own numbers are; and the label's digit backs no number
+    for bad, num in (("The main thread is 38% of recent work [build_profile].", "38"),
+                     (f"The main thread has {n_all + 4} papers [build_profile].", n_all + 4),
+                     ("The main thread is 93% of recent work.", "93"),
+                     ("The main thread, hiv-1, has 1 paper.", "1")):
+        c = ctx(service)
+        c.profile = _hand_profile(service)[0]
+        s = Scout(FakeProvider([call("build_profile"), bad, bad]), c).start("Main threads?")
+        assert s.flagged and s.answer is None, bad
+        assert s.errors == [f"number '{num}' is not in any cited record"], s.errors
+    # an unregistered label-like term is still read as a number
+    c = ctx(service)
+    s = Scout(FakeProvider([call("get_record", id=OPP), "Thread hiv-1 matters.",
+                            "Thread hiv-1 matters."]), c).start("Q?")
+    assert s.flagged and any("'1'" in e for e in s.errors), s.errors

@@ -299,6 +299,14 @@ def strip_tool_cites(text: str, names: set[str]) -> str:
     return BRACKET_RE.sub(fix, text)
 
 
+def mask_labels(text: str, labels: set[str]) -> str:
+    """A label term code wrote, such as "hiv-1" in a thread label, is a name: it is masked
+    before the check, so its digit is not read as a number (t06). Only registered terms."""
+    for term in sorted(labels, key=len, reverse=True):
+        text = re.sub(rf"(?<!\w){re.escape(term)}(?!\w|\.\d)", "label", text, flags=re.I)
+    return text
+
+
 def stated_numbers(text: str) -> set[str]:
     """Numbers and dates the user typed: repeating them is not inventing them. Dates are
     kept whole (as their matched text and ISO form)."""
@@ -584,7 +592,7 @@ class Scout:
             if r is None or not lines:
                 continue
             f = next((f for f in ("description", "purpose", "abstract", "explanation", "title",
-                                  "name")
+                                  "name", "display_name")
                       if f in type(r).model_fields), None)
             if f:
                 recs[i] = r.model_copy(update={f: f"{getattr(r, f) or ''} {' '.join(lines)}"})
@@ -769,9 +777,21 @@ class Scout:
         self._log_answer(s, passed=True, attempts=0)
         return s
 
-    def _validate(self, s: Session, text: str) -> list[str]:
+    def _step_ids(self, s: Session, text: str) -> list[str]:
+        """The records that the steps an answer cites are attributed to (t06): "[build_profile]"
+        or its call's id checks as a citation of the profile's researcher, whose facts hold
+        the step's code-written labels, shares and counts. The step citation itself is
+        still dropped from the answer."""
+        ran = {k: c.tool for c in s.cards if c.status in ("done", "repeated")
+               for k in (c.id, c.tool)}
+        return list(dict.fromkeys(self.ctx.step_records[t] for x in cited(text)
+                                  if (t := ran.get(x)) in self.ctx.step_records))
+
+    def _validate(self, s: Session, text: str, steps: list[str] | None = None) -> list[str]:
         ids = cited(text)
-        errs = check(scrub(text, s.user_numbers), ids, self._with_facts(ids)).errors
+        backed = list(dict.fromkeys([*ids, *(steps or [])]))
+        errs = check(scrub(mask_labels(text, self.ctx.labels), s.user_numbers), backed,
+                     self._with_facts(backed)).errors
         if WITHHELD_RE.match(text):  # the history's note, copied as an answer (T10)
             errs.append("the answer is only a note that an answer was withheld: answer the "
                         "question from the tool results")
@@ -793,8 +813,9 @@ class Scout:
 
     def _finish(self, s: Session, text: str) -> Session:
         steps = {*self.table, *(c.id for c in s.cards)}
+        backed = self._step_ids(s, text)
         text = strip_tool_cites(text, steps)
-        errs = self._validate(s, text)
+        errs = self._validate(s, text, backed)
         attempts = 1
         if errs:
             attempts = 2
@@ -805,8 +826,9 @@ class Scout:
             text = self._next(s, tools=False).text
             if self.policy == "structured":
                 text = structured_answer(text)
+            backed = self._step_ids(s, text)
             text = strip_tool_cites(text, steps)
-            errs = self._validate(s, text)
+            errs = self._validate(s, text, backed)
         s.messages.append(Message("assistant", text if not errs else WITHHELD_NOTE))
         if errs:
             s.answer, s.flagged, s.errors, s.cited_ids = None, True, errs, []
