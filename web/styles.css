@@ -1223,6 +1223,7 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
    them, and the kept pill steps aside; the Compare tab still counts the kept leads (Q9). */
 @media (max-height: 300px) {
   .bar, .tabs-wrap, .cols > .rail { position: static; }
-  #keep-float, .keep-float { display: none; }
+  /* hidden, not display: none, which would replay its fade-in on every resize */
+  .keep-float { visibility: hidden; }
 }
 .security-note { margin: 8px 0 0; } /* Q13's fixed line under the Industry warning */
