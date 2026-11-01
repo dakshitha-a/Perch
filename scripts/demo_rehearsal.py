@@ -5,13 +5,22 @@ Researcher flow, each run in a fresh session: build the warm PI-4 brief (A502649
 the top two grant leads, then ask the three demo questions in order:
   1. "What are my top three leads and why?"  passes when the answer names the brief's first
      three grant leads in Match order, each in its own sentence or line with a reason, and
-     does not refuse or apologise.
+     does not refuse or apologise. Each reason ends as a whole sentence, never on a word
+     such as "of." or "with." (F2), and speaks to the researcher, never of "the
+     researcher" (F12).
   2. "Which of these close before March?"    passes when a search tool ran with closes_by
      after today and no later than the next 1 March, and the answer cites only leads that
      close before that March (a lead cited as accepting proposals anytime is allowed), or
-     says none do when that is true of the brief's records. No apology.
+     says none do when that is true of the brief's records. No apology. Every record it
+     cites is one of the brief's grant leads: "these" are the brief's leads (QA round 4, F1).
   3. "Draft the hand-off for my top lead"    passes when draft_handoff ran and the draft is
      about the top lead alone.
+Documents flow (QA round 4, F7), each run in a fresh session: add the SYNTHETIC persona-1
+CV, aims and manuscript with no OpenAlex id, build, keep the top lead, and ask "Draft the
+hand-off for my top lead". It passes when draft_handoff drafted the top lead alone, the
+opening was written by code (the session holds documents and no public papers), and the
+draft holds no empty or placeholder citation ("[]", "No papers provided") and no word of
+substance that is in neither the documents, the lead's record nor Perch's own templates.
 Student flow, each run in a fresh session: build the SYNTHETIC persona-ug brief and ask
 "Which of these can I apply to before March?". It passes when a search tool ran, the
 answer was not withheld, and any sample scholarship sits under its own heading.
@@ -21,7 +30,7 @@ writes the answers to build/rehearsal/. Researchers are named by alias in everyt
 prints or writes. It never turns Cloud on: every session stays on local models.
 
   uv run python scripts/demo_rehearsal.py [--base http://127.0.0.1:8091] [--runs 3]
-      [--only researcher student] [--kept top2|none|weak2]
+      [--only researcher student documents] [--kept top2|none|weak2]
 
 --kept varies what is kept before the questions (the demo keeps the top two); the model
 runs at temperature 0, so repeated runs of one conversation agree, and varying the kept
@@ -47,6 +56,10 @@ import httpx
 ROOT = Path(__file__).resolve().parents[1]
 AUTHOR = "A5026494099"  # PI-4, the demo researcher
 PERSONA = ROOT / "data/synthetic/persona-ug"
+DOCS = ROOT / "data/synthetic/persona-1"
+DOC_FILES = {"cv": "cv.md", "proposal": "specific_aims_draft.md",
+             "manuscript": "unpublished_manuscript.md"}
+DOCS_Q = "Draft the hand-off for my top lead"
 QUESTIONS = ("What are my top three leads and why?", "Which of these close before March?",
              "Draft the hand-off for my top lead")
 STUDENT_Q = "Which of these can I apply to before March?"
@@ -60,6 +73,10 @@ REASON = re.compile(r"\b(fit\w*|match\w*|align\w*|relat\w*|because|since|support
 NO_DEADLINE = re.compile(r"\b(anytime|any time|no fixed|no set|no deadline|no close date|"
                          r"not close before|do not close|does not close|don't close|placeholder|"
                          r"rolling)\b", re.I)
+# F2: a reason that stops on a word that needs a noun after it ("...the aims of.").
+DANGLING = {"of", "in", "with", "by", "for", "to", "the", "a", "an", "and", "or", "at", "on",
+            "from", "as", "than", "that", "which", "into", "about", "under", "its", "their"}
+THIRD = re.compile(r"\bthe researcher\b|\bthe researcher['’]s\b", re.I)  # F12
 NONE_CLOSE = re.compile(r"\b(none|no lead|no leads|no grant|nothing|not any)\b", re.I)
 
 
@@ -155,6 +172,9 @@ def check_top_three(ex: dict, top: list[str]) -> list[str]:
     errs = []
     if REFUSAL.search(a):
         errs.append("refuses or apologises")
+    if THIRD.search(a):
+        errs.append("speaks of the researcher in the third person: "
+                    + repr(THIRD.search(a).group(0)))
     ids = [i for i in cited(a) if i in top or re.match(r"^[A-Z0-9-]+$", i)]
     grants = [i for i in ids if not i.startswith("W")]
     if grants[:3] != top:
@@ -170,6 +190,11 @@ def check_top_three(ex: dict, top: list[str]) -> list[str]:
         elif not any(REASON.search(CITE.sub(" ", u)) and len(CITE.sub(" ", u).split()) >= 6
                      for u in own):
             errs.append(f"{t} has no reason")
+        for u in mine:
+            words = re.findall(r"[A-Za-z']+", CITE.sub(" ", u))
+            if words and words[-1].lower() in DANGLING:
+                errs.append(f"{t}'s reason does not end as a sentence: "
+                            f"...{' '.join(words[-4:])}.")
     return errs
 
 
@@ -201,7 +226,9 @@ def check_before_march(ex: dict, as_of: date, closes: dict[str, date | None]) ->
                 continue
             if i in before:
                 named_before.add(i)
-            elif i in closes and not NO_DEADLINE.search(u):
+            elif i not in closes:  # F1: "these" are the brief's leads
+                errs.append(f"cites {i}, which is not one of the brief's leads")
+            elif not NO_DEADLINE.search(u):
                 errs.append(f"cites {i}, which does not close before {march.isoformat()}, "
                             "as if it did")
     if before and not named_before:
@@ -305,12 +332,64 @@ def student_run(base: str, n: int) -> dict:
     return out
 
 
+def check_documents_draft(ex: dict, top: str, others: list[str], vocab: set[str]) -> list[str]:
+    errs = check_draft(ex, top, others)
+    drafts = [c for c in ex["cards"] if c["tool"] == "draft_handoff" and c["status"] == "done"]
+    if not drafts:
+        return errs
+    d = drafts[-1]["draft"] or {}
+    body = d.get("body", "")
+    if "[]" in body or re.search(r"no papers provided", body, re.I):
+        errs.append("the draft holds an empty or placeholder citation")
+    opening = body.split("\n\n")[1] if body.count("\n\n") >= 2 else body
+    if "[" in opening:
+        errs.append(f"the opening holds a bracket: {opening[:160]!r}")
+    if d.get("opening_by") != "code":
+        errs.append(f"the opening was written by {d.get('opening_by') or 'an unlabelled hand'}"
+                    ", not by code, in a documents session with no public papers")
+    new = sorted({w for w in re.findall(r"[a-z]{6,}", opening.lower()) if w not in vocab})
+    if new:
+        errs.append(f"the opening uses words in no document, record or template: {new[:8]}")
+    return errs
+
+
+def documents_run(base: str, n: int) -> dict:
+    cl = Client(base)
+    out: dict = {"run": n, "questions": []}
+    try:
+        texts = []
+        for kind, name in DOC_FILES.items():
+            texts.append((DOCS / name).read_text())
+            cl.post("/private/documents", {"kind": kind, "text": texts[-1]})
+        cl.post("/private/brief", {})
+        g = cl.wait_brief(limit=600)
+        if g["brief"]["status"] != "done":
+            raise RuntimeError("the documents brief failed")
+        grants = sorted((x for x in g["leads"] if x["route"] == "A"
+                         and x["status"] != "dismissed"), key=lambda x: x["rank"] or 0)
+        cl.post(f"/private/leads/{grants[0]['id']}/keep")
+        vocab = set(re.findall(r"[a-z]{6,}", " ".join(
+            [*texts, json.dumps(grants[0]), (ROOT / "perch/skills/handoff.py").read_text(),
+             (ROOT / "perch/export.py").read_text(), (ROOT / "perch/offices.py").read_text()]
+        ).lower()))
+        top = short(grants[0]["record_id"])
+        _, ex, secs = cl.ask(None, DOCS_Q)
+        out["questions"].append(_record(DOCS_Q, ex, secs, check_documents_draft(
+            ex, top, [short(x["record_id"]) for x in grants[1:]], vocab)))
+    finally:
+        cl.end()
+    return out
+
+
 def _record(q: str, ex: dict, secs: float, errs: list[str]) -> dict:
     return {"question": q, "pass": not errs, "errors": [alias(e) for e in errs],
             "seconds": round(secs, 1), "status": ex.get("status"),
             "answer": alias(ex.get("answer") or ""), "flagged": ex.get("flagged"),
             "steps": [{"tool": c["tool"], "status": c["status"], "arguments": c["arguments"],
-                       **({"subject": alias(c["draft"]["subject"])} if c.get("draft") else {})}
+                       **({"subject": alias(c["draft"]["subject"]),
+                           "body": alias(c["draft"]["body"]),
+                           "opening_by": c["draft"].get("opening_by")}
+                          if c.get("draft") else {})}
                       for c in ex["cards"]]}
 
 
@@ -318,13 +397,15 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--base", default="http://127.0.0.1:8091")
     ap.add_argument("--runs", type=int, default=3)
-    ap.add_argument("--only", nargs="+", default=["researcher", "student"])
+    ap.add_argument("--only", nargs="+", default=["researcher", "student", "documents"])
     ap.add_argument("--label", default="")
     ap.add_argument("--kept", default="top2", choices=["top2", "none", "weak2"],
                     help="what the researcher runs keep before asking; top2 is the demo")
     a = ap.parse_args()
-    report: dict = {"base": a.base, "runs": a.runs, "researcher": [], "student": []}
-    for flow, fn in (("researcher", researcher_run), ("student", student_run)):
+    report: dict = {"base": a.base, "runs": a.runs, "kept": a.kept, "researcher": [],
+                    "student": [], "documents": []}
+    for flow, fn in (("researcher", researcher_run), ("student", student_run),
+                     ("documents", documents_run)):
         if flow not in a.only:
             continue
         for n in range(1, a.runs + 1):
@@ -347,7 +428,8 @@ def main() -> int:
             sys.stdout.flush()
     print("\nPass counts")
     total = ok = 0
-    for flow, qs in (("researcher", QUESTIONS), ("student", (STUDENT_Q,))):
+    for flow, qs in (("researcher", QUESTIONS), ("student", (STUDENT_Q,)),
+                     ("documents", (DOCS_Q,))):
         if flow not in a.only:
             continue
         for i, q in enumerate(qs):
