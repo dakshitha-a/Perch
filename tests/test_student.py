@@ -443,5 +443,6 @@ def test_a_word_search_reads_the_cards_fit_sentence(monkeypatch):
     monkeypatch.setattr(st, "_record", lambda ctx, x: None)
     monkeypatch.setattr(st, "_row", lambda ctx, x: {"id": x.id})
     got = st.search_options(None, route="all", words="stream monitoring")
-    assert got["options"] == [{"id": "f", "words_found_in": "its fit sentence on the card"}]
+    assert got["options"] == [{"id": "f", "words_found_in": "its fit sentence on the card",
+                               "fit_sentence": "Your SYNTHETIC stream monitoring fits"}]
     assert "Every option listed matches" in got["note"]

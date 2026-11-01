@@ -123,7 +123,11 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
                 where = "its fit sentence on the card"
             else:
                 continue
-        rows.append({**_row(ctx, x), **({"words_found_in": where} if where else {})})
+        extra_row = {"words_found_in": where} if where else {}
+        if where and where.startswith("its fit"):  # the sentence itself, without its ids
+            extra_row["fit_sentence"] = " ".join(re.sub(r"\s*\[[^\[\]]*\]", "",
+                                                        x.inference).split())
+        rows.append({**_row(ctx, x), **extra_row})
         due_of[rows[-1]["id"]] = due
     if sort == "deadline":  # the soonest first, undated last, as Q14 for researchers (R13)
         rows.sort(key=lambda r: (due_of[r["id"]] is None, due_of[r["id"]] or date.max))
