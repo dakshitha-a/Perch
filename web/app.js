@@ -1443,10 +1443,10 @@ function renderRoutes(panel) {
         h("p", { class: "hint", text: stage("route_a").detail || "" }))));
     return;
   }
-  // Good and strong matches first; weak ones fold under a count, so one strong lead is
-  // not lost among nine weak ones (U24). Without a stronger lead nothing folds.
+  // The first five cards always show open, whatever their band, so the first view is
+  // never one card; after the fifth, weak ones fold under a count (U24, Q6).
   const weak = (l) => (f.fitBand(l.match_score) || {}).key === "weak";
-  const folded = active.some((l) => !weak(l)) ? active.filter(weak) : [];
+  const folded = active.slice(OPEN_FIRST).filter(weak);
   syncList(panel.querySelector(".leads"), active.filter((l) => !folded.includes(l)));
   const wbox = panel.querySelector(".weak-box");
   if (!folded.length) wbox.replaceChildren();
@@ -1470,6 +1470,9 @@ function renderRoutes(panel) {
   det.querySelector("summary").textContent = `Dismissed (${dismissed.length})`;
   syncList(det.querySelector("ol"), dismissed);
 }
+
+const RESEARCH_SECURITY = "Companies outside the United States may need a research-security review before any contact; the office makes that check.";
+const OPEN_FIRST = 5; // cards shown open before the Weaker matches fold (Q6)
 
 // One-click filters (U25), built only from the values on the leads themselves: each
 // agency as its tag reads, and each activity code. One chip at a time; All clears it.
