@@ -291,7 +291,7 @@ async function search() {
   if (!q) { $("#q").focus(); return; }
   const oid = (q.match(ORCID) || [])[1];
   if (oid && !f.orcidOk(oid)) { // checked before any lookup (Q18)
-    Object.assign(F, { busy: false, candidates: [], searched: q, picked: null, badOrcid: true,
+    Object.assign(F, { busy: false, candidates: [], searched: q, picked: null, badOrcid: true, badId: false, unknownId: false,
       error: "That is not a valid ORCID iD: its last character does not match the rest. Check it on orcid.org." });
     announce(F.error);
     if (location.hash === "#/find") renderPick(); else go("#/find");
@@ -299,13 +299,24 @@ async function search() {
     if (t) t.focus();
     return;
   }
-  Object.assign(F, { busy: true, error: null, candidates: null, searched: q, picked: null, badOrcid: false });
+  if (AID_TRY.test(q) && !AID_OK.test(q)) { // R5: "A12" is refused before any lookup
+    Object.assign(F, { busy: false, candidates: [], searched: q, picked: null, badOrcid: false, badId: true, unknownId: false,
+      error: "An OpenAlex author ID is an A followed by at least eight digits. Check it, or search by name or ORCID iD." });
+    announce(`That is not an OpenAlex author ID. ${F.error}`);
+    if (location.hash === "#/find") renderPick(); else go("#/find");
+    const t = $("#pick-title");
+    if (t) t.focus();
+    return;
+  }
+  Object.assign(F, { busy: true, error: null, candidates: null, searched: q, picked: null, badOrcid: false, badId: false, unknownId: false });
   keepFocus(location.hash === "#/find" ? renderPick : renderFind);
   try {
     const r = await api.resolve(q);
     F.candidates = r.candidates || [];
   } catch (e) {
-    F.error = e.status === 0 ? e.message
+    // The server's plain sentence for an id it refuses or OpenAlex does not know (R5).
+    if (e.status === 404 || e.status === 422) { F.badId = e.status === 422; F.unknownId = e.status === 404; }
+    F.error = e.status === 0 || e.status === 404 || e.status === 422 ? e.message
       : `OpenAlex could not be searched: ${e.message} Check the spelling or try an ORCID iD.`;
   }
   F.busy = false;
@@ -326,6 +337,10 @@ async function search() {
 const CTX_FIELDS = ["direction", "include", "exclude", "cv", "proposal"];
 const EXACT_ID = /^(?:https?:\/\/(?:openalex\.org\/(?:authors\/)?|orcid\.org\/))?(?:A\d{6,}|\d{4}-\d{4}-\d{4}-\d{3}[\dX])$/i;
 const ORCID = /^(?:https?:\/\/orcid\.org\/)?(\d{4}-\d{4}-\d{4}-\d{3}[\dX])$/i;
+// An OpenAlex author id typed in the box, and the shape a real one has (R5; the server's
+// perch.sources.openalex.author_id_ok).
+const AID_TRY = /^(?:https?:\/\/(?:api\.)?openalex\.org\/(?:authors\/)?)?A\d+$/i;
+const AID_OK = /^(?:https?:\/\/(?:api\.)?openalex\.org\/(?:authors\/)?)?A\d{8,}$/i;
 const atTemple = (c) => (c.institutions || []).some((i) => /temple university/i.test(i));
 
 function renderPick() {
@@ -337,8 +352,11 @@ function renderPick() {
   const n = (F.candidates || []).length;
   const title = c ? "Ready to build the brief." : F.busy ? "Searching OpenAlex…"
     : F.badOrcid ? "That is not a valid ORCID iD."
+    : F.badId ? "That is not an OpenAlex author ID."
+    : F.unknownId ? "No OpenAlex author has that ID."
     : !n ? `No Temple University author matches “${F.searched}”.`
       : n === 1 ? "Is this the right person?" : "Which one is the right person?";
+  const note = once(title, F.error);
   const sub = c ? "Add anything below to steer it, or build it now."
     : F.busy ? "" : !n ? ["Try the name as it appears on papers, or paste an ORCID iD such as ", h("span", { class: "nowrap", text: "0000-0002-1825-0097" }), "."]
       : n === 1 && !atTemple(F.candidates[0]) ? "This profile does not list Temple University. An ID finds anyone, so check that it is the right person. Nothing runs until you pick it."
@@ -366,10 +384,18 @@ function renderPick() {
           h("input", { type: "checkbox", checked: F.explain, onchange: (e) => { F.explain = e.target.checked; } }),
           h("span", {}, h("b", { text: "Explain each lead" }),
             h("span", { class: "hint", text: " A model writes a short, cited reason for every lead. This is the slow step." })))) : null),
-    F.error ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: F.error })) : null,
+    note ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: note })) : null,
     F.busy ? h("div", { class: "shimmer-card" }) : null,
     list.length ? h("ul", { class: "cand-list" }, list.map((x, i) => candidateCard(x, i === 0 && !c && n > 1))) : null,
     c ? contextPanel(c) : null));
+}
+
+// An error that opens with the heading's own words says the rest only (R15).
+function once(title, error) {
+  const head = String(title).replace(/\.$/, "");
+  if (!error || !error.startsWith(head)) return error;
+  const rest = error.slice(head.length).replace(/^[.:;,]\s*/, "").trim();
+  return rest ? rest[0].toUpperCase() + rest.slice(1) : null;
 }
 
 function candidateCard(c, best) {

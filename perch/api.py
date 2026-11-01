@@ -392,18 +392,29 @@ def create_app(service: BriefService, runner: JobRunner,
         checks = {name: up(url) for name, url in dependencies().items()}
         return {"status": "ok" if all(checks.values()) else "degraded", "services": checks}
 
+    ID_HINT = ("An OpenAlex author ID is an A followed by at least eight digits. Check it, or "
+               "search by name or ORCID iD.")
+
     @app.get("/authors/resolve")
     def resolve(q: str) -> dict:
         if (oid := oa.parse_orcid(q)) and not oa.orcid_ok(oid):  # Q18
             raise HTTPException(422, "That is not a valid ORCID iD: its last character does "
                                 "not match the rest. Check it on orcid.org.")
-        with service.clients.openalex() as c:
-            if oa.parse_orcid(q):
-                found = [c.resolve_by_orcid(q)]
-            elif oa.parse_author_id(q) and " " not in q.strip():
-                found = [c.get_author(q)]
-            else:
-                found = c.resolve_by_name(q)
+        if oa.looks_like_author_id(q) and not oa.author_id_ok(q):  # R5: before any lookup
+            raise HTTPException(422, ID_HINT)
+        try:
+            with service.clients.openalex() as c:
+                if oa.parse_orcid(q):
+                    found = [c.resolve_by_orcid(q)]
+                elif oa.parse_author_id(q) and " " not in q.strip():
+                    found = [c.get_author(q)]
+                else:
+                    found = c.resolve_by_name(q)
+        except httpx.HTTPStatusError as e:  # an id OpenAlex does not know (R5)
+            if 400 <= e.response.status_code < 500:
+                raise HTTPException(404, "No OpenAlex author has that ID. Check it, or search "
+                                    "by name or ORCID iD.") from e
+            raise
         # Not cached: a search is not a brief, and the pick screen needs only this answer.
         # The brief's researcher stage fetches the one person picked (review S13).
         return {"candidates": [record_json(x) for x in found]}

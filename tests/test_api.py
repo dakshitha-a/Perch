@@ -481,3 +481,19 @@ def test_an_orcid_id_that_fails_its_check_is_refused_before_any_lookup(tmp_path)
     c, _ = make(tmp_path)
     r = c.get("/authors/resolve", params={"q": "0000-0000-0000-0000"})
     assert r.status_code == 422 and "not a valid ORCID" in r.json()["detail"]
+
+
+def test_an_id_that_is_not_an_openalex_id_is_refused_in_plain_words(tmp_path):
+    """R5: "A12" reached OpenAlex, which answered 4xx, and the page showed "internal error
+    (HTTPStatusError)". A short id is refused before any lookup, and an id OpenAlex does
+    not know reads as a plain sentence."""
+    c, service = make(tmp_path)
+    for q in ("A12", "a1234567", "https://openalex.org/A12"):
+        r = c.get("/authors/resolve", params={"q": q})
+        assert r.status_code == 422, q
+        assert r.json()["detail"].startswith("An OpenAlex author ID is an A followed by at least")
+    service.clients.openalex = lambda: oa.OpenAlexClient(
+        transport=httpx.MockTransport(lambda req: httpx.Response(404, json={})), min_interval=0)
+    r = c.get("/authors/resolve", params={"q": "A123456789"})
+    assert r.status_code == 404 and "internal error" not in r.text
+    assert r.json()["detail"].startswith("No OpenAlex author has that ID.")

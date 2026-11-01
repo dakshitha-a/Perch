@@ -1536,8 +1536,23 @@ async def ux_landing(w: Walk, page: Page, base: str, tag: str) -> None:
         await page.wait_for_selector("#pick-title", timeout=20000)
         await page.wait_for_timeout(500)
         got = await page.evaluate("() => [document.querySelector('#pick-title').innerText, (document.querySelector('.notice.error') || {}).innerText || '', document.querySelectorAll('[data-key=build]').length]")
-        if got[2] or "not a valid ORCID" not in got[1]:
+        if got[2] or "not a valid ORCID" not in got[0] + got[1]:
             w.errors.append(f"{tag}: Q18: the all-zero ORCID iD gives {got[0]!r} {got[1]!r} and {got[2]} Build buttons")
+        if "not a valid ORCID" in got[1]:  # R15: the heading says it; the notice adds only the reason
+            w.errors.append(f"{tag}: R15: the ORCID error says it twice: {got[0]!r} {got[1]!r}")
+        for q in ("A12", "A123456789"):  # R5: a short id is refused before any lookup; an unknown one says so
+            await page.goto(base + "/#/")
+            await page.wait_for_selector(".landing")
+            await page.fill("#q", q)
+            await page.click(".searchbox button[type=submit]")
+            await page.wait_for_selector("#pick-title", timeout=30000)
+            await page.wait_for_function("() => !/Searching/.test(document.querySelector('#pick-title').innerText)", timeout=30000)
+            got = await page.evaluate("() => [document.querySelector('#pick-title').innerText, (document.querySelector('.notice.error') || {}).innerText || '']")
+            want = "That is not an OpenAlex author ID." if q == "A12" else "No OpenAlex author has that ID."
+            if got[0] != want or re.search(r"internal error|HTTPStatusError|could not be searched", got[1]) or got[0] in got[1]:
+                w.errors.append(f"{tag}: R5: {q!r} gives {got}")
+            if q == "A12":
+                await w.snap(page, tag, "r-bad-id")
         await page.goto(base + "/#/")  # Q19: a lower-case OpenAlex id finds the same person
         await page.wait_for_selector(".landing")
         await page.fill("#q", AUTHOR.lower())

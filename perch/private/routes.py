@@ -350,8 +350,10 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             raise HTTPException(422, "Choose a researcher or add a document first.")
         if s.briefs_run >= BRIEFS_PER_SESSION:
             raise HTTPException(429, f"A session runs at most {BRIEFS_PER_SESSION} briefs.")
-        if req.author_id and not oa.parse_author_id(req.author_id):  # before the hourly cap
-            raise HTTPException(422, "not an OpenAlex author id")
+        if req.author_id and not (oa.parse_author_id(req.author_id)  # before the hourly cap
+                                  and oa.author_id_ok(req.author_id)):
+            raise HTTPException(422, "That is not an OpenAlex author ID: an ID is an A "
+                                "followed by at least eight digits.")  # R5
         # A warm copy costs no model time, so it does not count against the hourly cap.
         if is_default(req, s) and (w := warm.take(s, req.author_id)) is not None:
             s.briefs_run += 1  # a copy of a warm demo brief, held in this session only
@@ -365,7 +367,8 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                                          explain=req.explain, min_amount=req.min_amount,
                                          context=req.context())
         except ValueError as e:
-            raise HTTPException(422, "not an OpenAlex author id") from e
+            raise HTTPException(422, "That is not an OpenAlex author ID: an ID is an A "
+                                "followed by at least eight digits.") from e
         s.briefs_run += 1
         submit(s, old, b.id)
         return {"id": b.id, "status": b.status}

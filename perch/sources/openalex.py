@@ -53,6 +53,20 @@ def orcid_ok(oid: str) -> bool:
     return digits[15:] == ("X" if check == 10 else str(check))
 
 
+ID_ATTEMPT = re.compile(r"(?:https?://(?:api\.)?openalex\.org/(?:authors/)?)?[Aa]\d+", re.I)
+ID_OK = re.compile(r"(?:https?://(?:api\.)?openalex\.org/(?:authors/)?)?[Aa]\d{8,}", re.I)
+
+
+def looks_like_author_id(text: str) -> bool:
+    """The search box holds an OpenAlex author id, valid or not (R5)."""
+    return bool(ID_ATTEMPT.fullmatch(text.strip()))
+
+
+def author_id_ok(text: str) -> bool:
+    """An A followed by at least eight digits: "A12" is refused before any lookup (R5)."""
+    return bool(ID_OK.fullmatch(text.strip()))
+
+
 def parse_author_id(text: str) -> str | None:
     m = AUTHOR_RE.search(text.strip())
     return m.group(1).upper() if m else None
