@@ -11,6 +11,7 @@ Both formats are built from one list of blocks, so they always say the same thin
 from __future__ import annotations
 
 import html
+import re
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -34,6 +35,47 @@ def _money(o: Opportunity) -> str:
     return award_size(o) or "Not in the record"  # the card's words (Q2)
 
 
+# How a document is named in an export's model text, in place of its private id (Q10).
+DOCUMENTS = {"proposal": "your draft proposal", "direction": "your research direction",
+             "manuscript": "your unpublished work", "cv": "your CV",
+             "interests": "your interests note", "achievement": "your achievements"}
+WORK_ID = re.compile(r"\b(W\d{5,})\b|\b(private:[a-z]+)(?:-[a-z0-9]+)?(?:#\d+)?")
+
+
+def name_papers(text: str | None, works: dict[str, Work]) -> str | None:
+    """Model text with each OpenAlex work id named as the screen names it, by title and
+    year, and each private id named by its kind of document, never by its title (Q10)."""
+    if not text:
+        return text
+
+    def named(m: re.Match) -> str:
+        if m.group(1):
+            w = works.get(f"https://openalex.org/{m.group(1)}")
+            if w is None:
+                return m.group(0)
+            year = f" ({w.publication_year})" if w.publication_year else ""
+            return f"\u201c{w.title}\u201d{year}"
+        kind = m.group(2).split(":", 1)[1]
+        return DOCUMENTS.get(kind, "your document")
+
+    return WORK_ID.sub(named, text)
+
+
+def labelled(label: str, text: str | None) -> Block:
+    """A labelled model text, or one note when it is withheld (Q24): never
+    "Inference: Withheld: ...". """
+    if text == egress.WITHHELD:
+        return Block("note", f"{label} withheld: {egress.WITHHELD.removeprefix('Withheld: ')}")
+    return Block("model", f"{label}: {text}")
+
+
+def _day(v: date | str | None) -> str:
+    """A date as the screen writes it, "31 Oct 2026" (perch.datefmt.day, Q21)."""
+    if v is None:
+        return "Not in the record"
+    return datefmt.day(date.fromisoformat(v) if isinstance(v, str) else v)
+
+
 def _work(w: Work) -> str:
     year = f" ({w.publication_year})" if w.publication_year else ""
     venue = f". {w.venue}" if w.venue else ""
@@ -48,10 +90,11 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     `documents`: the session holds documents, so every model text counts as private."""
     name = researcher.display_name if researcher else brief.researcher_id
     as_of = brief.options.get("as_of") or date.today().isoformat()
+    built = ("Built by Perch from your documents and public records" if documents
+             else "Built from public records by Perch")  # Q24
     out = [Block("h1", f"Perch brief: {name}"),
-           Block("p", f"Brief as of {as_of}. Built from public records by Perch. Every date and "
-                      "amount is copied from the linked record. A brief is a starting point, "
-                      "not advice.")]
+           Block("p", f"Brief as of {_day(as_of)}. {built}. Every date and amount is copied "
+                      "from the linked record. A brief is a starting point, not advice.")]
     if documents and masker is None and (n := _withheld(brief, leads)):
         out.append(Block("note", egress.withheld_note(n)))
     if researcher:
@@ -64,12 +107,12 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
         out.append(Block("model", egress.release_model(brief.summary, [], masker, documents)))
     if brief.topics:
         if documents and masker is None:
-            out.append(Block("note", "Topics withheld: " + egress.WITHHELD))
+            out.append(labelled("Topics", egress.WITHHELD))
         else:
             out.append(Block("list", items=[egress.release_model(t, [], masker, documents)
                                             for t in brief.topics]))
     out.append(Block("p", "Public award horizon (end date of the last public award): "
-                     + (brief.award_horizon.isoformat() if brief.award_horizon
+                     + (_day(brief.award_horizon) if brief.award_horizon
                         else "no public award found")))
 
     kept = [x for x in leads if x.status == "kept"]
@@ -83,30 +126,31 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
         out.append(Block("table", rows=table))
 
     shown = [x for x in leads if x.status != "dismissed"]
-    a = [x for x in shown if x.route == "A"]
+    gone = [x for x in leads if x.status == "dismissed"]
+    a = [x for x in shown if x.route == "A" and x.record_id in opps]
     b = [x for x in shown if x.route == "B"]
     out.append(Block("h2", f"Grants ({len(a)})"))
     if not a:
         out.append(Block("p", "No open opportunity passed the eligibility check."))
-    for x in a:
-        o = opps.get(x.record_id)
-        if not o:
-            continue
+    if n := sum(x.route == "A" for x in gone):  # numbered 1 to n, with no gaps (Q11)
+        out.append(Block("p", f"{n} dismissed {'lead is' if n == 1 else 'leads are'} left out."))
+    for i, x in enumerate(a, 1):
+        o = opps[x.record_id]
         mark = " (kept)" if x.status == "kept" else ""
-        out.append(Block("h3", f"{x.rank}. {o.opportunity_number}: {o.title}{mark}"))
+        out.append(Block("h3", f"{i}. {o.opportunity_number}: {o.title}{mark}"))
         far = datefmt.placeholder_close(o, date.fromisoformat(as_of))  # the card's rule (U3)
         closes = ("Not in the record" if not o.close_date
-                  else o.close_date_note or "" if far else o.close_date.isoformat())
+                  else o.close_date_note or "" if far else _day(o.close_date))
         out.append(Block("list", items=[
             f"Agency: {o.agency_label()}", f"Closes: {closes}", f"Money: {_money(o)}",
             f"Activity code: {o.activity_code or 'Not in the record'}",
             f"Office: {for_route('A').name}"]))
         if x.explanation and not x.flagged:
-            out.append(Block("model", egress.release_model(x.explanation, x.cited_ids, masker,
-                                                           documents)))
+            out.append(Block("model", egress.release_model(
+                name_papers(x.explanation, works), x.cited_ids, masker, documents)))
             if x.inference:
-                out.append(Block("model", "Inference: " + egress.release_model(
-                    x.inference, x.cited_ids, masker, documents)))
+                out.append(labelled("Inference", egress.release_model(
+                    name_papers(x.inference, works), x.cited_ids, masker, documents)))
         elif x.flagged:
             out.append(Block("note", "The explanation was withheld: it failed the checks twice."))
         cited = egress.public_only(works[f"https://openalex.org/{c}"] for c in x.cited_ids
@@ -119,11 +163,13 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     out.append(Block("note", "Inferred from public signals; not verified. NIH SBIR/STTR only."))
     if not b:
         out.append(Block("p", "No company had two kinds of public signal."))
-    for x in b:
+    if n := sum(x.route == "B" for x in gone):
+        out.append(Block("p", f"{n} dismissed {'lead is' if n == 1 else 'leads are'} left out."))
+    for i, x in enumerate(b, 1):
         org = orgs.get(x.record_id)
         nm = org.name if org else x.record_id
         mark = " (kept)" if x.status == "kept" else ""
-        out.append(Block("h3", f"{x.rank}. {nm}{mark}"))
+        out.append(Block("h3", f"{i}. {nm}{mark}"))
         items = [f"Suggested relationship, by rule: {x.relationship}"] if x.relationship else []
         items.append(f"Office: {for_route('B').name}")
         out.append(Block("list", items=items))
@@ -134,7 +180,8 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
                              if org.id.startswith("https://") else org.source_url))
 
     out.append(Block("h2", "About this export"))
-    out.append(Block("p", f"{len(kept)} kept, {len(shown)} shown. Text marked Model was "
+    out.append(Block("p", f"{len(kept)} kept, {len(shown)} shown"
+                     + (f", {len(gone)} dismissed" if gone else "") + ". Text marked Model was "
                      "written by a language model and checked against the records it cites."))
     out.append(Block("p", grants_gov.ATTRIBUTION))
     return out
@@ -152,12 +199,6 @@ def _amount(s: Scholarship) -> str:
     return "Not in the record"
 
 
-def _cv_line(text: str, masker: egress.Masker | None) -> str:
-    """A rule line that quotes the CV ("your CV says 3.40") is private; others are not."""
-    return egress.release(text, ["private:cv"] if "your cv" in text.lower() else [],
-                          masker) or ""
-
-
 def _withheld(brief: Brief | None, leads: list[Lead]) -> int:
     """Model texts a documents session leaves out: the summary and each explanation."""
     return (bool(brief and brief.summary)
@@ -173,7 +214,7 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
     as_of = brief.options.get("as_of") or date.today().isoformat()
     shown = [x for x in leads if x.status != "dismissed"]
     out = [Block("h1", "Perch student brief (private)"),
-           Block("p", f"Brief as of {as_of}. Eligibility is checked by rule from your CV; "
+           Block("p", f"Brief as of {_day(as_of)}. Eligibility is checked by rule from your CV; "
                       "\"may be eligible\" means Perch could not check everything. A brief is "
                       "a starting point, not advice.")]
     if documents and masker is None and (n := _withheld(None, shown)):
@@ -192,17 +233,16 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
             mark = " (kept)" if x.status == "kept" else ""
             badge = " [SAMPLE]" if x.sample else ""
             out.append(Block("h3", f"{x.rank}. {name}{badge}{mark}"))
-            items = [f"Verdict: {x.verdict}"]
-            items += [_cv_line(v, masker) for v in x.verdict_lines]
+            # The verdict, its rule lines and the gaps are written by code from the rules
+            # and the record: they are never withheld; only model text is (Q12).
+            items = [f"Verdict: {x.verdict}", *x.verdict_lines]
             if isinstance(rec, Scholarship):
                 items.append(f"Sponsor: {rec.sponsor or 'Not in the record'}")
-                dl = rec.deadline.isoformat() if rec.deadline else "Not in the record"
-                items.append(f"Deadline: {dl}")
+                items.append(f"Deadline: {_day(rec.deadline)}")
                 items.append(f"Amount: {_amount(rec)}")
             elif isinstance(rec, Opportunity):
-                cl = rec.close_date.isoformat() if rec.close_date else "Not in the record"
-                items.append(f"Closes: {cl}")
-            items += [f"Still needed: {_cv_line(g, masker)}" for g in x.gaps]
+                items.append(f"Closes: {_day(rec.close_date)}")
+            items += [f"Still needed: {g}" for g in x.gaps]
             items.append(f"Office: {office.name}")
             out.append(Block("list", items=[i for i in items if i]))
             if x.explanation and not x.flagged:

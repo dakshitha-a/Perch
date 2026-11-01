@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from perch import egress
 from perch import scholarships as S
 from perch.llm.fake import FakeProvider
 from perch.retrieve import index_opportunities
@@ -130,7 +131,12 @@ def test_student_canary_leaves_no_trace(tmp_path, monkeypatch, capfd):
         for ext in ("json", "md", "html"):
             e = c.get(f"/private/export.{ext}", headers=h).text
             assert "SAMPLE DATA" in e, ext  # every export carries the banner
-            assert not re.search(r"your CV (says|lists)", e), ext  # CV facts are withheld
+            # Q12: verdicts and rule lines are written by code and stay; only model text
+            # is withheld, and the banner counts those.
+            if ext != "json":
+                assert "Verdict: " in e, ext
+                assert e.count(egress.WITHHELD) == sum(
+                    bool(x["explanation"] and not x["flagged"]) for x in got["leads"]), ext
         assert c.post("/private/handoff", headers=h,
                       json={"office": "research_development"}).status_code == 422
         c.post("/private/end", headers=h)
