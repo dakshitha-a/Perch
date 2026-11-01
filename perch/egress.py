@@ -145,7 +145,7 @@ def release_cv_line(line: str, masker: Masker | None = None) -> str:
 
 def withheld_note(n: int) -> str:
     """The stated count of model texts left out of an export (S8)."""
-    return (f"{n} {'explanation' if n == 1 else 'explanations'} withheld: this session holds "
+    return (f"{n} model {'text' if n == 1 else 'texts'} withheld: this session holds "
             "documents, and model text may draw on them. Choose masking to include them "
             "masked.")
 

@@ -524,7 +524,7 @@ def create_app(service: BriefService, runner: JobRunner,
         out = {"brief": brief, "leads": out_leads, "records": records,
                "notice": grants_gov.ATTRIBUTION}
         if documents and masker is None and (n := ex._withheld(b, leads)):
-            out["withheld"] = {"explanations": n, "note": egress.withheld_note(n)}
+            out["withheld"] = {"texts": n, "note": egress.withheld_note(n)}
         if any(x.sample for x in leads):
             out["sample_notice"] = ex.SAMPLE_BANNER
         return out

@@ -173,3 +173,19 @@ def test_exports_render_citations_as_the_screen_with_no_raw_ids():
     model = "\n".join(x for x in md.splitlines() if x.startswith("> **Model:**"))
     assert not re.search(r"\bsch-\d|private:|\[achievement", model)
     assert ex.name_papers("A [PRIVATE-PHRASE-1] phrase.", {}) == "A [PRIVATE-PHRASE-1] phrase."
+
+
+def test_the_documents_banner_counts_every_withheld_text():
+    """R10: the banner said "10 explanations withheld" over 20 Withheld lines (the
+    summary, the topics, 9 explanations and 9 inferences)."""
+    brief, leads, opps, works = _inputs()
+    brief.summary = "A SYNTHETIC summary."
+    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, [], documents=True))
+    lines = [x for x in md.splitlines() if x.startswith("> ") and "withheld: this text" in x
+             or x == "> **Model:** " + egress.WITHHELD]
+    assert len(lines) == 4  # summary, topics, explanation, inference
+    assert "> 4 model texts withheld: this session holds documents" in md
+    assert ex._withheld(brief, leads) == 4  # the JSON export says the same
+    s_brief, s_leads, recs = _student_inputs()
+    md = ex.to_markdown(ex.student_blocks(s_brief, s_leads, recs))
+    assert "> 1 model text withheld:" in md and md.count(egress.WITHHELD) == 1

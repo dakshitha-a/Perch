@@ -149,8 +149,6 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     out = [Block("h1", f"Perch brief: {name}"),
            Block("p", f"Brief as of {_day(as_of)}. {built}. Every date and amount is copied "
                       "from the linked record. A brief is a starting point, not advice.")]
-    if documents and masker is None and (n := _withheld(brief, leads)):
-        out.append(Block("note", egress.withheld_note(n)))
     if researcher:
         out.append(Block("link", f"Researcher record ({researcher.source})",
                          href=researcher.id if researcher.id.startswith("https://")
@@ -243,6 +241,21 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
                      + (f", {len(gone)} dismissed" if gone else "") + ". Text marked Model was "
                      "written by a language model and checked against the records it cites."))
     out.append(Block("p", grants_gov.ATTRIBUTION))
+    return _count_withheld(out, documents and masker is None)
+
+
+def is_withheld(b: Block) -> bool:
+    """A Withheld line: a withheld model text, or one labelled note (Q24)."""
+    return (b.kind == "model" and b.text == egress.WITHHELD) or (
+        b.kind == "note" and b.text.endswith(egress.WITHHELD.removeprefix("Withheld: "))
+        and " withheld: " in b.text)
+
+
+def _count_withheld(out: list[Block], banner: bool) -> list[Block]:
+    """The banner under the opening states how many Withheld lines follow, counted from
+    the lines themselves: the summary, the topics, each explanation and inference (R10)."""
+    if banner and (n := sum(map(is_withheld, out))):
+        out.insert(2, Block("note", egress.withheld_note(n)))
     return out
 
 
@@ -259,10 +272,12 @@ def _amount(s: Scholarship) -> str:
 
 
 def _withheld(brief: Brief | None, leads: list[Lead]) -> int:
-    """Model texts a documents session leaves out: the summary and each explanation."""
-    return (bool(brief and brief.summary)
-            + sum(bool(x.explanation and not x.flagged) for x in leads
-                  if x.status != "dismissed" and x.route != "B"))
+    """Model texts a documents session leaves out of the JSON export: the summary, the
+    topics, and each explanation and inference (R10)."""
+    return (bool(brief and brief.summary) + bool(brief and brief.topics)
+            + sum(bool(x.explanation and not x.flagged) + bool(x.inference and x.explanation
+                                                                and not x.flagged)
+                  for x in leads if x.status != "dismissed" and x.route != "B"))
 
 
 def _source_name(rec: object) -> str:
@@ -289,8 +304,6 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
            Block("p", f"Brief as of {_day(as_of)}. Eligibility is checked by rule from your CV; "
                       "\"may be eligible\" means Perch could not check everything. A brief is "
                       "a starting point, not advice.")]
-    if documents and masker is None and (n := _withheld(None, shown)):
-        out.append(Block("note", egress.withheld_note(n)))
     if any(x.sample for x in shown):
         out.append(Block("note", SAMPLE_BANNER))
     names = {}  # a cited option reads as its name, as on the card (R9)
@@ -341,7 +354,7 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
                      + (f", {len(gone)} dismissed" if gone else "") + ". Text marked Model was "
                      "written by a language model and checked against the records it cites."))
     out.append(Block("p", grants_gov.ATTRIBUTION))
-    return out
+    return _count_withheld(out, documents and masker is None)
 
 
 def _md_text(s: str) -> str:

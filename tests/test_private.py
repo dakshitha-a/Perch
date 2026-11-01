@@ -650,9 +650,9 @@ def test_documents_session_withholds_model_text_that_cites_only_public_ids(tmp_p
     for ext in ("json", "md", "html"):
         text = c.get(f"/private/export.{ext}", headers=h).text
         assert PARAPHRASE not in text, ext
-        assert "explanation withheld: this session holds documents" in text, ext
+        assert "withheld: this session holds documents" in text, ext
     exp = c.get("/private/export.json", headers=h).json()
-    assert exp["withheld"]["explanations"] >= 1
+    assert exp["withheld"]["texts"] >= 1
     masked = c.get("/private/export.json", headers=h, params={"mask": True}).json()
     assert "[PRIVATE-PHRASE-" in masked["leads"][0]["explanation"]
     office = {"office": "research_development"}
