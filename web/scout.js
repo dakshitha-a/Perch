@@ -118,8 +118,8 @@ function welcome(ctx) {
         h("button", { class: "chip", type: "button", onclick: () => { T.draft = q; send(ctx); } }, q)))) : null,
       h("details", { class: "scout-limits" }, h("summary", { text: "What I will not do" }),
         h("p", { text: ctx.student
-          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record, and run on a local model, because your CV is in this session. Sample scholarships stay marked as samples. The conversation ends with the session."
-          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record, and run on a local model. The conversation ends with the session." }))));
+          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record, and run on a local model, because your CV is in this session. Sample scholarships stay marked as samples. A conversation has a budget; when it is spent, start a new one. The conversation ends with the session."
+          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record, and run on a local model. A conversation has a budget; when it is spent, start a new one. The conversation ends with the session." }))));
 }
 
 // The chat fills the window below the sticky tabs, so the question box sits on the bottom
@@ -258,8 +258,23 @@ function answer(x, ctx, thinking) {
       h("span", { text: "Written by a model; checked against the records it cites." })),
     ...withCites(x.answer, ctx));
   if (x.flagged) return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "Scout’s answer was withheld: it did not pass the citation check twice. The steps below show what it found." }));
+  // T4: the conversation's token or cost budget is spent. A new conversation keeps the
+  // brief and starts Scout's history afresh.
+  if (x.limit) return h("div", { class: "notice warn scout-limit" }, icon("warn"),
+    h("div", {}, h("p", { text: "Scout has reached its limit for this conversation. Start a new conversation to keep asking; your brief, kept leads and drafts stay as they are." }),
+      h("button", { class: "btn", type: "button", "data-key": "scout-new", onclick: () => newConversation(ctx) }, h("span", { text: "Start a new conversation" }))));
   if (x.status === "stopped" || x.status === "failed") return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: `Scout stopped: ${(x.errors || []).join("; ") || "no answer"}.` }));
   return null;
+}
+
+// T4: forget this conversation on the page; the next question opens a new Scout session
+// on the same brief.
+function newConversation(ctx) {
+  reset(T.briefId);
+  ctx.rerender();
+  const q = document.getElementById("scout-q");
+  if (q) q.focus();
+  ctx.announce("New conversation. Ask Scout a question.");
 }
 
 // The model's text, tidied for reading (U8): lines that start with "* " or "- " become a

@@ -1282,6 +1282,31 @@ async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
     if not got["draft"] or got["model"] or "is below. Perch never sends it" not in got["text"]:
         w.errors.append(f"{tag}: R3: after the draft step the answer reads {got['text'][:140]!r} (Model text tag: {got['model']})")
     await w.snap(page, tag, "r-scout-draft", full=True)
+    # T4: when the conversation's budget is spent, the chat offers a new conversation. The
+    # budget is not spent for real: the next view is marked as the server marks it.
+    async def spent(route: Route) -> None:
+        r = await route.fetch()
+        v = await r.json()
+        if v.get("exchanges") and not v.get("busy"):
+            v["exchanges"][-1].update(status="stopped", answer=None, limit=True,
+                                      errors=["stopped at the token budget (120,000)"])
+        await route.fulfill(response=r, json=v)
+
+    await page.route("**/private/scout/*", spent)
+    await scout_ask(page, "Which lead has the largest award ceiling?")
+    got = await page.evaluate("""() => { const b = document.querySelector('.scout-limit [data-key=scout-new]');
+      return { button: Boolean(b), text: (document.querySelector('.scout-limit') || {}).innerText || '' }; }""")
+    await w.snap(page, tag, "t4-scout-limit", full=True)
+    if not got["button"] or "Start a new conversation" not in got["text"]:
+        w.errors.append(f"{tag}: T4: a spent conversation offers no new one: {got['text'][:120]!r}")
+    else:
+        await page.click(".scout-limit [data-key=scout-new]")
+        await page.wait_for_timeout(300)
+        after = await page.evaluate("""() => ({ xs: document.querySelectorAll('.scout-x').length,
+          tries: document.querySelectorAll('.scout-try .chip').length, focus: document.activeElement && document.activeElement.id })""")
+        if after["xs"] or not after["tries"] or after["focus"] != "scout-q":
+            w.errors.append(f"{tag}: T4: Start a new conversation left {after}")
+    await page.unroute("**/private/scout/*", spent)
     await end_session(page)
 
 

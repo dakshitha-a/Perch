@@ -1228,3 +1228,6 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
   .keep-float { visibility: hidden; }
 }
 .security-note { margin: 8px 0 0; } /* Q13's fixed line under the Industry warning */
+/* T4: the conversation budget is spent; the button starts a new conversation. */
+.scout-limit > div { display: grid; gap: 8px; justify-items: start; }
+.scout-limit p { margin: 0; }
