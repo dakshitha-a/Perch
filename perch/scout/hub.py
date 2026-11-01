@@ -95,7 +95,7 @@ def view(e: Entry) -> dict:
     exchanges = []
     for i, x in enumerate(s.exchanges):
         end = s.exchanges[i + 1]["cards_from"] if i + 1 < len(s.exchanges) else len(cards)
-        exchanges.append({**{k: v for k, v in x.items() if k != "cards_from"},
+        exchanges.append({**{k: v for k, v in x.items() if k not in ("cards_from", "msgs_from")},
                           "cards": cards[x["cards_from"]:end]})
     return {"id": s.id, "brief_id": e.brief_id, "status": s.status, "busy": e.busy,
             "error": e.error, "model": s.model, "policy": s.policy,

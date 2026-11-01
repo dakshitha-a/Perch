@@ -133,6 +133,10 @@ FILTER_NUDGE = ("Call {tool} now with every filter in the question, such as {fil
                 "dates written like 2027-03-01. Reply with the tool call only.")
 FILTERS = {"search_opportunities": "closes_by, closes_after, agencies or sort",
            "search_options": "verdict, deadline_after, deadline_before, route, words or sort"}
+# T7: a question that names one record ("the MPS Chem deadline is ...; confirm that") is
+# answered from that record.
+RECORD_NUDGE = ("Call get_record with id {id} now and answer from what the record says, "
+                "quoting its own words for the deadline. Reply with the tool call only.")
 # T5 (Q5 again): "Which company cites my papers the most?" drew "Perch only has federal
 # grant records ... no foundation or private-sponsor records", which the refusal list
 # below let through, since it was matched on the answer's words. A question about
@@ -335,6 +339,7 @@ class Scout:
         """A question, or a follow-up in the same session."""
         self.system = self.head + self.note()  # what is kept now (Q4)
         compact(s)  # T4: earlier questions' tool results leave the context
+        msgs_from = len(s.messages)
         months = month_dates(question, self.ctx.as_of)
         s.messages.append(Message("user", question + months_line(months, self.ctx.as_of)))
         s.user_numbers |= stated_numbers(question)
@@ -342,7 +347,8 @@ class Scout:
         s.user_numbers.add(self.ctx.as_of.isoformat())  # "today", as the session line says
         s.status, s.answer, s.flagged, s.errors, s.turns = "running", None, False, [], 0
         s.nudged = False
-        s.exchanges.append({"question": question, "cards_from": len(s.cards), "answer": None,
+        s.exchanges.append({"question": question, "cards_from": len(s.cards),
+                            "msgs_from": msgs_from, "answer": None,
                             "flagged": False, "errors": [], "status": "running"})
         if self.log:
             self.log.write({"kind": "question", "session": s.id, "hash": digest(question)})
@@ -436,7 +442,10 @@ class Scout:
             return False
         elif ORG_Q_RE.search(question) and "get_org_signals" in self.table:
             nudge = ORG_NUDGE
-        elif search and FILTER_Q_RE.search(question):
+        elif ((stated_numbers(question) or not cited(text))
+              and (named := self._named(question)) and "get_record" in self.table):
+            nudge = RECORD_NUDGE.format(id=named)  # T7: the record answers it, not memory
+        elif search and FILTER_Q_RE.search(undated(question)):
             nudge = FILTER_NUDGE.format(tool=search, filters=FILTERS[search])
         elif CAPABILITY_RE.search(question) or (cited(text) and not stated_numbers(question)):
             return False
@@ -446,6 +455,22 @@ class Scout:
         s.messages.append(Message("assistant", text))
         s.messages.append(Message("user", nudge))
         return True
+
+    def _named(self, question: str) -> str | None:
+        """The id of the one record the question names by its short name, such as "MPS
+        Chem" for "MPS Chemistry Research Programs (MPS Chem)", among those seen."""
+        from perch.schemas import Opportunity
+
+        hits = []
+        for i, r in self.ctx.seen.items():
+            if not isinstance(r, Opportunity):
+                continue
+            names = [n for n in re.findall(r"\(([^()]{3,40})\)", r.title or "")
+                     if not re.search(r"clinical|trial|\d", n, re.I)]
+            names.append(r.opportunity_number)
+            if any(re.search(rf"(?<!\w){re.escape(n)}(?!\w)", question, re.I) for n in names):
+                hits.append(i)
+        return hits[0] if len(hits) == 1 else None
 
     def _answer_repeat(self, s: Session, c: Card) -> None:
         """A call identical to one already run for this question is not run again: it gets
@@ -626,7 +651,7 @@ def stray_text(text: str, question: str, records: str) -> list[str]:
 
 # T6: "the largest ceiling ... $15,000,000" where $15,000,000 is the record's award floor.
 CEILING_RE = re.compile(r"\bceilings?\b", re.I)
-FLOOR_BEFORE = re.compile(r"\bfloors?\b[^.$]{0,20}$", re.I)
+FLOOR_BEFORE = re.compile(r"\b(?:floors?|minimum|at least)\b[^.$]{0,20}$", re.I)
 
 
 def floor_as_ceiling(text: str, seen: dict) -> list[str]:
@@ -639,6 +664,10 @@ def floor_as_ceiling(text: str, seen: dict) -> list[str]:
         if not CEILING_RE.search(sent):
             continue
         recs = [seen[i] for i in cited(sent) if isinstance(seen.get(i), Opportunity)]
+        amounts = {float(norm_number(m.group(0))) for m in NUM_RE.finditer(sent)
+                   if m.group(0).startswith("$")}
+        # a range that gives the record's own ceiling, "$5,000 to $10,000,000", is fine
+        recs = [o for o in recs if o.award_ceiling not in amounts]
         for m in NUM_RE.finditer(sent):
             if not m.group(0).startswith("$"):
                 continue
@@ -649,6 +678,13 @@ def floor_as_ceiling(text: str, seen: dict) -> list[str]:
                     errs.append(f"{m.group(0)} is the award floor of [{short_id(o)}], not its "
                                 "ceiling: name it as a floor, or leave it out")
     return errs
+
+
+def undated(text: str) -> str:
+    """The text without its full dates: "15 December 2026" is a date, not a filter word."""
+    for rx, _ in DATE_PATTERNS:
+        text = rx.sub(" ", text)
+    return text
 
 
 def month_dates(question: str, as_of: date) -> list[tuple[str, date, date]]:
@@ -675,11 +711,17 @@ def months_line(months: list[tuple[str, date, date]], as_of: date) -> str:
             + ". \"Before\" a month means closes_by its first day.)")
 
 
+ANSWER_CHARS = 400  # an older answer, as later questions see it (T4)
+
+
 def compact(s: Session) -> None:
     """T4: before a new question, the tool results of earlier questions are cut to the
-    step's result line and the records it named. The questions, the steps asked for and
-    the answers stay, and every record stays in the session's checked set, so a question
-    costs about the same however long the conversation."""
+    step's result line and the records it named. Answers older than the last question's
+    are cut to their first 400 characters, and the reminders and rejected drafts of
+    earlier questions go. The questions, the steps asked for and the answers' openings
+    stay, and every record stays in the session's checked set, so a question costs about
+    the same however long the conversation, and each model call stays well inside the
+    local model's context."""
     cards = {c.id: c for c in s.cards}
     for m in s.messages:
         if not m.tool_results or all(r.content.startswith(COMPACT) for r in m.tool_results):
@@ -687,6 +729,27 @@ def compact(s: Session) -> None:
         m.tool_results = [ToolResult(r.call_id, r.name, r.content if r.content.startswith(
             COMPACT) else json.dumps({"earlier_result": True, **_brief_of(
                 cards.get(r.call_id))}), r.is_error) for r in m.tool_results]
+    starts = [x.get("msgs_from") for x in s.exchanges]
+    if None in starts or len(starts) < 2:
+        return
+    out: list[Message] = []
+    for i, start in enumerate(starts):
+        end = starts[i + 1] if i + 1 < len(starts) else len(s.messages)
+        part = s.messages[start:end]
+        if i == len(starts) - 1:  # the last question stays whole
+            s.exchanges[i]["msgs_from"] = len(out)
+            out += part
+            continue
+        last = max((j for j, m in enumerate(part) if m.role == "assistant"
+                    and not m.tool_calls), default=None)
+        keep = [m for j, m in enumerate(part) if j == 0 or m.tool_calls or m.tool_results
+                or j == last]
+        if last is not None and len(part[last].content) > ANSWER_CHARS:
+            short = part[last].content[:ANSWER_CHARS].rsplit(" ", 1)[0]
+            keep[-1] = Message("assistant", short + " … (shortened)")
+        s.exchanges[i]["msgs_from"] = len(out)
+        out += keep
+    s.messages[:] = out
 
 
 COMPACT = '{"earlier_result": true'

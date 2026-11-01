@@ -18,7 +18,7 @@ from perch import awards as aw
 from perch.brief import route_a
 from perch.compare import award_size, lower_first
 from perch.datefmt import closes as closes_text
-from perch.datefmt import day, placeholder_close
+from perch.datefmt import day, no_deadline, placeholder_close
 from perch.datefmt import shown as shown_day
 from perch.eligibility import Constraints
 from perch.llm import Tool
@@ -255,8 +255,7 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
 
         def soon(d: dict) -> tuple[bool, date]:
             o = opp[d["id"]]
-            return (o.close_date is None or placeholder_close(o, ctx.as_of),
-                    o.close_date or date.max)
+            return (no_deadline(o, ctx.as_of), o.close_date or date.max)
 
         leads.sort(key=soon)
     elif sort == "award_ceiling":  # the largest ceiling first; none stated last (T6)
@@ -271,9 +270,13 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
     return {"source": "Grants.gov federal opportunities in the store", "as_of":
             ctx.as_of.isoformat(), "retrieved": b.retrieved, "removed_by_filters":
             len(b.rejected), "top_removal_reasons": top_reasons, "leads": leads,
-            **({"note": "A lead with brief_rank is on the user's brief, at that place. For "
-                "\"these\" or \"my\" leads, name those first, then any others as further "
-                "leads."} if in_brief else {})}
+            "note": " ".join(x for x in (
+                "A lead with brief_rank is on the user's brief, at that place. For \"these\" "
+                "or \"my\" leads, name those first, then any others as further leads."
+                if in_brief else "",
+                "Sorted by award ceiling, the largest first; a lead whose record states no "
+                "ceiling comes last, whatever its floor. A floor is not a ceiling."
+                if sort == "award_ceiling" else "") if x) or None}
 
 
 def _route_b_leads(ctx: ScoutContext, author_id: str | None) -> list[Lead]:

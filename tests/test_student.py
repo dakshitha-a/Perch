@@ -402,3 +402,26 @@ def test_a_student_answer_never_leads_with_a_sample():
         assert st.mixed_lists(ok, seen) == [], ok
     assert "sort" in st.STUDENT_TOOLS["search_options"][0].parameters["properties"]
     assert "soonest deadline" in " ".join(st.STUDENT_RULES.split())
+
+
+def test_student_tool_amounts_and_notes_read_as_the_cards():
+    """T27: Scout wrote "(10,000 US dollars)" where the card writes "$10,000". T13: the
+    note is the student's, so a gap's CV fact reads in the first person."""
+    from datetime import UTC, datetime
+    from types import SimpleNamespace as NS
+
+    from perch.schemas import Scholarship
+    from perch.scout.student_tools import facts_of, mine, write_note
+
+    t = datetime(2026, 10, 29, tzinfo=UTC)
+    rec = Scholarship(id="sample:sch-x", source="synthetic", source_url="u", fetched_at=t,
+                      name="SYNTHETIC award", sponsor="SYNTHETIC sponsor", amount_max=10000,
+                      canary="PERCH-CANARY-TEST-T27")
+    assert facts_of(rec)["amount"] == "$10,000"
+    assert facts_of(rec.model_copy(update={"amount_min": 500}))["amount"] == "$500 to $10,000"
+    gap = "3 letters of recommendation; your CV lists 2 referees"
+    assert mine(gap) == "3 letters of recommendation (my CV lists 2 referees)"
+    lead = NS(sample=False, verdict="eligible", gaps=["An essay", gap])
+    body = write_note("F", [(lead, {"title": "SYNTHETIC fellowship", "deadline": "1 Mar 2027"})])
+    assert "Still needed: an essay; 3 letters of recommendation (my CV lists 2 referees)" in \
+        body["body"] and "your CV" not in body["body"]

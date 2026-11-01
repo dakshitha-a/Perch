@@ -9,6 +9,7 @@ Both read record fields only; nothing here makes up a date.
 
 from __future__ import annotations
 
+import re
 from datetime import date
 
 from perch.schemas import Opportunity
@@ -30,15 +31,37 @@ def shown(v: str) -> str:
         return v
 
 
+# T17: NIH parent announcements take applications on NIH's standard due dates; the
+# record's close date is when the announcement expires, not a deadline. A note that says
+# standard dates apply is the record's own words, as "Proposals accepted anytime" is.
+STANDARD_DATES = re.compile(r"\bstandard (?:due |receipt )?dates apply\b", re.I)
+PARENT = re.compile(r"\(Parent\b")
+
+
 def placeholder_close(o: Opportunity, as_of: date | None = None) -> bool:
-    """The close date is a far-off placeholder and the record says so in words."""
+    """The close date is a far-off placeholder and the record says so in words, or the
+    record says standard dates apply (T17)."""
     return bool(o.close_date and o.close_date_note
-                and (o.close_date - (as_of or date.today())).days > FAR_DAYS)
+                and ((o.close_date - (as_of or date.today())).days > FAR_DAYS
+                     or STANDARD_DATES.search(o.close_date_note)))
+
+
+def expires_only(o: Opportunity) -> bool:
+    """A parent announcement whose record gives no deadline words: its close date is when
+    it expires (T17)."""
+    return bool(o.close_date and not o.close_date_note and PARENT.search(o.title or ""))
+
+
+def no_deadline(o: Opportunity, as_of: date | None = None) -> bool:
+    """No close date that is a deadline: none, a placeholder, or an expiry date."""
+    return not o.close_date or placeholder_close(o, as_of) or expires_only(o)
 
 
 def closes(o: Opportunity, as_of: date | None = None) -> str | None:
-    """The close date as shown, or the record's deadline note; None when the record has
-    no close date."""
+    """The close date as shown, or the record's deadline note, or "Expires <date>" for a
+    parent announcement; None when the record has no close date."""
     if not o.close_date:
         return None
-    return o.close_date_note if placeholder_close(o, as_of) else day(o.close_date)
+    if placeholder_close(o, as_of):
+        return o.close_date_note
+    return f"Expires {day(o.close_date)}" if expires_only(o) else day(o.close_date)

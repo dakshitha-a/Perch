@@ -15,7 +15,7 @@ from collections.abc import Callable
 from datetime import date
 
 from perch.compare import lower_first
-from perch.datefmt import day
+from perch.datefmt import closes, day, no_deadline
 from perch.llm import Tool
 from perch.schemas import Lead, Opportunity, Record, Scholarship
 from perch.scout.tools import ScoutContext, ToolError, _obj, get_record, short_id
@@ -48,18 +48,18 @@ def record_of(service: object, lead: Lead) -> Record | None:
 def facts_of(rec: Record | None) -> dict:
     """Deadline and amount, copied from the record or marked as not stated."""
     if isinstance(rec, Scholarship):
-        amt = (f"{rec.amount_min:,.0f} to {rec.amount_max:,.0f} US dollars"
+        amt = (f"${rec.amount_min:,.0f} to ${rec.amount_max:,.0f}"  # as the cards (T27)
                if rec.amount_min is not None and rec.amount_max is not None
                and rec.amount_min != rec.amount_max
-               else f"{rec.amount_max:,.0f} US dollars" if rec.amount_max is not None
+               else f"${rec.amount_max:,.0f}" if rec.amount_max is not None
                else NOT_STATED)
         return {"title": rec.name, "sponsor": rec.sponsor,
                 "deadline": day(rec.deadline) if rec.deadline else NOT_STATED,  # Q22
                 "amount": amt}
-    if isinstance(rec, Opportunity):
+    if isinstance(rec, Opportunity):  # the card's words: "Expires ..." for a parent (T17)
         return {"title": rec.title, "sponsor": rec.agency,
-                "deadline": day(rec.close_date) if rec.close_date else NOT_STATED,
-                "amount": f"{rec.award_ceiling:,.0f} US dollars" if rec.award_ceiling
+                "deadline": closes(rec) or NOT_STATED,
+                "amount": f"${rec.award_ceiling:,.0f}" if rec.award_ceiling
                 else NOT_STATED}
     return {"title": None, "deadline": NOT_STATED, "amount": NOT_STATED}
 
@@ -102,7 +102,8 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
         if not verdict and x.verdict == "not eligible":
             continue
         rec = _record(ctx, x)
-        due = getattr(rec, "deadline", None) or getattr(rec, "close_date", None)
+        due = (None if isinstance(rec, Opportunity) and no_deadline(rec)  # T17
+               else getattr(rec, "deadline", None) or getattr(rec, "close_date", None))
         if (after or before) and due is None:
             continue
         if (after and due <= after) or (before and due >= before):
@@ -289,6 +290,12 @@ def draft_note(ctx: ScoutContext, route: str | None = None,
             "note": "Written by code from the kept options; no model. Perch never sends it."}
 
 
+def mine(gap: str) -> str:
+    """T13: the note is written as the student, so a gap's CV fact reads in the first
+    person: "3 letters of recommendation (my CV lists 2 referees)"."""
+    return re.sub(r"; your CV (.+)$", r" (my CV \1)", gap)
+
+
 def write_note(route: str, rows: list[tuple[Lead, dict]]) -> dict:
     """The note to the Temple office for one route, written by code from the options and
     their record facts (title, deadline). One source for Scout's draft_note and the
@@ -297,7 +304,8 @@ def write_note(route: str, rows: list[tuple[Lead, dict]]) -> dict:
     sample = any(x.sample for x, _ in rows)
     lines = [f"- {f['title']}{' (SAMPLE record, not real)' if x.sample else ''}: "
              f"{x.verdict}, deadline {f['deadline']}"
-             + (f". Still needed: {'; '.join(map(lower_first, x.gaps))}" if x.gaps else "")
+             + (f". Still needed: {'; '.join(lower_first(mine(g)) for g in x.gaps)}"
+                if x.gaps else "")
              for x, f in rows]
     demo = (["SAMPLE DATA, A DEMONSTRATION: DO NOT SEND. The scholarships marked SAMPLE are "
              "invented.", ""] if sample else [])
@@ -340,7 +348,7 @@ STUDENT_TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
                              "its record asks for, quoted.",
                              _obj({"option_id": _ID}, ["option_id"])), explain_verdict),
     "read_cv": (Tool("read_cv", "The fields the rules read from the CV (level, year, major, "
-                     "GPA, enrolment, graduation, referees).", _obj({}, [])), read_cv),
+                     "GPA, enrollment, graduation, referees).", _obj({}, [])), read_cv),
     "compare_options": (Tool("compare_options", "Kept or chosen options side by side. For "
                              "kept options, the shortlist or a comparison; not for the top "
                              "or best options, which are the brief's order by Match.",

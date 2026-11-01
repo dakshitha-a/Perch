@@ -56,10 +56,10 @@ class StudentFacts:
 
     def summary(self) -> list[tuple[str, str]]:
         """What the parse read, as label and value, for the Profile screen (private)."""
-        rows = [("Level of study", self.level), ("Programme", self.programme),
+        rows = [("Level of study", self.level), ("Program", self.programme),
                 ("Year", f"Year {self.class_year}" if self.class_year else None),
                 ("Major", self.major), ("GPA", f"{self.gpa:.2f}" if self.gpa else None),
-                ("Enrolment", self.enrolment),
+                ("Enrollment", self.enrolment),
                 ("Expected graduation", self.graduation.strftime("%B %Y")
                  if self.graduation else None),
                 ("Referees listed", str(self.referees) if self.referees else None)]
