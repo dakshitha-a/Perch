@@ -88,6 +88,7 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
                    deadline_after: str | None = None, deadline_before: str | None = None,
                    min_amount: float | None = None, words: str | None = None) -> dict:
     _, leads = _brief(ctx)
+    used = search_words(words)
     after = date.fromisoformat(deadline_after) if deadline_after else None
     before = date.fromisoformat(deadline_before) if deadline_before else None
     rows = []
@@ -107,17 +108,32 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
         top = getattr(rec, "amount_max", None) or getattr(rec, "award_ceiling", None)
         if min_amount is not None and (top is None or top < min_amount):
             continue
-        if words:
+        if used:
             text = " ".join(str(v) for v in (facts_of(rec).get("title"),
                                              getattr(rec, "purpose", ""),
                                              getattr(rec, "description", ""))).lower()
-            if not all(w.strip().lower() in text for w in words.split(",") if w.strip()):
+            if not any(w in text for w in used):  # any of the words (R7)
                 continue
         rows.append(_row(ctx, x))
     rows = rows[:15]
     return {**apart(rows, "options"), "count": len(rows),
+            **({"words_used": used} if used else {}),
             "note": "Options in this student brief, checked against the CV by rule, each "
-            "group in the brief's own order by Match, the strongest first. " + APART_NOTE}
+            "group in the brief's own order by Match, the strongest first. "
+            + ("An option matches when its title or purpose holds any of words_used. "
+               if used else "") + APART_NOTE}
+
+
+# Words too common to narrow a search (R7): "my stream monitoring work" searches stream
+# and monitoring.
+COMMON = set("""a an and any are as at be by for from i in into is it me my of on or our
+that the their this to with work works study studies""".split())
+
+
+def search_words(words: str | None) -> list[str]:
+    """The words of a search, split on commas and spaces, any of which may match (R7)."""
+    out = [w for w in re.split(r"[,\s]+", (words or "").lower()) if w]
+    return list(dict.fromkeys(w for w in out if w not in COMMON and len(w) > 1))
 
 
 APART_NOTE = ("Records marked sample are invented test data. When both groups are present, "
@@ -276,8 +292,9 @@ STUDENT_TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
                         "enum": ["eligible", "may be eligible", "not eligible"]},
             "deadline_after": _DATE, "deadline_before": _DATE,
             "min_amount": {"type": "number", "description": "US dollars"},
-            "words": {"type": "string", "description": "Comma-separated words that must all "
-                      "appear in the title or purpose"}}, [])), search_options),
+            "words": {"type": "string", "description": "Words to look for in the title or "
+                      "purpose, separated by commas or spaces; an option matches if it holds "
+                      "any of them"}}, [])), search_options),
     "check_option": (Tool("check_option", "The rule check of one option against the CV: "
                           "verdict, the rule lines and what is still needed.",
                           _obj({"option_id": _ID}, ["option_id"])), check_option),

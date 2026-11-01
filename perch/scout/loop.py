@@ -580,7 +580,10 @@ def summarise(tool: str, result: dict) -> str:
         return (f"draft to {result['office']}, not sent"
                 + ("; the model's opening was withheld" if result["opening_withheld"] else ""))
     if tool == "search_options":
-        return f"{result['count']} option{'' if result['count'] == 1 else 's'} match"
+        n = result["count"]
+        words = result.get("words_used")  # the words searched, in the read-as block (R7)
+        return (f"{n} option{'' if n == 1 else 's'} match"
+                + (f" any of: {', '.join(words)}" if words else ""))
     if tool in ("check_option", "explain_verdict"):
         return f"{result['verdict']}" + (", sample record" if result.get("sample") else "")
     if tool == "read_cv":

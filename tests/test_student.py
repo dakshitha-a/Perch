@@ -339,3 +339,29 @@ def test_scout_never_lists_samples_with_public_fellowships(tmp_path, monkeypatch
              "- A sample scholarship [{s}]")
     x, _ = _scout_answers(c, service, h, iter([apart]))
     assert x["answer"] and not x["flagged"], x["errors"]
+
+
+def test_a_word_search_matches_any_word_and_says_which(monkeypatch):
+    """R7: "stream,monitoring" had to find both words, so the Streams scholarship was
+    missed and Scout said nothing matched. Words split on commas and spaces; any matches."""
+    from types import SimpleNamespace as NS
+
+    from perch.scout import student_tools as st
+    from perch.scout.loop import summarise
+
+    leads = [NS(route="S", rank=1, verdict="eligible", sample=True, id="s1"),
+             NS(route="S", rank=2, verdict="eligible", sample=True, id="s2")]
+    recs = {"s1": NS(name="Ostrevel Regional Streams Scholarship", purpose="River work.",
+                     deadline=None, amount_max=None),
+            "s2": NS(name="Inkwater Travel Grant", purpose="Conference travel.", deadline=None,
+                     amount_max=None)}
+    monkeypatch.setattr(st, "_brief", lambda ctx: (None, leads))
+    monkeypatch.setattr(st, "_record", lambda ctx, x: recs[x.id])
+    monkeypatch.setattr(st, "facts_of", lambda rec: {"title": rec.name})
+    monkeypatch.setattr(st, "_row", lambda ctx, x: {"id": x.id, "sample": True})
+    got = st.search_options(None, words="stream,monitoring")
+    assert [r["id"] for r in got["options"]] == ["s1"]
+    assert got["words_used"] == ["stream", "monitoring"]
+    assert st.search_words("my stream monitoring work") == ["stream", "monitoring"]
+    assert summarise("search_options", got) == "1 option match any of: stream, monitoring"
+
