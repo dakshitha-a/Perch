@@ -189,3 +189,24 @@ def test_the_documents_banner_counts_every_withheld_text():
     s_brief, s_leads, recs = _student_inputs()
     md = ex.to_markdown(ex.student_blocks(s_brief, s_leads, recs))
     assert "> 1 model text withheld:" in md and md.count(egress.WITHHELD) == 1
+
+
+def test_the_industry_section_says_what_the_tab_says_and_is_left_out_when_empty():
+    """R18: the export's Industry note read "NIH SBIR/STTR only." with no research-security
+    line, and a documents-only export printed an empty "Industry leads (0)"."""
+    from pathlib import Path
+
+    from perch.offices import RESEARCH_SECURITY
+    from perch.schemas import Stage
+
+    brief, leads, opps, works = _inputs()
+    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, []))
+    assert f"> {ex.INDUSTRY_NOTE}" in md and f"> {RESEARCH_SECURITY}" in md
+    assert "NIH SBIR/STTR only" not in md and "Industry leads (0)" in md
+    import re
+
+    app = re.sub(r'"\s*\+\s*"', "", (Path(__file__).parents[1] / "web/app.js").read_text())
+    assert f'"{ex.INDUSTRY_NOTE}"' in app  # the tab's words, joined across its lines
+    brief.stages = [Stage(name="route_b", status="skipped")]
+    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, [], documents=True))
+    assert "Industry leads" not in md and "No company had" not in md

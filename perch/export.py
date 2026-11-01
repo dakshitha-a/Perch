@@ -17,9 +17,15 @@ from datetime import date
 
 from perch import datefmt, egress
 from perch.compare import COLUMNS, Row, award_size
-from perch.offices import for_route
+from perch.offices import RESEARCH_SECURITY, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
 from perch.sources import grants_gov, temple
+
+
+# The Industry tab's note (web/app.js), word for word (R18).
+INDUSTRY_NOTE = ("Inferred from public signals; not verified. A company that cites or works "
+                 "near your research may have no interest in funding it. SBIR/STTR covers NIH "
+                 "awards only.")
 
 
 @dataclass
@@ -216,9 +222,13 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
             out.append(Block("list", items=[f"Cites: {_work(w)}" for w in cited]))
         out.append(Block("link", f"Record: Grants.gov {o.opportunity_number}", href=o.source_url))
 
-    out.append(Block("h2", f"Industry leads ({len(b)})"))
-    out.append(Block("note", "Inferred from public signals; not verified. NIH SBIR/STTR only."))
-    if not b:
+    # A brief with no public papers has no industry search: no empty section (R18).
+    skipped = any(s.name == "route_b" and s.status == "skipped" for s in brief.stages)
+    if not (skipped and not b and not any(x.route == "B" for x in gone)):
+        out.append(Block("h2", f"Industry leads ({len(b)})"))
+        out.append(Block("note", INDUSTRY_NOTE))  # the Industry tab's words (R18)
+        out.append(Block("note", RESEARCH_SECURITY))
+    if not b and not skipped:
         out.append(Block("p", "No company had two kinds of public signal."))
     if n := sum(x.route == "B" for x in gone):
         out.append(Block("p", f"{n} dismissed {'lead is' if n == 1 else 'leads are'} left out."))
