@@ -113,7 +113,9 @@ function route() {
   if (parts[0] === "student") {
     leaveBrief();
     screen("form");
-    renderStudentStart(main(), { api: privApi, mode, go, announce, info: privateInfo() || {} });
+    renderStudentStart(main(), { api: privApi, mode, go, announce, info: privateInfo() || {},
+      // The CV is a session document: the chip says Local only, as on Your documents (U37, Q7).
+      onDocs: (n) => { S.hasDocs = n > 0; drawSwitch(); } });
     return;
   }
   if (parts[0] === "find") {

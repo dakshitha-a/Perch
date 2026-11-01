@@ -51,9 +51,9 @@ export function isStudent(brief) {
 
 // ----- start: CV, interests, achievements -----
 
-export async function renderStudentStart(root, { api, mode, go, announce, info }) {
+export async function renderStudentStart(root, { api, mode, go, announce, info, onDocs }) {
   document.title = "Tell Perch about you — Perch";
-  const draw = () => renderStudentStart(root, { api, mode, go, announce, info });
+  const draw = () => renderStudentStart(root, { api, mode, go, announce, info, onDocs });
   if (!mode.state.available) {
     fill(root, h("div", { class: "screen" }, h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
       h("h1", { class: "page", text: "Student mode" }),
@@ -64,6 +64,7 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
   for (const [k, v] of Object.entries(mode.state.drafts)) if (v && !D.drafts[k]) { D.drafts[k] = v; delete mode.state.drafts[k]; }
   const sess = await api.session();
   const docs = sess.documents;
+  if (onDocs) onDocs(docs.length); // the chip follows what the session holds (Q7)
   const hasBrief = Boolean(sess.brief_id); // the session's brief, kept when going back here
   const have = new Set(docs.map((d) => d.kind));
   const kinds = info.student_kinds || { cv: "Your CV or résumé", interests: "Your interests", achievements: "Your achievements" };
@@ -89,6 +90,7 @@ export async function renderStudentStart(root, { api, mode, go, announce, info }
         await mode.send(body);
       }
       D.drafts = {}; D.files = {}; D.replacing = new Set();
+      if (onDocs) onDocs((await api.session()).documents.length);
       D.lastSample = D.sample;
       await api.createStudent({});
       api.flag("studentSample", D.lastSample); // the Sample data banner survives a reload (W18)
