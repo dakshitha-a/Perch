@@ -1,56 +1,38 @@
 # HANDOFF.md — state for the next context window
 
-Written at the close of S28 (2026-10-31). S27 and S28 ran in one context because Dakshitha asked for the Scout rebuild before the reviews.
+Written at the close of S32 (2026-11-01). S29 to S32 ran in one orchestrating context with subagents, under Dakshitha's delegation of every product and design decision (2026-10-31, DECISIONS.md).
 
-## Last run: S28, Scout redesign phase 1 (and S27 before it)
+## Where things stand
 
-- **No gate:** Scout runs each step as soon as the model asks for it. The ask mode, `approve`, `skip` and the mode switch are gone from the loop, the hub, both APIs, the CLI, the bench and the web app. Those three actions now return 422.
-- **Stop:** `POST /scout/{sid}/stop`, or `/private/scout/{sid}/stop`, flags the running question. A step already running finishes. The rest are marked Not run and reported to the model, so the next question's history stays whole. An answer the model is already writing stands (DECISIONS, 2026-10-31).
-- **Fixed to the brief:** Scout's own table is `SESSION_TOOLS` in `perch/scout/tools.py`. It has eight tools, none with `author_id`, and no `resolve_author`. The MCP server keeps `TOOLS` unchanged.
-- **Cloud steps counted:** each session has its own counted providers for `explain_fit` and `draft_handoff` (`CountedProvider` in `perch/llm/audit.py`). Their tokens and dollars count toward the session caps. The grounding check inside `explain_fit` is a separate local decision model and is not counted.
-- **What the person sees:**
-  - **Read-as block:** "How Scout read your question" sits above the answer and lists each finished step with its filters.
-  - **Steps fold:** the step cards fold under the answer. Each card says where it ran: Code, no model; Local model; or Cloud: Anthropic.
-  - **Progress line:** it names the running step, with Stop beside it.
-  - **Hand-off draft:** it shows open under the answer.
-- **Words:** Help, SPEC §8 with its Stack line, and SCOUT_SPEC, where the phase 1 items are marked Built. Canvas version 33 has the new Scout tabs; it was checked with a script, not rendered.
-- **S27 in short:**
-  - **Coverage:** 1,497 listings from every agency.
-  - **Back-test:** hit@5 went from 0.104 to 0.188 and MRR from 0.067 to 0.149. The keyword-only baseline is 0.021 and 0.027.
-  - **Match score:** shown on a 0-100 scale.
-  - **UI fixes:** 13 rounds from Dakshitha's review.
-  - **Plan:** S29 to S32 reviews added.
+- **The build is ready to freeze.** `main` holds every review fix and five QA rounds. 398 tests green. Full walk with axe 217 states, 0 errors, 0 axe violations, 0 sideways scroll on the dev server; on the public URL after the rebuild 217 states, 1 error (a two-part Scout question's NSF half withheld by the citation check, the designed fallback), 0 axe. Canary clean. `make package` builds the submission ZIP (27.6 MB, 434 files, tracked files only plus SUBMISSION.md) and the tests pass inside the unzipped copy.
+- **The demo is live on the rebuilt build** (container rebuilt from `main` at 52e75b0 plus the S32 follow-ups; see below for the last rebuild). The chat model runs with a 12,288-token context and two slots; GPU 6 sits flat at about 27,490 MiB. Demo Day caps are set in the compose file (100 briefs, 200 sessions, 300 hand-offs and Scout questions an hour per address). The three warm briefs take about 4 min 39 s to build after a restart, so restart the demo well before the slot.
+- **The demo script passes every run.** `scripts/demo_rehearsal.py` runs the three researcher questions, the student question and the documents hand-off in fresh sessions, three times each, on three kept-leads variants: 45 of 45 on the demo. Questions take 5 to 6 s on a quiet server.
+- **What the presenter should know** (from the round 5 report, `docs/design/qa/CYCLE_5.md`, "Fix round"): the demo researchers' briefs open at once because they were built at server start, and the card says so; a live brief takes about 40 s, longer behind another build; Scout's session budget allows about 12 to 14 questions, then "Start a new conversation"; persona-1's top lead closes on 6 Nov, so check that brief on the morning; keep Cloud off; show the researcher export rather than the student one; avoid asking Scout "how many of my options are samples".
 
-## Checks at close
+## What S29 to S32 did
 
-- `make test`: 265 passed.
-- **Full walk on the dev server:** 145 states, 0 errors, 0 axe violations, 0 sideways scroll.
-- **Live walk on the public URL:** the checks and student groups gave 64 states, 0 errors.
-- **New S28 walk checks:** they cover the read-as block, folded steps, where-tags, no researcher chip, Stop, and a student Scout question with plain filter labels. Each failed on the build before its fix.
-- **Scout bench, today's store:** `bench/results/scout_s28/`.
-  - **Sonnet:** 28 of 28, 0 wrong calls in 27, $0.46.
-  - **Gemma:** 23 of 28. The pre-S28 code on the same store got 21 of 28 the same day.
-  - **S10 baseline:** 25 of 28, on the older NIH-only store.
-- **Anthropic spend:** about $2.56 of $100.
+- **S29, reviews (two Opus reviewers in parallel, fresh context):** workflow, code and security (43 findings: 18 redundancy, 18 security with 3 high, 7 speed) and UI/UX (43 findings: 2 must, 26 should, 15 could). 84 marked fix, 2 deferred (keyboard shortcuts; a second brief worker). Baseline paths measured by `scripts/path_measure.py`.
+- **S30, fixes (four fixers in sequence):** security and speed, then workflow, then UX must and should, then UX could. Highlights: DOCX inflation capped, pypdf 6.21.4 and pip-audit clean, private-derived text filtered from exports, CSP, self-hosted fonts, Scout and document rate limits, IPv6 /64 keys, gzip and 304 polls, stage reorder (live brief 46.6 to 41.9 s), rerank cache for public threads, phone Export fixed, one rule for every close date, Scout answers tagged as model text, weak matches folded, filter chips, company parents merged by OpenAlex lineage, the session id in sessionStorage so a reload resumes the brief. Paths after: PI 14 clicks and 3 scrolls (was 5), student 13 and 2 (was 14 and 5).
+- **S31, five QA rounds (fresh tester then fixer each):** 28, 21, 29, 28 and 23 findings; 125 fixed, 2 partly, 1 dropped. The recurring Scout failures had one root cause: the demo model's 8,192-token context truncated Scout's rules from the front of the prompt (10 truncated calls in the Ollama log). History compaction keeps every call under about 6,400 tokens, and the demo unit now runs 12,288 with two slots (measured on GPU 4 first). Scout bench on the local model went from 23 of 28 (S28) to 27 of 28.
+- **S32, stabilize:** `make package` built; Demo Day settings applied at the rebuild; live verification on the public URL; media refilmed (six clips, 29 screenshots, both replay previews); README corrected; `docs/RESULTS.md` written for the deck; the design canvas sources and the hosted canvas matched to the build (draft-check panel removed, Q34); the tracker page rebuilt (opens on Current with an at-a-glance strip, phone cards, a filterable Decisions tab, computed milestone readiness, stale-source notes) and its content refreshed.
 
-## Next: S29, workflow review, diagnose
+## Known limits (honest list)
 
-See PLAN.md S29. Measure the main paths first, then a fresh-context subagent reviews them, and every finding is verified before it goes into `docs/design/WORKFLOW_REVIEW.md`. Nothing is changed in S29. Dakshitha marks each item fix, defer or drop.
+- **Scout on the local model varies by conversation.** The scripted questions pass; off-script phrasings can still refuse or answer loosely. The validator withholds an answer that fails its checks twice; that is the designed fallback and it shows as "withheld". The wrong-record risk (a claim cited to a neighbouring record) is checked by title words in the rehearsal, not in production.
+- **G21 and G23 partly open:** a mask placed mid-clause can break its sentence; "how many of my options are samples" is not answered.
+- **A two-part Scout question** ("next NSF deadline, and why does the top lead fit?") had its NSF half withheld on the public URL once; it passes on the dev server.
+- **Student retrieval:** 1 of 12 planted positives never reaches a brief (SYNTHETIC, a mechanism test).
+- **Back-test tuning** used the same 48 targeted rows it reports, so the S27 gain is partly fitted (RESULTS.md says so).
+- **Q33** is still Dakshitha's: documents stay Local only until standing rule 1 is changed and `PERCH_CLOUD_DOCUMENTS=1` is set.
+- **GRANTED and CREST** eligibility against Temple is unchecked (Q39, after Demo Day).
 
-## Known gaps
+## Next: S33, freeze (Dakshitha)
 
-- **Gemma counts results:** on bench task t13 it answers "I found 10 R01 grants". The validator rejects the count, so the answer is withheld. It does this on every run since S28 and passed before; Sonnet does not.
-- **Flaky test:** `tests/test_scout.py::test_route_b_answer_counts_and_dates_pass_the_validator` failed once in S27. Not investigated.
-- **Scout search quality:** an R21 question for PI-4, who works on molecular dynamics, returned cancer R21 grants.
-- **Canvas:** the Scout tabs keep the draft-check panel, which is not built (Q34).
-- **Media:** the README clips and screenshots predate the S27 and S28 UI changes (Q41).
-- **Student retrieval:** 2 of 12 planted positives never reached a brief.
+1. Confirm `make test`, `make package` from a clean clone and the live demo one last time.
+2. `make decide-down` to stop the dev Clef-flash and Clef units (GPUs 1 and 2); tell the other session sharing the node that those GPUs are free (details in the local notes). The Clef rows of `make bench` need `make decide-up` again after this.
+3. Tag `v0.1-demo`; nothing on `main` after that except README typos.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 
-- **Q41:** refilm the media at the start of S33? Default: yes, once, before the freeze.
-- **Q36:** Google Fonts reach a third party; keep them? Default: keep.
-- **Q35:** per-visitor caps by IP on Demo Day wifi. Default: keep.
-- **Q34:** build the draft review anyway? Default: no.
-- **Q33:** apply the rule 1 change, then set `PERCH_CLOUD_DOCUMENTS=1` on the demo.
-- **Q29:** kept open by Dakshitha.
+- **Q33:** standing-rule 1 change for documents on Cloud; default: documents stay Local only.
+- Everything else was closed under the delegation (Q29, Q34, Q35, Q36, Q41, Q42) with the decisions in DECISIONS.md.
