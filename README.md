@@ -189,6 +189,16 @@ Fellowships Advising for fellowships, to be agreed with those offices.
 
 The brief step by step and the two-GPU layout are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+### Deployment modes
+
+Every model call goes through one provider layer, and every model role is a setting, so the person deploying Perch chooses how it runs. This is their decision, not the app's.
+
+- **Fully local:** every role on self-hosted models. No API key, nothing leaves the server. The demo's models are local by default.
+- **Hybrid:** local by default, with a Local / Cloud switch the user may turn on for a session after a warning that names the provider. This is how the demo runs. A session that holds documents gets a second warning that lists each document that would leave, with a CV and unpublished research named separately; nothing is sent until the user confirms, the consent lasts for that session, and a document added later turns Cloud off until it is confirmed too.
+- **Cloud only:** every role on a hosted provider.
+
+If a hosted provider is used, the deployer also decides whether the API key is a zero-data-retention key, if the provider offers one, and the privacy statement should say so. The settings and a pre-deployment checklist are in [docs/deploy.md](docs/deploy.md); the reasoning is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#deployment-choice-local-hybrid-or-cloud).
+
 ## How well it works
 
 Every number here was measured. Each is copied from [bench/results](bench/results/SUMMARY.md), with the keyword-only baseline beside the back-test.
