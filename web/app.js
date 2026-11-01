@@ -1178,8 +1178,8 @@ function summarySection() {
   } else {
     body = [skeleton(2), h("p", { class: "hint", text: "The summary is written after the search for leads." })];
   }
-  return h("section", { class: "block" }, h("h2", { class: "section-title" }, h("span", { text: "Summary" }),
-    h("span", { class: "hint", text: "Written by a model, checked against the papers" })), body);
+  // The Model text tag in the body is the one marker (U35).
+  return h("section", { class: "block" }, h("h2", { class: "section-title", text: "Summary" }), body);
 }
 
 // A chip only for a paper in this brief. Any other id is dropped, so the summary never
@@ -1742,7 +1742,8 @@ function explanationBlock(l, parsed, o) {
     : "From the researcher’s papers" }),
   h("ul", { class: "findings" }, parsed.findings.map((x) => h("li", {},
     paperRef(x.paper, papers), h("p", { text: `${x.text}.` })))),
-  inferenceBox(l, o),
+  // Chips for papers the list above already shows are left out (U35).
+  inferenceBox(l, o, new Set(parsed.findings.map((x) => x.paper))),
   l.unsupported && l.unsupported.length ? h("div", { class: "notice warn" }, icon("warn"),
     h("div", {}, h("p", { text: "This statement could not be matched to its source:" }),
       h("ul", {}, l.unsupported.map((u) => h("li", { text: u }))))) : null,
@@ -1760,12 +1761,13 @@ function ownIds(o) {
   return new Set([o.opportunity_number].filter(Boolean));
 }
 
-function inferenceBox(l, o = {}) {
+function inferenceBox(l, o = {}, listed = new Set()) {
   if (!l.inference) return null;
+  const skip = new Set([...ownIds(o), ...listed]);
   return h("div", { class: "inference" },
     h("p", { class: "inference-label" }, h("span", { class: "tag model", text: "Inference" }),
       h("span", { text: "A model’s reading of the fit, not a fact from a record." })),
-    h("p", {}, renderSegs(f.segments(l.inference, new Set(l.cited_ids)), ownIds(o))));
+    h("p", {}, renderSegs(f.segments(l.inference, new Set(l.cited_ids)), skip)));
 }
 
 function eligibilityRows(o) {
