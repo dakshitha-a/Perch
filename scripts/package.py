@@ -81,8 +81,8 @@ the repository contents, so skip the `git clone` line and run the rest from this
 - **Included:** every file tracked in the repository at the commit above. That is the source
   in `perch/`, the web app in `web/`, the tests, the scripts, the curated inputs under `data/`,
   the benchmark results in `bench/`, and the documents in `docs/`.
-- **Not included, data stores:** no database, vector index, cache or log. Perch builds them on
-  first use from public sources.
+- **Not included, data stores:** no database, vector index, cache or log. They are created locally
+  when you fetch records, as described in `docs/running.md`.
 - **Not included, model weights:** none are shipped. `--models fake` needs no model at all. Real
   models are set up as described in `docs/running.md`.
 - **Not included, secrets:** no `.env` and no keys. `.env.example` lists every variable.
