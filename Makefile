@@ -71,7 +71,7 @@ tracker:
 		$$(test -f build/artifacts/readme.html && echo --readme readme.html)
 
 package:
-	@echo "make package: not built yet (S15, see docs/PLAN.md)"
+	$(UV) run python scripts/package.py
 
 hooks:
 	git config core.hooksPath scripts/git-hooks
