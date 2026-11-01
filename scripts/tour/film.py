@@ -40,6 +40,7 @@ RAW = ROOT / "build/tour"
 PERSONA = ROOT / "data/synthetic/persona-1"
 AUTHOR = "A5026494099"  # PI-4, the demo researcher
 VIEW = {"width": 1280, "height": 800}
+SCOUT_Q = "Which of my NSF leads close by 1 Mar 2027?"  # one of Scout's own examples
 
 
 def aliases() -> dict[str, str]:
@@ -70,6 +71,12 @@ async def alias_responses(page: Page, names: dict[str, str]) -> None:
             body = await r.text()
             for real, alias in names.items():
                 body = body.replace(real, alias)
+            # Model text can name a researcher by surname alone ("Dr. ..."), so the
+            # surnames go too, as whole words.
+            for real, alias in names.items():
+                last = real.split()[-1]
+                if len(last) > 2:
+                    body = re.sub(rf"\b{re.escape(last)}\b", alias, body)
             # An ORCID leads straight to the person, so it goes too, as in the replay.
             body = re.sub(r'"orcid":\s*"[^"]*"', '"orcid": null', body)
             await route.fulfill(response=r, body=body)
@@ -156,19 +163,22 @@ async def industry(page: Page, base: str) -> Recorder:
     await rec.start()
     await rec.hold(800)
     btn = page.locator("[data-key=route-B]")
-    await rec.focus(page.locator(".route-switch"), pad=30)
+    await rec.focus(page.locator(".route-switch:not(.sort-switch)"), pad=30)
     await click(page, btn)
     await rec.hold(900)
     rec.wide()
     await rec.hold(900)
     lead = page.locator(".leads > li").first
-    await rec.focus(lead, pad=16)
-    await rec.hold(3200)
-    more = lead.locator("summary").first
-    if await more.count():
-        await click(page, more)
-        await rec.hold(500)
-        await rec.focus(lead, pad=16)
+    # The card's head down to its Inference line: tags, name, other names, the label.
+    top = await lead.evaluate("""e => { const a = e.getBoundingClientRect(),
+        b = e.querySelector('.provenance').getBoundingClientRect();
+        return {x: a.x, y: a.y, width: a.width, height: b.bottom - a.y}; }""")
+    await rec.focus(top, pad=30)
+    await rec.hold(2200)
+    # Each kind of signal with its newest record; the rest stay folded (S22).
+    for sig in (await lead.locator(".signals > li").all())[:2]:
+        await sig.scroll_into_view_if_needed()
+        await rec.focus(sig, pad=24)
         await rec.hold(2600)
     rec.wide()
     await rec.hold(700)
@@ -197,7 +207,9 @@ async def handoff(page: Page, base: str) -> Recorder:
     table = page.locator("#panel table").first
     await table.wait_for()
     await page.wait_for_timeout(300)
-    await table.evaluate("e => e.scrollIntoView({block: 'center'})")
+    # The hand-off form (office, Draft the email) sits above the table (review W2).
+    await page.locator("#handoff-title").evaluate(
+        "e => window.scrollBy(0, e.getBoundingClientRect().top - 130)")
     rec.wide()
     await rec.hold(700)
     await rec.focus(table, pad=20)
@@ -209,7 +221,8 @@ async def handoff(page: Page, base: str) -> Recorder:
     subject = page.locator("[data-key=handoff-subject]")
     await rec.quickly(lambda: subject.wait_for(timeout=120_000), speed=8)
     draft = page.locator("#panel textarea").last
-    await draft.evaluate("e => e.scrollIntoView({block: 'center'})")
+    # The subject line just under the sticky bar and tabs, the email below it.
+    await subject.evaluate("e => window.scrollBy(0, e.getBoundingClientRect().top - 150)")
     await rec.hold(400)
     await rec.focus(draft, pad=30)
     await rec.hold(3600)
@@ -220,27 +233,47 @@ async def handoff(page: Page, base: str) -> Recorder:
 
 
 async def scout(page: Page, base: str) -> Recorder:
+    """Ask Scout (S27, S28): a chat with the box at the bottom. The answer comes with
+    "How Scout read your question", one line per step with its filters; the step cards
+    fold under Steps; New conversation sits beside the box."""
     await open_brief(page, base)
     await page.click("#tab-scout")
     await page.wait_for_timeout(800)
     rec = Recorder(page, "scout", RAW)
     await rec.start()
-    await rec.hold(700)
+    await rec.hold(900)
     q = page.locator("#scout-q")
     await click(page, q)
-    await rec.focus(page.locator("#panel"), pad=0)
-    await q.press_sequentially("Why does the top lead fit?", delay=45)
-    await rec.hold(300)
+    await q.press_sequentially(SCOUT_Q, delay=45)
+    await rec.focus(page.locator(".scout-ask"), pad=40)
+    await rec.hold(500)
     await click(page, page.locator(".scout-ask button[type=submit]"))
+    rec.wide()
     answer = page.locator(".scout-answer").last
-    await rec.quickly(lambda: answer.wait_for(timeout=180_000), speed=6)
+    await rec.quickly(lambda: answer.wait_for(timeout=240_000), speed=8)
     await page.wait_for_timeout(1500)
+    await rec.hold(800)
+    read = page.locator(".scout-x").last.locator(".scout-read")
+    if await read.count():
+        await rec.focus(read, pad=24)
+        await rec.hold(3000)
+    await rec.focus(answer, pad=30)
+    await rec.hold(3600)
+    steps = page.locator(".scout-x").last.locator("details.scout-steps > summary")
+    if await steps.count():
+        await click(page, steps)
+        await rec.hold(400)
+        await page.locator(".scout-scroll").evaluate(
+            "b => { const c = b.querySelector('.scout-x:last-child .scout-cards');"
+            " if (c) b.scrollTop += c.getBoundingClientRect().top"
+            " - b.getBoundingClientRect().top - 40; }")
+        await rec.hold(300)
+        await rec.focus(page.locator(".scout-x").last.locator(".scout-cards"), pad=24)
+        await rec.hold(2600)
+    await rec.focus(page.locator(".scout-ask"), pad=60)
+    await rec.hold(1400)
     rec.wide()
     await rec.hold(800)
-    if await answer.count():
-        await answer.scroll_into_view_if_needed()
-        await rec.focus(answer, pad=40)
-    await rec.hold(3600)
     await rec.stop()
     return rec
 
@@ -259,17 +292,34 @@ async def private(page: Page, base: str) -> Recorder:
     await rec.focus(panel, pad=10)
     await rec.hold(900)
     await click(page, page.locator("[data-key=fill-sample]"))
-    await rec.hold(1800)
-    await click(page, page.locator("[data-key=build]"))
+    await rec.hold(700)
+    # The filled fields. The pick screen fades back in after the fill; a camera move
+    # after it makes the clip redraw every pixel, so no part of the fade stays behind.
+    await page.locator("#sample-status").evaluate(
+        "e => window.scrollBy(0, e.getBoundingClientRect().top - 110)")
+    await page.wait_for_timeout(300)
+    grid = await page.locator(".more-panel .box-grid").evaluate("""e => {
+        const a = e.getBoundingClientRect();
+        return {x: a.x, y: a.y, width: a.width,
+                height: Math.min(a.height, innerHeight - a.y - 20)}; }""")
+    await rec.focus(grid, pad=16)
+    await rec.hold(3000)
+    await page.evaluate("window.scrollTo(0, 0)")
     rec.wide()
+    await rec.hold(500)
+    await click(page, page.locator("[data-key=build]"))
     await rec.quickly(lambda: page.locator("text=Brief ready").wait_for(timeout=300_000),
-                      speed=12)
+                      speed=30)
     await rec.hold(800)
     lead = page.locator(".leads > li").first
-    await click(page, lead.locator("summary[data-key=why]"))
-    await rec.hold(400)
-    await rec.focus(lead, pad=16)
-    await rec.hold(3600)
+    why = lead.locator("details.why")
+    if not await why.evaluate("e => e.open"):  # open by itself when it cites a document
+        await click(page, lead.locator("summary[data-key=why]"))
+        await rec.hold(400)
+    await why.evaluate("e => window.scrollBy(0, e.getBoundingClientRect().top - 160)")
+    await page.wait_for_timeout(300)
+    await rec.focus(why, pad=20)
+    await rec.hold(4000)
     rec.wide()
     await rec.hold(500)
     await rec.stop()
@@ -291,15 +341,20 @@ async def student(page: Page, base: str) -> Recorder:
     await click(page, page.locator("[data-key=student]"))
     await page.locator("[data-key=st-fill]").wait_for()
     await click(page, page.locator("[data-key=st-fill]"))
-    await rec.hold(1600)
+    await rec.hold(700)
+    await rec.focus(page.locator(".st-cols"), pad=16)
+    await rec.hold(1800)
+    rec.wide()
     await click(page, page.locator("[data-key=st-build]"))
     await rec.quickly(lambda: page.locator("text=Brief ready").wait_for(timeout=300_000),
-                      speed=12)
+                      speed=30)
     await click(page, page.locator("[data-key=route-S]"))
-    await rec.hold(700)
+    await rec.hold(900)
     card = page.locator(".leads > li").first
+    await card.evaluate("e => window.scrollBy(0, e.getBoundingClientRect().top - 150)")
+    await page.wait_for_timeout(300)
     await rec.focus(card, pad=16)
-    await rec.hold(3200)
+    await rec.hold(3600)
     rec.wide()
     await rec.hold(600)
     await rec.stop()
