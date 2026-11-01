@@ -21,7 +21,7 @@ export function verdictChip(v) {
   return h("span", { class: `verdict ${cls}` }, h("span", { class: "mk", "aria-hidden": "true", text: mark }), h("span", { text: word }));
 }
 const HINTS = {
-  cv: "Read by rule only: level, year, major, GPA, enrolment, expected graduation and referees. It is never sent to a model.",
+  cv: "Read by rule only: level, year, major, GPA, enrollment, expected graduation and referees. It is never sent to a model.",
   interests: "A few sentences on what you want to study or work on. This steers the search.",
   achievements: "Up to five, one per line or numbered. Explanations may cite them.",
 };
@@ -157,14 +157,14 @@ export async function renderStudentStart(root, { api, mode, go, announce, info, 
       h("p", { class: "page-sub", text: "Code reads your CV by rule on this server; no model reads it. It is held in memory for this session and never saved." })),
     hasBrief ? h("p", {}, h("a", { class: "btn", href: "#/brief/private/routes" }, h("span", { text: "Back to your options" }))) : null,
     h("div", { class: "sample-row" },
-      h("span", { text: "Not sure what to paste? See a sample laid out the way that matches best: clear headings for education, honours, research, activities and references." }),
+      h("span", { text: "Not sure what to paste? See a sample laid out the way that matches best: clear headings for education, honors, research, activities and references." }),
       h("button", { class: "btn outline", type: "button", "data-key": "st-fill", onclick: fillSample }, h("span", { text: "Fill with a sample" })),
       h("button", { class: "btn ghost", type: "button", "data-key": "st-clear", onclick: () => { D.drafts = {}; D.files = {}; D.sample = false; draw(); announce("Cleared."); } },
         h("span", { text: "Clear" }))),
     h("div", { id: "st-sample" }, sampleLine()),
     D.error && D.errorAt !== "go" ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null,
     h("div", { class: "st-cols" },
-      h("div", { class: "st-cv" }, box("cv", kinds.cv, "Level, year, major, GPA, enrolment, graduation date and referees are read from it.", 12, true)),
+      h("div", { class: "st-cv" }, box("cv", kinds.cv, "Level, year, major, GPA, enrollment, graduation date and referees are read from it.", 12, true)),
       h("div", { class: "st-side" },
         box("interests", "What you are interested in", "A few sentences. This steers the search.", 4),
         box("achievements", kinds.achievements || "Your achievements", "Up to five, one per line. Explanations may cite them.", 4))),
@@ -286,6 +286,13 @@ export function matchPill(score, band, what = "the papers") {
 }
 
 const NO_FACTS = "no-facts";
+// The deadline as the record gives it: "Expires 7 May 2028" for a parent announcement,
+// the record's words where standard dates apply (T17).
+function dueText(r, d) {
+  if (!d) return NOT_STATED;
+  if (r.kind !== "scholarship" && f.standardDates(r)) return r.close_date_note;
+  return r.kind !== "scholarship" && f.expiresOnly(r) ? `Expires ${f.formatDate(d)}` : f.formatDate(d);
+}
 // The lines of a card that can repeat word for word: no deadline or amount, and the rule lines.
 function cardLines(l) {
   const r = l.record || {};
@@ -326,9 +333,9 @@ function card(l, { openEvidence, setLead, papers }, common = []) {
     !deadline && (!sch || amount === NOT_STATED)
       ? (common.includes(NO_FACTS) ? null : h("p", { class: "hint no-size", text: sch ? "Deadline and amount: not stated in the record." : "Deadline: not stated in the record." }))
       : h("dl", { class: "facts" },
-        h("div", { class: "fact" }, h("dt", { text: "Deadline" }), h("dd", { text: deadline ? f.formatDate(deadline) : NOT_STATED })),
+        h("div", { class: "fact" }, h("dt", { text: "Deadline" }), h("dd", { text: dueText(r, deadline) })),
         sch ? h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", { text: amount })) : null),
-    l.verdict_lines.length && !(l.verdict_lines.length === 1 && common.includes(l.verdict_lines[0])) ? h("div", { class: "reason" }, h("b", { text: "Why: " }),
+    l.verdict_lines.length && !(l.verdict_lines.length === 1 && common.includes(l.verdict_lines[0])) ? h("div", { class: "reason" }, h("b", { text: l.verdict === "not eligible" ? "Why not: " : "To check: " }), // T23: not a second "Why"
       l.verdict_lines.length === 1 ? h("span", { text: l.verdict_lines[0] })
         : h("ul", { class: "notes" }, l.verdict_lines.map((x) => h("li", { text: x })))) : null,
     l.gaps.length ? h("div", { class: "reason" }, h("b", { text: "Still needed: " }), h("span", { text: l.gaps.map(f.lowerFirst).join("; ") })) : null, // R17
@@ -345,10 +352,11 @@ function fitReason(l) {
   const items = (work || "").split(/;\s*/).map((x) => plainExplanation(x.replace(/^\s*(?:private:)?(?:achievement-[a-e]|interests)\s*/, ""))
     .replace(/\.$/, "")).filter(Boolean);
   const reason = l.inference ? plainExplanation(you(l.inference)) : null;
-  // Below the good band the model's sentence may say it does not fit, so the label does
-  // not promise a fit: "How it relates", as on the researcher's weaker cards (Q17).
-  const good = (l.match_score ?? 100) >= 60;
-  const label = good ? "Why it may fit" : "How it relates";
+  // In the weak band the model's sentence may say it does not fit, so the label does not
+  // promise a fit: "How it relates", as on the researcher's weak cards (Q17, T15: one
+  // rule on both paths, the band's).
+  const weak = (f.fitBand(l.match_score) || {}).key === "weak";
+  const label = weak ? "How it relates" : "Why it may fit";
   return h("div", { class: "fit-reason" },
     reason ? h("p", { class: "fit-why" }, h("b", { text: `${label}: ` }), h("span", { text: reason }),
       h("span", { class: "tag model", text: "Model text" })) : null,
@@ -423,9 +431,9 @@ export function studentCompare(panel, ctx) {
       h("th", { scope: "row" }, h("span", { class: "row-title", text: sch ? r.name : r.title }),
         l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null),
       h("td", {}, verdictChip(l.verdict)),
-      h("td", { text: d ? f.formatDate(d) : NOT_STATED }),
+      h("td", { text: dueText(r, d) }),
       h("td", { text: sch ? amountText(r) : "See the record" }),
-      h("td", { text: l.gaps.join("; ") || "Nothing listed" }),
+      h("td", { text: l.gaps.map((x, i) => (i ? f.lowerFirst(x) : x)).join("; ") || "Nothing listed" }), // R17, T24
       h("td", { text: officeName(l.route) }));
   };
   fill(panel,
@@ -480,6 +488,6 @@ function note(route, n, announce) {
       n.sample ? null : h("a", { class: "btn", href: "#", "data-key": "st-mail", onclick: async (e) => {
         e.currentTarget.href = mailto({ subject: subjectNow(), body: box.value });
         await copy(`Subject: ${subjectNow()}\n\n${box.value}`, announce);
-      } }, icon("download"), h("span", { text: "Open in my mail app" }))),
+      } }, icon("mail"), h("span", { text: "Open in my mail app" }))),
     n.sample ? null : h("p", { class: "hint", text: "Open in my mail app also copies the draft, in case your mail app shortens a long one." }));
 }

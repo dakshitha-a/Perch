@@ -972,6 +972,12 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         if len({round(x_landing), round(x_help), round(x_brief)}) > 1:
             w.errors.append(f"{tag}: U18: the wordmark moves between screens (landing {x_landing:.0f}, "
                             f"help {x_help:.0f}, brief {x_brief:.0f} px)")
+    # T15: a weak card (Match under 40) labels its model sentence How it relates
+    weak = await page.evaluate("""() => [...document.querySelectorAll('#panel .leads > li')].filter(li => {
+        const m = li.querySelector('.fit'); const n = m ? parseInt((m.innerText.match(/\\d+/) || [100])[0], 10) : 100;
+        const s = li.querySelector('details.why > summary'); return n < 40 && s && /Why it fits/.test(s.innerText); }).length""")
+    if weak:
+        w.errors.append(f"{tag}: T15: {weak} weak cards say Why it fits")
     await w.snap(page, tag, "u-routes", full=not phone)
     if phone:  # U5: the first lead shows in the first view
         top = await page.evaluate("() => document.querySelector('.leads > li').getBoundingClientRect().top + scrollY")
@@ -1251,6 +1257,11 @@ async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
         w.errors.append(f"{tag}: U8: Scout's answer shows an amount as {got['money']}")
     if not got["answer"]:
         w.errors.append(f"{tag}: scout: no answer to check ({got['results']})")
+    chips = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
+      return [...x.querySelectorAll('.scout-read .chip')].map(c => c.innerText); }""")
+    if odd := [c for c in chips if re.match(r"[a-z]+_[a-z_]+:", c) or re.search(r"\b20\d\d-\d\d-\d\d\b", c)
+               or re.search(r": [a-z]+_[a-z]+$", c)]:  # T9: plain labels, dates as on the cards
+        w.errors.append(f"{tag}: T9: Scout's filter chips read {odd}")
     if re.search(r"\b20\d\d-\d\d-\d\d\b", got["text"]):  # Q22: dates as on the cards
         w.errors.append(f"{tag}: Q22: Scout's answer writes an ISO date: {got['text'][:120]!r}")
     meta = await page.evaluate("""() => ({ line: (document.querySelector('.scout-meta') || {}).innerText || '',
@@ -1356,12 +1367,12 @@ async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
     chip = await page.evaluate("() => [document.querySelector('#status-chip').innerText.trim(), document.querySelector('#status-chip').getAttribute('aria-label')]")
     if not chip[0].startswith("Local only") or "only" not in (chip[1] or ""):  # Q7, as U37 on the documents page
         w.errors.append(f"{tag}: Q7: with the CV held the chip reads {chip[0]!r}")
-    # Q17: below the good band the model's sentence is labelled as how it relates, not why it fits
+    # Q17, T15: in the weak band the model's sentence is labelled as how it relates, not why it fits
     why = await page.evaluate("""() => [...document.querySelectorAll('#panel .leads > li')].filter(li => {
         const m = li.querySelector('.fit'); const n = m ? parseInt((m.innerText.match(/\\d+/) || [100])[0], 10) : 100;
-        return n < 60 && /Why it may fit/.test((li.querySelector('.fit-reason') || {}).innerText || ''); }).length""")
+        return n < 40 && /Why it may fit/.test((li.querySelector('.fit-reason') || {}).innerText || ''); }).length""")
     if why:
-        w.errors.append(f"{tag}: Q17: {why} options below the good band say Why it may fit")
+        w.errors.append(f"{tag}: Q17: {why} options in the weak band say Why it may fit")
     # U20: no rule line or empty-facts line repeated on most cards
     rep = await page.evaluate("""() => { const cards = [...document.querySelectorAll('#panel .leads > li')].filter(li => !li.closest('details'));
       const seen = {}; for (const c of cards) for (const p of new Set([...c.querySelectorAll('.reason, .no-size')].map(x => x.innerText.trim()).filter(t => t.length > 30)))
@@ -1394,7 +1405,7 @@ async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
         w.errors.append(f"{tag}: U33: the Purpose row carries the canary text: {rows['Purpose'][-70:]!r}")
     if not re.fullmatch(r"PERCH-CANARY-SCH-\d+", rows.get("Test marker", "")):
         w.errors.append(f"{tag}: U33: no Test marker row with the canary (rows: {sorted(rows)})")
-    raw = [f"{k}={rows[k]!r}" for k in ("Type", "Level", "Field", "Enrolment") if rows.get(k) and rows[k][0].islower()]
+    raw = [f"{k}={rows[k]!r}" for k in ("Type", "Level", "Field", "Enrollment") if rows.get(k) and rows[k][0].islower()]
     if raw:
         w.errors.append(f"{tag}: U33: raw lowercase values in Evidence: {raw}")
     await w.snap(page, tag, "u-sample-evidence")
@@ -1550,12 +1561,12 @@ async def ux_landing(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.wait_for_selector(".page-sub", timeout=20000)
     await page.wait_for_timeout(300)
     lines = await page.evaluate("""() => { const sub = document.querySelector('.page-sub');
-      const tw = document.createTreeWalker(sub, NodeFilter.SHOW_TEXT); const id = '0000-0002-1825-0097';
+      const tw = document.createTreeWalker(sub, NodeFilter.SHOW_TEXT); const id = '0000-0000-0000-0000';
       for (let n = tw.nextNode(); n; n = tw.nextNode()) { const i = n.data.indexOf(id); if (i < 0) continue;
         const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + id.length); return r.getClientRects().length; }
       return -1; }""")
-    if lines != 1:
-        w.errors.append(f"{tag}: U30: the example ORCID iD is drawn on {lines} lines")
+    if lines != 1:  # T16: the example is the iD's shape, which fails its checksum, not a real person's
+        w.errors.append(f"{tag}: U30, T16: the example ORCID iD shape is drawn on {lines} lines")
     await w.snap(page, tag, "u-no-match")
     if not phone:
         await page.goto(base + "/#/")  # Q18: a placeholder ORCID iD fails its checksum
@@ -1756,6 +1767,28 @@ async def ux_zoom(w: Walk, page: Page, base: str, tag: str) -> None:
         w.errors.append(f"{tag}: Q9: at 400% the focused question box sits at {got['top']:.0f} to {got['bottom']:.0f} px "
                         f"under a header that ends at {got['cover']:.0f} px of {got['vh']} px")
     await w.snap(page, tag, "q-zoom-scout")
+    # T12: at 200% (640 x 430 CSS px) focus on Compare and Profile is never under the
+    # sticky header or the kept pill (WCAG 2.4.11)
+    await page.set_viewport_size({"width": 640, "height": 430})
+    for tab in ("#tab-compare", "#tab-profile"):
+        await page.click(tab)
+        await page.wait_for_timeout(800)
+        hidden = []
+        for _ in range(30):
+            await page.keyboard.press("Tab")
+            got = await page.evaluate("""() => { const el = document.activeElement; if (!el || el === document.body) return null;
+              const r = el.getBoundingClientRect(); let cover = 0;
+              for (const x of document.querySelectorAll('.bar, .tabs-wrap')) { const s = getComputedStyle(x);
+                if (s.position !== 'sticky' && s.position !== 'fixed') continue; const b = x.getBoundingClientRect(); if (b.bottom > cover) cover = b.bottom; }
+              const p = document.querySelector('.keep-float'); let pill = false;
+              if (p && getComputedStyle(p).visibility !== 'hidden' && getComputedStyle(p).display !== 'none' && !p.contains(el)) {
+                const a = p.getBoundingClientRect(); pill = a.left < r.right && a.right > r.left && a.top < r.bottom && a.bottom > r.top; }
+              return { el: (el.innerText || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30), under: r.top < cover - 1, pill }; }""")
+            if got and (got["under"] or got["pill"]):
+                hidden.append(got)
+        if hidden:
+            w.errors.append(f"{tag}: T12: at 200% {len(hidden)} focus steps on {tab} are hidden, e.g. {hidden[:2]}")
+        await w.snap(page, tag, f"t12-zoom200-{tab[5:]}")
     await page.set_viewport_size(LAPTOP)
     await end_session(page)
 

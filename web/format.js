@@ -8,7 +8,7 @@ export const STAGES = {
   profile: "Mapping research threads",
   route_a: "Searching open opportunities",
   route_b: "Finding industry leads",
-  summary: "Summarising the profile",
+  summary: "Summarizing the profile",
   explanations: "Explaining each lead",
   student_profile: "Reading your CV by rule",
   fellowships: "Searching public fellowships",
@@ -59,7 +59,17 @@ export function until(days) {
   if (days < 60) return `in ${days} days`;
   const months = Math.round(days / 30.44);
   if (months < 24) return `in ${months} months`;
-  return `in ${Math.floor(months / 12)} years`;
+  return `in about ${Math.round(months / 12)} years`;  // 35 months is about 3 years (T22)
+}
+
+// T17: an NIH parent announcement's close date is when it expires; applications follow
+// NIH's standard due dates, which the record does not list. A note saying standard dates
+// apply is the record's own words, as "Proposals accepted anytime" is.
+export function expiresOnly(o) {
+  return Boolean(o && o.close_date && !o.close_date_note && /\(Parent\b/.test(o.title || ""));
+}
+export function standardDates(o) {
+  return Boolean(o && o.close_date_note && /\bstandard (?:due |receipt )?dates apply\b/i.test(o.close_date_note));
 }
 
 export function closesIn(days) {

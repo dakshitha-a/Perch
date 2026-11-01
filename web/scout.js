@@ -5,7 +5,7 @@
 
 import { h, fill, icon } from "./dom.js";
 import { owl } from "./owl.js";
-import { money } from "./format.js";
+import { money, formatDate } from "./format.js";
 
 const POLL_MS = 1200;
 const TOOLS = {
@@ -30,6 +30,7 @@ const STUDENT_EXAMPLES = ["Only options with a deadline after 2027-03-01", "Why 
 const ARGS = {
   route: "Route", author_id: "Researcher", min_amount: "Ceiling at least", max_amount: "Ceiling at most",
   agencies: "Agencies", exclude_agencies: "Not these agencies", closes_by: "Closes by",
+  closes_after: "Closes after", sort: "Sorted by",
   activity_codes: "Activity codes", keywords: "Mentions", exclude_keywords: "Does not mention",
   top: "How many", id: "Record", opportunity_id: "Opportunity", opportunity_ids: "Opportunities",
   ids: "Leads", office: "Office",
@@ -184,6 +185,9 @@ function readAs(x, ctx) {
 }
 
 const ROUTES = { A: "Grants", B: "Industry leads", F: "Fellowships", S: "Scholarships" };
+// T9: sort keys and dates read as the other chips do ("Closes after: 1 Nov 2026").
+const SORTS = { match: "Match", close_date: "close date", award_ceiling: "award ceiling", deadline: "deadline" };
+const DATE_ARGS = new Set(["closes_by", "closes_after", "deadline_after", "deadline_before"]);
 // Record keys in a step's filters read as the brief names them (U8).
 const ID_ARGS = new Set(["id", "ids", "opportunity_id", "opportunity_ids", "option_id"]);
 function argList(c, ctx) {
@@ -191,6 +195,8 @@ function argList(c, ctx) {
     return k ? k.name : leadLabel(String(v)) || String(v).replace(/^grants_gov:/, ""); };
   return Object.entries(c.arguments || {}).filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length))
     .map(([k, v]) => [k, k === "route" ? ROUTES[v] || v
+      : k === "sort" ? SORTS[v] || String(v).replace(/_/g, " ")
+        : DATE_ARGS.has(k) && /^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? formatDate(String(v))
       : ID_ARGS.has(k) ? [].concat(v).map(name).join(", ")
         : Array.isArray(v) ? v.join(", ") : v]);
 }

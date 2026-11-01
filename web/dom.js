@@ -76,6 +76,7 @@ export function icon(name) {
     download: "M12 4v11M7 10.5l5 5 5-5M5 19.5h14",
     lock: "M6.5 10.5h11v9h-11zM8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5M12 14v2",
     stop: "M7 7h10v10H7z",
+    mail: "M3.5 6.5h17v11h-17zM3.5 7l8.5 6.5L20.5 7",  // T25: the mail app, not a download
   };
   const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   s.setAttribute("viewBox", "0 0 24 24");

@@ -58,6 +58,7 @@ import * as f from "MODULE";
 const out = {
   date: f.formatDate("2027-10-28"), days: f.daysBetween("2026-10-28", "2027-10-28"),
   soon: f.closesIn(12), months: f.closesIn(365), closed: f.closesIn(-1),
+  years: f.closesIn(f.daysBetween("2026-11-01", "2029-09-26")),
   size: f.awardSize({award_ceiling: 1500000}), none: f.awardSize({}),
   band: f.fitBand(62).label, higher: f.higherEdRows([
     "Private institutions of higher education",
@@ -80,6 +81,7 @@ console.log(JSON.stringify(out));
     out = json.loads(r.stdout)
     assert out["date"] == "28 Oct 2027" and out["days"] == 365
     assert (out["soon"], out["months"], out["closed"]) == ("in 12 days", "in 12 months", "closed")
+    assert out["years"] == "in about 3 years"  # T22: 2 years 11 months is not "in 2 years"
     assert out["size"] == "Up to $1,500,000" and out["none"] is None
     assert out["band"] == "Good match" and out["higher"] == 2
     p = out["parsed"]

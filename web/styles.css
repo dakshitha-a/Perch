@@ -1219,10 +1219,11 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
   .filter-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
   .filter-chip { flex: none; white-space: nowrap; }
 }
-/* A short window, such as a laptop at 400% zoom (215 CSS px high): the header and tabs
-   scroll with the page instead of covering half of it, so a focused field is never under
-   them, and the kept pill steps aside; the Compare tab still counts the kept leads (Q9). */
-@media (max-height: 300px) {
+/* A short window, such as a laptop at 200% or 400% zoom (430 or 215 CSS px high): the
+   header and tabs scroll with the page instead of covering half of it, so a focused field
+   is never under them, and the kept pill steps aside; the Compare tab still counts the
+   kept leads (Q9; T12 raised it from 300 px, since at 200% they took 225 of 430 px). */
+@media (max-height: 500px) {
   .bar, .tabs-wrap, .cols > .rail { position: static; }
   /* hidden, not display: none, which would replay its fade-in on every resize */
   .keep-float { visibility: hidden; }
@@ -1231,3 +1232,5 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
 /* T4: the conversation budget is spent; the button starts a new conversation. */
 .scout-limit > div { display: grid; gap: 8px; justify-items: start; }
 .scout-limit p { margin: 0; }
+/* T24: the sample tag in a Compare row is as wide as its words, not the cell. */
+.compare tbody th .tag.sample { display: inline-flex; width: fit-content; margin-top: 4px; }

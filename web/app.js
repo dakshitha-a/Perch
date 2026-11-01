@@ -358,7 +358,7 @@ function renderPick() {
       : n === 1 ? "Is this the right person?" : "Which one is the right person?";
   const note = once(title, F.error);
   const sub = c ? "Add anything below to steer it, or build it now."
-    : F.busy ? "" : !n ? ["Try the name as it appears on papers, or paste an ORCID iD such as ", h("span", { class: "nowrap", text: "0000-0002-1825-0097" }), "."]
+    : F.busy ? "" : !n ? ["Try the name as it appears on papers, or paste an ORCID iD, which looks like ", h("span", { class: "nowrap", text: "0000-0000-0000-0000" }), "."]
       : n === 1 && !atTemple(F.candidates[0]) ? "This profile does not list Temple University. An ID finds anyone, so check that it is the right person. Nothing runs until you pick it."
         : `${f.plural(n, "Temple author", "Temple authors")} in OpenAlex ${n === 1 ? "matches" : "match"}. Nothing runs until you pick one.`;
   const back = c
@@ -1560,6 +1560,8 @@ function drawFilters(box, open) {
 
 // Route B: companies with two or more kinds of public signal. Every sentence and count
 // is written by code from the records; the card says it is an inference.
+const INDUSTRY_NEEDS_PAPERS = "Industry leads need public papers: Perch finds companies through the works that cite yours, and this brief has none. Add your OpenAlex ID to see them.";
+
 function renderIndustry(panel) {
   const st = stage("route_b");
   // A replay of a stored brief from before Route B has no such step (review W12 kept this).
@@ -1581,6 +1583,16 @@ function renderIndustry(panel) {
         : "Industry leads appear here when that step finishes." }),
       h("p", { class: "hint", text: failed ? (st.detail || "See the steps above for what stopped.")
         : "Grant leads come first." }))), skeleton(3));
+    return;
+  }
+  // T18: a brief from documents alone has no papers to find citing companies with, so the
+  // step is skipped: one plain sentence, no warnings about leads that are not there.
+  if (st.status === "skipped" && !S.brief.leads.some((l) => l.route === "B")) {
+    if (panel.dataset.sig === "skippedB") return;
+    panel.dataset.sig = "skippedB";
+    fill(panel, routeSwitch(), h("div", { class: "empty skipped-b" }, owl("look", "owl-md"),
+      h("div", {}, h("p", { class: "lede", text: INDUSTRY_NEEDS_PAPERS }))));
+    updateSwitch(panel);
     return;
   }
   const leads = sortedLeads();
@@ -1730,12 +1742,13 @@ function leadCard(l) {
 
   // NSF dates its open-anytime programs decades out: past ten years the record's own
   // words stand in place of the date (U3, Q3). Evidence keeps both fields.
-  const far = Boolean(o.close_date_note && days !== null && days > 3650);
+  const far = Boolean(o.close_date_note && days !== null && days > 3650) || f.standardDates(o);
+  const expires = f.expiresOnly(o);  // T17: a parent announcement's date is its expiry
   const facts = h("dl", { class: `facts${size ? "" : " one"}` },
     h("div", { class: `fact close ${urg}` }, h("dt", { text: "Closes" }),
       h("dd", {}, far ? h("span", { text: o.close_date_note })
-        : o.close_date ? h("span", { text: f.formatDate(o.close_date) }) : h("span", { class: "missing", text: "Not stated in the record" }),
-        !far && days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),
+        : o.close_date ? h("span", { text: `${expires ? "Expires " : ""}${f.formatDate(o.close_date)}` }) : h("span", { class: "missing", text: "Not stated in the record" }),
+        !far && !expires && days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),
     size ? h("div", { class: "fact" }, h("dt", { text: "Award size" }), h("dd", {}, h("span", { text: size }))) : null);
   const noSize = size ? null : h("p", { class: "hint no-size", text: "Award size: not stated in the record." });
 
@@ -1802,7 +1815,7 @@ function explanationBlock(l, parsed, o) {
     ontoggle: (e) => {
       if (e.target.open) { S.open.add(l.id); S.shut.delete(l.id); } else { S.open.delete(l.id); S.shut.add(l.id); }
     } },
-  h("summary", { "data-key": "why" }, h("span", { text: (l.match_score ?? 100) < 30 ? "How it relates" : "Why it fits" }),
+  h("summary", { "data-key": "why" }, h("span", { text: (f.fitBand(l.match_score) || {}).key === "weak" ? "How it relates" : "Why it fits" }),
     h("span", { class: "hint", text: parsed.findings.some((x) => (papers[x.paper] || {}).private || /^private:/.test(x.paper))
       ? ` cites ${f.plural(parsed.findings.length, "paper or document", "papers and documents")}`
       : ` cites ${f.plural(parsed.findings.length, "paper")} by the researcher` })),
@@ -1898,6 +1911,13 @@ function cite(id, papers) {
 // The brief on screen was steered by the SYNTHETIC sample: its "document" is invented.
 function sampleSteered() {
   return api.mode === "private" && !isStudent(S.brief) && Boolean(S.sampleBrief || privApi.flag("sample"));
+}
+
+// The card's rule for a far-off placeholder close date (U3, Q3): a deadline note and a
+// date more than ten years out.
+function farClose(o) {
+  const days = o.close_date ? f.daysBetween(api.mode === "replay" ? S.brief.brief.options.as_of : today(), o.close_date) : null;
+  return Boolean(o.close_date_note && days !== null && days > 3650);
 }
 
 function today() {
@@ -2062,7 +2082,7 @@ function recordView(r) {
       field("Minimum GPA", e.gpa_min != null ? e.gpa_min.toFixed(2) : null),
       field("Undergraduate year", (e.class_year || []).join(", ")),
       field("Majors", (e.major || []).join(", ")),
-      field("Enrolment", titled(e.enrolment_status)),
+      field("Enrollment", titled(e.enrolment_status)),
       field("Residency", e.residency_state), field("Citizenship", e.citizenship),
       field("Also asks (you decide)", e.targeted_criterion),
       field("Listing notes", e.notes),
@@ -2081,8 +2101,11 @@ function recordView(r) {
         field("Department", r.parent_agency),
         field("Status", r.status ? r.status[0].toUpperCase() + r.status.slice(1) : null),
         field("Posted", f.formatDate(r.open_date)),
-        field("Closes", f.formatDate(r.close_date) || "Not stated in the record"),
-        field("Deadline note", r.close_date_note),
+        // T21: a far-off placeholder date follows the record's own words and says what it is.
+        ...(farClose(r) ? [field("Deadline note", r.close_date_note),
+          field("Closes (placeholder in the record)", f.formatDate(r.close_date))]
+          : [field("Closes", f.formatDate(r.close_date) || "Not stated in the record"),
+            field("Deadline note", r.close_date_note)]),
         field("Archive date", f.formatDate(r.archive_date)),
         field("Award ceiling", r.award_ceiling ? f.money(r.award_ceiling) : "Not stated in the record"),
         field("Award floor", r.award_floor ? f.money(r.award_floor) : "Not stated in the record"),
@@ -2125,8 +2148,8 @@ function recordView(r) {
       h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Inference" }), h("span", { text: r.inference || "" })),
       h("p", { text: r.explanation || "" }),
       h("dl", { class: "fields" }, field("Suggested relationship", r.relationship),
-        field("Organisation", h("button", { class: "cite", onclick: (e) => openEvidence(r.record_id, e.currentTarget) },
-          h("span", { text: "Open the organisation record" })))));
+        field("Organization", h("button", { class: "cite", onclick: (e) => openEvidence(r.record_id, e.currentTarget) },
+          h("span", { text: "Open the organization record" })))));
   } else if (r.kind === "organisation") {
     out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.name }),
       h("dl", { class: "fields" }, field("Type", r.type), field("Country", r.country),
