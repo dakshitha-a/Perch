@@ -539,6 +539,10 @@ class Scout:
             nudge = ('Call search_options now with route "F": the public fellowships, with no '
                      "sample scholarships. Reply with the tool call only.")  # G4
             s.force = ToolCall(secrets.token_hex(4), "search_options", {"route": "F"})
+        elif search == "search_options" and re.search(r"\bsamples?\b", question, re.I):
+            nudge = ('Call search_options now with route "S": the sample scholarships, with '
+                     "count telling how many. Reply with the tool call only.")  # G23
+            s.force = ToolCall(secrets.token_hex(4), "search_options", {"route": "S"})
         elif search and FILTER_Q_RE.search(undated(question)):
             nudge = FILTER_NUDGE.format(tool=search, filters=FILTERS[search])
         elif CAPABILITY_RE.search(question) or (cited(text) and not stated_numbers(question)):

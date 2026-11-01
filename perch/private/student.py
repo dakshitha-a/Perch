@@ -157,8 +157,8 @@ def nih_records(repo: object) -> dict[str, tuple[Scholarship, Opportunity]]:
     """NIH F-series listings as rule inputs, keyed by the listing id."""
     out = {}
     for o in repo.list(Opportunity):
-        if (o.activity_code or "") not in NIH_FELLOWSHIP_LEVEL:
-            continue
+        if (o.activity_code or "") not in NIH_FELLOWSHIP_LEVEL or o.status == "forecasted":
+            continue  # G13: a forecast is not yet open; Help says forecasts are not shown
         s = Scholarship(id=o.id, source=o.source, source_url=o.source_url,
                         fetched_at=o.fetched_at, name=o.title, sponsor=o.agency,
                         purpose=(o.description or "")[:1500], award_type="fellowship",

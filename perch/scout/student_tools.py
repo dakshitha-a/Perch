@@ -312,7 +312,8 @@ def compare_options(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
     return {**apart(rows, "rows"), "count": len(rows),
             "note": "These are the options compared, not the brief's best ones: for top or "
             "best, use search_options, which lists the brief's own order by Match. Each cell "
-            "is copied from its record or checked against the CV by rule. " + APART_NOTE}
+            "is copied from its record or checked against the CV by rule. Write a verdict as "
+            "\"you may be eligible for X\", never \"X is may be eligible\". " + APART_NOTE}
 
 
 def draft_note(ctx: ScoutContext, route: str | None = None,

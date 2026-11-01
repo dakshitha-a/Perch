@@ -152,7 +152,8 @@ def test_a_code_follow_up_is_sent_back_naming_the_call(service):  # noqa: F811
     refusal = "I cannot fulfill this request."
     for q, want, args in (("f31?", 'words "F31"', {"words": "F31"}),
                           ("whats the deadline for the f31", 'words "F31"', {"words": "F31"}),
-                          ("drop the samples", 'route "F"', {"route": "F"})):
+                          ("drop the samples", 'route "F"', {"route": "F"}),
+                          ("how many of my options are samples", 'route "S"', {"route": "S"})):
         fake = FakeProvider([refusal, refusal, "No student brief here."])
         s = Scout(fake, c, table=STUDENT_TOOLS, rules=STUDENT_RULES, who="a student").start(q)
         assert s.exchanges[-1]["nudged"]
@@ -250,6 +251,7 @@ def test_the_page_reads_start_over_as_the_server_does():
 def test_student_mode_leaves_out_forecasted_nih_fellowships():
     """G13: a forecast (FOR-NS-25-004) showed as "may be eligible"; Help says forecasts
     are not shown."""
+    from perch.private.student import nih_records
     from perch.scholarships import nih_fellowships
 
     mk = lambda n, status: Opportunity(id=f"grants_gov:{n}", opportunity_number=n,  # noqa: E731
@@ -261,6 +263,7 @@ def test_student_mode_leaves_out_forecasted_nih_fellowships():
             return [mk("PA-SYN-1", "posted"), mk("FOR-SYN-2", "forecasted")]
 
     assert [o.opportunity_number for o in nih_fellowships(Repo())] == ["PA-SYN-1"]
+    assert list(nih_records(Repo())) == ["grants_gov:PA-SYN-1"]  # the path a brief takes
 
 
 def test_student_export_one_line_not_eligible_withheld_note_and_announcement_label():
