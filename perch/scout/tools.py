@@ -19,6 +19,7 @@ from perch.brief import route_a
 from perch.compare import award_size
 from perch.datefmt import closes as closes_text
 from perch.datefmt import day, placeholder_close
+from perch.datefmt import shown as shown_day
 from perch.eligibility import Constraints
 from perch.llm import Tool
 from perch.llm.audit import AuditedProvider
@@ -439,14 +440,6 @@ def draft_handoff(ctx: ScoutContext, office: str | None = None,
             "body": d.body, "opening_withheld": d.flagged,
             "note": "A draft only. Perch never sends it. Show it to the user to edit and send; "
             "the To line is for them to fill in from the office page."}
-
-
-def shown_day(v: str) -> str:
-    """An ISO date as the cards write it ("15 Feb 2027"); any other text as it is."""
-    try:
-        return day(date.fromisoformat(v))
-    except ValueError:
-        return v
 
 
 # --- schemas (strict: no extra properties; optional ones are left out of "required") ---

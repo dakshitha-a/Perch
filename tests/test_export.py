@@ -58,3 +58,19 @@ def test_a_documents_export_says_withheld_once_per_line_and_where_it_came_from()
     md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, [], masker=masked,
                                   documents=True))
     assert "Inference: The tool fits" in md and "(2024)" in md
+
+
+def test_the_kept_leads_table_writes_closes_as_the_screen():
+    """R1 (regression of Q21): /compare gives the close date as ISO text; the export's
+    Kept leads compared table wrote it as it came, beside "Closes: 30 Sep 2027" below."""
+    from perch.compare import route_a_row
+
+    brief, leads, opps, works = _inputs()
+    leads[0].status = "kept"
+    rows = [route_a_row(leads[0], opps[leads[0].record_id], date(2026, 10, 31))]
+    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, rows))
+    table = [x for x in md.splitlines() if x.startswith("| Grant: SYN-1")]
+    assert table and "| 30 Sep 2027 (" not in table[0] and "30 Sep 2027" in table[0]
+    assert "2027-09-30" not in md
+    page = ex.to_html(ex.blocks(brief, None, leads, opps, {}, works, rows), "t")
+    assert "2027-09-30" not in page and "<td>30 Sep 2027</td>" in page

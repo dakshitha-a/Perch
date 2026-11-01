@@ -21,6 +21,15 @@ def day(d: date) -> str:
     return f"{d.day} {MONTHS[d.month - 1]} {d.year}"
 
 
+def shown(v: str) -> str:
+    """An ISO date as the cards write it ("15 Feb 2027"); any other text, such as
+    "Proposals accepted anytime" or "Not in the record", as it is (Q22, R1)."""
+    try:
+        return day(date.fromisoformat(v))
+    except (TypeError, ValueError):
+        return v
+
+
 def placeholder_close(o: Opportunity, as_of: date | None = None) -> bool:
     """The close date is a far-off placeholder and the record says so in words."""
     return bool(o.close_date and o.close_date_note
