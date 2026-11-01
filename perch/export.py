@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from perch import datefmt, egress
-from perch.compare import COLUMNS, Row
+from perch.compare import COLUMNS, Row, award_size
 from perch.offices import for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
 from perch.sources import grants_gov
@@ -31,11 +31,7 @@ class Block:
 
 
 def _money(o: Opportunity) -> str:
-    if o.award_ceiling is not None and o.award_floor:
-        return f"${o.award_floor:,.0f} to ${o.award_ceiling:,.0f}"
-    if o.award_ceiling is not None:
-        return f"Up to ${o.award_ceiling:,.0f}"
-    return "Not in the record"
+    return award_size(o) or "Not in the record"  # the card's words (Q2)
 
 
 def _work(w: Work) -> str:

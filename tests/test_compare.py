@@ -19,6 +19,21 @@ def test_money_copies_floor_and_ceiling():
     assert money(opp()).text == NONE and money(opp()).sort is None
 
 
+def test_a_floor_only_record_reads_from_the_floor_everywhere():
+    """Q2: the card says "From $15,000,000"; Compare, the export and the hand-off email
+    say the same, from one formatter."""
+    from perch.export import _money
+    from perch.skills.handoff import _money as handoff_money
+
+    o = opp(award_floor=15000000)
+    assert money(o).text == "From $15,000,000" and money(o).note == "award floor"
+    assert _money(o) == "From $15,000,000"
+    assert handoff_money(o) == "award size from $15,000,000"
+    assert handoff_money(opp(award_floor=5000, award_ceiling=10000000)) \
+        == "award size $5,000 to $10,000,000"
+    assert handoff_money(opp()) == "award size not stated in the record"
+
+
 def test_closes_counts_days_from_the_brief_date():
     c = closes(opp(close_date=date(2026, 11, 28)), date(2026, 10, 29))
     assert c.text == "2026-11-28" and c.note == "30 days after the brief date"

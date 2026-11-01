@@ -15,6 +15,7 @@ import re
 from dataclasses import dataclass, field
 
 from perch import datefmt, egress
+from perch.compare import award_size
 from perch.llm import Message
 from perch.llm.audit import AuditedProvider
 from perch.offices import Office
@@ -96,11 +97,10 @@ def org_view(lead: Lead, org: Organisation | None) -> str:
 
 
 def _money(o: Opportunity) -> str:
-    if o.award_ceiling is not None and o.award_floor:
-        return f"award ${o.award_floor:,.0f} to ${o.award_ceiling:,.0f}"
-    if o.award_ceiling is not None:
-        return f"award ceiling ${o.award_ceiling:,.0f}"
-    return "award size not stated in the record"
+    """The card's award size (Q2): a floor-only record reads "from $X"."""
+    size = award_size(o)
+    return f"award size {size[0].lower()}{size[1:]}" if size else \
+        "award size not stated in the record"
 
 
 def lead_lines(items: list[tuple[Lead, Record | None]]) -> list[str]:

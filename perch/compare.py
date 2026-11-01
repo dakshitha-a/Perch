@@ -50,15 +50,28 @@ class Row:
     cells: dict[str, Cell]
 
 
-def money(o: Opportunity) -> Cell:
+def award_size(o: Opportunity) -> str | None:
+    """The award size as the card shows it (web/format.js awardSize): "$X to $Y",
+    "Up to $Y" or "From $X", copied from the record's floor and ceiling; None when the
+    record states neither. Compare, the exports and the hand-off all use this (Q2)."""
     lo, hi = o.award_floor, o.award_ceiling
     if hi is not None and lo:
-        return Cell(f"${lo:,.0f} to ${hi:,.0f}", hi, o.id, "award floor to ceiling")
+        return f"${lo:,.0f} to ${hi:,.0f}"
     if hi is not None:
-        return Cell(f"Up to ${hi:,.0f}", hi, o.id, "award ceiling")
+        return f"Up to ${hi:,.0f}"
     if lo:
-        return Cell(f"From ${lo:,.0f}", lo, o.id, "award floor")
-    return Cell(NONE, None, o.id)
+        return f"From ${lo:,.0f}"
+    return None
+
+
+def money(o: Opportunity) -> Cell:
+    lo, hi = o.award_floor, o.award_ceiling
+    text = award_size(o)
+    if text is None:
+        return Cell(NONE, None, o.id)
+    note = ("award floor to ceiling" if hi is not None and lo
+            else "award ceiling" if hi is not None else "award floor")
+    return Cell(text, hi if hi is not None else lo, o.id, note)
 
 
 def closes(o: Opportunity, as_of: date) -> Cell:
