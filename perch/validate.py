@@ -96,7 +96,9 @@ def evidence(r: Record) -> Evidence:
     dates: set[date] = set()
     nums: set[str] = set()
     for name, value in r.model_dump().items():
-        if name in ("fetched_at", "source_url", "id"):
+        # Ids are not facts: a random brief id such as "x-9abQ" once let "9 works" pass
+        # (the flaky Route B test, S27 to QA round 3).
+        if name in ("fetched_at", "source_url", "id", "brief_id", "record_id"):
             continue
         if isinstance(value, datetime):
             dates.add(value.date())

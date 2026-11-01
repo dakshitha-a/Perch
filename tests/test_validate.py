@@ -79,3 +79,15 @@ def test_links_and_calls_to_act_must_come_from_a_cited_record():
     home = Work(id="https://openalex.org/W9", source="openalex", fetched_at=T,
                 source_url="https://openalex.org/W9", title="SYNTHETIC home visits for gait")
     assert check("The paper used home visits.", [home.id], {home.id: home}).ok
+
+
+def test_a_number_inside_a_random_id_is_not_evidence():
+    """The flaky Route B test: a lead's random brief id held "-9", so "9 works" passed."""
+    from datetime import UTC, datetime
+
+    from perch.schemas import Lead
+
+    lead = Lead(id="x-9abQ:B1", source="openalex", source_url="u",
+                fetched_at=datetime(2026, 11, 1, tzinfo=UTC), brief_id="x-9abQ", route="B",
+                record_id="I-9")
+    assert not check("9 works cite your papers.", [lead.id], {lead.id: lead}).ok
