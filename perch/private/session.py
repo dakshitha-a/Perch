@@ -16,15 +16,19 @@ the self-hosted gate (perch.privacy); otherwise the run fails with PermissionErr
 Since S23 every brief is a session (private by default). Public records fetched for a
 researcher are written through to the shared store (perch.private.store.is_public). A
 session may turn Cloud on: then the three model skills (summary, fit, hand-off) use the
-cloud spec, and the gate lets that one provider through for that session only. Cloud is
-refused while the session holds documents, so private text stays on local models
-(standing rule 1); the embedder, reranker, grounder and Scout's own model always stay local.
-Scout's explain_fit and draft_handoff steps use this session's fit and hand-off models, so
-they use the cloud model when Cloud is on, counted in the session budget (G6).
+cloud spec, and the gate lets that one provider through for that session only. Documents
+stay on local models unless the user chooses Cloud and confirms which documents leave
+(standing rule 1 as amended; PERCH_CLOUD_DOCUMENTS=1): the session records consent per
+document, and the gate passes the cloud spec only while every document it holds has it
+(`PrivateSession.cloud_allowed`). The embedder, reranker, grounder and Scout's own model
+always stay local. Scout's explain_fit and draft_handoff steps use this session's fit and
+hand-off models, so they use the cloud model when Cloud is on, counted in the session
+budget (G6).
 """
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 import threading
 import time
@@ -116,7 +120,13 @@ class PrivateSession:
     lock: threading.Lock = field(default_factory=threading.Lock)
     service: PrivateService | None = None
     cloud: bool = False  # Cloud on: the skills use the cloud provider (S23)
-    cloud_docs: bool = False  # the second warning was confirmed: documents may go too (S24)
+    # Consent to send documents to the cloud provider, per document: the doc_ref (a hash
+    # of kind and text) of each document the user confirmed in the second warning. Held
+    # in memory with the session only; cleared when Cloud turns off or the session ends.
+    # A document whose ref is not here (new, or replaced with other text) keeps the whole
+    # session on local models until the user confirms it; the same text added again
+    # keeps its consent, so a rebuild that re-sends it does not turn Cloud off.
+    cloud_consent: set[str] = field(default_factory=set)
     owner: str = ""  # the visitor's address key, in memory only, for the per-address cap
     used: bool = False  # a request has used the session since it opened
     ended: bool = False  # ended or expired: its brief job stops before its next stage
@@ -126,6 +136,19 @@ class PrivateSession:
     def cv(self) -> CVFacts | None:
         d = self.docs.get("cv")
         return parse_cv(d.abstract or "") if d else None
+
+    def doc_refs(self) -> set[str]:
+        return {doc_ref(d) for d in self.docs.values()}
+
+    def cloud_allowed(self) -> bool:
+        """The one gate for a cloud call: Cloud is on and every document the session
+        holds was confirmed for the cloud provider."""
+        return self.cloud and self.doc_refs() <= self.cloud_consent
+
+    @property
+    def cloud_docs(self) -> bool:
+        """Documents may go to the cloud with this session's current documents."""
+        return bool(self.docs) and self.cloud_allowed()
 
     def chars(self) -> int:
         return sum(len(d.abstract or "") for d in self.docs.values())
@@ -144,7 +167,7 @@ class PrivateSession:
         self.scout = None
         self.brief_id = None
         self.cloud = False
-        self.cloud_docs = False
+        self.cloud_consent.clear()
 
     def make_masker(self, public_texts: list[str]) -> egress.Masker:
         cv = self.cv
@@ -161,8 +184,8 @@ class PrivateService(BriefService):
                  settings: PrivateSettings) -> None:
         self.db, self.clients, self.overrides = base.db, base.clients, base.overrides
         self.models = PrivateModels(base.models, settings,  # type: ignore[assignment]
-                                    lambda: session.cloud and (not session.docs or (
-                                        settings.cloud_documents and session.cloud_docs)))
+                                    lambda: session.cloud_allowed() and (
+                                        not session.docs or settings.cloud_documents))
         self.settings = settings
         self.session = session
         self.audit = AuditLog(None)
@@ -318,7 +341,8 @@ class PrivateService(BriefService):
             raise ValueError("student mode needs a CV")
         bid = secrets.token_urlsafe(9)
         options = {**brief_options(as_of, top, explain), "private": True, "student": True,
-                   "documents": sorted(self.session.docs)}
+                   "documents": sorted(self.session.docs),
+                   "models": "cloud" if self.models.cloud() else "local"}
         b = Brief(id=bid, source="private", source_url="private://session", fetched_at=utcnow(),
                   researcher_id=YOU, stages=[Stage(name=n) for n in STUDENT_STAGES],
                   options=options)
@@ -504,6 +528,12 @@ class PrivateSessions:
         return s is not None
 
 
+def doc_ref(d: PrivateDoc) -> str:
+    """A document's consent key: its kind and its text, so a replaced document needs a
+    new confirm. In memory only, like the text itself."""
+    return hashlib.sha256(f"{d.id}\n{d.abstract or ''}".encode()).hexdigest()[:16]
+
+
 def add_document(s: PrivateSession, doc: PrivateDoc) -> None:
     from perch.private.inputs import InputError
 
@@ -515,4 +545,5 @@ def add_document(s: PrivateSession, doc: PrivateDoc) -> None:
     s.docs[kind] = doc
 
 
-__all__ = ["KINDS", "PrivateService", "PrivateSession", "PrivateSessions", "add_document"]
+__all__ = ["KINDS", "PrivateService", "PrivateSession", "PrivateSessions", "add_document",
+           "doc_ref"]

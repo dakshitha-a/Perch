@@ -8,9 +8,11 @@ Settings, read from the environment:
                            "anthropic:claude-sonnet-5-5" (default none: Local only)
   PERCH_CLOUD_BRIEFS_PER_DAY  cloud briefs and hand-off drafts the whole server runs per day
                               (default 30)
-  PERCH_CLOUD_DOCUMENTS    "1" lets a session send its documents to the cloud provider after
-                           a second warning (S24, Q30). Default off: standing rule 1 keeps
-                           private text on local models until Dakshitha changes it (Q33).
+  PERCH_CLOUD_DOCUMENTS    "1" lets a user send their own documents to the cloud provider
+                           when they choose to, after a second warning that names the
+                           provider and lists which documents would leave (S24, Q30; standing
+                           rule 1 as amended, Q33). On in the demo compose file; off when
+                           unset, so a deployment opts in.
   PERCH_PUBLIC_CACHE       "0" stops sessions writing public records to the store (default on)
   PERCH_PRIVATE_ENDPOINTS  hosts a private session may send model calls to, comma-separated
                            (default loopback: 127.0.0.1, localhost, ::1)
@@ -94,10 +96,47 @@ class PrivateSettings:
              f"on the server with the time they were fetched, so the operator could see that "
              f"a researcher was looked up and when. With Local on, every model "
              f"runs on the Perch server, run by {self.operator or 'the operator of this server'}.")
+        if self.cloud_documents and self.cloud_provider:
+            s += (f" Documents you add stay on local models unless you turn Cloud on and confirm "
+                  f"which of them go to {self.cloud_provider}; that choice lasts for the session.")
+        else:
+            s += " Documents you add are read only by models on the Perch server."
         if self.tls_at and self.tls_at.startswith("tunnel:"):
             s += (f" Your connection is decrypted by {self.tls_at.split(':', 1)[1]} before it "
                   "reaches the server.")
         return s
+
+
+# How the Cloud warning names each kind of document, and what it carries (Q33).
+DOC_NAMES = {"cv": "your CV", "proposal": "your draft proposal",
+             "direction": "your research direction", "manuscript": "your unpublished manuscript",
+             "interests": "your interests note", "achievements": "your achievements"}
+DOC_NOTES = {"cv": "A CV carries your contact details and career facts.",
+             "proposal": "A draft proposal is unpublished research.",
+             "direction": "A research direction describes work you have not published.",
+             "manuscript": "An unpublished manuscript is unpublished research.",
+             "interests": "Your interests note says what you study and hope to do.",
+             "achievements": "Your achievements are facts about you and your record."}
+
+
+def consent_warning(provider: str, docs: list[tuple[str, str | None, str]]) -> dict:
+    """The second warning for one session: (kind, file name or None, ref) per document,
+    in the order the user added them. Code writes every sentence; the provider comes from
+    the configured cloud spec."""
+    items = [{"kind": k, "ref": ref, "note": DOC_NOTES.get(k, ""),
+              "text": f"{DOC_NAMES.get(k, 'your ' + k)} ({name or 'pasted text'})"}
+             for k, name, ref in docs]
+    return {"provider": provider, "items": items,
+            "lead": f"With Cloud on, Perch sends these documents from this session to "
+                    f"{provider}, through its API, with the rest of your brief:",
+            "after": [f"{provider}'s API terms then apply to them. Perch itself stores "
+                      "nothing, and it cannot take back text once it is sent.",
+                      "This choice lasts for this session only. You can turn Cloud off again "
+                      "at any time; after that nothing more is sent.",
+                      f"Nothing is sent to {provider} until you confirm. A document you add "
+                      "later turns Cloud off until you confirm it here too."],
+            "check": f"I understand. Send these documents to {provider}.",
+            "confirm": f"Send my documents to {provider}"}
 
 
 LOCAL_ADAPTERS = ("ollama", "openai", "fake")  # self-hosted model servers and the test fake

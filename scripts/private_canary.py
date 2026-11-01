@@ -14,7 +14,9 @@ Since S23 every brief is a session, so the run starts with the default path: a b
 the public researcher with no documents, as any visitor runs it. With the public cache
 on, that brief may write public records to the store, so the store file may change, but
 it must gain no brief or lead row. Then a Cloud check, when PERCH_CLOUD is set: Cloud is
-turned on and a SYNTHETIC document must be refused (documents stay on local models); no
+turned on and a SYNTHETIC document is added. Without PERCH_CLOUD_DOCUMENTS=1 it must be
+refused; with it (Q33) the document is held and Cloud turns off, because the user has not
+confirmed it, and a confirm that does not list the session's documents is refused. No
 cloud call is made.
 
   PERCH_PRIVATE_MODE=1 PERCH_TLS_AT=server PERCH_PRIVATE_OPERATOR="..." \\
@@ -148,12 +150,22 @@ def cloud_check(c) -> dict:  # noqa: ANN001 - a TestClient
     unconfirmed = c.post("/private/cloud", headers=h, json={"on": True}).status_code
     on = c.post("/private/cloud", headers=h,
                 json={"on": True, "confirm": info["provider"]}).status_code
-    doc = c.post("/private/documents", headers=h,
-                 json={"kind": "direction", "text": DIRECTION}).status_code
+    r = c.post("/private/documents", headers=h, json={"kind": "direction", "text": DIRECTION})
+    out = {"offered": True, "provider": info["provider"], "unconfirmed": unconfirmed,
+           "confirmed": on, "document_with_cloud_on": r.status_code,
+           "documents_gate": bool(info.get("documents"))}
+    if not info.get("documents"):
+        out["ok"] = unconfirmed == 422 and on == 200 and r.status_code == 409
+    else:  # held, and Cloud is off until the user confirms it
+        unlisted = c.post("/private/cloud", headers=h, json={
+            "on": True, "confirm": info["provider"],
+            "documents_confirm": info["documents_phrase"], "documents": []}).status_code
+        cloud = c.get("/private/session", headers=h).json()["cloud"]
+        out.update(cloud_after_document=cloud, unlisted_confirm=unlisted)
+        out["ok"] = (unconfirmed == 422 and on == 200 and r.status_code == 201
+                     and r.json().get("cloud") is False and cloud is False and unlisted == 409)
     c.post("/private/end", headers=h)
-    return {"offered": True, "provider": info["provider"], "unconfirmed": unconfirmed,
-            "confirmed": on, "document_with_cloud_on": doc,
-            "ok": unconfirmed == 422 and on == 200 and doc == 409}
+    return out
 
 
 def main(argv: list[str]) -> int:

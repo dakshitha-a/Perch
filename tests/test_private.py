@@ -4,6 +4,7 @@ Inputs are the SYNTHETIC persona-1 files; each holds a unique canary token. Mode
 fakes, so no network and no GPU.
 """
 
+import base64
 import json
 import re
 from datetime import date
@@ -517,33 +518,158 @@ def test_warm_demo_briefs_are_copied_into_each_session(tmp_path, monkeypatch):
     assert user_rows(service.db) == rows
 
 
-def test_documents_go_to_cloud_only_with_the_switch_and_a_second_confirm(tmp_path, monkeypatch):
-    """Q30 (S24 task 8), SYNTHETIC text only. Off by default: standing rule 1 keeps
-    documents local until Dakshitha changes it (Q33)."""
-    monkeypatch.setenv("PERCH_CLOUD", "anthropic:claude-sonnet-5-5")
-    c, _ = private_app(tmp_path, monkeypatch)
-    h = open_with_persona(c)
-    info = c.get("/private").json()["cloud"]
-    assert not info["documents"]
-    assert c.post("/private/cloud", headers=h, json={
-        "on": True, "confirm": "Anthropic",
-        "documents_confirm": "send my documents to anthropic"}).status_code == 409
-    c.post("/private/end", headers=h)
+CLOUD_SPEC = "anthropic:claude-sonnet-5-5"
 
-    monkeypatch.setenv("PERCH_CLOUD_DOCUMENTS", "1")
-    c, service = private_app(tmp_path / "on", monkeypatch)
+
+def cloud_app(tmp_path, monkeypatch, gate=True):
+    """A private app offering Cloud. The cloud spec gets a fake that calls itself
+    anthropic, so the gate treats it as hosted; it records every prompt. No network."""
+    monkeypatch.setenv("PERCH_CLOUD", CLOUD_SPEC)
+    if gate:
+        monkeypatch.setenv("PERCH_CLOUD_DOCUMENTS", "1")
+    c, service = private_app(tmp_path, monkeypatch)
+
+    class Hosted(FakeProvider):
+        name = "anthropic"
+
+    hosted = Hosted(responder=fit_reply)
+    service.models.provider = lambda spec: hosted if spec == CLOUD_SPEC else FakeProvider(
+        responder=fit_reply)
+    return c, hosted
+
+
+def sent(hosted) -> str:
+    return " ".join(m.content for call in hosted.calls for m in call["messages"])
+
+
+def cloud_on(c, h, refs=None):
+    if refs is None:
+        refs = [d["ref"] for d in c.get("/private/session", headers=h).json()["documents"]]
+    return c.post("/private/cloud", headers=h, json={
+        "on": True, "confirm": "Anthropic", "documents_confirm": "Send my documents to Anthropic",
+        "documents": refs})
+
+
+def test_documents_go_to_cloud_only_with_the_switch_and_a_second_confirm(tmp_path, monkeypatch):
+    """Q30 (S24 task 8), SYNTHETIC text only. Without PERCH_CLOUD_DOCUMENTS=1 documents
+    never go to Cloud, whatever the request says."""
+    c, hosted = cloud_app(tmp_path, monkeypatch, gate=False)
+    h = open_with_persona(c)
+    assert not c.get("/private").json()["cloud"]["documents"]
+    assert c.get("/private/session", headers=h).json()["cloud_consent"] is None
+    assert cloud_on(c, h).status_code == 409
+    assert not hosted.calls
+
+
+def test_the_second_warning_names_the_provider_and_each_document(tmp_path, monkeypatch):
+    """Q33: the warning lists exactly this session's documents, by kind and by the name
+    they were added under, with what each carries; SYNTHETIC persona-1."""
+    c, _ = cloud_app(tmp_path, monkeypatch)
     info = c.get("/private").json()["cloud"]
     assert info["documents"] and "second warning" in info["warning"]
     h = open_with_persona(c)
+    cv = (PERSONA / "cv.md").read_bytes()
+    r = c.post("/private/documents", headers=h, json={  # the CV again, as a file
+        "kind": "cv", "filename": "cv.md", "data": base64.b64encode(cv).decode()})
+    assert r.status_code == 201
+    w = c.get("/private/session", headers=h).json()["cloud_consent"]
+    texts = {x["kind"]: x["text"] for x in w["items"]}
+    assert texts == {"cv": "your CV (cv.md)", "proposal": "your draft proposal (pasted text)",
+                     "manuscript": "your unpublished manuscript (pasted text)"}
+    notes = {x["kind"]: x["note"] for x in w["items"]}
+    assert "contact details and career facts" in notes["cv"]
+    assert all("unpublished research" in notes[k] for k in ("proposal", "manuscript"))
+    words = " ".join([w["lead"], *w["after"]])
+    for phrase in ("Anthropic", "API terms", "stores nothing", "this session only",
+                   "turn Cloud off again", "nothing more is sent", "until you confirm"):
+        assert phrase in words, phrase
+
+
+def test_cloud_with_documents_is_refused_without_consent(tmp_path, monkeypatch):
+    """The gate: with documents held and no recorded consent, no cloud call is made, even
+    if the session's Cloud flag is on (here forced, as a bypass would)."""
+    from perch.private.session import PrivateModels
+
+    c, hosted = cloud_app(tmp_path, monkeypatch)
+    h = open_with_persona(c)
     r = c.post("/private/cloud", headers=h, json={"on": True, "confirm": "Anthropic"})
     assert r.status_code == 409 and "send my documents to anthropic" in r.json()["detail"]
-    r = c.post("/private/cloud", headers=h, json={
-        "on": True, "confirm": "Anthropic", "documents_confirm": "Send my documents to Anthropic"})
+    r = cloud_on(c, h, refs=[])  # the phrase alone, without the documents it covers
+    assert r.status_code == 409 and "changed" in r.json()["detail"]
+    s = c.app.state.private_sessions.get(h["X-Perch-Private"])
+    assert not s.cloud and not s.cloud_consent
+    s.cloud = True  # a bypass of the route: the gate still holds
+    assert not s.service.models.cloud() and s.service.models.fit_spec != CLOUD_SPEC
+    gate = PrivateModels(s.service.models.base, s.service.models.settings, s.service.models.cloud)
+    with pytest.raises(PermissionError):
+        gate.provider(CLOUD_SPEC)
+    r = c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"})
+    assert r.status_code == 409
+    assert not hosted.calls
+
+
+def test_cloud_with_consent_sends_the_documents_and_a_new_one_turns_it_off(tmp_path, monkeypatch):
+    c, hosted = cloud_app(tmp_path, monkeypatch)
+    h = open_with_persona(c)
+    r = cloud_on(c, h)
     assert r.json() == {"cloud": True, "documents": True}
     s = c.app.state.private_sessions.get(h["X-Perch-Private"])
-    assert s.service.models.cloud()  # the skills now use the cloud spec
-    assert c.post("/private/cloud", headers=h, json={"on": False}).json()["documents"] is False
-    assert not s.service.models.cloud()
+    assert s.service.models.cloud() and s.cloud_consent == s.doc_refs()
+    assert not hosted.calls  # nothing is sent by the confirm itself
+    assert c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"}).status_code == 202
+    b = c.get("/private/brief", headers=h).json()["brief"]
+    assert b["status"] == "done" and b["options"]["models"] == "cloud"
+    assert any(t in sent(hosted) for t in CANARIES)  # the documents went, as confirmed
+    # The same text added again (a rebuild re-sends it) keeps its consent.
+    text = (PERSONA / "cv.md").read_text()
+    assert c.post("/private/documents", headers=h,
+                  json={"kind": "cv", "text": text}).json()["cloud"] is True
+    # A new or changed document turns Cloud off until it is confirmed too.
+    n = len(hosted.calls)
+    r = c.post("/private/documents", headers=h, json={"kind": "direction",
+                                                     "text": "SYNTHETIC direction: gait at home"})
+    assert r.status_code == 201 and r.json()["cloud"] is False
+    assert not s.cloud and not s.cloud_consent and not s.service.models.cloud()
+    c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"})
+    assert c.get("/private/brief", headers=h).json()["brief"]["options"]["models"] == "local"
+    assert len(hosted.calls) == n  # the new brief ran on local models
+    # Off clears consent: turning Cloud on again asks for every document again.
+    assert cloud_on(c, h).json()["documents"] is True
+    assert c.post("/private/cloud", headers=h, json={"on": False}).json() == {
+        "cloud": False, "documents": False}
+    assert not s.cloud_consent
+
+
+def test_cloud_consent_ends_with_the_session(tmp_path, monkeypatch):
+    c, _ = cloud_app(tmp_path, monkeypatch)
+    h = open_with_persona(c)
+    cloud_on(c, h)
+    s = c.app.state.private_sessions.get(h["X-Perch-Private"])
+    assert s.cloud_consent
+    assert c.post("/private/end", headers=h).json()["ended"]
+    assert not s.cloud and not s.cloud_consent and not s.docs
+    assert c.app.state.private_sessions.get(h["X-Perch-Private"]) is None
+
+
+def test_a_student_cv_goes_to_cloud_only_with_the_same_warning(tmp_path, monkeypatch):
+    """A student session gets the same second warning, with the CV wording (persona-ug,
+    SYNTHETIC)."""
+    c, hosted = cloud_app(tmp_path, monkeypatch)
+    ug = PERSONA.parent / "persona-ug"
+    h = {"X-Perch-Private": c.post("/private/session").json()["token"]}
+    for kind in ("cv", "interests"):
+        assert c.post("/private/documents", headers=h, json={
+            "kind": kind, "text": (ug / f"{kind}.md").read_text()}).status_code == 201
+    w = c.get("/private/session", headers=h).json()["cloud_consent"]
+    assert [x["text"] for x in w["items"]] == ["your CV (pasted text)",
+                                               "your interests note (pasted text)"]
+    assert "contact details and career facts" in w["items"][0]["note"]
+    assert c.post("/private/student/brief", headers=h, json={}).status_code == 202
+    assert c.get("/private/brief", headers=h).json()["brief"]["options"]["models"] == "local"
+    assert not hosted.calls
+    assert cloud_on(c, h).json()["documents"] is True
+    assert c.post("/private/student/brief", headers=h, json={}).status_code == 202
+    assert c.get("/private/brief", headers=h).json()["brief"]["options"]["models"] == "cloud"
 
 
 def test_failed_steps_read_in_plain_words_and_a_bad_id_costs_no_brief():

@@ -45,6 +45,9 @@ class PrivateDoc(Work):
     it as a number."""
 
     kind = "private"  # type: ignore[assignment]
+    # The uploaded file's own name, held with the text in session memory only, so the
+    # Cloud warning can name the document as the user added it (None: pasted text).
+    filename: str | None = None
 
 
 # Every InputError is a plain sentence for the person, shown beside the box they used, on
@@ -54,7 +57,8 @@ def _name(filename: str | None) -> str:
     return (name[:77] + "...") if len(name) > 80 else name or "That file"
 
 
-def make_doc(kind: str, text: str, filename: str | None = None) -> PrivateDoc:
+def make_doc(kind: str, text: str, filename: str | None = None,
+             keep_name: bool = False) -> PrivateDoc:
     if kind not in KINDS:
         raise InputError(f"Unknown document kind: use one of {', '.join(KINDS)}.")
     text = clean(text)
@@ -66,7 +70,7 @@ def make_doc(kind: str, text: str, filename: str | None = None) -> PrivateDoc:
                          f"{MAX_CHARS:,} characters: shorten it, then add it again.")
     return PrivateDoc(id=f"private:{kind}", source="private", source_url="private://session",
                       fetched_at=utcnow(), title=f"{KINDS[kind]} (private)", type="private",
-                      abstract=text)
+                      abstract=text, filename=_name(filename) if keep_name and filename else None)
 
 
 def clean(text: str) -> str:
@@ -137,5 +141,5 @@ class Upload:
     def doc(self) -> PrivateDoc:
         if self.data is not None:
             return make_doc(self.kind, parse_bytes(self.filename or "", self.data),
-                            self.filename or "That file")
+                            self.filename or "That file", keep_name=bool(self.filename))
         return make_doc(self.kind, self.text or "")

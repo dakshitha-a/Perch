@@ -11,8 +11,11 @@ disk, which private mode must not do).
   POST /private/end                     drop everything in the session
   POST /private/documents               {"kind", "text"} or {"kind", "filename", "data"}
   POST /private/documents/{kind}/remove
-  POST /private/cloud                   {"on", "confirm"?}: Cloud on or off for this session;
-                                        on needs "confirm" equal to the provider's name
+  POST /private/cloud                   {"on", "confirm"?, "documents_confirm"?, "documents"?}:
+                                        Cloud on or off for this session; on needs "confirm"
+                                        equal to the provider's name, and with documents held
+                                        the second confirm and the refs of the documents the
+                                        warning listed
   POST /private/brief                   {"author_id"?, "top"?, "explain"?, "direction"?, ...}:
                                         a brief; needs an author id or a document
   GET  /private/brief                   the brief, as GET /briefs/{id} with private records
@@ -46,8 +49,16 @@ from perch import egress
 from perch import export as ex
 from perch.config import env
 from perch.jobs import JobRunner
-from perch.privacy import PrivateSettings
-from perch.private.inputs import FORMATS, KINDS, MAX_BYTES, MAX_CHARS, InputError, Upload
+from perch.privacy import PrivateSettings, consent_warning
+from perch.private.inputs import (
+    FORMATS,
+    KINDS,
+    MAX_BYTES,
+    MAX_CHARS,
+    InputError,
+    PrivateDoc,
+    Upload,
+)
 from perch.private.session import (
     BRIEFS_PER_SESSION,
     IDLE_SECONDS,
@@ -57,6 +68,7 @@ from perch.private.session import (
     PrivateSessions,
     TooManyFromAddress,
     add_document,
+    doc_ref,
 )
 from perch.request_models import BriefOptions, HandoffRequest, ScoutRequest
 from perch.schemas import Opportunity, Record, Work, belongs_to
@@ -80,8 +92,10 @@ class PrivateBriefRequest(BriefOptions):
 
 class CloudRequest(BaseModel):
     on: bool
-    # The second confirm (S24, Q30): "send my documents to <provider>", typed or sent as-is.
+    # The second confirm (S24, Q30): "send my documents to <provider>", typed or sent as-is,
+    # with the refs of the documents the warning listed (Q33): consent covers those alone.
     documents_confirm: str | None = Field(None, max_length=100)
+    documents: list[str] = Field(default_factory=list, max_length=len(KINDS))
     confirm: str | None = Field(None, max_length=40)
 
 
@@ -93,8 +107,9 @@ class TextRequest(BaseModel):
     text: str = Field(max_length=200_000)
 
 
-def doc_json(kind: str, d: Work) -> dict:
-    return {"kind": kind, "label": KINDS[kind], "id": d.id, "chars": len(d.abstract or "")}
+def doc_json(kind: str, d: PrivateDoc) -> dict:
+    return {"kind": kind, "label": KINDS[kind], "id": d.id, "chars": len(d.abstract or ""),
+            "name": d.filename, "ref": doc_ref(d)}
 
 
 def private_record_json(d: Work) -> dict:
@@ -206,7 +221,8 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                             f"direction or keywords) and the text of the public papers and "
                             f"listings in your brief to {p}, through its API, to write the "
                             f"summary, the fit explanations and hand-off openings. "
-                            + (f"Documents you add go to {p} only after a second warning. "
+                            + (f"Documents you add stay on local models unless you also "
+                               f"confirm a second warning that lists which of them go to {p}. "
                                if settings.cloud_documents else
                                f"Documents you add never go to {p}: Cloud stays off while a "
                                f"session holds documents. ")
@@ -216,12 +232,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                 if p else None,
                 # Documents on Cloud after a second warning (S24, Q30), off by default.
                 "documents": bool(p) and on and settings.cloud_documents,
-                "documents_phrase": docs_phrase(p) if p else None,
-                "documents_warning": (f"This also sends the documents you add (your CV, "
-                                      f"draft proposal or unpublished work) to {p}. They "
-                                      f"may hold names, contact details and unpublished "
-                                      f"ideas. Perch cannot take them back once sent.")
-                if p and settings.cloud_documents else None}
+                "documents_phrase": docs_phrase(p) if p else None}
 
     def take_cloud(what: str = "briefs") -> None:
         """One of today's cloud uses, whole server: a brief or a hand-off draft (S17)."""
@@ -288,8 +299,14 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     def get_session(x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
         cv = s.cv
+        p = settings.cloud_provider
         return {"documents": [doc_json(k, d) for k, d in s.docs.items()],
                 "brief_id": s.brief_id, "chars": s.chars(), "cloud": s.cloud,
+                "cloud_documents": s.cloud_docs,
+                # The second warning for exactly the documents this session holds (Q33).
+                "cloud_consent": consent_warning(p, [(k, d.filename, doc_ref(d))
+                                                     for k, d in s.docs.items()])
+                if p and on and settings.cloud_documents and s.docs else None,
                 "cv": {"degree_year": cv.degree_year, "rank": cv.rank,
                        "sponsors": cv.sponsors, "nih_awards": cv.nih_substantial} if cv else None}
 
@@ -306,15 +323,25 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                 raise HTTPException(404, "Cloud is not offered on this server.")
             if (req.confirm or "").strip().lower() != p.lower():
                 raise HTTPException(422, f"Confirm by sending the provider's name, {p}.")
-            docs_ok = (req.documents_confirm or "").strip().lower() == docs_phrase(p)
-            if s.docs and not (settings.cloud_documents and docs_ok):
-                raise HTTPException(409, "Remove your documents first: they stay on local "
-                                    "models." if not settings.cloud_documents else
-                                    f"Confirm the second warning: {docs_phrase(p)}.")
-            s.cloud_docs = settings.cloud_documents and docs_ok
-        s.cloud = req.on
-        if not req.on:
-            s.cloud_docs = False
+            with s.lock:
+                if s.docs:
+                    if not settings.cloud_documents:
+                        raise HTTPException(409, "Remove your documents first: they stay on "
+                                            "local models.")
+                    if (req.documents_confirm or "").strip().lower() != docs_phrase(p):
+                        raise HTTPException(409, f"Confirm the second warning: "
+                                            f"{docs_phrase(p)}.")
+                    # Consent covers the documents the warning listed, and only those: if
+                    # the session's documents changed since, the user must look again.
+                    if set(req.documents) != s.doc_refs():
+                        raise HTTPException(409, "Your documents changed since the warning "
+                                            "was shown: open it again to see what would "
+                                            "be sent.")
+                    s.cloud_consent = s.doc_refs()
+                s.cloud = True
+        else:
+            s.cloud = False
+            s.cloud_consent.clear()  # nothing more is sent; a new choice asks again
         return {"cloud": s.cloud, "documents": s.cloud_docs}
 
     @app.post("/private/documents", status_code=201)
@@ -324,7 +351,7 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         if wait := docs_limit.take(client_key(request)):
             raise HTTPException(429, "Too many documents added this hour.",
                                 headers={"Retry-After": str(wait)})
-        if s.cloud and not s.cloud_docs:
+        if s.cloud and not settings.cloud_documents:
             raise HTTPException(409, "Turn Cloud off first: documents stay on local models.")
         try:
             data = (base64.b64decode(req.data, validate=True) if req.data is not None
@@ -332,11 +359,17 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             doc = Upload(req.kind, req.text, req.filename, data).doc()
             with s.lock:
                 add_document(s, doc)
+                # A document the user has not confirmed for Cloud turns Cloud off until
+                # they do (Q33): it is never sent unasked. The same text added again
+                # keeps its consent.
+                if s.cloud and doc_ref(doc) not in s.cloud_consent:
+                    s.cloud = False
+                    s.cloud_consent.clear()
         except binascii.Error as e:
             raise HTTPException(422, "The file could not be read: choose it again.") from e
         except InputError as e:
             raise HTTPException(422, str(e)) from e
-        return doc_json(req.kind, doc)
+        return {**doc_json(req.kind, doc), "cloud": s.cloud}
 
     @app.post("/private/documents/{kind}/remove")
     def remove_doc(kind: str, x_perch_private: str | None = Header(None)) -> dict:
@@ -361,7 +394,12 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             s.briefs_run += 1  # a copy of a warm demo brief, held in this session only
             return {"id": w.id, "status": w.status, "warm": True}
         throttle(request)
-        if s.cloud and (not s.docs or s.cloud_docs) and req.explain:
+        if s.cloud and not s.service.models.cloud():
+            # Cloud is on but a document lacks consent: refuse rather than run it locally
+            # under a Cloud label, or send it unasked (Q33).
+            raise HTTPException(409, "Confirm which documents go to the cloud provider, or "
+                                "turn Cloud off.")
+        if s.service.models.cloud() and req.explain:
             take_cloud()
         old = s.brief_id
         try:
@@ -385,8 +423,13 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
             raise HTTPException(422, "Add your interests or achievements too.")
         if s.briefs_run >= BRIEFS_PER_SESSION:
             raise HTTPException(429, f"A session runs at most {BRIEFS_PER_SESSION} briefs.")
+        if s.cloud and not s.service.models.cloud():
+            raise HTTPException(409, "Confirm which documents go to the cloud provider, or "
+                                "turn Cloud off.")
         throttle(request)
-        s.cloud = s.cloud_docs = False  # a student's CV stays on local models
+        # A student's CV goes to Cloud only with the same second warning (Q33).
+        if s.service.models.cloud() and req.explain:
+            take_cloud()
         old = s.brief_id
         b = s.service.create_student(as_of=req.as_of, top=req.top, explain=req.explain)
         s.briefs_run += 1
