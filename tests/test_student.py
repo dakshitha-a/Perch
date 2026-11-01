@@ -425,3 +425,23 @@ def test_student_tool_amounts_and_notes_read_as_the_cards():
     body = write_note("F", [(lead, {"title": "SYNTHETIC fellowship", "deadline": "1 Mar 2027"})])
     assert "Still needed: an essay; 3 letters of recommendation (my CV lists 2 referees)" in \
         body["body"] and "your CV" not in body["body"]
+
+
+def test_a_word_search_reads_the_cards_fit_sentence(monkeypatch):
+    """T10: "Which fellowships fit my stream monitoring work?" said none did, although the
+    REU card's own sentence says stream monitoring fits. A word search also reads the fit
+    sentence and says where each match was found."""
+    from types import SimpleNamespace as NS
+
+    from perch.scout import student_tools as st
+
+    leads = [NS(route="F", rank=1, verdict="may be eligible", sample=False, id="f",
+                inference="Your SYNTHETIC stream monitoring fits", status="new"),
+             NS(route="F", rank=2, verdict="may be eligible", sample=False, id="g",
+                inference="Unrelated", status="new")]
+    monkeypatch.setattr(st, "_brief", lambda ctx: (None, leads))
+    monkeypatch.setattr(st, "_record", lambda ctx, x: None)
+    monkeypatch.setattr(st, "_row", lambda ctx, x: {"id": x.id})
+    got = st.search_options(None, route="all", words="stream monitoring")
+    assert got["options"] == [{"id": "f", "words_found_in": "its fit sentence on the card"}]
+    assert "Every option listed matches" in got["note"]

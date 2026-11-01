@@ -111,14 +111,19 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
         top = getattr(rec, "amount_max", None) or getattr(rec, "award_ceiling", None)
         if min_amount is not None and (top is None or top < min_amount):
             continue
+        where = None
         if used:  # T10: the card's own fit sentence counts, as the student reads it
             text = " ".join(str(v) for v in (facts_of(rec).get("title"),
                                              getattr(rec, "purpose", ""),
-                                             getattr(rec, "description", ""),
-                                             getattr(x, "inference", None) or "")).lower()
-            if not any(w in text for w in used):  # any of the words (R7)
+                                             getattr(rec, "description", ""))).lower()
+            fit = (getattr(x, "inference", None) or "").lower()
+            if any(w in text for w in used):  # any of the words (R7)
+                where = "the listing"
+            elif any(w in fit for w in used):
+                where = "its fit sentence on the card"
+            else:
                 continue
-        rows.append(_row(ctx, x))
+        rows.append({**_row(ctx, x), **({"words_found_in": where} if where else {})})
         due_of[rows[-1]["id"]] = due
     if sort == "deadline":  # the soonest first, undated last, as Q14 for researchers (R13)
         rows.sort(key=lambda r: (due_of[r["id"]] is None, due_of[r["id"]] or date.max))
@@ -138,8 +143,9 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
             **({"words_used": used} if used else {}),
             "note": "Options in this student brief, checked against the CV by rule, each "
             "group in the brief's own order by Match, the strongest first. "
-            + ("An option matches when its title or purpose holds any of words_used. "
-               if used else "") + APART_NOTE}
+            + ("Every option listed matches: its listing or its fit sentence on the card "
+               "holds one of words_used (words_found_in says which). " if used else "")
+            + APART_NOTE}
 
 
 # Words too common to narrow a search (R7): "my stream monitoring work" searches stream
