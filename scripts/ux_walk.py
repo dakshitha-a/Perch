@@ -857,7 +857,7 @@ async def workflow_student(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.click("#tab-compare")
     await page.wait_for_selector("table.compare", timeout=30000)
     await page.wait_for_timeout(800)
-    # W8: the note shows at once, has no dead To box, and Open in mail sends the edited text.
+    # W8: the note shows at once, has no dead To box, and Open in my mail app sends the edited text.
     if not await page.locator(".draft textarea").count():
         w.errors.append(f"{tag}: W8: the code-written note needs a Draft the note press")
         if await page.locator("[data-key=st-draft]").count():
@@ -873,14 +873,14 @@ async def workflow_student(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.evaluate("""() => window.addEventListener('click', (e) => {
       const a = e.target.closest('a[href^="mailto"], [data-key=st-mail]');
       if (a) { window.__mail = a.getAttribute('href'); e.preventDefault(); } })""")
-    mail = page.locator(".draft .actions a:has-text('Open in mail')")
+    mail = page.locator(".draft .actions a:has-text('Open in my mail app')")
     if await mail.count():
         await mail.click()
         got = await page.evaluate("() => decodeURIComponent(window.__mail || '')")
         if "EDITED-W8" not in got:
-            w.errors.append(f"{tag}: W8: Open in mail sends the note as first drawn, not as edited")
+            w.errors.append(f"{tag}: W8: Open in my mail app sends the note as first drawn, not as edited")
     else:
-        w.errors.append(f"{tag}: W8: no Open in mail button on a note about public fellowships")
+        w.errors.append(f"{tag}: W8: no Open in my mail app button on a note about public fellowships")
     await w.snap(page, tag, "w8-note", full=True)
     await end_session(page)
 
