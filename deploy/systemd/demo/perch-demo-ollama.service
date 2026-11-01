@@ -9,7 +9,9 @@ Environment=CUDA_VISIBLE_DEVICES=@GPU_A@
 Environment=OLLAMA_HOST=127.0.0.1:11437
 Environment=OLLAMA_MODELS=/usr/share/ollama/.ollama/models
 Environment=OLLAMA_NOPRUNE=1
-Environment=OLLAMA_CONTEXT_LENGTH=8192
+# 12,288 with two slots measured on GPU 4 (S31, F28): 20,038 MiB peak, +176 MiB over 8,192;
+# with Clef-flash (8,012 MiB) about 28,050 MiB of 32,760 on this card. No truncation up to 11,120 tokens.
+Environment=OLLAMA_CONTEXT_LENGTH=12288
 Environment=OLLAMA_KEEP_ALIVE=-1
 # Two parallel slots (S30 P1 measurement on GPU 4: explanations 32.3 s with 1, 27.0 s with 2;
 # peak VRAM 19.9 GB with 2, about 27.3 GB on this card with Clef-flash). Applied at the S32 rebuild.
