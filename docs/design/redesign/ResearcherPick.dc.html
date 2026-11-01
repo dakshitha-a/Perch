@@ -56,7 +56,13 @@ input::placeholder,textarea::placeholder{color:#7f8f89}
         <p style="margin: 0; font-size: 16px; color: {{c.ink2}}">{{subtitle}}</p>
       </div>
       <sc-if value="{{hasPick}}" hint-placeholder-val="{{ false }}">
-        <a href="ResearcherBrief.dc.html" class="fade-in" style="min-height: 52px; display: inline-flex; align-items: center; padding: 0 26px; border-radius: 12px; background: {{c.accent}}; color: {{c.onAccent}}; font: 600 16px Inter, sans-serif; text-decoration: none">Build brief</a>
+        <div class="fade-in" style="display: grid; gap: 6px; justify-items: end; max-width: 340px">
+          <a href="ResearcherBrief.dc.html" style="min-height: 52px; box-sizing: border-box; display: inline-flex; align-items: center; padding: 0 26px; border-radius: 12px; background: {{c.accent}}; color: {{c.onAccent}}; font: 600 16px Inter, sans-serif; text-decoration: none">Build brief</a>
+          <label style="display: flex; align-items: flex-start; gap: 8px; min-height: 32px; font-size: 14px; line-height: 1.45; cursor: pointer">
+            <input type="checkbox" checked="{{explain}}" onChange="{{onExplain}}" style="width: 20px; height: 20px; margin: 0; flex: none">
+            <span><b>Explain each lead</b><span style="color: {{c.ink3}}"> A model writes a short, cited reason for every lead. This is the slow step.</span></span>
+          </label>
+        </div>
       </sc-if>
     </div>
 
@@ -86,14 +92,13 @@ input::placeholder,textarea::placeholder{color:#7f8f89}
     </ul>
 
     <sc-if value="{{hasPick}}" hint-placeholder-val="{{ false }}">
-      <section class="fade-in-late" aria-labelledby="more-h" style="display: flex; flex-direction: column; gap: 16px">
-        <div style="display: flex; flex-direction: column; gap: 4px">
-          <h2 id="more-h" style="margin: 0; font-size: 20px; font-weight: 600">Tell Perch more (optional)</h2>
-          <p style="margin: 0; font-size: 15px; line-height: 1.5; color: {{c.ink2}}">Everything here steers the search and is held in memory for this session only. Your CV and ongoing research stay on local models.</p>
-        </div>
+      <details class="fade-in-late" open="{{moreOpen}}" style="border-top: 1px solid {{c.line}}; padding-top: 8px">
+        <summary style="cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 8px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg><h2 id="more-h" style="margin: 0; font-size: 20px; font-weight: 600">Tell Perch more (optional)</h2></summary>
+      <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 8px">
+        <p style="margin: 0; font-size: 15px; line-height: 1.5; color: {{c.ink2}}">Everything here steers the search and is held in memory for this session only. Your CV and ongoing research stay on local models.</p>
 
         <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px; border: 1px dashed {{c.line}}">
-          <span style="flex: 1 1 300px; font-size: 14px; line-height: 1.5; color: {{c.ink2}}">See what helps most: a sample with a CV, a direction, keywords and draft aims.</span>
+          <span style="flex: 1 1 300px; font-size: 14px; line-height: 1.5; color: {{c.ink2}}">See what helps most: a sample direction, keywords and draft aims. The sample has no CV, because this is a real researcher.</span>
           <button type="button" onClick="{{fill}}" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.accent}}; background: transparent; color: {{c.accent}}; font: 600 15px Inter, sans-serif; cursor: pointer">Fill with a sample</button>
           <button type="button" onClick="{{clear}}" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink2}}; font: 600 15px Inter, sans-serif; cursor: pointer">Clear</button>
         </div>
@@ -104,7 +109,7 @@ input::placeholder,textarea::placeholder{color:#7f8f89}
           </p>
         </sc-if>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 16px">
           <div style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 18px; display: flex; flex-direction: column; gap: 8px">
             <label for="r-dir" style="font-size: 16px; font-weight: 600">Where your research is going</label>
             <textarea id="r-dir" rows="4" placeholder="A sentence or two" value="{{direction}}" onChange="{{onDir}}" style="resize: vertical; padding: 10px 12px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; color: {{c.ink}}; font: 400 15px/1.5 Inter, sans-serif"></textarea>
@@ -113,7 +118,8 @@ input::placeholder,textarea::placeholder{color:#7f8f89}
             <label for="r-keep" style="font-size: 16px; font-weight: 600">Keywords to search for</label>
             <input id="r-keep" type="text" placeholder="Comma-separated" value="{{keep}}" onChange="{{onKeep}}" style="min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; color: {{c.ink}}; font: 400 15px Inter, sans-serif">
             <label for="r-drop" style="font-size: 16px; font-weight: 600; margin-top: 6px">Keywords to leave out</label>
-            <input id="r-drop" type="text" placeholder="Comma-separated" value="{{drop}}" onChange="{{onDrop}}" style="min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; color: {{c.ink}}; font: 400 15px Inter, sans-serif">
+            <input id="r-drop" type="text" placeholder="Comma-separated" value="{{drop}}" onChange="{{onDrop}}" aria-describedby="r-drop-hint" style="min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; color: {{c.ink}}; font: 400 15px Inter, sans-serif">
+            <p id="r-drop-hint" style="margin: 0; font-size: 13px; color: {{c.ink2}}">Opportunities that mention one of these in the title or description are left out.</p>
           </div>
           <div style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 18px; display: flex; flex-direction: column; gap: 8px">
             <div style="display: flex; justify-content: space-between; gap: 8px; align-items: baseline"><label for="r-cv" style="font-size: 16px; font-weight: 600">Your CV</label><span style="font-size: 12px; color: {{c.ink3}}">Local only</span></div>
@@ -133,13 +139,17 @@ input::placeholder,textarea::placeholder{color:#7f8f89}
               <span style="align-self: center; font-size: 13px; color: {{c.ink3}}">Text, Markdown, Word or PDF</span>
             </div>
           </div>
+          <div style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 18px; display: flex; flex-direction: column; gap: 8px">
+            <label for="r-stage" style="font-size: 16px; font-weight: 600">Career stage</label>
+            <select id="r-stage" aria-describedby="r-stage-hint" style="min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; color: {{c.ink}}; font: 400 15px Inter, sans-serif"><option>Not stated</option><option>Early-career: early-stage investigator (NIH)</option><option>Established investigator</option></select>
+            <p id="r-stage-hint" style="margin: 0; font-size: 13px; color: {{c.ink2}}">Early-career also shows awards only for early-stage or new investigators. They are marked “You said”, so you can check NIH’s definition.</p>
+            <label for="r-min" style="margin-top: 6px; font-size: 16px; font-weight: 600">Leave out awards smaller than (US dollars)</label>
+            <input id="r-min" type="number" inputmode="numeric" min="0" placeholder="Any" aria-describedby="r-min-hint" style="min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; color: {{c.ink}}; font: 400 15px Inter, sans-serif">
+            <p id="r-min-hint" style="margin: 0; font-size: 13px; color: {{c.ink2}}">Compared with the award ceiling in each record. Records that state no amount stay in.</p>
+          </div>
         </div>
-
-        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
-          <a href="ResearcherBrief.dc.html" style="min-height: 52px; display: inline-flex; align-items: center; padding: 0 26px; border-radius: 12px; background: {{c.accent}}; color: {{c.onAccent}}; font: 600 16px Inter, sans-serif; text-decoration: none">Build brief</a>
-          <span style="font-size: 14px; color: {{c.ink3}}">Everything above is optional.</span>
-        </div>
-      </section>
+      </div>
+      </details>
     </sc-if>
   </main>
 </div>
@@ -148,7 +158,7 @@ input::placeholder,textarea::placeholder{color:#7f8f89}
 class Component extends DCLogic {
   constructor(p) {
     super(p);
-    this.state = { picked: null, cv: '', proposal: '', direction: '', keep: '', drop: '', sample: false };
+    this.state = { picked: null, cv: '', proposal: '', direction: '', keep: '', drop: '', sample: false, explain: true };
   }
   renderVals() {
     // The sample is the SYNTHETIC persona-1 from data/synthetic/ (invented, canary-tagged).
@@ -183,9 +193,11 @@ class Component extends DCLogic {
         : '[N] Temple authors in OpenAlex match. Nothing runs until you pick one.',
       unpick: () => this.setState({ picked: null }),
       cv: st.cv, proposal: st.proposal, direction: st.direction, keep: st.keep, drop: st.drop,
-      isSample: st.sample,
+      isSample: st.sample, explain: st.explain, onExplain: (e) => this.setState({ explain: !st.explain }),
+      moreOpen: !!(st.cv || st.proposal || st.direction || st.keep || st.drop),
       onCv: set('cv'), onProp: set('proposal'), onDir: set('direction'), onKeep: set('keep'), onDrop: set('drop'),
-      fill: () => this.setState({ ...SAMPLE, sample: true }),
+      // The researcher sample carries no CV (it is a real person's page); the text is invented and labelled SYNTHETIC.
+      fill: () => this.setState({ ...SAMPLE, cv: '', sample: true }),
       clear: () => this.setState({ cv: '', proposal: '', direction: '', keep: '', drop: '', sample: false }),
     };
   }

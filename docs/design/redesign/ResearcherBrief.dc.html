@@ -21,8 +21,11 @@ a{color:inherit}a:hover{opacity:.85}
 .shimmer{background-size:200% 100%;animation:shimmer 1.4s linear infinite}
 @keyframes shimmer{from{background-position:100% 0}to{background-position:0 0}}
 summary{list-style:none}summary::-webkit-details-marker{display:none}
+@media (max-width: 600px){.xpop{left: 0 !important; right: auto !important}}
+.xsum{list-style:none}.xsum::-webkit-details-marker{display:none}
+.wide-only{display:inline}
 .rail-only{display:flex}.narrow-only{display:none}
-@media (max-width: 900px){.rail-only{display:none}.narrow-only{display:flex}.rail{position:static !important}}
+@media (max-width: 900px){.rail-only{display:none}.narrow-only{display:flex}.wide-only{display:none}.rail{position:static !important}}
 @media (prefers-reduced-motion: reduce){.fade-in,.bob,.shimmer{animation:none}}
 </style>
 </helmet>
@@ -49,7 +52,19 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
         <h1 style="margin: 0; font-family: Newsreader, Georgia, serif; font-weight: 500; font-size: 36px; line-height: 1.1">[Researcher name]</h1>
         <p style="margin: 0; font-size: 15px; color: {{c.ink2}}">Temple University · [Department] · Brief as of [date]</p>
       </div>
-      <button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font: 600 15px Inter, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>Export</button>
+      <details style="position: relative">
+        <summary class="xsum" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font: 600 15px Inter, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-sizing: border-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>Export</summary>
+        <div class="xpop" style="position: absolute; right: 0; top: calc(100% + 6px); z-index: 4; width: min(320px, calc(100vw - 32px)); box-sizing: border-box; padding: 10px; border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.line}}; box-shadow: 0 8px 24px rgba(0,0,0,.18); display: flex; flex-direction: column; gap: 6px">
+          <button type="button" style="min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: {{c.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-align: left">Print or save as PDF</button>
+          <button type="button" style="min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: {{c.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-align: left">Markdown</button>
+          <button type="button" style="min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: {{c.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-align: left">Records as JSON</button>
+          <sc-if value="{{hasDocs}}" hint-placeholder-val="{{ false }}">
+            <p style="margin: 4px 8px 0; font-size: 13px; line-height: 1.5; color: {{c.ink3}}">Exports leave out text drawn from your documents. Mask it instead to keep that text with names, identifiers and private phrases replaced.</p>
+            <label style="margin: 0 8px; display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px"><input type="checkbox" style="width: 20px; height: 20px"><span>Mask private text in exports and hand-offs</span></label>
+            <details style="margin: 0 8px"><summary style="cursor: pointer; min-height: 40px; display: flex; align-items: center; font-size: 14px; color: {{c.ink2}}">Unmask text on this screen</summary></details>
+          </sc-if>
+        </div>
+      </details>
     </div>
 
     <section aria-label="Progress" role="status" style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 14px 18px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap">
@@ -74,6 +89,14 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
         </div>
       </div>
       <button type="button" onClick="{{replay}}" style="min-height: 40px; padding: 0 12px; border: 0; background: transparent; color: {{c.ink2}}; font: 500 14px Inter, sans-serif; cursor: pointer; text-decoration: underline">Replay the build</button>
+      <details style="flex: 1 1 100%; border-top: 1px solid {{c.line}}; padding-top: 4px">
+        <summary style="cursor: pointer; min-height: 40px; display: flex; align-items: center; gap: 8px; font-size: 14px; color: {{c.ink2}}"><b style="color: {{c.ink}}">Steps</b> {{stepsCount}}</summary>
+        <ol style="list-style: none; margin: 0; padding: 0 0 8px; display: flex; flex-direction: column; gap: 6px">
+          <sc-for list="{{stepRows}}" as="r" hint-placeholder-count="8">
+            <li style="display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; font-size: 14px"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 50%; flex: none; background: {{r.dot}}"></span><b>{{r.name}}</b><span style="color: {{c.ink2}}">{{r.detail}}</span></li>
+          </sc-for>
+        </ol>
+      </details>
     </section>
 
     <div role="tablist" aria-label="Brief sections" style="display: flex; gap: 4px; border-bottom: 1px solid {{c.line}}; overflow-x: auto">
@@ -92,14 +115,26 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
               <button type="button" role="radio" aria-checked="{{bAria}}" onClick="{{showB}}" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 9px; font: 600 15px Inter, sans-serif; cursor: pointer; background: {{bBg}}; color: {{bInk}}">Industry {{nB}}</button>
             </div>
             <sc-if value="{{onGrants}}" hint-placeholder-val="{{ true }}">
-              <div role="radiogroup" aria-label="Sort leads by" style="display: inline-flex; padding: 4px; border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.line}}">
-                <sc-for list="{{sorts}}" as="s" hint-placeholder-count="3">
-                  <button type="button" role="radio" aria-checked="{{s.aria}}" onClick="{{s.pick}}" style="min-height: 36px; padding: 0 12px; border: 0; border-radius: 9px; font: 600 14px Inter, sans-serif; cursor: pointer; background: {{s.bg}}; color: {{s.ink}}">{{s.label}}</button>
-                </sc-for>
+              <div style="display: inline-flex; align-items: center; gap: 8px">
+                <span aria-hidden="true" style="font-size: 14px; color: {{c.ink3}}">Sort</span>
+                <div role="radiogroup" aria-label="Sort leads by" style="display: inline-flex; padding: 4px; border-radius: 12px; background: {{c.surface}}; border: 1px solid {{c.line}}">
+                  <sc-for list="{{sorts}}" as="s" hint-placeholder-count="3">
+                    <button type="button" role="radio" aria-checked="{{s.aria}}" onClick="{{s.pick}}" style="min-height: 36px; padding: 0 12px; border: 0; border-radius: 9px; font: 600 14px Inter, sans-serif; cursor: pointer; background: {{s.bg}}; color: {{s.ink}}">{{s.label}}</button>
+                  </sc-for>
+                </div>
               </div>
             </sc-if>
           </div>
-          <p style="margin: 0; font-size: 14px; line-height: 1.5; color: {{c.ink3}}">{{orderNote}}</p>
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <h2 id="routes-title" style="margin: 0; font-size: 18px; font-weight: 600">{{routesTitle}}</h2>
+            <sc-if value="{{hasRoutesSub}}" hint-placeholder-val="{{ false }}">
+              <p style="margin: 0; font-size: 14px; color: {{c.ink3}}">{{routesSub}}</p>
+            </sc-if>
+          </div>
+          <sc-if value="{{onIndustry}}" hint-placeholder-val="{{ false }}">
+            <p role="note" style="margin: 0; display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: 12px; border: 1px solid {{c.ember}}; background: {{c.emberSoft}}; font-size: 14px; line-height: 1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.ember}}" stroke-width="2" aria-hidden="true" style="flex: none; margin-top: 2px"><path d="M12 3l10 18H2z"></path><path d="M12 10v5M12 18v.5"></path></svg><span>Inferred from public signals; not verified. A company that cites or works near your research may have no interest in funding it. SBIR/STTR covers NIH awards only.</span></p>
+            <p style="margin: 0; font-size: 14px; line-height: 1.5; color: {{c.ink3}}">Companies outside the United States may need a research-security review before any contact; the office makes that check.</p>
+          </sc-if>
           <sc-if value="{{hasChips}}" hint-placeholder-val="{{ true }}">
             <div role="group" aria-label="Show only grants from" style="display: flex; flex-wrap: wrap; gap: 6px">
               <sc-for list="{{chips}}" as="ch" hint-placeholder-count="5">
@@ -118,36 +153,59 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
           <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px">
             <sc-for list="{{mainLeads}}" as="l" hint-placeholder-count="3">
               <li class="fade-in" style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{l.border}}; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
-                <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap">
+                <div style="display: flex; gap: 6px 8px; align-items: center; flex-wrap: wrap">
                   <sc-for list="{{l.tags}}" as="tg" hint-placeholder-count="2">
                     <span style="padding: 3px 8px; border-radius: 6px; background: {{c.chip}}; font-size: 12px; font-weight: 600">{{tg}}</span>
                   </sc-for>
-                  <sc-if value="{{l.hasFit}}" hint-placeholder-val="{{ true }}">
-                    <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; background: {{l.pillBg}}; color: {{l.pillInk}}; font-size: 13px; font-weight: 650; white-space: nowrap"><span style="font-weight: 500; color: {{c.ink2}}">Match</span>{{l.band}}<b style="min-width: 28px; height: 22px; border-radius: 999px; display: inline-grid; place-items: center; padding: 0 6px; font-size: 13px; background: {{l.badgeBg}}; color: {{l.badgeInk}}; box-shadow: {{l.badgeRing}}">{{l.score}}</b></span>
-                  </sc-if>
-                  <sc-if value="{{l.plainRight}}" hint-placeholder-val="{{ false }}">
-                    <span style="margin-left: auto; font-size: 13px; color: {{c.ink2}}">{{l.rightLabel}} <b style="color: {{c.ink}}">{{l.rightValue}}</b></span>
-                  </sc-if>
+                  <div style="margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 8px">
+                    <sc-if value="{{l.hasFit}}" hint-placeholder-val="{{ true }}">
+                      <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; background: {{l.pillBg}}; color: {{l.pillInk}}; font-size: 13px; font-weight: 650; white-space: nowrap"><span style="font-weight: 500; color: {{c.ink2}}">Match</span>{{l.band}}<b style="min-width: 28px; height: 22px; border-radius: 999px; display: inline-grid; place-items: center; padding: 0 6px; font-size: 13px; background: {{l.badgeBg}}; color: {{l.badgeInk}}; box-shadow: {{l.badgeRing}}">{{l.score}}</b></span>
+                    </sc-if>
+                    <div style="display: flex; gap: 6px">
+                      <button type="button" onClick="{{l.keep}}" aria-pressed="{{l.keptAria}}" style="min-height: 36px; padding: 0 12px; border-radius: 10px; font: 600 14px Inter, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1px solid {{l.keepBorder}}; background: {{l.keepBg}}; color: {{l.keepInk}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>{{l.keepLabel}}</button>
+                      <button type="button" style="min-height: 36px; padding: 0 12px; border-radius: 10px; font: 600 14px Inter, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink2}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>Dismiss</button>
+                    </div>
+                  </div>
                 </div>
-                <button type="button" onClick="{{l.select}}" style="text-align: left; padding: 0; border: 0; background: transparent; color: {{c.ink}}; font: 600 19px/1.3 Newsreader, Georgia, serif; cursor: pointer">{{l.title}}</button>
-                <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; color: {{c.ink2}}">
-                  <span>{{l.fact1}}</span>
-                  <span>{{l.fact2}}</span>
-                </div>
-                <details style="border-top: 1px solid {{c.line}}; padding-top: 8px">
-                  <summary style="cursor: pointer; min-height: 40px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: {{c.accent}}">{{l.whyLabel}}</summary>
+                <h3 style="margin: 0"><button type="button" onClick="{{l.select}}" style="text-align: left; padding: 0; border: 0; background: transparent; color: {{c.ink}}; font: 600 19px/1.3 Newsreader, Georgia, serif; cursor: pointer">{{l.title}} <span aria-hidden="true" style="display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; font: 600 13px Inter, sans-serif; color: {{c.accent}}; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h9l3 3v15H6z"></path><path d="M9 12h6M9 16h6"></path></svg>Evidence</span></button></h3>
+                <sc-if value="{{l.hasNum}}" hint-placeholder-val="{{ true }}">
+                  <p style="margin: -4px 0 0; font-size: 14px; color: {{c.ink3}}">{{l.num}}</p>
+                </sc-if>
+                <dl style="margin: 0; display: flex; gap: 6px 28px; flex-wrap: wrap; font-size: 14px">
+                  <sc-for list="{{l.facts}}" as="ft" hint-placeholder-count="2">
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap"><dt style="color: {{c.ink3}}">{{ft.k}}</dt><dd style="margin: 0; color: {{c.ink}}">{{ft.v}} <span style="color: {{c.ink2}}">{{ft.rel}}</span></dd></div>
+                  </sc-for>
+                </dl>
+                <sc-if value="{{l.isGrant}}" hint-placeholder-val="{{ true }}">
                   <sc-if value="{{l.explained}}" hint-placeholder-val="{{ true }}">
-                    <p style="margin: 4px 0 0; font-size: 14px; line-height: 1.55; color: {{c.ink2}}">{{l.why}} <span style="padding: 2px 7px; border-radius: 999px; border: 1px solid {{c.accent}}; color: {{c.accent}}; font-size: 12px; font-weight: 600">Paper 1</span> <span style="padding: 2px 7px; border-radius: 999px; border: 1px solid {{c.accent}}; color: {{c.accent}}; font-size: 12px; font-weight: 600">Paper 2</span></p>
+                    <div style="display: flex; flex-direction: column; gap: 6px">
+                      <p style="margin: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: {{c.ink3}}"><span style="padding: 2px 7px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; font-weight: 600; color: {{c.ink2}}">Model text</span>Checked against the records it cites.</p>
+                      <p style="margin: 0; font-size: 14px; line-height: 1.55; color: {{c.ink2}}">{{l.what}}</p>
+                      <details style="border-top: 1px solid {{c.line}}; padding-top: 4px">
+                        <summary style="cursor: pointer; min-height: 40px; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; font-size: 14px; font-weight: 600; color: {{c.accent}}">{{l.whyWord}} <span style="font-weight: 400; color: {{c.ink3}}">cites 2 papers by the researcher</span></summary>
+                        <h4 style="margin: 4px 0 6px; font-size: 13px; font-weight: 600; color: {{c.ink3}}">From the researcher’s papers</h4>
+                        <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; color: {{c.ink2}}">
+                          <li><span style="padding: 2px 7px; border-radius: 999px; border: 1px solid {{c.accent}}; color: {{c.accent}}; font-size: 12px; font-weight: 600">Paper 1</span> [One sentence on the papers, copied from the cited record.]</li>
+                          <li><span style="padding: 2px 7px; border-radius: 999px; border: 1px solid {{c.accent}}; color: {{c.accent}}; font-size: 12px; font-weight: 600">Paper 2</span> [One sentence on the papers, copied from the cited record.]</li>
+                        </ul>
+                      </details>
+                    </div>
                   </sc-if>
                   <sc-if value="{{l.pending}}" hint-placeholder-val="{{ false }}">
-                    <p style="margin: 4px 0 0; font-size: 14px; color: {{c.ink3}}">A model is writing this now. It is checked against the cited papers before it shows.</p>
+                    <div style="display: flex; flex-direction: column; gap: 6px">
+                      <div class="shimmer" style="height: 14px; border-radius: 6px; background-image: linear-gradient(90deg, {{c.surface}} 0%, {{c.line}} 50%, {{c.surface}} 100%)"></div>
+                      <div class="shimmer" style="height: 14px; width: 70%; border-radius: 6px; background-image: linear-gradient(90deg, {{c.surface}} 0%, {{c.line}} 50%, {{c.surface}} 100%)"></div>
+                      <p style="margin: 0; font-size: 13px; color: {{c.ink3}}">Writing a cited explanation</p>
+                    </div>
                   </sc-if>
-                </details>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap">
-                  <button type="button" onClick="{{l.keep}}" aria-pressed="{{l.keptAria}}" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid {{l.keepBorder}}; background: {{l.keepBg}}; color: {{l.keepInk}}; font: 600 14px Inter, sans-serif; cursor: pointer">{{l.keepLabel}}</button>
-                  <button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink2}}; font: 600 14px Inter, sans-serif; cursor: pointer">Dismiss</button>
-                  <button type="button" onClick="{{l.select}}" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 0; background: transparent; color: {{c.ink2}}; font: 600 14px Inter, sans-serif; cursor: pointer; text-decoration: underline">Evidence</button>
-                </div>
+                </sc-if>
+                <sc-if value="{{l.isOrg}}" hint-placeholder-val="{{ false }}">
+                  <p style="margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 14px; line-height: 1.5; color: {{c.ink2}}"><span style="padding: 2px 7px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; font-weight: 600">Inference</span>{{l.why}}</p>
+                  <details style="border-top: 1px solid {{c.line}}; padding-top: 4px">
+                    <summary style="cursor: pointer; min-height: 40px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: {{c.accent}}">Your papers they cite <span style="font-weight: 400; color: {{c.ink3}}">2</span></summary>
+                    <ul style="list-style: none; margin: 0; padding: 0; font-size: 14px; color: {{c.ink2}}"><li>[Paper title], [year]</li><li>[Paper title], [year]</li></ul>
+                  </details>
+                </sc-if>
               </li>
             </sc-for>
           </ul>
@@ -157,36 +215,59 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
               <ul style="list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px">
                 <sc-for list="{{weakLeads}}" as="l" hint-placeholder-count="3">
                   <li class="fade-in" style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{l.border}}; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
-                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap">
+                    <div style="display: flex; gap: 6px 8px; align-items: center; flex-wrap: wrap">
                       <sc-for list="{{l.tags}}" as="tg" hint-placeholder-count="2">
                         <span style="padding: 3px 8px; border-radius: 6px; background: {{c.chip}}; font-size: 12px; font-weight: 600">{{tg}}</span>
                       </sc-for>
-                      <sc-if value="{{l.hasFit}}" hint-placeholder-val="{{ true }}">
-                        <span style="margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; background: {{l.pillBg}}; color: {{l.pillInk}}; font-size: 13px; font-weight: 650; white-space: nowrap"><span style="font-weight: 500; color: {{c.ink2}}">Match</span>{{l.band}}<b style="min-width: 28px; height: 22px; border-radius: 999px; display: inline-grid; place-items: center; padding: 0 6px; font-size: 13px; background: {{l.badgeBg}}; color: {{l.badgeInk}}; box-shadow: {{l.badgeRing}}">{{l.score}}</b></span>
-                      </sc-if>
-                      <sc-if value="{{l.plainRight}}" hint-placeholder-val="{{ false }}">
-                        <span style="margin-left: auto; font-size: 13px; color: {{c.ink2}}">{{l.rightLabel}} <b style="color: {{c.ink}}">{{l.rightValue}}</b></span>
-                      </sc-if>
+                      <div style="margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 8px">
+                        <sc-if value="{{l.hasFit}}" hint-placeholder-val="{{ true }}">
+                          <span style="display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; background: {{l.pillBg}}; color: {{l.pillInk}}; font-size: 13px; font-weight: 650; white-space: nowrap"><span style="font-weight: 500; color: {{c.ink2}}">Match</span>{{l.band}}<b style="min-width: 28px; height: 22px; border-radius: 999px; display: inline-grid; place-items: center; padding: 0 6px; font-size: 13px; background: {{l.badgeBg}}; color: {{l.badgeInk}}; box-shadow: {{l.badgeRing}}">{{l.score}}</b></span>
+                        </sc-if>
+                        <div style="display: flex; gap: 6px">
+                          <button type="button" onClick="{{l.keep}}" aria-pressed="{{l.keptAria}}" style="min-height: 36px; padding: 0 12px; border-radius: 10px; font: 600 14px Inter, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1px solid {{l.keepBorder}}; background: {{l.keepBg}}; color: {{l.keepInk}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg>{{l.keepLabel}}</button>
+                          <button type="button" style="min-height: 36px; padding: 0 12px; border-radius: 10px; font: 600 14px Inter, sans-serif; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink2}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>Dismiss</button>
+                        </div>
+                      </div>
                     </div>
-                    <button type="button" onClick="{{l.select}}" style="text-align: left; padding: 0; border: 0; background: transparent; color: {{c.ink}}; font: 600 19px/1.3 Newsreader, Georgia, serif; cursor: pointer">{{l.title}}</button>
-                    <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; color: {{c.ink2}}">
-                      <span>{{l.fact1}}</span>
-                      <span>{{l.fact2}}</span>
-                    </div>
-                    <details style="border-top: 1px solid {{c.line}}; padding-top: 8px">
-                      <summary style="cursor: pointer; min-height: 40px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: {{c.accent}}">{{l.whyLabel}}</summary>
+                    <h3 style="margin: 0"><button type="button" onClick="{{l.select}}" style="text-align: left; padding: 0; border: 0; background: transparent; color: {{c.ink}}; font: 600 19px/1.3 Newsreader, Georgia, serif; cursor: pointer">{{l.title}} <span aria-hidden="true" style="display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; font: 600 13px Inter, sans-serif; color: {{c.accent}}; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h9l3 3v15H6z"></path><path d="M9 12h6M9 16h6"></path></svg>Evidence</span></button></h3>
+                    <sc-if value="{{l.hasNum}}" hint-placeholder-val="{{ true }}">
+                      <p style="margin: -4px 0 0; font-size: 14px; color: {{c.ink3}}">{{l.num}}</p>
+                    </sc-if>
+                    <dl style="margin: 0; display: flex; gap: 6px 28px; flex-wrap: wrap; font-size: 14px">
+                      <sc-for list="{{l.facts}}" as="ft" hint-placeholder-count="2">
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap"><dt style="color: {{c.ink3}}">{{ft.k}}</dt><dd style="margin: 0; color: {{c.ink}}">{{ft.v}} <span style="color: {{c.ink2}}">{{ft.rel}}</span></dd></div>
+                      </sc-for>
+                    </dl>
+                    <sc-if value="{{l.isGrant}}" hint-placeholder-val="{{ true }}">
                       <sc-if value="{{l.explained}}" hint-placeholder-val="{{ true }}">
-                        <p style="margin: 4px 0 0; font-size: 14px; line-height: 1.55; color: {{c.ink2}}">{{l.why}} <span style="padding: 2px 7px; border-radius: 999px; border: 1px solid {{c.accent}}; color: {{c.accent}}; font-size: 12px; font-weight: 600">Paper 1</span> <span style="padding: 2px 7px; border-radius: 999px; border: 1px solid {{c.accent}}; color: {{c.accent}}; font-size: 12px; font-weight: 600">Paper 2</span></p>
+                        <div style="display: flex; flex-direction: column; gap: 6px">
+                          <p style="margin: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: {{c.ink3}}"><span style="padding: 2px 7px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; font-weight: 600; color: {{c.ink2}}">Model text</span>Checked against the records it cites.</p>
+                          <p style="margin: 0; font-size: 14px; line-height: 1.55; color: {{c.ink2}}">{{l.what}}</p>
+                          <details style="border-top: 1px solid {{c.line}}; padding-top: 4px">
+                            <summary style="cursor: pointer; min-height: 40px; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; font-size: 14px; font-weight: 600; color: {{c.accent}}">{{l.whyWord}} <span style="font-weight: 400; color: {{c.ink3}}">cites 2 papers by the researcher</span></summary>
+                            <h4 style="margin: 4px 0 6px; font-size: 13px; font-weight: 600; color: {{c.ink3}}">From the researcher’s papers</h4>
+                            <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; color: {{c.ink2}}">
+                              <li><span style="padding: 2px 7px; border-radius: 999px; border: 1px solid {{c.accent}}; color: {{c.accent}}; font-size: 12px; font-weight: 600">Paper 1</span> [One sentence on the papers, copied from the cited record.]</li>
+                              <li><span style="padding: 2px 7px; border-radius: 999px; border: 1px solid {{c.accent}}; color: {{c.accent}}; font-size: 12px; font-weight: 600">Paper 2</span> [One sentence on the papers, copied from the cited record.]</li>
+                            </ul>
+                          </details>
+                        </div>
                       </sc-if>
                       <sc-if value="{{l.pending}}" hint-placeholder-val="{{ false }}">
-                        <p style="margin: 4px 0 0; font-size: 14px; color: {{c.ink3}}">A model is writing this now. It is checked against the cited papers before it shows.</p>
+                        <div style="display: flex; flex-direction: column; gap: 6px">
+                          <div class="shimmer" style="height: 14px; border-radius: 6px; background-image: linear-gradient(90deg, {{c.surface}} 0%, {{c.line}} 50%, {{c.surface}} 100%)"></div>
+                          <div class="shimmer" style="height: 14px; width: 70%; border-radius: 6px; background-image: linear-gradient(90deg, {{c.surface}} 0%, {{c.line}} 50%, {{c.surface}} 100%)"></div>
+                          <p style="margin: 0; font-size: 13px; color: {{c.ink3}}">Writing a cited explanation</p>
+                        </div>
                       </sc-if>
-                    </details>
-                    <div style="display: flex; gap: 8px; flex-wrap: wrap">
-                      <button type="button" onClick="{{l.keep}}" aria-pressed="{{l.keptAria}}" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid {{l.keepBorder}}; background: {{l.keepBg}}; color: {{l.keepInk}}; font: 600 14px Inter, sans-serif; cursor: pointer">{{l.keepLabel}}</button>
-                      <button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink2}}; font: 600 14px Inter, sans-serif; cursor: pointer">Dismiss</button>
-                      <button type="button" onClick="{{l.select}}" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 0; background: transparent; color: {{c.ink2}}; font: 600 14px Inter, sans-serif; cursor: pointer; text-decoration: underline">Evidence</button>
-                    </div>
+                    </sc-if>
+                    <sc-if value="{{l.isOrg}}" hint-placeholder-val="{{ false }}">
+                      <p style="margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 14px; line-height: 1.5; color: {{c.ink2}}"><span style="padding: 2px 7px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; font-weight: 600">Inference</span>{{l.why}}</p>
+                      <details style="border-top: 1px solid {{c.line}}; padding-top: 4px">
+                        <summary style="cursor: pointer; min-height: 40px; display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: {{c.accent}}">Your papers they cite <span style="font-weight: 400; color: {{c.ink3}}">2</span></summary>
+                        <ul style="list-style: none; margin: 0; padding: 0; font-size: 14px; color: {{c.ink2}}"><li>[Paper title], [year]</li><li>[Paper title], [year]</li></ul>
+                      </details>
+                    </sc-if>
                   </li>
                 </sc-for>
               </ul>
@@ -211,6 +292,11 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
             <button type="button" onClick="{{toCompare}}" disabled="{{noKept}}" style="min-height: 44px; border: 0; border-radius: 10px; background: {{shortBtnBg}}; color: {{shortBtnInk}}; font: 600 15px Inter, sans-serif; cursor: pointer">Compare and hand off</button>
           </section>
           <aside aria-label="Evidence" style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 18px; display: flex; flex-direction: column; gap: 12px; flex: 1 1 auto; min-height: 0; overflow-y: auto">
+            <sc-if value="{{noEv}}" hint-placeholder-val="{{ true }}">
+              <div style="font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: {{c.ink3}}">Evidence</div>
+              <p style="margin: 0; font-size: 14px; line-height: 1.5; color: {{c.ink3}}">Pick a card’s title to see its record here. Every value is copied from the record.</p>
+            </sc-if>
+            <sc-if value="{{hasEv}}" hint-placeholder-val="{{ false }}">
             <div style="font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: {{c.ink3}}">Evidence · {{ev.kind}}</div>
             <div style="font: 600 18px/1.3 Newsreader, Georgia, serif">{{ev.title}}</div>
             <dl style="margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; font-size: 14px">
@@ -228,6 +314,7 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
             </sc-if>
             <p style="margin: 0; font-size: 13px; line-height: 1.5; color: {{c.ink3}}">Every value here is copied from the record. Source: {{ev.source}} · fetched [date].</p>
             <a href="#" style="font-size: 14px; font-weight: 600; color: {{c.accent}}">Open the record at {{ev.source}}</a>
+            </sc-if>
           </aside>
         </div>
       </div>
@@ -297,62 +384,76 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
           </div>
         </sc-if>
         <sc-if value="{{hasKept}}" hint-placeholder-val="{{ true }}">
-          <div style="border-radius: 14px; border: 1px solid {{c.line}}; overflow-x: auto">
-            <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 760px">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <h2 id="compare-title" style="margin: 0; font-size: 18px; font-weight: 600">{{compareTitle}}</h2>
+            <p style="margin: 0; font-size: 14px; line-height: 1.5; color: {{c.ink3}}">Every cell is copied from its record or counted from it by code. Press a cell to see the record.<span class="wide-only"> Press a column name to sort.</span></p>
+            <label class="narrow-only" style="align-items: center; gap: 8px; font-size: 14px; color: {{c.ink2}}">Sort by
+              <select style="min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; color: {{c.ink}}; font: 500 14px Inter, sans-serif"><option>Perch’s order</option><option>Lead, A to Z or low to high</option><option>Money, A to Z or low to high</option></select>
+            </label>
+          </div>
+
+          <!-- The hand-off comes before the table, so drafting needs no scroll. -->
+          <section aria-labelledby="ho-h" style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+            <h2 id="ho-h" style="margin: 0; font-size: 18px; font-weight: 600">Hand off</h2>
+            <p style="margin: 0; font-size: 14px; line-height: 1.5; color: {{c.ink2}}">Perch drafts an email to the Temple office for these leads. You edit it and send it yourself. Perch never sends it and does not save it.</p>
+            <fieldset style="border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+              <legend style="padding: 0; margin-bottom: 6px; font-size: 15px; font-weight: 600">Which office?</legend>
+              <sc-for list="{{offices}}" as="o" hint-placeholder-count="2">
+                <label style="display: flex; gap: 10px; align-items: flex-start; box-sizing: border-box; min-height: 44px; padding: 8px 12px; border-radius: 10px; border: 1px solid {{o.border}}; opacity: {{o.opacity}}; cursor: pointer">
+                  <input type="radio" name="office" checked="{{o.checked}}" disabled="{{o.off}}" onChange="{{o.pick}}" style="width: 20px; height: 20px; margin: 2px 0 0">
+                  <span style="font-size: 14px; line-height: 1.5"><b>{{o.name}}</b><span style="color: {{c.ink3}}"> · {{o.count}}</span></span>
+                </label>
+              </sc-for>
+            </fieldset>
+            <p style="margin: 0; font-size: 14px; color: {{c.ink2}}">To: left blank for you. <a href="#" style="color: {{c.accent}}">{{officeName}} contacts on research.temple.edu</a></p>
+            <sc-if value="{{hasDocs}}" hint-placeholder-val="{{ false }}">
+              <label style="display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px"><input type="checkbox" style="width: 20px; height: 20px"><span>Mask private text in exports and hand-offs</span></label>
+            </sc-if>
+            <div>
+              <button type="button" onClick="{{draft}}" style="min-height: 48px; padding: 0 20px; border-radius: 10px; font: 600 15px Inter, sans-serif; cursor: pointer; border: 1px solid {{draftBorder}}; background: {{draftBg}}; color: {{draftInk}}">{{draftLabel}}</button>
+            </div>
+            <sc-if value="{{hasDraft}}" hint-placeholder-val="{{ false }}">
+              <div class="fade-in" style="display: flex; flex-direction: column; gap: 8px">
+                <p style="margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13px; line-height: 1.5; color: {{c.ink3}}"><span style="padding: 2px 7px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; font-weight: 600; color: {{c.ink2}}">Model text</span><span>The opening paragraph was written by [model name] and checked against the records it cites. The list of leads, dates, amounts and papers is written by code.</span></p>
+                <label for="ho-subject" style="font-size: 14px; font-weight: 600">Subject</label>
+                <input id="ho-subject" type="text" value="{{draftSubject}}" style="min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; color: {{c.ink}}; font: 400 15px Inter, sans-serif">
+                <label for="ho-body" style="font-size: 14px; font-weight: 600">Email</label>
+                <textarea id="ho-body" rows="12" value="{{draftBody}}" style="resize: vertical; padding: 12px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; color: {{c.ink}}; font: 400 14px/1.6 Inter, sans-serif"></textarea>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                  <button type="button" style="min-height: 44px; padding: 0 18px; border-radius: 10px; border: 0; background: {{c.accent}}; color: {{c.onAccent}}; font: 600 15px Inter, sans-serif; cursor: pointer">Copy the draft</button>
+                  <button type="button" style="min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font: 600 15px Inter, sans-serif; cursor: pointer">Open in my mail app</button>
+                </div>
+                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: {{c.ink3}}">Open in my mail app also copies the draft. A long draft is too long for a mail link: paste it into the new message.</p>
+              </div>
+            </sc-if>
+          </section>
+
+          <sc-if value="{{hasIndustryKept}}" hint-placeholder-val="{{ true }}">
+            <p role="note" style="margin: 0; display: flex; gap: 10px; align-items: flex-start; padding: 10px 14px; border-radius: 12px; border: 1px solid {{c.ember}}; background: {{c.emberSoft}}; font-size: 14px; line-height: 1.5"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.ember}}" stroke-width="2" aria-hidden="true" style="flex: none; margin-top: 2px"><path d="M12 3l10 18H2z"></path><path d="M12 10v5M12 18v.5"></path></svg><span>Industry leads are inferred from public signals and not verified. Their records hold no amount or deadline.</span></p>
+          </sc-if>
+
+          <div role="region" aria-labelledby="compare-title" tabindex="0" style="border-radius: 14px; border: 1px solid {{c.line}}; overflow-x: auto">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 860px">
               <thead><tr style="background: {{c.surface}}; text-align: left">
-                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Lead</th>
-                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Money</th>
-                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Closes</th>
-                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Instrument or relationship</th>
-                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Evidence</th>
-                <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600">Temple office</th>
+                <sc-for list="{{cols}}" as="h" hint-placeholder-count="6">
+                  <th scope="col" style="padding: 12px 14px; color: {{c.ink2}}; font-weight: 600; white-space: nowrap">{{h}} <span aria-hidden="true" style="color: {{c.ink3}}">↕</span></th>
+                </sc-for>
               </tr></thead>
               <tbody>
                 <sc-for list="{{keptList}}" as="k" hint-placeholder-count="2">
                   <tr class="fade-in" style="border-top: 1px solid {{c.line}}">
-                    <th scope="row" style="padding: 12px 14px; text-align: left; font-weight: 600">{{k.title}}<div style="font-weight: 400; font-size: 12px; color: {{c.ink3}}">{{k.kind}}</div></th>
+                    <th scope="row" style="padding: 12px 14px; text-align: left; font-weight: 600"><span style="display: inline-block; margin-right: 6px; padding: 2px 6px; border-radius: 6px; background: {{c.chip}}; font-size: 11px; font-weight: 600">{{k.kindShort}}</span>{{k.title}}<div style="font-weight: 400; font-size: 12px; color: {{c.ink3}}">Office: {{k.office}}</div></th>
                     <td style="padding: 12px 14px">{{k.money}}</td>
                     <td style="padding: 12px 14px">{{k.closes}}</td>
+                    <td style="padding: 12px 14px">{{k.code}}</td>
                     <td style="padding: 12px 14px">{{k.instrument}}</td>
                     <td style="padding: 12px 14px; color: {{c.accent}}; font-weight: 600">{{k.evidence}}</td>
-                    <td style="padding: 12px 14px; color: {{c.ink2}}">{{k.office}}</td>
                   </tr>
                 </sc-for>
               </tbody>
             </table>
           </div>
-          <p style="margin: -8px 0 0; font-size: 13px; color: {{c.ink3}}">Each cell is copied from its record or counted from it by code. Industry records state no amount or deadline.</p>
-
-          <section style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 20px; display: flex; flex-direction: column; gap: 14px">
-            <h2 style="margin: 0; font-size: 18px; font-weight: 600">Hand off to a Temple office</h2>
-            <div role="radiogroup" aria-label="Office" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px">
-              <sc-for list="{{offices}}" as="o" hint-placeholder-count="2">
-                <button type="button" role="radio" aria-checked="{{o.aria}}" onClick="{{o.pick}}" style="text-align: left; min-height: 72px; padding: 12px 14px; border-radius: 12px; border: 2px solid {{o.border}}; background: transparent; color: {{c.ink}}; cursor: pointer; display: flex; flex-direction: column; gap: 4px">
-                  <span style="font: 600 15px Inter, sans-serif">{{o.name}}</span>
-                  <span style="font: 400 13px Inter, sans-serif; color: {{c.ink2}}">{{o.note}}</span>
-                </button>
-              </sc-for>
-            </div>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap">
-              <button type="button" onClick="{{draft}}" style="min-height: 48px; padding: 0 20px; border: 0; border-radius: 10px; background: {{c.accent}}; color: {{c.onAccent}}; font: 600 15px Inter, sans-serif; cursor: pointer">{{draftLabel}}</button>
-              <span style="font-size: 13px; color: {{c.ink3}}">A draft only. Perch never sends it and does not save it.</span>
-            </div>
-            <sc-if value="{{hasDraft}}" hint-placeholder-val="{{ false }}">
-              <div class="fade-in" style="border-radius: 12px; border: 1px solid {{c.line}}; background: {{c.bg}}; padding: 16px; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.6">
-                <div><span style="color: {{c.ink3}}">To:</span> <i style="color: {{c.ink3}}">left empty for you</i></div>
-                <div><span style="color: {{c.ink3}}">Subject:</span> {{draftSubject}}</div>
-                <p style="margin: 0"><span style="padding: 1px 6px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; color: {{c.ink2}}">Model-written, checked</span> [A two-to-four-sentence opening about the papers and the kept leads.]</p>
-                <ul style="margin: 0; padding-left: 20px; color: {{c.ink2}}">
-                  <sc-for list="{{keptList}}" as="k" hint-placeholder-count="2"><li>{{k.title}}: {{k.closes}}, {{k.money}}</li></sc-for>
-                </ul>
-                <p style="margin: 0; color: {{c.ink3}}">Dates and amounts above are copied from the records by code.</p>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap">
-                  <button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer">Copy</button>
-                  <button type="button" style="min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer">Open in mail</button>
-                </div>
-              </div>
-            </sc-if>
-          </section>
+          <p style="margin: 0; font-size: 13px; color: {{c.ink3}}">Money and dates are as each record states them. The office under each lead is the Temple office that handles that route.</p>
         </sc-if>
       </div>
     </sc-if>
@@ -414,11 +515,26 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
                 <p style="margin: 0 0 0 50px; font-size: 14px; color: {{c.ink2}}">You stopped this question. The steps below show what ran; ask again to go on.</p>
               </sc-if>
 
-              <sc-if value="{{m.hasAnswer}}" hint-placeholder-val="{{ false }}">
+              <sc-if value="{{m.isModelAnswer}}" hint-placeholder-val="{{ false }}">
                 <div style="display: flex; gap: 14px; align-items: flex-start">
                   <svg width="36" height="36" viewBox="0 0 80 80" aria-hidden="true" style="flex: none"><path d="M19 42 C19 25 25 16 29 10 L33 19 C37 17.5 43 17.5 47 19 L51 10 C55 16 61 25 61 42 C61 60 52 70 40 70 C28 70 19 60 19 42 Z" fill="{{c.owlBody}}"></path><ellipse cx="40" cy="54" rx="12.5" ry="13" fill="{{c.owlBelly}}"></ellipse><circle cx="31" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="49" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="31" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="49" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="31" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="49" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="31" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><circle cx="49" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><path d="M37 41 L43 41 L40 47 Z" fill="{{c.ember}}"></path></svg>
                   <div style="flex: 1; min-width: 0; padding: 12px 14px; border-radius: 4px 14px 14px 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; display: flex; flex-direction: column; gap: 8px">
+                    <p style="margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13px; color: {{c.ink3}}"><span style="padding: 2px 7px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; font-weight: 600; color: {{c.ink2}}">Model text</span>Written by a model; checked against the records it cites.</p>
                     <p style="margin: 0; font-size: 15px; line-height: 1.55">{{m.answer}}</p>
+                    <sc-if value="{{m.hasTable}}" hint-placeholder-val="{{ false }}">
+                      <div role="region" aria-label="Table in Scout’s answer" tabindex="0" style="overflow-x: auto; border-radius: 10px; border: 1px solid {{c.line}}">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 420px">
+                          <thead><tr style="background: {{c.bg}}; text-align: left">
+                            <sc-for list="{{m.tableHead}}" as="th" hint-placeholder-count="3"><th scope="col" style="padding: 8px 12px; color: {{c.ink2}}; font-weight: 600">{{th}}</th></sc-for>
+                          </tr></thead>
+                          <tbody>
+                            <sc-for list="{{m.tableRows}}" as="tr" hint-placeholder-count="2">
+                              <tr style="border-top: 1px solid {{c.line}}"><th scope="row" style="padding: 8px 12px; text-align: left; font-weight: 600">{{tr.a}}</th><td style="padding: 8px 12px">{{tr.b}}</td><td style="padding: 8px 12px">{{tr.c}}</td></tr>
+                            </sc-for>
+                          </tbody>
+                        </table>
+                      </div>
+                    </sc-if>
                     <div style="display: flex; gap: 6px; flex-wrap: wrap">
                       <sc-for list="{{m.cites}}" as="ct" hint-placeholder-count="2">
                         <button type="button" aria-label="{{ct.aria}}" style="min-height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid {{c.accent}}; background: transparent; color: {{c.accent}}; font: 600 12px Inter, sans-serif; cursor: pointer">{{ct.label}}</button>
@@ -428,22 +544,37 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
                 </div>
               </sc-if>
 
-              <sc-if value="{{m.hasReview}}" hint-placeholder-val="{{ false }}">
-                <div style="margin-left: 50px; padding: 12px 14px; border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; display: flex; flex-direction: column; gap: 10px">
-                  <p style="margin: 0; font-size: 15px; line-height: 1.5"><b>{{m.summary}}</b></p>
-                  <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
-                    <sc-for list="{{m.items}}" as="it" hint-placeholder-count="3">
-                      <li style="display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.5">
-                        <span style="flex: none; display: inline-flex; gap: 4px; padding: 2px 8px; border-radius: 999px; background: {{it.bg}}; color: {{it.ink}}; font-size: 12px; font-weight: 600"><span aria-hidden="true">{{it.mark}}</span>{{it.label}}</span>
-                        <span><span style="color: {{c.ink}}">{{it.req}}</span><br><span style="color: {{c.ink3}}; font-size: 13px">{{it.where}}</span></span>
-                      </li>
-                    </sc-for>
-                  </ul>
-                  <p style="margin: 0; font-size: 13px; color: {{c.ink3}}">Each item is quoted from the record by code. The marks come from the same checking model that verifies explanations; it reads, it does not write. Nothing here is advice on whether to apply.</p>
-                  <div style="display: flex; gap: 6px; flex-wrap: wrap">
-                    <sc-for list="{{m.cites}}" as="ct" hint-placeholder-count="2">
-                      <button type="button" aria-label="{{ct.aria}}" style="min-height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid {{c.accent}}; background: transparent; color: {{c.accent}}; font: 600 12px Inter, sans-serif; cursor: pointer">{{ct.label}}</button>
-                    </sc-for>
+              <sc-if value="{{m.isCodeAnswer}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; gap: 14px; align-items: flex-start">
+                  <svg width="36" height="36" viewBox="0 0 80 80" aria-hidden="true" style="flex: none"><path d="M19 42 C19 25 25 16 29 10 L33 19 C37 17.5 43 17.5 47 19 L51 10 C55 16 61 25 61 42 C61 60 52 70 40 70 C28 70 19 60 19 42 Z" fill="{{c.owlBody}}"></path><ellipse cx="40" cy="54" rx="12.5" ry="13" fill="{{c.owlBelly}}"></ellipse><circle cx="31" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="49" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="31" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="49" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="31" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="49" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="31" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><circle cx="49" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><path d="M37 41 L43 41 L40 47 Z" fill="{{c.ember}}"></path></svg>
+                  <div style="flex: 1; min-width: 0; padding: 12px 14px; border-radius: 4px 14px 14px 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; display: flex; flex-direction: column; gap: 8px">
+                    <p style="margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13px; color: {{c.ink3}}"><span style="padding: 2px 7px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; font-weight: 600; color: {{c.ink2}}">Code, no model</span>Written by Perch’s code. The draft below is the step’s result.</p>
+                    <p style="margin: 0; font-size: 15px; line-height: 1.55">{{m.answer}}</p>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{m.hasDraft}}" hint-placeholder-val="{{ false }}">
+                <details open style="margin-left: 50px; border-radius: 12px; border: 1px solid {{c.line}}; background: {{c.surface}}; padding: 2px 14px 12px">
+                  <summary style="cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600">The draft to {{m.draftOffice}}</summary>
+                  <div style="display: flex; flex-direction: column; gap: 8px">
+                    <p style="margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13px; line-height: 1.5; color: {{c.ink3}}"><span style="padding: 2px 7px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; font-weight: 600; color: {{c.ink2}}">{{m.draftTag}}</span>{{m.draftTagText}}</p>
+                    <pre tabindex="0" aria-label="The draft to {{m.draftOffice}}" style="margin: 0; padding: 12px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; white-space: pre-wrap; overflow-wrap: anywhere; font: 400 13px/1.6 Inter, sans-serif">{{m.draftText}}</pre>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                      <button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer">Copy the draft</button>
+                      <a href="#" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; font-size: 14px; font-weight: 600; color: {{c.ink2}}">Office page</a>
+                    </div>
+                    <p style="margin: 0; font-size: 13px; color: {{c.ink3}}">Perch never sends this. The To line is yours to fill in.</p>
+                  </div>
+                </details>
+              </sc-if>
+
+              <sc-if value="{{m.isLimit}}" hint-placeholder-val="{{ false }}">
+                <div role="note" style="margin-left: 50px; display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; border: 1px solid {{c.ember}}; background: {{c.emberSoft}}; font-size: 14px; line-height: 1.5">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.ember}}" stroke-width="2" aria-hidden="true" style="flex: none; margin-top: 2px"><path d="M12 3l10 18H2z"></path><path d="M12 10v5M12 18v.5"></path></svg>
+                  <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start">
+                    <p style="margin: 0">Scout has reached its limit for this conversation. Start a new conversation to keep asking; your brief, kept {{keptWord}} and drafts stay as they are.</p>
+                    <button type="button" onClick="{{m.again}}" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.surface}}; color: {{c.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer">Start a new conversation and ask again</button>
                   </div>
                 </div>
               </sc-if>
@@ -472,28 +603,14 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
                       </li>
                     </sc-for>
                   </ol>
+                  <sc-if value="{{m.isLast}}" hint-placeholder-val="{{ true }}">
+                    <p style="margin: 0 0 12px; font-size: 13px; color: {{c.ink3}}">Model [model name]. [N] tokens so far in this conversation.</p>
+                  </sc-if>
                 </details>
               </sc-if>
             </li>
           </sc-for>
         </ol>
-
-        <details style="border-radius: 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; padding: 4px 16px">
-          <summary style="cursor: pointer; min-height: 48px; display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 600"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{c.accent}}" stroke-width="1.8" aria-hidden="true"><path d="M6 3h9l3 3v15H6z"></path><path d="M9 12l2 2 4-4"></path></svg>Check a draft aims for what it misses</summary>
-          <div style="display: flex; flex-direction: column; gap: 10px; padding: 4px 0 16px">
-            <p style="margin: 0; font-size: 14px; line-height: 1.5; color: {{c.ink2}}">Paste your draft proposal or specific aims. Scout lists what the grant’s record asks for, quoted, and marks each as addressed, not addressed or unclear in your text. It does not rewrite your text or judge your chances. Your text stays in this session, on local models.</p>
-            <label for="rv-target" style="font-size: 14px; font-weight: 600">Check against</label>
-            <select id="rv-target" value="{{rvTarget}}" onChange="{{onRvTarget}}" style="min-height: 44px; padding: 0 10px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; color: {{c.ink}}; font: 500 15px Inter, sans-serif">
-              <sc-for list="{{rvOptions}}" as="o" hint-placeholder-count="3"><option value="{{o}}">{{o}}</option></sc-for>
-            </select>
-            <label for="rv-text" style="font-size: 14px; font-weight: 600">Your draft proposal or specific aims</label>
-            <textarea id="rv-text" rows="5" placeholder="Paste text here" value="{{rvText}}" onChange="{{onRvText}}" style="resize: vertical; padding: 10px 12px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; color: {{c.ink}}; font: 400 14px/1.5 Inter, sans-serif"></textarea>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center">
-              <button type="button" onClick="{{review}}" style="min-height: 44px; padding: 0 18px; border: 0; border-radius: 10px; background: {{c.accent}}; color: {{c.onAccent}}; font: 600 15px Inter, sans-serif; cursor: pointer">Check what it misses</button>
-              <button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font: 600 15px Inter, sans-serif; cursor: pointer">Or upload a file</button>
-            </div>
-          </div>
-        </details>
 
         <sc-if value="{{hasMeta}}" hint-placeholder-val="{{ false }}">
           <p style="margin: 0; font-size: 12.5px; color: {{c.ink3}}; text-align: center">{{meta}}</p>
@@ -503,6 +620,9 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
           <label for="scout-q" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">{{askLabel}}</label>
           <input id="scout-q" type="text" placeholder="{{placeholder}}" value="{{draftQ}}" onChange="{{onQ}}" style="flex: 1; min-width: 0; min-height: 52px; padding: 0 16px; border: 0; background: transparent; color: {{c.ink}}; font: 400 16px Inter, sans-serif">
           <button type="submit" aria-disabled="{{busyAria}}" style="min-height: 52px; padding: 0 22px; border: 0; border-radius: 14px; background: {{askBtnBg}}; color: {{askBtnInk}}; font: 600 15px Inter, sans-serif; cursor: pointer">Ask</button>
+          <sc-if value="{{hasConv}}" hint-placeholder-val="{{ true }}">
+            <button type="button" onClick="{{newConv}}" aria-label="New conversation" title="Start a new conversation" style="min-height: 52px; padding: 0 16px; border: 1px solid {{c.line}}; border-radius: 14px; background: transparent; color: {{c.ink2}}; font: 600 14px Inter, sans-serif; cursor: pointer; white-space: nowrap">New<span class="wide-only">&nbsp;conversation</span></button>
+          </sc-if>
         </form>
       </section>
     </sc-if>
@@ -519,7 +639,7 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
 class Component extends DCLogic {
   constructor(p) {
     super(p);
-    this.state = { step: 0, tab: 'routes', route: 'A', sort: 'order', filter: null, evOpen: false, sel: 0, kept: {}, office: 'rd', draft: false, msgs: [], q: '', rvTarget: ['[Kept grant 1]', '[Kept grant 2]', '[Top grant in Routes]'][0], rvText: '' };
+    this.state = { step: 0, tab: 'routes', route: 'A', sort: 'order', filter: null, evOpen: false, sel: -1, kept: {}, office: 'rd', draft: false, msgs: [], q: '' };
     this.timers = [];
     this.xt = {};
     this.timer = null;
@@ -531,18 +651,21 @@ class Component extends DCLogic {
   // placeholders stand in for values a record or the question would supply.
   plan(text) {
     const t = text.toLowerCase();
+    // The budget (web/scout.js x.limit): after a few questions in one conversation Scout stops and offers a new one.
+    if (this.state.msgs.length >= 3) return { steps: [], limit: true };
     if (/email|send|apply for me|submit|browse|web/.test(t)) return { steps: [],
       answer: 'Scout cannot send email or contact anyone. It can draft a hand-off to a Temple office for you to copy and send.' };
-    if (/review|aims|proposal/.test(t)) return { steps: [], review: true, cites: ['[Opportunity number]', 'Your draft (private)'] };
     if (/why|fit/.test(t)) return { steps: [
       { tool: 'get_record', where: 'code', chips: [['Record', '[top lead]']], result: '[Opportunity number]' },
       { tool: 'explain_fit', where: 'model', chips: [['Opportunity', '[Opportunity number]']], result: 'Explanation cites 2 papers' }],
       answer: '[Why the top lead fits, in two sentences, each citing a record.]', cites: ['[Opportunity number]', 'Paper 1', 'Paper 2'] };
-    if (/compare|kept|draft|hand-off|handoff|office/.test(t)) {
-      const steps = [{ tool: 'compare', where: 'code', chips: [['Leads', 'kept']], result: '[N] leads side by side' }];
-      if (/draft|hand-off|handoff|office/.test(t)) steps.push({ tool: 'draft_handoff', where: 'model', chips: [['Office', 'Research Development']], result: 'Draft shown for you to copy, not sent' });
-      return { steps, answer: '[A short comparison of the kept leads: money and close dates copied from the records.]', cites: ['[Opportunity number]', '[Company]'] };
-    }
+    if (/draft|hand-off|handoff|office/.test(t)) return { steps: [
+      { tool: 'draft_handoff', where: 'model', chips: [['Office', 'Research Development']], result: 'Draft shown for you to copy, not sent' }],
+      answer: 'A hand-off to Research Development about your [N] kept grants is shown below, to copy. Perch does not send it.',
+      draft: { office: 'Research Development', by: 'model',
+        text: 'Subject: Funding leads for [Researcher name]: [N] grants\n\n[A two-to-four-sentence opening about the papers and the kept leads, written by a model.]\n\n- [Opportunity title]: [close date], [amount]\n- [Opportunity title]: [close date], [amount]\n\nDates and amounts above are copied from the records by code.' } };
+    if (/compare|kept/.test(t)) return { steps: [{ tool: 'compare', where: 'code', chips: [['Leads', 'kept']], result: '[N] leads side by side' }],
+      answer: '[A short comparison of the kept leads: money and close dates copied from the records.]', table: true, cites: ['[Opportunity number]', '[Company]'] };
     const chips = [['Route', 'Grants']];
     const code = text.match(/\b([A-Z]\d{2})\b/);
     if (code) chips.push(['Activity codes', code[1]]);
@@ -562,7 +685,7 @@ class Component extends DCLogic {
     const p = extra || this.plan(text);
     const id = String(Date.now());
     const steps = p.steps.map((s) => ({ ...s, state: 'queued' }));
-    this.setState({ q: '', tab: 'scout', msgs: [...this.state.msgs, { id, q: text, steps, answer: p.answer, cites: p.cites || [], review: !!p.review, state: 'running', at: 0 }] });
+    this.setState({ q: '', tab: 'scout', msgs: [...this.state.msgs, { id, q: text, steps, answer: p.answer, cites: p.cites || [], limit: !!p.limit, table: !!p.table, draft: p.draft || null, state: 'running', at: 0 }] });
     this.next(id, 0);
   }
   // Every step runs at once; Stop ends the question between steps (S27, S28).
@@ -583,10 +706,6 @@ class Component extends DCLogic {
     (this.xt[id] || []).forEach(clearTimeout);
     this.xt[id] = [];
     this.patch(id, (x) => ({ ...x, state: 'stopped', steps: x.steps.map((s) => (s.state === 'running' ? { ...s, state: 'stopped' } : s)) }));
-  }
-  review() {
-    const target = this.state.rvTarget;
-    this.ask(`Check my draft aims against ${target}`, { steps: [], review: true, cites: ['[Opportunity number]', 'Your draft (private)'] });
   }
   run() {
     clearInterval(this.timer);
@@ -613,19 +732,20 @@ class Component extends DCLogic {
     // Agency tags: a known short name alone (NIH, NSF); any other sub-agency after its
     // department (DOD · ...). NSF programs open at any time show the record's own words.
     const G = [
-      { tags: ['NIH', '[Activity code]'], band: 'strong', agency: 'National Institutes of Health', dept: 'Department of Health and Human Services', closes: 'Closes [close date] · in [N] days', note: null },
-      { tags: ['NSF'], band: 'good', agency: 'U.S. National Science Foundation', dept: null, closes: 'Closes [date decades out] · Proposals accepted anytime', note: 'Proposals accepted anytime' },
-      { tags: ['DOD · [sub-agency]'], band: 'partial', agency: '[sub-agency]', dept: 'Department of Defense', closes: 'Closes [close date] · in [N] days', note: null },
-      { tags: ['NIH', '[Activity code]'], band: 'weak', agency: 'National Institutes of Health', dept: 'Department of Health and Human Services', closes: 'Closes [close date] · in [N] days', note: null },
-      { tags: ['NSF'], band: 'weak', agency: 'U.S. National Science Foundation', dept: null, closes: 'Closes [close date] · in [N] days', note: null },
+      { tags: ['NIH', '[Activity code]'], band: 'strong', agency: 'National Institutes of Health', dept: 'Department of Health and Human Services', closes: ['[close date]', 'in [N] days'], note: null },
+      { tags: ['NSF'], band: 'good', agency: 'U.S. National Science Foundation', dept: null, closes: ['Proposals accepted anytime', ''], note: 'Proposals accepted anytime' },
+      { tags: ['DOD · [sub-agency]'], band: 'partial', agency: '[sub-agency]', dept: 'Department of Defense', closes: ['[close date]', 'in [N] days'], note: null },
+      { tags: ['NIH', '[Activity code]'], band: 'weak', agency: 'National Institutes of Health', dept: 'Department of Health and Human Services', closes: ['[close date]', 'in [N] days'], note: null },
+      { tags: ['NSF'], band: 'weak', agency: 'U.S. National Science Foundation', dept: null, closes: ['[close date]', 'in [N] days'], note: null },
     ];
     const grants = G.map((g, i) => ({
       id: 'a' + i, kind: 'Funding opportunity', source: 'Grants.gov',
       tags: g.tags, band: g.band, rightLabel: 'Match', rightValue: '…',
       title: '[Opportunity title, copied from Grants.gov]',
-      fact1: g.closes, fact2: 'Award ceiling [amount]', closeRank: i === 1 ? 9 : i,
-      whyLabel: explained ? 'Why it fits · cites 2 papers' : 'Why it fits · being written',
-      why: '[One sentence on the opportunity, one on the papers, each cited.]',
+      isGrant: true, isOrg: false, hasNum: true, num: '[Opportunity number]',
+      facts: [{ k: 'Closes', v: g.closes[0], rel: g.closes[1] }, { k: 'Award size', v: '[amount]', rel: '' }], closeRank: i === 1 ? 9 : i,
+      whyWord: g.band === 'weak' ? 'How it relates' : 'Why it fits',
+      what: '[One sentence on the opportunity, copied from its record.]',
       notes: '[Eligibility notes, copied word for word from the record.] '.repeat(14).trim(),
       rows: [{ k: 'Number', v: '[opportunity number]' }, { k: 'Agency', v: g.agency }, ...(g.dept ? [{ k: 'Department', v: g.dept }] : []),
         { k: 'Closes', v: '[close date]' }, ...(g.note ? [{ k: 'Deadline note', v: g.note }] : []),
@@ -633,10 +753,11 @@ class Component extends DCLogic {
     }));
     const industry = [0, 1].map((i) => ({
       id: 'b' + i, kind: 'Industry lead (inferred)', source: 'OpenAlex',
-      tags: ['Inferred', 'Not verified'], rightLabel: 'Signals', rightValue: '[N] kinds',
+      tags: ['[Suggested relationship]', 'Two kinds of signal'], rightLabel: 'Signals', rightValue: '[N] kinds',
       title: '[Company name]',
-      fact1: 'Cite your papers: [N]', fact2: 'NIH SBIR/STTR in your topics: [N]',
-      whyLabel: 'How Perch found it', why: '[Counted by code from public records; no model.]',
+      isGrant: false, isOrg: true, hasNum: false, num: '',
+      facts: [{ k: 'Cite your papers', v: '[N], newest [date]', rel: '' }, { k: 'NIH SBIR/STTR in your topics', v: '[N], newest [date]', rel: '' }],
+      why: 'Inferred from public signals; not verified. Counted by code from public records; no model.',
       rows: [{ k: 'Company', v: '[name]' }, { k: 'Citing works', v: '[N], newest [date]' }, { k: 'SBIR/STTR', v: '[N], newest [date]' },
         { k: 'Topic works', v: '[N]' }],
     }));
@@ -653,16 +774,18 @@ class Component extends DCLogic {
     const shown = sorted.filter(passes);
     const list = st.route === 'A' ? (grantsIn ? shown : []) : (industryIn ? industry : []);
     const pool = st.route === 'A' ? shown : industry;
-    const sel = pool[Math.min(st.sel, pool.length - 1)];
+    const sel = st.sel >= 0 ? pool[Math.min(st.sel, pool.length - 1)] : null;
     const keptList = [...grants, ...industry].filter((l) => st.kept[l.id]).map((l) => ({
       title: l.title, kind: l.kind, kindShort: l.id[0] === 'a' ? 'Grant' : 'Industry',
       money: l.id[0] === 'a' ? '[amount]' : 'Not stated', closes: l.id[0] === 'a' ? '[close date]' : 'Not stated',
-      instrument: l.id[0] === 'a' ? '[Activity code]' : '[Suggested relationship]',
+      code: l.id[0] === 'a' ? '[Activity code]' : 'Not in the record',
+      instrument: l.id[0] === 'a' ? '[Grant type]' : '[Suggested relationship]',
       evidence: l.id[0] === 'a' ? 'Cites 2 papers' : '[N] kinds of signal',
       office: l.id[0] === 'a' ? 'Research Development' : 'Innovation and Technology Commercialization',
       remove: () => this.setState({ kept: { ...st.kept, [l.id]: false } }),
     }));
     const nKept = keptList.length;
+    const nGrantKept = keptList.filter((k) => k.kindShort === 'Grant').length, nIndKept = nKept - nGrantKept;
     const leads = list.map((l, i) => {
       const k = !!st.kept[l.id];
       return {
@@ -696,7 +819,7 @@ class Component extends DCLogic {
       { key: 'rd', name: 'Research Development', note: 'For the kept grants' },
       { key: 'itc', name: 'Innovation and Technology Commercialization', note: 'For the kept industry leads' },
     ];
-    const office = st.office || 'rd';
+    const office = (st.office === 'itc' ? nIndKept > 0 : nGrantKept > 0) ? (st.office || 'rd') : (nGrantKept > 0 ? 'rd' : 'itc');
     const TABS = [['routes', 'Routes'], ['profile', 'Profile'], ['compare', nKept ? `Compare (${nKept})` : 'Compare'], ['scout', 'Ask Scout']];
     return {
       c,
@@ -732,12 +855,21 @@ class Component extends DCLogic {
       keptList, noKept: nKept === 0,
       shortBorder: nKept ? c.accent : c.line,
       shortBtnBg: nKept ? c.accent : c.line, shortBtnInk: nKept ? c.onAccent : c.ink3,
-      offices: OFF.map((o) => ({ ...o, aria: String(o.key === office), border: o.key === office ? c.accent : c.line,
-        pick: () => this.setState({ office: o.key, draft: false }) })),
+      offices: OFF.map((o) => { const n = o.key === 'rd' ? nGrantKept : nIndKept, off = n === 0;
+        return { ...o, checked: o.key === office, off, opacity: off ? '.55' : '1', border: o.key === office ? c.accent : c.line,
+          count: off ? (o.key === 'rd' ? 'no kept grants' : 'no kept industry leads') : `${n} kept ${o.key === 'rd' ? (n === 1 ? 'grant' : 'grants') : (n === 1 ? 'industry lead' : 'industry leads')}`,
+          pick: () => this.setState({ office: o.key, draft: false }) }; }),
+      officeName: (OFF.find((o) => o.key === office) || OFF[0]).name,
       draft: () => this.setState({ draft: true }),
       draftLabel: st.draft ? 'Draft again' : 'Draft the email',
+      draftBg: st.draft ? 'transparent' : c.accent, draftInk: st.draft ? c.ink : c.onAccent, draftBorder: st.draft ? c.line : c.accent,
       hasDraft: !!st.draft,
       draftSubject: office === 'rd' ? 'Funding leads for [Researcher name]: [N] grants' : 'Industry leads for [Researcher name]: [N] companies',
+      draftBody: '[A two-to-four-sentence opening about the papers and the kept leads.]\n\n' + keptList.filter((k) => (k.kindShort === 'Grant') === (office === 'rd'))
+        .map((k) => `- ${k.title}: ${k.closes}, ${k.money}`).join('\n') + '\n\nDates and amounts above are copied from the records by code.',
+      compareTitle: `Compare ${nKept} kept ${nKept === 1 ? 'lead' : 'leads'}`,
+      cols: ['Lead', 'Money', 'Closes', 'Activity code', 'Instrument or relationship', 'Evidence'],
+      hasIndustryKept: nIndKept > 0,
       toRoutes: () => this.setState({ tab: 'routes' }),
       showFloat: nKept > 0 && st.tab !== 'compare',
       noMsgs: st.msgs.length === 0,
@@ -750,14 +882,6 @@ class Component extends DCLogic {
         const TOOLS = { search_opportunities: 'Search opportunities', get_record: 'Open a record', explain_fit: 'Explain the fit', compare: 'Compare leads', draft_handoff: 'Draft a hand-off' };
         const WHERE = { code: ['Code, no model', c.chip, c.ink2], model: this.props.cloud ? ['Cloud: Anthropic', c.emberSoft, c.ember] : ['Local model', c.chip, c.ink2] };
         const STATUS = { running: ['Running…', c.ink2], done: ['Done', c.accent], stopped: ['Not run', c.ink3] };
-        const REQ = [
-      { req: '[Stated research objective of the announcement, quoted]', state: 'ok', where: 'Aim 1, paragraph 2' },
-      { req: '[Required section, e.g. a data sharing plan, quoted]', state: 'no', where: 'Not found in the draft' },
-      { req: '[Stated eligibility or scope limit, quoted]', state: 'unclear', where: 'Aim 3 mentions it only in passing' },
-      { req: '[Stated review emphasis, quoted]', state: 'no', where: 'Not found in the draft' },
-    ];
-        const LAB = { ok: ['✓', 'Addressed', c.okBg || c.chip, c.okInk || c.accent], no: ['✕', 'Not addressed', c.noBg || c.chip, c.noInk || c.ember], unclear: ['?', 'Unclear', c.mayBg || c.chip, c.mayInk || c.ink2] };
-        const missed = REQ.filter((r) => r.state !== 'ok').length;
         const shown = m.steps.filter((s) => s.state !== 'queued');
         const cur = m.steps[m.at];
         const chipText = (s) => s.chips.map(([k, v]) => `${k}: ${v}`);
@@ -769,11 +893,20 @@ class Component extends DCLogic {
           progress: cur ? `${TOOLS[cur.tool]}…` : 'Scout is working…',
           stop: () => this.stop(m.id),
           isStopped: m.state === 'stopped',
-          hasAnswer: m.state === 'done' && !m.review,
+          isModelAnswer: m.state === 'done' && !m.limit && !(m.draft && m.draft.by),
+          isCodeAnswer: m.state === 'done' && !!(m.draft && m.draft.by),
           answer: m.answer,
-          hasReview: m.state === 'done' && m.review,
-          items: REQ.map((r) => ({ ...r, mark: LAB[r.state][0], label: LAB[r.state][1], bg: LAB[r.state][2], ink: LAB[r.state][3] })),
-          summary: `${REQ.length} things the record asks for: ${REQ.length - missed} addressed, ${missed} missing or unclear.`,
+          hasTable: !!m.table,
+          tableHead: ['Lead', 'Closes', 'Ceiling'],
+          tableRows: [{ a: '[Opportunity number]', b: '[close date]', c: '[amount]' }, { a: '[Company]', b: 'Not stated', c: 'Not stated' }],
+          hasDraft: m.state === 'done' && !!m.draft,
+          draftOffice: m.draft ? m.draft.office : '',
+          draftText: m.draft ? m.draft.text : '',
+          draftTag: m.draft && m.draft.by === 'model' ? 'Model text' : 'Code, no model',
+          draftTagText: m.draft && m.draft.by === 'model' ? 'The opening paragraph is written by a model and checked against the records it cites. The rest is Perch’s code.' : 'Every line is written by Perch’s code.',
+          isLimit: m.state === 'done' && !!m.limit,
+          again: () => { const q = st.msgs.length ? st.msgs[0].q : ''; this.setState({ msgs: [] }); this.ask(q); },
+          isLast: m.id === (st.msgs[st.msgs.length - 1] || {}).id,
           cites: m.cites.map((x) => ({ label: x, aria: `Evidence: ${x}` })),
           hasSteps: shown.length > 0,
           stepsLabel: `Steps (${shown.length})`,
@@ -786,34 +919,37 @@ class Component extends DCLogic {
         };
       }),
       hasMeta: st.msgs.length > 0,
-      meta: 'Model [model name]. [N] tokens so far in this conversation.',
+      meta: this.props.cloud ? 'Cloud: Anthropic' : 'Local model',
+      hasConv: st.msgs.length > 0, newConv: () => this.setState({ msgs: [], q: '' }),
+      keptWord: 'leads',
       askLabel: st.msgs.length ? 'Ask a follow-up' : 'Ask Scout',
       placeholder: st.msgs.length ? 'Ask a follow-up' : 'Ask Scout, for example: only R21s that close by March',
       draftQ: st.q, onQ: (e) => this.setState({ q: e.target.value }),
       submit: (e) => { e.preventDefault(); this.ask(st.q); },
       busyAria: String(this.busy()),
       askBtnBg: this.busy() ? c.line : c.accent, askBtnInk: this.busy() ? c.ink3 : c.onAccent,
-      rvOptions: ['[Kept grant 1]', '[Kept grant 2]', '[Top grant in Routes]'], rvTarget: st.rvTarget, rvText: st.rvText,
-      onRvTarget: (e) => this.setState({ rvTarget: e.target.value }),
-      onRvText: (e) => this.setState({ rvText: e.target.value }),
-      review: () => this.review(),
       aAria: String(st.route === 'A'), bAria: String(st.route === 'B'),
       aBg: st.route === 'A' ? c.accent : 'transparent', aInk: st.route === 'A' ? c.onAccent : c.ink2,
       bBg: st.route === 'B' ? c.accent : 'transparent', bInk: st.route === 'B' ? c.onAccent : c.ink2,
       nA: grantsIn ? '[N]' : '…', nB: industryIn ? '[N]' : '…',
       showA: () => this.setState({ route: 'A', sel: 0 }), showB: () => this.setState({ route: 'B', sel: 0 }),
       onGrants: st.route === 'A',
-      sorts: [['order', 'Perch’s order'], ['closing', 'Closing soon']].map(([k, label]) => ({
+      sorts: [['order', 'Score'], ['closing', 'Closing date']].map(([k, label]) => ({
         label, aria: String(st.sort === k), bg: st.sort === k ? c.accent : 'transparent', ink: st.sort === k ? c.onAccent : c.ink2,
         pick: () => this.setState({ sort: k, sel: 0 }) })),
-      orderNote: st.route === 'A'
-        ? (st.sort === 'closing' ? 'Sorted by closing date.'
-          : 'In Perch’s order: highest match first. Match is how closely each listing’s text matches the papers, from 0 to 100. It is not the odds of funding.')
-        : 'Companies with at least two kinds of public signal, counted by code. A lead is an inference, not a verified interest in funding.',
+      // The title says how many open opportunities there are; the line under it only reports live progress.
+      routesTitle: st.route === 'A' ? (filt ? `[N] of [N] open opportunities` : '[N] open opportunities') : '[N] industry leads',
+      hasRoutesSub: st.route === 'A' && !explained, routesSub: `[N] of [N] explained so far.`,
+      onIndustry: st.route === 'B',
+      hasDocs: !!this.props.docs,
+      stepsCount: `(${Math.min(st.step, 8)} of 8 done)`,
+      stepRows: STEPS.map((name, i) => ({ name, dot: i < st.step ? c.accent : c.line,
+        detail: i < st.step ? '[Detail written by the step] (0.[N] s)' : i === st.step ? 'In progress' : 'Waiting' })),
       waiting: list.length === 0,
       mainLeads, weakLeads, hasWeak: weakLeads.length > 0, weakLabel: `Weaker matches (${weakLeads.length})`,
       chips, hasChips: st.route === 'A' && grantsIn && agencies.size + codes.size >= 2,
-      ev: { kind: sel.kind, title: sel.title, rows: sel.rows, source: sel.source, notes: sel.notes || '', hasNotes: !!sel.notes },
+      noEv: !sel, hasEv: !!sel,
+      ev: sel ? { kind: sel.kind, title: sel.title, rows: sel.rows, source: sel.source, notes: sel.notes || '', hasNotes: !!sel.notes } : { kind: '', title: '', rows: [], source: '', notes: '', hasNotes: false },
       evNotesCls: st.evOpen ? '' : 'clamp', evOpenAria: String(!!st.evOpen),
       evNotesLabel: st.evOpen ? 'Show less' : 'Show the full text',
       toggleNotes: () => this.setState({ evOpen: !st.evOpen }),

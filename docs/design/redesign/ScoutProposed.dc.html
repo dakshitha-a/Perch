@@ -122,16 +122,51 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
                 <p style="margin: 0 0 0 50px; font-size: 14px; color: {{c.ink2}}">{{m.stoppedText}}</p>
               </sc-if>
 
-              <sc-if value="{{m.hasAnswer}}" hint-placeholder-val="{{ false }}">
+              <sc-if value="{{m.isModelAnswer}}" hint-placeholder-val="{{ false }}">
                 <div style="display: flex; gap: 14px; align-items: flex-start">
                   <svg width="36" height="36" viewBox="0 0 80 80" aria-hidden="true" style="flex: none"><path d="M19 42 C19 25 25 16 29 10 L33 19 C37 17.5 43 17.5 47 19 L51 10 C55 16 61 25 61 42 C61 60 52 70 40 70 C28 70 19 60 19 42 Z" fill="{{c.owlBody}}"></path><ellipse cx="40" cy="54" rx="12.5" ry="13" fill="{{c.owlBelly}}"></ellipse><circle cx="31" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="49" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="31" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="49" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="31" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="49" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="31" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><circle cx="49" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><path d="M37 41 L43 41 L40 47 Z" fill="{{c.ember}}"></path></svg>
                   <div style="flex: 1; min-width: 0; padding: 12px 14px; border-radius: 4px 14px 14px 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; display: flex; flex-direction: column; gap: 8px">
+                    <p style="margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13px; color: {{c.ink3}}"><span style="padding: 2px 7px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; font-weight: 600; color: {{c.ink2}}">Model text</span>Written by a model; checked against the records it cites.</p>
                     <p style="margin: 0; font-size: 15px; line-height: 1.55">{{m.answer}}</p>
                     <div style="display: flex; gap: 6px; flex-wrap: wrap">
                       <sc-for list="{{m.cites}}" as="ct" hint-placeholder-count="2">
                         <button type="button" onClick="{{ct.open}}" aria-label="{{ct.aria}}" style="min-height: 32px; padding: 0 10px; border-radius: 999px; border: 1px solid {{c.accent}}; background: transparent; color: {{c.accent}}; font: 600 12px Inter, sans-serif; cursor: pointer">{{ct.label}}</button>
                       </sc-for>
                     </div>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{m.isCodeAnswer}}" hint-placeholder-val="{{ false }}">
+                <div style="display: flex; gap: 14px; align-items: flex-start">
+                  <svg width="36" height="36" viewBox="0 0 80 80" aria-hidden="true" style="flex: none"><path d="M19 42 C19 25 25 16 29 10 L33 19 C37 17.5 43 17.5 47 19 L51 10 C55 16 61 25 61 42 C61 60 52 70 40 70 C28 70 19 60 19 42 Z" fill="{{c.owlBody}}"></path><ellipse cx="40" cy="54" rx="12.5" ry="13" fill="{{c.owlBelly}}"></ellipse><circle cx="31" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="49" cy="35" r="10.5" fill="{{c.owlFace}}"></circle><circle cx="31" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="49" cy="35" r="7.4" fill="#FFFFFF"></circle><circle cx="31" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="49" cy="35" r="5" fill="{{c.ember}}"></circle><circle cx="31" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><circle cx="49" cy="35" r="2.6" fill="{{c.owlPupil}}"></circle><path d="M37 41 L43 41 L40 47 Z" fill="{{c.ember}}"></path></svg>
+                  <div style="flex: 1; min-width: 0; padding: 12px 14px; border-radius: 4px 14px 14px 14px; background: {{c.surface}}; border: 1px solid {{c.line}}; display: flex; flex-direction: column; gap: 8px">
+                    <p style="margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13px; color: {{c.ink3}}"><span style="padding: 2px 7px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; font-weight: 600; color: {{c.ink2}}">Code, no model</span>Written by Perch’s code. The draft below is the step’s result.</p>
+                    <p style="margin: 0; font-size: 15px; line-height: 1.55">{{m.answer}}</p>
+                  </div>
+                </div>
+              </sc-if>
+
+              <sc-if value="{{m.hasDraft}}" hint-placeholder-val="{{ false }}">
+                <details open style="margin-left: 50px; border-radius: 12px; border: 1px solid {{c.line}}; background: {{c.surface}}; padding: 2px 14px 12px">
+                  <summary style="cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 15px; font-weight: 600">The draft to {{m.draftOffice}}</summary>
+                  <div style="display: flex; flex-direction: column; gap: 8px">
+                    <p style="margin: 0; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; font-size: 13px; line-height: 1.5; color: {{c.ink3}}"><span style="padding: 2px 7px; border-radius: 6px; border: 1px solid {{c.line}}; font-size: 11px; font-weight: 600; color: {{c.ink2}}">{{m.draftTag}}</span>{{m.draftTagText}}</p>
+                    <pre tabindex="0" aria-label="The draft to {{m.draftOffice}}" style="margin: 0; padding: 12px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.bg}}; white-space: pre-wrap; overflow-wrap: anywhere; font: 400 13px/1.6 Inter, sans-serif">{{m.draftText}}</pre>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                      <button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.line}}; background: transparent; color: {{c.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer">Copy the draft</button>
+                      <a href="#" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; font-size: 14px; font-weight: 600; color: {{c.ink2}}">Office page</a>
+                    </div>
+                    <p style="margin: 0; font-size: 13px; color: {{c.ink3}}">Perch never sends this. The To line is yours to fill in.</p>
+                  </div>
+                </details>
+              </sc-if>
+
+              <sc-if value="{{m.isLimit}}" hint-placeholder-val="{{ false }}">
+                <div role="note" style="margin-left: 50px; display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; border: 1px solid {{c.ember}}; background: {{c.cloudBg}}; font-size: 14px; line-height: 1.5">
+                  <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start">
+                    <p style="margin: 0">Scout has reached its limit for this conversation. Start a new conversation to keep asking; your brief, kept {{keptWord}} and drafts stay as they are.</p>
+                    <button type="button" onClick="{{m.again}}" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid {{c.line}}; background: {{c.surface}}; color: {{c.ink}}; font: 600 14px Inter, sans-serif; cursor: pointer">Start a new conversation and ask again</button>
                   </div>
                 </div>
               </sc-if>
@@ -164,6 +199,9 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
           <label for="scout-q" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Ask Scout</label>
           <input id="scout-q" type="text" placeholder="{{placeholder}}" value="{{draftQ}}" onChange="{{onQ}}" style="flex: 1; min-width: 0; min-height: 48px; padding: 0 14px; border: 0; background: transparent; color: {{c.ink}}; font: 400 16px Inter, sans-serif">
           <button type="submit" aria-disabled="{{busyAria}}" style="min-height: 48px; padding: 0 20px; border: 0; border-radius: 10px; background: {{askBg}}; color: {{askInk}}; font: 600 15px Inter, sans-serif; cursor: pointer">Ask</button>
+          <sc-if value="{{hasConv}}" hint-placeholder-val="{{ true }}">
+            <button type="button" onClick="{{newConv}}" aria-label="New conversation" title="Start a new conversation" style="min-height: 48px; padding: 0 16px; border: 1px solid {{c.line}}; border-radius: 10px; background: transparent; color: {{c.ink2}}; font: 600 14px Inter, sans-serif; cursor: pointer; white-space: nowrap">New conversation</button>
+          </sc-if>
         </form>
         <p style="margin: 0; font-size: 13px; color: {{c.ink3}}">{{rules}}</p>
       </section>
@@ -191,7 +229,7 @@ summary{list-style:none}summary::-webkit-details-marker{display:none}
   </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"student":{"editor":"boolean","default":false},"cloud":{"editor":"boolean","default":false},"later":{"editor":"boolean","default":true},"$preview":{"width":1280,"height":1100}}'>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":true},"student":{"editor":"boolean","default":false},"cloud":{"editor":"boolean","default":false},"later":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":1100}}'>
 class Component extends DCLogic {
   constructor(p) {
     super(p);
@@ -203,6 +241,8 @@ class Component extends DCLogic {
   // What Scout would call for a question. Placeholders stand in for values a record would supply.
   plan(text, student) {
     const t = text.toLowerCase();
+    // The budget: after a few questions in one conversation Scout stops and offers a new one.
+    if (this.state.msgs.length >= 3) return { steps: [], limit: true };
     if (/email|send|apply for me|submit|browse|web/.test(t)) return { steps: [],
       answer: student ? 'Scout cannot send anything or apply for you. It can draft a note to a Temple office for you to copy.'
         : 'Scout cannot send email or contact anyone. It can draft a hand-off to a Temple office for you to copy and send.' };
@@ -212,9 +252,10 @@ class Component extends DCLogic {
         { tool: 'explain_verdict', label: 'Explain a verdict', where: 'code', chips: [['Option', '[your top fellowship]', false]], result: '[N] rules met, [N] not shown in your CV' }],
         answer: '[Which stated requirements your CV meets, and which it does not show yet, each from the rule results.]', cites: ['[Fellowship name]'] };
       if (/compare|kept|note|office/.test(t)) return { steps: [
-        { tool: 'compare_options', label: 'Compare options', where: 'code', chips: [['Options', 'kept', false]], result: '[N] options side by side' },
-        { tool: 'draft_note', label: 'Draft a note', where: 'code', chips: [['Office', '[Temple office]', false]], result: 'note written by code, not sent' }],
-        answer: '[A short note to the office, listing the kept options with deadlines copied from their records. Sample options stay marked.]', cites: ['[Fellowship name]', '[Sample scholarship]'] };
+        { tool: 'draft_note', label: 'Draft a note', where: 'code', chips: [['Route', 'Fellowships', false]], result: 'note written by code, not sent' }],
+        answer: 'A note to Scholar Development and Fellowships Advising about your [N] kept fellowships is shown below, to copy. Perch does not send it.',
+        draft: { office: 'Scholar Development and Fellowships Advising', by: 'code',
+          text: 'Subject: Fellowships I am considering\n\nHello,\n\nI am looking at these fellowships and would like to talk about them:\n- [Fellowship name]: [deadline]\n\nDeadlines are copied from the records by code.' } };
       const chips = [];
       if (/after|deadline|march/.test(t)) chips.push(['Deadline after', '[the date you named]', true]);
       if (/\$|amount|at least|money/.test(t)) chips.push(['Amount at least', '[the amount you named]', true]);
@@ -227,9 +268,13 @@ class Component extends DCLogic {
       { tool: 'explain_fit', label: 'Explain the fit', where: 'model', chips: [['Opportunity', '[top lead]', false]], result: 'explanation cites 2 papers' }],
       answer: '[Why the top lead fits, in two sentences, each citing a record.]', cites: ['[Opportunity number]', 'Paper 1', 'Paper 2'] };
     if (/compare|kept|draft|hand-off|handoff|office/.test(t)) {
-      const steps = [{ tool: 'compare', label: 'Compare leads', where: 'code', chips: [['Leads', 'kept', false]], result: '[N] leads side by side' }];
-      if (/draft|hand-off|handoff|office/.test(t)) steps.push({ tool: 'draft_handoff', label: 'Draft a hand-off', where: 'model', chips: [['Office', 'Research Development', false]], result: 'draft shown below, not sent' });
-      return { steps, answer: '[A short comparison of the kept leads: money and close dates copied from the records.]', cites: ['[Opportunity number]', '[Company]'] };
+      if (/draft|hand-off|handoff|office/.test(t)) return { steps: [
+        { tool: 'draft_handoff', label: 'Draft a hand-off', where: 'model', chips: [['Office', 'Research Development', false]], result: 'draft shown below, not sent' }],
+        answer: 'A hand-off to Research Development about your [N] kept grants is shown below, to copy. Perch does not send it.',
+        draft: { office: 'Research Development', by: 'model',
+          text: 'Subject: Funding leads for [Researcher name]: [N] grants\n\n[A two-to-four-sentence opening about the papers and the kept leads, written by a model.]\n\n- [Opportunity title]: [close date], [amount]\n\nDates and amounts above are copied from the records by code.' } };
+      return { steps: [{ tool: 'compare', label: 'Compare leads', where: 'code', chips: [['Leads', 'kept', false]], result: '[N] leads side by side' }],
+        answer: '[A short comparison of the kept leads: money and close dates copied from the records.]', cites: ['[Opportunity number]', '[Company]'] };
     }
     const chips = [];
     if (/r21/.test(t)) chips.push(['Activity code', 'R21', true]);
@@ -246,7 +291,7 @@ class Component extends DCLogic {
     const p = this.plan(text, !!this.props.student);
     const id = String(Date.now());
     const steps = p.steps.map((s) => ({ ...s, state: 'queued', chips: s.chips.map(([k, v, rm]) => ({ k, v, rm })) }));
-    this.setState({ q: '', msgs: [...this.state.msgs, { id, q: text, steps, answer: p.answer, cites: p.cites || [], leads: !!p.leads, state: 'running', at: 0, rerun: false }] });
+    this.setState({ q: '', msgs: [...this.state.msgs, { id, q: text, steps, answer: p.answer, cites: p.cites || [], leads: !!p.leads, limit: !!p.limit, draft: p.draft || null, state: 'running', at: 0, rerun: false }] });
     this.next(id, 0);
   }
   busy() { return this.state.msgs.some((m) => m.state === 'running'); }
@@ -277,7 +322,8 @@ class Component extends DCLogic {
     const dark = this.props.dark ?? true;
     const student = !!this.props.student;
     const cloud = !!this.props.cloud && !student;
-    const later = this.props.later ?? true;
+    // The removable filter chips and the inline Keep lists are phase 2 of the Scout spec: not built, so off by default.
+    const later = this.props.later ?? false;
     const c = dark
       ? { bg: '#0F1715', surface: '#17221F', line: '#273631', chip: '#22302B', ink: '#E9EFEC', ink2: '#B3C1BC', ink3: '#93A39D', accent: '#7CCBA8', onAccent: '#0B1F17', ember: '#F0B54A',
           owlBody: '#8EA59E', owlBelly: '#2F3F3C', owlFace: '#3A4B47', owlPupil: '#0E1617', cloudBg: '#3A2F1A', cloudInk: '#F0C878' }
@@ -294,8 +340,7 @@ class Component extends DCLogic {
       return {
         q: m.q,
         isRunning: m.state === 'running',
-        progress: !m.steps.length ? 'Scout is reading your question…'
-          : `Step ${Math.min(m.at + 1, m.steps.length)} of ${m.steps.length}: ${cur ? cur.label : ''}…`,
+        progress: !m.steps.length ? 'Scout is working…' : `${cur ? cur.label : 'Scout is working'}…`,
         stop: () => this.stop(m.id),
         hasRead: done.length > 0,
         read: m.steps.map((s, si) => ({ s, si })).filter(({ s }) => s.state === 'done').map(({ s, si }) => ({
@@ -318,11 +363,18 @@ class Component extends DCLogic {
         }),
         isStopped: m.state === 'stopped',
         stoppedText: `Stopped. ${done.length} of ${m.steps.length} steps ran; what they found is listed here. Ask again to continue.`,
-        hasAnswer: m.state === 'done',
+        isModelAnswer: m.state === 'done' && !m.limit && !(m.draft && m.draft.by),
+        isCodeAnswer: m.state === 'done' && !!(m.draft && m.draft.by),
+        hasDraft: m.state === 'done' && !!m.draft,
+        draftOffice: m.draft ? m.draft.office : '', draftText: m.draft ? m.draft.text : '',
+        draftTag: m.draft && m.draft.by === 'model' ? 'Model text' : 'Code, no model',
+        draftTagText: m.draft && m.draft.by === 'model' ? 'The opening paragraph is written by a model and checked against the records it cites. The rest is Perch’s code.' : 'Every line is written by Perch’s code.',
+        isLimit: m.state === 'done' && !!m.limit,
+        again: () => { const q = st.msgs.length ? st.msgs[0].q : ''; this.setState({ msgs: [] }); this.ask(q); },
         answer: m.answer,
         cites: m.cites.map((x) => ({ label: x, aria: `Evidence: ${x}`, open: () => this.setState({ ev: x }) })),
         hasSteps: m.steps.length > 0 && m.state !== 'running',
-        stepsLabel: `Steps Scout ran (${done.length})`,
+        stepsLabel: `Steps (${done.length})`,
         steps: m.steps.map((s) => ({
           label: s.label, tool: s.tool,
           where: WHERE[s.where][0], whereBg: WHERE[s.where][1], whereInk: WHERE[s.where][2],
@@ -346,6 +398,7 @@ class Component extends DCLogic {
       lede: student ? 'Ask about your options in plain words. Scout runs Perch’s own tools and shows how it read your question.'
         : 'Ask about this brief in plain words. Scout runs Perch’s own tools and shows how it read your question.',
       noMsgs: st.msgs.length === 0,
+      hasConv: st.msgs.length > 0, newConv: () => this.setState({ msgs: [], ev: '' }), keptWord: student ? 'options' : 'leads',
       suggestions: (student ? S_SUGGEST : R_SUGGEST).map((text) => ({ text, ask: () => this.ask(text) })),
       msgs,
       placeholder: student ? 'For example: only options with a deadline after March' : 'For example: only R21s that close by March',
