@@ -556,6 +556,12 @@ def test_failed_steps_read_in_plain_words_and_a_bad_id_costs_no_brief():
     assert "visitor text" not in plain_error(ValueError("visitor text"))
 
 
+def keep_first_grant(c, h):
+    lead = next(x for x in c.get("/private/brief", headers=h).json()["leads"]
+                if x["route"] == "A")
+    assert c.post(f"/private/leads/{lead['id']}/keep", headers=h).status_code == 200
+
+
 def test_hourly_caps_are_read_from_the_environment(tmp_path, monkeypatch):
     """W13: the session and private hand-off caps follow their variables."""
     monkeypatch.setenv("PERCH_SESSIONS_PER_HOUR", "2")
@@ -569,6 +575,7 @@ def test_hourly_caps_are_read_from_the_environment(tmp_path, monkeypatch):
     assert all(c.post("/private/session").status_code == 201 for _ in range(21))
     h = open_with_persona(c)
     c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"})
+    keep_first_grant(c, h)  # F26: a draft needs a kept lead on its office's route
     office = {"office": "research_development"}
     assert [c.post("/private/handoff", headers=h, json=office).status_code
             for _ in range(2)] == [200, 429]
@@ -869,6 +876,7 @@ def test_cloud_hand_offs_count_against_the_daily_cap(tmp_path, monkeypatch):
     c.post("/private/cloud", headers=h, json={"on": True, "confirm": "Anthropic"})
     body = {"author_id": "A5026494099", "as_of": "2026-10-28", "explain": False}
     assert c.post("/private/brief", headers=h, json=body).status_code == 202  # no model call
+    keep_first_grant(c, h)
     office = {"office": "research_development"}
     assert c.post("/private/handoff", headers=h, json=office).status_code == 200
     r = c.post("/private/handoff", headers=h, json=office)

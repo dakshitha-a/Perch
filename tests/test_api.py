@@ -276,8 +276,9 @@ def test_handoff_draft_is_returned_not_stored(tmp_path):
     assert d["office"]["url"].startswith("https://research.temple.edu/")
     assert d["lead_ids"] == [a] and "PAR-25-268" in d["body"]
     assert d["flagged"] is True  # the fake model returns nothing usable: code text only
+    # F26: an office with nothing kept on its route gets no empty draft
     empty = c.post(f"/briefs/{bid}/handoff", json={"office": "technology_commercialization"})
-    assert empty.json()["lead_ids"] == []
+    assert empty.status_code == 422 and empty.json()["detail"] == "No kept industry leads."
     assert c.post(f"/briefs/{bid}/handoff", json={"office": "dean"}).status_code == 422
     assert c.post("/briefs/nope/handoff", json={"office": "research_development"}) \
         .status_code == 404

@@ -18,7 +18,7 @@ from perch import awards as aw
 from perch.brief import route_a
 from perch.compare import award_size, lower_first
 from perch.datefmt import closes as closes_text
-from perch.datefmt import day, no_deadline, placeholder_close
+from perch.datefmt import day, deadline, no_deadline, placeholder_close
 from perch.datefmt import shown as shown_day
 from perch.eligibility import Constraints
 from perch.llm import Tool
@@ -35,7 +35,7 @@ from perch.schemas import (
     Work,
     belongs_to,
 )
-from perch.score import match_score
+from perch.score import band, match_score
 from perch.sources import openalex as oa
 
 ALLOWLIST = ("resolve_author", "build_profile", "list_awards", "search_opportunities",
@@ -133,12 +133,45 @@ def _profile(ctx: ScoutContext, author_id: str | None) -> Profile:
 
 def fit_sentence(lead: Lead) -> str | None:
     """The lead's checked fit sentence from the brief, as its card shows it, without the
-    citation brackets (T8): one sentence of why, with no model call."""
+    citation brackets (T8): one sentence of why, with no model call. Its own record, cited
+    as a noun, reads "this opportunity" (F2), and it speaks to the researcher, who is the
+    one asking: "the researcher's" reads "your" (F12)."""
     import re
+
+    from perch.export import own_in_place
 
     if not lead.inference or lead.flagged:
         return None
-    return " ".join(re.sub(r"\s*\[[^\[\]]*\]", "", lead.inference).split()) or None
+    own = {lead.record_id, lead.record_id.removeprefix("grants_gov:")}
+    text = re.sub(r"\s*\[[^\[\]]*\]", "", own_in_place(lead.inference, own))
+    return second_person(" ".join(text.split())) or None
+
+
+# F12: the card's sentence is about "the researcher"; Scout answers the researcher.
+_VERB = {"has": "have", "is": "are", "was": "were", "does": "do", "focuses": "focus"}
+
+
+def second_person(text: str) -> str:
+    import re
+
+    def verb(m: re.Match) -> str:
+        you = "You" if m.group(1) == "T" else "you"
+        v = m.group(2)
+        if v in _VERB:
+            v = _VERB[v]
+        elif re.fullmatch(r"\w+(?:ss|sh|ch|x|z|o)es", v):
+            v = v[:-2]
+        elif v.endswith("ies") and len(v) > 4:
+            v = v[:-3] + "y"
+        elif v.endswith("s") and not v.endswith("ss"):
+            v = v[:-1]
+        return f"{you} {v}"
+
+    text = re.sub(r"\b([Tt])he researcher['’]s\b",
+                  lambda m: "Your" if m.group(1) == "T" else "your", text)
+    # "the researcher develops" -> "you develop": a lower-case word ending in s after it
+    text = re.sub(r"\b([Tt])he researcher (\w*[a-z]s)\b", verb, text)
+    return re.sub(r"\b([Tt])he researcher\b", lambda m: "You" if m.group(1) == "T" else "you", text)
 
 
 def _brief_leads(ctx: ScoutContext) -> list[Lead]:
@@ -207,7 +240,8 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                          closes_by: str | None = None, activity_codes: list[str] | None = None,
                          keywords: list[str] | None = None,
                          exclude_keywords: list[str] | None = None, top: int = 10,
-                         closes_after: str | None = None, sort: str = "match") -> dict:
+                         closes_after: str | None = None, sort: str = "match",
+                         scope: str = "all") -> dict:
     if route == "B":
         out = get_org_signals(ctx, author_id, top=top)
         return {**out, "note": out["note"] + " Grant filters (agency, amount, dates, codes, "
@@ -223,6 +257,8 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
                     closes_by=by, closes_after=after,
                     activity_codes=[a.upper() for a in activity_codes or []],
                     keywords=keywords or [], exclude_keywords=exclude_keywords or [])
+    if scope == "brief":  # F1: "these" and "my leads" are the brief's own leads
+        return _search_brief(ctx, c, sort)
     res = _researcher(ctx, author_id)
     p = _profile(ctx, author_id)  # the works are in the store; a session's documents count
     s = ctx.service
@@ -242,46 +278,90 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
     in_brief = {x.record_id: i for i, x in enumerate(_brief_leads(ctx), 1)}
     for i, x in enumerate(b.leads, 1):
         o = x.opportunity
-        leads.append({"rank": i, "id": ctx.see(o), "title": o.title, "agency": o.agency,
-                      # "these" are the brief's leads (T1): its own place in the brief
-                      **({"brief_rank": in_brief[o.id]} if o.id in in_brief else {}),
-                      "activity_code": o.activity_code,
-                      # As the cards write it (Q22); a far-off placeholder date reads as
-                      # the record's own words (U3, Q20).
-                      "close_date": closes_text(o, ctx.as_of),
-                      # read mid-sentence: "a ceiling of up to $250,000" (R17)
-                      "award_size": lower_first(award_size(o) or "not in the record"),
-                      "match": match_score(x.rerank_score)})
+        leads.append(_lead_row(ctx, i, o, in_brief.get(o.id), match_score(x.rerank_score)))
+    _sort(leads, {ctx.see(x.opportunity): x.opportunity for x in b.leads}, sort, ctx.as_of)
+    return {"source": "Grants.gov federal opportunities in the store", "scope": "all",
+            "as_of": ctx.as_of.isoformat(), "retrieved": b.retrieved,
+            "removed_by_filters": len(b.rejected), "top_removal_reasons": _reasons(b.rejected),
+            "leads": leads, "note": " ".join(x for x in (
+                # F10: the brief's leads first; others with their band, never as if on it
+                ("Leads with brief_rank are on the user's brief: name them first. Name any "
+                 "other as a further lead, not on the brief, with its match band."
+                 if any("brief_rank" in d for d in leads) else
+                 "None of these is on the user's brief: say so first, then name each with "
+                 "its match band.") if leads else "",
+                CEILING_NOTE if sort == "award_ceiling" else "") if x) or None}
+
+
+CEILING_NOTE = ("Sorted by award ceiling, the largest first; a lead whose record states no "
+                "ceiling comes last, whatever its floor. A floor is not a ceiling.")
+
+
+def _lead_row(ctx: ScoutContext, i: int, o: Opportunity, brief_rank: int | None,
+              match: int | None) -> dict:
+    return {"rank": i, "id": ctx.see(o), "title": o.title, "agency": o.agency,
+            # "these" are the brief's leads (T1): its own place in the brief
+            **({"brief_rank": brief_rank} if brief_rank else {}),
+            "activity_code": o.activity_code,
+            # As the cards write it (Q22), with its own verb (F22): "closes 4 Feb 2027",
+            # the record's words for a placeholder date (U3, Q20), or a parent
+            # announcement's expiry, which is no deadline (F3, T17).
+            "deadline": deadline(o, ctx.as_of),
+            # read mid-sentence: "a ceiling of up to $250,000" (R17)
+            "award_size": lower_first(award_size(o) or "not in the record"),
+            "match_band": f"{band(match)} match" if match is not None else None}
+
+
+def _sort(leads: list[dict], opp: dict[str, Opportunity], sort: str, as_of: date) -> None:
     if sort == "close_date":  # the soonest first; open-anytime and undated ones last (Q14)
-        opp = {ctx.see(x.opportunity): x.opportunity for x in b.leads}
-
-        def soon(d: dict) -> tuple[bool, date]:
-            o = opp[d["id"]]
-            return (no_deadline(o, ctx.as_of), o.close_date or date.max)
-
-        leads.sort(key=soon)
+        leads.sort(key=lambda d: (no_deadline(opp[d["id"]], as_of),
+                                  opp[d["id"]].close_date or date.max))
     elif sort == "award_ceiling":  # the largest ceiling first; none stated last (T6)
-        top = {ctx.see(x.opportunity): x.opportunity.award_ceiling for x in b.leads}
-        leads.sort(key=lambda d: -(top[d["id"]] or -1))
-    if sort != "match":  # T6: rank is the place in this order; Match order is in "match"
+        leads.sort(key=lambda d: -(opp[d["id"]].award_ceiling or -1))
+    if sort != "match":  # T6: rank is the place in this order
         for i, d in enumerate(leads, 1):
             d["rank"] = i
+
+
+def _reasons(rejected: dict[str, list[str]]) -> dict[str, int]:
     reasons: dict[str, int] = {}
-    for rs in b.rejected.values():
+    for rs in rejected.values():
         for why in rs:
             key = why.split(":")[0] if "keyword" not in why else why
             reasons[key] = reasons.get(key, 0) + 1
-    top_reasons = dict(sorted(reasons.items(), key=lambda kv: -kv[1])[:6])
-    return {"source": "Grants.gov federal opportunities in the store", "as_of":
-            ctx.as_of.isoformat(), "retrieved": b.retrieved, "removed_by_filters":
-            len(b.rejected), "top_removal_reasons": top_reasons, "leads": leads,
-            "note": " ".join(x for x in (
-                "A lead with brief_rank is on the user's brief, at that place. For \"these\" "
-                "or \"my\" leads, name those first, then any others as further leads."
-                if in_brief else "",
-                "Sorted by award ceiling, the largest first; a lead whose record states no "
-                "ceiling comes last, whatever its floor. A floor is not a ceiling."
-                if sort == "award_ceiling" else "") if x) or None}
+    return dict(sorted(reasons.items(), key=lambda kv: -kv[1])[:6])
+
+
+def _search_brief(ctx: ScoutContext, c: Constraints, sort: str) -> dict:
+    """F1: the filters applied to the brief's own grant leads, in the brief's order, by the
+    same rule code as the search. The brief already settled eligibility, so its
+    title rules are not run again."""
+    from perch.eligibility import check
+
+    if not ctx.brief_id:
+        raise ToolError("scope brief needs a brief, and this session has none: use scope all")
+    base = Constraints(as_of=c.as_of, include_restricted=True, career_stage_ok=True)
+    c.include_restricted = c.career_stage_ok = True
+    leads, opp, rejected = [], {}, {}
+    with ctx.service.repo() as r:
+        for i, x in enumerate(_brief_leads(ctx), 1):
+            o = r.get(Opportunity, x.record_id)
+            if o is None:
+                continue
+            settled = set(check(o, base))  # the brief's own eligibility, not asked again
+            if why := [w for w in check(o, c) if w not in settled]:
+                rejected[o.id] = why
+                continue
+            leads.append(_lead_row(ctx, len(leads) + 1, o, i, x.match_score))
+            opp[leads[-1]["id"]] = o
+    _sort(leads, opp, sort, ctx.as_of)
+    return {"source": "the grant leads on the user's brief", "scope": "brief",
+            "as_of": ctx.as_of.isoformat(), "brief_leads": len(leads) + len(rejected),
+            "removed_by_filters": len(rejected), "top_removal_reasons": _reasons(rejected),
+            "leads": leads, "note": " ".join(x for x in (
+                "Only the brief's own leads; name these and no others." if leads else
+                "None of the brief's leads passes these filters: say so plainly.",
+                CEILING_NOTE if sort == "award_ceiling" else "") if x)}
 
 
 def _route_b_leads(ctx: ScoutContext, author_id: str | None) -> list[Lead]:
@@ -333,21 +413,29 @@ def get_org_signals(ctx: ScoutContext, author_id: str | None = None,
             signals = []
             for sig in x.signals:
                 ev = [r.get_any(i) for i in sig.record_ids[:3]]
-                signals.append({"kind": sig.kind, "count": sig.count,
+                signals.append({"kind": sig.kind, "works_or_projects": sig.count,
                                 "latest": sig.latest and day(sig.latest),
                                 "sentence": sentence(sig, name, len(x.cited_ids)),
                                 "records": [ctx.see(e) for e in ev if e]})
-            out.append({"lead": ctx.see(x), "rank": x.rank, "organisation": name,
-                        "organisation_id": ctx.see(org) if org else x.record_id,
-                        "relationship": x.relationship, "confidence": x.confidence,
-                        "signals": signals, "researcher_papers_cited": x.cited_ids[:10]})
+            lid = ctx.see(x)
+            oid = ctx.see(org) if org else x.record_id
+            # F5: counts code wrote from the records; an answer citing the lead or the
+            # company may repeat them. Citing works and the papers they cite differ.
+            ctx.facts[lid] = ctx.facts[oid] = [s["sentence"] for s in signals]
+            out.append({"lead": lid, "rank": x.rank, "organisation": name,
+                        "organisation_id": oid, "relationship": x.relationship,
+                        "confidence": x.confidence, "signals": signals,
+                        "your_papers_cited": len(x.cited_ids),
+                        "researcher_papers_cited": x.cited_ids[:10]})
             for c in x.cited_ids[:10]:
                 if (w := r.get_any(f"https://openalex.org/{c}")) is not None:
                     ctx.see(w)
     return {"route": "B", "label": LABEL, "leads": out[:max(1, min(int(top), 5))],
             "note": "Companies with at least two kinds of public signal: company works citing "
             "the researcher, NIH SBIR/STTR awards in their topics (NIH only), and company "
-            "works in their topics. Cite the lead id for its counts and dates."}
+            "works in their topics. works_or_projects counts a company's works or projects; "
+            "your_papers_cited counts the researcher's papers those works cite. Copy the "
+            "signal sentences and cite the lead id for counts and dates."}
 
 
 def explain_fit(ctx: ScoutContext, opportunity_id: str) -> dict:
@@ -446,10 +534,20 @@ def _items(ctx: ScoutContext, ids: list[str] | None) -> list[tuple[Lead, Record 
 
 
 def _why(lead: Lead) -> dict:
-    """T8: the lead's fit sentence from the brief, labelled as the card labels it."""
+    """T8: the lead's fit sentence from the brief, labelled as the card labels it: "How it
+    relates" in the weak band (T15, F11)."""
     if lead.route != "A" or not (w := fit_sentence(lead)):
         return {}
-    return {"why_it_fits": w}
+    return {"how_it_relates" if band(lead.match_score) == "weak" else "why_it_fits": w}
+
+
+def _evidence(lead: Lead) -> str:
+    """The Evidence cell as Scout reads it: the Match band in words (the rules forbid the
+    score as a number) and the papers the lead's explanation cites."""
+    n = len([c for c in lead.cited_ids if c.startswith("W")])
+    b = band(lead.match_score)
+    return ", ".join(x for x in (f"{b} match" if b else "",
+                                 f"cites {n} of your papers" if n else "") if x) or "no Match"
 
 
 def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
@@ -474,10 +572,20 @@ def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
             c = row.cells[key]
             text = shown_day(c.text) if key == "closes" else c.text  # as on the cards (Q22)
             text = lower_first(text) if key == "money" else text  # read mid-sentence (R17)
-            cells[label] = f"{text} ({c.note})" if c.note else text
-        out = {"route": row.route, "title": row.title,
-               "record": ctx.see(rec) if rec else row.record_id,
-               "kept": lead.status == "kept", **cells, **_why(lead)}
+            if key == "evidence" and lead.route == "A":  # F11: no score, no state note
+                cells[label] = _evidence(lead)
+                continue
+            cells[label] = f"{text} ({c.note})" if c.note and key != "evidence" else text
+        rid = ctx.see(rec) if rec else row.record_id
+        out = {"kind": "grant" if row.route == "A" else "industry lead",  # F11: no route code
+               "title": row.title, "record": rid, "kept": lead.status == "kept", **cells,
+               **_why(lead)}
+        if lead.route == "A":
+            # F5: the count is code-written from the brief's lead, so an answer citing this
+            # record may repeat it ("cites 3 of your papers").
+            n = len([c for c in lead.cited_ids if c.startswith("W")])
+            out["your_papers_cited"] = n
+            ctx.facts[rid] = [f"cites {n} of your papers"]
         if lead.route == "B":
             out["lead"] = ctx.see(lead)  # holds the code-written signal sentences
         rows.append(out)
@@ -489,13 +597,11 @@ def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
     return {"rows": rows, **({"brief_top_leads": top} if top else {}),
             "note": "These rows are the leads compared, not the brief's top leads. "
             + ("brief_top_leads are the first three in the brief's own order by Match: use "
-               "them for top or best. " if top else "") + "why_it_fits is the lead's checked "
-            "fit sentence from the brief: use it for why a lead fits. Each cell is copied "
-            "from the "
-            "record or counted from it by code. \"Not in the record\" means the record does "
-            "not say. Industry leads "
-            "are inferred from public signals, not verified. There is no effort, IP or "
-            "likelihood column because no record states them."}
+               "them for top or best. " if top else "") + "why_it_fits (how_it_relates for a "
+            "weak match) is the lead's checked fit sentence from the brief. Each cell is "
+            "copied from the record or counted from it by code. \"Not in the record\" means "
+            "the record does not say. Industry leads are inferred from public signals, not "
+            "verified. Answer in short sentences, not a table."}
 
 
 def draft_handoff(ctx: ScoutContext, office: str | None = None,
@@ -525,14 +631,21 @@ def draft_handoff(ctx: ScoutContext, office: str | None = None,
     with ctx.service.repo() as r:
         papers = [w for w in (r.get_any(f"https://openalex.org/{c}") for c in wids) if w]
     s = ctx.service
-    d = draft(off, res, items, papers, ctx.handoff or s._audited("handoff", s.models.handoff_spec))
+    # F7: the same rule as the Compare tab's draft (service.handoff): with the session's
+    # documents in play and no masking, code writes the opening and no model runs.
+    docs = _session_docs(ctx)
+    d = draft(off, res, items, papers, ctx.handoff or s._audited("handoff", s.models.handoff_spec),
+              private=docs or None)
     for x, rec in items:
         if rec:
             ctx.see(rec)
         if x.route == "B":
             ctx.see(x)
+    from perch.skills.handoff import DOCS_OPENING_NOTE
+
     return {"office": off.name, "office_page": off.url, "to": "", "subject": d.subject,
-            "body": d.body, "opening_withheld": d.flagged,
+            "body": d.body, "opening_withheld": d.flagged, "opening_by": d.opening_by,
+            **({"opening_note": DOCS_OPENING_NOTE} if d.withheld else {}),
             "note": "A draft only. Perch never sends it. Show it to the user to edit and send; "
             "the To line is for them to fill in from the office page."}
 
@@ -584,7 +697,10 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
               "keywords": {**STRS, "description": "keep if any is in the title or text"},
               "exclude_keywords": {**STRS, "description": "drop if any is in the title or "
                                    "text, e.g. clinical trial"},
-              "top": {"type": "integer", "description": "how many leads, 1 to 20"}},
+              "top": {"type": "integer", "description": "how many leads, 1 to 20"},
+              "scope": {"type": "string", "enum": ["brief", "all"],
+                        "description": "brief: only the brief's own leads (for \"these\" or "
+                        "\"my leads\"); all: every opportunity in the store (the default)"}},
              ["route"])), search_opportunities),
     "get_org_signals": (Tool(
         "get_org_signals",

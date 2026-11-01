@@ -82,11 +82,14 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 KEY_PAPERS = 5  # per thread, most recent-weighted first (thread order from perch.profile)
 
 
+EMPTY_FIND = "Type a name, ORCID iD or OpenAlex ID."
+
+
 def draft_json(d: Draft) -> dict:
     return {"office": {"key": d.office.key, "name": d.office.name, "url": d.office.url},
             "to": "", "subject": d.subject, "body": d.body, "lead_ids": d.lead_ids,
             "cited_ids": d.cited_ids, "flagged": d.flagged, "model": d.model,
-            "withheld": d.withheld}
+            "withheld": d.withheld, "opening_by": d.opening_by}
 
 
 class BriefRequest(BriefOptions):
@@ -397,6 +400,8 @@ def create_app(service: BriefService, runner: JobRunner,
 
     @app.get("/authors/resolve")
     def resolve(q: str) -> dict:
+        if not q.strip():  # F25: an empty search found three real authors
+            raise HTTPException(422, EMPTY_FIND)
         if (oid := oa.parse_orcid(q)) and not oa.orcid_ok(oid):  # Q18
             raise HTTPException(422, "That is not a valid ORCID iD: its last character does "
                                 "not match the rest. Check it on orcid.org.")
@@ -572,7 +577,8 @@ def create_app(service: BriefService, runner: JobRunner,
                                                                       b.summary or "")}
             works = {w.id: w for w in (r.get(Work, i) for i in sorted(wids)) if w}
             rows = cmp.compare(b, leads, r, "kept")
-        name = res.display_name if res else b.researcher_id
+        name = ("your documents" if b.researcher_id.startswith("private:")  # F27
+                else res.display_name if res else b.researcher_id)
         return (ex.blocks(b, res, leads, opps, orgs, works, rows, masker=masker,
                           documents=documents),
                 f"Perch brief: {name}")
@@ -605,7 +611,10 @@ def create_app(service: BriefService, runner: JobRunner,
         if wait:
             raise HTTPException(429, f"Too many drafts this hour. Try again in {wait // 60 + 1} "
                                 "minutes.", headers={"Retry-After": str(wait)})
-        d = service.handoff(brief_id, req.office, req.lead_ids or None)
+        try:
+            d = service.handoff(brief_id, req.office, req.lead_ids or None)
+        except LookupError as e:  # F26: nothing kept for that office
+            raise HTTPException(422, str(e)) from e
         if d is None:
             raise HTTPException(404, f"no brief {brief_id!r}")
         return draft_json(d)

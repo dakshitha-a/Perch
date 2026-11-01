@@ -65,3 +65,16 @@ def closes(o: Opportunity, as_of: date | None = None) -> str | None:
     if placeholder_close(o, as_of):
         return o.close_date_note
     return f"Expires {day(o.close_date)}" if expires_only(o) else day(o.close_date)
+
+
+def deadline(o: Opportunity, as_of: date | None = None) -> str:
+    """The close date as a clause with its own verb, for text read after a title (F3, F22):
+    "closes 4 Feb 2027"; the record's own words, such as "Proposals accepted anytime"; or,
+    for a parent announcement, "the announcement expires 7 May 2028", never a deadline."""
+    if not o.close_date:
+        return "close date not in the record"
+    if placeholder_close(o, as_of):
+        return o.close_date_note or ""
+    if expires_only(o):
+        return f"no deadline in the record; the announcement expires {day(o.close_date)}"
+    return f"closes {day(o.close_date)}"

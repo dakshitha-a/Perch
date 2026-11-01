@@ -72,7 +72,7 @@ def brief_note(ctx: ScoutContext, b: Brief, leads: list[Lead]) -> str:
     """The brief's ranked leads, so "the third one" means something to the model, with
     the ones kept now marked (Q4), each lead's deadline as its card writes it (T1, T7),
     the top three's fit sentences (T8) and the industry leads by name (T5)."""
-    from perch.datefmt import closes
+    from perch.datefmt import deadline
     from perch.scout.tools import fit_sentence
 
     lines, kept = [], []
@@ -81,8 +81,9 @@ def brief_note(ctx: ScoutContext, b: Brief, leads: list[Lead]) -> str:
                            key=lambda x: x.rank or 0):
             if (o := r.get(Opportunity, lead.record_id)) is not None:
                 mark = " (kept)" if lead.status == "kept" else ""
-                due = closes(o, ctx.as_of) or "no close date in the record"
-                line = f"{len(lines) + 1}. [{ctx.see(o)}] {o.title}{mark}. Closes: {due}."
+                # F3, F22: the deadline as a clause with its own verb
+                line = (f"{len(lines) + 1}. [{ctx.see(o)}] {o.title}{mark}; "
+                        f"{deadline(o, ctx.as_of)}.")
                 if len(lines) < 3 and (why := fit_sentence(lead)):
                     line += f" Why it fits: {why}"
                 lines.append(line)

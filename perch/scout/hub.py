@@ -107,7 +107,8 @@ def draft_of(c) -> dict | None:  # noqa: ANN001 - a Card
     r = c.result
     if c.tool not in ("draft_handoff", "draft_note") or not isinstance(r, dict) or "body" not in r:
         return None
-    return {k: r[k] for k in ("office", "office_page", "subject", "body", "opening_withheld")}
+    return {k: r[k] for k in ("office", "office_page", "subject", "body", "opening_withheld",
+                              "opening_by", "opening_note") if k in r}
 
 
 def record_ids(result: dict | None, cap: int = 12) -> list[str]:

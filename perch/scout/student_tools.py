@@ -15,7 +15,7 @@ from collections.abc import Callable
 from datetime import date
 
 from perch.compare import lower_first
-from perch.datefmt import closes, day, no_deadline
+from perch.datefmt import day, expires_only, no_deadline, placeholder_close
 from perch.llm import Tool
 from perch.schemas import Lead, Opportunity, Record, Scholarship
 from perch.scout.tools import ScoutContext, ToolError, _obj, get_record, short_id
@@ -56,11 +56,14 @@ def facts_of(rec: Record | None) -> dict:
         return {"title": rec.name, "sponsor": rec.sponsor,
                 "deadline": day(rec.deadline) if rec.deadline else NOT_STATED,  # Q22
                 "amount": amt}
-    if isinstance(rec, Opportunity):  # the card's words: "Expires ..." for a parent (T17)
-        return {"title": rec.title, "sponsor": rec.agency,
-                "deadline": closes(rec) or NOT_STATED,
-                "amount": f"${rec.award_ceiling:,.0f}" if rec.award_ceiling
-                else NOT_STATED}
+    if isinstance(rec, Opportunity):
+        out = {"title": rec.title, "sponsor": rec.agency,
+               "amount": f"${rec.award_ceiling:,.0f}" if rec.award_ceiling else NOT_STATED}
+        if rec.close_date and expires_only(rec):  # F3, T17: an expiry is not a deadline
+            return {**out, "announcement_expires": day(rec.close_date)}
+        if rec.close_date and placeholder_close(rec):  # the record's own words
+            return {**out, "deadline": rec.close_date_note}
+        return {**out, "deadline": day(rec.close_date) if rec.close_date else NOT_STATED}
     return {"title": None, "deadline": NOT_STATED, "amount": NOT_STATED}
 
 
@@ -68,6 +71,9 @@ def _row(ctx: ScoutContext, lead: Lead) -> dict:
     rec = _record(ctx, lead)
     out = {"id": ctx.see(rec) if rec else lead.record_id, "route": ROUTES[lead.route],
            **facts_of(rec), "verdict": lead.verdict, "kept": lead.status == "kept"}
+    if lead.verdict != "eligible" and lead.verdict_lines:  # F6: the rule's reason, by code
+        out["why"] = lead.verdict_lines[:2]
+        ctx.facts[out["id"]] = [*lead.verdict_lines, *lead.gaps]
     if lead.sample:
         out["sample"] = True
         out["note"] = "SAMPLE record from a test corpus; not a real scholarship"
@@ -93,7 +99,7 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
     used = search_words(words)
     after = date.fromisoformat(deadline_after) if deadline_after else None
     before = date.fromisoformat(deadline_before) if deadline_before else None
-    rows, due_of = [], {}
+    rows, due_of, amount_of = [], {}, {}
     for x in sorted(leads, key=lambda x: (x.route, x.rank or 0)):
         if route != "all" and x.route != route:
             continue
@@ -129,8 +135,11 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
                                                         x.inference).split())
         rows.append({**_row(ctx, x), **extra_row})
         due_of[rows[-1]["id"]] = due
+        amount_of[rows[-1]["id"]] = top
     if sort == "deadline":  # the soonest first, undated last, as Q14 for researchers (R13)
         rows.sort(key=lambda r: (due_of[r["id"]] is None, due_of[r["id"]] or date.max))
+    elif sort == "amount":  # F15: "pays the most": the largest stated amount first
+        rows.sort(key=lambda r: -(amount_of[r["id"]] or -1))
     rows = rows[:15]
     extra = {}
     if used and route in ("all", "F") and not any(not r.get("sample") for r in rows):
@@ -312,6 +321,15 @@ def mine(gap: str) -> str:
     return re.sub(r"; your CV (.+)$", r" (my CV \1)", gap)
 
 
+def _due(f: dict) -> str:
+    """The note's deadline clause (F3, R17): "deadline 20 Dec 2026", "announcement expires
+    7 May 2028", or the record's own words in lower case."""
+    if f.get("announcement_expires"):
+        return f"announcement expires {f['announcement_expires']}"
+    d = f.get("deadline") or NOT_STATED
+    return f"deadline {d}" if d == NOT_STATED or d[:1].isdigit() else lower_first(d)
+
+
 def write_note(route: str, rows: list[tuple[Lead, dict]]) -> dict:
     """The note to the Temple office for one route, written by code from the options and
     their record facts (title, deadline). One source for Scout's draft_note and the
@@ -319,7 +337,7 @@ def write_note(route: str, rows: list[tuple[Lead, dict]]) -> dict:
     kind = "fellowships" if route == "F" else "scholarships"
     sample = any(x.sample for x, _ in rows)
     lines = [f"- {f['title']}{' (SAMPLE record, not real)' if x.sample else ''}: "
-             f"{x.verdict}, deadline {f['deadline']}"
+             f"{x.verdict}, {_due(f)}"
              + (f". Still needed: {'; '.join(lower_first(mine(g)) for g in x.gaps)}"
                 if x.gaps else "")
              for x, f in rows]
@@ -351,9 +369,9 @@ STUDENT_TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
                         "enum": ["eligible", "may be eligible", "not eligible"]},
             "deadline_after": _DATE, "deadline_before": _DATE,
             "min_amount": {"type": "number", "description": "US dollars"},
-            "sort": {"type": "string", "enum": ["match", "deadline"],
-                     "description": "match (the brief's order, the default) or deadline, "
-                     "the soonest first"},
+            "sort": {"type": "string", "enum": ["match", "deadline", "amount"],
+                     "description": "match (the brief's order, the default), deadline (the "
+                     "soonest first) or amount (the largest first, for what pays the most)"},
             "words": {"type": "string", "description": "Words to look for in the title or "
                       "purpose, separated by commas or spaces; an option matches if it holds "
                       "any of them"}}, [])), search_options),
@@ -407,9 +425,9 @@ Never compute, round, estimate or count. If a record has no value, say it is not
 as-of date. Your first sentence names public fellowships only: if none states a deadline, \
 say so, then give any samples under their own heading.
 - A question that filters by verdict, deadline, amount or words always runs \
-search_options with those filters. Not-eligible options are in the brief too, left out of \
-the list below: search_options with verdict "not eligible" lists them, and \
-explain_verdict says why one is not eligible. Never say there are none without searching.
+search_options with those filters; "pays the most" sorts by amount. Not-eligible options \
+are in the brief too, left out of the list below: search_options with verdict "not \
+eligible" lists them, each with its reason in why. Never say there are none without searching.
 - Today is the as-of date. A month named with no year means its next one after today.
 - Verdicts come from rule code. Never judge the student's chances or give odds.
 - Answer in two to five short, plain sentences."""
@@ -427,8 +445,8 @@ def student_brief_note(ctx: ScoutContext, leads: list[Lead]) -> str:
             lines.append(f"- [{ctx.see(rec)}] {title} ({x.verdict}{marks})")
     out = sum(1 for x in leads if x.route in ROUTES and x.verdict == "not eligible")
     hidden = (f"\nThe brief also holds {out} not-eligible option{'' if out == 1 else 's'}, "
-              "not listed here: search_options with verdict \"not eligible\" lists them, and "
-              "explain_verdict says why." if out else "")
+              "not listed here: search_options with verdict \"not eligible\" lists them, each "
+              "with its reason." if out else "")
     return ("\n\nThe student's options in this brief, each group in the brief's own order "
             "by Match, the strongest first:\n" + "\n".join(lines) + hidden) if lines else ""
 

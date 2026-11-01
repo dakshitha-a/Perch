@@ -494,8 +494,11 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                                 headers={"Retry-After": str(wait)})
         if s.service.models.cloud():  # the opening paragraph goes to the cloud model
             take_cloud("hand-off drafts")
-        d = s.service.handoff(brief_id(s), req.office, req.lead_ids or None,
-                              masker=masker_for(s, req.mask))
+        try:
+            d = s.service.handoff(brief_id(s), req.office, req.lead_ids or None,
+                                  masker=masker_for(s, req.mask))
+        except LookupError as e:  # F26: nothing kept for that office
+            raise HTTPException(422, str(e)) from e
         if d is None:
             raise HTTPException(404, "No private brief yet.")
         return {**draft_json(d), "masked": req.mask}

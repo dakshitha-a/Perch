@@ -173,6 +173,9 @@ class BriefService:
         b, leads = got
         chosen = [x for x in leads if (x.id in lead_ids if lead_ids else
                                        x.status == "kept" and x.route == office.route)]
+        if not chosen:  # F26: a draft with an empty list is no draft
+            raise LookupError("No kept industry leads." if office.route == "B"
+                              else "No kept grants.")
         with self.repo() as r:
             res = r.get(Researcher, b.researcher_id)
             items: list[tuple[Lead, Record | None]] = [

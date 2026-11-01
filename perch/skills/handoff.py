@@ -93,6 +93,7 @@ class Draft:
     errors: list[str] = field(default_factory=list)
     model: str | None = None
     withheld: str | None = None  # why the model paragraph stayed in Perch (S8)
+    opening_by: str = "code"  # F7: "model" when a model wrote the opening paragraph
 
 
 def lead_key(lead: Lead) -> str:
@@ -123,11 +124,11 @@ def lead_lines(items: list[tuple[Lead, Record | None]]) -> list[str]:
     out = []
     for i, (lead, rec) in enumerate(items, 1):
         if isinstance(rec, Opportunity):
+            # One clause for every deadline (F3): "closes 6 Nov 2026" as the cards say
+            # (U14), a placeholder date as the record's words (U3), mid-sentence (R17), or
+            # a parent announcement's expiry, which is no deadline (T17).
             closes = ("close date not stated in the record" if not rec.close_date
-                      # the card's rule: a placeholder date reads as the record's words (U3)
-                      else lower_first(rec.close_date_note or "")  # mid-sentence (R17)
-                      if datefmt.placeholder_close(rec)
-                      else f"closes {datefmt.day(rec.close_date)}")  # as the cards say (U14)
+                      else lower_first(datefmt.deadline(rec)))
             code = (f" ({rec.activity_code})" if rec.activity_code
                     and rec.activity_code not in rec.title else "")
             out.append(f"{i}. {rec.opportunity_number}: {rec.title}{code}. {rec.agency_label()}; "
@@ -174,13 +175,18 @@ def subject_for(items: list[tuple[Lead, Record | None]]) -> str:
 
 
 def assemble(office: Office, researcher: Researcher, opening: str,
-             items: list[tuple[Lead, Record | None]], papers: list[Work]) -> str:
+             items: list[tuple[Lead, Record | None]], papers: list[Work],
+             documents: bool = False) -> str:
+    # F8: "kept" only when every lead listed is kept on the brief.
+    kept = all(x.status == "kept" for x, _ in items)
     blocks = [f"Dear {office.name} team,", opening,
-              "These are the leads I kept in Perch:", "\n".join(lead_lines(items))]
+              "These are the leads I kept in Perch:" if kept
+              else "These are the leads I would like to discuss:", "\n".join(lead_lines(items))]
     if papers:
         blocks += ["The papers they draw on:", "\n".join(paper_lines(papers))]
-    note = ("Perch drafted this from public records. Each date and amount above is copied "
-            "from the linked record.")
+    # F19: a session's documents are named, as the export's header names them.
+    note = (f"Perch drafted this from {'your documents and ' if documents else ''}public "
+            "records. Each date and amount above is copied from the linked record.")
     if any(x.route == "B" for x, _ in items):
         note += (" Industry leads are inferences from public signals, not verified interest. "
                  + RESEARCH_SECURITY)
@@ -191,6 +197,39 @@ def assemble(office: Office, researcher: Researcher, opening: str,
 
 
 FALLBACK = "I would like to talk with your team about the funding leads listed below."
+# F7: a session's documents named in the first person, in a code-written opening.
+MY_DOCUMENTS = {"proposal": "my draft proposal", "direction": "my research direction",
+                "manuscript": "my unpublished work", "cv": "my CV",
+                "interests": "my interests note", "achievement": "my achievements",
+                "achievements": "my achievements"}
+DOCS_OPENING_NOTE = ("Written by Perch’s code from the lead’s title and the names of your "
+                     "documents. No model read your documents for this draft.")
+
+
+def _and(xs: list[str]) -> str:
+    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
+
+
+def documents_opening(items: list[tuple[Lead, Record | None]], private: list[Work],
+                      papers: list[Work]) -> str:
+    """F7: the opening for a session that holds documents and no masking, by code with no
+    model call: the leads by title and the documents by kind. Nothing about their content."""
+    names = [rec.title if isinstance(rec, Opportunity) else rec.name
+             for _, rec in items if isinstance(rec, Opportunity | Organisation)]
+    kinds = list(dict.fromkeys(
+        MY_DOCUMENTS.get(d.id.removeprefix("private:").split("-")[0].split("#")[0], "my documents")
+        for d in private))
+    sources = (["my published papers"] if papers else []) + kinds
+    what = (_and(names) if 0 < len(names) <= 2
+            else f"the {len(items)} leads listed below" if items else "the leads listed below")
+    head = f"I would like to talk with your team about {what}."
+    return head + (f" Perch matched {'it' if len(items) == 1 else 'them'} to my work from "
+                   f"{_and(sources)}." if sources else "")
+
+
+# F7: a citation that names no record, or a placeholder for one, is not a citation.
+EMPTY_CITE = re.compile(r"\[\s*\]|\bno (?:papers?|records?|documents?) (?:were |was )?"
+                        r"(?:provided|given|available)\b", re.I)
 
 
 def draft_handoff(office: Office, researcher: Researcher,
@@ -204,12 +243,14 @@ def draft_handoff(office: Office, researcher: Researcher,
     papers = egress.public_only(papers)[:MAX_PAPERS]
     lead_ids = [x.id for x, _ in items]
     subject = subject_for(items)
+    docs = bool(private)
     if provider is not None and private and masker is None:
-        return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers),
-                     lead_ids, withheld=egress.HANDOFF_WITHHELD)
+        return Draft(office, subject, assemble(office, researcher, documents_opening(
+            items, private, papers), items, papers, docs), lead_ids,
+            withheld=egress.HANDOFF_WITHHELD)
     if provider is None:
-        return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers),
-                     lead_ids)
+        return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers,
+                                               docs), lead_ids)
     records: dict[str, Record] = {short_work_id(w): w for w in papers}
     views = []
     for lead, rec in items:
@@ -242,6 +283,12 @@ def draft_handoff(office: Office, researcher: Researcher,
         attempts[0] += 1
         text, cited = v
         errors = list(check(text, cited, records).errors)
+        if m := EMPTY_CITE.search(text):  # F7: "[]", "[No papers provided]"
+            errors.append(f"the paragraph says {m.group(0)!r}: cite only records you were given")
+        for g in BRACKETED.findall(text):
+            keys = [k.strip() for k in g.split(",")]
+            if not all(k in records or egress.is_private_id(k) for k in keys):
+                errors.append(f"the bracket [{g}] names no record you were given")
         if m := BANNED.search(text):
             errors.append(f"the paragraph says {m.group(0)!r}; describe fit only")
         n = sentences(text)
@@ -252,15 +299,17 @@ def draft_handoff(office: Office, researcher: Researcher,
 
     v = generate_validated(generate, validate, unparseable)
     if v.value is None:
-        return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers),
-                     lead_ids, flagged=True, errors=v.errors, model=provider.model)
+        return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers,
+                                               docs), lead_ids, flagged=True, errors=v.errors,
+                     model=provider.model)
     text, cited = v.value
     text = plain_citations(text, records, set(records))  # every record given is listed below
     if egress.uses_private(cited) and masker is None:
-        return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers),
-                     lead_ids, cited_ids=cited, model=provider.model, flagged=True,
-                     errors=[egress.WITHHELD])
-    text = (egress.release_model(text, cited, masker, bool(private)) if private
-            else egress.release(text, cited, masker)) or FALLBACK
-    return Draft(office, subject, assemble(office, researcher, text, items, papers), lead_ids,
-                 cited_ids=cited, model=provider.model)
+        return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers,
+                                               docs), lead_ids, cited_ids=cited,
+                     model=provider.model, flagged=True, errors=[egress.WITHHELD])
+    released = (egress.release_model(text, cited, masker, bool(private)) if private
+                else egress.release(text, cited, masker))
+    return Draft(office, subject, assemble(office, researcher, released or FALLBACK, items,
+                                           papers, docs), lead_ids, cited_ids=cited,
+                 model=provider.model, opening_by="model" if released else "code")

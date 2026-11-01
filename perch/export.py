@@ -19,6 +19,7 @@ from perch import datefmt, egress
 from perch.compare import COLUMNS, Row, award_size
 from perch.offices import RESEARCH_SECURITY, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
+from perch.score import band
 from perch.sources import grants_gov, temple
 
 # The Industry tab's note (web/app.js), word for word (R18).
@@ -57,6 +58,37 @@ PRIVATE_KEY = re.compile(r"(?:private:)?([a-z]+)(-[a-z0-9]+)?(?:#\d+)?")
 # "Cited work: W1 developed a tool [W1]": the bracket repeats the clause's subject (R9).
 REPEAT = re.compile(r"\b(?P<id>W\d{5,}|private:(?P<k>[a-z]+(?:-[a-z0-9]+)?))\b(?P<mid>[^\[\];]*?)"
                     r"\s*\[(?:(?P=id)|(?P=k))\]")
+
+
+# F2: a card's citation of its own record that stands in the sentence as a noun ("the aims
+# of [26-523].") reads "this opportunity"; dropped, it left "the aims of.". web/format.js
+# ownInPlace is the same rule for the cards.
+OWN_PHRASE = "this opportunity"
+DANGLE = re.compile(r"(?P<lead>\b(?:of|in|with|by|for|to|from|at|on|into|about|under|than|as|"
+                    r"via|within|across|through|towards?|and|or)\s+)?(?:(?P<art>the|a|an)\s+)?"
+                    r"\[(?P<ids>[^\[\]]+)\]", re.I)
+
+
+def own_in_place(text: str, own: set[str]) -> str:
+    """Where a citation of the card's own record (`own`) follows a preposition or an article,
+    it becomes "this opportunity" (the article goes); other cited keys stay bracketed."""
+    if not own or not text:
+        return text
+
+    def swap(m: re.Match) -> str:
+        if not (m.group("lead") or m.group("art")):
+            return m.group(0)
+        keys = [k.strip() for k in re.split(r"[,;]", m.group("ids")) if k.strip()]
+
+        def mine(k: str) -> bool:
+            return k in own or k.removeprefix("grants_gov:") in own
+
+        if not any(map(mine, keys)):
+            return m.group(0)
+        rest = [k for k in keys if not mine(k)]
+        return f"{m.group('lead') or ''}{OWN_PHRASE}" + (f" [{', '.join(rest)}]" if rest else "")
+
+    return DANGLE.sub(swap, text)
 
 
 def _paper(w: Work | None, inline: bool) -> str:
@@ -99,18 +131,22 @@ def name_papers(text: str | None, works: dict[str, Work], names: dict[str, str] 
     if not text:
         return text
     names = names or {}
+    text = own_in_place(text, set(skip))
     text = REPEAT.sub(lambda m: m.group(0)[:m.start("mid") - m.start()] + m.group("mid"), text)
 
     def group(m: re.Match) -> str:
         keys = [k.strip() for k in re.split(r"[,;]", m.group(1)) if k.strip()]
         if any(MASK_LABEL.fullmatch(k) for k in keys):
             return m.group(0)
-        keep = [k for k in keys if k not in skip and k.removeprefix("grants_gov:") not in skip]
+        before = m.string[:m.start()].rstrip()
+        subject = not before or before.endswith((".", "!", "?", ":"))
+        # The lead's own record goes, except as a sentence's subject, where it is named
+        keep = keys if subject else [k for k in keys if k not in skip
+                                     and k.removeprefix("grants_gov:") not in skip]
         if not keep:
             return ""
         said = "; ".join(dict.fromkeys(_cite(k, works, names) for k in keep))
-        before = m.string[:m.start()].rstrip()
-        if not before or before.endswith((".", "!", "?", ":")):  # the sentence's subject
+        if subject:  # the sentence's subject
             return m.group(0)[:len(m.group(0)) - len(m.group(0).lstrip())] + said
         return f" ({said})"
 
@@ -152,6 +188,8 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     """Private-derived text is withheld unless a masker is given (perch.egress).
     `documents`: the session holds documents, so every model text counts as private."""
     name = researcher.display_name if researcher else brief.researcher_id
+    if brief.researcher_id.startswith("private:"):  # F27: a brief from documents alone
+        name = "your documents"
     as_of = brief.options.get("as_of") or date.today().isoformat()
     built = ("Built by Perch from your documents and public records" if documents
              else "Built from public records by Perch")  # Q24
@@ -202,9 +240,9 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
         o = opps[x.record_id]
         mark = " (kept)" if x.status == "kept" else ""
         out.append(Block("h3", f"{i}. {o.opportunity_number}: {o.title}{mark}"))
-        far = datefmt.placeholder_close(o, date.fromisoformat(as_of))  # the card's rule (U3)
-        closes = ("Not in the record" if not o.close_date
-                  else o.close_date_note or "" if far else _day(o.close_date))
+        # The card's rule (U3, T17, F3): the record's words for a placeholder date, and
+        # "Expires <date>" for a parent announcement.
+        closes = datefmt.closes(o, date.fromisoformat(as_of)) or "Not in the record"
         out.append(Block("list", items=[
             f"Agency: {o.agency_label()}", f"Closes: {closes}", f"Money: {_money(o)}",
             f"Activity code: {o.activity_code or 'Not in the record'}",
@@ -332,49 +370,106 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
         if nm:
             names[rid] = names[rid.rsplit(":", 1)[-1]] = (
                 f"{nm} (sample)" if rid.startswith("sample:") else nm)
-    for route, title, office in (("F", "Fellowships (public)", for_route("F")),
-                                 ("S", "Scholarships and awards (sample)", for_route("S"))):
+    # F17, F27: each route as the screen shows it: the options you may apply for, the
+    # lines most cards share said once, then the ones not eligible by rule.
+    for route, title, office in (("F", "Fellowships, public", for_route("F")),
+                                 ("S", "Scholarships and awards, sample", for_route("S"))):
         xs = sorted((x for x in shown if x.route == route), key=lambda x: x.rank or 0)
-        out.append(Block("h2", f"{title} ({len(xs)})"))
+        ok = [x for x in xs if x.verdict != "not eligible"]
+        no = [x for x in xs if x.verdict == "not eligible"]
+        out.append(Block("h2", f"{title} ({len(ok)})"))
         if route == "S":
             out.append(Block("note", SAMPLE_BANNER))
         if n := sum(x.route == route for x in gone):  # numbered 1 to n, as Q11 (R8)
             out.append(Block("p", f"{n} dismissed {'option is' if n == 1 else 'options are'} "
                                   "left out."))
-        for i, x in enumerate(xs, 1):
-            rec = records.get(x.record_id)
-            name = getattr(rec, "name", None) or getattr(rec, "title", x.record_id)
-            mark = " (kept)" if x.status == "kept" else ""
-            badge = " [SAMPLE]" if x.sample else ""
-            out.append(Block("h3", f"{i}. {name}{badge}{mark}"))
-            # The verdict, its rule lines and the gaps are written by code from the rules
-            # and the record: they stay; only model text is withheld (Q12). A value a rule
-            # read from the CV is dropped, or masked on opt-in (Q42).
-            items = [f"Verdict: {x.verdict}",
-                     *(egress.release_cv_line(v, masker) for v in x.verdict_lines)]
-            if isinstance(rec, Scholarship):
-                items.append(f"Sponsor: {rec.sponsor or 'Not in the record'}")
-                items.append(f"Deadline: {_day(rec.deadline)}")
-                items.append(f"Amount: {_amount(rec)}")
-            elif isinstance(rec, Opportunity):
-                items.append(f"Closes: {_day(rec.close_date)}")
-            items += [f"Still needed: {egress.release_cv_line(g, masker)}" for g in x.gaps]
-            items.append(f"Office: {office.name}")
-            out.append(Block("list", items=[i for i in items if i]))
-            if x.explanation and not x.flagged:
-                out.append(Block("model", egress.release_model(
-                    name_papers(x.explanation, {}, names), x.cited_ids, masker, documents)))
-            url = getattr(rec, "source_url", None)
-            if url and not x.sample:
-                out.append(Block("link", f"Record: {_source_name(rec)}", href=url))
-            elif x.sample:
-                out.append(Block("p", f"Record: {x.record_id} (SYNTHETIC sample, no web page)"))
+        common = _common_lines(ok, records)
+        if common:
+            out.append(Block("p", "Unless an option says otherwise:"))
+            out.append(Block("list", items=[NO_FACTS_LINE if c == NO_FACTS else
+                                            egress.release_cv_line(c, masker) for c in common]))
+        for i, x in enumerate(ok, 1):
+            out += _student_option(i, x, records.get(x.record_id), office, names, common,
+                                   masker, documents)
+        if no:
+            out.append(Block("h2", f"{title}: not eligible by rule ({len(no)})"))
+            for i, x in enumerate(no, 1):
+                out += _student_option(i, x, records.get(x.record_id), office, names, [],
+                                       masker, documents)
     out.append(Block("h2", "About this export"))
     out.append(Block("p", f"{len(kept)} kept, {len(shown)} shown"
                      + (f", {len(gone)} dismissed" if gone else "") + ". Text marked Model was "
                      "written by a language model and checked against the records it cites."))
     out.append(Block("p", grants_gov.ATTRIBUTION))
     return _count_withheld(out, documents and masker is None)
+
+
+NO_FACTS = "no-facts"
+NO_FACTS_LINE = "The listing states no deadline or amount."
+
+
+def _facts_stated(rec: object) -> bool:
+    if isinstance(rec, Scholarship):
+        return bool(rec.deadline) or _amount(rec) != "Not in the record"
+    return bool(getattr(rec, "close_date", None))
+
+
+def _common_lines(xs: list[Lead], records: dict[str, object]) -> list[str]:
+    """The screen's rule (web/student.js, U20): a line at least three cards and more than
+    half of them repeat word for word is said once above the list."""
+    if len(xs) < 3:
+        return []
+    counts: dict[str, int] = {}
+    for x in xs:
+        lines = {NO_FACTS} if not _facts_stated(records.get(x.record_id)) else set()
+        if len(x.verdict_lines) == 1:
+            lines.add(x.verdict_lines[0])
+        for c in lines:
+            counts[c] = counts.get(c, 0) + 1
+    return [c for c, n in counts.items() if n >= 3 and n > len(xs) / 2]
+
+
+def _student_option(i: int, x: Lead, rec: object, office: object, names: dict[str, str],
+                    common: list[str], masker: egress.Masker | None,
+                    documents: bool) -> list[Block]:
+    name = getattr(rec, "name", None) or getattr(rec, "title", x.record_id)
+    mark = " (kept)" if x.status == "kept" else ""
+    badge = " [SAMPLE]" if x.sample else ""
+    out = [Block("h3", f"{i}. {name}{badge}{mark}")]
+    # The verdict, its rule lines and the gaps are written by code from the rules and the
+    # record: they stay; only model text is withheld (Q12). A value a rule read from the CV
+    # is dropped, or masked on opt-in (Q42).
+    lines = [] if len(x.verdict_lines) == 1 and x.verdict_lines[0] in common \
+        else x.verdict_lines
+    items = [f"Verdict: {x.verdict}", *(egress.release_cv_line(v, masker) for v in lines)]
+    if isinstance(rec, Scholarship) and rec.sponsor:
+        items.append(f"Sponsor: {rec.sponsor}")
+    if not _facts_stated(rec):
+        if NO_FACTS not in common:
+            items.append(NO_FACTS_LINE)
+    elif isinstance(rec, Scholarship):
+        items.append(f"Deadline: {_day(rec.deadline) if rec.deadline else 'Not in the record'}")
+        items.append(f"Amount: {_amount(rec)}")
+    elif isinstance(rec, Opportunity):  # F3: one rule for every deadline, as the card
+        items.append(f"Deadline: {datefmt.closes(rec) or 'Not in the record'}")
+    items += [f"Still needed: {egress.release_cv_line(g, masker)}" for g in x.gaps]
+    items.append(f"Office: {office.name}")  # type: ignore[attr-defined]
+    out.append(Block("list", items=[i for i in items if i]))
+    own = {x.record_id, x.record_id.rsplit(":", 1)[-1]}  # F4: no own-record parenthesis
+    if x.explanation and not x.flagged:
+        out.append(Block("model", egress.release_model(
+            name_papers(x.explanation, {}, names, skip=own), x.cited_ids, masker, documents)))
+        if x.inference:  # F4: the fit sentence under the card's label
+            label = "How it relates" if band(x.match_score) == "weak" else "Why it may fit"
+            out.append(labelled(label, egress.release_model(
+                name_papers(x.inference, {}, names, skip=own), x.cited_ids, masker,
+                documents)))
+    url = getattr(rec, "source_url", None)
+    if url and not x.sample:
+        out.append(Block("link", f"Record: {_source_name(rec)}", href=url))
+    elif x.sample:
+        out.append(Block("p", f"Record: {x.record_id} (SYNTHETIC sample, no web page)"))
+    return out
 
 
 def _md_text(s: str) -> str:

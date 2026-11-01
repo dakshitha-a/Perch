@@ -65,7 +65,9 @@ snapshot: for companies, deadlines, amounts or anything else they do not show, c
 tool, however long the conversation.
 - A question that filters by a date, an amount, an agency or a code always runs \
 search_opportunities with those filters, even when an earlier result showed the same \
-leads. "These", "them" or "those" in such a question mean the brief's leads, kept or not.
+leads. "These", "them", "those" or "my leads" mean the brief's leads, kept or not: \
+scope brief. Other or new opportunities: scope all.
+- How many of your papers a kept lead or grant cites is in compare's rows.
 - Today is the as-of date. A month named with no year means its next one after today: \
 "before March" means closes_by set to the 1st of the next March.
 - "Top", "best" or "strongest" leads mean the brief's own order by Match, the strongest \
@@ -143,6 +145,29 @@ RECORD_NUDGE = ("Call get_record with id {id} now and answer from what the recor
 # companies or citations, answered with no tool, is sent back naming get_org_signals.
 ORG_Q_RE = re.compile(r"\b(?:compan(?:y|ies)|industr\w*|firms?|cit(?:e|es|ed|ing|ations?))\b",
                       re.I)
+# F5: "How many of my papers does each kept lead cite?" is about grants: compare answers it.
+GRANT_Q_RE = re.compile(r"\b(?:kept|grants?|leads?|opportunit\w*|shortlist)\b", re.I)
+# F1: "these", "them", "my leads" are the brief's own leads; "other" or "new" ones are the
+# store's. Code sets search_opportunities' scope from the question; with neither, the
+# model's choice stands, and the default is the whole store.
+BRIEF_Q_RE = re.compile(r"\b(?:these|those|them|my (?:\w+ )?(?:leads?|grants?|brief|shortlist)|"
+                        r"(?:on|in|from) (?:my|the) brief|the brief's)\b", re.I)
+OTHER_Q_RE = re.compile(r"\b(?:new|other|others|else|beyond|outside|additional|elsewhere|"
+                        r"more (?:leads|grants|opportunities)|not (?:on|in) (?:my|the) brief|"
+                        r"whole store|all opportunities)\b", re.I)
+
+
+def question_scope(question: str) -> str | None:
+    if OTHER_Q_RE.search(question):
+        return "all"
+    return "brief" if BRIEF_Q_RE.search(question) else None
+
+
+# F6: one explain_verdict per question; search_options already gives each option's reason.
+ONCE_PER_QUESTION = ("explain_verdict",)
+# F15: the last list Scout showed, so "the first one" in a follow-up means its first row.
+LIST_TOOLS = ("search_opportunities", "search_options", "compare", "compare_options")
+LAST_LIST = 8
 ORG_NUDGE = ("Call get_org_signals now. It lists the companies whose works cite the "
              "researcher's papers, with the number of citing works for each. Reply with the "
              "tool call only.")
@@ -206,6 +231,8 @@ class Session:
     user_numbers: set[str] = field(default_factory=set)
     stop_asked: bool = False  # Stop was pressed: no further step runs for this question
     nudged: bool = False  # this question's no-tool answer was sent back once (Q5)
+    last_list: list[str] = field(default_factory=list)  # F15: ids of the last list shown
+    scope: str | None = None  # F1: the search scope this question's words set
     # One entry per question: its text, the first card it made, and how it ended. Held in
     # memory for the web app; the log keeps a hash of the question only.
     exchanges: list[dict] = field(default_factory=list)
@@ -337,7 +364,8 @@ class Scout:
 
     def ask(self, s: Session, question: str) -> Session:
         """A question, or a follow-up in the same session."""
-        self.system = self.head + self.note()  # what is kept now (Q4)
+        self.system = self.head + self.note() + last_list_line(s)  # what is kept now (Q4)
+        s.scope = question_scope(question)
         compact(s)  # T4: earlier questions' tool results leave the context
         msgs_from = len(s.messages)
         months = month_dates(question, self.ctx.as_of)
@@ -440,7 +468,8 @@ class Scout:
             nudge = ACCESS_NUDGE
         elif s.cards[start:]:
             return False
-        elif ORG_Q_RE.search(question) and "get_org_signals" in self.table:
+        elif ORG_Q_RE.search(question) and not GRANT_Q_RE.search(question) \
+                and "get_org_signals" in self.table:
             nudge = ORG_NUDGE
         elif ((stated_numbers(question) or not cited(text))
               and (named := self._named(question)) and "get_record" in self.table):
@@ -464,7 +493,8 @@ class Scout:
             r, lines = recs.get(i), self.ctx.facts.get(i)
             if r is None or not lines:
                 continue
-            f = next((f for f in ("description", "purpose", "abstract", "title", "name")
+            f = next((f for f in ("description", "purpose", "abstract", "explanation", "title",
+                                  "name")
                       if f in type(r).model_fields), None)
             if f:
                 recs[i] = r.model_copy(update={f: f"{getattr(r, f) or ''} {' '.join(lines)}"})
@@ -520,7 +550,15 @@ class Scout:
         elif errs := check_arguments(entry[0], c.arguments):
             c.status, c.detail = "refused", "; ".join(errs)
             c.result = {"error": "bad arguments: " + "; ".join(errs)}
+        elif c.tool in ONCE_PER_QUESTION and any(
+                e.tool == c.tool and e.status == "done" for e in self._this_question(s)):
+            c.status, c.detail = "refused", "one explanation per question"  # F6
+            c.result = {"error": f"{c.tool} runs once per question. search_options with that "
+                        "verdict gives each option's reason in why: answer from it."}
         else:
+            if c.tool == "search_opportunities" and s.scope and self.ctx.brief_id and \
+                    "scope" in entry[0].parameters["properties"]:
+                c.arguments = {**c.arguments, "scope": s.scope}  # F1: shown on the card
             args = {k: v for k, v in c.arguments.items() if v is not None}
             model = {"explain_fit": self.ctx.explainer,
                      "draft_handoff": self.ctx.handoff}.get(c.tool)
@@ -529,6 +567,8 @@ class Scout:
                 c.result = entry[1](self.ctx, **args)
                 c.status = "done"
                 c.detail = summarise(c.tool, c.result)
+                if c.tool in LIST_TOOLS and (ids := list_ids(c.result)):
+                    s.last_list = ids[:LAST_LIST]
             except ToolError as e:
                 c.status, c.detail, c.result = "error", str(e), {"error": str(e)}
             except Exception as e:  # noqa: BLE001 - reported to the model by type only
@@ -542,6 +582,9 @@ class Scout:
                 c.where = "local" if model.name in LOCAL_ADAPTERS else "cloud"
         c.ms = round((time.perf_counter() - t0) * 1000, 1)
         self._log_tool(s, c)
+
+    def _this_question(self, s: Session) -> list[Card]:
+        return s.cards[s.exchanges[-1]["cards_from"]:] if s.exchanges else s.cards
 
     def _reply_with_results(self, s: Session) -> None:
         """Answer the last assistant turn's tool calls once all of its cards are settled."""
@@ -674,7 +717,9 @@ WITHHELD_NOTE = ("[Perch: this answer failed the citation check and was not show
 WITHHELD_RE = re.compile(r"^\W*(?:\(?answer withheld\)?|\[?Perch: this answer failed)", re.I)
 # T6: "the largest ceiling ... $15,000,000" where $15,000,000 is the record's award floor.
 CEILING_RE = re.compile(r"\bceilings?\b", re.I)
-FLOOR_BEFORE = re.compile(r"\b(?:floors?|minimum|at least)\b[^.$]{0,20}$", re.I)
+FLOOR_BEFORE = re.compile(r"\b(?:floors?|minimum|at least|from)\b[^.$]{0,20}$", re.I)
+# F16: "from $15,000,000 (award floor)", as compare's Money cell writes it, names the floor
+FLOOR_AFTER = re.compile(r"^[^.$]{0,20}\b(?:floors?|minimum)\b", re.I)
 
 
 def floor_as_ceiling(text: str, seen: dict) -> list[str]:
@@ -697,7 +742,8 @@ def floor_as_ceiling(text: str, seen: dict) -> list[str]:
             v = float(norm_number(m.group(0)))
             for o in recs:
                 if o.award_floor == v and o.award_ceiling != v and \
-                        not FLOOR_BEFORE.search(sent[:m.start()]):
+                        not FLOOR_BEFORE.search(sent[:m.start()]) and \
+                        not FLOOR_AFTER.search(sent[m.end():]):
                     errs.append(f"{m.group(0)} is the award floor of [{short_id(o)}], not its "
                                 "ceiling: name it as a floor, or leave it out")
     return errs
@@ -732,6 +778,23 @@ def months_line(months: list[tuple[str, date, date]], as_of: date) -> str:
              for w, a, b in months]
     return (f"\n\n(Perch: today is {day(as_of)}. With no year, " + "; ".join(parts)
             + ". \"Before\" a month means closes_by its first day.)")
+
+
+def list_ids(result: dict) -> list[str]:
+    """The record ids of a list a tool returned, in its order (F15)."""
+    out: list[str] = []
+    for key in ("leads", "rows", "options", "fellowships", "sample_scholarships"):
+        for x in result.get(key) or []:
+            if isinstance(x, dict) and (i := x.get("id") or x.get("record")):
+                out.append(str(i))
+    return out
+
+
+def last_list_line(s: Session) -> str:
+    if not s.last_list:
+        return ""
+    return ("\nThe last list you gave, in order: " + ", ".join(f"[{i}]" for i in s.last_list)
+            + ". In a follow-up, \"the first one\" or \"that one\" means this list's.")
 
 
 ANSWER_CHARS = 300  # an older answer, as later questions see it (T4)
@@ -813,6 +876,9 @@ def summarise(tool: str, result: dict) -> str:
     """One plain line for the card."""
     if tool == "search_opportunities":
         n = len(result["leads"])
+        if result.get("scope") == "brief":
+            return (f"{n} of your brief's leads; {result['removed_by_filters']} removed by "
+                    "the filters")
         return (f"{n} lead{'' if n == 1 else 's'}; {result['removed_by_filters']} removed by "
                 "the eligibility rules and filters")
     if tool == "build_profile":

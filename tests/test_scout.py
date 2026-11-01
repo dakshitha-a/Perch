@@ -231,7 +231,7 @@ def test_route_b_tools_return_the_briefs_industry_leads(service):
     x = out["leads"][0]
     assert out["label"].startswith("Inferred") and x["lead"] == lead.id
     assert x["organisation"] == "SYNTHETIC Co" and x["organisation_id"] == "I1"
-    assert x["signals"][0]["records"] == ["W77"] and x["signals"][0]["count"] == 4
+    assert x["signals"][0]["records"] == ["W77"] and x["signals"][0]["works_or_projects"] == 4
     assert TOOLS["get_org_signals"][1](c, organisation="nobody")["leads"] == []
     b = TOOLS["search_opportunities"][1](c, route="B")
     assert b["leads"][0]["lead"] == lead.id and "do not apply to route B" in b["note"]
@@ -640,7 +640,7 @@ def test_compare_and_the_brief_note_carry_each_leads_fit_sentence(service):
     service.set_lead_status(b.id, leads[3].id, "kept")
     c = ScoutContext(service, AS_OF, researcher_id=AUTHOR, brief_id=b.id)
     note = brief_note(c, b, service.get(b.id)[1])
-    assert "1. [grants_gov:SYN-1] SYNTHETIC grant 1. Closes: 1 Mar 2027. Why it fits: " \
+    assert "1. [grants_gov:SYN-1] SYNTHETIC grant 1; closes 1 Mar 2027. Why it fits: " \
            "Grant 1 fits the dynamics work." in note
     assert "Grant 4 fits" not in note  # the top three only
     assert '"my top lead" is lead 1 alone' in note
