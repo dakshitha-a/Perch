@@ -12,6 +12,13 @@ organisations, RePORTER and NSF awards) through to the store (`perch/private/sto
 one named cloud spec through the gate for the three model skills
 (`perch/private/session.py`, `PrivateModels`). User guide: `docs/private-mode.md`.
 
+**Q33 update (standing rule 1 as amended).** With `PERCH_CLOUD_DOCUMENTS=1` a session that
+holds documents may also turn Cloud on, but only after a second warning that names the
+provider and lists each document. Consent is recorded per document, by a hash of kind and
+text, in session memory only (`PrivateSession.cloud_consent`); the gate passes the cloud
+spec only while every document held has it, a new or replaced document turns Cloud off,
+and turning Cloud off or ending the session clears it.
+
 ## What it is
 
 - **Purpose:** a researcher can add sensitive material and get routes tailored to it. Examples are a current CV, an ongoing research summary, an unfinished grant proposal or an unpublished manuscript.
