@@ -36,7 +36,7 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S29 | Review, diagnose (workflow and UI/UX in parallel) | done | 2026-10-31 13:35 EDT | 2026-10-31 14:07 EDT | see git log | Two fresh-context Opus reviewers in parallel. UX: 43 findings (2 must-fix: phone Export menu off-screen, reload drops the brief; 26 should, 15 could), 195 screenshots, 0 page errors. Workflow: 43 findings (18 redundancy, 18 security with 3 high, 7 speed); baseline paths measured (PI warm 18 s, live 69 s, student 58 s, persona-1 34 s; explanations 48 s of a 59 s build). Triage: 84 fix, 2 deferred. Dakshitha delegated every decision on 2026-10-31. |
 | S30 | Fix (workflow first, then UI) | done | 2026-10-31 14:07 EDT | 2026-10-31 21:09 EDT | see git log | 84 of 86 S29 findings fixed by four fixers in sequence (security and speed, workflow, UX must and should, UX could), each with a test or walk check that failed first. Security: DOCX inflation capped, pypdf 6.21.4 and pip-audit clean, private-derived text filtered from exports, CSP, self-hosted fonts, Scout and document rate limits, IPv6 /64 keys. Speed: live brief 46.6 to 41.9 s, student polls 8.06 MB to 0.41 MB, static 326 to 95 KB, cached rerank 1 ms. Paths (clicks/scrolls): PI 14/5 to 14/3, student 14/5 to 13/2, persona-1 6/2 to 4/2. 298 tests green; full walk 196 states, 0 errors, 0 axe. |
 | S31 | QA cycles (tester, then fixer, five rounds) | done | 2026-10-31 21:09 EDT | 2026-11-01 11:13 EDT | see git log | Five rounds, a fresh Opus tester then an Opus fixer each: 28, 21, 29, 28 and 23 findings (129 in all), 125 fixed, 2 partly, 1 dropped, 1 done at the deploy file. Root cause of the recurring Scout failures: the demo model's 8,192-token context truncated Scout's rules; history compaction keeps every call under 6,400 tokens, and the demo unit moves to 12,288 with two slots (measured on GPU 4). A rehearsal script gates the three demo questions: 0 of 9 before round 3, 45 of 45 at the end. Scout bench Gemma 23 of 28 to 27 of 28. Tests 298 to 398; full walk 196 to 217 states, 0 errors, 0 axe; canary clean every round; `make package` clean. |
-| S32 | Stabilize for the freeze | in progress | 2026-11-01 11:13 EDT | | | `make package`, Demo Day caps, demo rebuild, walk, canary, bench, media refilm, handoff. |
+| S32 | Stabilize for the freeze | done | 2026-11-01 11:13 EDT | 2026-11-01 13:17 EDT | see git log | `make package` (27.6 MB, tests pass from the unzipped copy); Demo Day caps and the Ollama unit (12,288 context, two slots) applied; demo rebuilt read-only from the final `main`; live walk on the public URL 217 states, 0 axe, 1 withheld-answer error; rehearsal on the demo 45 of 45 and 15 of 15 after the last rebuild; canary and student leakage clean; Scout bench 28 of 29; 0 truncated calls; GPU 6 flat at 27,490 MiB; live brief 38.7 s on a phone. Media refilmed; README, Help, canvas (hosted version 34) and RESULTS.md matched to the build; handoff rewritten; tracker page rebuilt and refreshed. 403 tests green. |
 | S33 | Freeze and package | todo | | | | Dakshitha: tag `v0.1-demo`, free the dev GPUs. |
 
 ## Milestone readiness
@@ -44,7 +44,7 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | Milestone | Date | Needs | Ready? |
 |---|---|---|---|
 | Checkup 2 | Tue 3 Nov | S0–S7 | |
-| Code freeze | Thu 5 Nov 12:00 | S32 stabilized, S33 tags | |
+| Code freeze | Thu 5 Nov 12:00 | S32 stabilized, S33 tags | S32 done; S33 is the tag |
 | Submission | Fri 6 Nov 12:00 | ZIP + links | |
 
 ## Key numbers (keep current)
