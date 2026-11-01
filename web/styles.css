@@ -1169,7 +1169,12 @@ body[data-screen="landing"] .foot .promises { display: grid; }
   table.compare.stack td::before { content: attr(data-label); color: var(--ink-3); font-size: 13px; padding: 10px 0 10px 12px; }
 }
 .help-jump { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 6px 0 4px; }
-.help h2.section-title { scroll-margin-top: calc(var(--bar-h, 64px) + 12px); }
+.help h2.section-title, .help .how-text h3 { scroll-margin-top: calc(var(--bar-h, 64px) + 12px); }
+.quick-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.quick-list li { display: grid; gap: 6px; align-content: start; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.quick-list h3 { font-size: 16px; font-weight: 650; }
+.quick-list p { color: var(--ink-2); font-size: 15px; }
+.quick-list .btn { justify-self: start; margin-left: -10px; }
 /* A box an error names (U4) */
 textarea[aria-invalid="true"], input[aria-invalid="true"] { border-color: var(--brick); }
 /* Compare sorting (U15): a neutral mark until pressed; on a phone a Sort by select. */

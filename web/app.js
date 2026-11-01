@@ -276,7 +276,7 @@ function heroArt() {
     <path class="leaf" d="M240 104 c6 -9 16 -9 20 -6 c-6 7 -15 9 -20 6z"/>
   </svg>`;
   const o = owl("idle", "owl-hero", { button: true, copy: true });
-  o.setAttribute("aria-label", "Say hello to Scout");
+  o.setAttribute("aria-label", "Scout, the owl");
   wrap.removeAttribute("aria-hidden");
   wrap.querySelector("svg").setAttribute("aria-hidden", "true");
   wrap.append(o);

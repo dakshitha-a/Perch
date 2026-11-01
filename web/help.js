@@ -92,6 +92,8 @@ function picScout() {
 
 // ----- sections -----
 
+const STEP_IDS = { "Watch the brief build": "h-build", "Nothing about you is stored": "h-stored" };
+
 function steps() {
   const items = [
     ["Find the researcher", picFind(),
@@ -131,9 +133,45 @@ function steps() {
     h("ol", { class: "how-steps" }, items.map(([title, pic, text], i) => h("li", { class: "how-step" },
       h("div", { class: "how-text" },
         h("span", { class: "step-n", "aria-hidden": "true", text: String(i + 1) }),
-        h("h3", { text: title }),
+        h("h3", { id: STEP_IDS[title], text: title }),
         text ? h("p", { text }) : null),
       pic, text ? null : legend))));
+}
+
+// The first questions a new visitor asks, each answered in a sentence or two that repeats what
+// the section it links to says (U39).
+const QUICK = [
+  ["How long does a brief take?",
+    "In tests on the demo models a brief with explanations took 46 to 49 seconds. The demo researchers’ briefs are built when the server starts, so they open at once.",
+    "h-build", "Watch the brief build"],
+  ["Is anything kept?",
+    "No. Perch saves no brief, no lead and no log of your session. They sit in the server’s memory until you end the session, it has been idle 30 minutes, or the server restarts.",
+    "h-stored", "Nothing about you is stored"],
+  ["What does Match mean?",
+    "How closely a listing’s text matches the researcher’s papers, or a student’s CV and interests, from 0 to 100. Leads are sorted by it, highest first.",
+    "h-score", "How leads are ordered"],
+  ["Does Perch send anything?",
+    "No. It sends no email and writes to no outside system. Hand-offs are drafts for you to copy.",
+    "h-limits", "What Perch does not do"],
+  ["Where does each claim come from?",
+    "Dates and amounts are copied from a public record, and each explanation cites its records. Text a model wrote carries a tag, and code checks it against the records it cites.",
+    "h-labels", "Reading the labels"],
+];
+
+function jump(id) {
+  const t = document.getElementById(id);
+  if (!t) return;
+  t.setAttribute("tabindex", "-1");
+  t.scrollIntoView({ block: "start" });
+  t.focus({ preventScroll: true });
+}
+
+function quick() {
+  return h("section", { class: "help-block help-quick", "aria-labelledby": "h-quick" },
+    h("h2", { id: "h-quick", class: "section-title", text: "Quick answers" }),
+    h("ul", { class: "quick-list" }, QUICK.map(([q, a, id, where]) => h("li", {},
+      h("h3", { text: q }), h("p", { text: a }),
+      h("button", { class: "btn quiet", type: "button", onclick: () => jump(id) }, h("span", { text: `More: ${where}` }))))));
 }
 
 function pipeline() {
@@ -240,9 +278,7 @@ export function renderHelp(container, { back }) {
     h("nav", { class: "help-jump", "aria-label": "Jump to" }, h("span", { class: "hint", text: "Jump to:" }),
       [["h-use", "How to use Perch"], ["h-how", "How it works"], ["h-score", "How leads are ordered"],
         ["h-labels", "Reading the labels"], ["h-limits", "What Perch does not do"]].map(([id, text]) =>
-        h("button", { class: "btn quiet", type: "button", onclick: () => {
-          const t = document.getElementById(id); t.setAttribute("tabindex", "-1"); t.scrollIntoView({ block: "start" }); t.focus({ preventScroll: true });
-        } }, h("span", { text })))),
-    steps(), pipeline(), scoring(), labels(), limits(),
-    h("p", { class: "help-scout" }, h("span", { text: "Scout the owl moves while Perch works. Tap Scout to say hello." }))));
+        h("button", { class: "btn quiet", type: "button", onclick: () => jump(id) }, h("span", { text })))),
+    quick(), steps(), pipeline(), scoring(), labels(), limits(),
+    h("p", { class: "help-scout" }, h("span", { text: "Scout the owl moves while Perch works." }))));
 }

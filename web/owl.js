@@ -43,7 +43,7 @@ export function owl(state = "idle", extra = "", { button = false, copy = false }
   const el = document.createElement(button ? "button" : "span");
   if (button) {
     el.type = "button";
-    el.setAttribute("aria-label", "Say hello to Scout");
+    el.setAttribute("aria-label", "Scout, the owl");
     if (copy) el.tabIndex = -1;
   }
   el.className = `owl ${extra}`.trim();
