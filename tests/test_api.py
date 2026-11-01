@@ -515,3 +515,23 @@ def test_an_orcid_with_a_lower_case_x_finds_the_same_profile(tmp_path):
     for q in (base + "X", base + "x", f"https://orcid.org/{base}x"):
         c.get("/authors/resolve", params={"q": q})
     assert asked == [f"/authors/orcid:{base}X"] * 3
+
+
+def test_the_brief_carries_every_paper_its_summary_cites(tmp_path):
+    """T28: the Profile showed 3 paper chips where the export cited 4, because a paper the
+    summary cites outside the threads' key papers and the leads was not in the papers map."""
+    from perch.schemas import Brief, Work
+
+    c, service = make(tmp_path)
+    bid = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28",
+                                  "explain": False}).json()["id"]
+    from datetime import UTC, datetime
+
+    extra = Work(id="https://openalex.org/W9999999901", source="openalex",
+                 source_url="https://openalex.org/W9999999901",
+                 fetched_at=datetime(2026, 10, 28, tzinfo=UTC), title="SYNTHETIC paper")
+    with service.repo() as r:
+        b = r.get(Brief, bid)
+        r.upsert([extra, b.model_copy(update={
+            "summary": "Works on a SYNTHETIC topic [W9999999901]."})])
+    assert extra.id in c.get(f"/briefs/{bid}").json()["papers"]

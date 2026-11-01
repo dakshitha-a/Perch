@@ -460,6 +460,10 @@ def create_app(service: BriefService, runner: JobRunner,
             pids = {i for t in b.threads for i in t.get("work_ids", [])[:KEY_PAPERS]}
             pids |= {f"https://openalex.org/{c}" for x in leads for c in x.cited_ids
                      if c.startswith("W")}
+            # T28: every paper the summary cites, as the export names them, so the Profile
+            # shows the same citations
+            pids |= {f"https://openalex.org/{c}" for c in re.findall(r"\bW\d{5,}\b",
+                                                                      b.summary or "")}
             papers = {w.id: paper_json(w) for w in (r.get(Work, i) for i in sorted(pids)) if w}
         awards = [{"key": s.key, "award_number": s.award_number, "agency": s.agency,
                    "title": s.title, "start_date": s.start_date, "end_date": s.end_date,
