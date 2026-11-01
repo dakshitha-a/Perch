@@ -246,6 +246,11 @@ function answer(x, ctx, thinking) {
     h("span", { text: T.stopping ? "Stopping after this step…" : now ? `${TOOLS[now.tool] || now.tool}…` : "Scout is working…" }),
     h("button", { class: "btn quiet scout-stop", type: "button", disabled: T.stopping, onclick: () => stop(ctx) }, icon("stop"), h("span", { text: "Stop" })));
   if (x.status === "stopped" && x.by_user) return h("p", { class: "hint scout-stopped", text: "You stopped this question. The steps below show what ran; ask again to go on." });
+  // After a draft step the answer line is written by code, not a model (R3, R20).
+  if (x.answer && x.answer_by === "code") return h("div", { class: "scout-answer by-code" },
+    h("p", { class: "provenance" }, h("span", { class: "tag", text: "Code, no model" }),
+      h("span", { text: "Written by Perch’s code. The draft below is the step’s result." })),
+    h("p", { text: x.answer }));
   // Model prose says so in words, not by its tint alone (U7).
   if (x.answer) return h("div", { class: "scout-answer" },
     h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),

@@ -1267,6 +1267,21 @@ async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
     if papers["raw"]:  # Q8: papers named by title and year, not by OpenAlex work id
         w.errors.append(f"{tag}: Q8: Scout cites papers by raw work id {papers['raw'][:2]}")
     await w.snap(page, tag, "u-scout", full=True)
+    # R3: after a hand-off draft the answer line is code, not model prose about the draft
+    await page.click("#tab-routes")
+    await page.evaluate(OPEN_WEAK)
+    for _i in (0, 1):
+        await page.locator(".leads > li .btn.keep:not(.on)").first.click()
+        await page.wait_for_timeout(300)
+    await page.click("#tab-scout")
+    await page.wait_for_selector("#scout-q")
+    await scout_ask(page, "Draft the hand-off for my kept grants.")
+    got = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
+      const a = x.querySelector('.scout-answer'); return { text: a ? a.innerText : '', model: Boolean(a && a.querySelector('.tag.model')),
+        draft: Boolean(x.querySelector('.scout-draft')) }; }""")
+    if not got["draft"] or got["model"] or "is below. Perch never sends it" not in got["text"]:
+        w.errors.append(f"{tag}: R3: after the draft step the answer reads {got['text'][:140]!r} (Model text tag: {got['model']})")
+    await w.snap(page, tag, "r-scout-draft", full=True)
     await end_session(page)
 
 

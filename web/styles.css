@@ -677,6 +677,7 @@ body.on-help .banner { display: none; }
 .scout-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .scout-answer { padding: 12px 14px; border-left: 3px dashed var(--model); background: var(--model-soft); border-radius: 0 10px 10px 0; line-height: 1.6; white-space: pre-line; overflow-wrap: anywhere; }
 .scout-answer > .provenance { margin: 0 0 6px; white-space: normal; line-height: 1.4; }
+.scout-answer.by-code { border-left: 3px solid var(--line); background: var(--surface); } /* R3: code, not model text */
 .scout-answer .scout-list { margin: 2px 0 6px; padding-left: 22px; white-space: normal; }
 .scout-answer .scout-list li + li { margin-top: 2px; }
 .scout-wait { display: flex; gap: 10px; align-items: center; color: var(--ink-2); margin: 0; }

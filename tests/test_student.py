@@ -225,6 +225,10 @@ def test_student_scout_uses_only_the_student_tools(tmp_path, monkeypatch):
     assert cards["read_cv"]["status"] == "done"
     note = cards["draft_note"]["draft"]
     assert note and "SAMPLE" in note["body"] and note["office"] == "Student Financial Services"
+    # R20: after draft_note the answer is one code-written line; the note is not retyped
+    x = v["exchanges"][0]
+    assert x["answer_by"] == "code" and x["answer"].startswith(
+        "The note to Student Financial Services is below. Perch never sends it")
     canary = canaries("persona-ug")
     assert not any(t in json.dumps(v) for t in canary)  # no CV text reached Scout's view
     assert c.post("/private/end", headers=h).json()["ended"]

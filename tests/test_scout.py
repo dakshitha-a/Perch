@@ -453,3 +453,24 @@ def test_next_deadline_sorts_by_close_date_after_the_as_of_date(service):
     known = [d for d in dates if d]
     assert known == sorted(known)
     assert "closes_after" in TOOLS["search_opportunities"][0].parameters["properties"]
+
+
+def test_after_a_draft_the_answer_line_is_code_and_no_model_prose_is_asked(service):
+    """R3, R20: asked to sum up the draft it had just made, the model said the records
+    lacked the draft's dates, or stopped mid-line, or retyped the note. Once draft_handoff
+    or draft_note has run, the answer is one code-written line and the model is not
+    called again; the draft shows in full on its card."""
+    fake = FakeProvider([call("draft_handoff", ids=[OPP]),
+                         "I cannot rewrite the draft because the records lack its dates."])
+    s = Scout(fake, ctx(service)).start("Draft the hand-off for my kept grants.")
+    assert len(fake.calls) == 1 and s.status == "done" and not s.flagged
+    assert s.answer == ("The draft to Research Development is below. Perch never sends it: "
+                        "edit it, then send it yourself.")
+    assert s.exchanges[-1]["answer_by"] == "code" and s.cited_ids == []
+    assert s.messages[-1].content == s.answer  # the history stays whole for a follow-up
+    # a draft step that fails goes back to the model as before
+    bad = FakeProvider([call("draft_handoff", office="technology_commercialization", ids=[OPP]),
+                        "None of these leads goes to that office."])
+    s = Scout(bad, ctx(service)).start("Draft it to commercialization.")
+    assert s.cards[0].status == "error" and len(bad.calls) == 2
+    assert "answer_by" not in s.exchanges[-1]

@@ -73,6 +73,8 @@ STEP_SCHEMA = {"type": "object", "properties": {
     "answer": {"type": "string"}},
     "required": ["action", "tool", "arguments", "answer"], "additionalProperties": False}
 
+# Steps whose result is a draft for the user to copy: the answer line is code (R3, R20).
+DRAFT_TOOLS = ("draft_handoff", "draft_note")
 # Q5: the reminder sent once when an answer ran no tool and cites nothing.
 NUDGE = ("You answered without calling a tool, and your answer cites no record. The lists "
          "in your instructions are a snapshot, and earlier results may be out of date. If "
@@ -279,12 +281,15 @@ class Scout:
 
     def advance(self, s: Session) -> Session:
         while True:
-            for c in s.pending():
+            ran = s.pending()
+            for c in ran:
                 if s.stop_asked:
                     self._not_run(s, c)
                 else:
                     self._execute(s, c)
             self._reply_with_results(s)
+            if drafted := [c for c in ran if c.tool in DRAFT_TOOLS and c.status == "done"]:
+                return self._drafted(s, drafted)
             if s.stop_asked:
                 return self._stop(s, "", by_user=True)
             if why := self._over_budget(s):
@@ -434,6 +439,23 @@ class Scout:
         s.exchanges[-1].update(status=s.status, errors=s.errors, by_user=by_user)
         s.stop_asked = False
         self._log_answer(s, passed=False, attempts=0)
+        return s
+
+    def _drafted(self, s: Session, cards: list[Card]) -> Session:
+        """R3, R20: once a draft is made, the answer line is written by code and no model
+        prose is asked for. A model asked to sum up the draft retyped it, cut it off, or
+        said the records lacked what the draft held. The draft shows in full below."""
+        offices = " and ".join(dict.fromkeys(str(c.result["office"]) for c in cards))
+        noun = "draft" if cards[0].tool == "draft_handoff" else "note"
+        text = (f"The {noun} to {offices} is below. Perch never sends it: edit it, then send "
+                "it yourself." if len(cards) == 1 else f"The {noun}s to {offices} are below. "
+                "Perch never sends them: edit them, then send them yourself.")
+        s.messages.append(Message("assistant", text))
+        s.answer, s.cited_ids, s.flagged, s.errors = text, [], False, []
+        s.status, s.stop_asked = "done", False
+        s.exchanges[-1].update(status="done", answer=text, flagged=False, errors=[],
+                               answer_by="code")
+        self._log_answer(s, passed=True, attempts=0)
         return s
 
     def _validate(self, s: Session, text: str) -> list[str]:
