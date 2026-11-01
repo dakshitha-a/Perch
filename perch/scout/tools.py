@@ -393,12 +393,25 @@ def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
             text = shown_day(c.text) if key == "closes" else c.text  # as on the cards (Q22)
             cells[label] = f"{text} ({c.note})" if c.note else text
         out = {"route": row.route, "title": row.title,
-               "record": ctx.see(rec) if rec else row.record_id, **cells}
+               "record": ctx.see(rec) if rec else row.record_id,
+               "kept": lead.status == "kept", **cells}
         if lead.route == "B":
             out["lead"] = ctx.see(lead)  # holds the code-written signal sentences
         rows.append(out)
-    return {"rows": rows, "note": "Each cell is copied from the record or counted from it "
-            "by code. \"Not in the record\" means the record does not say. Industry leads "
+    order = [x for x in (ctx.service.get(ctx.brief_id) or (None, []))[1]
+             if x.route == "A" and x.status != "dismissed"] if ctx.brief_id else []
+    order.sort(key=lambda x: x.rank or 0)
+    top = []
+    with ctx.service.repo() as r:
+        for x in order[:3]:
+            if (o := r.get(Opportunity, x.record_id)) is not None:
+                top.append({"id": ctx.see(o), "title": o.title})
+    return {"rows": rows, **({"brief_top_leads": top} if top else {}),
+            "note": "These rows are the leads compared, not the brief's top leads. "
+            + ("brief_top_leads are the first three in the brief's own order by Match: use "
+               "them for top or best. " if top else "") + "Each cell is copied from the "
+            "record or counted from it by code. \"Not in the record\" means the record does "
+            "not say. Industry leads "
             "are inferred from public signals, not verified. There is no effort, IP or "
             "likelihood column because no record states them."}
 
@@ -508,7 +521,8 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
         "Kept or chosen leads side by side: money, close date, activity code, funding "
         "instrument or suggested relationship, evidence and Temple office, each copied from "
         "its record. Omit ids for the leads the user kept on the brief; pass ids only when "
-        "the user names the leads to compare.",
+        "the user names the leads to compare. Use it for kept leads, the shortlist or a "
+        "comparison, not for the top or best leads, which are the brief's order by Match.",
         _obj({"ids": {**STRS, "description": "opportunity ids (e.g. grants_gov:PAR-25-123) "
                       "or industry lead ids from get_org_signals"}}, [])), compare),
     "draft_handoff": (Tool(

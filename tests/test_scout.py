@@ -474,3 +474,64 @@ def test_after_a_draft_the_answer_line_is_code_and_no_model_prose_is_asked(servi
     s = Scout(bad, ctx(service)).start("Draft it to commercialization.")
     assert s.cards[0].status == "error" and len(bad.calls) == 2
     assert "answer_by" not in s.exchanges[-1]
+
+
+def _ranked_brief(service, n):
+    """A brief of its own with n SYNTHETIC Route A leads, ranked 1 to n, none kept."""
+    from datetime import UTC, datetime
+
+    from perch.schemas import Brief, Lead, Opportunity
+
+    t = datetime(2026, 10, 29, tzinfo=UTC)
+    kw = {"source": "grants_gov", "source_url": "https://www.grants.gov/x", "fetched_at": t}
+    with service.repo() as r:
+        base = max(r.list(Brief), key=lambda x: x.created_at)
+        bid = f"{base.id}-ranked"
+        opps = [Opportunity(id=f"grants_gov:SYN-{i}", opportunity_number=f"SYN-{i}",
+                            title=f"SYNTHETIC grant {i}", agency="NSF",
+                            close_date=date(2027, 3, i), **kw) for i in range(1, n + 1)]
+        leads = [Lead(id=f"{bid}:A{i}", brief_id=bid, route="A", record_id=o.id, rank=i,
+                      match_score=90 - 10 * i, **kw) for i, o in enumerate(opps, 1)]
+        r.upsert([*opps, *leads, base.model_copy(update={
+            "id": bid, "lead_ids": [x.id for x in leads]})])
+    return service.get(bid)[0], leads
+
+
+def test_top_means_the_briefs_match_order_and_compare_says_its_rows_are_not_the_top(service):
+    """R2: with two weak leads kept, "What are my top three leads?" ran compare on the kept
+    ones and named them as the top three. The context and the tool results now say that
+    top or best is the brief's own order by Match, and the kept list is only for kept,
+    shortlist or compare questions."""
+    from perch.scout import brief_note
+    from perch.scout.loop import RULES
+
+    b, leads = _ranked_brief(service, 6)
+    for x in leads[-2:]:  # the two weakest kept
+        service.set_lead_status(b.id, x.id, "kept")
+    service.set_lead_status(b.id, leads[1].id, "dismissed")
+    c = ScoutContext(service, AS_OF, researcher_id=AUTHOR, brief_id=b.id)
+    note = brief_note(c, b, service.get(b.id)[1])
+    assert "in the brief's own order by Match, the strongest first" in note
+    assert '"Top", "best" or "strongest" leads mean this order' in note
+    assert "whatever is kept" in note and "do not call compare for it" in note
+    first = note.split("\n1. ")[1]
+    assert first.startswith(f"[{leads[0].record_id}]")
+    assert leads[1].record_id not in note  # dismissed leads are not in the order
+    assert "never the kept leads" in RULES
+    res = TOOLS["compare"][1](c)
+    assert [r["record"] for r in res["rows"]] == [x.record_id for x in leads[-2:]]
+    assert all(r["kept"] for r in res["rows"])
+    assert [x["id"] for x in res["brief_top_leads"]] == [leads[0].record_id,
+                                                          *[x.record_id for x in leads[2:4]]]
+    assert res["note"].startswith("These rows are the leads compared, not the brief's top")
+    assert "not for the top or best" in TOOLS["compare"][0].description
+
+
+def test_student_top_means_the_briefs_match_order():
+    """R2 for students: "What are my best options?" compared the kept options."""
+    from perch.scout.student_tools import STUDENT_RULES, STUDENT_TOOLS
+
+    assert '"Top", "best" or "strongest" options mean the brief\'s own order by Match' in \
+        " ".join(STUDENT_RULES.split())
+    assert "never the kept options" in " ".join(STUDENT_RULES.split())
+    assert "not for the top or best" in STUDENT_TOOLS["compare_options"][0].description

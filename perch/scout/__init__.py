@@ -73,17 +73,23 @@ def brief_note(ctx: ScoutContext, b: Brief, leads: list[Lead]) -> str:
     the ones kept now marked (Q4)."""
     lines, kept = [], []
     with ctx.service.repo() as r:
-        for lead in sorted((x for x in leads if x.route == "A"), key=lambda x: x.rank or 0):
+        for lead in sorted((x for x in leads if x.route == "A" and x.status != "dismissed"),
+                           key=lambda x: x.rank or 0):
             if (o := r.get(Opportunity, lead.record_id)) is not None:
                 mark = " (kept)" if lead.status == "kept" else ""
-                lines.append(f"{lead.rank}. [{ctx.see(o)}] {o.title}{mark}")
+                lines.append(f"{len(lines) + 1}. [{ctx.see(o)}] {o.title}{mark}")
         kept = [x for x in leads if x.status == "kept"]
     if not lines:
         return ""
     k = (f"The user has kept {len(kept)} lead{'' if len(kept) == 1 else 's'} on the brief. "
-         "For the kept leads, call compare or draft_handoff with no ids; pass ids only when "
-         "the user names other leads." if kept else
-         "The user has kept no lead on the brief yet. If asked about kept leads, say so and "
-         "offer to compare the top three.")
-    return ("\n\nThe user is looking at brief " + b.id + ". Its ranked leads (Route A):\n"
-            + "\n".join(lines) + "\n" + k)
+         "For questions about the kept leads, the shortlist or a comparison, call compare or "
+         "draft_handoff with no ids; pass ids only when the user names other leads."
+         if kept else "The user has kept no lead on the brief yet. If asked about kept "
+         "leads, say so and offer to compare the top three.")
+    # R2: "top" and "best" mean this order, never the kept list.
+    top = ("\"Top\", \"best\" or \"strongest\" leads mean this order: the first ones in this "
+           "list, whatever is kept. Answer such a question from this list and cite each lead; "
+           "do not call compare for it. Do not state Match scores or positions as numbers.")
+    return ("\n\nThe user is looking at brief " + b.id + ". Its grant leads (Route A), in the "
+            "brief's own order by Match, the strongest first (dismissed leads left out):\n"
+            + "\n".join(lines) + "\n" + top + "\n" + k)

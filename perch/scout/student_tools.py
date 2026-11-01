@@ -116,8 +116,8 @@ def search_options(ctx: ScoutContext, route: str = "all", verdict: str | None = 
         rows.append(_row(ctx, x))
     rows = rows[:15]
     return {**apart(rows, "options"), "count": len(rows),
-            "note": "Options in this student brief, checked against the CV by rule. "
-            + APART_NOTE}
+            "note": "Options in this student brief, checked against the CV by rule, each "
+            "group in the brief's own order by Match, the strongest first. " + APART_NOTE}
 
 
 APART_NOTE = ("Records marked sample are invented test data. When both groups are present, "
@@ -216,8 +216,9 @@ def compare_options(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
         raise ToolError("nothing kept: pass option ids from search_options")
     rows = [{**_row(ctx, x), "still_needed": x.gaps} for x in chosen]
     return {**apart(rows, "rows"), "count": len(rows),
-            "note": "Each cell is copied from its record or checked against the CV by rule. "
-            + APART_NOTE}
+            "note": "These are the options compared, not the brief's best ones: for top or "
+            "best, use search_options, which lists the brief's own order by Match. Each cell "
+            "is copied from its record or checked against the CV by rule. " + APART_NOTE}
 
 
 def draft_note(ctx: ScoutContext, route: str | None = None,
@@ -285,7 +286,9 @@ STUDENT_TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
                              _obj({"option_id": _ID}, ["option_id"])), explain_verdict),
     "read_cv": (Tool("read_cv", "The fields the rules read from the CV (level, year, major, "
                      "GPA, enrolment, graduation, referees).", _obj({}, [])), read_cv),
-    "compare_options": (Tool("compare_options", "Kept or chosen options side by side.",
+    "compare_options": (Tool("compare_options", "Kept or chosen options side by side. For "
+                             "kept options, the shortlist or a comparison; not for the top "
+                             "or best options, which are the brief's order by Match.",
                              _obj({"ids": _IDS}, [])), compare_options),
     "draft_note": (Tool("draft_note", "A note to the right Temple office about kept or "
                         "chosen options, written by code, for the student to copy. Never "
@@ -305,6 +308,10 @@ Rules:
 in this conversation: call a tool first. The list below is a snapshot; what is kept may \
 have changed. For the shortlist or kept options, call compare_options once: it returns \
 every kept option with what is still needed. Do not check options one by one.
+- "Top", "best" or "strongest" options mean the brief's own order by Match, the \
+strongest first, never the kept options: search_options lists them in that order, and so \
+does the list below. Only a question about the kept options, the shortlist or a comparison \
+uses compare_options.
 - Use only the tools you are given. You cannot browse the web, send email, apply for \
 anything, change a record, or read the CV text. If no tool can do what is asked, say so \
 plainly in one sentence and do not call a tool.
@@ -331,7 +338,8 @@ def student_brief_note(ctx: ScoutContext, leads: list[Lead]) -> str:
             title = facts_of(rec)["title"]
             marks = (", SAMPLE" if x.sample else "") + (", kept" if x.status == "kept" else "")
             lines.append(f"- [{ctx.see(rec)}] {title} ({x.verdict}{marks})")
-    return ("\n\nThe student's options in this brief:\n" + "\n".join(lines)) if lines else ""
+    return ("\n\nThe student's options in this brief, each group in the brief's own order "
+            "by Match, the strongest first:\n" + "\n".join(lines)) if lines else ""
 
 
 __all__ = ["STUDENT_ALLOWLIST", "STUDENT_RULES", "STUDENT_TOOLS", "mixed_lists", "short_id",
