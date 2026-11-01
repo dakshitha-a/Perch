@@ -21,7 +21,6 @@ from perch.offices import RESEARCH_SECURITY, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
 from perch.sources import grants_gov, temple
 
-
 # The Industry tab's note (web/app.js), word for word (R18).
 INDUSTRY_NOTE = ("Inferred from public signals; not verified. A company that cites or works "
                  "near your research may have no interest in funding it. SBIR/STTR covers NIH "
