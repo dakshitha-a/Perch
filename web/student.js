@@ -194,7 +194,7 @@ export function studentProfile(d, { openEvidence }) {
   const mine = Object.entries(d.papers || {}).filter(([id, w]) => w.private);
   const interests = mine.filter(([id]) => /interests/.test(id));
   const achievements = mine.filter(([id]) => /achievement-/.test(id)); // one row per achievement
-  // Your own words, from this session's memory; exports still withhold or mask them.
+  // Your own words, from this session's memory; exports include them, hand-offs withhold or mask them.
   const ref = ([id, w]) => h("li", { class: "fade-in" }, h("button", { class: "paper", type: "button", onclick: (e) => openEvidence(id, e.currentTarget) },
     h("span", { class: "paper-title", text: w.title }),
     w.text ? h("span", { class: "paper-meta", text: w.text.replace(/^#.*$/gm, "").replace(/\s+/g, " ").trim().slice(0, 220) }) : null));

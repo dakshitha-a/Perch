@@ -191,7 +191,6 @@ export function privateBar(api, go, held = true) {
       h("button", { class: "btn quiet", onclick: () => download("html") }, icon("paper"), h("span", { text: "Print or save as PDF" })),
       h("button", { class: "btn quiet", onclick: () => download("md") }, icon("download"), h("span", { text: "Markdown" })),
       h("button", { class: "btn quiet", onclick: () => download("json") }, icon("download"), h("span", { text: "Records as JSON" }))),
-    held ? h("p", { class: "hint", text: "Exports include text from your documents. Check the box to mask phrases from your ongoing research before sharing the file." }) : null,
     held ? researchMask(api) : null,
     held ? h("details", { class: "unmask" }, h("summary", { text: "Unmask text on this screen" }),
       h("p", { class: "hint", text: "Paste masked text from an export. The key stays in this session's memory and ends with it." }),
@@ -209,17 +208,22 @@ function researchHeld() { return P.docs.some((d) => RESEARCH_KINDS.includes(d.ki
 
 // The Export menu's own box. Shown only when the session holds ongoing research; the held
 // documents are read again when the menu is built, since they may have changed elsewhere.
+// The export hint and box. The box shows only with a proposal, direction or manuscript;
+// without one (a student, or a CV alone) the hint does not mention it.
+const EXPORT_HINT = "Exports include text from your documents.";
+const MASK_HINT = " Check the box to mask phrases from your ongoing research before sharing the file.";
 function researchMask(api) {
+  const hint = h("p", { class: "hint", text: EXPORT_HINT + (researchHeld() ? MASK_HINT : "") });
   const row = h("div", { class: "mask-toggle", hidden: !researchHeld() });
   row.append(h("label", { class: "check" }, h("input", { type: "checkbox", "data-key": "export-mask", checked: P.maskResearch, onchange: (e) => {
     P.maskResearch = e.target.checked;
   } }), h("span", { text: "Mask my ongoing research" })));
-  api.session().then((sess) => { P.docs = sess.documents; row.hidden = !researchHeld(); }).catch(() => { /* keep what is known */ });
-  return row;
+  api.session().then((sess) => { P.docs = sess.documents; row.hidden = !researchHeld(); hint.textContent = EXPORT_HINT + (researchHeld() ? MASK_HINT : ""); }).catch(() => { /* keep what is known */ });
+  return h("div", { class: "export-mask" }, hint, row);
 }
 
-// The mask setting, shown in the Export menu and beside Draft the email. Both boxes show
-// the one session setting and change it together (review W6).
+// The hand-off mask setting, beside Draft the email. The Export menu has its own box,
+// Mask my ongoing research (P.maskResearch; Dakshitha, 2026-11-02).
 export function maskOn() { return P.mask; }
 
 // One listener for a change of the mask setting, from either box: the hand-off sets it
@@ -234,7 +238,7 @@ export function maskToggle(key = null) {
       for (const b of document.querySelectorAll("input[data-mask]")) b.checked = P.mask;
       for (const w of document.querySelectorAll(".mask-warn")) w.hidden = !P.mask;
       if (maskChanged) maskChanged(P.mask);
-    } }), h("span", { text: "Mask private text in exports and hand-offs" })),
+    } }), h("span", { text: "Mask private text in hand-offs" })),
     // The server's own warning (perch.egress.WARNING), served by GET /private (review W14).
     h("p", { class: "hint mask-warn", hidden: !P.mask, text: (P.info && P.info.mask_warning) || "" }));
 }
