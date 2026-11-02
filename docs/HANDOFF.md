@@ -30,6 +30,13 @@ Written at the close of S33 (2026-11-02). S33 ran in one orchestrating context w
 - **`bench/student_mode.py` writes a stale sentence** into `bench/results/STUDENT_MODE.md` ("40 records" where the S27 setting is 100); the task 6 agent reverted the output, and the script's text template is still wrong.
 - **The S33 ZIP in `dist/` was built from d61d29d**, one commit before the close; S34 rebuilds it from the tagged commit.
 
+## After the S33 close (2026-11-02)
+
+- **Back to your options.** On the student form it showed whenever the session held any brief, so after a researcher run it opened the researcher's routes. The session now reports `brief_student`, and the button shows only for a student brief.
+- **One side per session (Dakshitha).** A session holds a researcher brief or a student brief, never both. Arriving at Find, Your documents or the student form with the other side's brief open shows a warning listing what goes. End session and start fresh ends it and opens the form empty; Keep goes back to the brief. The server answers 409 to the other side's brief. Decision row, Help text, tests and the walk flow `ux-side` cover it.
+- **Checks.** 422 tests green. `ux-side` (laptop and phone) and `ux-student` on the dev server and the public URL: 12 states, 0 errors, 0 axe. The full walk, rehearsal and canary were not rerun; the freeze reruns them.
+- **Demo.** Rebuilt from `main` in 29 s, image 2aa7e4c70150; the S33 image is kept as perch-demo:prev. The ZIP in `dist/` predates these commits.
+
 ## Next: S34, freeze (Dakshitha)
 
 1. Confirm `make test`, `make package` from a clean clone and the live demo one last time.
