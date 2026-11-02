@@ -616,7 +616,7 @@ body.on-help .banner { display: none; }
 .count { display: inline-grid; min-width: 26px; height: 26px; border-radius: 13px; background: var(--moss); color: var(--moss-ink); font-weight: 700; font-size: 14px; }
 .count > span { grid-area: 1 / 1; display: grid; place-items: center; }
 .count .c0 { opacity: 0; }
-.dim-later { opacity: .5; }
+.dim-later { max-height: 0; opacity: 0; padding-block: 0; border-width: 0; overflow: hidden; } /* a dismissed lead leaves the list */
 .seg { display: inline-flex; padding: 4px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); justify-self: start; }
 .seg-b { padding: 8px 16px; border-radius: 9px; font: 600 14px var(--sans); color: var(--ink-2); }
 .seg-on { background: var(--accent); color: var(--on-accent); }
@@ -697,7 +697,7 @@ body.on-help .banner { display: none; }
 @keyframes fx-off { 0%, 34% { opacity: 1; } 38%, 100% { opacity: 0; } }
 @keyframes fx-c0 { 0%, 34% { opacity: 1; } 38%, 100% { opacity: 0; } }
 @keyframes fx-c1 { 0%, 34% { opacity: 0; } 38%, 100% { opacity: 1; } }
-@keyframes fx-dim { 0%, 58% { opacity: 1; } 66%, 100% { opacity: .5; } }
+@keyframes fx-dim { 0%, 58% { max-height: 90px; opacity: 1; padding-block: 10px; border-width: 1px; } 68%, 100% { max-height: 0; opacity: 0; padding-block: 0; border-width: 0; } }
 @keyframes fx-seg-off { 0%, 26% { background: var(--accent); color: var(--on-accent); } 32%, 100% { background: transparent; color: var(--ink-2); } }
 @keyframes fx-seg-on { 0%, 26% { background: transparent; color: var(--ink-2); } 32%, 100% { background: var(--accent); color: var(--on-accent); } }
 @keyframes arch-go { from { offset-distance: 0%; } to { offset-distance: 100%; } }
