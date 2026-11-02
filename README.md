@@ -136,7 +136,7 @@ yourself.
 ### Ask Scout a follow-up
 
 "Which of my NSF leads close by 1 Mar 2027?" or "Why does the top lead fit?". Scout,
-the agent, answers by calling Perch's own ten tools. Above each answer, "How Scout read
+the agent, answers by calling Perch's own nine tools. Above each answer, "How Scout read
 your question" lists every step with its filters; the step cards fold under Steps. New
 conversation, beside the question box, starts over. Scout cannot browse, send anything
 or change a record.
@@ -153,7 +153,7 @@ through Perch's [MCP server](docs/mcp.md), Claude Code included.
 ### Points for your cover letter
 
 Ask Scout "What could my cover letter for the top lead say?" on a researcher
-brief, or "What should my application for this scholarship highlight?" on a
+brief, or "What should my application for my top option highlight?" on a
 student brief. For that one record, Perch's fourth model skill returns three to
 six points. Each point has two halves: what the record asks for or rewards,
 cited to the record, and what you have that answers it, cited to your CV, a

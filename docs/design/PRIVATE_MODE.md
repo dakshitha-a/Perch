@@ -22,8 +22,8 @@ and turning Cloud off or ending the session clears it.
 **S33 update (models may read the CV).** Standing rule 5 as amended on 2026-11-01 lets a
 session's models read the CV and documents. Contact details (emails, phone numbers, links,
 ORCID) are blanked in every model prompt view, for every skill, and the CV is capped at about
-3,500 characters in a prompt, preferring its education, appointments, funding and awards
-sections. The fourth skill, application points (`cover_points`), reads them for one record the
+3,500 characters in a prompt, preferring its education, appointment and position, funding,
+award and skills sections. The fourth skill, application points (`cover_points`), reads them for one record the
 user asks about and returns checked points for a cover letter. Nothing from a document is
 retained, and nothing leaves the session except by the user's informed choice above.
 

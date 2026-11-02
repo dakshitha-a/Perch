@@ -43,7 +43,7 @@ Every local chat model must be an Ollama or OpenAI-compatible server on an allow
 1. Under **I'm a researcher**, follow **Add a CV or unpublished work (optional, local by default)**. If you paste a CV or long text into a box on Find, Perch offers to add it as a document; nothing is sent until you choose.
 2. The session opens on arrival. The page shows the privacy statement, which names who runs the server.
 3. Paste or upload any of four documents: plain text, Markdown, Word (.docx) or PDF.
-   - **Your CV:** code reads it for the career-stage rules and past sponsors. It does not steer the search. When you ask Scout what a cover letter for one lead could say, the cover-points skill reads the CV too, with contact details (emails, phone numbers, links, ORCID) blanked and the text capped at about 3,500 characters, preferring education, appointments, funding and awards. Without a CV the points come from your papers and public awards.
+   - **Your CV:** code reads it for the career-stage rules and past sponsors. It does not steer the search. When you ask Scout what a cover letter for one lead could say, the cover-points skill reads the CV too, with contact details (emails, phone numbers, links, ORCID) blanked and the text capped at about 3,500 characters, preferring education, appointments and positions, funding, awards and skills. Without a CV the points come from your papers and public awards.
    - **Draft proposal:** the strongest steer, 0.5 of the private weight.
    - **Research direction:** 0.3 of it.
    - **Unpublished work:** 0.2 of it.
