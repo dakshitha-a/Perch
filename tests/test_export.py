@@ -246,3 +246,8 @@ def test_the_researcher_export_carries_the_era_note_once_under_the_grants_headin
     assert md.index("## Grants (") < md.index(SUBMISSION_NOTE) < md.index("### 1. SYN-1")
     sbrief, sleads, recs = _student_inputs()
     assert SUBMISSION_NOTE not in ex.to_markdown(ex.student_blocks(sbrief, sleads, recs))
+
+
+def test_html_export_wraps_long_urls_on_a_phone() -> None:
+    """A plain-text DOI or record URL in a Cites line must wrap, not scroll the page sideways."""
+    assert "overflow-wrap: anywhere" in ex.CSS.split("body {", 1)[1].split("}", 1)[0]

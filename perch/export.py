@@ -610,7 +610,8 @@ def to_markdown(bs: list[Block]) -> str:
 CSS = """
 :root { color-scheme: light; }
 body { font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1F2B2D;
-  background: #fff; max-width: 820px; margin: 24px auto; padding: 0 16px; }
+  background: #fff; max-width: 820px; margin: 24px auto; padding: 0 16px;
+  overflow-wrap: anywhere; }
 h1 { font: 600 28px/1.2 Georgia, serif; }
 h2 { margin-top: 28px; border-bottom: 1px solid #D8DED7; }
 h3 { margin-bottom: 4px; } a { color: #2E6A54; word-break: break-all; }
