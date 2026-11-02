@@ -384,6 +384,9 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         s = session(x_perch_private)
         if not s.docs and not req.author_id:
             raise HTTPException(422, "Choose a researcher or add a document first.")
+        if s.brief_id and s.brief_student:  # one side per session (2026-11-02)
+            raise HTTPException(409, "This session holds a student brief. End the session "
+                                "to run a researcher.")
         if s.briefs_run >= BRIEFS_PER_SESSION:
             raise HTTPException(429, f"A session runs at most {BRIEFS_PER_SESSION} briefs.")
         if req.author_id and not (oa.parse_author_id(req.author_id)  # before the hourly cap
@@ -418,6 +421,9 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     def start_student(req: PrivateBriefRequest, request: Request,
                       x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
+        if s.brief_id and not s.brief_student:  # one side per session (2026-11-02)
+            raise HTTPException(409, "This session holds a researcher brief. End the session "
+                                "to run as a student.")
         if "cv" not in s.docs:
             raise HTTPException(422, "Add your CV first.")
         if "interests" not in s.docs and "achievements" not in s.docs:

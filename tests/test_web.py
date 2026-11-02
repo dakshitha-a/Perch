@@ -128,6 +128,24 @@ console.log(JSON.stringify({ repeats, seen: seen.size, total: POKES.length,
 
 
 @pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
+def test_one_side_per_session():
+    """2026-11-02: a session holding one side's brief crosses only into the other side's
+    form; no brief, or the same side, never asks."""
+    script = """
+import { crossesSide, heldSide } from './web/mode.js';
+const R = { brief_id: 'b1', brief_student: false }, St = { brief_id: 'b2', brief_student: true };
+console.log(JSON.stringify([heldSide(R), heldSide(St), heldSide({ brief_id: null }), heldSide(null),
+  crossesSide(R, 'student'), crossesSide(St, 'researcher'), crossesSide(R, 'researcher'),
+  crossesSide(St, 'student'), crossesSide({ brief_id: null, brief_student: false }, 'student')]));
+"""
+    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
+                       text=True, cwd=ROOT, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(r.stdout) == ["researcher", "student", None, None,
+                                    True, True, False, False, False]
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
 def test_private_session_starts_before_personal_text_is_sent():
     """S18: the header switch, the Student path and the paste nudge all open a private
     session before any personal text leaves the browser; a content guess never switches

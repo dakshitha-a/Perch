@@ -18,6 +18,18 @@ export function looksPersonal(text) {
   return marks >= 2 || (marks >= 1 && lines >= 4);
 }
 
+// One side per session (2026-11-02): the side is the kind of brief the session holds,
+// "researcher" or "student", or null while it holds none. Arriving at the other side's
+// form asks to end the session first.
+export function heldSide(sess) {
+  if (!sess || !sess.brief_id) return null;
+  return sess.brief_student ? "student" : "researcher";
+}
+export function crossesSide(sess, target) {
+  const held = heldSide(sess);
+  return Boolean(held && target && held !== target);
+}
+
 // The mode controller. `api` is the private API client (start, end, addDocument, open);
 // `hooks.onChange(state)` redraws the frame. Drafts are held here, in memory only, until
 // the user adds them: moving text into private mode never sends it.

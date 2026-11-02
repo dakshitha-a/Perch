@@ -10,7 +10,7 @@ import { renderScout, resetScout } from "./scout.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
 import { docsHeld, lockLabel, privateAvailable, privateBar, privateInfo, renderPrivate, resetPrivate, setMode } from "./private.js";
-import { createMode, looksPersonal } from "./mode.js";
+import { createMode, crossesSide, looksPersonal } from "./mode.js";
 import { isStudent, keptWords, matchPill, resetStudent, usedSample, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
 
 const publicApi = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
@@ -60,6 +60,7 @@ const S = {
   seen: { explained: 0, stagesDone: 0 },
   startedHere: false,
   hasBrief: false, // the session holds a brief: leaving the page asks first (review W18)
+  sideChecked: false, // this arrival at a side's form passed the one-side check
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -101,6 +102,9 @@ function route() {
     main().focus({ preventScroll: true });
     return;
   }
+  // One side per session: arriving at the other side's form asks to end it first.
+  if (SIDES[parts[0]] && privApi.open && !S.sideChecked) { sideGuard(SIDES[parts[0]]); return; }
+  S.sideChecked = false;
   S.lastHash = location.hash || "#/";
   if (location.hash && location.hash !== "#/") S.notice = null;
   if (parts[0] === "private") {
@@ -702,6 +706,41 @@ function showError(msg) {
     h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", autofocus: true, onclick: () => done(true), text: "OK" }))));
 }
 
+// The form each side starts from (2026-11-02, Dakshitha): a session runs a researcher
+// brief or a student brief, never both. Your documents feeds a researcher brief.
+const SIDES = { find: "researcher", private: "researcher", student: "student" };
+const SIDE_WORDS = { researcher: ["a researcher", "researcher"], student: ["a student", "student"] };
+
+// The session holds the other side's brief: warn, and on OK end the session and open the
+// form fresh; otherwise go back to the brief. The warning is the end confirm.
+async function sideGuard(target) {
+  let sess = null;
+  try { sess = await privApi.session(); } catch { /* ended: nothing to cross */ }
+  const go_on = () => { S.sideChecked = true; route(); };
+  if (!crossesSide(sess, target)) { go_on(); return; }
+  const held = target === "student" ? "researcher" : "student";
+  const list = mode.discards(sess.documents || [], true);
+  const ok = await mode.disable(() => dialog((done) => h("div", { class: "dialog-in", role: "alertdialog", "aria-labelledby": "side-title", "aria-describedby": "side-why" },
+    h("h2", { id: "side-title", text: `Start fresh as ${SIDE_WORDS[target][0]}?` }),
+    h("p", { id: "side-why", text: `This session holds ${SIDE_WORDS[held][0]}’s brief. Perch runs one side at a time, so starting as ${SIDE_WORDS[target][0]} ends this session first. It discards:` }),
+    h("ul", {}, list.map((x) => h("li", { text: x }))),
+    h("div", { class: "row" },
+      h("button", { class: "btn", type: "button", autofocus: true, onclick: () => done(false), text: `Keep the ${SIDE_WORDS[held][1]} brief` }),
+      h("button", { class: "btn primary", type: "button", "data-key": "side-ok", onclick: () => done(true), text: "End session and start fresh" })))));
+  if (!ok) { go(`#/brief/${PRIVATE_ID}/routes`); return; }
+  sessionEnded(true); // a researcher just picked on Find stays picked
+  announce("Session ended. Everything in it was discarded.");
+  go_on();
+}
+
+// What the page held for a session the user ended.
+function sessionEnded(keepFind = false) {
+  resetScout(); resetPrivate(); resetStudent(); // what the modules held for the session
+  S.cloud = false; S.hasDocs = false; S.sampleBrief = false; S.hasBrief = false;
+  if (!keepFind) Object.assign(S.find, { picked: null, files: {}, direction: "", include: "", exclude: "", cv: "", proposal: "", sample: false });
+  drawSwitch();
+}
+
 // Ends the session from any screen, after a dialog that lists what goes.
 async function endSession() {
   let docs = [], hasBrief = S.briefId === PRIVATE_ID;
@@ -715,12 +754,7 @@ async function endSession() {
     h("div", { class: "row" },
       h("button", { class: "btn", type: "button", autofocus: true, onclick: () => done(false), text: "Keep working" }),
       h("button", { class: "btn primary", type: "button", "data-key": "end-ok", onclick: () => done(true), text: "End session" })))));
-  if (ok) {
-    resetScout(); resetPrivate(); resetStudent(); // what the modules held for the session
-    S.cloud = false; S.hasDocs = false; S.sampleBrief = false; S.hasBrief = false;
-    Object.assign(S.find, { picked: null, files: {}, direction: "", include: "", exclude: "", cv: "", proposal: "", sample: false });
-    drawSwitch(); announce("Session ended. Everything in it was discarded."); go("#/");
-  }
+  if (ok) { sessionEnded(); announce("Session ended. Everything in it was discarded."); go("#/"); }
 }
 
 // The server dropped the session: 30 minutes idle, or a restart. Clear what the page

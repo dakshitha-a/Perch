@@ -98,6 +98,9 @@ def test_each_persona_gets_leads_on_both_tabs(tmp_path, monkeypatch, name):
     b = got["brief"]
     assert b["status"] == "done", b["error"]
     assert c.get("/private/session", headers=h).json()["brief_student"] is True  # its Back link
+    # One side per session: a researcher brief is refused until the session ends (2026-11-02).
+    r = c.post("/private/brief", headers=h, json={"author_id": "A5063022331"})
+    assert r.status_code == 409 and "student brief" in r.json()["detail"]
     assert [s["name"] for s in b["stages"]] == ["student_profile", "fellowships",
                                                 "scholarships", "student_explanations"]
     by = {"F": [], "S": []}

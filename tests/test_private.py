@@ -275,6 +275,9 @@ def test_default_exports_withhold_and_masking_round_trips(tmp_path, monkeypatch)
     assert got["leads"][0]["explanation"]  # on screen in the session
     # A researcher brief is not a student brief: the student page hides its Back link.
     assert c.get("/private/session", headers=h).json()["brief_student"] is False
+    # One side per session: a student brief is refused until the session ends (2026-11-02).
+    r = c.post("/private/student/brief", headers=h, json={"as_of": "2026-10-28"})
+    assert r.status_code == 409 and "researcher brief" in r.json()["detail"]
     assert got["papers"]["private:proposal"]["private"] is True
     exp = c.get("/private/export.json", headers=h).json()
     assert exp["leads"][0]["explanation"].startswith("Withheld")

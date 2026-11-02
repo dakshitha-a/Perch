@@ -2227,13 +2227,80 @@ async def ux_points_student(w: Walk, page: Page, base: str, tag: str) -> None:
     await end_session(page)
 
 
+async def side_dialog(w: Walk, page: Page, tag: str, want: str, name: str) -> bool:
+    """The one-side warning is open, names the side, and focuses the safe button."""
+    try:
+        await page.wait_for_selector("#models-dialog[open] #side-title", timeout=10000)
+    except Exception:
+        w.errors.append(f"{tag}: one side: no warning on the way to the {want} form")
+        return False
+    got = await page.evaluate("""() => [document.querySelector('#side-title').innerText,
+      document.activeElement && document.activeElement.innerText]""")
+    if want not in got[0] or not got[1].startswith("Keep the"):
+        w.errors.append(f"{tag}: one side: the warning reads {got}")
+    await w.snap(page, tag, name)
+    return True
+
+
+async def ux_side(w: Walk, page: Page, base: str, tag: str) -> None:
+    """2026-11-02: a session runs a researcher or a student, not both. Arriving at the other
+    side's form warns; Keep goes back to the brief, End starts the form fresh."""
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector("[data-key=build]", timeout=20000)
+    await page.click("[data-key=build]")
+    await page.wait_for_selector("#tab-routes", timeout=60000)
+    await wait_built(page)
+    home = "() => { location.hash = '#/'; }"
+    for keep in (True, False):
+        await page.evaluate(home)
+        await page.wait_for_selector(".landing")
+        await page.click("[data-key=seg-s]")
+        await page.click("[data-key=student]")
+        if not await side_dialog(w, page, tag, "student", "side-to-student"):
+            return
+        if keep:
+            await page.locator("#models-dialog button", has_text="Keep the").click()
+            await page.wait_for_selector("#tab-routes", timeout=20000)
+            continue
+        await page.click("[data-key=side-ok]")
+        await page.wait_for_selector("#st-cv", timeout=20000)
+        held = await page.evaluate("""() => [document.querySelectorAll('.student-start .added').length,
+          [...document.querySelectorAll('.student-start a.btn')].some((a) => /Back to your options/.test(a.innerText))]""")
+        if held != [0, False]:
+            w.errors.append(f"{tag}: one side: the fresh student form still shows the researcher's session {held}")
+    for kind in ("cv", "interests", "achievements"):
+        await page.fill(f"#st-{kind}", (SYN / "persona-ug" / f"{kind}.md").read_text())
+    await page.click("[data-key=st-build]")
+    await page.wait_for_selector("#progress", timeout=20000)
+    await wait_built(page)
+    await page.evaluate("() => { location.hash = '#/student'; }")  # the same side never asks
+    await page.wait_for_selector("#st-cv, .student-start", timeout=20000)
+    await page.wait_for_timeout(500)
+    if await page.locator("#models-dialog[open]").count():
+        w.errors.append(f"{tag}: one side: going back to the student form asked to end the session")
+    if not await page.locator(".student-start a.btn", has_text="Back to your options").count():
+        w.errors.append(f"{tag}: the student form lost Back to your options for its own brief")
+    await page.evaluate(home)
+    await page.wait_for_selector(".landing")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    if await side_dialog(w, page, tag, "researcher", "side-to-researcher"):
+        await page.locator("#models-dialog button", has_text="Keep the").click()
+        await page.wait_for_selector("#tab-routes", timeout=20000)
+    await end_session(page)
+
+
 UX_FLOWS = (("ux-laptop", "LAPTOP", "ux_pi"), ("ux-phone", "PHONE", "ux_pi"), ("ux-scout", "LAPTOP", "ux_scout"),
             ("ux-student", "LAPTOP", "ux_student"), ("ux-student-phone", "PHONE", "ux_student"),
             ("ux-sample", "LAPTOP", "ux_sample"), ("ux-queued", "LAPTOP", "ux_queued"), ("ux-docs", "LAPTOP", "ux_docs"),
             ("ux-landing", "LAPTOP", "ux_landing"), ("ux-landing-phone", "PHONE", "ux_landing"),
             ("ux-zoom", "LAPTOP", "ux_zoom"), ("ux-cloud-docs", "LAPTOP", "ux_cloud_docs"),
             ("ux-cloud-docs-phone", "PHONE", "ux_cloud_docs"),
-            ("ux-points", "LAPTOP", "ux_points_pi"), ("ux-points-student", "LAPTOP", "ux_points_student"))
+            ("ux-points", "LAPTOP", "ux_points_pi"), ("ux-points-student", "LAPTOP", "ux_points_student"),
+            ("ux-side", "LAPTOP", "ux_side"), ("ux-side-phone", "PHONE", "ux_side"))
 
 
 async def main(base: str, axe: str | None, out: Path, only: list[str], ux: list[str] | None = None) -> None:
