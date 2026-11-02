@@ -37,6 +37,16 @@ Written at the close of S33 (2026-11-02). S33 ran in one orchestrating context w
 - **Checks.** 422 tests green. `ux-side` (laptop and phone, Keep and End in both directions) and `ux-student` on the public URL: 14 states, 0 errors, 0 axe. `ux-side` is in the walk's default set, so the freeze's full walk covers it. The full walk, rehearsal and canary were not rerun; the freeze reruns them.
 - **Demo.** Rebuilt from f678feb in 26 s, image f1299e0a01e9; the S33 image is kept as perch-demo:prev. The ZIP in `dist/` predates these commits.
 
+## Hand-off offices checked live (2026-11-02, after the S33 close)
+
+- **Routing is unchanged.** A live check of Temple's pages found it right for what Perch covers. Grants go to Research Development. Industry leads go to Innovation and Technology Commercialization. Fellowships go to Scholar Development and Fellowships Advising, whose list has graduate headings. Scholarships go to Student Financial Services.
+- **New: the ERA note.** The researcher hand-off screen, the researcher export and Help now say that every grant proposal, and any company agreement that brings Temple funding, goes through ERA for institutional review and approval. The note links Find Your Research Administrator. The draft email itself is unchanged.
+- **New: the future foundation office.** `FOUNDATION_OFFICE` in `perch/offices.py` records Corporate and Foundation Relations, reached through the school's or college's development team. It is not selectable, because Perch covers no foundations yet. Help says so.
+- **Sources.** Two new fixtures (the OVPR proposal page and the CFR resources page, `<main>` only, email removed). Pages that list staff names are cited by URL in `docs/SOURCES.md` and not kept.
+- **Checks.** 426 tests green. The walk check for the note failed before the UI edit and passes after. On the public URL: ux-laptop, ux-phone, ux-side and ux-student, 31 states, 0 errors, 0 axe, 0 sideways scroll. Rehearsal 20 of 21: one run of "What are my top three leads and why?" cited a record without naming its title; runs 1 and 2 passed, and the change does not touch Scout. The canary was not rerun; it runs on local data and this change does not touch the private path.
+- **Demo.** Rebuilt from `main` in 29 s, image 67beccbaa6b5; the previous image is kept as perch-demo:prev.
+- **Not done.** The team pitch and team pages still say "Grants & foundations" though no foundation records exist; those pages carry teammates' work and were left for Dakshitha. The design canvas does not show the note. Confirming the routing with the offices themselves stays with the business team.
+
 ## Next: S34, freeze (Dakshitha)
 
 1. Confirm `make test`, `make package` from a clean clone and the live demo one last time.
@@ -45,4 +55,4 @@ Written at the close of S33 (2026-11-02). S33 ran in one orchestrating context w
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 
-- **None.** Q43 (cover-letter points, rule 5) was decided by Dakshitha on 2026-11-01 and built in S33.
+- **None open.** Q44 (hand-off offices, 2026-11-02) is on record and built. Q43 (cover-letter points, rule 5) was decided by Dakshitha on 2026-11-01 and built in S33.
