@@ -186,10 +186,15 @@ model work can go to a cloud provider instead, after a warning that names it.
 After picking the researcher, open Tell Perch more to add a direction, keywords or
 a draft proposal that steer the search, and a CV that the career-stage rules read.
 Documents stay on local models unless you choose Cloud and confirm, in a second
-warning that lists them, which documents leave. Exports give the full brief and say that it includes
-text from your documents; an optional box masks phrases from your ongoing research. Hand-off drafts
-leave that text out. A canary
-test checks that no trace is left in files, logs or requests.
+warning that lists them, which documents leave.
+
+The Export menu saves the brief as a printable page (save it as PDF), Markdown or JSON.
+Each grant carries its Match, closing date, award size, eligible applicants, rule notes,
+an excerpt of the record's description, the fit explanation and the cited papers. An
+export gives the full brief and says when it includes text from your documents. An
+optional box masks phrases from your ongoing research before you share the file.
+Hand-off drafts leave document text out unless you mask it. A canary test checks that
+no trace is left in files, logs or requests.
 [More on privacy →](docs/private-mode.md)
 
 </td>
