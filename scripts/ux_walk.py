@@ -2285,6 +2285,7 @@ async def ux_side(w: Walk, page: Page, base: str, tag: str) -> None:
         w.errors.append(f"{tag}: the student form lost Back to your options for its own brief")
     await page.evaluate(home)
     await page.wait_for_selector(".landing")
+    await page.click("[data-key=seg-r]")  # the landing remembers the Student choice
     await page.fill("#q", AUTHOR)
     await page.click(".searchbox button[type=submit]")
     if await side_dialog(w, page, tag, "researcher", "side-to-researcher"):
