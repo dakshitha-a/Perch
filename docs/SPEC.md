@@ -55,7 +55,7 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 - Route A, grants and foundations: up to 10 open opportunities; sponsor, title, deadline, award size and eligibility *copied from the record*; 2–3 sentence fit explanation citing 1–3 of the researcher's papers; fit score.
 - Route B, industry leads: up to 5 organisations; the public signals found; suggested relationship type; fit explanation; confidence label; always "inferred from public signals; not verified".
 - Comparison: money, time to decision, effort, IP implications, evidence strength. Likelihood only for Route A, only as the back-tested hit rate for that opportunity type.
-- Hand-off draft: editable email to Research Development or Technology Commercialization. Never sent by the app.
+- Hand-off draft: editable email to Research Development or Technology Commercialization. Never sent by the app. The hand-off screen and the researcher export carry a fixed note: before anything goes to a sponsor, Temple routes it through ERA for institutional review and approval, and the note links to Find your research administrator. Routing does not change.
 - Application points (S33, model skill 4, on request through Scout): for one record, 3 to 6 points a cover letter could make. Each point pairs what the record asks for, cited to the record, with what the applicant has, cited to the CV, a document, a paper or a public award; up to three things the record asks for that no document shows are listed too. Checked by the validator and the grounding model; shown on the card to copy; never in exports or hand-off drafts.
 - Evidence panel: every claim links to its record. A claim with no record is not shown.
 - Export: PDF and Markdown; JSON of records.
@@ -88,7 +88,7 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 2. **Profile** — research profile first (10–20 s); confirm/remove papers; optional constraints; progress bar.
 3. **Routes** — two columns; each lead a card: fit score, record fields, cited explanation, Keep/Dismiss.
 4. **Compare** — kept leads in one sortable table; evidence panel from any cell.
-5. **Hand off** — choose office, edit draft, copy or open in mail; shareable link and PDF.
+5. **Hand off** — choose office, edit draft, copy or open in mail; shareable link and PDF. Under the To line a fixed note says Temple routes every grant proposal, and any company agreement that brings Temple funding, through ERA, with a "Find your research administrator" link.
 6. **Ask Scout** — plain follow-ups on the brief; "What could my cover letter for the top lead say?" runs `cover_points` (S33) and puts the checked points on the card with Copy.
 
 **Student walkthrough** (S18, S33)
@@ -183,8 +183,8 @@ Validator rule (pipeline and agent alike): an output citing an unknown ID, or co
 | Grants.gov | open federal opportunities | verify endpoint and terms |
 | NIH Guide archive | historical announcements for the back-test | verify structured access |
 | SBIR.gov | companies with small-business awards | verify |
-| Foundation listings | curated list with URLs | v1.5 |
-| Temple public pages | office names and contacts | verified |
+| Foundation listings | curated list with URLs | v1.5. Foundation leads will go to Corporate and Foundation Relations, through the school's or college's development team. |
+| Temple public pages | office names and pages | verified 2026-11-02; no contacts stored |
 | PatentsView | patent signals | v2 (API key) |
 
 Dropped: SEC filings, job postings, press releases.
@@ -236,7 +236,7 @@ Accessibility and feasibility: keyboard-navigable, labelled, contrast-checked, w
 | Phase | Builds | Gate |
 |---|---|---|
 | 0 Demo Day (6 Nov) | prototype, NIH back-test, Scout, MCP server, local-model demo, public repo | placed or shortlisted by IBIT |
-| 1 Hardening (Nov–Jan) | nightly refresh, foundations, monitoring, NSF back-test if mappable, accessibility audit, evaluation report, three faculty volunteers | hit rate holds on a held-out set; 2 of 3 volunteers would reuse; pilot proposal accepted by Research Development |
+| 1 Hardening (Nov–Jan) | nightly refresh, foundations (leads go to Corporate and Foundation Relations through the school's or college's development team), monitoring, NSF back-test if mappable, accessibility audit, evaluation report, three faculty volunteers | hit rate holds on a held-out set; 2 of 3 volunteers would reuse; pilot proposal accepted by Research Development |
 | 2 Pilot, one college (spring 2027) | hosted inside Temple, SSO, tier-2 local model, opt-in department view, hand-offs to named inboxes, outcome tracking | repeat use; ≥1 application or industry conversation traceable to a hand-off; security review passed; cost within budget |
 | 3 University service (2027–28) | all colleges, patents for Route B, collaborator discovery, fellowships, student mode on real data (Temple's ScholarshipUniverse feed under its contract, or a licensed scholarship database, replacing the SYNTHETIC sample corpus through the seam in `perch/sources/scholarshipuniverse.py`; proposed owner: Student Financial Services, with SDFA for fellowships, to be agreed with them), MCP to Temple's Copilot, quarterly evaluation | annual review; renewal; decision on offering code to other universities |
 | 4 Beyond Temple (optional) | institution, model and offices are config; consortium or open-source maintenance | — |
