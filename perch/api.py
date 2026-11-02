@@ -543,8 +543,10 @@ def create_app(service: BriefService, runner: JobRunner,
                      threads=[egress.release_thread(t, masker) for t in b.threads])
         out = {"brief": brief, "leads": out_leads, "records": records,
                "notice": grants_gov.ATTRIBUTION}
-        if documents and masker is None and (n := ex._withheld(b, leads)):
-            out["withheld"] = {"texts": n, "note": egress.withheld_note(n)}
+        if documents and masker is not None:  # an export that holds documents says so
+            out["documents_note"] = ex.DOCUMENTS_NOTE
+            if getattr(masker, "active", False):
+                out["masked_note"] = ex.MASKED_NOTE
         if any(x.sample for x in leads):
             out["sample_notice"] = ex.SAMPLE_BANNER
             # G23, rule 11: SYNTHETIC samples never share a list with public records

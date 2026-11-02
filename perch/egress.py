@@ -78,9 +78,13 @@ class Masker:
     """Typed placeholders with an in-memory key. Never written anywhere."""
 
     def __init__(self, private_texts: Iterable[str] = (), public_texts: Iterable[str] = (),
-                 terms: dict[str, Iterable[str]] | None = None) -> None:
-        self.key: dict[str, str] = {}  # placeholder -> original
-        self._seen: dict[tuple[str, str], str] = {}  # (type, normalised original) -> ph
+                 terms: dict[str, Iterable[str]] | None = None,
+                 share: Masker | None = None) -> None:
+        # `share`: another masker of the same session; the key and the numbering are one
+        # per session, so a placeholder from an export and one from a hand-off never clash.
+        self.key: dict[str, str] = share.key if share else {}  # placeholder -> original
+        # (type, normalised original) -> placeholder
+        self._seen: dict[tuple[str, str], str] = share._seen if share else {}
         self._terms = {t: sorted({x for x in xs if x.strip()}, key=len, reverse=True)
                        for t, xs in (terms or {}).items()}
         public = set()
@@ -164,6 +168,28 @@ class Masker:
         return text
 
 
+RESEARCH_KINDS = ("proposal", "direction", "manuscript")  # the documents of ongoing research
+
+
+class ResearchMasker(Masker):
+    """The export's own mask: only phrases found in the ongoing-research documents (a draft
+    proposal, a research direction, unpublished work) and in no public record become
+    [PRIVATE-PHRASE-n]. Names, identifiers and CV values print as they are. With no such
+    document it changes nothing (`active` is False). Shares its key with the hand-off masker."""
+
+    def __init__(self, research_texts: Iterable[str], public_texts: Iterable[str] = (),
+                 share: Masker | None = None) -> None:
+        texts = [t for t in research_texts if t and t.strip()]
+        super().__init__(texts, public_texts, None, share)
+        self.active = bool(texts)
+
+    def mask(self, text: str) -> str:
+        return self._phrases(text)
+
+    def label(self, kind: str, original: str) -> str:
+        return original  # a CV value is not masked in an export
+
+
 # Q42: a student's rule line keeps the rule and drops the value the rule read from the CV
 # ("Asks for a GPA of at least 3.50; your CV says 3.40."), in every export; masked on opt-in.
 CV_VALUE = re.compile(r"(; your CV (?:says|lists) )(.+?)(\.?)$")
@@ -177,13 +203,6 @@ def release_cv_line(line: str, masker: Masker | None = None) -> str:
     if masker:
         return line[:m.start()] + m.group(1) + masker.label("CV-VALUE", m.group(2)) + m.group(3)
     return f"{line[:m.start()]}; {CV_WITHHELD}{m.group(3)}"
-
-
-def withheld_note(n: int) -> str:
-    """The stated count of model texts left out of an export (S8)."""
-    return (f"{n} model {'text' if n == 1 else 'texts'} withheld: this session holds "
-            "documents, and model text may draw on them. Choose masking to include them "
-            "masked.")
 
 
 HANDOFF_WITHHELD = ("1 explanation withheld: this session holds documents, so the model's "
