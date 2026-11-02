@@ -46,6 +46,7 @@ Written at the close of S33 (2026-11-02). S33 ran in one orchestrating context w
 - **Checks.** 426 tests green. The walk check for the note failed before the UI edit and passes after. On the public URL: ux-laptop, ux-phone, ux-side and ux-student, 31 states, 0 errors, 0 axe, 0 sideways scroll. Rehearsal 20 of 21: one run of "What are my top three leads and why?" cited a record without naming its title; runs 1 and 2 passed, and the change does not touch Scout. The canary was not rerun; it runs on local data and this change does not touch the private path.
 - **Demo.** Rebuilt from `main` in 29 s, image 67beccbaa6b5; the previous image is kept as perch-demo:prev.
 - **Not done.** The team pitch and team pages still say "Grants & foundations" though no foundation records exist; those pages carry teammates' work and were left for Dakshitha. The design canvas does not show the note. Confirming the routing with the offices themselves stays with the business team.
+- **Wording to weigh at S34.** The note's first sentence ("Before anything goes to a sponsor") is broader than the page's "All proposals must be routed through ERA"; its second sentence scopes it to proposals and funded company agreements. Tightening it touches `perch/offices.py`, `web/handoff.js`, `web/help.js` and the walk's check.
 
 ## Next: S34, freeze (Dakshitha)
 
