@@ -18,7 +18,8 @@ from pathlib import Path
 SCOUT_LOG = Path("data/logs/scout.jsonl")
 # Tools whose result depends on something outside the store, so a hash mismatch on
 # replay is expected: a model writes the explanation; OpenAlex search results change.
-NOT_REPLAYABLE = {"explain_fit": "model output", "resolve_author": "live OpenAlex search"}
+NOT_REPLAYABLE = {"explain_fit": "model output", "draft_handoff": "model output",
+                  "cover_points": "model output", "resolve_author": "live OpenAlex search"}
 
 
 def digest(value: object) -> str:

@@ -14,9 +14,12 @@ from perch.retrieve import index_opportunities
 from perch.scout.tools import ALLOWLIST
 
 from .test_api import make
+from .test_scout import points_reply
 
 
 def fit_reply(messages, system, schema):
+    if points := points_reply(messages, system, schema):
+        return points
     if schema and "fit" in schema.get("properties", {}):
         paper = next(w for w in system.split("[")[1:] if w.startswith("W")).split("]")[0]
         return json.dumps({
@@ -42,7 +45,7 @@ def test_an_mcp_client_gets_a_cited_brief(tmp_path):
     async def run():
         async with Client(server) as c:
             tools = await c.list_tools()
-            assert tuple(t.name for t in tools.tools) == ALLOWLIST
+            assert tuple(t.name for t in tools.tools) == ALLOWLIST and len(tools.tools) == 10
             r = await c.call_tool("search_opportunities",
                                   {"route": "A", "author_id": "A5026494099"})
             assert not r.is_error, r.content[0].text
@@ -71,3 +74,14 @@ def test_bad_calls_are_refused_and_budgets_hold(tmp_path):
     b.calls = MAX_CALLS
     res, err = call(ctx, b, "get_record", {"id": "x"})
     assert err and "limit" in res["error"]
+
+
+def test_cover_points_is_a_model_backed_tool_on_mcp(tmp_path):
+    """S33: the tenth tool counts toward the model-call budget and cites its records."""
+    _, service = served(tmp_path)
+    ctx, b = make_context(service, author_id="A5026494099"), Budget()
+    res, err = call(ctx, b, "cover_points", {"record_id": "grants_gov:PAR-25-268"})
+    assert not err, res
+    assert res["status"] == "done" and res["for"]["id"] == "grants_gov:PAR-25-268"
+    assert b.model_calls == 1 and b.calls == 1
+    assert set(res["provenance"]) >= set(res["sources"])

@@ -90,7 +90,7 @@ def view(e: Entry) -> dict:
     s = e.session
     cards = [{"id": c.id, "tool": c.tool, "arguments": c.arguments, "status": c.status,
               "detail": c.detail, "records": record_ids(c.result), "draft": draft_of(c),
-              "where": c.where, "provider": c.provider}
+              "points": points_of(c), "where": c.where, "provider": c.provider}
              for c in s.cards]
     exchanges = []
     for i, x in enumerate(s.exchanges):
@@ -109,6 +109,14 @@ def draft_of(c) -> dict | None:  # noqa: ANN001 - a Card
         return None
     return {k: r[k] for k in ("office", "office_page", "subject", "body", "opening_withheld",
                               "opening_by", "opening_note") if k in r}
+
+
+def points_of(c) -> dict | None:  # noqa: ANN001 - a Card
+    """The points from cover_points (S33), shown in full on the card, without the note."""
+    r = c.result
+    if c.tool != "cover_points" or not isinstance(r, dict) or "points" not in r:
+        return None
+    return {k: v for k, v in r.items() if k != "note"}
 
 
 def record_ids(result: dict | None, cap: int = 12) -> list[str]:

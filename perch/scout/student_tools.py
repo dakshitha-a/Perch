@@ -1,11 +1,12 @@
 """Scout's tools for a student brief (S24; Q27 revised 2026-10-30).
 
-A separate allowlist from the researcher's nine (perch.scout.tools), so researcher Scout
+A separate allowlist from the researcher's ten (perch.scout.tools), so researcher Scout
 and the MCP server are unchanged. Every tool reads the session's student brief: its
 leads, already checked against the CV by rule (perch.student), and their records. No tool
-returns CV text; read_cv returns the fields the rules read. Notes are written by code,
-as on the Compare tab. Sample records keep their `sample: true` flag and their
-`sample:` ids, so an answer cannot pass one off as real.
+returns CV text: read_cv returns the fields the rules read, and cover_points (S33) reads
+the CV, interests and achievements for one option and returns checked, cited points.
+Notes are written by code, as on the Compare tab. Sample records keep their `sample:
+true` flag and their `sample:` ids, so an answer cannot pass one off as real.
 """
 
 from __future__ import annotations
@@ -18,10 +19,18 @@ from perch.compare import lower_first
 from perch.datefmt import day, expires_only, no_deadline, placeholder_close
 from perch.llm import Tool
 from perch.schemas import Lead, Opportunity, Record, Scholarship
-from perch.scout.tools import ScoutContext, ToolError, _obj, get_record, short_id
+from perch.scout.tools import (
+    POINTS_NOTE,
+    ScoutContext,
+    ToolError,
+    _obj,
+    cover_result,
+    get_record,
+    short_id,
+)
 
 STUDENT_ALLOWLIST = ("search_options", "check_option", "explain_verdict", "read_cv",
-                     "compare_options", "draft_note", "get_record")
+                     "compare_options", "draft_note", "cover_points", "get_record")
 ROUTES = {"F": "Fellowships (public)", "S": "Scholarships and awards (sample)"}
 OFFICES = {"F": ("Scholar Development and Fellowships Advising",
                  "https://undergraduate.temple.edu/fellowships"),
@@ -372,6 +381,36 @@ def write_note(route: str, rows: list[tuple[Lead, dict]]) -> dict:
             "sample": sample}
 
 
+def cover_points(ctx: ScoutContext, record_id: str) -> dict:
+    """Skill 4 for one option (S33): the CV, interests and achievements are the applicant
+    records; the option's rule lines and gaps go in as code-written context. A sample
+    option is allowed and the result stays marked sample."""
+    from perch.private.student import achievement_docs, as_opportunity
+    from perch.skills.cover import cover_points as points_for
+
+    x = _find(ctx, record_id)
+    rec = _record(ctx, x)
+    if rec is None:
+        raise ToolError(f"no record for option {record_id}")
+    o = rec if isinstance(rec, Opportunity) else as_opportunity(rec)
+    docs = getattr(getattr(ctx.service, "session", None), "docs", {})
+    cv = docs.get("cv")
+    others = [d for d in (docs.get("interests"),) if d]
+    if ach := docs.get("achievements"):
+        others += achievement_docs(ach.abstract or "", ach.fetched_at)
+    if cv is None and not others:
+        raise ToolError("no CV, interests or achievements in this session")
+    s = ctx.service
+    provider = ctx.handoff or s._audited("handoff", s.models.handoff_spec)
+    lines = [*x.verdict_lines, *x.gaps]
+    v, records = points_for(o, cv, others, [], [], provider, grounder=s.models.get("grounder"),
+                            context=lines, audience="student")
+    out = cover_result(ctx, rec, facts_of(rec)["title"], o.opportunity_number, v, records,
+                       bool(x.sample), POINTS_NOTE)
+    _facts(ctx, out["for"], x)  # the rule lines may back an answer's numbers
+    return out
+
+
 _ID = {"type": "string", "description": "An option id from search_options"}
 _IDS = {"type": "array", "items": {"type": "string"},
         "description": "Option ids; leave out to use the kept options"}
@@ -410,10 +449,16 @@ STUDENT_TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
                         "chosen options, written by code, for the student to copy. Never "
                         "sent.", _obj({"route": {"type": "string", "enum": ["F", "S"]},
                                        "ids": _IDS}, [])), draft_note),
+    "cover_points": (Tool("cover_points", "Points a cover letter or application for one "
+                          "option could make: what its record asks for, tied to your CV, "
+                          "interests and achievements, each cited and checked. A sample "
+                          "option is allowed and stays marked sample.",
+                          _obj({"record_id": _ID}, ["record_id"])), cover_points),
     "get_record": (Tool("get_record", "One record by id, with its fields as stored.",
                         _obj({"id": {"type": "string"}}, ["id"])), get_record),
 }
 assert tuple(STUDENT_TOOLS) == STUDENT_ALLOWLIST
+assert len(STUDENT_TOOLS["cover_points"][0].description) <= 300
 
 STUDENT_RULES = """You are Scout, the agent inside Perch. This session is a student's: \
 fellowships from public listings and scholarships from an invented SAMPLE corpus, each \
@@ -429,8 +474,12 @@ strongest first, never the kept options: search_options lists them in that order
 does the list below. Only a question about the kept options, the shortlist or a comparison \
 uses compare_options.
 - Use only the tools you are given. You cannot browse the web, send email, apply for \
-anything, change a record, or read the CV text. If no tool can do what is asked, say so \
-plainly in one sentence and do not call a tool.
+anything, or change a record. read_cv gives the fields the rules read; cover_points reads \
+the CV itself for one option. If no tool can do what is asked, say so plainly in one \
+sentence and do not call a tool.
+- Points for a cover letter, an application, a personal statement, or what to highlight \
+for one option: call cover_points with that option's id. Its points show on the card; add \
+nothing to them.
 - Every fact in your answer comes from a tool result. Cite the record id in square \
 brackets right after the fact, like [sample:sch-0001] or [temple_sdfa:nsf-reu].
 - A record marked sample is invented test data. Say "sample" whenever you name one. \

@@ -1,10 +1,11 @@
 """Scout's tools: the allowlist, each a thin wrapper over the deterministic pipeline.
 
-Scout can call these nine names and nothing else (SPEC section 8). Each returns a JSON
+Scout can call these ten names and nothing else (SPEC section 8). Each returns a JSON
 object; every record it mentions is added to `ScoutContext.seen` under its short id,
 so the validator can check Scout's answer against exactly what the tools returned.
 compare and draft_handoff (S12) use the compare view and skill 3; a draft is returned,
-never sent or stored.
+never sent or stored. cover_points (S33) uses skill 4: checked, cited points for one
+grant or fellowship from the session's CV and documents, the papers and public awards.
 """
 
 from __future__ import annotations
@@ -40,7 +41,8 @@ from perch.score import band, match_score
 from perch.sources import openalex as oa
 
 ALLOWLIST = ("resolve_author", "build_profile", "list_awards", "search_opportunities",
-             "get_org_signals", "explain_fit", "compare", "draft_handoff", "get_record")
+             "get_org_signals", "explain_fit", "compare", "draft_handoff", "cover_points",
+             "get_record")
 DESCRIPTION_CHARS = 1200
 
 
@@ -705,6 +707,118 @@ def draft_handoff(ctx: ScoutContext, office: str | None = None,
             "the To line is for them to fill in from the office page."}
 
 
+# --- cover points (S33, skill 4) ---
+
+INDUSTRY_NO_POINTS = ("cover points are for grants and fellowships; an industry lead has no "
+                      "application")
+POINTS_NOTE = ("Points for you to put in your own words. Each cites the record it comes from. "
+               "Perch never sends anything.")
+NO_CV_NOTE = (" Adding a CV under Tell Perch more gives points from it too.")
+
+
+def _target(ctx: ScoutContext, key: str) -> tuple[Opportunity, Lead | None]:
+    """The grant or fellowship the points are for, with its lead when it is on the brief.
+    An organisation or industry lead id is refused: it has no application."""
+    brief_leads = (ctx.service.get(ctx.brief_id) or (None, []))[1] if ctx.brief_id else []
+    pool = brief_leads + [x for x in ctx.route_b or [] if x not in brief_leads]
+    hit = next((x for x in pool if key in (
+        x.id, x.record_id, short_id(x), x.record_id.rsplit("/", 1)[-1],
+        x.record_id.removeprefix("grants_gov:"))), None)
+    if hit is not None and hit.route == "B":
+        raise ToolError(INDUSTRY_NO_POINTS)
+    with ctx.service.repo() as r:
+        if r.get(Organisation, key) or r.get(Organisation, f"https://openalex.org/{key}"):
+            raise ToolError(INDUSTRY_NO_POINTS)
+        o = r.get(Opportunity, hit.record_id) if hit is not None else None
+    return (o, hit) if o is not None else (_opportunity(ctx, key), hit)
+
+
+def _awards(ctx: ScoutContext) -> list[Award]:
+    """The researcher's public awards, one record per award, as list_awards links them."""
+    if _private(ctx):
+        return []
+    res = _researcher(ctx, None)
+    with ctx.service.repo() as r:
+        ov = aw.load_overrides(res.id, ctx.service.overrides)
+        linked = aw.link_stored(res, r.list(Award), ov)
+    return [s.end_record or next(a for a in linked if aw.award_key(a) == s.key)
+            for s in aw.summarise(linked, res, ov)]
+
+
+def split_docs(docs: list[Work]) -> tuple[Work | None, list[Work]]:
+    """A session's documents as the skill takes them: the CV apart, the achievements note
+    split into one record per achievement, as the student brief splits it."""
+    from perch.private.student import achievement_docs
+
+    cv, others = None, []
+    for d in docs:
+        if d.id == "private:cv":
+            cv = d
+        elif d.id == "private:achievements":
+            others += achievement_docs(d.abstract or "", d.fetched_at)
+        else:
+            others.append(d)
+    return cv, others
+
+
+def source_title(r: Record) -> str:
+    if isinstance(r, Opportunity):
+        return r.title
+    title = getattr(r, "title", None) or getattr(r, "name", None) or r.id
+    return title.removesuffix(" (private)")
+
+
+def cover_result(ctx: ScoutContext, target: Record, title: str, key: str, v: object,
+                 records: dict[str, Record], sample: bool, note: str) -> dict:
+    """The card's JSON, the contract the web app builds against. Ids are the ones Scout
+    sees (the target as its own record, a sample as its sample: id); every record cited is
+    registered with ctx.see, so an answer may cite it. No document text is in it."""
+    tid = ctx.see(target)
+    base = {"for": {"id": tid, "title": title, "sample": sample}}
+    tail = {"by": "model", "note": note}
+    if getattr(v, "value", None) is None:
+        return {**base, "points": [], "missing": [], "unsupported": [], "sources": {tid: title},
+                "status": "withheld", "detail": "The points failed the citation check twice.",
+                **tail}
+    p = v.value
+    ids, sources = {key: tid}, {tid: title}
+    for k in p.used_ids():
+        if k in records and k != key:
+            sid = ctx.see(records[k])
+            ids[k] = sid
+            sources[sid] = source_title(records[k])
+    return {**base,
+            "points": [{"asks": x.asks, "asks_ids": [ids[i] for i in x.asks_ids],
+                        "you": x.you, "you_ids": [ids[i] for i in x.you_ids]}
+                       for x in p.points],
+            "missing": list(p.missing), "unsupported": list(p.unsupported),
+            "sources": sources, "status": "done", "detail": "", **tail}
+
+
+def cover_points(ctx: ScoutContext, record_id: str) -> dict:
+    from perch.skills.cover import cover_points as points_for
+
+    key = record_id.strip().strip("[]")
+    o, lead = _target(ctx, key)
+    cv, docs = split_docs(_session_docs(ctx))
+    wids = [c for c in (lead.cited_ids if lead else []) if c.startswith("W")]
+    if not wids:  # not on a brief, or a lead that cites no paper: the profile's top ones
+        p = _profile(ctx, None)
+        wids = [short for t in p.threads for short in
+                (w.rsplit("/", 1)[-1] for w in t.work_ids[:2]) if short.startswith("W")][:6]
+    with ctx.service.repo() as r:
+        papers = [w for w in (r.get_any(f"https://openalex.org/{c}") for c in wids) if w]
+    awards = _awards(ctx)
+    if cv is None and not docs and not papers and not awards:
+        raise ToolError("no applicant records: add a CV or documents under Tell Perch more")
+    s = ctx.service
+    provider = ctx.handoff or s._audited("handoff", s.models.handoff_spec)
+    v, records = points_for(o, cv, docs, papers, awards, provider,
+                            grounder=s.models.get("grounder"))
+    note = POINTS_NOTE + ("" if cv or docs else NO_CV_NOTE)
+    return cover_result(ctx, o, o.title, o.opportunity_number, v, records, False, note)
+
+
 # --- schemas (strict: no extra properties; optional ones are left out of "required") ---
 
 def _obj(props: dict, required: list[str]) -> dict:
@@ -789,11 +903,18 @@ TOOLS: dict[str, tuple[Tool, Callable[..., dict]]] = {
                                                     "technology_commercialization"]},
               "ids": {**STRS, "description": "opportunity ids or industry lead ids"}}, [])),
         draft_handoff),
+    "cover_points": (Tool(
+        "cover_points",
+        "Points a cover letter or application for one grant or fellowship could make: what "
+        "the record asks for, tied to the researcher's CV, documents, papers and public "
+        "awards, each cited and checked. Not for industry leads.",
+        _obj({"record_id": OPP}, ["record_id"])), cover_points),
     "get_record": (Tool("get_record", "One stored public record by id, with its fields "
                         "(dates, amounts, eligibility, description).",
                         _obj({"id": STR}, ["id"])), get_record),
 }
 assert tuple(TOOLS) == ALLOWLIST
+assert len(TOOLS["cover_points"][0].description) <= 300
 for _tool, _ in TOOLS.values():
     _tool.strict = False  # see perch.llm.base.Tool; check_arguments() runs on every call
 

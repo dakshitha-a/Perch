@@ -925,3 +925,118 @@ def test_the_profile_steps_code_written_values_back_an_answer_that_cites_it(serv
     s = Scout(FakeProvider([call("get_record", id=OPP), "Thread hiv-1 matters.",
                             "Thread hiv-1 matters."]), c).start("Q?")
     assert s.flagged and any("'1'" in e for e in s.errors), s.errors
+
+
+# --- cover_points (S33, skill 4) ---
+
+def points_reply(messages, system, schema):
+    """A valid cover_points reply built from the prompt: three points, each citing the
+    target record and the first applicant records shown. None for any other schema."""
+    import re
+
+    if not (schema and "points" in schema.get("properties", {})):
+        return None
+    text = messages[-1].content
+    target = re.search(r"Target record:\n\[([^\]]+)\]", text).group(1)
+    block = text.split("Applicant records:\n", 1)[1] if "Applicant records:\n" in text else ""
+    ids = re.findall(r"^\[([^\]]+)\]", block, re.M)
+    you = [ids[0]] if ids else []
+    both = ids[:2] if len(ids) > 1 else you
+    points = [
+        {"asks": "The record describes the work it supports.", "asks_ids": [target],
+         "you": "You have work on that topic in your records.", "you_ids": you},
+        {"asks": "The record asks applicants to describe their prior work.",
+         "asks_ids": [target], "you": "You list prior work in your records.", "you_ids": both},
+        {"asks": "The record names the kind of applicant it supports.", "asks_ids": [target],
+         "you": "You are such an applicant by your records.", "you_ids": you}]
+    return json.dumps({"reasoning": "r", "points": points,
+                       "missing": ["The record asks for a plan the records do not show."],
+                       "cited_ids": [target, *both]})
+
+
+def _points_ctx(service, docs=None, responder=points_reply):
+    from perch.llm.audit import AuditLog, CountedProvider
+
+    c = ctx(service)
+    c.handoff = CountedProvider(FakeProvider(responder=responder), AuditLog(None), "handoff")
+    if docs:
+        service.private_records = lambda: {d.id: d for d in docs}
+    return c
+
+
+def test_cover_points_for_a_researcher_from_papers_and_awards_then_with_documents(service):
+    from perch.private.inputs import make_doc
+
+    c = _points_ctx(service)
+    out = TOOLS["cover_points"][1](c, record_id="PAR-25-268")
+    assert out["for"] == {"id": OPP, "title": out["sources"][OPP], "sample": False}
+    assert out["status"] == "done" and out["detail"] == "" and out["by"] == "model"
+    assert len(out["points"]) == 3 and all(p["asks_ids"] == [OPP] for p in out["points"])
+    used = {i for p in out["points"] for i in p["you_ids"]}
+    assert used and all(i.startswith("W") for i in used)  # the profile's papers
+    assert set(out["sources"]) == {OPP, *used} and all(i in c.seen for i in out["sources"])
+    assert out["missing"] == ["The record asks for a plan the records do not show."]
+    assert out["note"].endswith("Adding a CV under Tell Perch more gives points from it too.")
+    sent = c.handoff.inner.calls[0]["messages"][0].content
+    assert "[W" in sent and "award" in sent.lower()  # papers and the public awards shown
+    # with a CV and a proposal in the session: the CV is cited, its text is not shown
+    canary = "PERCH-CANARY-TEST-COVER"
+    docs = [make_doc("cv", f"SYNTHETIC CV {canary}\n\n## Education\n- PhD, SYNTHETIC "
+                     f"University, 2021\n\n## Contact\n- 215-555-0100"),
+            make_doc("proposal", "SYNTHETIC draft aims on insole sensors.")]
+    c = _points_ctx(service, docs)
+    out = TOOLS["cover_points"][1](c, record_id=OPP)
+    assert out["points"][0]["you_ids"] == ["private:cv"]
+    assert out["points"][1]["you_ids"] == ["private:cv", "private:proposal"]
+    assert out["sources"]["private:cv"] == "Your CV"
+    assert out["sources"]["private:proposal"] == "Draft proposal"
+    assert "private:cv" in c.seen and canary not in json.dumps(out)
+    assert out["note"] == ("Points for you to put in your own words. Each cites the record it "
+                           "comes from. Perch never sends anything.")
+    sent = c.handoff.inner.calls[0]["messages"][0].content
+    assert "215-555-0100" not in sent and "[contact removed]" in sent
+
+
+def test_cover_points_refuses_an_industry_lead_and_an_unknown_id(service):
+    from perch.scout.tools import ToolError
+
+    c, lead = _brief_with_route_b(service)
+    c.handoff = _points_ctx(service).handoff
+    for key in ("I1", "https://openalex.org/I1", lead.id):
+        with pytest.raises(ToolError, match="industry lead has no application"):
+            TOOLS["cover_points"][1](c, record_id=key)
+    with pytest.raises(ToolError, match="no opportunity"):
+        TOOLS["cover_points"][1](c, record_id="PAR-99-999")
+    assert not c.handoff.inner.calls  # no model ran
+
+
+def test_after_cover_points_the_answer_line_is_code_and_the_card_carries_the_points(service):
+    from perch.scout.hub import Entry, view
+
+    c = _points_ctx(service)
+    fake = FakeProvider([call("cover_points", record_id=OPP),
+                         "Here are some extra thoughts the model should not add."])
+    scout = Scout(fake, c)
+    s = scout.start("What points could my cover letter make for PAR-25-268?")
+    assert len(fake.calls) == 1 and s.status == "done" and not s.flagged
+    title = s.cards[0].result["for"]["title"]
+    assert s.answer == (f"Points for {title} are below: 3 points, each citing the record it "
+                        "comes from. They are for you to put in your own words; Perch never "
+                        "sends anything.")
+    assert s.exchanges[-1]["answer_by"] == "code" and s.cited_ids == []
+    card = s.cards[0]
+    assert card.where == "local" and card.provider == "fake" and card.tokens > 0
+    assert card.detail.startswith("3 points, checked")
+    shown = view(Entry(scout, s, "b"))["exchanges"][0]["cards"][0]
+    assert shown["points"]["status"] == "done" and len(shown["points"]["points"]) == 3
+    assert "note" not in shown["points"] and shown["draft"] is None
+    assert shown["records"] == [OPP]
+    # withheld after two failures: the line says so, the card says withheld
+    bad = lambda m, sy, sc: points_reply(m, sy, sc).replace('"W', '"X')  # noqa: E731
+    c = _points_ctx(service, responder=bad)
+    fake = FakeProvider([call("cover_points", record_id=OPP), "unused"])
+    s = Scout(fake, c).start("Cover letter points for PAR-25-268?")
+    assert s.cards[0].result["status"] == "withheld" and s.cards[0].detail == "withheld"
+    assert s.answer == (f"The points for {title} failed the citation check twice and were not "
+                        "shown.")
+    assert s.exchanges[-1]["answer_by"] == "code"

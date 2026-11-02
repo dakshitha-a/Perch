@@ -221,7 +221,7 @@ def test_student_scout_uses_only_the_student_tools(tmp_path, monkeypatch):
     cards = {x["tool"]: x for x in v["exchanges"][0]["cards"]}
     assert set(cards) == {"search_options", "read_cv", "search_opportunities", "draft_note"}
     assert cards["search_opportunities"]["status"] == "refused"
-    assert set(STUDENT_ALLOWLIST).isdisjoint(set(ALLOWLIST) - {"get_record"})
+    assert set(STUDENT_ALLOWLIST).isdisjoint(set(ALLOWLIST) - {"get_record", "cover_points"})
     assert cards["search_options"]["status"] == "done"
     assert all(r.startswith("sample:") for r in cards["search_options"]["records"])
     assert cards["read_cv"]["status"] == "done"
@@ -446,3 +446,61 @@ def test_a_word_search_reads_the_cards_fit_sentence(monkeypatch):
     assert got["options"] == [{"id": "f", "words_found_in": "its fit sentence on the card",
                                "fit_sentence": "Your SYNTHETIC stream monitoring fits"}]
     assert "Every option listed matches" in got["note"]
+
+
+def test_student_cover_points_on_a_fellowship_and_on_a_sample(tmp_path, monkeypatch):
+    """S33: cover_points on the student allowlist reads the CV, interests and achievements
+    for one option; a sample option is allowed and the result stays marked sample. The
+    answer line is code; no CV text reaches the view."""
+    from perch.llm import ToolCall
+
+    from .test_scout import points_reply
+
+    c, service = student_app(tmp_path, monkeypatch)
+    h = open_student(c, "persona-ug")
+    c.post("/private/student/brief", headers=h, json={"as_of": "2026-11-06"})
+    got = c.get("/private/brief", headers=h).json()
+    fellowship = next(x for x in got["leads"] if x["route"] == "F"
+                      and x["verdict"] != "not eligible")
+    sample = next(x for x in got["leads"] if x["route"] == "S"
+                  and x["verdict"] != "not eligible")
+    steps = iter([[ToolCall("c1", "cover_points", {"record_id": fellowship["record_id"]})],
+                  [ToolCall("c2", "cover_points", {"record_id": sample["record_id"]})]])
+
+    def reply(messages, system, schema):
+        if system and system.startswith("You are Scout"):
+            assert "cover_points reads the CV itself for one option" in system
+            return next(steps)
+        return points_reply(messages, system, schema) or student_reply(messages, system, schema)
+
+    service.models.provider = lambda spec: FakeProvider(responder=reply)
+
+    def settled(v):
+        for _ in range(50):
+            v = c.get(f"/private/scout/{v['id']}", headers=h).json()
+            if not v["busy"] and v["status"] != "running":
+                return v
+            time.sleep(0.1)
+        raise AssertionError("Scout did not finish")
+
+    v = settled(c.post("/private/scout", headers=h,
+                       json={"question": "What points could my application make for it?"}).json())
+    v = settled(c.post(f"/private/scout/{v['id']}/ask", headers=h,
+                       json={"question": "And for the sample one?"}).json())
+    first, second = v["exchanges"]
+    pts = first["cards"][0]["points"]
+    assert first["cards"][0]["status"] == "done" and first["cards"][0]["where"] == "local"
+    assert pts["for"]["id"] == fellowship["record_id"] and pts["for"]["sample"] is False
+    assert all(p["asks_ids"] == [fellowship["record_id"]] for p in pts["points"])
+    assert pts["points"][0]["you_ids"] == ["private:cv"] and pts["status"] == "done"
+    assert pts["sources"]["private:cv"] == "Your CV" and "note" not in pts
+    assert first["answer_by"] == "code" and first["answer"].startswith(
+        f"Points for {pts['for']['title']} are below: 3 points")
+    assert "invented sample" not in first["answer"]
+    spts = second["cards"][0]["points"]
+    assert spts["for"]["id"].startswith("sample:") and spts["for"]["sample"] is True
+    assert spts["for"]["id"] == sample["record_id"]
+    assert second["answer"].endswith("Perch never sends anything. This is an invented sample "
+                                     "record.")
+    assert not any(t in json.dumps(v) for t in canaries("persona-ug"))
+    assert c.post("/private/end", headers=h).json()["ended"]

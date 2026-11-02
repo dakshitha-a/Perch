@@ -1,10 +1,11 @@
-"""Perch as an MCP server (S14): Scout's nine tools for any MCP client, local ones included.
+"""Perch as an MCP server (S14): Scout's ten tools for any MCP client, local ones included.
 
 The tools are `perch.scout.tools.TOOLS`, unchanged: the same schemas, the same argument
 check (`check_arguments`) before every call, and the same tool code, so every result
 names records by id, with a "provenance" map (source, source_url, fetched_at) for the
-records it brought in. The two tools that call a model, `explain_fit`
-and `draft_handoff`, run Perch's own validator inside the tool, as they do for Scout.
+records it brought in. The three tools that call a model, `explain_fit`,
+`draft_handoff` and `cover_points`, run Perch's own validator inside the tool, as they do
+for Scout.
 What the client's own model writes from these results is outside Perch's control; the
 records it was given are in each result for it to cite.
 
@@ -36,7 +37,7 @@ from perch.scout.tools import ALLOWLIST, TOOLS, ScoutContext, ToolError, check_a
 
 MAX_CALLS = 60
 MAX_MODEL_CALLS = 20
-MODEL_TOOLS = {"explain_fit", "draft_handoff"}
+MODEL_TOOLS = {"explain_fit", "draft_handoff", "cover_points"}
 INSTRUCTIONS = (
     "Perch finds routes to fund a researcher's work from public records. Start with "
     "build_profile or search_opportunities for an OpenAlex author id (e.g. A5026494099); "

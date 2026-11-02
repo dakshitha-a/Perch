@@ -55,8 +55,11 @@ University researcher's work, from public records only.
 
 Rules:
 - Use only the tools you are given. You cannot browse the web, send email, apply for \
-anything, change a record, or quote private documents. If the user asks for something no \
-tool can do, say so plainly in one sentence and do not call a tool.
+anything, change a record, or quote private documents in your own words. If the user asks \
+for something no tool can do, say so plainly in one sentence and do not call a tool.
+- Points for a cover letter, an application, a personal statement, or what to highlight \
+for one lead: call cover_points with that record's id. Its points show on the card; add \
+nothing to them.
 - Perch's grant records are federal opportunities from Grants.gov; it has no foundation \
 records yet. Companies whose works cite the researcher's papers are industry leads: \
 get_org_signals lists them with their counts.
@@ -104,6 +107,9 @@ STEP_SCHEMA = {"type": "object", "properties": {
 
 # Steps whose result is a draft for the user to copy: the answer line is code (R3, R20).
 DRAFT_TOOLS = ("draft_handoff", "draft_note")
+# Steps whose result is shown in full on the card, draft or points (S33): after one, the
+# answer line is written by code and no model prose is asked for.
+DELIVERABLE_TOOLS = (*DRAFT_TOOLS, "cover_points")
 SEARCH_TOOLS = ("search_opportunities", "search_options")
 # Q5: the reminder sent once when an answer ran no tool and cites nothing.
 NUDGE = ("You answered without calling a tool, and your answer cites no record. The lists "
@@ -391,9 +397,10 @@ class Scout:
         who = who or ("a researcher with no public profile; the brief was built from the "
                       "documents they added, and build_profile, explain_fit and "
                       "search_opportunities use those documents. If asked to quote a "
-                      "document, say only that Scout does not quote private documents. "
-                      "Never say you have no access to them, and never ask for an OpenAlex "
-                      "ID or an upload" if (ctx.researcher_id or "").startswith("private:")
+                      "document, say that Scout does not quote documents in its own words; "
+                      "cover_points reads them for one lead. Never say you have no access "
+                      "to them, and never ask for an OpenAlex ID or an upload"
+                      if (ctx.researcher_id or "").startswith("private:")
                       else f"researcher {ctx.full_author_id(None)} (OpenAlex)")
         self.table = table or SESSION_TOOLS
         self.answer_check = answer_check
@@ -475,7 +482,7 @@ class Scout:
                 else:
                     self._execute(s, c)
             self._reply_with_results(s)
-            if drafted := [c for c in ran if c.tool in DRAFT_TOOLS and c.status == "done"]:
+            if drafted := [c for c in ran if c.tool in DELIVERABLE_TOOLS and c.status == "done"]:
                 return self._drafted(s, drafted)
             if s.stop_asked:
                 return self._stop(s, "", by_user=True)
@@ -669,8 +676,8 @@ class Scout:
         else:
             self._steer(s, c, entry[0])
             args = {k: v for k, v in c.arguments.items() if v is not None}
-            model = {"explain_fit": self.ctx.explainer,
-                     "draft_handoff": self.ctx.handoff}.get(c.tool)
+            model = {"explain_fit": self.ctx.explainer, "draft_handoff": self.ctx.handoff,
+                     "cover_points": self.ctx.handoff}.get(c.tool)
             before = (model.tokens, model.usd) if hasattr(model, "tokens") else None
             try:
                 c.result = entry[1](self.ctx, **args)
@@ -763,12 +770,18 @@ class Scout:
     def _drafted(self, s: Session, cards: list[Card]) -> Session:
         """R3, R20: once a draft is made, the answer line is written by code and no model
         prose is asked for. A model asked to sum up the draft retyped it, cut it off, or
-        said the records lacked what the draft held. The draft shows in full below."""
-        offices = " and ".join(dict.fromkeys(str(c.result["office"]) for c in cards))
-        noun = "draft" if cards[0].tool == "draft_handoff" else "note"
-        text = (f"The {noun} to {offices} is below. Perch never sends it: edit it, then send "
-                "it yourself." if len(cards) == 1 else f"The {noun}s to {offices} are below. "
-                "Perch never sends them: edit them, then send them yourself.")
+        said the records lacked what the draft held. The draft shows in full below. The
+        same after cover_points (S33): the points show on the card, the line is code."""
+        lines = []
+        if drafts := [c for c in cards if c.tool in DRAFT_TOOLS]:
+            offices = " and ".join(dict.fromkeys(str(c.result["office"]) for c in drafts))
+            noun = "draft" if drafts[0].tool == "draft_handoff" else "note"
+            lines.append(f"The {noun} to {offices} is below. Perch never sends it: edit it, "
+                         "then send it yourself." if len(drafts) == 1 else
+                         f"The {noun}s to {offices} are below. Perch never sends them: edit "
+                         "them, then send them yourself.")
+        lines += [points_line(c.result) for c in cards if c.tool == "cover_points"]
+        text = " ".join(lines)
         s.messages.append(Message("assistant", text))
         s.answer, s.cited_ids, s.flagged, s.errors = text, [], False, []
         s.status, s.stop_asked = "done", False
@@ -1223,6 +1236,17 @@ def structured_answer(text: str) -> str:
         return text
 
 
+def points_line(result: dict) -> str:
+    """The code-written answer line after cover_points (S33)."""
+    title = result["for"]["title"]
+    if result.get("status") == "withheld":
+        return f"The points for {title} failed the citation check twice and were not shown."
+    line = (f"Points for {title} are below: {len(result['points'])} points, each citing the "
+            "record it comes from. They are for you to put in your own words; Perch never "
+            "sends anything.")
+    return line + (" This is an invented sample record." if result["for"].get("sample") else "")
+
+
 def summarise(tool: str, result: dict) -> str:
     """One plain line for the card."""
     if tool == "search_opportunities":
@@ -1266,4 +1290,10 @@ def summarise(tool: str, result: dict) -> str:
         return f"{result['count']} options side by side"
     if tool == "draft_note":
         return f"note to {result['office']}, written by code, not sent"
+    if tool == "cover_points":
+        if result.get("status") == "withheld":
+            return "withheld"
+        n = len(result["unsupported"])
+        return (f"{len(result['points'])} points, checked"
+                + (f"; {n} sentence{'' if n == 1 else 's'} flagged" if n else ""))
     return "done"
