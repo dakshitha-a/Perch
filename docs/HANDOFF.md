@@ -34,8 +34,8 @@ Written at the close of S33 (2026-11-02). S33 ran in one orchestrating context w
 
 - **Back to your options.** On the student form it showed whenever the session held any brief, so after a researcher run it opened the researcher's routes. The session now reports `brief_student`, and the button shows only for a student brief.
 - **One side per session (Dakshitha).** A session holds a researcher brief or a student brief, never both. Arriving at Find, Your documents or the student form with the other side's brief open shows a warning listing what goes. End session and start fresh ends it and opens the form empty; Keep goes back to the brief. The server answers 409 to the other side's brief. Decision row, Help text, tests and the walk flow `ux-side` cover it.
-- **Checks.** 422 tests green. `ux-side` (laptop and phone) and `ux-student` on the dev server and the public URL: 12 states, 0 errors, 0 axe. The full walk, rehearsal and canary were not rerun; the freeze reruns them.
-- **Demo.** Rebuilt from `main` in 29 s, image 2aa7e4c70150; the S33 image is kept as perch-demo:prev. The ZIP in `dist/` predates these commits.
+- **Checks.** 422 tests green. `ux-side` (laptop and phone, Keep and End in both directions) and `ux-student` on the public URL: 14 states, 0 errors, 0 axe. `ux-side` is in the walk's default set, so the freeze's full walk covers it. The full walk, rehearsal and canary were not rerun; the freeze reruns them.
+- **Demo.** Rebuilt from f678feb in 26 s, image f1299e0a01e9; the S33 image is kept as perch-demo:prev. The ZIP in `dist/` predates these commits.
 
 ## Next: S34, freeze (Dakshitha)
 
