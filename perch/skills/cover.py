@@ -91,11 +91,14 @@ INSTRUCTIONS = (
 )
 STUDENT_LINE = (" The applicant is a student: their records are a CV, an interests note and "
                 "achievements, and a verdict line written by rule code may be given as context.")
-# Claims the points never make (standing rule 10, SPEC section 1): odds, advice to apply.
+# Claims the points never make (standing rule 10, SPEC section 1). ODDS applies to every
+# sentence; the advice and judgment phrases to the you sentences only, since an asks
+# sentence copies the record, which says "applicants must submit a letter" itself.
+ODDS = r"odds|likely|unlikely|chances?|guarantee\w*"
+BANNED_ASKS = re.compile(rf"\b(?:{ODDS})\b", re.I)
 BANNED = re.compile(
-    r"\b(?:odds|likely|unlikely|chances?|guarantee\w*|competitive(?:ness)?|"
-    r"(?:should|must|ought to) (?:apply|submit|not apply)|will (?:win|be funded|succeed|"
-    r"be selected)|(?:strong|good|ideal|perfect) (?:candidate|chance))\b", re.I)
+    rf"\b(?:{ODDS}|(?:should|must|ought to) (?:apply|submit|not apply)|will (?:win|be funded|"
+    r"succeed|be selected)|(?:strong|good|ideal|perfect) (?:candidate|chance))\b", re.I)
 # Inline citations a model adds anyway, removed before the checks (ids go in the id lists).
 BRACKETED = re.compile(r"\s*\[[^\[\]]*\]")
 
@@ -248,12 +251,13 @@ def cover_points(o: Opportunity, cv: Work | None, docs: list[Work], papers: list
         attempts[0] += 1
         provider.log.validation(provider.last_call_id, SKILL, False, errors, attempts[0])
 
-    def sentence_checks(where: str, text: str, ids: list[str]) -> list[str]:
+    def sentence_checks(where: str, text: str, ids: list[str],
+                        banned: re.Pattern = BANNED) -> list[str]:
         errs = [f"{where}: {e}" for e in check(text, ids, checked).errors]
         n = sentences(text)
         if not 1 <= n <= MAX_SENTENCES:
             errs.append(f"{where}: write 1 or 2 sentences, got {n}")
-        if m := BANNED.search(text):
+        if m := banned.search(text):
             errs.append(f"{where} says {m.group(0)!r}: describe the record and the "
                         "applicant's records only, never chances or whether to apply")
         return errs
@@ -276,11 +280,11 @@ def cover_points(o: Opportunity, cv: Work | None, docs: list[Work], papers: list
             if bad := [x for x in pt.you_ids if x not in applicant]:
                 errors.append(f"point {i}: you_ids names {bad}, which is not an applicant "
                               "record you were given")
-            errors += sentence_checks(f"point {i} asks", pt.asks, [target])
+            errors += sentence_checks(f"point {i} asks", pt.asks, [target], BANNED_ASKS)
             errors += sentence_checks(f"point {i} you", pt.you,
                                       [x for x in pt.you_ids if x in applicant])
         for j, m in enumerate(p.missing, 1):
-            errors += sentence_checks(f"missing {j}", m, [target])
+            errors += sentence_checks(f"missing {j}", m, [target], BANNED_ASKS)
         provider.log.validation(provider.last_call_id, SKILL, not errors, errors, attempts[0])
         return Check(not errors, errors)
 

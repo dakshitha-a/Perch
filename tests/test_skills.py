@@ -303,6 +303,23 @@ def test_cover_points_regenerate_on_a_bad_id_or_an_invented_number_then_withhold
     assert log.rejection_rate("cover_points") == (2, 2)
 
 
+def test_an_asks_sentence_may_copy_the_records_own_must_submit_words():
+    """A record's own words ("applicants must submit a letter of support") are what an
+    asks sentence copies; only a you sentence is held to the advice and judgment list."""
+    from perch.skills.cover import cover_points
+
+    opp, cv, docs, papers, awards = _cover_inputs()
+    pts = json.loads(cover_reply())["points"]
+    pts[0]["asks"] = "Applicants must submit a letter of support and a competitive plan."
+    p, _ = audited([cover_reply(points=pts, missing=["Ideal candidates must submit a plan."])])
+    v, _ = cover_points(opp, cv, docs, papers, awards, p)
+    assert not v.flagged, v.errors
+    pts[0]["you"] = "You must submit your strongest work."
+    p, _ = audited([cover_reply(points=pts)] * 2)
+    v, _ = cover_points(opp, cv, docs, papers, awards, p)
+    assert v.flagged and any("'must submit'" in e for e in v.errors)
+
+
 def test_cover_points_grounder_flags_without_withholding_and_the_prompt_fits_the_model():
     from perch.grounding import FakeGrounder
     from perch.private.inputs import make_doc
