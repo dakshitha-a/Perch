@@ -77,6 +77,8 @@ Scripted follow-ups in `bench/scout_tasks.yaml`, newest run per model. A task pa
 | qwen3:8b | native | 17/20 | 5/6 | not run | not run | 1/14 | 1 | 0.0 | 36.9 |
 | qwen3:8b | structured | 12/20 | 6/6 | not run | not run | 1/14 | 5 | 0.0 | 12.4 |
 
+Cover points (S33, task p01, researcher session, tagged run `bench/results/scout_s33_1/`): the full set of 30 tasks on gemma4:26b-a4b completed 30 of 30 with 0 wrong-tool calls; p01 completed. One run, so it shows the step works, not a rate. The rows above are the older untagged runs and do not include p01.
+
 ## One card, briefs at once
 
 Chat model, Clef-flash, embedder and reranker on one clean GPU. The gate is a peak under 28 GB. MiniCheck rows also load MiniCheck on the GPU, which deploy-1gpu does not; the Clef-flash rows match deploy-1gpu.
