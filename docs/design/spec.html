@@ -172,7 +172,7 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
   <li><b>Hand-off draft</b>: the model writes a 2–4 sentence opening; code writes the rest from the kept leads; office names come from research.temple.edu; the To field is left empty; copy or open in mail. Under the To line, the screen and the researcher export carry a fixed note: before anything goes to a sponsor, Temple routes it through ERA for institutional review and approval, with a link to Find your research administrator. Never sent or stored by the app.</li>
   <li><b>Application points</b> (skill 4, S33, on request through Ask Scout): for one record, 3 to 6 points a cover letter could make. Each point pairs what the record asks for or rewards, cited to the record, with what the applicant has, cited to the CV, a document, a paper or a public award; up to three things the record asks for that nothing added shows are listed too. Checked by the validator and the grounding model; shown on the card with Copy; never in exports or hand-off drafts.</li>
   <li><b>Evidence rail</b>: every claim links to the record it came from. A claim with no record is not shown.</li>
-  <li><b>Export</b>: Markdown, a print page the browser saves as PDF, and JSON of the records with provenance. Text drawn from documents is left out, or masked on opt-in.</li>
+  <li><b>Export</b>: Markdown, a print page the browser saves as PDF, and JSON of the records with provenance. The full brief is printed, with a note when it includes text drawn from documents. An optional box masks phrases from ongoing research. Each lead also prints the record facts the card shows: Match, status, rule notes, higher-education applicants and an excerpt of the description.</li>
 </ul></div>
 <div class="io"><h3>Out · the student brief</h3>
 <ul>
@@ -180,7 +180,7 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
   <li><b>What Perch read</b>: the rule read-out of the CV, so the student can check it and correct it by replacing the CV.</li>
   <li><b>Application points</b> (the same skill 4): for one fellowship or sample scholarship, from the CV, the interests note and the achievements. A sample scholarship gives sample points, and the card says so.</li>
   <li><b>Compare and the note</b>: kept options in two tables, public and sample apart; a code-written note to Scholar Development and Fellowships Advising or Student Financial Services. Never sent by the app.</li>
-  <li><b>Export</b> with a sample banner; lines that quote the CV are withheld or masked.</li>
+  <li><b>Export</b> with a sample banner; the full brief, including the CV values in verdict lines, with a note that it includes text from the student's documents.</li>
 </ul></div>
 </div>
 </section>
@@ -206,7 +206,7 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
     <li><b>Code reads the CV by rule</b> for career-stage eligibility (NIH’s early-stage definition, as “may be eligible per your CV”), prior sponsors, and the student verdicts.</li>
     <li><b>Models may read the CV and documents</b> (rule 5 as amended, 2026-11-01). Contact details (emails, phone numbers, links, ORCID) are blanked in every model prompt view, for every skill. The CV is capped at about 3,500 characters in a prompt, preferring education, appointments, funding and awards. Skill 4, application points, is the one skill that reads the CV text as such, and only for the one record the user asks about.</li>
     <li><b>Citations:</b> a document is a session-only record (<code>private:</code> id, no URL) the validator accepts inside the session; a citation to it shows a lock. Numbers and dates still come from a cited record.</li>
-    <li><b>Leaving the app:</b> while a session holds documents, every model-written text counts as drawn from them: exports leave it out with a stated count, and the hand-off opens with a plain sentence. Opt-in masking replaces identifiers and novel phrases with labels such as <code>[PERSON-1]</code>, unmaskable on screen; the warning says masking cannot hide the research direction. Application points never enter an export or a hand-off.</li>
+    <li><b>Leaving the app:</b> while a session holds documents, every model-written text counts as drawn from them: the hand-off leaves it out and opens with a plain sentence, and opt-in masking there replaces identifiers and novel phrases with labels such as <code>[PERSON-1]</code>, unmaskable on screen. Exports (changed 2 Nov 2026) give the full brief with a note that it includes text from the user's documents and stays on their computer; their one mask, "Mask my ongoing research", replaces phrases from a draft proposal, research direction or unpublished work with <code>[PRIVATE-PHRASE-n]</code>. The warning says masking cannot hide the research direction. Application points never enter an export or a hand-off.</li>
     <li><b>Checked, not promised:</b> every SYNTHETIC test document carries a canary token; after a full session no token may appear in any file, log, temp file, browser storage or outbound request (<code>tests/test_private.py</code>). The live canary (<code>scripts/private_canary.py</code>) was clean on the rebuilt demo in S32, including the six model-server journals, and after every QA round.</li></ul></div>
 </div>
 </section>
@@ -565,7 +565,7 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
 <div class="grid">
   <div class="card"><h3>Risks considered</h3><ul>
     <li>Wrong or unsupported claims → the citation validator and the grounding check on every model output; numbers and dates only from records; a failed output withheld and flagged.</li>
-    <li>Reputational: naming people and companies → demo researchers appear by alias in the docs; personas are SYNTHETIC; industry leads carry an inference label and the hand-off names no company; masking hides identifiers in exports.</li>
+    <li>Reputational: naming people and companies → demo researchers appear by alias in the docs; personas are SYNTHETIC; industry leads carry an inference label and the hand-off names no company; masking hides identifiers in hand-offs and ongoing-research phrases in exports.</li>
     <li>Over-reliance → the brief is labelled a starting point; the Match is a text match, not the odds of funding; hand-offs and notes go to a human office and the user sends them.</li>
     <li>A misread question → “How Scout read your question” shows every filter Scout applied.</li></ul></div>
   <div class="card"><h3>Protected data</h3><ul>
@@ -670,6 +670,7 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
 <tr><td>One deployment story with a fixed on-prem tier</td><td>The person deploying should decide</td><td>Fully local, hybrid or cloud-only, and the key type, are the deployer’s decisions, documented in the architecture, spec, deploy guide, README and roadmap (2026-11-01, Dakshitha)</td></tr>
 <tr><td>Models do three jobs; no model reads the CV text</td><td>A CV holds what a public profile holds; only contact details need to be private; no retention suffices; informed consent is the important part</td><td>Standing rule 5 amended: four jobs, the fourth application points; a session’s models may read the CV and documents with contact details blanked; the student “never reads the CV text” line dropped (2026-11-01, Dakshitha). <code>cover_points</code> is one tool on both allowlists, on the hand-off role, with the answer line by code (Perch-dev, delegated)</td></tr>
 <tr><td>Researchers primary, students a demonstration</td><td>Both should be sold equally</td><td>Students listed as a primary user with their two offices; README, tour, tracker and this spec rebalanced (2026-11-01, Dakshitha)</td></tr>
+<tr><td>Exports withhold model texts and CV values while a session holds documents</td><td>The session is fenced and purged when it ends; the export exists so the user can take away a summary of what fits; only ongoing research needs a mask</td><td>2 Nov 2026: exports give the full brief with a note that it includes text from the user's documents; the only export mask is the optional "Mask my ongoing research"; hand-off drafts keep their withholding; exports print Match, status, rule notes, higher-education applicants and a description excerpt (Dakshitha)</td></tr>
 </table></div>
 </section>
 
