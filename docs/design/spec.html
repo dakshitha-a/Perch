@@ -193,6 +193,7 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
     <li><b>Nothing stored about you:</b> no briefs, leads, keep and dismiss choices, drafts, Scout conversations or per-user logs. The browser keeps only the theme and, in the tab, the session id so a reload resumes the brief.</li>
     <li><b>Public records stay cached:</b> OpenAlex researchers and works, RePORTER and NSF awards and the companies behind industry leads are written to the store, so the next brief is faster. They hold nothing about the person who asked.</li>
     <li><b>Ends</b> with End session, after 30 minutes idle (10 minutes if never used), or when the server restarts.</li>
+    <li><b>One side at a time</b> (2026-11-02, Dakshitha): a session holds a researcher brief or a student brief, never both. Opening the other side’s form shows a warning that lists what the session holds; ending it starts the form fresh, and the server refuses the other side’s brief until then.</li>
     <li><b>Warm demo briefs:</b> the demo researchers’ default briefs are built when the server starts and held in memory; a visitor gets a copy in their own session at once, and the card says so.</li>
     <li><b>Isolated:</b> a random session token, memory and size caps, a rate limit of its own. The store is an overlay on a read-only base; no cache, log or index writes from a session; core dumps off.</li></ul></div>
   <div class="card"><h3>Local or Cloud, and the documents consent</h3><ul>
