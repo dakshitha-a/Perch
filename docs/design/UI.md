@@ -172,27 +172,23 @@ Checked by `scripts/screenshots.py`: keep and dismiss take effect after a watche
 
 ## 7. Help page
 
-Opened from the Help button in the app bar, or the "New here?" link on Find, at `#/help` (`web/help.js`). It has four parts:
+Rebuilt on 2 Nov 2026 as a short visual guide (Dakshitha: "the help page is way too much text. use figures and animations to explain where possible. cut out all unnecessary info that does not contribute to instructions on using the platform. include one diagrammatic explanation of the architecture"). Opened from the Help button in the app bar at `#/help` (`web/help.js`; rules under `/* ---------- help ---------- */` in `web/styles.css`). The rendered page went from 6,891 words to about 960; the technical detail lives in `docs/SPEC.md` and `docs/design/PRIVATE_MODE.md`.
 
-- **How to use Perch:** four steps, each with a picture built from the app's own parts. The pictures carry an "Example" label, a dashed frame and muted colours, so they do not read as controls.
-- **How Perch works:** the pipeline, with each step tagged by who does it: public records, code, rules, model or you.
-- **Reading the labels:** what each label in the app means.
-- **What Perch does not do.**
+Parts, in order:
 
-An independent review checked every sentence against the code and found 18 problems, all fixed:
+- **If you are a researcher:** five steps (find, confirm and build, read the routes and decide, compare and hand off, ask Scout including cover-letter points).
+- **If you are a student:** four steps (choose Student, add the CV and more, read the verdicts and Still needed, compare and send the note).
+- **Reading a lead card:** one figure with five numbered callouts: Match and its bands, Keep and Dismiss, the title opens the record, dates and amounts copied from the record (amber means closing within 30 days), and the Model text tag with Why it fits.
+- **How Perch works:** one inline SVG of the demo path as built (sources, fetch, store, search and rank, explain, check, your brief, you) with a side lane for documents and the Local or Cloud choice.
+- **Your privacy:** four short lines.
+- **Good to know:** a brief is a starting point; industry leads are inferences, with the fixed research-security line; the ERA note and link; the foundation note; the sample-data badge. The three fixed notes are copied word for word from `perch/offices.py`, and `tests/test_web.py` compares them.
 
-- **Accuracy:**
-  - The page said models do two jobs. It now names the embedding, ranking, summary, explanation and checking models, and adds the summary step.
-  - The check step now says that only citation-check failures are rewritten and withheld. Statements the grounding model cannot match are shown with a warning.
-  - Forecasted calls are not shown, and the page now says so.
-  - The eligibility step now lists what the rules drop. A new line says Perch does not check personal eligibility.
-  - "Nothing leaves the app" was false with a hosted model. It now reads "sends no email and writes to no outside system".
-  - The timing is now the measured figure, not a guess.
-  - The name search is described as matching the last known institution, with an ORCID iD as the fallback.
-- **UX:**
-  - On phones, the step-4 legend now follows its picture.
-  - Repeated items were cut, including the sources section, which is now folded into the first pipeline step.
-  - Back now uses browser history.
-  - The Help button shows when you are on Help.
-  - The preview banner is hidden on Help.
-  - The kind tags sit outside the headings, so screen readers announce each step cleanly.
+Figures:
+
+- Each step has a figure made from the app's own parts (field, buttons, cards, chips, Match pill, verdict chips, the owl on the branch). Figures are `aria-hidden`, since the step text says the same thing.
+- Motion is CSS keyframes only: one 9 second loop per figure, blank to complete (typing into the search box, the owl riding the branch, Keep turning to Kept while the shortlist count rises, the draft appearing, a Scout filter chip appearing, the Student toggle, the CV boxes filling). There are no timers, GIFs, videos, data URIs or outside assets.
+- The base style of every figure is its final state. One `@media (prefers-reduced-motion: reduce)` block removes all Help animations, so each figure shows complete. The walk and the README stills take Help with reduced motion on, so they are the same every run.
+- The diagram is drawn twice from one node list: a 4 by 2 snake on wide screens and a single column under 640 px, with `display:none` on the other, so only one `role="img"` reaches a screen reader. It has an `aria-label` and a visually hidden text list. A dot travels along the path (stopped under reduced motion). Colours use the app's variables, so it follows both themes.
+- Colour is never the only signal: nodes carry a number and a title, and the key names each colour.
+
+Checks: `tests/test_web.py` (reduced-motion block, diagram role, no timers or outside assets, the fixed notes) and walk check U39 in `scripts/ux_walk.py` (word count under 2,300, one visible diagram, no sideways scroll at 390 px).

@@ -123,6 +123,7 @@ EVIDENCE = """() => {
 
 # Leftovers of the ask-first mode, gone since S27: no Approve or Skip, no "Waiting for you".
 
+HELP_WORDS_MAX = 2300  # a third of the 6,891 words the old page had
 # U39 (rewritten 2 Nov): Help is a short visual guide. The probe counts the words a reader
 # gets, finds the visible architecture diagram (one of two layouts, the other is display:none)
 # and the sideways overflow at the current width.
@@ -277,6 +278,15 @@ async def checks_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.wait_for_timeout(600)
     if await page.evaluate(GATE):
         w.errors.append(f"{tag}: help: the Scout picture still shows Approve or Waiting for you")
+
+
+async def help_snap(w: Walk, page: Page, tag: str, name: str, full: bool = False) -> None:
+    """Help's figures loop, so a still is taken with reduced motion on: every figure then
+    shows its final state and the shot is the same each run."""
+    await page.emulate_media(reduced_motion="reduce")
+    await page.wait_for_timeout(200)
+    await w.snap(page, tag, name, full=full)
+    await page.emulate_media(reduced_motion="no-preference")
 
 
 async def sort_stays(w: Walk, page: Page, tag: str) -> None:
@@ -504,7 +514,7 @@ async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.wait_for_timeout(300)
     await page.goto(base + "/#/help")
     await page.wait_for_timeout(800)
-    await w.snap(page, tag, "help", full=True)
+    await help_snap(w, page, tag, "help", full=True)
 
 
 # Weak matches fold under "Weaker matches (N)" (U24); flows that keep the second lead
@@ -649,7 +659,7 @@ async def private_flow(w: Walk, page: Page, base: str) -> None:
     await docs_cards_read_clean(w, page, tag)
     await page.goto(base + "/#/help")
     await page.wait_for_timeout(600)
-    await w.snap(page, tag, "private-on-help")
+    await help_snap(w, page, tag, "private-on-help")
     await w.step(tag, "end", end_session(page))
     await page.wait_for_timeout(1000)
 
@@ -1825,24 +1835,22 @@ async def ux_landing(w: Walk, page: Page, base: str, tag: str) -> None:
     owls = await page.evaluate("() => [...document.querySelectorAll('button.owl, .owl[role=button], [aria-label*=Scout]')].map(o => o.getAttribute('aria-label'))")
     if any(re.search(r"hello", x or "", re.I) for x in owls):
         w.errors.append(f"{tag}: U40: the owl's label still invites a hello {owls}")
-    await page.goto(base + "/#/help")  # U39: five questions at the top of Help
+    await page.goto(base + "/#/help")  # U39: Help is a short visual guide
     await page.wait_for_selector(".help")
     await page.wait_for_timeout(400)
-    qa = await page.evaluate("""() => { const q = document.querySelector('.help-quick'); const first = document.querySelector('#h-use');
-      return { n: q ? q.querySelectorAll('li').length : 0, links: q ? q.querySelectorAll('button, a').length : 0,
-               top: q ? Math.round(q.getBoundingClientRect().top + scrollY) : null,
-               above: Boolean(q && first && q.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING),
-               hello: /hello/i.test(document.querySelector('.help').innerText) }; }""")
-    if qa["n"] != 5 or qa["links"] < 5 or not qa["above"] or (qa["top"] or 9999) > 700:
-        w.errors.append(f"{tag}: U39: Help has no five-question block at the top {qa}")
-    if qa["hello"]:
+    hp = await page.evaluate(HELP_PROBE)
+    if hp["words"] > HELP_WORDS_MAX:
+        w.errors.append(f"{tag}: U39: Help has {hp['words']} words, over {HELP_WORDS_MAX}")
+    if hp["diagram"] != 1 or not hp["label"]:
+        w.errors.append(f"{tag}: U39: Help shows {hp['diagram']} architecture diagrams with role img (want 1) {hp['label']!r}")
+    if hp["sw"] > hp["cw"]:
+        w.errors.append(f"{tag}: U39: Help scrolls sideways ({hp['sw']} > {hp['cw']} px) {hp['over']}")
+    if not hp["motion"]:
+        w.errors.append(f"{tag}: U39: Help has no reduced-motion block")
+    if await page.evaluate("() => /hello/i.test(document.querySelector('.help').innerText)"):
         w.errors.append(f"{tag}: U40: Help still says hello")
-    await w.snap(page, tag, "u-help-top")
-    if qa["links"]:
-        await page.locator(".help-quick button, .help-quick a").first.click()
-        await page.wait_for_timeout(600)
-        if await page.evaluate("() => scrollY") < 200:
-            w.errors.append(f"{tag}: U39: the first question's link did not move the page")
+    print(f"{tag}: Help words {hp['words']}, scroll {hp['sw']}/{hp['cw']}")
+    await help_snap(w, page, tag, "u-help-top", full=True)
     if phone:
         return
     await page.goto(base + "/#/")  # U41: the documents path opens its session on arrival

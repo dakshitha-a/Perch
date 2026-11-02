@@ -92,9 +92,11 @@ async def walk(page: Page, url: str, out: Path, tag: str, errors: list[str]) -> 
     await page.wait_for_timeout(300)
     await snap("10-profile-full", full=True)
     await page.evaluate("location.hash = '#/help'")
-    await page.wait_for_selector("#h-use")
+    await page.wait_for_selector("#h-researcher")
+    await page.emulate_media(reduced_motion="reduce")  # Help's figures loop: show them complete
     await page.wait_for_timeout(300)
     await snap("11-help-full", full=True)
+    await page.emulate_media(reduced_motion="no-preference")
 
 
 async def main(argv: list[str]) -> int:

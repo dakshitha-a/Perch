@@ -674,6 +674,7 @@ body.on-help .banner { display: none; }
 @media (max-width: 639px) {
   .g-step, .anatomy { grid-template-columns: minmax(0, 1fr); }
   .g-steps { gap: 28px; }
+  .fig { min-height: 0; }
   .arch-w { display: none; }
   .arch-v { display: block; }
 }
