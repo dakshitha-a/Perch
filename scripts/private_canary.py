@@ -4,7 +4,8 @@ in S16 on the frozen build).
 Runs, through the real API on the real store and models: a private-only brief and a
 brief with a public profile, both with the SYNTHETIC persona-1 documents and a direction
 holding its own canary; keeps a lead; compare; hand-off and exports, plain and masked;
-a private Scout question; then ends the session. Afterwards it checks that no canary
+a private Scout question and, since S33, a cover-points question that sends the CV to the
+chat model with contact details blanked; then ends the session. Afterwards it checks that no canary
 is in any file under data/, in a file under /tmp changed during the run, or in the
 model servers' journals, and that no file under data/ changed. Since S30 (review P6) the
 embedding and rerank caches may change, with public keys only: a new vector must be one
@@ -249,6 +250,18 @@ def main(argv: list[str]) -> int:
                         json={"question": "Which of these leads best fits my draft proposal?",
                               "mode": "run"})
             row["scout"] = sc.status_code
+            # S33: cover_points sends the CV, blanked, to the chat model; the canary in the
+            # CV must stay out of every log and journal after it.
+            sid = sc.json().get("id") if sc.status_code == 202 else None
+            if sid:
+                c.post(f"/private/scout/{sid}/ask", headers=h,
+                       json={"question": "What could my cover letter for the top lead say?"})
+                ex = c.get(f"/private/scout/{sid}", headers=h).json()["exchanges"][-1]
+                pts = [x for x in ex["cards"] if x["tool"] == "cover_points"]
+                row["scout_points"] = {
+                    "status": pts[-1]["status"] if pts else "no step",
+                    "points": len((pts[-1].get("points") or {}).get("points") or []) if pts
+                    else 0, "answer_by": ex.get("answer_by")}
         out["briefs"].append(row)
     c.post("/private/end", headers=h)
     time.sleep(2)
@@ -272,7 +285,8 @@ def main(argv: list[str]) -> int:
           and not out["canary_in_data"] and not out["canary_in_tmp"]
           and not any(out["canary_in_journals"].values())
           and all(b["status"] == "done" for b in out["briefs"])
-          and out["briefs"][0]["citing_private"] > 0)
+          and out["briefs"][0]["citing_private"] > 0
+          and all(b.get("scout_points", {}).get("status") == "done" for b in out["briefs"]))
     out["ok"] = ok
     print(json.dumps(out, indent=2, default=str))
     return 0 if ok else 1

@@ -2,7 +2,8 @@
 (QA round 3, T29).
 
 Researcher flow, each run in a fresh session: build the warm PI-4 brief (A5026494099), keep
-the top two grant leads, then ask the three demo questions in order:
+the top two grant leads, then ask the three demo questions and the cover-letter question in
+order:
   1. "What are my top three leads and why?"  passes when the answer names the brief's first
      three grant leads in Match order, each in its own sentence or line with a reason, and
      does not refuse or apologise. Each reason ends as a whole sentence, never on a word
@@ -15,6 +16,11 @@ the top two grant leads, then ask the three demo questions in order:
      cites is one of the brief's grant leads: "these" are the brief's leads (QA round 4, F1).
   3. "Draft the hand-off for my top lead"    passes when draft_handoff ran and the draft is
      about the top lead alone.
+  4. "What could my cover letter for the top lead say?" (S33) passes when exactly one
+     cover_points step ran and is done, it carries 3 to 6 points, every asks half cites the
+     record alone, every you half cites at least one applicant record, code wrote the answer
+     line (answer_by "code"), and no canary token from the SYNTHETIC personas' documents is
+     in the answer or the card (PI-4 has no CV, so that last check is vacuous there).
 Documents flow (QA round 4, F7), each run in a fresh session: add the SYNTHETIC persona-1
 CV, aims and manuscript with no OpenAlex id, build, keep the top lead, and ask "Draft the
 hand-off for my top lead". It passes when draft_handoff drafted the top lead alone, the
@@ -26,7 +32,10 @@ Every answer to questions 1 and 2 and the student question also passes a citatio
 that names a short name in parentheses, such as "(Parent F33)", cites that record.
 Student flow, each run in a fresh session: build the SYNTHETIC persona-ug brief and ask
 "Which of these can I apply to before March?". It passes when a search tool ran, the
-answer was not withheld, and any sample scholarship sits under its own heading.
+answer was not withheld, and any sample scholarship sits under its own heading. Then, in
+the same conversation, "What should my application for my top option highlight?" (S33),
+checked as the researcher's question 4 is; here the CV is in the session, so its canary
+token must be absent from the answer and the card.
 
 Each flow runs three times by default; the script prints pass counts per question and
 writes the answers to build/rehearsal/. Researchers are named by alias in everything it
@@ -64,8 +73,14 @@ DOC_FILES = {"cv": "cv.md", "proposal": "specific_aims_draft.md",
              "manuscript": "unpublished_manuscript.md"}
 DOCS_Q = "Draft the hand-off for my top lead"
 QUESTIONS = ("What are my top three leads and why?", "Which of these close before March?",
-             "Draft the hand-off for my top lead")
+             "Draft the hand-off for my top lead",
+             "What could my cover letter for the top lead say?")
 STUDENT_Q = "Which of these can I apply to before March?"
+STUDENT_POINTS_Q = "What should my application for my top option highlight?"
+STUDENT_QS = (STUDENT_Q, STUDENT_POINTS_Q)
+# The SYNTHETIC personas' documents each carry a canary token; none may reach an answer.
+CANARIES = sorted({m for f in (*PERSONA.glob("*.md"), *DOCS.glob("*.md"))
+                   for m in re.findall(r"PERCH-CANARY-[A-Z0-9-]+", f.read_text())})
 SEARCH_TOOLS = ("search_opportunities", "search_options")
 CITE = re.compile(r"\[([^\[\]]+)\]")
 SENTENCE = re.compile(r"(?<=[.!?])\s+|\n+")
@@ -300,6 +315,36 @@ def check_draft(ex: dict, top: str, others: list[str]) -> list[str]:
     return errs
 
 
+def check_points(ex: dict) -> list[str]:
+    """S33: one done cover_points step with 3 to 6 checked points, the answer line by
+    code, and no document canary anywhere in the answer or the card."""
+    steps = [c for c in ex["cards"] if c["tool"] == "cover_points"]
+    done = [c for c in steps if c["status"] == "done"]
+    if len(done) != 1:
+        return [f"{len(done)} done cover_points steps, not 1: " + json.dumps(
+            [(c["tool"], c["status"], c["arguments"]) for c in ex["cards"]])]
+    p = done[0].get("points") or {}
+    errs = []
+    if p.get("status") != "done":
+        errs.append(f"the points are {p.get('status') or 'missing'}: {p.get('detail') or ''}")
+    pts = p.get("points") or []
+    if not 3 <= len(pts) <= 6:
+        errs.append(f"{len(pts)} points, not 3 to 6")
+    target = (p.get("for") or {}).get("id")
+    for i, pt in enumerate(pts, 1):
+        if pt.get("asks_ids") != [target]:
+            errs.append(f"point {i} asks cites {pt.get('asks_ids')}, not [{target}]")
+        if not pt.get("you_ids"):
+            errs.append(f"point {i} you cites nothing")
+    if ex.get("answer_by") != "code":
+        by = ex.get("answer_by") or "an unlabelled hand"
+        errs.append(f"the answer line was written by {by}, not by code")
+    blob = (ex.get("answer") or "") + json.dumps(done[0])
+    if leaked := [c for c in CANARIES if c in blob]:
+        errs.append(f"a document canary is in the answer or the card: {leaked}")
+    return errs
+
+
 def check_student(ex: dict) -> list[str]:
     errs = []
     if not any(c["tool"] in SEARCH_TOOLS and c["status"] == "done" for c in ex["cards"]):
@@ -350,7 +395,8 @@ def researcher_run(base: str, n: int, kept: str = "top2") -> dict:
         titles = record_titles(g["leads"])
         checks = (lambda ex: check_top_three(ex, top) + check_own_titles(ex, titles),
                   lambda ex: check_before_march(ex, as_of, closes) + check_own_titles(ex, titles),
-                  lambda ex: check_draft(ex, top[0], [short(x["record_id"]) for x in grants[1:]]))
+                  lambda ex: check_draft(ex, top[0], [short(x["record_id"]) for x in grants[1:]]),
+                  check_points)
         for q, check in zip(QUESTIONS, checks, strict=True):
             sid, ex, secs = cl.ask(sid, q)
             errs = check(ex)
@@ -371,9 +417,11 @@ def student_run(base: str, n: int) -> dict:
         g = cl.wait_brief(limit=600)
         if g["brief"]["status"] != "done":
             raise RuntimeError("the student brief failed")
-        _, ex, secs = cl.ask(None, STUDENT_Q)
+        sid, ex, secs = cl.ask(None, STUDENT_Q)
         out["questions"].append(_record(STUDENT_Q, ex, secs, check_student(ex)
                                         + check_own_titles(ex, record_titles(g["leads"]))))
+        _, ex, secs = cl.ask(sid, STUDENT_POINTS_Q)
+        out["questions"].append(_record(STUDENT_POINTS_Q, ex, secs, check_points(ex)))
     finally:
         cl.end()
     return out
@@ -432,11 +480,15 @@ def _record(q: str, ex: dict, secs: float, errs: list[str]) -> dict:
     return {"question": q, "pass": not errs, "errors": [alias(e) for e in errs],
             "seconds": round(secs, 1), "status": ex.get("status"),
             "answer": alias(ex.get("answer") or ""), "flagged": ex.get("flagged"),
+            "answer_by": ex.get("answer_by"),
             "steps": [{"tool": c["tool"], "status": c["status"], "arguments": c["arguments"],
                        **({"subject": alias(c["draft"]["subject"]),
                            "body": alias(c["draft"]["body"]),
                            "opening_by": c["draft"].get("opening_by")}
-                          if c.get("draft") else {})}
+                          if c.get("draft") else {}),
+                       **({"points": {k: c["points"].get(k) for k in
+                                      ("status", "points", "missing", "unsupported", "for")}}
+                          if c.get("points") else {})}
                       for c in ex["cards"]]}
 
 
@@ -475,7 +527,7 @@ def main() -> int:
             sys.stdout.flush()
     print("\nPass counts")
     total = ok = 0
-    for flow, qs in (("researcher", QUESTIONS), ("student", (STUDENT_Q,)),
+    for flow, qs in (("researcher", QUESTIONS), ("student", STUDENT_QS),
                      ("documents", (DOCS_Q,))):
         if flow not in a.only:
             continue
