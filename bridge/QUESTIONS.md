@@ -12,6 +12,8 @@ Dakshitha delegated every product and design decision to Perch-dev on 2026-10-31
 
 
 
+43. **Cover-letter points and standing rule 5 (raised and decided 2026-11-01, S33).** Dakshitha asked whether Scout could explain what a researcher or student could highlight in a cover letter from their CV, allowed rule 5 and the spec to be edited, withdrew the student "never reads the CV text" restriction (a CV holds what a public profile holds; only contact details need to be private; no retention suffices; informed consent is the point), and asked that the student side be sold as fully as the researcher side. Built in S33 as model skill 4 and the `cover_points` tool on both allowlists, with contact details blanked in every prompt view. This is the advice-writing version Q32 deferred; the decision-only draft check (Q34) stays unbuilt. Decisions in DECISIONS.md, S33 rows.
+
 ## Answered
 
 33. **Standing-rule change to apply (raised 2026-10-30; narrowed in S24).** Standing rules are yours to edit; Perch-dev never edits them. Your answer to Q30 needs this change in `CLAUDE.md`:
