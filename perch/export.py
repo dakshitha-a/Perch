@@ -41,6 +41,47 @@ class Block:
     href: str | None = None
 
 
+DOCUMENTS_NOTE = ("This brief includes text drawn from your documents. The file stays on your "
+                  "computer after the session ends.")
+MASKED_NOTE = ("Phrases from your ongoing research are masked. Masking cannot hide what the "
+               "work is about.")
+EXCERPT_CHARS = 600
+
+
+def higher_ed_rows(rows: list[str] | None) -> list[str]:
+    """Applicant categories that name higher education, as web/format.js higherEdRows."""
+    return [r for r in rows or [] if "institutions of higher education" in r.lower()
+            and "other than institutions of higher education" not in r.lower()]
+
+
+def excerpt(text: str | None, limit: int = EXCERPT_CHARS) -> str | None:
+    """A record's description cut for a brief: whitespace collapsed (tags and entities
+    stripped, should any remain), then cut at the last sentence end at or before `limit`
+    characters; with none, at the last space before it, with an ellipsis."""
+    t = html.unescape(re.sub(r"<[^>]+>", " ", text or ""))
+    t = re.sub(r"\s+", " ", t).strip()
+    if not t:
+        return None
+    if len(t) <= limit:
+        return t
+    cut = t[:limit + 1]
+    i = cut.rfind(". ")
+    if i != -1:
+        return cut[:i + 1]
+    j = cut[:limit].rfind(" ")
+    return (cut[:j] if j > 0 else cut[:limit]).rstrip() + "…"
+
+
+def _status_line(o: Opportunity) -> str | None:
+    if o.status and o.status != "posted":
+        return f"Status: {'Forecast' if o.status == 'forecasted' else o.status}"
+    return None
+
+
+def _note_line(n: str) -> str:
+    return f"{'Private' if '(private)' in n else 'Rule'}: {n}"
+
+
 def _money(o: Opportunity) -> str:
     return award_size(o) or "Not in the record"  # the card's words (Q2)
 
@@ -205,6 +246,7 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     out = [Block("h1", f"Perch brief: {name}"),
            Block("p", f"Brief as of {_day(as_of)}. {built}. Every date and amount is copied "
                       "from the linked record. A brief is a starting point, not advice.")]
+    out += _documents_notes(documents, masker)
     docs_only = brief.researcher_id.startswith("private:")
     if researcher and not docs_only:  # G16: a documents brief has no public record to link
         out.append(Block("link", f"Researcher record ({researcher.source})",
@@ -257,10 +299,14 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
         # The card's rule (U3, T17, F3): the record's words for a placeholder date, and
         # "Expires <date>" for a parent announcement.
         closes = datefmt.closes(o, date.fromisoformat(as_of)) or "Not in the record"
-        out.append(Block("list", items=[
-            f"Agency: {o.agency_label()}", f"Closes: {closes}", f"Money: {_money(o)}",
-            f"Activity code: {o.activity_code or 'Not in the record'}",
-            f"Office: {for_route('A').name}"]))
+        facts = [match_text(x.match_score), _status_line(o),
+                 f"Agency: {o.agency_label()}", f"Closes: {closes}", f"Money: {_money(o)}",
+                 f"Activity code: {o.activity_code or 'Not in the record'}",
+                 f"Office: {for_route('A').name}", *(_note_line(n) for n in x.notes)]
+        out.append(Block("list", items=[f for f in facts if f]))
+        if eligible := higher_ed_rows(o.eligible_applicants):
+            out.append(Block("p", "Eligible applicants include:"))
+            out.append(Block("list", items=eligible))
         if x.explanation and not x.flagged:
             own = {o.id, o.opportunity_number}  # the card drops its own record's citation
             said: set[str] = set()  # G21: a paper's full title once per lead
@@ -277,6 +323,8 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
                                    if f"https://openalex.org/{c}" in works)
         if cited:
             out.append(Block("list", items=[f"Cites: {_work(w)}" for w in cited]))
+        if desc := excerpt(o.description):
+            out.append(Block("p", f"From the record: {desc}"))
         out.append(Block("link", f"Record: Grants.gov {o.opportunity_number}", href=o.source_url))
 
     # A brief with no public papers has no industry search: no empty section (R18).
@@ -312,22 +360,19 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
                      + (f", {len(gone)} dismissed" if gone else "") + ". Text marked Model was "
                      "written by a language model and checked against the records it cites."))
     out.append(Block("p", grants_gov.ATTRIBUTION))
-    return _count_withheld(out, documents and masker is None)
-
-
-def is_withheld(b: Block) -> bool:
-    """A Withheld line: a withheld model text, or one labelled note (Q24)."""
-    return (b.kind == "model" and b.text == egress.WITHHELD) or (
-        b.kind == "note" and b.text.endswith(egress.WITHHELD.removeprefix("Withheld: "))
-        and " withheld: " in b.text)
-
-
-def _count_withheld(out: list[Block], banner: bool) -> list[Block]:
-    """The banner under the opening states how many Withheld lines follow, counted from
-    the lines themselves: the summary, the topics, each explanation and inference (R10)."""
-    if banner and (n := sum(map(is_withheld, out))):
-        out.insert(2, Block("note", egress.withheld_note(n)))
     return out
+
+
+def _documents_notes(documents: bool, masker: egress.Masker | None) -> list[Block]:
+    """The notes near the top of an export that holds documents: what it carries, and
+    that the ongoing research was masked when it was. A withholding export (no masker)
+    carries none: its model texts say they are withheld."""
+    if not (documents and masker is not None):
+        return []
+    notes = [Block("note", DOCUMENTS_NOTE)]
+    if getattr(masker, "active", False):
+        notes.append(Block("note", MASKED_NOTE))
+    return notes
 
 
 SAMPLE_BANNER = ("SAMPLE DATA: the Scholarships section lists invented records from a "
@@ -340,15 +385,6 @@ def _amount(s: Scholarship) -> str:
     if s.amount_max is not None:
         return f"${s.amount_max:,.0f}"
     return "Not in the record"
-
-
-def _withheld(brief: Brief | None, leads: list[Lead]) -> int:
-    """Model texts a documents session leaves out of the JSON export: the summary, the
-    topics, and each explanation and inference (R10)."""
-    return (bool(brief and brief.summary) + bool(brief and brief.topics)
-            + sum(bool(x.explanation and not x.flagged) + bool(x.inference and x.explanation
-                                                                and not x.flagged)
-                  for x in leads if x.status != "dismissed" and x.route != "B"))
 
 
 def _source_name(rec: object) -> str:
@@ -378,6 +414,7 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
            Block("p", f"Brief as of {_day(as_of)}. Eligibility is checked by rule from your CV; "
                       "\"may be eligible\" means Perch could not check everything. A brief is "
                       "a starting point, not advice.")]
+    out += _documents_notes(documents, masker)
     if any(x.sample for x in shown):
         out.append(Block("note", SAMPLE_BANNER))
     names = {}  # a cited option reads as its name, as on the card (R9)
@@ -418,7 +455,7 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
                      + (f", {len(gone)} dismissed" if gone else "") + ". Text marked Model was "
                      "written by a language model and checked against the records it cites."))
     out.append(Block("p", grants_gov.ATTRIBUTION))
-    return _count_withheld(out, documents and masker is None)
+    return out
 
 
 def bare_findings_out(text: str) -> str:
@@ -487,6 +524,10 @@ def _student_option(i: int, x: Lead, rec: object, office: object, names: dict[st
     lines = [] if len(x.verdict_lines) == 1 and x.verdict_lines[0] in common \
         else x.verdict_lines
     items = [f"Verdict: {x.verdict}", *(egress.release_cv_line(v, masker) for v in lines)]
+    if m := match_text(x.match_score):
+        items.insert(0, m)
+    if isinstance(rec, Opportunity):
+        items.append(f"Agency: {rec.agency_label()}")
     if isinstance(rec, Scholarship) and rec.sponsor:
         items.append(f"Sponsor: {rec.sponsor}")
     if not _facts_stated(rec):
@@ -514,6 +555,8 @@ def _student_option(i: int, x: Lead, rec: object, office: object, names: dict[st
             out.append(labelled(label, egress.release_model(
                 name_papers(you(x.inference), {}, names, skip=own), x.cited_ids, masker,
                 documents)))
+    if desc := excerpt(getattr(rec, "description", None) or getattr(rec, "purpose", None)):
+        out.append(Block("p", f"From the record: {desc}"))
     url = getattr(rec, "source_url", None)
     if url and not x.sample:
         out.append(Block("link", f"Record: {_source_name(rec)}", href=url))

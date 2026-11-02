@@ -267,7 +267,7 @@ def test_canary_leaves_no_trace(tmp_path, monkeypatch, capfd, public_cache):
     assert sent, "the spy saw the public fetches"
 
 
-def test_default_exports_withhold_and_masking_round_trips(tmp_path, monkeypatch):
+def test_default_exports_are_full_and_research_masking_round_trips(tmp_path, monkeypatch):
     c, _ = private_app(tmp_path, monkeypatch)
     h = open_with_persona(c)
     c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"})
@@ -280,10 +280,11 @@ def test_default_exports_withhold_and_masking_round_trips(tmp_path, monkeypatch)
     assert r.status_code == 409 and "researcher brief" in r.json()["detail"]
     assert got["papers"]["private:proposal"]["private"] is True
     exp = c.get("/private/export.json", headers=h).json()
-    assert exp["leads"][0]["explanation"].startswith("Withheld")
+    # 2026-11-02: an export gives the full brief; only the opt-in mask changes it.
+    assert exp["leads"][0]["explanation"] == got["leads"][0]["explanation"]
     assert not any(r["source"] == "private" for r in exp["records"])
     md = c.get("/private/export.md", headers=h).text
-    assert "ground reaction" not in md and "Withheld" in md
+    assert "ground reaction" in md and "Withheld" not in md
     masked = c.get("/private/export.json", headers=h, params={"mask": True}).json()
     text = masked["leads"][0]["explanation"]
     assert "[PRIVATE-PHRASE-1]" in text and "ground reaction force" not in text
@@ -729,9 +730,9 @@ def summary_reply(messages, system, schema):
     return fit_reply(messages, system, schema)
 
 
-def test_exports_withhold_the_summary_topics_and_private_threads(tmp_path, monkeypatch):
-    """S1: the profile summary, its topics and the private threads' labels are drawn from
-    the documents, so a default export leaves them out; a masked export masks them."""
+def test_exports_give_the_summary_topics_and_threads_in_full(tmp_path, monkeypatch):
+    """S1, changed 2026-11-02: the profile summary, its topics and the private threads'
+    labels print as they are on screen; the research mask masks them on opt-in."""
     c, _ = private_app(tmp_path, monkeypatch, responder=summary_reply)
     h = open_with_persona(c)
     c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"})
@@ -741,11 +742,12 @@ def test_exports_withhold_the_summary_topics_and_private_threads(tmp_path, monke
     assert labels
     for ext in ("json", "md", "html"):
         text = c.get(f"/private/export.{ext}", headers=h).text
-        assert "ground reaction force" not in text, ext
-        assert "insole gait sensing" not in text, ext
-        assert not any(lbl in text for lbl in labels), ext
+        assert "ground reaction force" in text, ext
+        assert "insole gait sensing" in text, ext
+        assert ext != "json" or all(lbl in text for lbl in labels)  # md and html list no threads
     exp = c.get("/private/export.json", headers=h).json()
-    assert exp["brief"]["summary"].startswith("Withheld")
+    assert exp["brief"]["summary"] == got["summary"]
+    assert "withheld" not in exp and exp["documents_note"].startswith("This brief includes")
     masked = c.get("/private/export.json", headers=h, params={"mask": True}).json()
     assert "PRIVATE-PHRASE" in masked["brief"]["summary"]
     assert "ground reaction force" not in masked["brief"]["summary"]
@@ -777,11 +779,10 @@ def public_paraphrase_reply(messages, system, schema):
     return ""
 
 
-def test_documents_session_withholds_model_text_that_cites_only_public_ids(tmp_path,
-                                                                           monkeypatch):
-    """S8: in a session holding documents, every model-written text leaves the app as
-    private-derived: withheld with a stated count by default, masked on opt-in. The
-    screen still shows it."""
+def test_documents_session_exports_model_text_in_full_but_handoff_withholds(tmp_path,
+                                                                            monkeypatch):
+    """S8, changed 2026-11-02: an export prints model text as the screen shows it, masked
+    for ongoing research on opt-in. A hand-off draft still withholds it by default (S8)."""
     c, _ = private_app(tmp_path, monkeypatch, responder=public_paraphrase_reply)
     h = open_with_persona(c)
     c.post("/private/brief", headers=h, json={"author_id": "A5026494099",
@@ -793,10 +794,10 @@ def test_documents_session_withholds_model_text_that_cites_only_public_ids(tmp_p
     c.post(f"/private/leads/{lead['id']}/keep", headers=h)
     for ext in ("json", "md", "html"):
         text = c.get(f"/private/export.{ext}", headers=h).text
-        assert PARAPHRASE not in text, ext
-        assert "withheld: this session holds documents" in text, ext
+        assert PARAPHRASE in text, ext
+        assert "withheld: this session holds documents" not in text, ext
     exp = c.get("/private/export.json", headers=h).json()
-    assert exp["withheld"]["texts"] >= 1
+    assert "withheld" not in exp
     masked = c.get("/private/export.json", headers=h, params={"mask": True}).json()
     assert "[PRIVATE-PHRASE-" in masked["leads"][0]["explanation"]
     office = {"office": "research_development"}
@@ -808,7 +809,7 @@ def test_documents_session_withholds_model_text_that_cites_only_public_ids(tmp_p
     h2 = {"X-Perch-Private": c.post("/private/session").json()["token"]}
     c.post("/private/brief", headers=h2, json={"author_id": "A5026494099",
                                                "as_of": "2026-10-28"})
-    assert "withheld" not in c.get("/private/export.json", headers=h2).json()
+    assert "documents_note" not in c.get("/private/export.json", headers=h2).json()
 
 
 def docx_of(xml: bytes) -> bytes:

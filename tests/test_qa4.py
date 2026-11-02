@@ -192,7 +192,7 @@ def test_the_student_export_groups_as_the_screen_and_names_no_own_record():
     assert n == 4  # the four you may apply for; the not-eligible one is one line (G14)
     assert "- SYNTHETIC fellowship 4: The listing says who may apply. Match 50 (partial)." \
         in plain
-    assert f"> {egress.withheld_note(plain.count(egress.WITHHELD) + n)}" in plain
+    assert "model texts withheld" not in plain  # 2026-11-02: no count banner
 
 
 def test_a_documents_brief_is_titled_your_documents(tmp_path, monkeypatch):

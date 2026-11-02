@@ -117,6 +117,7 @@ class PrivateSession:
     brief_student: bool = False  # the held brief is a student brief (its own Back link)
     briefs_run: int = 0
     masker: egress.Masker | None = None
+    research_masker: egress.ResearchMasker | None = None  # the export's mask; one key with masker
     scout: object | None = None  # a ScoutHub of its own, made on first use
     lock: threading.Lock = field(default_factory=threading.Lock)
     service: PrivateService | None = None
@@ -165,6 +166,7 @@ class PrivateSession:
         self.docs.clear()
         self.mem.clear()
         self.masker = None
+        self.research_masker = None
         self.scout = None
         self.brief_id = None
         self.brief_student = False
@@ -174,9 +176,27 @@ class PrivateSession:
     def make_masker(self, public_texts: list[str]) -> egress.Masker:
         cv = self.cv
         terms = {"PERSON": cv.names, "INSTITUTION": cv.institutions} if cv else {}
+        # One key per session: once an export has masked something, a hand-off masker
+        # shares its key and numbering, so every placeholder can be unmasked.
         self.masker = egress.Masker([d.abstract or "" for d in self.docs.values()],
-                                    public_texts, terms)
+                                    public_texts, terms, share=self.research_masker)
         return self.masker
+
+    def research_texts(self) -> list[str]:
+        return [d.abstract or "" for k, d in self.docs.items() if k in egress.RESEARCH_KINDS]
+
+    def make_research_masker(self, public_texts: list[str]) -> egress.ResearchMasker:
+        """The export mask: phrases from the proposal, direction and manuscript only."""
+        research = self.research_texts()
+        self.research_masker = egress.ResearchMasker(
+            research, public_texts, share=self.research_masker or self.masker)
+        return self.research_masker
+
+    def unmask(self, text: str) -> str | None:
+        """The text with every placeholder of this session put back, or None when nothing
+        was ever masked."""
+        m = self.masker or self.research_masker
+        return m.unmask(text) if m else None
 
 
 class PrivateService(BriefService):

@@ -23,7 +23,7 @@ disk, which private mode must not do).
   GET  /private/records/{id}            a record, public or private
   GET  /private/compare
   POST /private/handoff                 {"office", "lead_ids"?, "mask"?}
-  GET  /private/export.json|.md|.html   ?mask=true for masked private text
+  GET  /private/export.json|.md|.html   ?mask=true masks phrases from ongoing research
   POST /private/unmask                  {"text"}: placeholders back to the originals
   POST /private/scout, GET /private/scout/{sid}, POST /private/scout/{sid}/{action}
 """
@@ -532,6 +532,18 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
                       if (o := r.get(Opportunity, x.record_id))]
         return s.make_masker(public)
 
+    def export_masker_for(s: PrivateSession, mask: bool) -> egress.ResearchMasker:
+        """An export gives the full brief. With `mask` it masks phrases from the ongoing
+        research documents only (a proposal, direction or manuscript); with none, `mask`
+        changes nothing. The masker is never None: an export releases everything as it is."""
+        if not (mask and s.research_texts()):
+            return egress.ResearchMasker([])  # nothing to mask: inactive, identity
+        b, leads = load(brief_id(s), s.service)
+        with s.service.repo() as r:
+            public = [o.description or o.title for x in leads
+                      if (o := r.get(Opportunity, x.record_id))]
+        return s.make_research_masker(public)
+
     @app.post("/private/handoff")
     def handoff(req: PrivateHandoffRequest, request: Request,
                 x_perch_private: str | None = Header(None)) -> dict:
@@ -563,14 +575,15 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     def export_j(mask: bool = False, status: Literal["kept"] | None = None,
                  x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
-        return {**export_json(brief_id(s), status, s.service, masker_for(s, mask),
-                              bool(s.docs)), "masked": mask}
+        m = export_masker_for(s, mask)
+        return {**export_json(brief_id(s), status, s.service, m, bool(s.docs)),
+                "masked": m.active}
 
     @app.get("/private/export.md")
     def export_md(mask: bool = False, status: Literal["kept"] | None = None,
                   x_perch_private: str | None = Header(None)) -> Response:
         s = session(x_perch_private)
-        bs, _ = export_blocks(brief_id(s), status, s.service, masker_for(s, mask),
+        bs, _ = export_blocks(brief_id(s), status, s.service, export_masker_for(s, mask),
                               bool(s.docs))
         return Response(ex.to_markdown(bs), media_type="text/markdown; charset=utf-8",
                         headers={"Content-Disposition":
@@ -580,16 +593,17 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
     def export_html(mask: bool = False, status: Literal["kept"] | None = None,
                     x_perch_private: str | None = Header(None)) -> Response:
         s = session(x_perch_private)
-        bs, title = export_blocks(brief_id(s), status, s.service, masker_for(s, mask),
-                                  bool(s.docs))
+        bs, title = export_blocks(brief_id(s), status, s.service,
+                                  export_masker_for(s, mask), bool(s.docs))
         return Response(ex.to_html(bs, title), media_type="text/html; charset=utf-8")
 
     @app.post("/private/unmask")
     def unmask(req: TextRequest, x_perch_private: str | None = Header(None)) -> dict:
         s = session(x_perch_private)
-        if s.masker is None:
+        text = s.unmask(req.text)
+        if text is None:
             raise HTTPException(409, "Nothing has been masked in this session.")
-        return {"text": s.masker.unmask(req.text)}
+        return {"text": text}
 
     # --- private Scout: a hub per session, no log, local models only ---
 

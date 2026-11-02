@@ -135,14 +135,12 @@ def test_student_canary_leaves_no_trace(tmp_path, monkeypatch, capfd):
         for ext in ("json", "md", "html"):
             e = c.get(f"/private/export.{ext}", headers=h).text
             assert "SAMPLE DATA" in e, ext  # every export carries the banner
-            # Q42: no value read from the CV leaves in a rule line
-            assert "; your CV says" not in e and "; your CV lists" not in e, ext
-            # Q12: verdicts and rule lines are written by code and stay; only model text
-            # is withheld, and the banner counts those.
+            # Changed 2026-11-02: an export is the full brief; a rule line keeps the value
+            # read from the CV, and no model text is withheld.
+            assert egress.CV_WITHHELD not in e and egress.WITHHELD not in e, ext
+            assert "documents_note" in e or "includes text drawn from your documents" in e, ext
             if ext != "json":
                 assert "Verdict: " in e, ext
-                assert e.count(egress.WITHHELD) == sum(
-                    bool(x["explanation"] and not x["flagged"]) for x in got["leads"]), ext
         assert c.post("/private/handoff", headers=h,
                       json={"office": "research_development"}).status_code == 422
         c.post("/private/end", headers=h)
