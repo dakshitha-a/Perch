@@ -2,7 +2,7 @@
 
 *See every route to fund your work.*
 
-Temple AI Build Challenge, Fall 2026. Owner: Dakshitha. Public data only. Items marked **[verify]** are believed true and must be checked against the source before Demo Day. The published HTML version of this spec is the canonical one; this Markdown copy is for Claude Code.
+Temple AI Build Challenge, Fall 2026. Owner: Dakshitha. Public data only. Items marked **[verify]** are believed true and must be checked against the source before Demo Day. The published HTML version of this spec is the canonical one; its source is `docs/design/spec.html` (v2.0, as built, S33), and this Markdown copy is for Claude Code.
 
 ## 1. Users, working backwards
 
