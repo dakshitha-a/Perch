@@ -485,3 +485,13 @@ def test_the_temple_submission_fixtures_hold_the_quoted_sentences_and_no_email()
     assert "Faculty and program directors should work with their school" in cfr
     assert "notify CFR of potential proposals" in cfr
     assert "@" not in ovpr and "@" not in cfr
+
+
+def test_tag_chip_wraps_instead_of_widening_the_page() -> None:
+    """A long agency name (a DOD contracting activity) in a card's tag must wrap: a nowrap tag
+    pushed the page 12px wider than a 390px phone."""
+    from pathlib import Path
+
+    css = (Path(__file__).resolve().parent.parent / "web" / "styles.css").read_text()
+    rule = next(x for x in css.split("\n.") if x.startswith("tag {")).split("}", 1)[0]
+    assert "nowrap" not in rule and "max-width: 100%" in rule

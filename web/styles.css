@@ -132,8 +132,8 @@ body.cloud-on .status-chip .dot { background: var(--ember-fill); }
 .btn.keep.on .icon { color: var(--moss); }
 
 /* ---------- tags and chips ---------- */
-.tag { display: inline-flex; align-items: center; height: 24px; padding: 0 8px; border-radius: 6px; font-size: 13px; font-weight: 600;
-  background: var(--sunk); color: var(--ink-2); white-space: nowrap; }
+.tag { display: inline-flex; align-items: center; min-height: 24px; max-width: 100%; padding: 0 8px; border-radius: 6px; font-size: 13px; font-weight: 600;
+  background: var(--sunk); color: var(--ink-2); }
 .tag.moss { background: var(--moss-soft); color: var(--ink); }
 .tag.ember { background: var(--ember-soft); color: var(--ember); }
 .tag.model { background: var(--model-soft); color: var(--model); }
