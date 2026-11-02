@@ -278,7 +278,7 @@ function pointsBlock(p, ctx) {
   return h("details", { class: "scout-points", open: true },
     h("summary", {}, h("span", { text: `Points for your cover letter: ${title}` }),
       p.for.sample ? h("span", { class: "sample-badge", text: "Sample data" }) : null),
-    h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
+    p.status === "withheld" ? null : h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
       h("span", { text: "Written by a model and checked against the records it cites. Put them in your own words." })),
     p.for.sample ? h("p", { class: "hint", text: "This record is an invented sample, so the points are a demonstration, not advice." }) : null,
     p.status === "withheld" ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: p.detail || "The points were withheld." })) : null,
