@@ -1,4 +1,4 @@
-"""The three bounded model skills (standing rule 5). S5 builds skills 1 and 2.
+"""The four bounded model skills (standing rule 5): summary, fit, hand-off, cover points.
 
 Every skill: compact record views with short ids go in, JSON constrained by a schema
 comes out, validator layer 1 checks it, a failure is regenerated once with the errors,
@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import re
 
+from perch import egress
 from perch.schemas import Opportunity, Work
 
 
@@ -43,9 +44,14 @@ def short_work_id(w: Work) -> str:
 
 
 def work_view(w: Work, abstract_chars: int = 600) -> str:
+    """A paper, or a session document, as a model prompt shows it. A private document's
+    contact details are blanked before the cut (S33), so no prompt view holds them."""
     year = w.publication_year or "n.d."
     venue = f"; {w.venue}" if w.venue else ""
-    abstract = f"\n  Abstract: {w.abstract[:abstract_chars]}" if w.abstract else ""
+    text = w.abstract or ""
+    if text and w.source == egress.PRIVATE:
+        text = egress.blank_contacts(text)
+    abstract = f"\n  Abstract: {text[:abstract_chars]}" if text else ""
     return f"[{short_work_id(w)}] ({year}{venue}) {w.title}{abstract}"
 
 

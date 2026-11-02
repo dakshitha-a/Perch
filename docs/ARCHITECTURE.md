@@ -4,24 +4,26 @@ How Perch fits together, which steps of a brief use a model, what runs where in 
 
 ## How Perch fits together
 
-![The whole system as built after S14, top to bottom. Public sources feed plain-code fetchers and the store. A brief runs two routes from the store. Models are bounded: they write, or they call Perch's own tools, and the validator checks every output before the researcher sees it. The dotted SBIR.gov box is a source whose API was down.](architecture/overview.svg)
+![The whole system as built after S14, top to bottom. Public sources feed plain-code fetchers and the store. A brief runs two routes from the store. Models are bounded: they write, or they call Perch's own tools, and the validator checks every output before the user sees it. The dotted SBIR.gov box is a source whose API was down. The diagram predates the fourth model job, application points (S33), and the student path (S18).](architecture/overview.svg)
 
 - **Public sources only:** OpenAlex, NIH RePORTER, NSF Award Search and Grants.gov. The SBIR.gov API was down in S11, so small-business awards come from RePORTER and cover NIH only.
 - **Fetchers and store:** plain code fetches each record and stores it with its source, link and fetch time. Numbers and dates are copied from records, never written by a model.
 - **Route A, grants:** two small local models find and rank open calls. Eligibility rules between them drop anything the researcher cannot apply to.
 - **Route B, industry leads:** plain code counts public signals per company. A company needs two kinds of signal to be shown. Every lead says it is inferred and not verified.
-- **Models are bounded:** the chat model writes the profile summary and the fit explanations. Scout, the agent, can only call Perch's own tools.
+- **Models are bounded:** the chat model does four jobs: the profile summary, the fit explanations, the hand-off opening and, on request through Scout, the application points for one record (S33). Scout, the agent, can only call Perch's own tools.
+- **The CV and documents:** a session's models may read them, with contact details blanked in every prompt (standing rule 5 as amended 2026-11-01). Code still reads the CV by rule for eligibility. Nothing from a document is stored.
+- **Students:** the same pipeline serves a student brief (S18): the CV is read by rule, fellowships come from public listings and scholarships from a SYNTHETIC sample corpus, and the verdicts are rules. Scout has its own student tools, with `cover_points` on both lists.
 - **The validator:** it checks every model output before it is shown. Code checks ids and numbers. Clef checks each sentence against the record it cites.
 - **Other ways in:** private mode (S13) runs the same pipeline on self-hosted models and writes nothing. The MCP server (S14) offers Scout's tools to any MCP client.
 - **The hand-off draft (S12):** the chat model writes only an opening paragraph. Code writes the rest, and the app never sends it.
 
 ## A brief, step by step
 
-![A brief runs top to bottom. Steps 1, 2 and 7 are plain code. Steps 3, 4 and 8 run on local models that stay local. Steps 5 and 6, and the on-request steps below the line, run on local models now and can move to Sonnet. A failed check sends the explanation back once; a second failure shows the lead without an explanation, flagged.](architecture/pipeline.svg)
+![A brief runs top to bottom. Steps 1, 2 and 7 are plain code. Steps 3, 4 and 8 run on local models that stay local. Steps 5 and 6, and the on-request steps below the line, run on local models now and can move to Sonnet. A failed check sends the explanation back once; a second failure shows the lead without an explanation, flagged. The diagram predates the on-request application points step (S33).](architecture/pipeline.svg)
 
 - **Code, no model:** fetching, eligibility, dates and the citation check are plain code. Numbers and dates are copied from records, never written by a model.
 - **Search:** the embedder and reranker are small local models. Nothing in the back-test beat them measurably.
-- **Writing:** the profile summary, fit explanation and hand-off draft are written by the chat model. Every one passes both validator layers before it is shown.
+- **Writing:** the profile summary, fit explanation, hand-off draft and application points are written by the chat model. Every one passes the citation validator before it is shown; the explanations and the points pass the grounding check too, and the hand-off opening does not.
 - **Grounding check:** Clef reads each sentence beside the record it cites, and flags a sentence the record does not support.
 - **Scout and decide:** Scout calls only allowlisted tools. Decide gives typed yes-or-no and score answers with a confidence.
 
@@ -42,7 +44,7 @@ The person who deploys Perch decides where the models run. This is a deployment 
 
 ![The two-GPU demo layout. GPU A holds the writing and agent models; each of their roles can move to the Anthropic API with one line in .env. GPU B holds the grounding check and search, which have no cloud path. Private mode refuses the path to the API.](architecture/deployment.svg)
 
-- **The swap:** set `PERCH_LLM_<ROLE>=anthropic:claude-sonnet-5-5` for one role, or `PERCH_LLM_DEFAULT` for all of them. Roles are profile summary, fit explainer, hand-off, Scout and decide.
+- **The swap:** set `PERCH_LLM_<ROLE>=anthropic:claude-sonnet-5-5` for one role, or `PERCH_LLM_DEFAULT` for all of them. Roles are profile summary, fit explainer, hand-off, Scout and decide. Application points (S33) run on the hand-off role; there is no new role to set.
 - **What Sonnet measured:** a typical brief took 26 s and cost about $0.09. It passed both checks on 24 of 30 leads, against 28 for Gemma.
 - **Decide on Sonnet:** it works, but the Anthropic API returns no token probabilities, so the answer comes without a confidence score.
 - **What stays local:** Anthropic offers no embedding or rerank API, and Perch has no adapter for another provider of them. Clef's job needs token scores.

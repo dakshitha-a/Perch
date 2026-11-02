@@ -1,4 +1,4 @@
-# Perch — technical specification v1.4
+# Perch — technical specification v1.5
 
 *See every route to fund your work.*
 
@@ -8,13 +8,18 @@ Temple AI Build Challenge, Fall 2026. Owner: Dakshitha. Public data only. Items 
 
 The question nobody at Temple can answer quickly today: *if this lab's federal line ends or is cut, what else fits this specific body of work, and what is the evidence?* Pivot-RP and SPIN answer "which calls match these keywords?". Perch answers the question above, from the researcher's own papers, with a measured hit rate.
 
+A student has the same shape of question: *which fellowships and scholarships could I apply for, what do I still need, and what would I say for myself?* Perch answers it from the student's CV, checked by rule against each record, with the points an application could make (S18, S33). Both audiences are primary users and are sold equally (Dakshitha, 2026-11-01).
+
 | User | Role in v1 | Job |
 |---|---|---|
 | Principal investigator | primary | See realistic alternatives for *my* work, ranked, with reasons I can check; decide which office to talk to. Keeps/dismisses leads, edits and sends the hand-off. |
+| Student (undergraduate or graduate) | primary | See the fellowships and scholarships I may be eligible for, each checked against *my* CV by rule, with what I still need; the points my application could make; a note to the right office, which I send myself. |
 | Research Development staff (Office of the VP for Research) | secondary | Receive a hand-off that already contains the evidence. |
 | Technology Commercialization staff | receives (v1), uses (v2) | Receive industry-route hand-offs. Leads are labelled inferences; the app never says "should partner". |
+| Scholar Development and Fellowships Advising staff | receives | Receive a student's note about public fellowships, with the rule read-out and what is still needed. |
+| Student Financial Services staff | receives | Receive a student's note about scholarships. Until a real feed is licensed, the scholarship records are a SYNTHETIC sample, and the note says so. |
 
-Out of scope for v1: graduate students and postdocs (fellowships); department-wide batch scans (opt-in, v2); anything built from real unpublished or confidential text.
+Out of scope for v1: postdocs (NIH F32 and F33 listings are shown to a student only to say why they do not fit); department-wide batch scans (opt-in, v2); anything built from real unpublished or confidential text. The scholarship corpus is a SYNTHETIC sample until a real feed is licensed (§13, phase 3); the fellowship list is public.
 
 ## 2. Why this is not another Pivot
 
@@ -38,7 +43,12 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 **In**
 - Researcher identity, one of: name + "Temple University"; ORCID iD; OpenAlex author ID; up to 20 DOIs. Resolved to one OpenAlex author record; user confirms the match before anything runs.
 - Optional constraints: amount range, horizon (months), routes to consider, up to 5 emphasis keywords, exclusion keywords.
-- Nothing else in the public prototype. The private-context input (§4) is demonstrated only with synthetic data on a local model.
+- Optional documents (§4), held in the session only: a CV, a research direction, a draft proposal, unpublished work. Tests and demos of them use SYNTHETIC text.
+
+**In — student brief (S18, S33)**
+- A CV, pasted or uploaded (text, Markdown, DOCX or PDF). Code reads level, year, major, GPA, enrolment, expected graduation and the number of referees by rule.
+- An interests note, which steers the search; up to five achievements, which are session records an explanation or a cover point may cite.
+- No public identity is needed. A student session is private by construction: choosing Student opens the session before any text leaves the browser.
 
 **Out — the resourcing brief**
 - Research profile: 3–6 topic labels, 5–10 key papers (title, year, venue, DOI link), public federal awards with start/end dates, and the **public award horizon** (end date of the last public award). Nothing about lab finances is inferred.
@@ -46,12 +56,20 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 - Route B, industry leads: up to 5 organisations; the public signals found; suggested relationship type; fit explanation; confidence label; always "inferred from public signals; not verified".
 - Comparison: money, time to decision, effort, IP implications, evidence strength. Likelihood only for Route A, only as the back-tested hit rate for that opportunity type.
 - Hand-off draft: editable email to Research Development or Technology Commercialization. Never sent by the app.
+- Application points (S33, model skill 4, on request through Scout): for one record, 3 to 6 points a cover letter could make. Each point pairs what the record asks for, cited to the record, with what the applicant has, cited to the CV, a document, a paper or a public award; up to three things the record asks for that no document shows are listed too. Checked by the validator and the grounding model; shown on the card to copy; never in exports or hand-off drafts.
 - Evidence panel: every claim links to its record. A claim with no record is not shown.
 - Export: PDF and Markdown; JSON of records.
 
+**Out — the student brief**
+- Your options: Fellowships (public), from Temple's Scholar Development and Fellowships Advising list and NIH F-series listings, and Scholarships and awards (sample), from the SYNTHETIC corpus, never in one list. Each option carries a verdict by rule (eligible, may be eligible, not eligible), the rule it rests on, Still needed (what the record asks for that the CV does not show), and a one-sentence fit explanation checked against the listing and the student's own text. Deadline and amount copied from the record.
+- What Perch read: the rule read-out of the CV, so the student can check it.
+- Application points (S33): the same skill 4, for one fellowship or sample scholarship, from the CV, the interests note and the achievements. A sample scholarship gives sample points, and the card says so.
+- Compare and the note: kept options in two tables, public and sample apart; a code-written note to Scholar Development and Fellowships Advising or Student Financial Services. Never sent by the app.
+- Export with a sample banner; lines that quote the CV are withheld or masked.
+
 ## 4. Private context: CV and unpublished directions
 
-**Private by default** (S23, 2026-10-29, Dakshitha). With no user accounts, every brief is a session held in memory: no stored briefs, no reuse, no browser history, no per-user logs. Public records fetched for a brief stay cached. Models are local by default; a Local / Cloud switch sends the three model skills to a named cloud provider after a warning the user confirms; a session that holds documents gets a second warning that lists which documents would leave, and nothing leaves until the user confirms it (rule 1 as amended 2026-11-01; the deployer may also disable this with `PERCH_CLOUD_DOCUMENTS`). Monitoring is shelved until a user system exists (`perch/shelved/monitor/`). User guide: `docs/private-mode.md`.
+**Private by default** (S23, 2026-10-29, Dakshitha). With no user accounts, every brief is a session held in memory: no stored briefs, no reuse, no browser history, no per-user logs. Public records fetched for a brief stay cached. Models are local by default; a Local / Cloud switch sends the four model skills to a named cloud provider after a warning the user confirms; a session that holds documents gets a second warning that lists which documents would leave, and nothing leaves until the user confirms it (rule 1 as amended 2026-11-01; the deployer may also disable this with `PERCH_CLOUD_DOCUMENTS`). Monitoring is shelved until a user system exists (`perch/shelved/monitor/`). User guide: `docs/private-mode.md`.
 
 **Private mode** (expanded 2026-10-29 at Dakshitha's request; full design in `docs/design/PRIVATE_MODE.md`; since S23 the documents part of every session). A researcher adds a current CV, a research summary, an unfinished proposal or unpublished work, and the routes are tailored to it.
 
@@ -59,6 +77,7 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 - No logs: nothing from the session is written to the store, audit log, caches or timings. In the browser, the tab's sessionStorage holds only the session id and flags such as "built from the SYNTHETIC sample", so a reload resumes the brief; it holds no text, and closing the tab forgets it (review W18, 2026-10-31). The inventory of write paths and what private mode does with each is in the design doc.
 - Tailoring: private documents become private threads with a larger share of the weight (default proposed, Q13); a deterministic CV parse can unlock career-stage-restricted calls and raise prior sponsors' programmes; a private-only brief needs no public profile.
 - Citations: private documents are session-only records the validator accepts in the session; numbers and dates still come from a cited record.
+- Models and the CV (S33, rule 5 as amended 2026-11-01): a session's models may read the CV and documents. Contact details (emails, phone numbers, links, ORCID) are blanked in every model prompt view, for every skill. The CV is capped at about 3,500 characters in a prompt, preferring the education, appointments, funding and awards sections. Skill 4, application points, is the one skill that reads the CV text as such, and only for the one record the user asks about; the eligibility rules still read the CV by code. Nothing from it is retained, and nothing leaves the session except by the user's informed choice (rule 1).
 - Leaving the app: by default nothing private-derived leaves; an opt-in export masks identifiers and novel phrases, and says plainly that masking cannot hide the research direction.
 - Evidence: a canary-token test defines "no logs"; a RePORTER-abstract back-test variant measures the mechanism as an upper bound. Tested only with `data/synthetic/` personas.
 - Deployment choice (2026-11-01, Dakshitha): documents go to a hosted provider only when the user chooses it for the session, after an informed warning. The person deploying decides whether Perch is offered fully local, hybrid or cloud-only. If a hosted provider is used, that person also decides whether the API key is a zero-data-retention key, if the provider offers one, and the privacy statement says which. See the architecture section "Deployment choice: local, hybrid or cloud".
@@ -70,8 +89,17 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 3. **Routes** — two columns; each lead a card: fit score, record fields, cited explanation, Keep/Dismiss.
 4. **Compare** — kept leads in one sortable table; evidence panel from any cell.
 5. **Hand off** — choose office, edit draft, copy or open in mail; shareable link and PDF.
+6. **Ask Scout** — plain follow-ups on the brief; "What could my cover letter for the top lead say?" runs `cover_points` (S33) and puts the checked points on the card with Copy.
 
-Demo Day runs Find → Routes → Hand off on a precomputed persona in ~75 s, with one stage (fit explanation) executed live.
+**Student walkthrough** (S18, S33)
+
+1. **Student** — choose Student on Find; the session opens before any text is sent. Paste or upload the CV; add an interests note and up to five achievements; *Build brief*.
+2. **Your options** — two lists, Fellowships (public) and Scholarships and awards (sample), each option with its verdict by rule, Still needed, and a checked fit sentence; Keep the ones worth a closer look.
+3. **What Perch read** — the rule read-out of the CV, to check and correct by replacing the CV.
+4. **Compare** — kept options in two tables, public and sample apart; pick Scholar Development and Fellowships Advising or Student Financial Services, and a code-written note appears to edit, copy or open in mail.
+5. **Ask Scout** — "Which of these close first?" or "What should my application for this scholarship highlight?": the second runs `cover_points` on the CV, the interests note and the achievements, and the points show on the card with Copy. On a sample scholarship, the card and answer say the points are for an invented sample.
+
+Demo Day runs Find → Routes → Hand off on a precomputed persona in ~75 s, with one stage (fit explanation) executed live, and the student path on a SYNTHETIC persona.
 
 ## 6. Architecture
 
@@ -117,7 +145,7 @@ One held-out set (10 Temple PIs, date cut-off enforced), one script (`make bench
 | Serving (local) | vLLM → SGLang; Ollama/llama.cpp on the laptop | Small models share the GPU; explanations are a batch | tok/s at 10 concurrent; TTFT; VRAM |
 | Caching | Nightly embed of open opportunities; cache embeddings, rerank scores and explanations by content/profile hashes | Repeat brief in seconds | Warm-cache brief time |
 
-Decision models are never used for skills 1–3 (profile summary, fit explanation, hand-off draft) or for the eligibility filter. They are challengers only at the two decision points above.
+Decision models are never used for skills 1–4 (profile summary, fit explanation, hand-off draft, application points) or for the eligibility filter. They are challengers only at the two decision points above.
 
 ## 8. Scout, and the platforms it runs on
 
@@ -128,7 +156,7 @@ A student brief gets its own allowlist instead (S24, S33): search_options, check
 
 Scout cannot: call anything outside the allowlist (no web, no shell); state a number or date not in a cited record; send email or change a record; exceed the per-brief budget; read anything about a researcher that is not a public record or a document they added to the session.
 Tools: `build_profile · list_awards · search_opportunities(route, filters) · get_org_signals · explain_fit · compare · draft_handoff · cover_points · get_record`, fixed to the brief's researcher (cover_points, S33, is model skill 4: the points a cover letter for one record could make, each citing the record and the CV, a document, a paper or an award); the MCP server adds `resolve_author` and an `author_id` argument, because its client starts without a researcher. Every call logged with args and result hashes; a brief is replayable.
-UI (S28, `docs/design/SCOUT_SPEC.md`): each step runs as soon as the model asks for it; a Stop button ends the question between steps. Above the answer, "How Scout read your question" lists each finished step with its filters; the step cards fold under the answer, each saying where it ran: code, a local model or a named Cloud provider. The fit and hand-off steps' model spend counts toward the session budget.
+UI (S28, `docs/design/SCOUT_SPEC.md`): each step runs as soon as the model asks for it; a Stop button ends the question between steps. Above the answer, "How Scout read your question" lists each finished step with its filters; the step cards fold under the answer, each saying where it ran: code, a local model or a named Cloud provider. The fit, hand-off and cover-points steps' model spend counts toward the session budget; cover_points runs on the session's hand-off provider, local by default and Cloud only after the documents warning is confirmed.
 
 Provider layer: one interface for chat, tool calling, structured output; adapters for Anthropic, OpenAI-compatible endpoints, Ollama and vLLM; model per role in config; fallback mode (structured prompts + validator) for small local models that tool-call poorly; three models benchmarked on the back-test.
 

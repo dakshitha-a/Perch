@@ -39,6 +39,21 @@ PATTERNS = [
 ]
 
 
+# S33: a session's model may read the CV and documents (standing rule 5 as amended),
+# with contact details blanked in every prompt view. The stored text is unchanged: the
+# student rules and the CV parse read it.
+CONTACT_KINDS = ("EMAIL", "PHONE", "ORCID", "URL")
+CONTACT_REMOVED = "[contact removed]"
+
+
+def blank_contacts(text: str) -> str:
+    """The text with every email, phone number, ORCID and link replaced by a marker."""
+    for kind, rx in PATTERNS:
+        if kind in CONTACT_KINDS:
+            text = rx.sub(CONTACT_REMOVED, text)
+    return text
+
+
 def is_private_id(i: str) -> bool:
     return i.startswith(f"{PRIVATE}:")
 

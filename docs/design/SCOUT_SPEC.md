@@ -31,7 +31,7 @@ Scout's tools only read records and write text on screen. So the risks are about
 - **Risk 1, invented facts (Built control):** the citation validator checks every answer against the records the tools returned. A failed answer is rewritten once. If it fails again, it is withheld and flagged.
 - **Risk 2, money (Built control, with a gap):** Scout's own model must be local in a private session, and every web brief has been a private session since S23. Each session has a budget of 120,000 tokens and $0.25, and each question stops after 8 model calls. The Anthropic adapter also enforces the $100 cap to the demo.
 - **The gap in risk 2:** in a session with Cloud on, `explain_fit` and `draft_handoff` use the session's Cloud model. Their cost is not counted in Scout's $0.25 session budget, and the daily Cloud cap counts briefs, not Scout steps. Only the 8-call cap, the hourly question limit and the $100 cap bound them. Section 5 closes this.
-- **Risk 3, private text leaving the machine (Built control):** Scout's model must be local in every private session. Cloud cannot turn on while a session holds documents. Student tools call no model at all; only Scout's own local model reads the student's question.
+- **Risk 3, private text leaving the machine (Built control, amended S32 and S33):** Scout's model must be local in every private session. A session that holds documents can turn Cloud on only after a second warning that lists each document, and the consent is per document and per session (Q33). The model-backed steps, `explain_fit`, `draft_handoff` and `cover_points`, follow that choice. Every other student tool calls no model; `cover_points` is the one tool whose model reads the CV text, with contact details blanked, and only for the one record the student asks about.
 - **Risk 4, wasted turns (Built control):** a call identical to an earlier one in the same question is answered from the earlier result and never run again. In S10's first bench run, Sonnet repeated one search up to nine times; the guard was added for that.
 - **Risk 5, misreading the question (partly controlled):** the model may turn "small grants" into the wrong filter. The answer then looks right but quietly leaves leads out. The validator cannot catch this, because every cited fact is still true. Only the person can, by seeing how Scout read their question.
 
@@ -51,14 +51,15 @@ Scout's tools only read records and write text on screen. So the risks are about
 
 - **Per question (Built):** 8 model calls, after which Scout stops and says so.
 - **Per session (Built):** 120,000 tokens and $0.25, counted for Scout's own model.
-- **Cloud steps counted (Built, S28):** the session budget also counts the tokens and dollars of `explain_fit` and `draft_handoff`. Their model calls already go through the audited provider, so the numbers exist; they are just not added in.
+- **Cloud steps counted (Built, S28; `cover_points` added S33):** the session budget also counts the tokens and dollars of `explain_fit`, `draft_handoff` and `cover_points`. Their model calls already go through the audited provider, so the numbers exist; they are just not added in.
 - **Per visitor (Built):** 30 Scout questions an hour, counted by IP address. Q35 asks whether per-IP counting suits Demo Day; the same answer applies here.
 
 ## 6. What the person sees
 
 - **How Scout read the question (Built, S28):** above the answer, one line lists the steps and their filters as chips, for example "Searched opportunities: activity code R21, closes by 2027-03-01". This is risk 5's control, and it is the first thing the person reads after the question.
 - **Step cards (Built, changed):** each step stays a card with its tool, filters, result line and records. The cards are collapsed under the "how Scout read it" line by default, because nobody needs to act on them.
-- **Where a step ran (Built, S28):** a card for `explain_fit` or `draft_handoff` says "Local" or names the Cloud provider, matching the header chip.
+- **Where a step ran (Built, S28; `cover_points` S33):** a card for `explain_fit`, `draft_handoff` or `cover_points` says "Local" or names the Cloud provider, matching the header chip.
+- **Points on the card (Built, S33):** after `cover_points` runs, code writes the answer line and the full points sit on the card with a Copy button, as a hand-off draft does. The points are for the person to put in their own words; they never enter an export or a hand-off draft.
 - **The answer (Built):** two to five short sentences. Each citation is a button that opens the record in the evidence rail.
 - **A withheld answer (Built):** if the answer fails the check twice, the page says so plainly, and the step cards still show what Scout found.
 - **Steps used (Removed, S27):** the side panel that counted steps went with the single-column chat. The eight-call limit is stated in Scout's welcome, under "What I will not do".
@@ -67,10 +68,12 @@ Scout's tools only read records and write text on screen. So the risks are about
 
 ## 7. Student Scout
 
-- **Own tools (Built):** students get seven tools: search_options, check_option, explain_verdict, read_cv, compare_options, draft_note and get_record.
-- **No CV text to the model (Built):** the tools return rule results and the fields read from the CV, never the CV text itself.
-- **Private only (Built):** student Scout runs only in a private session, on a local model.
-- **Samples stay marked (Built):** sample scholarships are marked as samples in every tool result and in the answer's records.
+- **Own tools (Built, S24; eighth tool S33):** students get eight tools: search_options, check_option, explain_verdict, read_cv, compare_options, draft_note, cover_points and get_record. The researcher tools are not on the student list, and the student tools are not on the MCP server.
+- **Rules first (Built):** search_options, check_option, explain_verdict, read_cv, compare_options, draft_note and get_record return rule results, record fields and the fields code read from the CV. They call no model. The eligibility verdicts and the Still needed lists are rule results, and a note to an office is written by code.
+- **Application points (Built, S33):** `cover_points` is model skill 4 on the student side. For one public fellowship or one sample scholarship, it returns 3 to 6 points for the application: each pairs what the record asks for or rewards, cited to the record, with what the student has that answers it, cited to the CV, the interests note or an achievement. It may list up to three things the record asks for that nothing the student added shows. It is the one student tool whose model reads the CV text, with contact details blanked, and only for the one record the student asks about. The old promise that no model reads the CV is withdrawn (Dakshitha, 2026-11-01, Q43); code still reads the CV by rule for eligibility.
+- **Checked like a draft (Built, S33):** every point passes the citation validator (ids known; numbers and dates only from the cited record). A failed set is regenerated once, then withheld. The grounding model flags an unsupported sentence. Code writes the answer line, and the points sit on the card with Copy. They never enter an export or the note.
+- **Private by construction, Cloud by choice (Built):** student Scout runs only in a private session. Scout's own model is local. `cover_points` runs on the session's models: local by default, and the cloud provider only after the student has turned Cloud on and confirmed the documents warning that names the CV (Q33).
+- **Samples stay marked (Built):** sample scholarships are marked as samples in every tool result and in the answer's records. Points for a sample scholarship say they are for an invented sample, on the card and in the answer.
 - **Same changes (Built, S28):** steps run at once, the Stop button, and the "how Scout read it" line apply to students too.
 
 ## 8. Records and logs
@@ -81,7 +84,7 @@ Scout's tools only read records and write text on screen. So the risks are about
 
 ## 9. The MCP server
 
-- **Same researcher tools (Built):** the MCP server serves the nine researcher tools over stdio, with the same schemas.
+- **Same researcher tools (Built; tenth tool S33):** the MCP server serves the ten researcher tools over stdio, with the same schemas. Through MCP, `cover_points` works from papers and public awards, because documents cannot be added through MCP.
 - **The client writes the answer (Built):** the client's own model writes the answer, so every result carries a provenance map of the records to cite.
 - **Its own budgets (Built):** 60 tool calls and 20 model-backed calls per connection.
 - **Unchanged by this spec:** `resolve_author` and the `author_id` arguments stay on MCP, where the client starts without a researcher.
@@ -89,6 +92,7 @@ Scout's tools only read records and write text on screen. So the risks are about
 ## 10. Draft review
 
 - **Status (Proposed, not built):** checking a draft against what a record asks for was evaluated in S24 and not built. Q34 decides whether to build it. If built, it becomes a Scout tool under the same rules: code quotes the record, the grounding model only marks each point, and nothing is stored.
+- **The advice-writing version is built (S33):** `cover_points` (sections 6 and 7) is the advice-writing version that Q32 asked about. It was built on 2026-11-01 under standing rule 5 as amended, which names application points as the fourth model job. The decision-only draft check above, where the grounding model marks a finished draft and writes no prose, stays unbuilt.
 
 ## 11. How Scout is evaluated
 

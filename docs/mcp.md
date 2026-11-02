@@ -3,7 +3,7 @@
 [Back to the README](../README.md)
 
 
-`perch mcp` serves Scout's nine tools to any MCP client over stdio (`perch/mcp_server.py`, MCP Python SDK 2.3.0). Each result names its records with their source, link and fetch time. `explain_fit` and `draft_handoff` run Perch's citation checks before they return. A connection may make 60 tool calls, and 20 of them may call a model. `--author A5026494099` sets the default researcher. `--private` runs with no writes or logs. With `--private`, the server will not start unless every model is self-hosted. Private documents cannot be added through MCP yet.
+`perch mcp` serves Scout's ten researcher tools to any MCP client over stdio (`perch/mcp_server.py`, MCP Python SDK 2.3.0). Each result names its records with their source, link and fetch time. `explain_fit`, `draft_handoff` and `cover_points` run Perch's citation checks before they return. `cover_points` (S33) gives the points a cover letter for one grant could make; through MCP it works from the researcher's papers and public awards, because documents cannot be added through MCP. A connection may make 60 tool calls, and 20 of them may call a model. `--author A5026494099` sets the default researcher. `--private` runs with no writes or logs. With `--private`, the server will not start unless every model is self-hosted. Private documents cannot be added through MCP yet.
 
 Add it to Claude Code (checked against `claude mcp add --help`, Claude Code 2.1.312):
 

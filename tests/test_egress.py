@@ -81,3 +81,37 @@ def test_a_masked_phrase_takes_the_rest_of_its_clause():
     assert out.startswith("Cited work: one of your achievements [PRIVATE-PHRASE-1] [achievement-c]")
     assert "It fits stream ecology research." in out
     assert m.unmask(out) == text
+
+
+# The address is joined at run time: the public-hygiene scan reads the file as text.
+CONTACTS = ("SYNTHETIC CV. Email lab.vale" + "@" + "example.invalid, phone 215-555-0100, "
+            "ORCID 0000-0002-1825-0097, page https://example.invalid/vale. Award R01GM123456 "
+            "listed.")
+
+
+def test_blank_contacts_removes_email_phone_orcid_and_links_only():
+    """S33: a session's model reads the CV with contact details blanked; an award number
+    is not a contact and stays."""
+    out = egress.blank_contacts(CONTACTS)
+    for token in ("lab.vale", "215-555-0100", "0000-0002-1825-0097", "https://"):
+        assert token not in out
+    assert out.count(egress.CONTACT_REMOVED) == 4 and "R01GM123456" in out
+
+
+def test_prompt_views_blank_a_private_documents_contacts_and_leave_stored_text_alone():
+    from perch.private.inputs import make_doc
+    from perch.skills import work_view
+
+    doc = make_doc("cv", CONTACTS)
+    view = work_view(doc, abstract_chars=4000)
+    assert "lab.vale" not in view and "215-555-0100" not in view
+    assert "https://" not in view and "[contact removed]" in view
+    assert doc.abstract == CONTACTS  # the stored text, which the rules read, is unchanged
+    # a long document is blanked before it is cut, so a cut link still goes
+    long = "x " * 300 + "see https://example.invalid/longlink"
+    assert "https" not in work_view(make_doc("proposal", long), abstract_chars=610)
+    # a public work's text is shown as stored
+    pub = Work(id="https://openalex.org/W1", title="SYNTHETIC", source="openalex",
+               source_url="https://api.openalex.org/works/W1", fetched_at=T,
+               abstract="Code at https://example.invalid/repo.")
+    assert "https://example.invalid/repo" in work_view(pub)

@@ -9,7 +9,7 @@ as a session on this design, so the write-path inventory below applies to every 
 Two changes to it: a session writes public records (OpenAlex researchers, works and
 organisations, RePORTER and NSF awards) through to the store (`perch/private/store.py`,
 `is_public`), and a session may turn Cloud on for briefs without documents, which lets
-one named cloud spec through the gate for the three model skills
+one named cloud spec through the gate for the four model skills
 (`perch/private/session.py`, `PrivateModels`). User guide: `docs/private-mode.md`.
 
 **Q33 update (standing rule 1 as amended).** With `PERCH_CLOUD_DOCUMENTS=1` a session that
@@ -18,6 +18,14 @@ provider and lists each document. Consent is recorded per document, by a hash of
 text, in session memory only (`PrivateSession.cloud_consent`); the gate passes the cloud
 spec only while every document held has it, a new or replaced document turns Cloud off,
 and turning Cloud off or ending the session clears it.
+
+**S33 update (models may read the CV).** Standing rule 5 as amended on 2026-11-01 lets a
+session's models read the CV and documents. Contact details (emails, phone numbers, links,
+ORCID) are blanked in every model prompt view, for every skill, and the CV is capped at about
+3,500 characters in a prompt, preferring its education, appointments, funding and awards
+sections. The fourth skill, application points (`cover_points`), reads them for one record the
+user asks about and returns checked points for a cover letter. Nothing from a document is
+retained, and nothing leaves the session except by the user's informed choice above.
 
 ## What it is
 
@@ -47,7 +55,8 @@ and turning Cloud off or ending the session clears it.
 - **Retrieval and rerank:** these are unchanged. They run on the local embedder and reranker, and the private threads are just more threads.
 - **Eligibility unlock:** a deterministic CV parse reads degree year, rank, appointments and prior sponsors. Opportunities now dropped as "restricted by career stage" can then be kept, labelled "eligible per your CV (private)". NIH's definition (grants.nih.gov, early-stage investigators page, read 2026-10-29): terminal research degree or end of post-graduate clinical training, whichever is later, within the past 10 years, and no prior substantial NIH independent research award as PD/PI. The CV parse reads the degree year and whether NIH grants are listed; it cannot read clinical training or extensions, so the label says "may be eligible per your CV (private)".
 - **Sponsor history:** prior sponsors listed on the CV raise the rank of the same sponsor's programmes. This is a rule in code, shown on the lead.
-- **Explanations:** these come from the local model only. They may cite private documents. The display uses a lock icon and the label "from your private document".
+- **Explanations:** these come from the session's models, local unless the user has consented to Cloud (Q33 update above). They may cite private documents. The display uses a lock icon and the label "from your private document".
+- **Application points (S33):** on request through Scout's `cover_points`, for one grant, fellowship or sample scholarship: 3 to 6 points, each pairing what the record asks for, cited to the record, with what the user has, cited to the CV, a document, a paper or a public award, plus up to three things the record asks for that no document shows. Every point passes the validator; a failed set is regenerated once, then withheld; the grounding model flags unsupported sentences. The points show on the Scout card with Copy, for the user to put in their own words.
 
 ## Citations and the validator (rules 3 and 4)
 
@@ -77,7 +86,7 @@ and turning Cloud off or ending the session clears it.
 
 ## Leaving the app
 
-- **Default:** nothing derived from private text leaves. This covers exports, hand-off drafts (S12), Scout and MCP.
+- **Default:** nothing derived from private text leaves. This covers exports, hand-off drafts (S12), Scout and MCP. Application points (S33) never enter an export or a hand-off draft; they stay on the card.
 - **Model text in a documents session (S30, review S8):** the documents sit in every model prompt, so a model can paraphrase them while citing only public records. While a session holds documents, every model-written text (summary, topics, explanations, inferences, layer 2 flags, the hand-off paragraph) is treated as private-derived in exports and hand-offs: withheld with a stated count, or masked on opt-in. The screen is unaffected. A private thread's label is made of document words, so it leaves the same way.
 - **Opt-in obfuscated export:** the user can include private-derived content in an export, masked, behind a visible warning.
   - **Typed placeholders:** names, emails, phones, ORCIDs, grant numbers, institutions and other identifiers are replaced with placeholders such as `[PERSON-1]` and `[AWARD-1]`, the same placeholder each time.

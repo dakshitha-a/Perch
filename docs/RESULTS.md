@@ -2,7 +2,7 @@
 
 Written 2026-11-01 (S32) for the Demo Day deck. Every number below is copied from the file named beside it. Where a number is not in the record, the page says UNVERIFIED.
 
-Perch reads a Temple researcher's public papers and lays out the routes to fund the work: open federal grants and industry leads, every claim cited to a public record, then a hand-off draft for the right Temple office. Nothing is sent. This page reports four things that were measured (retrieval on an NIH back-test, citation grounding, the Scout agent, speed and cost) and two that are mechanism tests on invented data (student mode, draft review). The keyword-only baseline sits beside every retrieval number.
+Perch reads a Temple researcher's public papers, or a student's CV, and lays out the routes to fund the work: open federal grants and industry leads for a researcher, fellowships and scholarships for a student, every claim cited to its record, then a hand-off draft or note for the right Temple office. Nothing is sent. This page reports four things that were measured (retrieval on an NIH back-test, citation grounding, the Scout agent, speed and cost) and two that are mechanism tests on invented data (student mode, draft review). The student side has its own section of equal weight; its numbers are mechanism checks on SYNTHETIC data and never mix with the measured tables (standing rule 11). The keyword-only baseline sits beside every retrieval number.
 
 ## Retrieval, NIH back-test
 
@@ -66,13 +66,24 @@ Scripted follow-up questions, checked for the right tool, the right arguments an
 
 ## Student mode (SYNTHETIC, mechanism test)
 
-All scholarships and personas here are invented sample data. These numbers check that the code does what the written rules say. They say nothing about real scholarships or real students (`bench/results/STUDENT_MODE.md`).
+A student brief reads a CV by rule, lists public fellowships and sample scholarships with a verdict and a Still needed list for each, and drafts a note to Scholar Development and Fellowships Advising or Student Financial Services (S18). All scholarships and personas here are invented sample data. These numbers check that the code does what the written rules say. They say nothing about real scholarships or real students, and they are not a result about Temple (`bench/results/STUDENT_MODE.md`).
 
-- **Planted records retrieved:** 23 of 24 across 3 personas (`bench/results/STUDENT_MODE.md`). At the earlier retrieval depth of 40 it was 19 of 24 (`bench/results/RESULTS.md`).
+**What was planted.** 500 SYNTHETIC scholarships with 105 fictional sponsors and 0 real-name hits; 24 of them planted by hand as test cases for 3 personas, with hand-written keys of 7 eligible, 5 may be eligible and 12 not eligible. The fellowship side reads Temple's public SDFA list, 76 award records with no amounts or deadlines on the page (`docs/TRACKER.md`, key numbers and S17 row).
+
+| Persona | Brief | Planted retrieved | Precision | Recall | Verdict exact | Gap list exact |
+|---|---|---|---|---|---|---|
+| persona-ug | 57 s | 7 of 8 | 1.00 | 1.00 | 7 of 7 | 3 of 3 |
+| persona-masters | 45 s | 8 of 8 | 1.00 | 1.00 | 8 of 8 | 4 of 4 |
+| persona-phd | 45 s | 8 of 8 | 1.00 | 1.00 | 8 of 8 | 4 of 4 |
+| all | | 23 of 24 | 1.00 | 1.00 | 23 of 23 | 11 of 11 |
+
+- **Planted records retrieved:** 23 of 24 across 3 personas (`bench/results/STUDENT_MODE.md`). At the earlier retrieval depth of 40 it was 19 of 24 (`bench/results/RESULTS.md`). The one miss is sample:sch-0008, which never reached a brief, so the rules never saw it.
 - **Precision and recall of "may apply":** 1.00 and 1.00, counted on the retrieved records only. Verdicts matched the hand-written key on 23 of 23, and gap lists on 11 of 11.
 - **End to end:** the student would see 11 of the 12 planted records they may apply for.
-- **The key and the code follow the same rules,** so a perfect match is a check of the code, not evidence the rules suit real awards. Fellowships are real public listings with no key and are not scored.
-- **Leakage:** none in the public API, public briefs, exports, data files or app log. Briefs took 45 to 57 s.
+- **The key and the code follow the same rules,** so a perfect match is a check of the code, not evidence the rules suit real awards. Fellowships are real public listings with no key and are not scored; their best verdict is "may be eligible" by design.
+- **Leakage:** none on seven checks: no sample record in the public API, none in public briefs, no persona canary in an export, data file or app log, and no export without the sample banner. Rerun over HTTP on the rebuilt demo in S32, clean (`docs/TRACKER.md`, key numbers). Briefs took 45 to 57 s.
+- **Scout on the student path:** the rehearsal gate's student runs are part of the 45 of 45 above, and the student export fell from 1,391 lines to about 410 in QA round 5 (`docs/TRACKER.md`, key numbers).
+- **Cover points (S33):** the `cover_points` skill serves both audiences. Its bench numbers, two tasks on the local model for each audience, will be filled in by S33 task 5 and are UNVERIFIED until then.
 
 ## Industry leads
 
@@ -88,7 +99,7 @@ The agent that built Perch judged 14 leads for 3 researchers against the records
 ## Limits
 
 - **One funder, small sample.** The back-test is NIH only, with 48 targeted and 78 parent awards. It was tuned on the same 48 rows, and parent announcements are nearly unrecovered (2 of 78). There is no NSF back-test, and 12 of 14 embedder setups could not be told from the default (`bench/results/SUMMARY.md`).
-- **Mechanisms, not gains.** The stand-in proposal is an upper bound. The student and draft-review results use invented data and keys written by the same author, and they do not measure real use. Draft review was not built (`bench/results/draft_review/RESULTS.md`).
+- **Mechanisms, not gains.** The stand-in proposal is an upper bound. The student and draft-review results use invented data and keys written by the same author, and they do not measure real use. The decision-only draft review was not built (`bench/results/draft_review/RESULTS.md`); the advice-writing version, cover points, was built in S33 under standing rule 5 as amended, and its numbers are UNVERIFIED until S33 task 5 runs.
 - **Judged by the builder.** Industry leads were judged once, by the agent that built them, with no baseline. Reviews and QA were run by AI agents. No user study has been done.
 - **Small bench sets on one local model.** Scout and grounding sets are 28 to 30 items. Gemma sometimes states a count that the citation check then withholds. The grounding pass rates were not rerun after S8.
 - **Public records only, nothing sent.** Opportunities refresh only when the operator refetches. Every brief is live and nothing is kept about a user, so there is no monitoring. Hand-offs are drafts, and Cloud models are opt-in and paid (`README.md`, Known limits).

@@ -6,9 +6,10 @@
 
 **See every route to fund your work.**
 
-Perch reads a researcher's public papers and lays out the ways to fund that work:
-open federal grants and industry leads. Every claim is cited to a public record.
-Then it drafts a hand-off to the right Temple office, which you send yourself.
+Perch reads a researcher's public papers, or a student's CV, and lays out the routes
+to fund that work: open federal grants and industry leads for a researcher, fellowships
+and scholarships for a student. Every claim is cited to its record. Then it drafts a
+hand-off to the right Temple office, which you send yourself.
 
 ![python](https://img.shields.io/badge/python-3.12-3f8f72)
 ![models](https://img.shields.io/badge/models-self--hosted%20or%20API-d9a441)
@@ -19,15 +20,15 @@ Then it drafts a hand-off to the right Temple office, which you send yourself.
 
 <img src="docs/tour/hero.webp" alt="Finding a researcher by OpenAlex ID, picking them and pressing Build brief, then opening the top grant's reasons and the paper it cites in the evidence panel beside the list. This demo researcher's brief was built when the server started, so it opens at once." width="880">
 
-<sub>Find a researcher, build the brief, and open the record behind any claim.</sub>
+<sub>Find a researcher, build the brief, and open the record behind any claim. A student starts from a CV instead and gets the same for fellowships and scholarships.</sub>
 
 </div>
 
 <table>
 <tr>
-<td align="center" width="33%"><img src="docs/tour/icon-record.svg" width="32" alt=""><br><b>Every claim has a record</b><br><sub>Dates and amounts are copied, never generated.</sub></td>
-<td align="center" width="33%"><img src="docs/tour/icon-lock.svg" width="32" alt=""><br><b>Keeps nothing about you</b><br><sub>Every brief lives in memory, on local models by default.</sub></td>
-<td align="center" width="33%"><img src="docs/tour/icon-draft.svg" width="32" alt=""><br><b>Nothing is sent</b><br><sub>Hand-offs are drafts for you to edit.</sub></td>
+<td align="center" width="33%"><img src="docs/tour/icon-record.svg" width="32" alt=""><br><b>Every claim has a record</b><br><sub>Dates, amounts and eligibility are copied from the record, never generated, for grants and scholarships alike.</sub></td>
+<td align="center" width="33%"><img src="docs/tour/icon-lock.svg" width="32" alt=""><br><b>Keeps nothing about you</b><br><sub>Every brief lives in memory, on local models by default. A CV is read in the session with contact details blanked.</sub></td>
+<td align="center" width="33%"><img src="docs/tour/icon-draft.svg" width="32" alt=""><br><b>Nothing is sent</b><br><sub>Hand-offs, notes and cover-letter points are drafts for you to edit.</sub></td>
 </tr>
 </table>
 
@@ -52,7 +53,7 @@ Every command is in [docs/running.md](docs/running.md), and the two-GPU demo is 
 
 ## A quick tour
 
-> Researchers appear by alias in these clips. Paper titles and funding records are public and are shown as they are.
+> Researchers appear by alias in these clips. Paper titles and funding records are public and are shown as they are. The student clip uses an invented SYNTHETIC persona and sample scholarships.
 
 <table>
 <tr>
@@ -74,6 +75,31 @@ holds every sentence to the record it cites.
 <tr>
 <td>
 
+### Fellowships and scholarships that fit your CV
+
+Choose Student, and Perch opens a private session before any text leaves your
+browser. Paste or upload a CV, and add a note on your interests or a few
+achievements. Perch lists fellowships from public records and scholarships from
+a sample database. Code checks each one against your CV by rule, says
+"eligible", "may be eligible" or "not eligible", and lists what you would still
+need. A short model sentence says why it may fit, checked against the listing
+and your own text. Keep the best, compare them, and draft a note to Scholar
+Development and Fellowships Advising or Student Financial Services. Ask Scout
+works here too, and can list the points your application could make.
+
+Every sample record is invented and badged **Sample data**. On 24 planted test
+cases, the rules matched every case that reached a brief; retrieval missed 1 of
+the 12 a student could apply for. That is a check of the mechanism, not a result
+about real scholarships.
+[Scores →](bench/results/STUDENT_MODE.md)
+
+</td>
+<td><img src="docs/tour/student.webp" alt="Filling the student form with an invented sample, then the Scholarships and awards tab, badged Sample data: a sample card with its rule check, Match, deadline, amount and what is still needed." width="420"></td>
+</tr>
+<tr>
+<td><img src="docs/tour/industry.webp" alt="Switching Routes to Industry, then a company lead's signals and records." width="420"></td>
+<td>
+
 ### Industry leads from public signals
 
 Perch looks for three kinds of signal: company papers that cite the
@@ -84,44 +110,70 @@ plain code counts the signals and shows the records behind each.
 Every industry lead is labelled as inferred, not as verified interest.
 
 </td>
-<td><img src="docs/tour/industry.webp" alt="Switching Routes to Industry, then a company lead's signals and records." width="420"></td>
 </tr>
 <tr>
-<td><img src="docs/tour/handoff.webp" alt="Keeping two grants, comparing them side by side, and drafting an email to Research Development." width="420"></td>
 <td>
 
 ### Compare, then hand off
 
 Keep the leads worth a closer look: they collect in a shortlist beside the list.
 Compare them side by side: money, close date, activity code and evidence, each
-copied from its record.
+copied from its record. A student's kept options compare the same way, public
+fellowships and sample scholarships in separate tables.
 
-Then draft an email to the Temple office for that route. A model writes only a
-short opening. Code writes the list of leads, dates and amounts. You edit it and
-send it yourself.
+Then draft an email to the Temple office for that route. On a researcher brief
+a model writes only a short opening; code writes the list of leads, dates and
+amounts. On a student brief code writes the whole note. You edit it and send it
+yourself.
 
 </td>
+<td><img src="docs/tour/handoff.webp" alt="Keeping two grants, comparing them side by side, and drafting an email to Research Development." width="420"></td>
 </tr>
 <tr>
+<td><img src="docs/tour/scout.webp" alt="Asking Scout which NSF leads close by 1 Mar 2027: How Scout read your question shows the search and its filters, the answer cites the opportunity, and the step card opens under Steps." width="420"></td>
 <td>
 
 ### Ask Scout a follow-up
 
 "Which of my NSF leads close by 1 Mar 2027?" or "Why does the top lead fit?". Scout,
-the agent, answers by calling Perch's own nine tools. Above each answer, "How Scout read
+the agent, answers by calling Perch's own ten tools. Above each answer, "How Scout read
 your question" lists every step with its filters; the step cards fold under Steps. New
 conversation, beside the question box, starts over. Scout cannot browse, send anything
 or change a record.
 
-On a student brief, Scout has its own rule-based tools instead. Other agents can
-use the researcher tools through Perch's [MCP server](docs/mcp.md), Claude Code
-included.
+On a student brief, Scout has its own eight tools: all but cover points read rule
+results and records, and call no model. Other agents can use the researcher tools
+through Perch's [MCP server](docs/mcp.md), Claude Code included.
 
 </td>
-<td><img src="docs/tour/scout.webp" alt="Asking Scout which NSF leads close by 1 Mar 2027: How Scout read your question shows the search and its filters, the answer cites the opportunity, and the step card opens under Steps." width="420"></td>
 </tr>
 <tr>
-<td><img src="docs/tour/private.webp" alt="Picking a researcher, filling Tell Perch more with an invented SYNTHETIC sample (a direction, keywords and draft aims), and a brief whose explanations cite the draft with a lock." width="420"></td>
+<td colspan="2">
+
+### Points for your cover letter
+
+Ask Scout "What could my cover letter for the top lead say?" on a researcher
+brief, or "What should my application for this scholarship highlight?" on a
+student brief. For that one record, Perch's fourth model skill returns three to
+six points. Each point has two halves: what the record asks for or rewards,
+cited to the record, and what you have that answers it, cited to your CV, a
+document you added, a paper or a public award. It also lists up to three things
+the record asks for that nothing you added shows, so you know what is missing.
+
+Every point passes the citation check and the grounding check; a set that fails
+is rewritten once, then withheld. Code writes the answer line, and the full points
+sit on the card with a Copy button. They are for you to put in your own words:
+Perch sends nothing, and the points never enter an export or a hand-off draft.
+Your CV is read with contact details blanked, on local models unless you choose
+Cloud and confirm which documents leave. A researcher with no CV gets points from
+their papers and public awards. A sample scholarship gives sample points, and the
+card says so.
+
+<!-- A clip of this step would go here as docs/tour/points.webp; it is not filmed yet. -->
+
+</td>
+</tr>
+<tr>
 <td>
 
 ### Private by default, local models first
@@ -139,24 +191,7 @@ test checks that no trace is left in files, logs or requests.
 [More on privacy →](docs/private-mode.md)
 
 </td>
-</tr>
-<tr>
-<td>
-
-### Student mode, on sample data
-
-Choose Student, and Perch opens a private session first. Paste or upload a CV,
-and add a note on your interests or a few achievements. Perch lists fellowships from public
-records and scholarships from a sample database. It checks each one against
-your CV by rule, and lists what you would still need. Ask Scout works here too.
-
-Every sample record is invented and badged **Sample data**. On 24 planted test
-cases, the rules matched every case that reached a brief; retrieval missed 1 of
-the 12 a student could apply for.
-[Scores →](bench/results/STUDENT_MODE.md)
-
-</td>
-<td><img src="docs/tour/student.webp" alt="Filling the student form with an invented sample, then the Scholarships and awards tab, badged Sample data: a sample card with its rule check, Match, deadline, amount and what is still needed." width="420"></td>
+<td><img src="docs/tour/private.webp" alt="Picking a researcher, filling Tell Perch more with an invented SYNTHETIC sample (a direction, keywords and draft aims), and a brief whose explanations cite the draft with a lock." width="420"></td>
 </tr>
 </table>
 
@@ -174,13 +209,14 @@ Fellowships Advising for fellowships, to be agreed with those offices.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/architecture/overview-dark.svg">
-  <img alt="The whole system, top to bottom. Public sources feed plain-code fetchers and the store. A brief runs two routes: grants, with two small local models and eligibility rules, and industry leads, in plain code. A chat model writes the summary, the fit explanations and the hand-off draft, and Scout calls only Perch's own tools. Every model output passes the validator before the web app shows it. Private mode and the MCP server are other ways in." src="docs/architecture/overview-light.svg" width="720">
+  <img alt="The whole system, top to bottom. Public sources feed plain-code fetchers and the store. A brief runs two routes: grants, with two small local models and eligibility rules, and industry leads, in plain code. A chat model writes the summary, the fit explanations and the hand-off draft, and Scout calls only Perch's own tools. Every model output passes the validator before the web app shows it. Private mode and the MCP server are other ways in. The diagram predates the fourth model job, application points, and the student path." src="docs/architecture/overview-light.svg" width="720">
 </picture>
 
 - **Public records only:** OpenAlex, NIH RePORTER, NSF Award Search and Grants.gov. Each record is stored with its source, link and fetch time.
 - **The pipeline is code:** fetching, eligibility, retrieval and ranking run the same way every time. The back-test measures this pipeline.
 - **One score:** each lead's Match, from 0 to 100, is the ranking model's score on a fixed scale, and the list is sorted by it. It says how closely the listing's text matches the papers, not the odds of funding.
-- **Models are bounded:** a model writes the profile summary, the fit explanations and the hand-off opening. Scout can call only allowlisted tools.
+- **Models are bounded:** a model does four jobs: the profile summary, the fit explanations, the hand-off opening and, when you ask Scout, the points a cover letter for one record could make. Scout can call only allowlisted tools.
+- **Your CV and documents:** a session's models may read them, with emails, phone numbers, links and ORCIDs blanked first. Code still reads the CV by rule for eligibility. Nothing from them is stored.
 - **Every model output is checked:**
   - **Code check:** every id must be real, and every date or number must be in a cited record.
   - **Grounding check:** a second model checks each sentence against its source.
@@ -220,7 +256,7 @@ Every number here was measured. Each is copied from [bench/results](bench/result
 - **No monitoring:** Perch keeps nothing about its users, so it cannot watch a researcher for changes. The weekly watch is shelved in `perch/shelved/monitor/` until a user system exists.
 - **Refresh by hand:** open opportunities are refreshed when the operator runs `perch fetch opportunities` and re-indexes; a researcher's cached papers and awards are not refreshed on their own.
 - **Every brief is live:** apart from the demo researchers' briefs, which the server builds when it starts, nothing is reused, so each brief runs the models again; one brief with explanations took 46 s on the demo models in S23.
-- **Cloud is narrow by design:** with Cloud on, only the summary, the fit explanations and the hand-off opening use the cloud model. A session's documents go with them only after the user confirms a second warning that lists each one; that consent lasts for the session. A zero-data-retention cloud key is not built.
+- **Cloud is narrow by design:** with Cloud on, only the summary, the fit explanations, the hand-off opening and the cover-letter points use the cloud model. A session's documents go with them only after the user confirms a second warning that lists each one; that consent lasts for the session. A zero-data-retention cloud key is not built.
 - **Sessions do not index:** opportunities fetched since the pipeline last indexed are not searched in a brief.
 - **One announcement, several cards:** related announcements of one family (for example, one call with and without a clinical trial) are listed separately.
 - **Company names are not merged:** two names for one company can appear as two industry leads.
@@ -228,6 +264,7 @@ Every number here was measured. Each is copied from [bench/results](bench/result
 - **Scout on a local model:** Gemma sometimes states a count that the citation check then withholds.
 - **Untested pairing:** the MCP server was tested with Claude Code, not with a local Ollama agent.
 - **Student mode is a demonstration:** its scholarships are invented sample records. In planted tests, the search missed 1 of the 12 records a student could apply for. Public fellowship listings get "may be eligible" at most, because their own pages set the full rules.
+- **Cover-letter points are model text:** a model wrote them, and they are checked by the citation and grounding checks, not by a person. A record that states little beyond its title gives few points; in the S24 draft-review bench, 425 of 663 open NIH listings gave fewer than three checklist points ([bench/results/draft_review](bench/results/draft_review/RESULTS.md)). The points have no bench numbers yet (S33 task 5).
 
 ## Learn more
 
