@@ -114,6 +114,7 @@ class PrivateSession:
     docs: dict[str, PrivateDoc] = field(default_factory=dict)
     mem: dict[tuple[str, str], Record] = field(default_factory=dict)
     brief_id: str | None = None
+    brief_student: bool = False  # the held brief is a student brief (its own Back link)
     briefs_run: int = 0
     masker: egress.Masker | None = None
     scout: object | None = None  # a ScoutHub of its own, made on first use
@@ -166,6 +167,7 @@ class PrivateSession:
         self.masker = None
         self.scout = None
         self.brief_id = None
+        self.brief_student = False
         self.cloud = False
         self.cloud_consent.clear()
 
@@ -224,6 +226,7 @@ class PrivateService(BriefService):
         with self.repo() as r:
             r.upsert([b])
         self.session.brief_id = bid
+        self.session.brief_student = False
         return b
 
     def cancelled(self, b: Brief) -> bool:
@@ -350,6 +353,7 @@ class PrivateService(BriefService):
             r.upsert([b, Researcher(id=YOU, source="private", source_url="private://session",
                                     fetched_at=utcnow(), display_name="You (private)")])
         self.session.brief_id = bid
+        self.session.brief_student = True
         return b
 
     def _student_docs(self) -> tuple[PrivateDoc | None, list[PrivateDoc]]:

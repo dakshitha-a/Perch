@@ -97,6 +97,7 @@ def test_each_persona_gets_leads_on_both_tabs(tmp_path, monkeypatch, name):
     got = c.get("/private/brief", headers=h).json()
     b = got["brief"]
     assert b["status"] == "done", b["error"]
+    assert c.get("/private/session", headers=h).json()["brief_student"] is True  # its Back link
     assert [s["name"] for s in b["stages"]] == ["student_profile", "fellowships",
                                                 "scholarships", "student_explanations"]
     by = {"F": [], "S": []}

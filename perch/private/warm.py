@@ -117,6 +117,7 @@ class WarmBriefs:
         for key, r in w.mem.items():
             s.mem[key] = r.model_copy(deep=True)
         s.brief_id = w.brief_id
+        s.brief_student = False
         return s.mem[("brief", w.brief_id)]
 
 

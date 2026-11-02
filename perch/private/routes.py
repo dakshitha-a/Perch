@@ -301,7 +301,8 @@ def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
         cv = s.cv
         p = settings.cloud_provider
         return {"documents": [doc_json(k, d) for k, d in s.docs.items()],
-                "brief_id": s.brief_id, "chars": s.chars(), "cloud": s.cloud,
+                "brief_id": s.brief_id, "brief_student": s.brief_student,
+                "chars": s.chars(), "cloud": s.cloud,
                 "cloud_documents": s.cloud_docs,
                 # The second warning for exactly the documents this session holds (Q33).
                 "cloud_consent": consent_warning(p, [(k, d.filename, doc_ref(d))

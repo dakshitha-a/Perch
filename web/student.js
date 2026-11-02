@@ -65,7 +65,9 @@ export async function renderStudentStart(root, { api, mode, go, announce, info, 
   const sess = await api.session();
   const docs = sess.documents;
   if (onDocs) onDocs(docs.length); // the chip follows what the session holds (Q7)
-  const hasBrief = Boolean(sess.brief_id); // the session's brief, kept when going back here
+  // The session holds one brief. Its Back link shows only when that brief is a student
+  // brief; after a researcher run it would open the researcher's routes instead.
+  const hasBrief = Boolean(sess.brief_id && sess.brief_student);
   const have = new Set(docs.map((d) => d.kind));
   const kinds = info.student_kinds || { cv: "Your CV or résumé", interests: "Your interests", achievements: "Your achievements" };
   const text = (k) => (D.drafts[k] || "").trim();
