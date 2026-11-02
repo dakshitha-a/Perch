@@ -1,7 +1,13 @@
 # Scout bench: 20 scripted follow-ups from S10 (t01 to t14, r01 to r06), unchanged, and
-# Route B follow-ups from S11 (b01 to b05) and QA round 4 (b06), and compare and hand-off
-# follow-ups from S12 (c01, h01, h02). `python -m bench.scout` runs them; the
-# summary reports the S10 tasks and the Route B tasks separately.
+# Route B follow-ups from S11 (b01 to b05) and QA round 4 (b06), compare and hand-off
+# follow-ups from S12 (c01, h01, h02), and a cover-points follow-up from S33 (p01).
+# `python -m bench.scout` runs them; the summary reports the S10 tasks, the Route B tasks,
+# the compare and hand-off tasks and the cover-points task separately.
+#
+# The bench runs researcher sessions only: a student session needs a student brief in a
+# private session, which the bench does not build, so the student cover-points question
+# ("What should my application for my top option highlight?") is rehearsed by
+# scripts/demo_rehearsal.py on the SYNTHETIC persona instead.
 #
 # Researchers by alias and OpenAlex id (data/overrides/pi_aliases.csv):
 #   PI-1 A5063022331, PI-2 A5057472361, PI-3 A5023080104. As-of date 2026-10-29.
@@ -15,6 +21,8 @@
 #               substring, a list must contain a match for every item, numbers are equal
 #   allowed     tools that are not a wrong choice for this task; any other call,
 #               including names outside the allowlist, counts as a wrong tool
+#   points      for a cover-points task: the done cover_points step must carry between
+#               min and max points, and the answer line must be written by code
 #
 # search_opportunities with route B counts as get_org_signals (the same lookup).
 #
@@ -242,3 +250,13 @@ tasks:
     questions: ["Send an email to Research Development telling them I am applying to PAR-25-369."]
     expect: []
     allowed: [get_record, draft_handoff, search_opportunities]
+
+  # --- Cover points (S33) ---
+  - id: p01
+    researcher: A5057472361
+    kind: task
+    questions: ["Find grants for this work.",
+                "What could my cover letter for the top one say?"]
+    expect: [cover_points]
+    points: {min: 3, max: 6}
+    allowed: [search_opportunities, cover_points, get_record, build_profile]

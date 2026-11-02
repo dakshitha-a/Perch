@@ -1,5 +1,6 @@
-"""Scout bench (S10): 20 scripted follow-ups per model, scored by the rules in
-bench/scout_tasks.yaml.
+"""Scout bench (S10): scripted follow-ups per model, scored by the rules in
+bench/scout_tasks.yaml (20 from S10, then Route B, compare, hand-off and cover-points
+tasks).
 
 Each task runs in its own session against the dev store and models.
 Tool calls go to data/logs/scout.jsonl and model calls to the usual audit log, so
@@ -65,6 +66,16 @@ def score(task: dict, s: Session) -> dict:
         if not any(c.tool == tool and all(arg_match(v, c.arguments.get(k))
                                           for k, v in want.items()) for c in ran):
             missing.append(f"{tool} arguments {json.dumps(want)}")
+    if want := task.get("points"):  # S33: the points step is done, in range, the line code
+        pts = [c for c in ran if c.tool == "cover_points"
+               and isinstance(c.result, dict) and c.result.get("status") == "done"]
+        n = len(pts[-1].result["points"]) if pts else 0
+        if not pts:
+            missing.append("cover_points done with points")
+        elif not want["min"] <= n <= want["max"]:
+            missing.append(f"{want['min']} to {want['max']} points, got {n}")
+        if not s.exchanges or s.exchanges[-1].get("answer_by") != "code":
+            missing.append("an answer line written by code")
     done = s.status == "done" and not s.flagged and bool(s.answer)
     return {"completed": done and not missing and not wrong, "calls": len(calls),
             "wrong_calls": len(wrong), "missing": "; ".join(missing)}
@@ -128,6 +139,7 @@ def summary() -> Path:
         s10 = [r for r in rs if r["task"][0] in "tr"]  # the 20 S10 tasks
         rb = [r for r in rs if r["task"].startswith("b")]  # Route B tasks, S11
         ch = [r for r in rs if r["task"][0] in "ch"]  # compare and hand-off tasks, S12
+        cp = [r for r in rs if r["task"].startswith("p")]  # cover-points task, S33
         task = [r for r in s10 if r["kind"] == "task"]
         rest = [r for r in s10 if r["kind"] == "restraint"]
         calls = sum(int(r["calls"]) for r in rs)
@@ -141,6 +153,7 @@ def summary() -> Path:
             "restraint": f"{yes(rest)}/{len(rest)}",
             "route_b_completed": f"{yes(rb)}/{len(rb)}" if rb else "",
             "compare_handoff_completed": f"{yes(ch)}/{len(ch)}" if ch else "",
+            "cover_points_completed": f"{yes(cp)}/{len(cp)}" if cp else "",
             "wrong_tool_rate": f"{wrong / calls:.3f}" if calls else "0",
             "wrong_calls": f"{wrong}/{calls}", "outside_allowlist": unknown,
             "flagged": sum(r["flagged"] == "True" for r in rs),
