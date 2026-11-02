@@ -435,6 +435,7 @@ Goal: Scout gains a fourth model skill, **cover_points**: for one grant, fellows
 2. Skill 4 `perch/skills/cover.py` (schema, instructions, validator closure, grounder flags) and contact blanking in the shared prompt view; `cover_points` on both Scout allowlists with the code-written answer line, the full points on the card, the session budget and the MCP list; tests on SYNTHETIC text; the Scout prompt measured against the compaction ceiling.
 3. Web: the points block on the Scout card with Copy, example questions for both audiences, the consent wording at the student start and the CV box, Help entries; every stale "no model reads the CV" claim replaced.
 4. Docs and balance: README opening and tour (student section beside the researcher hero, a points section for both), SPEC, SCOUT_SPEC §7 and §10, PRIVATE_MODE, private-mode.md, mcp.md, ARCHITECTURE, RESULTS.md.
+4b. The hosted spec artifact (the canonical published spec) rewritten to the built state: students as a primary audience, four model skills and cover_points, the consent flow, the as-built stack; it feeds the deck and the Checkup 2 document (Dakshitha, 2026-11-01).
 5. QA: `make test`, walk with axe on the dev server through the new step for both audiences, two bench tasks on the local model, rehearsal questions for both audiences, canary; fix what fails.
 6. Demo rebuilt from `main`; rehearsal and walk on the public URL; `make package`; tracker numbers; HANDOFF rewritten.
 
