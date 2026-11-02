@@ -65,7 +65,7 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 - What Perch read: the rule read-out of the CV, so the student can check it.
 - Application points (S33): the same skill 4, for one fellowship or sample scholarship, from the CV, the interests note and the achievements. A sample scholarship gives sample points, and the card says so.
 - Compare and the note: kept options in two tables, public and sample apart; a code-written note to Scholar Development and Fellowships Advising or Student Financial Services. Never sent by the app.
-- Export with a sample banner; lines that quote the CV are withheld or masked.
+- Export with a sample banner; the full brief, including the CV values in verdict lines, with a note that it includes text from the user's documents.
 
 ## 4. Private context: CV and unpublished directions
 
@@ -78,7 +78,7 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 - Tailoring: private documents become private threads with a larger share of the weight (default proposed, Q13); a deterministic CV parse can unlock career-stage-restricted calls and raise prior sponsors' programmes; a private-only brief needs no public profile.
 - Citations: private documents are session-only records the validator accepts in the session; numbers and dates still come from a cited record.
 - Models and the CV (S33, rule 5 as amended 2026-11-01): a session's models may read the CV and documents. Contact details (emails, phone numbers, links, ORCID) are blanked in every model prompt view, for every skill. The CV is capped at about 3,500 characters in a prompt, preferring the education, appointment and position, funding, award and skills sections. Skill 4, application points, is the one skill that reads the CV text as such, and only for the one record the user asks about; the eligibility rules still read the CV by code. Nothing from it is retained, and nothing leaves the session except by the user's informed choice (rule 1).
-- Leaving the app: by default nothing private-derived leaves; an opt-in export masks identifiers and novel phrases, and says plainly that masking cannot hide the research direction.
+- Leaving the app (decision of 2 Nov 2026): the session is fenced and purged when it ends, so an export gives the full brief and carries a note that it includes text drawn from the user's documents and stays on their computer. The export's only mask is an optional "Mask my ongoing research" box, shown when the session holds a draft proposal, research direction or unpublished work; it masks phrases from those documents and nothing else, and masking cannot hide the research direction. Hand-off drafts keep the default of leaving private-derived text out, with their own mask option for names, identifiers and private phrases.
 - Evidence: a canary-token test defines "no logs"; a RePORTER-abstract back-test variant measures the mechanism as an upper bound. Tested only with `data/synthetic/` personas.
 - Deployment choice (2026-11-01, Dakshitha): documents go to a hosted provider only when the user chooses it for the session, after an informed warning. The person deploying decides whether Perch is offered fully local, hybrid or cloud-only. If a hosted provider is used, that person also decides whether the API key is a zero-data-retention key, if the provider offers one, and the privacy statement says which. See the architecture section "Deployment choice: local, hybrid or cloud".
 
