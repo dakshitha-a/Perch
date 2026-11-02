@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Perch – technical spec v2.0 (as built, S33, 2 Nov 2026)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+  color-scheme:light;
+  --bg:#f7f5f2;--paper:#fff;--ink:#1f1a1b;--ink-2:#5c5556;--line:#e2dcd8;
+  --cherry:#9e1b32;--cherry-soft:#f6e3e6;
+  --ok:#2f7a4c;--ok-soft:#e1f0e6;--warn:#b35c00;--warn-soft:#fbeedc;--blue:#2b5fa8;--blue-soft:#e2eaf7;
+  --code:#efe9e4;--focus:#2b5fa8;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;
+  --bg:#171415;--paper:#201c1d;--ink:#f1ecea;--ink-2:#aea5a6;--line:#3a3334;--cherry:#e05a74;--cherry-soft:#3a1f26;
+  --ok:#7cc995;--ok-soft:#1f3327;--warn:#f0a254;--warn-soft:#3b2a16;--blue:#8bb2ea;--blue-soft:#1d2a3d;--code:#2a2526;--focus:#8bb2ea}}
+:root[data-theme="dark"]{color-scheme:dark;
+  --bg:#171415;--paper:#201c1d;--ink:#f1ecea;--ink-2:#aea5a6;--line:#3a3334;--cherry:#e05a74;--cherry-soft:#3a1f26;
+  --ok:#7cc995;--ok-soft:#1f3327;--warn:#f0a254;--warn-soft:#3b2a16;--blue:#8bb2ea;--blue-soft:#1d2a3d;--code:#2a2526;--focus:#8bb2ea}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 3.2rem);scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5}
+a{color:var(--cherry)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em}
+code{background:var(--code);padding:.05em .35em;border-radius:3px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+nav{position:sticky;top:env(safe-area-inset-top,0px);background:var(--paper);border-bottom:1px solid var(--line);z-index:9}
+nav .in{max-width:66rem;margin:0 auto;padding:.55rem 1rem;display:flex;gap:.25rem .9rem;flex-wrap:wrap;align-items:center;font-size:.88rem}
+nav b{font-weight:600;margin-right:.5rem}
+nav a{color:var(--ink-2);text-decoration:none}
+nav a:hover,nav a:focus-visible{color:var(--cherry)}
+.wrap{max-width:66rem;margin:0 auto;padding:1.5rem 1rem 4rem}
+h1{font-size:2rem;font-weight:600;margin:.5rem 0 .25rem;letter-spacing:-.015em;line-height:1.15}
+.lede{font-size:1.15rem;max-width:44rem;margin:0 0 .5rem}
+.sub{color:var(--ink-2);margin:0 0 1.5rem;max-width:44rem}
+section{margin:2.5rem 0 0}
+h2{font-size:1.35rem;font-weight:600;margin:0 0 .75rem;letter-spacing:-.01em;padding-top:.5rem;border-top:3px solid var(--cherry);display:inline-block}
+h3{font-size:1.02rem;font-weight:600;margin:1.1rem 0 .4rem}
+p{max-width:44rem;margin:.5rem 0}
+ul{max-width:44rem;padding-left:1.2rem;margin:.4rem 0}
+li{margin:.2rem 0}
+.grid{display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:.9rem 1rem}
+.card h3{margin-top:0}
+.card p,.card ul{font-size:.95rem}
+.tag{display:inline-block;font-size:.78rem;padding:.05rem .5rem;border-radius:3px;font-weight:500;vertical-align:middle}
+.tag.ok{background:var(--ok-soft);color:var(--ok)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+.tag.blue{background:var(--blue-soft);color:var(--blue)}
+.tag.cherry{background:var(--cherry-soft);color:var(--cherry)}
+table{border-collapse:collapse;width:100%;font-size:.93rem;background:var(--paper)}
+th,td{text-align:left;vertical-align:top;padding:.5rem .6rem;border-bottom:1px solid var(--line)}
+th{font-weight:600;background:var(--bg)}
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+.two{display:grid;gap:1rem;grid-template-columns:1fr 1fr}
+@media (max-width:700px){.two{grid-template-columns:1fr}}
+.io{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:.9rem 1rem}
+.io h3{margin-top:0}
+.io ul{padding-left:1.1rem}
+.io li b{font-weight:500}
+.fig{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:.75rem;overflow-x:auto}
+.fig svg{display:block;min-width:40rem;width:100%;height:auto;font-family:inherit}
+.fig .cap{color:var(--ink-2);font-size:.88rem;margin:.5rem .25rem 0}
+.svg-box{fill:var(--paper);stroke:var(--line);stroke-width:1.2}
+.svg-box.det{stroke:var(--ink);stroke-width:1.4}
+.svg-box.llm{fill:var(--cherry-soft);stroke:var(--cherry);stroke-width:1.4}
+.svg-box.store{fill:var(--blue-soft);stroke:var(--blue)}
+.svg-box.ext{fill:var(--bg);stroke:var(--line);stroke-dasharray:4 3}
+.svg-t{fill:var(--ink);font-size:12.5px}
+.svg-t.b{font-weight:600}
+.svg-t.s{fill:var(--ink-2);font-size:11px}
+.svg-l{stroke:var(--ink-2);stroke-width:1.3;fill:none;marker-end:url(#arr)}
+.svg-l.c{stroke:var(--cherry)}
+.steps{counter-reset:s;display:grid;gap:.6rem;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr))}
+.steps div{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:.75rem .9rem;font-size:.93rem}
+.steps div::before{counter-increment:s;content:counter(s);display:inline-block;background:var(--cherry);color:#fff;font-weight:600;border-radius:3px;padding:0 .45rem;margin-right:.5rem;font-size:.85rem}
+.steps b{font-weight:600}
+.callout{border-left:4px solid var(--cherry);background:var(--paper);padding:.75rem 1rem;border-radius:0 4px 4px 0;max-width:46rem;margin:1rem 0}
+.callout p{margin:.25rem 0}
+.days{display:grid;gap:.5rem;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))}
+.day{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:.6rem .75rem;font-size:.9rem}
+.day b{display:block;font-weight:600}
+.day span{color:var(--ink-2);font-size:.82rem}
+.day ul{padding-left:1rem;margin:.3rem 0 0}
+.review td:first-child{width:36%}
+footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:var(--ink-2);font-size:.85rem}
+</style>
+</head>
+<body>
+<nav><div class="in"><b>Perch · spec v2.0</b>
+<a href="#users">Users</a><a href="#value">Value add</a><a href="#io">In / out</a><a href="#private">Private by default</a><a href="#walk">Walkthrough</a><a href="#arch">Architecture</a><a href="#where">Where each step runs</a><a href="#bench">Bench</a><a href="#model">Agent</a><a href="#data">Data</a><a href="#eval">Evaluation</a><a href="#deploy">Deployment</a><a href="#responsible">Responsible design</a><a href="#build">Sessions</a><a href="#roadmap">Roadmap</a><a href="#review">Review log</a><a href="#open">Open items</a></div></nav>
+
+<div class="wrap">
+<h1>Perch</h1>
+<p class="lede" style="margin-bottom:.25rem;font-weight:500">See every route to fund your work.</p>
+<p class="lede">Perch reads a Temple researcher's public papers, or a student's CV, and lays out the routes to fund that work: open federal grants and industry leads for a researcher, fellowships and scholarships for a student. Every claim is cited to its record, the hit rate is measured, and it runs on any model, including one inside Temple.</p>
+<p class="sub">Technical specification v2.0 (as built, S33, 2 Nov 2026) · Temple AI Build Challenge, Fall 2026 · owner: Dakshitha (Temple University) · Public data only. This version describes the product as it is built on <code>main</code>, not as it was planned. Items marked <span class="tag warn">verify</span> are believed true and have not been checked against the source; <code>UNVERIFIED</code> marks a number or claim the repository does not yet hold. The Markdown copy for the coding agent is <code>docs/SPEC.md</code>; this page is rebuilt from <code>docs/design/spec.html</code>.</p>
+
+<section id="users">
+<h2>Users, working backwards</h2>
+<p>The question nobody at Temple can answer quickly today: <i>if this lab’s federal line ends or is cut, what else fits this specific body of work, and what is the evidence?</i> Pivot-RP and SPIN answer “which calls match these keywords?”. Perch answers the question above, from the researcher’s own papers, with a measured hit rate.</p>
+<p>A student has the same shape of question: <i>which fellowships and scholarships could I apply for, what do I still need, and what would I say for myself?</i> Perch answers it from the student’s CV, checked by rule against each record, with the points an application could make. Both audiences are primary users and are sold equally (Dakshitha, 2026-11-01).</p>
+<div class="grid">
+  <div class="card"><h3>1 · The principal investigator <span class="tag cherry">primary</span></h3>
+    <p>A Temple faculty member whose public federal award ends within 18 months, or was stopped. Has 20 minutes, not a day.</p>
+    <p><b>Job:</b> see the realistic alternatives for <i>my</i> work, ranked, with reasons I can check, then decide which office to talk to.</p>
+    <p><b>Reads:</b> the brief. <b>Does:</b> keeps or dismisses leads, asks Scout follow-ups, edits and sends the hand-off. May add a CV, a draft proposal, a research direction or unpublished work to the session.</p></div>
+  <div class="card"><h3>2 · The student (undergraduate or graduate) <span class="tag cherry">primary</span></h3>
+    <p>A Temple student with a CV and a few achievements, looking for fellowships and scholarships they can actually apply for.</p>
+    <p><b>Job:</b> see the options I may be eligible for, each checked against <i>my</i> CV by rule, with what I still need; the points my application could make; a note to the right office, which I send myself.</p>
+    <p><b>Reads:</b> the student brief. <b>Does:</b> keeps options, compares them, asks Scout, edits and sends the note. The session is private by construction: choosing Student opens it before any text leaves the browser.</p></div>
+  <div class="card"><h3>3 · Research Development and Technology Commercialization <span class="tag blue">receive researcher hand-offs</span></h3>
+    <p>Research Development (Office of the Vice President for Research) receives grant-route hand-offs that already contain the evidence. Technology Commercialization receives industry-route hand-offs.</p>
+    <p>Industry leads are labelled as inferences from public signals. The app never says “should partner”; it says “these public signals suggest interest; not verified.” Nothing in-app in v1; the hand-off is a draft the researcher sends.</p></div>
+  <div class="card"><h3>4 · Scholar Development and Fellowships Advising; Student Financial Services <span class="tag blue">receive student notes</span></h3>
+    <p>Scholar Development and Fellowships Advising receives a student’s note about public fellowships, with the rule read-out and what is still needed. Student Financial Services receives a student’s note about scholarships.</p>
+    <p>Until a real feed is licensed, the scholarship records are a SYNTHETIC sample, and the note says so.</p></div>
+  <div class="card"><h3>Out of scope for v1</h3>
+    <p>Postdocs (NIH F32 and F33 listings are shown to a student only to say why they do not fit); department-wide batch scans (opt-in, v2); anything built from real unpublished or confidential text (every test and demo of documents uses SYNTHETIC text). The scholarship corpus is a SYNTHETIC sample until Temple’s own feed is licensed: ScholarshipUniverse, which Temple runs for its students, is the natural source under its contract <span class="tag warn">verify: no public API, export format or field list was found; terms unverified</span>. The fellowship list is public.</p></div>
+</div>
+</section>
+
+<section id="value">
+<h2>Why this is not another Pivot</h2>
+<p>Temple subscribes to Pivot-RP, SPIN and Dimensions. Every slide has to survive the question “so what does yours do that those don’t?”. The honest comparison, using those tools as Temple’s own pages describe them <span class="tag warn">verify current features before the slide; quote their descriptions, never ours</span>:</p>
+<div class="scroll"><table>
+<tr><th>Capability</th><th>Pivot-RP / SPIN / Dimensions</th><th>Perch, as built</th></tr>
+<tr><td>Starting point</td><td>Keywords, or a profile the researcher must create and maintain</td><td>The researcher’s published papers, resolved automatically; nothing to maintain. A student starts from a CV instead</td></tr>
+<tr><td>What you get back</td><td>A list of matching opportunities</td><td>A ranked list with a Match score computed by code, plus a fit explanation that cites the researcher’s own papers and the opportunity text; for a student, a verdict by rule and a Still needed list per option</td></tr>
+<tr><td>Routes</td><td>Funding opportunities; Dimensions adds patents and grants as searchable records</td><td>Open federal grants from every agency on Grants.gov, and industry leads from public signals, compared side by side on the fields records state; fellowships and sample scholarships for students</td></tr>
+<tr><td>Accuracy</td><td>Not reported</td><td>Back-tested on Temple’s own public NIH awards with a date cut-off; the keyword-only baseline beside it (<a href="#eval">evaluation</a>)</td></tr>
+<tr><td>What happens next</td><td>The researcher writes an email</td><td>A pre-filled hand-off to the Temple office that owns that route, or a code-written note to the student’s office, with the evidence; the user sends it</td></tr>
+<tr><td>What to say for yourself</td><td>—</td><td>Ask Scout for the points a cover letter for one record could make, each half cited to the record and to the CV, a document, a paper or a public award (skill 4, S33)</td></tr>
+<tr><td>Trigger</td><td>Keyword alerts</td><td>Award-horizon monitoring was built (S16) and is shelved (S23) until users have accounts, because Perch keeps nothing about its users</td></tr>
+<tr><td>Where it runs, which model</td><td>Closed vendor SaaS</td><td>Open source (MIT); local models by default; any provider or a local model; can run entirely inside Temple</td></tr>
+<tr><td>How other tools reach it</td><td>Web portal</td><td>An MCP server with the ten researcher tools, tested from Claude Code; a local agent on Ollama is untested (UNVERIFIED); Copilot <span class="tag warn">verify MCP support</span></td></tr>
+</table></div>
+<div class="callout"><p><b>The one-line answer for the judges:</b> Pivot finds things that mention your keywords. Perch reads what you have published, or what your CV says, tells you which routes fit and why, shows you how often it is right, and plugs into whatever AI platform Temple already uses.</p></div>
+</section>
+
+<section id="io">
+<h2>Exactly what goes in and what comes out</h2>
+<div class="two">
+<div class="io"><h3>In · researcher</h3>
+<ul>
+  <li><b>Researcher identity</b>, one of: name + “Temple University”; an ORCID iD; an OpenAlex author ID; or up to 20 DOIs. Resolved to one OpenAlex author record; the user confirms the match before anything runs. An exact id with one match opens Ready to build at once.</li>
+  <li><b>Tell Perch more</b> (optional): a research direction and include keywords, which steer the search; exclude keywords, which filter; a career stage, which keeps career-stage calls with a “You said” note.</li>
+  <li><b>Documents</b> (optional, held in the session only): a CV, a draft proposal, a research direction, unpublished work; pasted or uploaded as text, Markdown, DOCX or PDF. The draft proposal is the strongest steer (0.5 of the document weight), the direction 0.3, unpublished work 0.2; documents take 0.6 of the thread weight beside the public papers. The CV is read by rule for career-stage eligibility and prior sponsors. A documents-only brief needs no public identity. Tests and demos use SYNTHETIC text.</li>
+</ul></div>
+<div class="io"><h3>In · student</h3>
+<ul>
+  <li><b>A CV</b>, pasted or uploaded (text, Markdown, DOCX or PDF). Code reads level, year, major, GPA, enrolment, expected graduation and the number of referees by rule.</li>
+  <li><b>An interests note</b>, which steers the search.</li>
+  <li><b>Up to five achievements</b>, each a session record an explanation or a cover point may cite.</li>
+  <li><b>No public identity.</b> The session is private by construction: choosing Student opens it before any text leaves the browser.</li>
+</ul></div>
+</div>
+<div class="two" style="margin-top:1rem">
+<div class="io"><h3>Out · the researcher’s brief</h3>
+<ul>
+  <li><b>Research profile</b>: research threads from the papers, topic labels and a short summary tied to work IDs, key papers (title, year, venue, DOI link), public federal awards with start and end dates, and the <b>public award horizon</b>: the end date of the last public award. Nothing about lab finances is inferred.</li>
+  <li><b>Grants</b>: the 10 best open Grants.gov opportunities after eligibility rules, each with sponsor, title, deadline words, award size and eligibility <i>copied from the record</i>, a Match score on a 0–100 scale computed by code, and a three-sentence fit explanation that cites the researcher’s own papers. Weak matches fold under the stronger ones.</li>
+  <li><b>Industry leads</b>: companies with at least two kinds of public signal (company works citing the researcher; NIH SBIR/STTR awards from RePORTER in the topic; company works in the topic), the signals listed, no model-written text. Every lead carries “inferred from public signals; not verified”. Papers with more than 30 authors do not seed this route.</li>
+  <li><b>Compare</b>: the kept leads side by side; every cell is copied from or counted from a record. No effort, IP or likelihood column, because no record states them.</li>
+  <li><b>Hand-off draft</b>: the model writes a 2–4 sentence opening; code writes the rest from the kept leads; office names come from research.temple.edu; the To field is left empty; copy or open in mail. Never sent or stored by the app.</li>
+  <li><b>Application points</b> (skill 4, S33, on request through Ask Scout): for one record, 3 to 6 points a cover letter could make. Each point pairs what the record asks for or rewards, cited to the record, with what the applicant has, cited to the CV, a document, a paper or a public award; up to three things the record asks for that nothing added shows are listed too. Checked by the validator and the grounding model; shown on the card with Copy; never in exports or hand-off drafts.</li>
+  <li><b>Evidence rail</b>: every claim links to the record it came from. A claim with no record is not shown.</li>
+  <li><b>Export</b>: Markdown, a print page the browser saves as PDF, and JSON of the records with provenance. Text drawn from documents is left out, or masked on opt-in.</li>
+</ul></div>
+<div class="io"><h3>Out · the student brief</h3>
+<ul>
+  <li><b>Your options</b>: two lists, <b>Fellowships (public)</b> from Temple’s Scholar Development and Fellowships Advising list and NIH F-series listings, and <b>Scholarships and awards (sample)</b> from the SYNTHETIC corpus, never in one list. Each option carries a verdict by rule (eligible, may be eligible, not eligible), the rule it rests on, <b>Still needed</b> (what the record asks for that the CV does not show), and a one-sentence fit explanation checked against the listing and the student’s own text. Deadline and amount copied from the record. Public fellowship listings get “may be eligible” at most, because their own pages set the full rules.</li>
+  <li><b>What Perch read</b>: the rule read-out of the CV, so the student can check it and correct it by replacing the CV.</li>
+  <li><b>Application points</b> (the same skill 4): for one fellowship or sample scholarship, from the CV, the interests note and the achievements. A sample scholarship gives sample points, and the card says so.</li>
+  <li><b>Compare and the note</b>: kept options in two tables, public and sample apart; a code-written note to Scholar Development and Fellowships Advising or Student Financial Services. Never sent by the app.</li>
+  <li><b>Export</b> with a sample banner; lines that quote the CV are withheld or masked.</li>
+</ul></div>
+</div>
+</section>
+
+<section id="private">
+<h2>Private by default: sessions, documents, Local or Cloud</h2>
+<p>Perch has no user accounts, so since S23 (2026-10-29, Dakshitha) it keeps nothing about the people who use it. Every brief, with or without documents, is a session held in the server’s memory. Models run on the server unless a user turns Cloud on. Standing rule 1 was amended on 2026-11-01 (Q33) so that a user may send their own documents to the cloud provider when they choose to, and rule 5 on the same day so that a session’s models may read the CV with contact details blanked. Design: <code>docs/design/PRIVATE_MODE.md</code>; user guide: <code>docs/private-mode.md</code>.</p>
+<div class="grid">
+  <div class="card"><h3>What a session is</h3><ul>
+    <li><b>Nothing stored about you:</b> no briefs, leads, keep and dismiss choices, drafts, Scout conversations or per-user logs. The browser keeps only the theme and, in the tab, the session id so a reload resumes the brief.</li>
+    <li><b>Public records stay cached:</b> OpenAlex researchers and works, RePORTER and NSF awards and the companies behind industry leads are written to the store, so the next brief is faster. They hold nothing about the person who asked.</li>
+    <li><b>Ends</b> with End session, after 30 minutes idle (10 minutes if never used), or when the server restarts.</li>
+    <li><b>Warm demo briefs:</b> the demo researchers’ default briefs are built when the server starts and held in memory; a visitor gets a copy in their own session at once, and the card says so.</li>
+    <li><b>Isolated:</b> a random session token, memory and size caps, a rate limit of its own. The store is an overlay on a read-only base; no cache, log or index writes from a session; core dumps off.</li></ul></div>
+  <div class="card"><h3>Local or Cloud, and the documents consent</h3><ul>
+    <li><b>Local is the default.</b> Every model runs on the Perch server, which the privacy statement names by operator.</li>
+    <li><b>Cloud is a choice.</b> Where the deployer sets <code>PERCH_CLOUD</code>, the chip at the top opens a dialog. Before it turns on, a warning names the provider and says what is sent: what you type and the text of the public papers and listings in your brief. The user confirms first; the API checks that the confirm names the provider. Only the four model skills move to the cloud model, and their text is tagged with the provider; search, ranking, the checks and Scout’s own model stay local.</li>
+    <li><b>Documents go only after a second warning</b> (rule 1 as amended; <code>PERCH_CLOUD_DOCUMENTS=1</code>, set on the demo). It names the provider and lists each document in the session as it was added, says that a CV carries contact details and career facts and that a draft or manuscript is unpublished research, that the provider’s API terms then apply and Perch stores nothing, and that the choice lasts for this session and can be turned off. Nothing is sent before a ticked box and a confirm. Students get the same warning with the CV wording.</li>
+    <li><b>Consent is per document and per session:</b> held as a hash of kind and text in session memory only; a document added or replaced later turns Cloud off until it is confirmed too; turning Cloud off or ending the session clears it.</li>
+    <li><b>The deployer’s choice:</b> fully local (no key, nothing leaves the server), hybrid (local by default, Cloud by the user’s choice; how the demo runs) or cloud-only; and, with a hosted provider, whether the API key is a zero-data-retention key, if the provider offers one. The privacy statement says which. A zero-data-retention key is a deployment setting, not a feature Perch builds (Dakshitha, 2026-11-01).</li></ul></div>
+  <div class="card"><h3>Documents and the models</h3><ul>
+    <li><b>Code reads the CV by rule</b> for career-stage eligibility (NIH’s early-stage definition, as “may be eligible per your CV”), prior sponsors, and the student verdicts.</li>
+    <li><b>Models may read the CV and documents</b> (rule 5 as amended, 2026-11-01). Contact details (emails, phone numbers, links, ORCID) are blanked in every model prompt view, for every skill. The CV is capped at about 3,500 characters in a prompt, preferring education, appointments, funding and awards. Skill 4, application points, is the one skill that reads the CV text as such, and only for the one record the user asks about.</li>
+    <li><b>Citations:</b> a document is a session-only record (<code>private:</code> id, no URL) the validator accepts inside the session; a citation to it shows a lock. Numbers and dates still come from a cited record.</li>
+    <li><b>Leaving the app:</b> while a session holds documents, every model-written text counts as drawn from them: exports leave it out with a stated count, and the hand-off opens with a plain sentence. Opt-in masking replaces identifiers and novel phrases with labels such as <code>[PERSON-1]</code>, unmaskable on screen; the warning says masking cannot hide the research direction. Application points never enter an export or a hand-off.</li>
+    <li><b>Checked, not promised:</b> every SYNTHETIC test document carries a canary token; after a full session no token may appear in any file, log, temp file, browser storage or outbound request (<code>tests/test_private.py</code>). The live canary (<code>scripts/private_canary.py</code>) was clean on the rebuilt demo in S32, including the six model-server journals, and after every QA round.</li></ul></div>
+</div>
+</section>
+
+<section id="walk">
+<h2>Walkthrough: researcher and student, side by side</h2>
+<div class="two">
+<div>
+<h3>Researcher · five screens plus Ask Scout</h3>
+<div class="steps">
+  <div><b>Find</b> — choose Researcher; type a name, ORCID or OpenAlex id; pick the right author from the candidates. Open Tell Perch more for a direction, keywords, a career stage, a draft proposal or a CV, or fill it with a SYNTHETIC sample. Press <i>Build brief</i>.</div>
+  <div><b>Routes</b> — the brief opens here. Grants and Industry on a pill; each lead a card with its Match, the record’s own fields, the cited explanation, <i>Keep</i> and <i>Dismiss</i>. Kept leads collect in the shortlist; the evidence rail opens from any title. Weak matches fold.</div>
+  <div><b>Profile</b> — research threads, topic labels and the summary tied to work ids, key papers, public awards and the award horizon; “You said” shows what the user added.</div>
+  <div><b>Compare</b> — the kept leads side by side, every cell from a record.</div>
+  <div><b>Hand off</b> — above the comparison: choose Research Development or Technology Commercialization, edit the draft, copy or open in mail. Export from the menu: Markdown, print to PDF, JSON.</div>
+  <div><b>Ask Scout</b> — plain follow-ups on the brief: “Which of my NSF leads close by 1 Mar 2027?”, “Why does the top lead fit?”, “What could my cover letter for the top lead say?” (runs <code>cover_points</code> and puts the checked points on the card with Copy).</div>
+</div>
+</div>
+<div>
+<h3>Student · five steps</h3>
+<div class="steps">
+  <div><b>Student</b> — choose Student on Find; the session opens before any text is sent. Paste or upload the CV; add an interests note and up to five achievements; <i>Build brief</i>.</div>
+  <div><b>Your options</b> — two lists, Fellowships (public) and Scholarships and awards (sample), each option with its verdict by rule, Still needed and a checked fit sentence; Keep the ones worth a closer look. Sort by Match or by closing date.</div>
+  <div><b>What Perch read</b> — the rule read-out of the CV, to check, and correct by replacing the CV.</div>
+  <div><b>Compare</b> — kept options in two tables, public and sample apart; pick Scholar Development and Fellowships Advising or Student Financial Services, and a code-written note appears to edit, copy or open in mail.</div>
+  <div><b>Ask Scout</b> — “Which of these close first?” or “What should my application for this scholarship highlight?”: the second runs <code>cover_points</code> on the CV, the interests note and the achievements. On a sample scholarship, the card and the answer say the points are for an invented sample.</div>
+</div>
+</div>
+</div>
+<p class="sub" style="margin-top:.75rem">Demo Day: the demo researchers’ briefs open at once because they were built at server start; a live brief takes about 40 s on the demo models. The rehearsal script runs three researcher questions, the student question and the documents hand-off in fresh sessions: 45 of 45 on the demo (S32). The student path runs on a SYNTHETIC persona.</p>
+</section>
+
+<section id="arch">
+<h2>Architecture</h2>
+<div class="fig">
+<svg viewBox="0 0 1000 560" role="img" aria-label="Architecture diagram: external public sources feed deterministic fetchers into a records store with provenance; a retrieval and matching stage and four bounded model skills under the Scout agent produce the brief, which the web app shows to the researcher or student.">
+<defs><marker id="arr" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--ink-2)"/></marker></defs>
+<!-- external sources -->
+<text x="20" y="28" class="svg-t b">Public sources (read only, cached)</text>
+<rect x="20" y="40" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="59" class="svg-t">OpenAlex</text><text x="30" y="75" class="svg-t s">authors, works, topics</text>
+<rect x="20" y="96" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="115" class="svg-t">NIH RePORTER</text><text x="30" y="131" class="svg-t s">awards, SBIR/STTR, dates</text>
+<rect x="20" y="152" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="171" class="svg-t">NSF Award Search</text><text x="30" y="187" class="svg-t s">awards, dates</text>
+<rect x="20" y="208" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="227" class="svg-t">Grants.gov</text><text x="30" y="243" class="svg-t s">open calls, all agencies; archive</text>
+<rect x="20" y="264" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="283" class="svg-t">Temple SDFA list, NIH F-series</text><text x="30" y="299" class="svg-t s">public fellowships (students)</text>
+<rect x="20" y="320" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="339" class="svg-t">SYNTHETIC sample corpus</text><text x="30" y="355" class="svg-t s">scholarships, own store, badged</text>
+
+<!-- fetchers -->
+<rect x="230" y="40" width="160" height="326" rx="4" class="svg-box det"/>
+<text x="242" y="62" class="svg-t b">Fetchers</text>
+<text x="242" y="80" class="svg-t s">deterministic Python</text>
+<text x="242" y="104" class="svg-t s">· rate-limited, retried</text>
+<text x="242" y="122" class="svg-t s">· normalise to one schema</text>
+<text x="242" y="140" class="svg-t s">· stamp source, URL,</text>
+<text x="242" y="156" class="svg-t s">  fetched_at on every row</text>
+<text x="242" y="180" class="svg-t s">· numbers copied, never</text>
+<text x="242" y="196" class="svg-t s">  generated</text>
+<text x="242" y="220" class="svg-t s">· open calls refetched by</text>
+<text x="242" y="236" class="svg-t s">  the operator's command</text>
+<text x="242" y="260" class="svg-t s">· every fetcher verified</text>
+<text x="242" y="276" class="svg-t s">  against a live response</text>
+<path d="M170,63 H228" class="svg-l"/><path d="M170,119 H228" class="svg-l"/><path d="M170,175 H228" class="svg-l"/><path d="M170,231 H228" class="svg-l"/><path d="M170,287 H228" class="svg-l"/><path d="M170,343 H228" class="svg-l"/>
+
+<!-- store -->
+<rect x="450" y="40" width="170" height="150" rx="4" class="svg-box store"/>
+<text x="462" y="62" class="svg-t b">Records store</text>
+<text x="462" y="80" class="svg-t s">demo: SQLite + LanceDB</text>
+<text x="462" y="96" class="svg-t s">Temple: Postgres + pgvector</text>
+<text x="462" y="112" class="svg-t s">  + pg_search</text>
+<text x="462" y="134" class="svg-t s">researchers · works · awards</text>
+<text x="462" y="150" class="svg-t s">opportunities · organisations</text>
+<text x="462" y="166" class="svg-t s">embeddings (local model)</text>
+<text x="462" y="182" class="svg-t s">provenance on every row</text>
+<path d="M390,110 H448" class="svg-l"/>
+
+<!-- retrieval -->
+<rect x="450" y="216" width="170" height="150" rx="4" class="svg-box det"/>
+<text x="462" y="238" class="svg-t b">Retrieval and scoring</text>
+<text x="462" y="256" class="svg-t s">deterministic</text>
+<text x="462" y="280" class="svg-t s">· research threads from papers</text>
+<text x="462" y="296" class="svg-t s">· hybrid search per thread, RRF</text>
+<text x="462" y="312" class="svg-t s">· eligibility rules from</text>
+<text x="462" y="328" class="svg-t s">  record fields (dates, type)</text>
+<text x="462" y="344" class="svg-t s">· rerank; Match score by code</text>
+<text x="462" y="360" class="svg-t s">· same code path as back-test</text>
+<path d="M535,190 V214" class="svg-l"/>
+
+<!-- model calls -->
+<rect x="680" y="40" width="300" height="326" rx="4" class="svg-box llm"/>
+<text x="692" y="62" class="svg-t b">Scout agent + four bounded skills · any model</text>
+<text x="692" y="80" class="svg-t s">provider layer: Anthropic · OpenAI-compatible · Ollama / vLLM local</text>
+<rect x="692" y="96" width="276" height="60" rx="3" class="svg-box"/>
+<text x="702" y="114" class="svg-t b">1 · Profile summariser</text>
+<text x="702" y="130" class="svg-t s">in: titles + abstracts of key papers</text>
+<text x="702" y="146" class="svg-t s">out: topic labels, short summary, each tied to work IDs</text>
+<rect x="692" y="164" width="276" height="60" rx="3" class="svg-box"/>
+<text x="702" y="182" class="svg-t b">2 · Fit explainer and reranker</text>
+<text x="702" y="198" class="svg-t s">in: profile + one candidate record, both with IDs</text>
+<text x="702" y="214" class="svg-t s">out: three sentences, citations as IDs only; unknown ID rejected</text>
+<rect x="692" y="232" width="276" height="60" rx="3" class="svg-box"/>
+<text x="702" y="250" class="svg-t b">3 · Hand-off drafter</text>
+<text x="702" y="266" class="svg-t s">in: kept leads, office · out: a 2–4 sentence opening</text>
+<text x="702" y="282" class="svg-t s">code writes the rest; never sent by the app; human edits and sends</text>
+<rect x="692" y="300" width="276" height="60" rx="3" class="svg-box"/>
+<text x="702" y="318" class="svg-t b">4 · Application points (cover_points)</text>
+<text x="702" y="334" class="svg-t s">in: one record + CV (contacts blanked), documents, papers, awards</text>
+<text x="702" y="350" class="svg-t s">out: 3–6 cited points, up to 3 gaps; on the card, never exported</text>
+<path d="M620,290 H678" class="svg-l c"/>
+
+<!-- API / web -->
+<rect x="230" y="420" width="750" height="110" rx="4" class="svg-box det"/>
+<text x="242" y="442" class="svg-t b">API and web app</text>
+<text x="242" y="462" class="svg-t s">FastAPI · in-process jobs (one job = one brief, stages reported) · no-build web app in plain ES modules, served by perch serve · print page for PDF</text>
+<text x="242" y="484" class="svg-t s">Session API: the brief, its leads, keep / dismiss, hand-off, export, Scout · MCP server offers the researcher tools to any MCP client · perch mcp, perch brief on the CLI</text>
+<text x="242" y="506" class="svg-t s">Audit log of operator model calls: prompt hash, model, tokens, cost, validator result · a visitor's session writes no log, cache or store row</text>
+<path d="M830,366 V418" class="svg-l c"/><path d="M535,366 V418" class="svg-l"/>
+<rect x="20" y="420" width="150" height="110" rx="4" class="svg-box ext"/>
+<text x="30" y="442" class="svg-t b">Researcher or student</text>
+<text x="30" y="462" class="svg-t s">browser, phone via QR</text>
+<text x="30" y="482" class="svg-t s">keeps / dismisses, asks Scout</text>
+<text x="30" y="498" class="svg-t s">edits and sends the hand-off</text>
+<text x="30" y="514" class="svg-t s">or the note; Perch sends nothing</text>
+<path d="M170,475 H228" class="svg-l"/>
+<path d="M228,495 H172" class="svg-l"/>
+</svg>
+<p class="cap">Solid outlines are deterministic code; the tinted box is the only place a language model runs, and the agent inside it can call nothing but the deterministic functions on the left. Dashed boxes are outside the system. Every arrow into the store carries provenance; every arrow out of the model box passes the citation validator (code), and the grounding check (Clef) flags unsupported sentences. The model box may also read a session's CV and documents, with contact details blanked, and retains nothing. Students run the same pipeline on a CV, with verdicts by rule.</p>
+</div>
+
+<h3>Stack, as built</h3>
+<div class="scroll"><table>
+<tr><th>Layer</th><th>Choice</th><th>Why</th></tr>
+<tr><td>Language, data layer</td><td>Python 3.12, <code>uv</code>, everything pinned; <code>httpx</code>; <code>pydantic</code> v2 records per source; <code>ruff</code> and <code>pytest</code> (408 tests at S32)</td><td>Fast to write with Claude Code; typed records make provenance enforceable.</td></tr>
+<tr><td>Store</td><td>SQLite + LanceDB for the demo; Postgres + pgvector + pg_search for Temple; one repository interface in <code>perch/store/base.py</code>. The demo path is what runs; the Postgres path is the Temple target <span class="tag warn">verify: not exercised on this node</span></td><td>One schema, two backends. The demo must run on the lab node with no managed services.</td></tr>
+<tr><td>Search models</td><td>Qwen3-Embedding-0.6B and Qwen3-Reranker-0.6B, local; hybrid dense + BM25 per research thread, fused with reciprocal rank fusion, 100 candidates reranked; Match = the reranker's score on a 0–100 scale, computed by code</td><td>Nothing in the back-test beat them measurably (<a href="#bench">bench</a>); no per-call cost; works inside Temple with no outbound data.</td></tr>
+<tr><td>Model provider layer</td><td><code>perch/llm/</code> with three primitives: <code>chat</code> (tool calling, structured output), <code>embed</code>, and <code>decide</code> (typed choice / score / yes-no in; typed value plus confidence out). Adapters: Anthropic API; any OpenAI-compatible endpoint; Ollama. For <code>decide</code>: Clef and Clef-flash (Cloudflare, open weights, served by llama.cpp <code>llama-server</code> on <code>/v1/systemone</code>) and an LLM fallback on token logprobs. Model per role set in <code>.env</code> (<code>PERCH_LLM_DEFAULT</code>, <code>PERCH_LLM_&lt;ROLE&gt;</code>). A $100 spend cap enforced in the Anthropic adapter</td><td>No vendor SDK outside the package (rule 6, tested). The same code runs local for the demo and on the API by the user's choice. Decision models are used only at decision points such as the grounding check, never for skills 1–4 or eligibility. Jev (hosted) and Strands Decider were not benched: no access on this node.</td></tr>
+<tr><td>Chat models</td><td>Demo: Gemma 4 26B-A4B on Ollama, 12,288-token context, two slots. Cloud option: claude-sonnet-5-5. Benched: qwen3:8b, qwen3:14b, qwen3.8:27b</td><td>Gemma passed both checks on 28 of 30 leads at $0; Sonnet 24 of 30 at $0.0915 a brief.</td></tr>
+<tr><td>Validator</td><td>Layer 1, code (<code>perch/validate.py</code>): every cited id known; every number and date in a cited record; no URL or "click" in model text; a user-typed number allowed only outside a cited sentence. Layer 2, grounding: Clef on the demo, MiniCheck-RoBERTa-Large on CPU as the default without a GPU. Fail → regenerate once → withhold and flag</td><td>Layer 1 is free and catches the fatal errors; layer 2 catches paraphrased overreach. The judgment sentence of an explanation is labelled an inference, not pretended to be verified.</td></tr>
+<tr><td>Agent runtime</td><td>Own loop in <code>perch/scout/</code>: the model asks for a tool, the tool runs at once, the model writes a cited answer; allowlisted tools, per-question and per-session budgets, a Stop button, repeated-call guard, history compaction. The ask-before-every-step mode borrowed from another project in S10 was removed in S28. MCP server on the MCP Python SDK 2.3.0</td><td>Frameworks hide the control flow; every tool call is a visible card. Scout’s tools have no effects to approve, so a gate bought nothing (<code>docs/design/SCOUT_SPEC.md</code>).</td></tr>
+<tr><td>API</td><td>FastAPI + an in-process job runner; briefs run one at a time; a newer brief replaces a session's queued one; gzip and 304 polls; rate limits per address (Demo Day: 100 briefs, 200 sessions, 300 hand-offs and Scout questions an hour); CSP; self-hosted fonts</td><td>GPU models are shared and the demo serves a room; the UI polls stages and partial results.</td></tr>
+<tr><td>Web</td><td>Plain ES modules and CSS in <code>web/</code>, no build step, no npm, served by <code>perch serve</code> at <code>/</code> after the API routes; same-origin. Rebuilt in S24 from the redesign canvas; reviewed in S7, S21, S25, S29 and five QA rounds in S31</td><td>The node has no npm; nothing to install for <code>make demo</code> or the ZIP. React + Vite was planned and never built.</td></tr>
+<tr><td>Packaging</td><td>Docker Compose with one <code>perch</code> service (API, web app and jobs in one process); the GPU models run on the host as systemd user units (<code>deploy/systemd/</code>, <code>make decide-up</code>, <code>make demo</code>); <code>make package</code> builds the submission ZIP (about 34 MB, tracked files only)</td><td>Docker on the lab node has no GPU access, so the models stay on the host and the container reaches them over localhost. The planned web, api, worker and db containers were never built.</td></tr>
+<tr><td>Reuse from NextTex / NexusQC</td><td>The README's recording pipeline (a Python port of NextTex's recorder) for the clips; the approve-every-action agent pattern, taken in S10 and removed in S28. Nothing reused in the matching or evaluation code</td><td>Disclosed in <code>docs/AI_USE_LOG.md</code>.</td></tr>
+</table></div>
+</section>
+
+<section id="where">
+<h2>Where each step runs</h2>
+<p>A brief runs the steps below in order. Solid outlines are plain code with no model. Blue steps are small local models that always stay on the GPU. Gold steps are the chat-model skills (four) and Scout. The four skills move to the cloud provider only by the user’s Cloud choice for that session; Scout’s own model stays local in every session; a deployer may set any role in <code>.env</code>. Demo Day runs on two GPUs with <code>PERCH_PROFILE=deploy-2gpu</code>; Clef, the embedder and the reranker have no cloud path in Perch.</p>
+<div class="fig">
+<svg viewBox="0 0 1000 520" role="img" aria-label="The steps of a brief in order, showing which run as plain code, which run on small local models that stay on the GPU, and which run on the chat model and can move to the cloud provider by the user's choice">
+<defs><marker id="arr2" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--ink-2)"/></marker></defs>
+<!-- row 1: retrieval -->
+<rect x="20" y="40" width="150" height="80" rx="6" class="svg-box det"/><text x="95" y="68" text-anchor="middle" class="svg-t b">Fetch</text><text x="95" y="86" text-anchor="middle" class="svg-t s">OpenAlex · RePORTER · NSF</text><text x="95" y="102" text-anchor="middle" class="svg-t s">Grants.gov · plain code</text>
+<rect x="200" y="40" width="150" height="80" rx="6" class="svg-box store"/><text x="275" y="68" text-anchor="middle" class="svg-t b">1 · Embed</text><text x="275" y="86" text-anchor="middle" class="svg-t s">Qwen3-Embedding-0.6B</text><text x="275" y="102" text-anchor="middle" class="svg-t s">threads and calls → vectors</text>
+<rect x="380" y="40" width="150" height="80" rx="6" class="svg-box det"/><text x="455" y="68" text-anchor="middle" class="svg-t b">Eligibility, dates</text><text x="455" y="86" text-anchor="middle" class="svg-t s">fixed rules; numbers and</text><text x="455" y="102" text-anchor="middle" class="svg-t s">dates copied from records</text>
+<rect x="560" y="40" width="150" height="80" rx="6" class="svg-box store"/><text x="635" y="68" text-anchor="middle" class="svg-t b">2 · Rerank</text><text x="635" y="86" text-anchor="middle" class="svg-t s">Qwen3-Reranker-0.6B</text><text x="635" y="102" text-anchor="middle" class="svg-t s">Match score, by code</text>
+<rect x="740" y="40" width="150" height="80" rx="6" class="svg-box llm"/><text x="815" y="68" text-anchor="middle" class="svg-t b">3 · Profile summary</text><text x="815" y="86" text-anchor="middle" class="svg-t s">chat model · skill 1</text><text x="815" y="102" text-anchor="middle" class="svg-t s">local Gemma, or Cloud</text>
+<path d="M170,80 H198" class="svg-l" style="marker-end:url(#arr2)"/><path d="M350,80 H378" class="svg-l" style="marker-end:url(#arr2)"/><path d="M530,80 H558" class="svg-l" style="marker-end:url(#arr2)"/><path d="M710,80 H738" class="svg-l" style="marker-end:url(#arr2)"/>
+<path d="M815,120 V150 H95 V178" class="svg-l" style="marker-end:url(#arr2)"/>
+<!-- row 2: explain and check -->
+<rect x="20" y="180" width="150" height="80" rx="6" class="svg-box llm"/><text x="95" y="208" text-anchor="middle" class="svg-t b">4 · Fit explanation</text><text x="95" y="226" text-anchor="middle" class="svg-t s">chat model · skill 2</text><text x="95" y="242" text-anchor="middle" class="svg-t s">three sentences, cited</text>
+<rect x="200" y="180" width="150" height="80" rx="6" class="svg-box det"/><text x="275" y="208" text-anchor="middle" class="svg-t b">Citation check</text><text x="275" y="226" text-anchor="middle" class="svg-t s">validator layer 1 · code</text><text x="275" y="242" text-anchor="middle" class="svg-t s">IDs real, numbers present</text>
+<rect x="380" y="180" width="150" height="80" rx="6" class="svg-box store"/><text x="455" y="208" text-anchor="middle" class="svg-t b">5 · Grounding check</text><text x="455" y="226" text-anchor="middle" class="svg-t s">Clef · validator layer 2</text><text x="455" y="242" text-anchor="middle" class="svg-t s">sentence vs cited record</text>
+<rect x="560" y="180" width="150" height="80" rx="6" class="svg-box store"/><text x="635" y="208" text-anchor="middle" class="svg-t b">8 · Decide</text><text x="635" y="226" text-anchor="middle" class="svg-t s">Clef-flash · yes/no, score</text><text x="635" y="242" text-anchor="middle" class="svg-t s">with confidence</text>
+<rect x="740" y="180" width="150" height="80" rx="6" class="svg-box llm"/><text x="815" y="208" text-anchor="middle" class="svg-t b">7 · Scout</text><text x="815" y="226" text-anchor="middle" class="svg-t s">chat model · agent (S10, S28)</text><text x="815" y="242" text-anchor="middle" class="svg-t s">allowlisted tools only</text>
+<path d="M170,220 H198" class="svg-l" style="marker-end:url(#arr2)"/><path d="M350,220 H378" class="svg-l" style="marker-end:url(#arr2)"/><path d="M530,220 H558" class="svg-l" style="marker-end:url(#arr2)"/><path d="M710,220 H738" class="svg-l" style="marker-end:url(#arr2)"/>
+<path d="M815,260 V290 H95 V318" class="svg-l" style="marker-end:url(#arr2)"/>
+<!-- row 3: hand-off -->
+<rect x="20" y="320" width="150" height="80" rx="6" class="svg-box llm"/><text x="95" y="348" text-anchor="middle" class="svg-t b">6 · Hand-off draft</text><text x="95" y="366" text-anchor="middle" class="svg-t s">chat model · skill 3 (S12)</text><text x="95" y="382" text-anchor="middle" class="svg-t s">never sent by the app</text>
+<rect x="200" y="320" width="150" height="80" rx="6" class="svg-box ext"/><text x="275" y="348" text-anchor="middle" class="svg-t b">Researcher or student</text><text x="275" y="366" text-anchor="middle" class="svg-t s">keeps, dismisses,</text><text x="275" y="382" text-anchor="middle" class="svg-t s">edits and sends</text>
+<path d="M170,360 H198" class="svg-l" style="marker-end:url(#arr2)"/>
+<!-- legend -->
+<rect x="400" y="330" width="22" height="22" rx="3" class="svg-box det"/><text x="430" y="346" class="svg-t s">Plain code, no model</text>
+<rect x="400" y="362" width="22" height="22" rx="3" class="svg-box store"/><text x="430" y="378" class="svg-t s">Small local model, always on the GPU (no cloud equivalent in Perch)</text>
+<rect x="400" y="394" width="22" height="22" rx="3" class="svg-box llm"/><text x="430" y="410" class="svg-t s">Chat model: local Gemma by default; the four skills move to the cloud provider by the user's Cloud choice, or any role by the deployer's .env</text>
+<!-- footnote -->
+<text x="20" y="440" class="svg-t s">9 · Application points (skill 4, S33) runs on request from Scout, on the hand-off role: no new role to set. It reads the CV with contact details blanked.</text>
+<text x="20" y="460" class="svg-t s">Every session is private by default and local. Cloud moves steps 3, 4, 6 and 9 to the named provider after a warning; Scout's own model (7) stays local; documents go only after a second, per-document consent.</text>
+<text x="20" y="480" class="svg-t s">Decide on the Anthropic API works but returns no confidence (no token probabilities). Search and the grounding check still need a GPU; GPU A needs far less memory once Gemma is not loaded.</text>
+<text x="20" y="500" class="svg-t s">Numbered steps are in the order a brief runs them. Switch one step with PERCH_LLM_FIT_EXPLAINER=anthropic:claude-sonnet-5-5, or all with PERCH_LLM_DEFAULT.</text>
+</svg>
+</div>
+<div class="scroll" style="margin-top:1rem"><table>
+<tr><th>Fit explanation on</th><th>p50 brief (S8 bench)</th><th>Leads passing both checks (of 30)</th><th>Cost per brief</th><th>Where it runs</th></tr>
+<tr><td>Gemma 4 26B-A4B (local, the demo model)</td><td>42.9 s</td><td>28</td><td>$0</td><td>lab GPU</td></tr>
+<tr><td>claude-sonnet-5-5 (API)</td><td>25.7 s</td><td>24</td><td>$0.0915</td><td>Anthropic API; adapter refuses calls past the $100 cap in <code>.env</code></td></tr>
+</table></div>
+<p class="sub" style="margin-top:.5rem">Numbers from <code>bench/results/SUMMARY.md</code> (S8; not rerun after the S27 to S31 changes). Grounding needs probability scores the Anthropic API does not return, so Clef stays local; the hosted checker Jev was not benched (no access on this node). Embedding and reranking have no Anthropic equivalent and no second cloud adapter in Perch; both are small and fast, so this costs little.</p>
+</section>
+
+<section id="bench">
+<h2>What <code>make bench</code> measured, block by block</h2>
+<p>The plan listed a default and challengers per block; the harness ran in S8 (<code>bench/results/SUMMARY.md</code>, rendered 2026-10-29) and the tune in S27 (<code>bench/results/RESULTS.md</code>). This table reports what was measured and what was chosen; the <a href="#eval">evaluation</a> section carries the headline numbers. Small sets: 48 targeted awards cannot separate most setups.</p>
+<div class="scroll"><table>
+<tr><th style="width:16%">Block</th><th style="width:34%">Measured</th><th style="width:30%">Chosen, and why</th><th>Not done</th></tr>
+<tr><td><b>Profile build</b></td><td>Research threads from the papers; thread queries carry the thread's three most common OpenAlex primary topics (S27)</td><td>Threads with topic names. NIH back-test, targeted: MRR 0.067 → 0.149, hit@10 0.146 → 0.208; tuned on the same 48 rows, so partly fitted</td><td>Threads vs a single vector was not benched as a separate row</td></tr>
+<tr><td><b>Embeddings</b></td><td>14 setups across Qwen3-Embedding-0.6B, Qwen3-Embedding-4B, bge-m3 and specter2_base, each dense, hybrid and hybrid + reranker</td><td>Qwen3-Embedding-0.6B: 12 of 14 setups have an MRR interval against the default that contains 0, so 48 awards cannot tell them apart; specter2 + reranker reached 9 of 48 in the top 10 against 7, within noise</td><td>harrier, granite: not benched</td></tr>
+<tr><td><b>Retrieval</b></td><td>keyword-only 1 of 48; dense 3; hybrid 6; hybrid + reranker 7 (S8, before the tune)</td><td>Hybrid dense + BM25 with reciprocal rank fusion, in LanceDB for the demo</td><td>Learned sparse (SPLADE-style): not benched</td></tr>
+<tr><td><b>Eligibility filter</b></td><td>0 ineligible of 30 by hand check against Grants.gov record text (S4); 61 of 121 open NSF listings were wrongly dropped before the "Others" applicant-type rule (S27)</td><td>Rules on close date, applicant types, title restrictions, career-stage titles, EPSCoR and undergraduate-institution programs; never a model</td><td>GRANTED and CREST eligibility against Temple unchecked (Q39)</td></tr>
+<tr><td><b>Rerank</b></td><td>Qwen3-Reranker-0.6B (default) 7 of 48; Clef-flash as reranker 5 of 48; Clef 4 of 48, interval [-0.023, -0.001], measurably worse</td><td>Qwen3-Reranker-0.6B; 100 candidates reranked since S27 (was 50); its score becomes Match</td><td>Qwen3-Reranker-4B, BGE-reranker-v2-m3, mxbai, jina: not benched</td></tr>
+<tr><td><b>Fit explanation (skill 2)</b></td><td>Passed both checks of 30: Gemma 4 26B-A4B 28, qwen3.8:27b 28, qwen3:14b 26, claude-sonnet-5-5 24, qwen3:8b 23; p50 brief 42.9 s on Gemma</td><td>Gemma on the demo; three sentences (two factual, checked by the grounder; one judgment, labelled an inference)</td><td>gpt-oss-20b: not benched; pass rates not rerun after S8</td></tr>
+<tr><td><b>Grounding check (layer 2)</b></td><td>40 swapped-record pairs: MiniCheck AUC 0.925, Clef-flash 0.948, Clef 0.998, LLM-logprobs fallback on qwen3.8:27b 0.985; all 0 false flags, 0.1 misses at the 0.5 threshold</td><td>Clef on the demo (GPU B); MiniCheck on CPU without a GPU. A proxy set, not real model output</td><td>Jev (hosted) and Strands Decider 2B: not benched, no access or unverified weights; LettuceDetect, HHEM: not benched</td></tr>
+<tr><td><b>Scout agent loop</b></td><td>Latest: Gemma 28 of 29 tasks, 1 wrong-tool call of 31 (QA round 5); Sonnet 28 of 28, 0 of 27 (S28, $0.46); restraint cases 8 of 8; rehearsal 45 of 45</td><td>Gemma local on the demo; native tool calling (qwen3:8b: 17 of 20 native, 12 of 20 structured, so native stays first)</td><td>The task set grew from 20 to 29, so rows are not strictly comparable; cover_points bench tasks UNVERIFIED until S33 task 5</td></tr>
+<tr><td><b>Industry signals</b></td><td>14 leads for 3 researchers: 8 yes, 6 thin, 0 wrong after the 30-author cap (7, 3, 5 of 15 before it; same researchers, not independent)</td><td>Three signals, two kinds required; judged once by the agent that built them</td><td>No baseline; no human check yet; SBIR.gov API down, so signal 2 comes from RePORTER (NIH only)</td></tr>
+<tr><td><b>Serving and GPUs</b></td><td>One card: no chat model fits under 28 GB beside Clef-flash (Gemma alone peaks at 30,259 MiB). Two cards: GPU A about 27,490 MiB flat, GPU B 24,407 MiB</td><td>deploy-2gpu on Ollama and llama.cpp; two Ollama slots at a 12,288-token context (brief 42.7 s → 38.6 s)</td><td>vLLM and SGLang: not benched; the laptop fallback is UNVERIFIED</td></tr>
+<tr><td><b>Caching</b></td><td>Cached rerank about 1 ms (was 0.7–1.0 s); warm demo briefs open in 17 ms</td><td>Embeddings of public works written through; rerank cache for public threads only; document threads stay in memory (canary clean)</td><td>No nightly job: opportunities are refetched by the operator</td></tr>
+<tr><td><b>Student mode (SYNTHETIC)</b></td><td>Mechanism test on invented data: 23 of 24 planted records retrieved; verdicts 23 of 23 and gap lists 11 of 11 exact against hand-written keys; leakage none on seven checks</td><td>100 records to the ranking model (was 40); the key and the code follow the same rules, so this checks the code, not real awards</td><td>No result about real scholarships or students; never mixed with the public numbers (rule 11)</td></tr>
+</table></div>
+<div class="callout"><p><b>Benchmark discipline, as kept.</b> One held-out set (160 NIH rows from public RePORTER records, 126 with a fully fetched window, date cut-off enforced), one script, one table. The keyword-only baseline is reported on every row. The S27 tune used the same 48 targeted rows it reports, and the page says so wherever the number appears. The chat model is not in the retrieval path, so the back-test does not depend on it.</p></div>
+</section>
+
+<section id="model">
+<h2>Scout, the agent, and the platforms it runs on</h2>
+<p>Two layers, deliberately separated. The <b>deterministic pipeline</b> builds a brief the same way every time; it is what the back-test measures. <b>Scout</b> sits on top of it: the model turns a question into calls on Perch’s own tools, then writes a short answer that cites the records those tools returned. Everything else is code. Specified from Perch’s own needs in <code>docs/design/SCOUT_SPEC.md</code> (approved 2026-10-30, Q37) and built as phase 1 in S28.</p>
+<div class="grid">
+  <div class="card"><h3>What Scout does (S28)</h3>
+    <ul><li>Each step runs as soon as the model asks for it. A <b>Stop</b> button ends the question between steps; the steps already done stay on screen. There is no ask-before-every-step mode: it was removed in S28, because Scout’s tools only read records and write text, so a gate cost a click and bought nothing.</li>
+    <li>Above the answer, <b>“How Scout read your question”</b> lists each step with its filters as chips, for example “Searched opportunities: activity code R21, closes by 2027-03-01”. This is the control for a misread question. The step cards fold under it, each saying where it ran: code, a local model, or the named Cloud provider.</li>
+    <li>Follow-ups in plain language: filters the page does not offer (an activity code, a ceiling, a close-by date, words to include or leave out), “why” questions built from records, and chores across steps such as compare then draft.</li>
+    <li>The answer is two to five short sentences; each citation opens the record in the evidence rail. A failed answer is rewritten once, then withheld and the page says so.</li>
+    <li>Fixed subject: Scout works on the brief’s own researcher or student. The web app’s researcher tools take no author id and have no author search; the MCP server keeps both.</li></ul></div>
+  <div class="card"><h3>What Scout cannot do</h3>
+    <ul><li>Call anything outside its tool allowlist: no web browsing, no free-text fetch, no shell.</li>
+    <li>State a number or date that is not in a cited record or the person’s own question (the validator applies to the agent exactly as to the pipeline; a user-typed number is kept only outside a cited sentence).</li>
+    <li>Send email, change a record, or write to any outside system.</li>
+    <li>Run past its budgets: 8 model calls per question; 120,000 tokens and $0.25 per session, counting the fit, hand-off and cover-points steps; 30 questions an hour per address (300 on Demo Day). History compaction keeps every call under about 6,400 tokens; “Start a new conversation” resets it.</li>
+    <li>Read anything about a researcher that is not a public record or a document they added to the session.</li></ul></div>
+  <div class="card"><h3>Researcher tools (ten)</h3>
+    <p class="mono" style="font-size:.85rem">resolve_author · build_profile · list_awards · search_opportunities · get_org_signals · explain_fit · compare · draft_handoff · cover_points · get_record</p>
+    <p>Each is a thin wrapper over the pipeline. <code>resolve_author</code> is on the MCP server only; in the web app the other nine are fixed to the brief’s researcher. <code>explain_fit</code>, <code>draft_handoff</code> and <code>cover_points</code> call a model and follow the session’s Local or Cloud choice; the rest call none. Every call is logged with argument and result hashes in an operator run; a visitor’s session writes no Scout log. A repeated identical call in one question is answered from the earlier result.</p></div>
+  <div class="card"><h3>Student tools (eight)</h3>
+    <p class="mono" style="font-size:.85rem">search_options · check_option · explain_verdict · read_cv · compare_options · draft_note · cover_points · get_record</p>
+    <p>All but <code>cover_points</code> return rule results, record fields and the fields code read from the CV, and call no model. Student Scout runs only in a private session and is not on the MCP server. Sample scholarships are marked as samples in every tool result, and an answer may not cite a sample and a public fellowship in one list or sentence.</p></div>
+</div>
+
+<h3>Skill 4: application points (<code>cover_points</code>, S33)</h3>
+<div class="callout"><p>For one record (a grant for a researcher; a public fellowship or a sample scholarship for a student), the skill returns <b>3 to 6 points</b> a cover letter could make. Each point has two halves: an <b>“asks”</b> half, what the record asks for or rewards, cited to the record; and a <b>“you”</b> half, what the applicant has that answers it, cited to the CV, a document, a paper or a public award (for a student: the CV, the interests note or an achievement). It may list <b>up to three gaps</b>: things the record asks for that nothing the user added shows. Every point passes the citation check (ids known; numbers and dates only from the cited record), then the grounding model flags any unsupported sentence; a failed set is regenerated once, then withheld. <b>Code writes the answer line</b>; the full points sit on the Scout card with a <b>Copy</b> button, as a hand-off draft does, for the person to put in their own words. They never enter an export or a hand-off draft. It runs on the session’s hand-off role: local unless Cloud is chosen and the documents warning confirmed. It is the one tool whose model reads the CV text, with contact details blanked and the CV capped at about 3,500 characters, and only for the one record asked about; a researcher with no CV gets points from their papers and public awards. On a sample scholarship the card and the answer say the points are for an invented sample. Through MCP it works from papers and public awards, because documents cannot be added through MCP. Its bench numbers (two tasks on the local model) are <code>UNVERIFIED</code> until S33 task 5 runs.</p></div>
+
+<h3>Any model, any platform</h3>
+<div class="grid">
+  <div class="card"><h3>Provider layer</h3>
+    <p>One interface for chat, tool calling and structured output. Adapters: <b>Anthropic API</b>; any <b>OpenAI-compatible</b> endpoint; <b>Ollama</b> for local models. Model per role is set in <code>.env</code>: profile summary, fit explainer, hand-off (which application points share), Scout and decide. Embeddings, reranking and the grounding check are always local.</p>
+    <p>Small local models call tools less reliably, so Scout has a structured policy: one JSON step per turn, plus the validator. Native tool calling stays first (qwen3:8b: 17 of 20 native, 12 of 20 structured).</p></div>
+  <div class="card"><h3>MCP server (S14)</h3>
+    <p><code>perch mcp</code> serves the ten researcher tools over stdio to any MCP client (MCP Python SDK 2.3.0), with the same argument checks and validator; every result carries a provenance map of the records to cite, and the client’s own model writes the answer. Budgets: 60 tool calls and 20 model-backed calls per connection. <code>--private</code> runs with no writes or logs and refuses to start unless every model is self-hosted. Documents cannot be added through MCP. Tested live from the SDK client and from Claude Code; a local Ollama agent was not tested (UNVERIFIED); Copilot <span class="tag warn">verify</span>.</p></div>
+  <div class="card"><h3>Monitoring (S16, shelved S23)</h3>
+    <p>A weekly watch was built: refresh open listings as a delta, run a fresh brief per watched researcher, compare it with the last run, and draft a notification by code when a public award ends within 12 months or a new opportunity enters the top 10. Live once on the demo (660 listings, 3 new, 0 triggers). It needs to know whom to watch, and Perch keeps nothing about its users, so it lives in <code>perch/shelved/monitor/</code> with a README on reconnecting it once a user system exists.</p></div>
+</div>
+<div class="callout"><p><b>Rule enforced in code, for pipeline and agent alike:</b> a model output that cites an id not present in its input, or that contains a dollar amount or date not present in the cited records, is rejected and regenerated once; if it fails again the lead is shown without an explanation and flagged, or the answer is withheld. The pass rate is reported per model.</p></div>
+<p><b>Explanation shape, as built.</b> Each fit explanation is three sentences: a factual sentence about the opportunity and a factual sentence about the research, both checked by the grounder against their cited records, plus a link sentence shown as an inference and checked by layer 1 only. The grounder scores fit judgments (“aligns with”) low even when both facts are in the records, so the judgment is labelled rather than pretended to be verified. Fit text reads in the second person on the card and in exports.</p>
+</section>
+
+<section id="data">
+<h2>Data sources and their status</h2>
+<p>Every row is recorded in <code>docs/SOURCES.md</code> with the exact endpoint, fields, limits and terms, and a saved live response under <code>tests/fixtures/</code> (rule 2).</p>
+<div class="scroll"><table>
+<tr><th>Source</th><th>Used for</th><th>Access</th><th>Status</th></tr>
+<tr><td>OpenAlex</td><td>Author resolution, works, abstracts, topics, institution lineage; company works and citations for industry leads</td><td>Public REST API with a key; daily budget metered</td><td><span class="tag ok">verified live</span> S1, S11, S30</td></tr>
+<tr><td>NIH RePORTER v2</td><td>Temple awards, project dates, <code>opportunity_number</code> (back-test ground truth; mostly empty before FY 2012); SBIR/STTR awards for industry signal 2</td><td>Public API v2</td><td><span class="tag ok">verified live</span> S2, S11</td></tr>
+<tr><td>NSF Award Search</td><td>Temple awards, expiration dates (award horizon); no opportunity field; last-name fallback, “Matched by initial” label (S27)</td><td>Public API; contact details redacted</td><td><span class="tag ok">verified live</span> S2</td></tr>
+<tr><td>Grants.gov</td><td>Open opportunities from every agency (1,497 listings at S27); the archive (12,152 NIH listings) as the back-test corpus</td><td><code>search2</code> and <code>fetchOpportunity</code>, no key; attribution notice required and shown</td><td><span class="tag ok">verified live</span> S3, S27</td></tr>
+<tr><td>NIH Guide archive</td><td>Historical announcements</td><td>No documented structured access; not scraped (rule 2)</td><td><span class="tag warn">replaced</span> by the Grants.gov archive: 16 of 17 sampled FOAs present</td></tr>
+<tr><td>SBIR.gov</td><td>Small-business awards (industry signal 2)</td><td>Awards API</td><td><span class="tag warn">API down</span> in S11; signal 2 comes from RePORTER, NIH only. Bulk-file Temple STTR partners add 0 leads, not wired in</td></tr>
+<tr><td>Temple OVPR public pages</td><td>Office names for the researcher hand-off</td><td>Public web</td><td><span class="tag ok">verified</span></td></tr>
+<tr><td>Temple SDFA fellowship list; NIH F-series listings</td><td>Public fellowships for students: 76 award records, levels from the page headings, no amounts or deadlines on the page</td><td>Public web pages, fetched once by hand</td><td><span class="tag ok">verified live</span> S17</td></tr>
+<tr><td>Temple Student Financial Services</td><td>Office name and URL for the scholarship note</td><td>Public web; the listings sit behind ScholarshipUniverse sign-in and are not read</td><td><span class="tag ok">verified</span> S17 · terms <span class="tag warn">verify</span></td></tr>
+<tr><td>SYNTHETIC sample scholarships</td><td>Student mode until a real feed is licensed</td><td>500 invented records, 105 fictional sponsors, 0 real-name hits, own store, canary-tagged, badged on every card</td><td><span class="tag blue">synthetic</span> · ScholarshipUniverse seam in <code>perch/sources/scholarshipuniverse.py</code>, fields <span class="tag warn">verify</span></td></tr>
+<tr><td>Foundation listings</td><td>Foundation calls</td><td>No single public API known</td><td><span class="tag blue">not built</span></td></tr>
+<tr><td>PatentsView / USPTO</td><td>Patent signals</td><td>API key required <span class="tag warn">verify</span></td><td><span class="tag blue">not built</span> (roadmap)</td></tr>
+</table></div>
+<p class="sub">Dropped from the first draft: SEC filings, job postings, press releases. Too noisy to defend, and the judge who knows technology transfer would ask what a job posting proves.</p>
+</section>
+
+<section id="eval">
+<h2>Evaluation: the numbers on the results slide</h2>
+<p>Every number here is copied from <code>docs/RESULTS.md</code>, <code>bench/results/SUMMARY.md</code> or the key numbers in <code>docs/TRACKER.md</code>. Four things were measured: retrieval on an NIH back-test, citation grounding, the Scout agent, and speed and cost. Student mode is a mechanism test on invented data and is reported apart (rule 11).</p>
+<div class="grid">
+  <div class="card"><h3>Back-test (NIH only, date cut-off)</h3>
+    <p><b>Set:</b> 160 rows from public NIH RePORTER records of Temple awards that name a funding opportunity (69 targeted and 91 parent from 345 candidate awards), 126 with a fully fetched window: <b>48 targeted</b> (PAR, RFA, non-parent PA) and <b>78 parent</b> announcements, reported as two strata. One award per PI and stratum; PIs matched to OpenAlex only when exactly one Temple author matches: 128 matched, 33 ambiguous and 23 not found, the last two left out rather than guessed.</p>
+    <p><b>Method:</b> profile from papers published before the award start; pool = NIH announcements on Grants.gov open in the 18 months before that date; corpus 11,202 archived announcements in a separate bench store.</p>
+    <div class="scroll"><table>
+    <tr><th>Setup</th><th>Stratum</th><th>n</th><th>hit@5</th><th>hit@10</th><th>MRR</th></tr>
+    <tr><td>Default (topic queries, 100 reranked)</td><td>targeted</td><td>48</td><td>0.188</td><td>0.208</td><td>0.144</td></tr>
+    <tr><td>Keyword-only baseline (same query)</td><td>targeted</td><td>48</td><td>0.042</td><td>0.042</td><td>0.032</td></tr>
+    <tr><td>Default</td><td>parent</td><td>78</td><td>0.026</td><td>0.026</td><td>0.016</td></tr>
+    <tr><td>Keyword-only baseline</td><td>parent</td><td>78</td><td>0</td><td>0</td><td>0</td></tr>
+    </table></div>
+    <p><b>In awards:</b> the funded announcement is in the top 10 for 10 of 48 targeted and 2 of 78 parent awards; keyword-only 2 of 48 and 0 of 78. Before the S27 tune: 0.104 / 0.146 / 0.067 against 0.021 / 0.021 / 0.027. <b>The tune used the same 48 rows</b>, so part of the gain is fitted to them; one award is about 0.021, so one or two awards is noise. Parent announcements are generic and nearly unrecovered by any method, which is reported as a limit of the approach. <b>Stand-in proposal, upper bound:</b> each award’s own funded abstract as a draft lifts the default to 0.271 / 0.354 / 0.206 (17 of 48); a real draft is further from the call than that abstract. <b>Match calibration:</b> of the 12 rows that put the funded announcement in the top 10, the 10 targeted ones scored 80 or more and the 2 parent ones 55 and 70. NIH only; there is no NSF back-test, because Grants.gov’s NSF archive carries no usable open dates.</p></div>
+  <div class="card"><h3>Citation discipline</h3>
+    <p>Layer 1 (code: ids, numbers, dates) and layer 2 (grounding) on every explanation. Passed both, of 30 leads (3 researchers, 10 leads each, S8): Gemma 4 26B-A4B 28, qwen3.8:27b 28, qwen3:14b 26, claude-sonnet-5-5 24, qwen3:8b 23. Sonnet had unsupported sentences in 0.167 of leads; Gemma none. Grounder check on 40 swapped-record pairs: Clef AUC 0.998, MiniCheck 0.925, both 0 false flags and 0.1 misses (a proxy set). Not rerun since S8.</p></div>
+  <div class="card"><h3>Scout</h3>
+    <p>Scripted follow-ups, each passing only with the right tool, the right arguments and a validated answer. Latest: Gemma 28 of 29, 1 wrong-tool call of 31 (QA round 5); Sonnet 28 of 28 and 0 of 27 (S28, $0.46; not rerun after). Restraint cases 8 of 8. The S10 set was 20 tasks (Sonnet 20, Gemma 20, qwen3:8b 17); the set grew to 29, so rows are not strictly comparable. Rehearsal gate (three demo questions, researcher, student and documents paths, three variants): 0 of 9 before the context fix in QA round 3, 45 of 45 at the end of S31 and on the rebuilt demo. Small sets: they show the follow-ups work; they do not estimate a failure rate.</p></div>
+  <div class="card"><h3>Cost and latency</h3>
+    <p>$0.0915 for a 10-lead brief on claude-sonnet-5-5 ($0.0792 explanations, $0.0123 summary); $0 on local models. Warm demo brief 17 ms; the full warm click path (5 screens, 14 clicks, a hand-off and a Scout answer) 17.6 s. Live brief 38.7 s on a phone through the public URL (S32), 41.9 s on the dev server after the S30 stage reorder (46.6 before). Scout questions 5 to 6 s on a quiet server. Student polls fell from 8.06 MB to 0.41 MB. Anthropic spend to date $2.60 of a $100 cap (367 calls; every review, fix and QA round ran on local models).</p></div>
+  <div class="card"><h3>Student mode <span class="tag blue">SYNTHETIC, mechanism test</span></h3>
+    <p>All scholarships and personas are invented. These numbers check that the code does what the written rules say; they say nothing about real scholarships or real students. Planted: 500 SYNTHETIC scholarships, 24 planted by hand for 3 personas with hand-written keys (7 eligible, 5 may be, 12 not). Retrieved 23 of 24; verdicts exact 23 of 23; gap lists exact 11 of 11; precision and recall of “may apply” 1.00 and 1.00 on retrieved records; 11 of the 12 a student may apply for reached a brief (the miss never reached a brief). Briefs 45 to 57 s. Leakage none on seven checks, rerun over HTTP on the rebuilt demo. The key and the code follow the same rules, so a perfect match is a check of the code. Fellowships are real public listings with no key and are not scored. Cover-points numbers: <code>UNVERIFIED</code> until S33 task 5.</p></div>
+  <div class="card"><h3>Quality process and review</h3>
+    <p>Two independent fresh-context reviews (workflow and security; UI and UX): 86 findings, 84 fixed, 2 deferred. Five QA rounds, a fresh tester then a fixer each: 129 findings, 125 fixed, 2 partly, 1 dropped, 1 at the deploy file. Tests rose from 265 to 408. Full browser walk with axe: 217 states, 0 errors, 0 accessibility violations, 0 sideways scroll; on the public demo after the last rebuild, 98 + 125 states, 0 errors, 0 axe. Privacy canary clean every round. The reviewers, testers and fixers were AI agents, and the industry leads were judged once by the agent that built them. <b>No user study has been done.</b> Reported as counts, not adjectives.</p></div>
+</div>
+</section>
+
+<section id="deploy">
+<h2>Deployment: Demo Day versus Temple</h2>
+<h3>GPU profiles</h3>
+<p>The dev node has 8 × 32 GB GPUs; the target was one 32 GB GPU, two at most. <code>PERCH_PROFILE</code> selects the profile:</p>
+<div class="scroll"><table>
+<tr><th>Profile</th><th>Placement</th><th>Use</th></tr>
+<tr><td><code>dev</code></td><td>Ollama on one GPU · Clef-flash and Clef on two more under <code>llama-server</code> · embed, rerank and grounding service on a fourth · two GPUs as the bench pool</td><td>Development and <code>make bench</code></td></tr>
+<tr><td><code>deploy-1gpu</code> (pilot target; failed the gate on 29 Oct)</td><td>Chat model, Clef-flash, embedder, reranker and grounder on one card under 28 GB peak. <b>Measured:</b> no chat model fits under 28 GB beside Clef-flash; Gemma alone peaks at 30,259 MiB with one brief (<code>bench/results/single_card.csv</code>)</td><td>Temple pilot, once a smaller chat model passes the gates or Clef-flash moves off the card</td></tr>
+<tr><td><code>deploy-2gpu</code> (Demo Day, live)</td><td>GPU A: Gemma 4 26B-A4B (two slots, 12,288-token context, about 20,040 MiB) + Clef-flash (8,012 MiB), about 27,490 MiB flat during briefs. GPU B: Clef + the embed/rerank model server, 24,407 MiB. Models as systemd user units; the app in one Docker container; public HTTPS through Tailscale Funnel, which decrypts only on the node</td><td>Demo Day; live on the public URL since 29 Oct, rebuilt from the final <code>main</code> on 1 Nov</td></tr>
+</table></div>
+<p><b>Decision-model serving.</b> Clef models are not served by Ollama (a chat runtime drops the decision head); they run under llama.cpp <code>llama-server</code> (build b11941) on <code>/v1/systemone</code>, with <code>-ub 4096 -b 4096</code> so record-plus-sentence inputs are not rejected. GGUF weights: <code>ggml-org/Clef-Flash-GGUF</code> and <code>bartowski/Cloudflare_clef-GGUF</code>, revisions in <code>docs/AI_USE_LOG.md</code>. Started by <code>make decide-up</code> as systemd user units in <code>deploy/systemd/</code>.</p>
+<div class="two">
+<div class="card"><h3>Demo Day (what runs)</h3>
+<ul>
+  <li><code>make demo</code>: one Compose service on the lab node (SQLite + LanceDB, the demo store seeded once from public records, the SYNTHETIC sample store beside it); models on the host as systemd user units on two GPUs.</li>
+  <li>Public HTTPS URL through Tailscale Funnel, decrypted on the node; the QR code points there. Hybrid mode: local by default, Cloud (claude-sonnet-5-5) by the visitor’s choice, key in the server environment only, 30 cloud briefs a day and the $100 cap. Documents on Cloud allowed after the second warning (<code>PERCH_CLOUD_DOCUMENTS=1</code>).</li>
+  <li>Demo researchers’ briefs built at server start (about 4 min 39 s for three), held in memory; a live brief about 40 s.</li>
+  <li>Caps per address an hour: 100 briefs, 200 sessions, 300 hand-offs and Scout questions.</li>
+  <li>Fallback 1: the replay page (<code>build/artifacts/ui.html</code>), one self-contained file that plays a saved brief with no server. Fallback 2: <code>perch serve --models fake</code> on a laptop, or real briefs on the laptop’s CPU with an API key over a hotspot (UNVERIFIED on a laptop).</li>
+</ul></div>
+<div class="card"><h3>Temple deployment (the deployer’s decisions)</h3>
+<ul>
+  <li>Hosted in Temple’s environment; Postgres + pgvector + pg_search behind the same repository interface; opportunities refetched on a schedule the operator sets; sign-in through Temple’s single sign-on <span class="tag warn">verify which system</span> once accounts exist.</li>
+  <li><b>Mode:</b> fully local (every role on self-hosted models, no key, nothing leaves the server), hybrid (local by default, Cloud by the user’s choice per session, as the demo runs) or cloud-only (every role on a hosted provider through <code>PERCH_LLM_DEFAULT</code>). One codebase; a config change, not a rewrite.</li>
+  <li><b>Key type:</b> with a hosted provider, whether the API key is a zero-data-retention key, if the provider offers one; the privacy statement says which (Dakshitha, 2026-11-01).</li>
+  <li><b>Documents on Cloud:</b> <code>PERCH_CLOUD_DOCUMENTS</code> to match the mode; empty if documents must stay on the server.</li>
+  <li><b>Operator and caps:</b> <code>PERCH_PRIVATE_OPERATOR</code> names who runs the server; <code>PERCH_CLOUD_BRIEFS_PER_DAY</code> and the spend cap if Cloud is offered. Checklist: <code>docs/deploy.md</code>.</li>
+  <li>Owners: Research Development for grants, Technology Commercialization for industry leads; Student Financial Services and Scholar Development and Fellowships Advising for the student side, to be agreed with those offices. Pilot with one college. Cost per brief from the audit log, not estimated here.</li>
+</ul></div>
+</div>
+<div class="fig" style="margin-top:1rem">
+<svg viewBox="0 0 1000 250" role="img" aria-label="Deployment diagram: Demo Day on a lab node behind Tailscale Funnel with local models and an optional cloud model; the Temple deployment as the deployer's choice of fully local, hybrid or cloud-only.">
+<rect x="20" y="30" width="440" height="200" rx="4" class="svg-box"/>
+<text x="34" y="54" class="svg-t b">Demo Day · lab node</text>
+<rect x="34" y="70" width="190" height="60" rx="3" class="svg-box det"/><text x="44" y="92" class="svg-t">One Compose service</text><text x="44" y="108" class="svg-t s">API · web · jobs · SQLite + LanceDB</text>
+<rect x="250" y="70" width="190" height="60" rx="3" class="svg-box ext"/><text x="260" y="92" class="svg-t">Tailscale Funnel</text><text x="260" y="108" class="svg-t s">public HTTPS, decrypted on the node</text>
+<path d="M224,100 H248" class="svg-l"/>
+<rect x="34" y="150" width="190" height="60" rx="3" class="svg-box llm"/><text x="44" y="172" class="svg-t">Local models on two GPUs</text><text x="44" y="188" class="svg-t s">default; Cloud by the visitor's choice</text>
+<rect x="250" y="150" width="190" height="60" rx="3" class="svg-box ext"/><text x="260" y="172" class="svg-t">Judges’ phones and laptops</text><text x="260" y="188" class="svg-t s">100 briefs / hour / address</text>
+<path d="M345,130 V148" class="svg-l"/>
+
+<rect x="520" y="30" width="460" height="200" rx="4" class="svg-box"/>
+<text x="534" y="54" class="svg-t b">Temple deployment · the deployer's choice</text>
+<rect x="534" y="70" width="200" height="60" rx="3" class="svg-box det"/><text x="544" y="92" class="svg-t">App inside Temple network</text><text x="544" y="108" class="svg-t s">Postgres + pgvector + pg_search</text>
+<rect x="760" y="70" width="206" height="60" rx="3" class="svg-box llm"/><text x="770" y="92" class="svg-t">Fully local, or hybrid</text><text x="770" y="108" class="svg-t s">self-hosted models; Cloud by user choice</text>
+<rect x="760" y="150" width="206" height="60" rx="3" class="svg-box llm"/><text x="770" y="172" class="svg-t">Cloud-only</text><text x="770" y="188" class="svg-t s">hosted provider; zero-data-retention key?</text>
+<path d="M734,100 H758" class="svg-l c"/><path d="M734,110 Q748,180 758,180" class="svg-l c"/>
+<rect x="534" y="150" width="200" height="60" rx="3" class="svg-box ext"/><text x="544" y="172" class="svg-t">Owners</text><text x="544" y="188" class="svg-t s">Research Development · Tech Commercialization · SFS · SDFA</text>
+</svg>
+</div>
+</section>
+
+<section id="responsible">
+<h2>Responsible design, as the judges phrase it</h2>
+<div class="grid">
+  <div class="card"><h3>Risks considered</h3><ul>
+    <li>Wrong or unsupported claims → the citation validator and the grounding check on every model output; numbers and dates only from records; a failed output withheld and flagged.</li>
+    <li>Reputational: naming people and companies → demo researchers appear by alias in the docs; personas are SYNTHETIC; industry leads carry an inference label and the hand-off names no company; masking hides identifiers in exports.</li>
+    <li>Over-reliance → the brief is labelled a starting point; the Match is a text match, not the odds of funding; hand-offs and notes go to a human office and the user sends them.</li>
+    <li>A misread question → “How Scout read your question” shows every filter Scout applied.</li></ul></div>
+  <div class="card"><h3>Protected data</h3><ul>
+    <li>Public records only in the store; nothing stored about a user; every brief a session in memory.</li>
+    <li>Documents stay on local models unless the user chooses Cloud and confirms, per document, which ones leave; contact details blanked before any model sees a CV; nothing retained.</li>
+    <li>Proved by canary tests, not promised: no trace in files, logs, temp files, browser storage or outbound requests.</li>
+    <li>Department-wide scans are opt-in and v2; monitoring stays shelved until accounts exist.</li></ul></div>
+  <div class="card"><h3>People in control</h3><ul>
+    <li>Author match confirmed by the user before any run; a student’s CV read-out shown to check.</li>
+    <li>Keep / dismiss on every lead; Stop on every Scout question; nothing is sent by the app.</li>
+    <li>Research Development, Technology Commercialization, Scholar Development and Fellowships Advising and Student Financial Services decide; the tool proposes.</li>
+    <li>The deployer decides where models run and what key they use.</li></ul></div>
+  <div class="card"><h3>Accessibility and feasibility</h3><ul>
+    <li>Keyboard-navigable, labelled controls, contrast checked, light and dark, works on a phone from a QR code; the full walk with axe-core shows 0 violations on 217 states; the checklist is <code>docs/design/A11Y_CHECKLIST.md</code> (12 of 13 at S25; zoom not rerun).</li>
+    <li>Runs on one node with one command; cost per brief measured, not guessed; every AI tool and model logged in <code>docs/AI_USE_LOG.md</code>.</li></ul></div>
+</div>
+</section>
+
+<section id="build">
+<h2>How it was built: the sessions as they happened</h2>
+<p>The plan lives in the repo as <code>docs/PLAN.md</code>, organised by session (one per Claude Code context window), with <code>docs/TRACKER.md</code> as the master tracker and <code>docs/HANDOFF.md</code> carrying state between sessions. Every plan change is logged with its reason and who asked. The table is one line per session group, from the tracker; dates are the tracker’s start dates.</p>
+<div class="scroll"><table>
+<tr><th>Sessions</th><th>Dates</th><th>What landed</th></tr>
+<tr><td>S0–S3</td><td>28 Oct</td><td>Repo, pinned tooling, tracker renderer; pydantic records and the store; OpenAlex, NIH RePORTER and NSF fetchers verified live with fixtures; award horizon hand-checked for 3 PIs; Grants.gov search and archive (the NIH Guide has no API).</td></tr>
+<tr><td>S4–S5</td><td>28 Oct</td><td>Deterministic Route A: 0 ineligible of 30 by hand check; local embedder and reranker. Provider layer with Anthropic, OpenAI-compatible and Ollama adapters, the <code>decide</code> primitive, skills 1 and 2, the two-layer validator, a spend cap in the adapter.</td></tr>
+<tr><td>S6–S7</td><td>28 Oct</td><td>FastAPI with in-process jobs; the no-build web app served by <code>perch serve</code> (Find, Profile, Routes, evidence panel, Scout the owl); two adversarial reviews, 32 findings fixed.</td></tr>
+<tr><td>S8</td><td>29 Oct</td><td>NIH back-test set (160 rows, 126 with a full window) and the bench matrix: 7 of 48 targeted in the top 10 against 1 keyword-only; no embedder separable from the default; skill-2 pass rates per model; single-card validation failed its gate.</td></tr>
+<tr><td>S9</td><td>29 Oct</td><td>Public URL through Tailscale Funnel; <code>make demo</code> with the app in Docker and models as systemd units on two GPUs; live brief 61 s.</td></tr>
+<tr><td>S10–S12</td><td>29 Oct</td><td>Scout: own loop over allowlisted tools, bench of 20 follow-ups. Industry leads from three public signals, two required, 14 leads judged. Compare, the hand-off draft (model opening, code the rest), Markdown and print export.</td></tr>
+<tr><td>S13–S14</td><td>29 Oct</td><td>Private mode end to end: sessions in memory, uploads parsed from bytes, the self-hosted gate, CV parse for career stage, masking, the canary test; stand-in proposal upper bound. MCP server on the MCP Python SDK, tested from Claude Code.</td></tr>
+<tr><td>S15–S16</td><td>29 Oct</td><td>README with filmed clips; history audit; the repository made public. Weekly watch built and run once live (later shelved).</td></tr>
+<tr><td>S17–S19</td><td>29 Oct</td><td>500 SYNTHETIC scholarships with fictional sponsors, three student personas with hand-written keys; student mode on a private session with verdicts by rule; planted-case scoring over HTTP.</td></tr>
+<tr><td>S20–S22</td><td>29 Oct</td><td>QA and privacy audit; UI/UX walk for three audiences with axe (108 states, 6 must-fix); redesign option B built.</td></tr>
+<tr><td>S23</td><td>29 Oct</td><td>Private by default: every brief a session in memory, nothing stored; Local / Cloud switch with a warning; monitoring shelved (Dakshitha).</td></tr>
+<tr><td>S24–S26</td><td>30 Oct</td><td>UI rebuilt from the redesign canvas (student Ask Scout on its own tools, warm demo briefs, the Cloud dialog); independent review and a 36-row QA plan; media refilmed.</td></tr>
+<tr><td>S27</td><td>30–31 Oct</td><td>Open listings from every agency (1,497, was 679 NIH and AHRQ); ranking tune on the back-test (hit@10 0.146 → 0.208, same 48 rows); the Match score; 13 rounds of UI fixes from Dakshitha’s review.</td></tr>
+<tr><td>S28</td><td>31 Oct</td><td>Scout phase 1 from the spec: no ask mode, a Stop button, fixed subject, Cloud steps counted, “How Scout read your question”.</td></tr>
+<tr><td>S29–S31</td><td>31 Oct – 1 Nov</td><td>Two parallel fresh-context reviews (86 findings, 84 fixed); four fix passes (live brief 46.6 → 41.9 s, security and speed fixes); five QA rounds (129 findings, 125 fixed; the Scout root cause, a truncated context, fixed; rehearsal 0 of 9 → 45 of 45). Under Dakshitha’s delegation of every product decision.</td></tr>
+<tr><td>S32</td><td>1 Nov</td><td>Stabilize: <code>make package</code>, Demo Day caps, demo rebuilt, live walk and canary, media refilmed, RESULTS.md written. Then Q33: documents on Cloud by informed per-document consent; deployment mode and key type documented as the deployer’s decision.</td></tr>
+<tr><td>S33 <span class="tag blue">in progress</span></td><td>1–2 Nov</td><td>Rules 1 and 5 amended; skill 4 <code>cover_points</code> on both Scout allowlists and the MCP list with contact blanking; the points card with Copy; docs, README and this spec rebalanced so both audiences are sold equally. QA, bench and the demo rebuild follow.</td></tr>
+<tr><td>S34 <span class="tag warn">todo</span></td><td>by Thu 5 Nov 12:00</td><td>Freeze: tag <code>v0.1-demo</code>, free the dev GPUs, final <code>make package</code>. Submission Fri 6 Nov 12:00.</td></tr>
+</table></div>
+<p class="sub" style="margin-top:.75rem">Milestones: Checkup 2 (Tue 3 Nov) needs S0–S7, done; code freeze Thu 5 Nov 12:00; submission Fri 6 Nov 12:00. Never cut: the pipeline, the validator, the web demo, the back-test, Scout with its allowlist and budgets.</p>
+</section>
+
+<section id="roadmap">
+<h2>Roadmap beyond Demo Day</h2>
+<p>What Demo Day delivers is a working prototype on public data with a measured hit rate, for researchers and students. This is the path from there to a service Temple runs, written for the implementation slide. Each phase ends at a decision gate. Costs are left as inputs to the business team’s cost model, not as numbers invented here. The first item on the roadmap in <code>docs/PLAN.md</code> is the deployment decision itself.</p>
+<div class="scroll"><table>
+<tr><th style="width:13%">Phase</th><th style="width:30%">What gets built</th><th style="width:22%">Who is involved</th><th>Gate to pass before the next phase</th></tr>
+<tr><td><b>0 · Demo Day</b><br><span class="tag ok">6 Nov</span></td><td>Prototype, NIH back-test, Scout with four skills, MCP server, local models by default, student mode on a SYNTHETIC corpus. Public repository (MIT).</td><td>Dakshitha.</td><td>Placed, or shortlisted by IBIT for continued development. Either way the repository stays public.</td></tr>
+<tr><td><b>1 · Hardening</b><br><span class="tag blue">Nov 2026 – Jan 2027</span></td><td>The deployment decision (fully local, hybrid or cloud-only; key type); Scout phase 2 (Keep from a search step, edit a filter by code); GRANTED and CREST eligibility against Temple (Q39); keyboard shortcuts and a second brief worker (deferred in S29); scheduled opportunity refresh; foundation listings from public sources; an NSF back-test if a solicitation mapping can be found; a written evaluation report; real faculty and student volunteers run briefs on their own public work or CV and score every lead.</td><td>Dakshitha (engineering, part-time); business teammates on evaluation and the pilot proposal; a Research Development contact as advisor <span class="tag warn">to be found</span>.</td><td>Hit rate holds on a second, held-out set of awards; volunteers say they would use it again; a one-page pilot proposal accepted by Research Development.</td></tr>
+<tr><td><b>2 · Pilot in one college</b><br><span class="tag blue">Spring 2027</span></td><td>Hosted inside Temple in the chosen mode; accounts and single sign-on <span class="tag warn">verify system</span>, which also lets monitoring reconnect; Postgres + pgvector + pg_search; opt-in department view for research administrators; hand-offs routed to named office inboxes; usage and outcome tracking.</td><td>Office of the Vice President for Research as owner; one college’s associate dean for research as sponsor; Temple IT for hosting and sign-on <span class="tag warn">verify process</span>; a graduate developer funded part-time.</td><td>A defined share of pilot users run more than one brief; at least one application or industry conversation traceable to a hand-off; privacy and security review passed; cost per brief within budget.</td></tr>
+<tr><td><b>3 · University service</b><br><span class="tag blue">2027–2028</span></td><td>All colleges; patents and company signals for industry leads (PatentsView); collaborator discovery from Temple’s own publication graph; <b>student mode on real data</b>: Temple’s ScholarshipUniverse feed under its contract, or a licensed scholarship database, replacing the SYNTHETIC sample through the seam in <code>perch/sources/scholarshipuniverse.py</code> <span class="tag warn">verify: no schema published</span>; export into the research office’s existing systems where an interface exists <span class="tag warn">verify which systems</span>; the MCP server offered to Temple’s Copilot <span class="tag warn">verify</span> and any office-run assistant; quarterly evaluation reports.</td><td>Research Development operates it; Technology Commercialization owns industry leads; Student Financial Services, with Scholar Development and Fellowships Advising for fellowships, as the proposed student-side owners, to be agreed with them; Libraries as data partner; a named product owner.</td><td>Annual review against the outcome metrics; renewal decision; decision on whether to offer the code to other universities.</td></tr>
+<tr><td><b>4 · Beyond Temple</b><br><span class="tag blue">optional</span></td><td>Any university can run it: the institution ID is a config value, the model is a config value, the offices are a config file. A consortium or an open-source foundation could maintain it.</td><td>Decided by Temple; Technology Commercialization advises on licensing of the code and the name.</td><td>—</td></tr>
+</table></div>
+
+<h3>What each phase needs, as inputs to the cost model</h3>
+<div class="grid">
+  <div class="card"><h3>People</h3><p>Phase 1: one part-time developer and one evaluator. Phase 2: one part-time developer, a product owner in the research office at a fraction of their time, IT support for hosting and sign-on. Phase 3: one full-time-equivalent across engineering and operations, plus the product owner.</p></div>
+  <div class="card"><h3>Compute</h3><p>Hosted model cost per brief from the audit log ($0.0915 on claude-sonnet-5-5 today), times briefs per month; or two 32 GB GPUs for the fully local mode, which Temple may already have in research computing <span class="tag warn">check</span>. Embeddings and the opportunity store are small.</p></div>
+  <div class="card"><h3>Data</h3><p>All public and free in v1, plus the SYNTHETIC sample for students. A licensed scholarship feed is the one paid source on the path; commercial funding sources would only be considered if a gate shows a gap.</p></div>
+  <div class="card"><h3>Governance</h3><p>Public-data-only policy written down; opt-in for any department-wide view; the deployment mode and key type stated in the privacy statement; model and prompt versions logged so a result can be explained later; an annual evaluation published internally.</p></div>
+</div>
+
+<h3>Where the money to continue could come from</h3>
+<ul>
+  <li>IBIT’s continued-development shortlist, announced at or after Demo Day.</li>
+  <li>Temple internal programmes for research initiatives, such as the Blue Sky Initiative named in Temple News (March 2025) <span class="tag warn">verify eligibility and scope</span>.</li>
+  <li>The research office’s own operating budget if Phase 2 outcomes justify it: the premise is that one additional award pays for years of operation, which the pilot must demonstrate rather than assert.</li>
+  <li>Contributors from other universities now that the repository is public.</li>
+</ul>
+<div class="callout"><p><b>After Demo Day:</b> the business team owns the pilot proposal and its outcome metrics, the cost model as real numbers replace estimates, and the conversations with the four offices; engineering stays with Dakshitha until a funded developer exists.</p></div>
+</section>
+
+<section id="review">
+<h2>Review log: what each review and decision changed</h2>
+<p>Rows up to v1.8 come from the adversarial passes on the draft; later rows are copied from <code>docs/DECISIONS.md</code> with the date and who decided.</p>
+<div class="scroll"><table class="review">
+<tr><th>Before</th><th>Objection or reason</th><th>What was done (date, who decided)</th></tr>
+<tr><td>An agent plans the fetch-and-match sequence</td><td>Not reproducible, not back-testable, undermines “people in control”</td><td>v1.0 cut the agent entirely. v1.1 reinstated it as Scout: fetching stays deterministic, the agent only calls allowlisted tools, every call is visible and replayable</td></tr>
+<tr><td>Claude API only</td><td>Vendor lock-in contradicts the “inside Temple” privacy story and the open-source value add</td><td>Provider layer with Anthropic, OpenAI-compatible and local adapters; local models are the default</td></tr>
+<tr><td>No decision model</td><td>Decision points (claim support, rerank, routing) do not need prose; a calibrated probability is cheaper and better for the evidence panel</td><td>v1.5 added the <code>decide</code> primitive with Clef / Clef-flash adapters as challengers. Bench: Clef as reranker measurably worse; Clef as grounder best, AUC 0.998 (S8)</td></tr>
+<tr><td>Back-test on 10 hand-picked PIs</td><td>Ten rows move hit rates in 10-point steps</td><td>v1.6: 160 rows from public RePORTER records, two strata, 18-month window (2026-10-29, Dakshitha)</td></tr>
+<tr><td>“Private context” as a single input field</td><td>Masked text still leaks the research direction; a hosted model cannot honestly promise privacy</td><td>v1.6: a private mode that refused hosted models, wrote nothing, and proved it with canary tokens (S13). Superseded for hosted models by the two rows on Q33 below; the no-writes rule and the canary stand</td></tr>
+<tr><td>Comparison on money, time, effort, IP, likelihood</td><td>No public record states effort, IP terms or likelihood; a column of guesses breaks the trust rule</td><td>v1.8: Compare shows only cells copied or counted from records; likelihood lives on the results slide as the back-test, not per lead (S12)</td></tr>
+<tr><td>Back-test as one number</td><td>Parent (generic) announcements are not predictable from papers by any method; folding them in would hide a real finding</td><td>v1.8: two strata reported separately; the parent result is stated as a limit of the approach</td></tr>
+<tr><td>Eight GPUs assumed for deployment</td><td>Nobody will run eight cards for a pilot</td><td>One-card target with measured gates; it failed (no chat model under 28 GB beside Clef-flash), so two cards ship and the page says so (S8, S9)</td></tr>
+<tr><td>Back-test on NIH and NSF awards</td><td>NSF awards do not name a solicitation text; Grants.gov’s NSF archive carries bulk open dates</td><td>NIH only, stated plainly; NSF and physics PIs got a hand check on current listings instead (2026-10-30, Perch-dev)</td></tr>
+<tr><td>Route B from patents, filings, job postings, press</td><td>Four noisy sources; a tech-transfer judge will ask what a job posting proves</td><td>Three signals from pipelines already needed, two required per lead; inference label on every lead; the 30-author cap after 5 wrong of 15 (S11)</td></tr>
+<tr><td>“Runway” for the lab</td><td>Implies knowledge of finances we do not have</td><td>“Public award horizon”: a date from a public record</td></tr>
+<tr><td>Department batch scan in v1</td><td>Reads as surveillance of faculty; permission problem</td><td>v2, opt-in, named on the responsible-design slide</td></tr>
+<tr><td>Source capabilities stated as fact</td><td>Rule: never invent an API capability</td><td>Each source verified live with a saved fixture and a row in <code>docs/SOURCES.md</code>; the NIH Guide and SBIR.gov rows record what was not available</td></tr>
+<tr><td>Model restates award sizes and deadlines</td><td>One wrong number sinks the trust argument</td><td>Numbers rendered from record fields; the validator rejects numbers not in cited records; one rule renders every close date, so “accepted anytime” never shows a placeholder date (S30)</td></tr>
+<tr><td>Stored briefs, reuse, a shareable link</td><td>With no user access system nothing should be stored</td><td>S23: every brief a session in memory; nothing stored about a user; a Local / Cloud switch with a warning naming the provider; monitoring shelved (2026-10-29, Dakshitha)</td></tr>
+<tr><td>Students out of scope; no Scout for students</td><td>A student has the same shape of question</td><td>S17–S19 student mode on a SYNTHETIC corpus; students get Ask Scout on their own rule-based tools (2026-10-30, Dakshitha on the redesign canvas)</td></tr>
+<tr><td>Scout asks before every step (a pattern borrowed from another project)</td><td>Scout’s tools have no effects to approve; the gate cost a click and bought nothing; a misread question is caught by showing the filters</td><td>Scout respecified from Perch’s own needs: steps run at once, a Stop button, “How Scout read your question” (Q37 approved 2026-10-30, Dakshitha; built S28, 2026-10-31)</td></tr>
+<tr><td>A model-written fit number orders the leads</td><td>Rule 5 and brief speed; the back-test order is unchanged</td><td>Match: the ranking model’s score on a 0–100 scale, computed by code, shown and used as the order; the chat model’s number is no longer shown (2026-10-30, Dakshitha; Q40)</td></tr>
+<tr><td>Questions to the owner during the final reviews</td><td>Time to the freeze</td><td>Perch-dev makes every product and design decision from S29 to the freeze under delegation; open questions close with their defaults (2026-10-31, Dakshitha)</td></tr>
+<tr><td>Draft review: a grounding model marks a finished draft against a record</td><td>Evaluated in S24: Clef 36 of 44 marks, but 4 of 25 addressed points marked missing; 425 of 663 open listings give fewer than three points</td><td>Not built for Demo Day (Q34 closed 2026-10-31, Perch-dev under delegation). The advice-writing version became skill 4 instead (below)</td></tr>
+<tr><td>Private documents never reach a hosted model</td><td>The choice should be the user’s, with informed consent; a real deployment may rely on zero-data-retention keys</td><td>Standing rule 1 amended: documents may go to Cloud only when the user chooses, after a second warning naming the provider and listing each document, a CV and unpublished research named separately (Q33, 2026-11-01, Dakshitha). Consent per document, by hash, in session memory; a later document turns Cloud off until confirmed (Perch-dev under Q33)</td></tr>
+<tr><td>One deployment story with a fixed on-prem tier</td><td>The person deploying should decide</td><td>Fully local, hybrid or cloud-only, and the key type, are the deployer’s decisions, documented in the architecture, spec, deploy guide, README and roadmap (2026-11-01, Dakshitha)</td></tr>
+<tr><td>Models do three jobs; no model reads the CV text</td><td>A CV holds what a public profile holds; only contact details need to be private; no retention suffices; informed consent is the important part</td><td>Standing rule 5 amended: four jobs, the fourth application points; a session’s models may read the CV and documents with contact details blanked; the student “never reads the CV text” line dropped (2026-11-01, Dakshitha). <code>cover_points</code> is one tool on both allowlists, on the hand-off role, with the answer line by code (Perch-dev, delegated)</td></tr>
+<tr><td>Researchers primary, students a demonstration</td><td>Both should be sold equally</td><td>Students listed as a primary user with their two offices; README, tour, tracker and this spec rebalanced (2026-11-01, Dakshitha)</td></tr>
+</table></div>
+</section>
+
+<section id="open">
+<h2>Open items</h2>
+<ul>
+  <li><b>S33 task 5 and 6:</b> QA of <code>cover_points</code> for both audiences (walk with axe, two bench tasks on the local model, rehearsal, canary), then the demo rebuild, <code>make package</code> and the tracker numbers. The cover-points bench numbers are UNVERIFIED until then.</li>
+  <li><b>S34:</b> tag <code>v0.1-demo</code> by Thu 5 Nov 12:00; free the dev GPUs.</li>
+  <li><b>Roadmap, first:</b> the deployment decision for any production use (fully local, hybrid or cloud-only; zero-data-retention key or not); a production README and privacy statement follow from it.</li>
+  <li><b>Roadmap:</b> Scout phase 2 (Keep from a search step; edit a filter by code); GRANTED and CREST eligibility against Temple (Q39); keyboard shortcuts (U43) and a second brief worker (P7), deferred in S29.</li>
+  <li><b>Untested or unverified:</b> the MCP server with a local Ollama agent; the laptop fallback with real models; the Postgres + pgvector + pg_search path on this node; whether Temple’s Copilot can attach an MCP server; ScholarshipUniverse’s schema and terms; the Pivot-RP, SPIN and Dimensions descriptions, to be quoted from Temple’s own pages for the comparison table.</li>
+  <li><b>Known limits carried into the demo:</b> Scout on the local model varies off-script and a withheld answer is the designed fallback; a mask placed mid-clause can break its sentence; one of 12 planted student positives never reaches a brief (SYNTHETIC); the grounding pass rates were not rerun after S8; the hand-off opening passes the citation check but not the grounding check; no human has checked the industry leads; no user study.</li>
+</ul>
+</section>
+
+<footer>Perch · technical specification v2.0 (as built, S33) · 2 November 2026 · Dakshitha, Temple University · Prepared with Claude Code and recorded in <code>docs/AI_USE_LOG.md</code>. Public data only; synthetic data labelled SYNTHETIC.</footer>
+</div>
+</body>
+</html>
