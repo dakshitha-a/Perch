@@ -20,6 +20,19 @@ The plan is organised by **session**, each sized to one context window. Dakshith
 
 **The tracker:** `docs/TRACKER.md` is the master tracker and the source of truth; `make tracker` renders it, with the current session's task file `docs/sessions/S<n>.md` on top, to `docs/tracker.html` (a single static page, no dependencies) and to `build/artifacts/tracker.html` (the claude.ai artifact page) so Dakshitha can open it in a browser or serve it from the lab node. Keep the key-numbers table current whenever a number changes.
 
+## Working with agents (Dakshitha, 2026-11-01)
+
+The main session is the **orchestrator**. It plans, writes the briefs, owns the tracker, the decisions, the questions and the hand-off, and writes no feature code itself (session bookkeeping only). Everything else is delegated, and every delegation chooses its model.
+
+- **Models.** The main session runs on Claude Opus with the advisor set to Claude Fable. Only the advisor runs on Fable. Every `Agent` call sets `model`: Haiku for simple, well-specified jobs (greps, string checks, running a script and reporting its numbers); Sonnet for implementation against a clear brief, QA runbooks, doc sweeps and the demo rebuild; Opus only for judgment-heavy work such as independent reviews with fresh context or hard debugging. Never leave `model` unset.
+- **Advisor.** Call it twice per session: once after orientation and before the approach is fixed, and once before closing. It forwards the whole transcript, so keep the main session lean (summaries, not file dumps) and do not call it for reactive steps.
+- **Briefs.** Each brief names the files the agent may touch, the contract it builds against (exact JSON shapes, names), what it must not edit, the commit trailer, and what to escalate back instead of guessing. A brief the orchestrator cannot write clearly is a task it does not understand yet.
+- **Isolation.** One worktree per writing agent (`isolation: "worktree"`), merged by the orchestrator; read-only agents may share the checkout. If agents must write in place in parallel, their file sets are disjoint and each stages only its own paths.
+- **Order.** Code, then UI, then docs, then QA, then the demo rebuild. Only code and docs-independent pieces run in parallel. Docs are written after the code exists, or the docs agent verifies every claim against the code as its last step.
+- **QA and reviews.** QA is a tester-then-fixer pass on Sonnet with measured results (tests, walk with axe, bench, rehearsal, canary). Reviews run on Opus with fresh context, given the code and not the builder's conclusions.
+- **Usage.** The account's usage window is shared by every agent, so heavy agents are staggered, and the orchestrator checks in on cost: one agent costs more than it looks, since it re-reads the repo.
+- **When not to delegate.** A handful of tool calls, a lookup whose target is known, or a fix in one file: the orchestrator does it in place.
+
 ## Standing rules (never break these)
 
 1. **Public data only.** No private or unpublished text in the repo, fixtures, tests, logs, or examples. Any sample data is synthetic and labelled `SYNTHETIC`. The private-context feature (SPEC §Private context) is exercised only with synthetic text on a local model. Exception (Dakshitha, 2026-11-01): a user may send their own documents to the configured cloud provider when they choose to, after a second warning that names the provider and lists which documents would leave; the choice is theirs and per session, and a CV and unpublished research are named separately in that warning. Tests of that path use SYNTHETIC text only.
