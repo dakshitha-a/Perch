@@ -738,6 +738,23 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 .scout-draft { margin-top: 8px; }
 .scout-draft summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .draft-text { white-space: pre-wrap; word-break: break-word; font: 14px/1.5 var(--sans); background: var(--leaf); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; margin: 8px 0; max-height: 360px; overflow: auto; }
+/* Cover-letter points on a Scout card (S33): shown like a draft, open by default. Long
+   titles and ids wrap, chips wrap, and nothing scrolls sideways on a phone. */
+.scout-points { margin-top: 8px; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.scout-points summary { cursor: pointer; font-weight: 600; min-height: 32px; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.scout-points summary .sample-badge { white-space: normal; }
+.scout-points > .provenance { margin: 0 0 6px; white-space: normal; line-height: 1.4; }
+.points-list { margin: 8px 0; padding-left: 1.4rem; display: grid; gap: 10px; }
+.points-list > li { display: grid; gap: 4px; }
+.point-line { margin: 0; line-height: 1.6; }
+.point-line b { font-weight: 650; }
+.point-line .cite, .points-missing .cite { max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; vertical-align: baseline; }
+.point-line .cite.private { font: inherit; font-size: .92em; padding: 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--moss-soft); color: var(--ink); cursor: default; max-width: 100%; }
+.point-line .cite.private .icon { flex: none; }
+.points-missing { display: grid; gap: 4px; margin: 8px 0; }
+.points-missing ul { margin: 0; padding-left: 1.4rem; }
+.points-missing li { line-height: 1.6; }
+.scout-points .btn.points-copy { min-height: 44px; }
 
 /* Private mode (S13) */
 .private { display: grid; gap: 14px; max-width: 46rem; }

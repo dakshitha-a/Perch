@@ -15,19 +15,23 @@ const TOOLS = {
   compare: "Compare leads", draft_handoff: "Draft a hand-off", get_record: "Open a record",
   search_options: "Search options", check_option: "Check against your CV", explain_verdict: "Explain a verdict",
   read_cv: "What Perch read", compare_options: "Compare options", draft_note: "Draft a note",
+  cover_points: "Points for a cover letter",
 };
 // The rail lists what Scout can use; students get their own tools (S24, Q27 revised).
 const CAN_USE = {
   researcher: ["Search with filters: agency, ceiling, close date, activity code, words",
     "Industry leads and their signals", "Any record in the brief", "Public awards and the research profile",
-    "A fit explanation", "Compare chosen or kept leads", "A hand-off draft, shown for you to copy"],
+    "A fit explanation", "Compare chosen or kept leads", "A hand-off draft, shown for you to copy",
+    "Points for a cover letter, for one lead, from your CV, documents and papers"],
   student: ["Search fellowships and sample scholarships with filters: verdict, deadline, amount, words",
     "Check one option against your CV by rule", "Explain a verdict and what is still needed",
-    "What Perch read from your CV", "Compare chosen or kept options", "A note to a Temple office, shown for you to copy"],
+    "What Perch read from your CV", "Compare chosen or kept options", "A note to a Temple office, shown for you to copy",
+    "Points for a cover letter, for one option, from your CV, interests and achievements"],
 };
 // F18: dates as the app writes them, and examples the demo brief can answer.
 const STUDENT_EXAMPLES = ["Only options with a deadline after 1\u00a0Mar\u00a02027", "Why is my top fellowship “may be eligible”?",
-  "What do my kept options still need?", "Draft a note about my kept fellowships"];
+  "What do my kept options still need?", "Draft a note about my kept fellowships",
+  "What should my application for my top option highlight?"];
 const ARGS = {
   route: "Route", author_id: "Researcher", min_amount: "Ceiling at least", max_amount: "Ceiling at most",
   agencies: "Agencies", exclude_agencies: "Not these agencies", closes_by: "Closes by",
@@ -44,7 +48,8 @@ const ARGS = {
 const SCOPES = { brief: "your brief", all: "all opportunities" };
 const STATUS = { proposed: "Running…", done: "Done", not_run: "Not run", refused: "Refused", error: "Failed", repeated: "Repeat, not run again" };
 const EXAMPLES = ["Which of my NSF leads close by 1\u00a0Mar\u00a02027?", "Small grants only: a ceiling of $200k or less",
-  "Leave out Department of Defense grants", "Why does the top lead fit?"];
+  "Leave out Department of Defense grants", "Why does the top lead fit?",
+  "What could my cover letter for the top lead say?"];
 // F9: "start over" and its kin open a new conversation, as the button beside the box does.
 // G9: with polite words around it ("can we start over", "lets start over pls"), as the
 // server's START_OVER_RE (perch/scout/loop.py) reads it.
@@ -126,8 +131,8 @@ function welcome(ctx) {
         h("button", { class: "chip", type: "button", onclick: () => { T.draft = q; send(ctx); } }, q)))) : null,
       h("details", { class: "scout-limits" }, h("summary", { text: "What I will not do" }),
         h("p", { text: ctx.student
-          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record, and run on a local model, because your CV is in this session. Sample scholarships stay marked as samples. A conversation has a budget; when it is spent, start a new one. The conversation ends with the session."
-          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record, and run on a local model. A conversation has a budget; when it is spent, start a new one. The conversation ends with the session." }))));
+          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record, and run on a local model, because your CV is in this session. A model reads your CV only when you ask for cover-letter points, with contact details blanked. Sample scholarships stay marked as samples. A conversation has a budget; when it is spent, start a new one. The conversation ends with the session."
+          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record, and run on a local model. A model reads your documents only when you ask for cover-letter points, with contact details blanked. A conversation has a budget; when it is spent, start a new one. The conversation ends with the session." }))));
 }
 
 // The chat fills the window below the sticky tabs, so the question box sits on the bottom
@@ -166,11 +171,13 @@ function exchange(x, ctx, busy, fresh, i) {
   const last = T.data && i === T.data.exchanges.length - 1;
   const running = x.status === "running";
   const drafts = x.cards.filter((c) => c.draft);
+  const points = x.cards.filter((c) => c.points);  // S33: cover-letter points, shown like a draft
   return h("li", { class: fresh ? "scout-x new" : "scout-x" },
     h("p", { class: "scout-q" }, h("span", { class: "sr-only", text: "You asked: " }), x.question),
     readAs(x, ctx),
     answer(x, ctx, running && busy),
     ...drafts.map((c) => draftBlock(c.draft, ctx)),
+    ...points.map((c) => pointsBlock(c.points, ctx)),
     x.cards.length ? h("details", { class: "scout-steps", open: T.openSteps.has(i),
       ontoggle: (e) => { if (e.target.open) T.openSteps.add(i); else T.openSteps.delete(i); } },
       h("summary", { text: `Steps (${x.cards.length})` }),
@@ -260,6 +267,67 @@ function draftBlock(d, ctx) {
     h("p", { class: "hint", text: "Perch never sends this. The To line is yours to fill in." }));
 }
 
+// Cover-letter points from cover_points (S33): what the record asks, what the person's
+// own records show, each sentence cited. Shown in full to copy; never sent, never exported.
+const POINTS_HINT = "Perch never sends this, and it never enters an export or a hand-off draft.";
+function pointsBlock(p, ctx) {
+  const title = p.for.title || p.for.id;
+  const cite = (id) => pointCite(id, p, ctx);
+  const text = pointsText(p);
+  const flagged = new Set(p.unsupported || []);
+  return h("details", { class: "scout-points", open: true },
+    h("summary", {}, h("span", { text: `Points for your cover letter: ${title}` }),
+      p.for.sample ? h("span", { class: "sample-badge", text: "Sample data" }) : null),
+    h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
+      h("span", { text: "Written by a model and checked against the records it cites. Put them in your own words." })),
+    p.for.sample ? h("p", { class: "hint", text: "This record is an invented sample, so the points are a demonstration, not advice." }) : null,
+    p.status === "withheld" ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: p.detail || "The points were withheld." })) : null,
+    p.status === "withheld" ? null : h("ol", { class: "points-list" }, ...p.points.map((pt) => h("li", {},
+      h("p", { class: `point-line${flagged.has(pt.asks) ? " flagged" : ""}` }, h("b", { text: "The record asks" }),
+        h("span", { text: ` ${pt.asks} ` }), ...pt.asks_ids.map(cite)),
+      h("p", { class: `point-line${flagged.has(pt.you) ? " flagged" : ""}` }, h("b", { text: "You have" }),
+        h("span", { text: ` ${pt.you} ` }), ...pt.you_ids.map(cite))))),
+    p.status !== "withheld" && p.missing && p.missing.length ? h("div", { class: "points-missing" },
+      h("p", { class: "mini", text: "Still missing" }),
+      h("p", { class: "hint", text: "What the record asks for that nothing you added shows." }),
+      h("ul", {}, ...p.missing.map((m) => h("li", { class: flagged.has(m) ? "flagged" : null }, h("span", { text: `${m} ` }), cite(p.for.id))))) : null,
+    // The same flag the fit explanations use: the grounding model could not match the sentence.
+    flagged.size ? h("div", { class: "notice warn" }, icon("warn"),
+      h("div", {}, h("p", { text: "This statement could not be matched to its source:" }),
+        h("ul", {}, [...flagged].map((u) => h("li", { text: u }))))) : null,
+    p.status === "withheld" ? null : h("div", { class: "scout-actions" },
+      h("button", { class: "btn points-copy", type: "button", onclick: async () => {
+        try { await navigator.clipboard.writeText(text); ctx.announce("The points are copied."); }
+        catch { ctx.announce("Copying was blocked by the browser. Select the text and copy it by hand."); }
+      } }, h("span", { text: "Copy the points" }))),
+    h("p", { class: "hint", text: POINTS_HINT }));
+}
+
+// The points as plain text, for the clipboard.
+function pointsText(p) {
+  const lines = p.points.map((pt, i) => `${i + 1}. The record asks: ${pt.asks}\n   You have: ${pt.you}`);
+  for (const m of p.missing || []) lines.push(`Still missing: ${m}`);
+  const used = [...new Set(p.points.flatMap((pt) => [...pt.asks_ids, ...pt.you_ids]))];
+  lines.push(`Each point cites: ${used.map((id) => `${id}: ${(p.sources || {})[id] || id}`).join("; ")}`);
+  return `Points for your cover letter: ${p.for.title || p.for.id}${p.for.sample ? " (sample data)" : ""}\n\n${lines.join("\n")}`;
+}
+
+// A citation chip for a point, labelled by the source's title (the id is the tooltip).
+// A session document ("private:cv") shows a lock and opens nothing; a public record opens
+// in the evidence panel, as the answer's citations do.
+function pointCite(id, p, ctx) {
+  const full = (p.sources || {})[id] || id;
+  const short = full.length > 56 ? `${full.slice(0, 54).replace(/\s+\S*$/, "")}…` : full;
+  if (id.startsWith("private:")) {
+    return h("span", { class: "cite private", title: id }, icon("lock"), h("span", { text: short }),
+      h("span", { class: "sr-only", text: `, from ${full}, held in this session` }));
+  }
+  const sample = (id === p.for.id && p.for.sample) || Boolean(ctx.label && (ctx.label(id) || {}).sample);
+  return h("button", { class: `cite${sample ? " sample" : ""}`, type: "button", title: id,
+    "aria-label": `Evidence: ${full}${sample ? ", sample data" : ""}`, onclick: (e) => ctx.openEvidence(id, e.currentTarget) },
+  h("span", { text: short }));
+}
+
 function answer(x, ctx, thinking) {
   // Stop ends the question between steps; the steps already done stay (S28).
   const now = x.cards.find((c) => c.status === "proposed");
@@ -267,11 +335,16 @@ function answer(x, ctx, thinking) {
     h("span", { text: T.stopping ? "Stopping after this step…" : now ? `${TOOLS[now.tool] || now.tool}…` : "Scout is working…" }),
     h("button", { class: "btn quiet scout-stop", type: "button", disabled: T.stopping, onclick: () => stop(ctx) }, icon("stop"), h("span", { text: "Stop" })));
   if (x.status === "stopped" && x.by_user) return h("p", { class: "hint scout-stopped", text: "You stopped this question. The steps below show what ran; ask again to go on." });
-  // After a draft step the answer line is written by code, not a model (R3, R20).
-  if (x.answer && x.answer_by === "code") return h("div", { class: "scout-answer by-code" },
-    h("p", { class: "provenance" }, h("span", { class: "tag", text: "Code, no model" }),
-      h("span", { text: "Written by Perch’s code. The draft below is the step’s result." })),
-    h("p", { text: x.answer }));
+  // After a draft or a points step the answer line is written by code, not a model (R3, R20, S33).
+  if (x.answer && x.answer_by === "code") {
+    const hasDraft = x.cards.some((c) => c.draft), hasPoints = x.cards.some((c) => c.points);
+    const below = hasDraft && hasPoints ? "The draft and the points below are the steps’ results."
+      : hasPoints ? "The points below are the step’s result." : "The draft below is the step’s result.";
+    return h("div", { class: "scout-answer by-code" },
+      h("p", { class: "provenance" }, h("span", { class: "tag", text: "Code, no model" }),
+        h("span", { text: `Written by Perch’s code. ${below}` })),
+      h("p", { text: x.answer }));
+  }
   // Model prose says so in words, not by its tint alone (U7).
   if (x.answer) return h("div", { class: "scout-answer" },
     h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
