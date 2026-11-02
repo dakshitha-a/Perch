@@ -757,9 +757,13 @@ async def workflow_pi(w: Walk, page: Page, base: str, tag: str) -> None:
     await w18_reload(w, page, base, tag)
 
 
+NEW_EXPORT_HINT = ("Exports include text from your documents. Check the box to mask phrases from "
+                   "your ongoing research before sharing the file.")
+
+
 async def mask_follows(w: Walk, page: Page, tag: str) -> None:
     """W6, in a session that holds documents: the hand-off shows the mask setting it
-    uses, and both boxes are one state. Without documents neither shows (U12)."""
+    uses; the Export menu has its own box for ongoing research. Without documents neither shows (U12)."""
     held = await page.evaluate("""async () => { const t = sessionStorage.getItem('perch.session');
       const r = await fetch('/private/session', {headers: {'X-Perch-Private': t}}); return (await r.json()).documents.length; }""")
     mask = page.locator(".handoff input[type=checkbox]")
@@ -770,16 +774,41 @@ async def mask_follows(w: Walk, page: Page, tag: str) -> None:
     if not await mask.count():
         w.errors.append(f"{tag}: W6: no mask setting beside Draft the email; it hides in the Export menu")
     else:
+        # 2026-11-02: the hand-off's mask and the Export menu's "Mask my ongoing research"
+        # are two settings. The hint says exports include the documents' text.
+        research = await page.evaluate("""async () => { const t = sessionStorage.getItem('perch.session');
+          const r = await fetch('/private/session', {headers: {'X-Perch-Private': t}});
+          return (await r.json()).documents.filter(d => ['proposal', 'direction', 'manuscript'].includes(d.kind)).length; }""")
         await mask.check()
         await page.click("[data-key=export]")
-        await page.wait_for_timeout(200)
-        if not await page.locator(".export-pop input[type=checkbox]").is_checked():
-            w.errors.append(f"{tag}: W6: the Export menu's mask box does not follow the hand-off's")
-        await page.locator(".export-pop input[type=checkbox]").uncheck()
+        await page.wait_for_timeout(300)
+        pop = await page.locator(".export-pop").inner_text()
+        if NEW_EXPORT_HINT not in pop:
+            w.errors.append(f"{tag}: X1: the Export menu does not show the hint {NEW_EXPORT_HINT!r}")
+        if "leave out text drawn from your documents" in pop:
+            w.errors.append(f"{tag}: X1: the Export menu still says exports leave out your documents' text")
+        box = page.locator(".export-pop [data-key=export-mask]")
+        if research:
+            if not await box.is_visible():
+                w.errors.append(f"{tag}: X1: no 'Mask my ongoing research' box in a session with ongoing research")
+            else:
+                if await box.is_checked():
+                    w.errors.append(f"{tag}: X1: the Export menu's box follows the hand-off's mask; they are two settings")
+                if "Mask my ongoing research" not in pop:
+                    w.errors.append(f"{tag}: X1: the Export menu's box is not labelled 'Mask my ongoing research'")
+                await box.check()
+        elif await box.is_visible():
+            w.errors.append(f"{tag}: X1: a 'Mask my ongoing research' box in a session with no ongoing research")
         await page.keyboard.press("Escape")
         await page.wait_for_timeout(200)
-        if await mask.is_checked():
-            w.errors.append(f"{tag}: W6: the hand-off's mask box does not follow the Export menu's")
+        if not await mask.is_checked():
+            w.errors.append(f"{tag}: W6: ticking the Export menu's box cleared the hand-off's mask box")
+        await mask.uncheck()
+        if research:
+            await page.click("[data-key=export]")
+            await page.wait_for_timeout(200)
+            await box.uncheck()
+            await page.keyboard.press("Escape")
 
 
 async def w18_reload(w: Walk, page: Page, base: str, tag: str) -> None:

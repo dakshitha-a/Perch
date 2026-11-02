@@ -1,5 +1,5 @@
 // Your documents (S13, docs/design/PRIVATE_MODE.md; every brief is a session since S23):
-// add private documents, build a brief on self-hosted models, export with private text withheld or masked, end the session.
+// add private documents, build a brief on self-hosted models, export the full brief (ongoing research maskable), end the session.
 // Nothing here touches browser storage: inputs live in this module and are cleared
 // when the session ends.
 
@@ -12,14 +12,17 @@ const KIND_HINTS = {
   manuscript: "An abstract or manuscript in preparation.",
 };
 
-// `mask`: the session's one mask setting, for exports and hand-offs alike (review W6).
-const P = { info: null, docs: [], authorId: "", busy: false, error: null, drafts: {}, mask: false };
+// `mask`: the hand-off's mask setting (names, identifiers and phrases from every document).
+// `maskResearch`: the Export menu's own setting, "Mask my ongoing research": phrases from a
+// proposal, direction or manuscript only. An export is otherwise the full brief.
+const P = { info: null, docs: [], authorId: "", busy: false, error: null, drafts: {}, mask: false, maskResearch: false };
+const RESEARCH_KINDS = ["proposal", "direction", "manuscript"];
 
 let MODE = null; // the app's private-mode state (mode.js); set by app.js
 
 export function setMode(m) { MODE = m; }
 // Forget what this module held for a session that has ended (S27).
-export function resetPrivate() { Object.assign(P, { docs: [], authorId: "", busy: false, error: null, drafts: {}, mask: false }); }
+export function resetPrivate() { Object.assign(P, { docs: [], authorId: "", busy: false, error: null, drafts: {}, mask: false, maskResearch: false }); }
 export function privateInfo() { return P.info; }
 
 export async function privateAvailable(api) {
@@ -124,7 +127,7 @@ export async function renderPrivate(root, ctx, auto = true) {
     h("ul", { class: "plain" },
       h("li", { text: "Only models running on this server read your documents, unless you turn Cloud on and confirm which of them go to the cloud provider." }),
       h("li", { text: "Nothing you add is saved, logged or sent elsewhere. Ending the session, 30 minutes without use, or a server restart drops everything." }),
-      h("li", { text: "Exports leave out anything drawn from your documents unless you choose to mask it." }))];
+      h("li", { text: "Exports include text from your documents. You can mask phrases from your ongoing research before sharing the file." }))];
   const body = !api.open
     ? [P.busy
       ? h("p", { class: "hint", role: "status", text: "Starting your session…" })
@@ -168,15 +171,15 @@ export async function renderPrivate(root, ctx, auto = true) {
   if (auto && !api.open && !P.busy) start();
 }
 
-// The bar on a private brief: lock, end, exports (withheld by default, masked on opt-in)
-// and the unmask view.
-// `held`: the session holds documents. Without any, there is nothing to withhold, mask or
-// unmask, so the menu is just the three exports (U12).
+// The bar on a private brief: lock, end, exports (the full brief; phrases from ongoing
+// research masked on opt-in) and the unmask view.
+// `held`: the session holds documents. Without any, there is nothing to mask or unmask,
+// so the menu is just the three exports (U12).
 export function privateBar(api, go, held = true) {
   const out = h("textarea", { rows: 4, "aria-label": "Masked text to unmask" });
   const shown = h("p", { class: "unmasked" });
   async function download(kind) {
-    const blob = await api.exportFile(kind, P.mask);
+    const blob = await api.exportFile(kind, researchHeld() && P.maskResearch);
     const url = URL.createObjectURL(blob);
     const a = h("a", { href: url, download: `perch-private-brief.${kind}` });
     if (kind === "html") { a.removeAttribute("download"); a.target = "_blank"; a.rel = "noopener"; }
@@ -188,8 +191,8 @@ export function privateBar(api, go, held = true) {
       h("button", { class: "btn quiet", onclick: () => download("html") }, icon("paper"), h("span", { text: "Print or save as PDF" })),
       h("button", { class: "btn quiet", onclick: () => download("md") }, icon("download"), h("span", { text: "Markdown" })),
       h("button", { class: "btn quiet", onclick: () => download("json") }, icon("download"), h("span", { text: "Records as JSON" }))),
-    held ? h("p", { class: "hint", text: "Exports leave out text drawn from your documents. Mask it instead to keep that text with names, identifiers and private phrases replaced." }) : null,
-    held ? maskToggle() : null,
+    held ? h("p", { class: "hint", text: "Exports include text from your documents. Check the box to mask phrases from your ongoing research before sharing the file." }) : null,
+    held ? researchMask(api) : null,
     held ? h("details", { class: "unmask" }, h("summary", { text: "Unmask text on this screen" }),
       h("p", { class: "hint", text: "Paste masked text from an export. The key stays in this session's memory and ends with it." }),
       out, h("button", { class: "btn", onclick: async () => {
@@ -199,6 +202,21 @@ export function privateBar(api, go, held = true) {
 
 // The documents added on Your documents (the app also knows of a CV or draft aims).
 export function docsHeld() { return P.docs.length > 0; }
+
+// The session holds a proposal, direction or manuscript: the documents "Mask my ongoing
+// research" works on.
+function researchHeld() { return P.docs.some((d) => RESEARCH_KINDS.includes(d.kind)); }
+
+// The Export menu's own box. Shown only when the session holds ongoing research; the held
+// documents are read again when the menu is built, since they may have changed elsewhere.
+function researchMask(api) {
+  const row = h("div", { class: "mask-toggle", hidden: !researchHeld() });
+  row.append(h("label", { class: "check" }, h("input", { type: "checkbox", "data-key": "export-mask", checked: P.maskResearch, onchange: (e) => {
+    P.maskResearch = e.target.checked;
+  } }), h("span", { text: "Mask my ongoing research" })));
+  api.session().then((sess) => { P.docs = sess.documents; row.hidden = !researchHeld(); }).catch(() => { /* keep what is known */ });
+  return row;
+}
 
 // The mask setting, shown in the Export menu and beside Draft the email. Both boxes show
 // the one session setting and change it together (review W6).
