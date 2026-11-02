@@ -236,8 +236,10 @@ def main(argv: list[str]) -> int:
             c.get("/private/compare", headers=h)
             plain = c.get("/private/export.json", headers=h).json()
             masked = c.get("/private/export.json", headers=h, params={"mask": True}).json()
-            row["export_withheld"] = sum((x["explanation"] or "").startswith("Withheld")
-                                         for x in plain["leads"])
+            # an export is the full brief (2026-11-02): explanations present, none withheld
+            row["export_full"] = sum(bool(x["explanation"])
+                                     and not x["explanation"].startswith("Withheld")
+                                     for x in plain["leads"])
             row["export_masked_sample"] = next((x["explanation"] for x in masked["leads"]
                                                 if x["explanation"]), None)
             for mask in (False, True):
