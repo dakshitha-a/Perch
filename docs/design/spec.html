@@ -248,9 +248,9 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
 <rect x="20" y="40" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="59" class="svg-t">OpenAlex</text><text x="30" y="75" class="svg-t s">authors, works, topics</text>
 <rect x="20" y="96" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="115" class="svg-t">NIH RePORTER</text><text x="30" y="131" class="svg-t s">awards, SBIR/STTR, dates</text>
 <rect x="20" y="152" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="171" class="svg-t">NSF Award Search</text><text x="30" y="187" class="svg-t s">awards, dates</text>
-<rect x="20" y="208" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="227" class="svg-t">Grants.gov</text><text x="30" y="243" class="svg-t s">open calls, all agencies; archive</text>
-<rect x="20" y="264" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="283" class="svg-t">Temple SDFA list, NIH F-series</text><text x="30" y="299" class="svg-t s">public fellowships (students)</text>
-<rect x="20" y="320" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="339" class="svg-t">SYNTHETIC sample corpus</text><text x="30" y="355" class="svg-t s">scholarships, own store, badged</text>
+<rect x="20" y="208" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="227" class="svg-t">Grants.gov</text><text x="30" y="243" class="svg-t s">open calls, all agencies</text>
+<rect x="20" y="264" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="283" class="svg-t">SDFA list · NIH F-series</text><text x="30" y="299" class="svg-t s">public fellowships</text>
+<rect x="20" y="320" width="150" height="46" rx="4" class="svg-box ext"/><text x="30" y="339" class="svg-t">SYNTHETIC sample corpus</text><text x="30" y="355" class="svg-t s">own store, badged</text>
 
 <!-- fetchers -->
 <rect x="230" y="40" width="160" height="326" rx="4" class="svg-box det"/>
@@ -284,11 +284,11 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
 <rect x="450" y="216" width="170" height="150" rx="4" class="svg-box det"/>
 <text x="462" y="238" class="svg-t b">Retrieval and scoring</text>
 <text x="462" y="256" class="svg-t s">deterministic</text>
-<text x="462" y="280" class="svg-t s">· research threads from papers</text>
-<text x="462" y="296" class="svg-t s">· hybrid search per thread, RRF</text>
+<text x="462" y="280" class="svg-t s">· threads from the papers</text>
+<text x="462" y="296" class="svg-t s">· hybrid search per thread</text>
 <text x="462" y="312" class="svg-t s">· eligibility rules from</text>
 <text x="462" y="328" class="svg-t s">  record fields (dates, type)</text>
-<text x="462" y="344" class="svg-t s">· rerank; Match score by code</text>
+<text x="462" y="344" class="svg-t s">· rerank; Match by code</text>
 <text x="462" y="360" class="svg-t s">· same code path as back-test</text>
 <path d="M535,190 V214" class="svg-l"/>
 
@@ -303,23 +303,23 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
 <rect x="692" y="164" width="276" height="60" rx="3" class="svg-box"/>
 <text x="702" y="182" class="svg-t b">2 · Fit explainer and reranker</text>
 <text x="702" y="198" class="svg-t s">in: profile + one candidate record, both with IDs</text>
-<text x="702" y="214" class="svg-t s">out: three sentences, citations as IDs only; unknown ID rejected</text>
+<text x="702" y="214" class="svg-t s">out: three sentences, IDs as citations; unknown ID rejected</text>
 <rect x="692" y="232" width="276" height="60" rx="3" class="svg-box"/>
 <text x="702" y="250" class="svg-t b">3 · Hand-off drafter</text>
 <text x="702" y="266" class="svg-t s">in: kept leads, office · out: a 2–4 sentence opening</text>
-<text x="702" y="282" class="svg-t s">code writes the rest; never sent by the app; human edits and sends</text>
+<text x="702" y="282" class="svg-t s">code writes the rest; never sent; the human edits and sends</text>
 <rect x="692" y="300" width="276" height="60" rx="3" class="svg-box"/>
 <text x="702" y="318" class="svg-t b">4 · Application points (cover_points)</text>
-<text x="702" y="334" class="svg-t s">in: one record + CV (contacts blanked), documents, papers, awards</text>
-<text x="702" y="350" class="svg-t s">out: 3–6 cited points, up to 3 gaps; on the card, never exported</text>
+<text x="702" y="334" class="svg-t s">in: one record + CV (contacts blanked), papers, awards</text>
+<text x="702" y="350" class="svg-t s">out: 3–6 cited points, up to 3 gaps; never exported</text>
 <path d="M620,290 H678" class="svg-l c"/>
 
 <!-- API / web -->
 <rect x="230" y="420" width="750" height="110" rx="4" class="svg-box det"/>
 <text x="242" y="442" class="svg-t b">API and web app</text>
-<text x="242" y="462" class="svg-t s">FastAPI · in-process jobs (one job = one brief, stages reported) · no-build web app in plain ES modules, served by perch serve · print page for PDF</text>
-<text x="242" y="484" class="svg-t s">Session API: the brief, its leads, keep / dismiss, hand-off, export, Scout · MCP server offers the researcher tools to any MCP client · perch mcp, perch brief on the CLI</text>
-<text x="242" y="506" class="svg-t s">Audit log of operator model calls: prompt hash, model, tokens, cost, validator result · a visitor's session writes no log, cache or store row</text>
+<text x="242" y="462" class="svg-t s">FastAPI · in-process jobs (one job = one brief, stages reported) · no-build web app in plain ES modules, served by perch serve</text>
+<text x="242" y="484" class="svg-t s">Session API: brief, leads, keep / dismiss, hand-off, export, Scout · MCP server offers the researcher tools to any MCP client</text>
+<text x="242" y="506" class="svg-t s">Audit log of operator model calls: prompt hash, model, tokens, cost, validator result · a visitor's session writes no log</text>
 <path d="M830,366 V418" class="svg-l c"/><path d="M535,366 V418" class="svg-l"/>
 <rect x="20" y="420" width="150" height="110" rx="4" class="svg-box ext"/>
 <text x="30" y="442" class="svg-t b">Researcher or student</text>
@@ -339,7 +339,7 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
 <tr><td>Language, data layer</td><td>Python 3.12, <code>uv</code>, everything pinned; <code>httpx</code>; <code>pydantic</code> v2 records per source; <code>ruff</code> and <code>pytest</code> (408 tests at S32)</td><td>Fast to write with Claude Code; typed records make provenance enforceable.</td></tr>
 <tr><td>Store</td><td>SQLite + LanceDB for the demo; Postgres + pgvector + pg_search for Temple; one repository interface in <code>perch/store/base.py</code>. The demo path is what runs; the Postgres path is the Temple target <span class="tag warn">verify: not exercised on this node</span></td><td>One schema, two backends. The demo must run on the lab node with no managed services.</td></tr>
 <tr><td>Search models</td><td>Qwen3-Embedding-0.6B and Qwen3-Reranker-0.6B, local; hybrid dense + BM25 per research thread, fused with reciprocal rank fusion, 100 candidates reranked; Match = the reranker's score on a 0–100 scale, computed by code</td><td>Nothing in the back-test beat them measurably (<a href="#bench">bench</a>); no per-call cost; works inside Temple with no outbound data.</td></tr>
-<tr><td>Model provider layer</td><td><code>perch/llm/</code> with three primitives: <code>chat</code> (tool calling, structured output), <code>embed</code>, and <code>decide</code> (typed choice / score / yes-no in; typed value plus confidence out). Adapters: Anthropic API; any OpenAI-compatible endpoint; Ollama. For <code>decide</code>: Clef and Clef-flash (Cloudflare, open weights, served by llama.cpp <code>llama-server</code> on <code>/v1/systemone</code>) and an LLM fallback on token logprobs. Model per role set in <code>.env</code> (<code>PERCH_LLM_DEFAULT</code>, <code>PERCH_LLM_&lt;ROLE&gt;</code>). A $100 spend cap enforced in the Anthropic adapter</td><td>No vendor SDK outside the package (rule 6, tested). The same code runs local for the demo and on the API by the user's choice. Decision models are used only at decision points such as the grounding check, never for skills 1–4 or eligibility. Jev (hosted) and Strands Decider were not benched: no access on this node.</td></tr>
+<tr><td>Model provider layer</td><td><code>perch/llm/</code> with three primitives: <code>chat</code> (tool calling, structured output), <code>embed</code>, and <code>decide</code> (typed choice / score / yes-no in; typed value plus confidence out). Adapters: Anthropic API; any OpenAI-compatible endpoint; Ollama. For <code>decide</code>: Clef and Clef-flash (Cloudflare, open weights, served by llama.cpp <code>llama-server</code> on <code>/v1/systemone</code>) and an LLM fallback on token logprobs. Model per role set in <code>.env</code> (<code>PERCH_LLM_DEFAULT</code>, <code>PERCH_LLM_&lt;ROLE&gt;</code>). A $100 spend cap enforced in the Anthropic adapter</td><td>No vendor SDK outside the package (rule 6, tested). The same code runs local for the demo and on the API by the user's choice. Decision models are used only at decision points such as the grounding check, never for skills 1–4 or eligibility. Jev (hosted) was not benched, with no access on this node; Strands Decider 2B was not benched, its weights and licence unverified.</td></tr>
 <tr><td>Chat models</td><td>Demo: Gemma 4 26B-A4B on Ollama, 12,288-token context, two slots. Cloud option: claude-sonnet-5-5. Benched: qwen3:8b, qwen3:14b, qwen3.8:27b</td><td>Gemma passed both checks on 28 of 30 leads at $0; Sonnet 24 of 30 at $0.0915 a brief.</td></tr>
 <tr><td>Validator</td><td>Layer 1, code (<code>perch/validate.py</code>): every cited id known; every number and date in a cited record; no URL or "click" in model text; a user-typed number allowed only outside a cited sentence. Layer 2, grounding: Clef on the demo, MiniCheck-RoBERTa-Large on CPU as the default without a GPU. Fail → regenerate once → withhold and flag</td><td>Layer 1 is free and catches the fatal errors; layer 2 catches paraphrased overreach. The judgment sentence of an explanation is labelled an inference, not pretended to be verified.</td></tr>
 <tr><td>Agent runtime</td><td>Own loop in <code>perch/scout/</code>: the model asks for a tool, the tool runs at once, the model writes a cited answer; allowlisted tools, per-question and per-session budgets, a Stop button, repeated-call guard, history compaction. The ask-before-every-step mode borrowed from another project in S10 was removed in S28. MCP server on the MCP Python SDK 2.3.0</td><td>Frameworks hide the control flow; every tool call is a visible card. Scout’s tools have no effects to approve, so a gate bought nothing (<code>docs/design/SCOUT_SPEC.md</code>).</td></tr>
@@ -379,12 +379,13 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
 <!-- legend -->
 <rect x="400" y="330" width="22" height="22" rx="3" class="svg-box det"/><text x="430" y="346" class="svg-t s">Plain code, no model</text>
 <rect x="400" y="362" width="22" height="22" rx="3" class="svg-box store"/><text x="430" y="378" class="svg-t s">Small local model, always on the GPU (no cloud equivalent in Perch)</text>
-<rect x="400" y="394" width="22" height="22" rx="3" class="svg-box llm"/><text x="430" y="410" class="svg-t s">Chat model: local Gemma by default; the four skills move to the cloud provider by the user's Cloud choice, or any role by the deployer's .env</text>
+<rect x="400" y="394" width="22" height="22" rx="3" class="svg-box llm"/><text x="430" y="410" class="svg-t s">Chat model: local Gemma by default; the cloud provider by the user's choice, or the deployer's .env</text>
 <!-- footnote -->
 <text x="20" y="440" class="svg-t s">9 · Application points (skill 4, S33) runs on request from Scout, on the hand-off role: no new role to set. It reads the CV with contact details blanked.</text>
-<text x="20" y="460" class="svg-t s">Every session is private by default and local. Cloud moves steps 3, 4, 6 and 9 to the named provider after a warning; Scout's own model (7) stays local; documents go only after a second, per-document consent.</text>
-<text x="20" y="480" class="svg-t s">Decide on the Anthropic API works but returns no confidence (no token probabilities). Search and the grounding check still need a GPU; GPU A needs far less memory once Gemma is not loaded.</text>
-<text x="20" y="500" class="svg-t s">Numbered steps are in the order a brief runs them. Switch one step with PERCH_LLM_FIT_EXPLAINER=anthropic:claude-sonnet-5-5, or all with PERCH_LLM_DEFAULT.</text>
+<text x="20" y="460" class="svg-t s">Every session is local by default. Cloud moves steps 3, 4, 6 and 9 to the named provider after a warning; Scout's own model (7) stays local.</text>
+<text x="20" y="478" class="svg-t s">Documents go only after a second, per-document consent. Decide on the Anthropic API works but returns no confidence (no token probabilities).</text>
+<text x="20" y="496" class="svg-t s">Search and the grounding check still need a GPU; GPU A needs far less memory once Gemma is not loaded. Numbered steps are in the order a brief runs them.</text>
+<text x="20" y="514" class="svg-t s">Switch one step with PERCH_LLM_FIT_EXPLAINER=anthropic:claude-sonnet-5-5, or all with PERCH_LLM_DEFAULT.</text>
 </svg>
 </div>
 <div class="scroll" style="margin-top:1rem"><table>
@@ -540,20 +541,20 @@ footer{margin-top:3rem;border-top:1px solid var(--line);padding-top:1rem;color:v
 <svg viewBox="0 0 1000 250" role="img" aria-label="Deployment diagram: Demo Day on a lab node behind Tailscale Funnel with local models and an optional cloud model; the Temple deployment as the deployer's choice of fully local, hybrid or cloud-only.">
 <rect x="20" y="30" width="440" height="200" rx="4" class="svg-box"/>
 <text x="34" y="54" class="svg-t b">Demo Day · lab node</text>
-<rect x="34" y="70" width="190" height="60" rx="3" class="svg-box det"/><text x="44" y="92" class="svg-t">One Compose service</text><text x="44" y="108" class="svg-t s">API · web · jobs · SQLite + LanceDB</text>
-<rect x="250" y="70" width="190" height="60" rx="3" class="svg-box ext"/><text x="260" y="92" class="svg-t">Tailscale Funnel</text><text x="260" y="108" class="svg-t s">public HTTPS, decrypted on the node</text>
+<rect x="34" y="70" width="190" height="60" rx="3" class="svg-box det"/><text x="44" y="92" class="svg-t">One Compose service</text><text x="44" y="108" class="svg-t s">one process · SQLite + LanceDB</text>
+<rect x="250" y="70" width="190" height="60" rx="3" class="svg-box ext"/><text x="260" y="92" class="svg-t">Tailscale Funnel</text><text x="260" y="108" class="svg-t s">HTTPS decrypted on the node</text>
 <path d="M224,100 H248" class="svg-l"/>
-<rect x="34" y="150" width="190" height="60" rx="3" class="svg-box llm"/><text x="44" y="172" class="svg-t">Local models on two GPUs</text><text x="44" y="188" class="svg-t s">default; Cloud by the visitor's choice</text>
+<rect x="34" y="150" width="190" height="60" rx="3" class="svg-box llm"/><text x="44" y="172" class="svg-t">Local models on two GPUs</text><text x="44" y="188" class="svg-t s">Cloud only by visitor choice</text>
 <rect x="250" y="150" width="190" height="60" rx="3" class="svg-box ext"/><text x="260" y="172" class="svg-t">Judges’ phones and laptops</text><text x="260" y="188" class="svg-t s">100 briefs / hour / address</text>
 <path d="M345,130 V148" class="svg-l"/>
 
 <rect x="520" y="30" width="460" height="200" rx="4" class="svg-box"/>
 <text x="534" y="54" class="svg-t b">Temple deployment · the deployer's choice</text>
 <rect x="534" y="70" width="200" height="60" rx="3" class="svg-box det"/><text x="544" y="92" class="svg-t">App inside Temple network</text><text x="544" y="108" class="svg-t s">Postgres + pgvector + pg_search</text>
-<rect x="760" y="70" width="206" height="60" rx="3" class="svg-box llm"/><text x="770" y="92" class="svg-t">Fully local, or hybrid</text><text x="770" y="108" class="svg-t s">self-hosted models; Cloud by user choice</text>
-<rect x="760" y="150" width="206" height="60" rx="3" class="svg-box llm"/><text x="770" y="172" class="svg-t">Cloud-only</text><text x="770" y="188" class="svg-t s">hosted provider; zero-data-retention key?</text>
+<rect x="760" y="70" width="206" height="60" rx="3" class="svg-box llm"/><text x="770" y="92" class="svg-t">Fully local, or hybrid</text><text x="770" y="108" class="svg-t s">self-hosted; Cloud by user choice</text>
+<rect x="760" y="150" width="206" height="60" rx="3" class="svg-box llm"/><text x="770" y="172" class="svg-t">Cloud-only</text><text x="770" y="188" class="svg-t s">hosted; zero-data-retention key?</text>
 <path d="M734,100 H758" class="svg-l c"/><path d="M734,110 Q748,180 758,180" class="svg-l c"/>
-<rect x="534" y="150" width="200" height="60" rx="3" class="svg-box ext"/><text x="544" y="172" class="svg-t">Owners</text><text x="544" y="188" class="svg-t s">Research Development · Tech Commercialization · SFS · SDFA</text>
+<rect x="534" y="150" width="200" height="60" rx="3" class="svg-box ext"/><text x="544" y="172" class="svg-t">Owners</text><text x="544" y="188" class="svg-t s">Research Development · Tech Comm.</text><text x="544" y="202" class="svg-t s">Student Financial Services · SDFA</text>
 </svg>
 </div>
 </section>
