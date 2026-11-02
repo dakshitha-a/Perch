@@ -950,7 +950,7 @@ def points_reply(messages, system, schema):
         {"asks": "The record names the kind of applicant it supports.", "asks_ids": [target],
          "you": "You are such an applicant by your records.", "you_ids": you}]
     return json.dumps({"reasoning": "r", "points": points,
-                       "missing": ["The record asks for a plan the records do not show."],
+                       "missing": ["The record asks for a plan; nothing you added shows one."],
                        "cited_ids": [target, *both]})
 
 
@@ -975,7 +975,7 @@ def test_cover_points_for_a_researcher_from_papers_and_awards_then_with_document
     used = {i for p in out["points"] for i in p["you_ids"]}
     assert used and all(i.startswith("W") for i in used)  # the profile's papers
     assert set(out["sources"]) == {OPP, *used} and all(i in c.seen for i in out["sources"])
-    assert out["missing"] == ["The record asks for a plan the records do not show."]
+    assert out["missing"] == ["The record asks for a plan; nothing you added shows one."]
     assert out["note"].endswith("Adding a CV under Tell Perch more gives points from it too.")
     sent = c.handoff.inner.calls[0]["messages"][0].content
     assert "[W" in sent and "award" in sent.lower()  # papers and the public awards shown

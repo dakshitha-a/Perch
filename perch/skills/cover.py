@@ -12,7 +12,9 @@ Output, reasoning first as the fit skill does: 3 to 6 points, up to 3 things the
 asks for that no applicant record shows, and the ids used. The closure checks every
 sentence with validator layer 1 against the records it cites, that each point's asks cites
 the target alone and its you cites applicant records only, the counts, the sentence
-lengths and a banned-phrase list (odds, chances, whether to apply). A failure is
+lengths (one or two sentences of at least MIN_WORDS words, so no bare fragment), the form
+of a missing item (about what the applicant's records do not show, never a gap in the
+record) and a banned-phrase list (odds, chances, whether to apply). A failure is
 regenerated once; a second failure withholds the points. The grounder (layer 2) marks
 sentences it cannot support; they are flagged, not withheld.
 
@@ -78,13 +80,18 @@ INSTRUCTIONS = (
     "You list the points a cover letter or an application for one funding record could "
     "make, for the applicant to put in their own words. First write brief private reasoning: "
     "what the target record asks for or rewards, and which applicant records answer each "
-    f"ask. Then give {MIN_POINTS} to {MAX_POINTS} points. In each point, asks is one sentence "
-    "on one thing the target record asks for or rewards, from the target record only, and "
-    "asks_ids holds the target record's id alone; you is one sentence addressed to the "
-    "applicant as \"you\" (\"You led ...\") on what their records show that answers it, from "
-    "the applicant records named in you_ids only, which must name at least one. missing "
-    f"lists up to {MAX_MISSING} things the target record asks for that no applicant record "
-    "shows, each one sentence from the target record. Put ids in asks_ids, you_ids and "
+    f"ask. Then give {MIN_POINTS} to {MAX_POINTS} points. In each point, asks is one full "
+    "sentence, with a subject and a verb, on one thing the target record asks for or rewards "
+    "(\"The program supports early-career investigators.\", never a bare phrase such as "
+    "\"Early-career research.\"), from the target record only, and asks_ids holds the target "
+    "record's id alone; you is one full sentence addressed to the applicant as \"you\" (\"You "
+    "led ...\") on what their records show that answers it, from the applicant records named "
+    f"in you_ids only, which must name at least one. missing lists up to {MAX_MISSING} things "
+    "the target record asks for or rewards that no applicant record shows. Each item is one "
+    "full sentence in this form: \"The record asks for a mentoring plan; nothing you added "
+    "shows one.\" It names what the record wants and says that the applicant's records do "
+    "not show it; it never says what the record lacks, leaves out or does not specify. Put "
+    "ids in asks_ids, you_ids and "
     "cited_ids, not inside the sentences. Never judge the applicant's chances or odds, never "
     "say whether to apply, and never invent: leave numbers and dates out unless they are in "
     "the record you cite. cited_ids lists every id used. " + GROUND_RULES
@@ -101,6 +108,22 @@ BANNED = re.compile(
     r"succeed|be selected)|(?:strong|good|ideal|perfect) (?:candidate|chance))\b", re.I)
 # Inline citations a model adds anyway, removed before the checks (ids go in the id lists).
 BRACKETED = re.compile(r"\s*\[[^\[\]]*\]")
+# A sentence item (asks, you, missing) has at least this many words: "Chemical Catalysis
+# research." is a fragment, "It supports early-career investigators." a sentence (QA, S33).
+MIN_WORDS = 4
+# A missing item is about the applicant's records ("nothing you added shows one"), never a
+# gap in the record ("The record does not specify a sub-discipline"), which is no point a
+# cover letter can make (QA, S33). The applicant is addressed as "you".
+ABOUT_YOU = re.compile(r"\byou(?:r|rs)?\b", re.I)
+RECORD_GAP = re.compile(
+    r"^(?:the|this|that) (?:record|program|listing|announcement|opportunity|notice|award|"
+    r"fellowship|scholarship|call|solicitation|nofo|foa)\b[^;]*?\b(?:does not|doesn't|did not|"
+    r"didn't|lacks|is silent|fails to|has no|gives no|provides no|states no|names no|"
+    r"mentions no|specifies no|lists no|omits|leaves out|is unclear|is vague|is not "
+    r"(?:clear|specific|explicit))\b|\b(?:does not|doesn't|did not|didn't) (?:specify|state|"
+    r"list|mention|name|say|give|provide|describe|define|detail|indicate|identify|clarify|"
+    r"explain)\b|\b(?:is|are) not (?:specified|stated|listed|mentioned|named|given|provided|"
+    r"described|defined|detailed|indicated|identified|clarified|explained)\b", re.I)
 
 
 @dataclass
@@ -203,6 +226,27 @@ def strip_ids(text: str) -> str:
     return " ".join(BRACKETED.sub("", text).split())
 
 
+def missing_form(where: str, text: str) -> list[str]:
+    """The deterministic check of a missing item: it is about the applicant's records
+    ("nothing you added shows one"), not a gap in the record ("The record does not specify
+    a sub-discipline"). Both are decided by words, never by a model."""
+    errs = []
+    if not ABOUT_YOU.search(text):
+        errs.append(f"{where} ({text!r}) does not say that nothing the applicant added shows "
+                    "it: write \"The record asks for X; nothing you added shows it\"")
+    if m := RECORD_GAP.search(text):
+        errs.append(f"{where} says {m.group(0)!r}, a gap in the record: missing lists what "
+                    "the record asks for that the applicant's records do not show, in the "
+                    "form \"The record asks for X; nothing you added shows it\"")
+    return errs
+
+
+def record_part(text: str) -> str:
+    """The part of a missing item that claims something of the record, before the fixed
+    "; nothing you added shows it" clause, which the grounder cannot find in the record."""
+    return text.split(";", 1)[0].strip()
+
+
 def with_context(o: Opportunity, context: list[str]) -> Opportunity:
     """The target record as the checks see it: the code-written context lines ride on
     it, so a number they hold (a GPA rule's 3.50) may be repeated (as loop._with_facts)."""
@@ -257,6 +301,9 @@ def cover_points(o: Opportunity, cv: Work | None, docs: list[Work], papers: list
         n = sentences(text)
         if not 1 <= n <= MAX_SENTENCES:
             errs.append(f"{where}: write 1 or 2 sentences, got {n}")
+        if len(text.split()) < MIN_WORDS:
+            errs.append(f"{where} is a fragment ({text!r}): write one full sentence with a "
+                        "subject and a verb")
         if m := banned.search(text):
             errs.append(f"{where} says {m.group(0)!r}: describe the record and the "
                         "applicant's records only, never chances or whether to apply")
@@ -285,6 +332,7 @@ def cover_points(o: Opportunity, cv: Work | None, docs: list[Work], papers: list
                                       [x for x in pt.you_ids if x in applicant])
         for j, m in enumerate(p.missing, 1):
             errors += sentence_checks(f"missing {j}", m, [target], BANNED_ASKS)
+            errors += missing_form(f"missing {j}", m)
         provider.log.validation(provider.last_call_id, SKILL, not errors, errors, attempts[0])
         return Check(not errors, errors)
 
@@ -310,7 +358,7 @@ def ground(p: Points, o: Opportunity, records: dict[str, Record], grounder: Grou
         if s <= THRESHOLD:
             p.unsupported.append(pt.you)
     for j, m in enumerate(p.missing, 1):
-        s = grounder.support(target, [m])[0]
+        s = grounder.support(target, [record_part(m)])[0]
         p.support[f"missing {j}"] = round(s, 3)
         if s <= THRESHOLD:
             p.unsupported.append(m)

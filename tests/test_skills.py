@@ -248,7 +248,8 @@ def cover_reply(points=None, missing=None, cited=None):
          "you_ids": ["private:cv", "nih:1"]}]
     return json.dumps({"reasoning": "r", "points": points,
                        "missing": missing if missing is not None else
-                       ["The announcement asks for a mentoring plan."],
+                       ["The announcement asks for a mentoring plan; nothing you added "
+                        "shows one."],
                        "cited_ids": cited or ["PAR-1", "private:cv", "proposal", "nih:1"]})
 
 
@@ -263,7 +264,8 @@ def test_cover_points_pass_cite_the_target_and_applicant_records_and_show_no_con
     assert [x.asks_ids for x in pts] == [["PAR-1"]] * 3
     assert pts[0].you_ids == ["private:proposal"]  # the dropped prefix is put back
     assert pts[2].you == "You are an Assistant Professor since 2023."  # inline ids go
-    assert v.value.missing == ["The announcement asks for a mentoring plan."]
+    assert v.value.missing == ["The announcement asks for a mentoring plan; nothing you added "
+                               "shows one."]
     assert set(records) == {"PAR-1", "private:cv", "private:proposal", "W1", "W2", "W3",
                             "nih:1"}
     sent = p.inner.calls[0]
@@ -311,13 +313,49 @@ def test_an_asks_sentence_may_copy_the_records_own_must_submit_words():
     opp, cv, docs, papers, awards = _cover_inputs()
     pts = json.loads(cover_reply())["points"]
     pts[0]["asks"] = "Applicants must submit a letter of support and a competitive plan."
-    p, _ = audited([cover_reply(points=pts, missing=["Ideal candidates must submit a plan."])])
+    p, _ = audited([cover_reply(points=pts, missing=["Ideal candidates must submit a plan; "
+                                                     "nothing you added shows one."])])
     v, _ = cover_points(opp, cv, docs, papers, awards, p)
     assert not v.flagged, v.errors
     pts[0]["you"] = "You must submit your strongest work."
     p, _ = audited([cover_reply(points=pts)] * 2)
     v, _ = cover_points(opp, cv, docs, papers, awards, p)
     assert v.flagged and any("'must submit'" in e for e in v.errors)
+
+
+def test_a_fragment_or_a_missing_item_about_a_gap_in_the_record_is_sent_back_by_code():
+    """QA (S33): a missing item describes what the applicant's records do not show, never
+    what the record lacks ("The record does not specify a sub-discipline"), and every item
+    is a full sentence ("Chemical Catalysis research." is a fragment). Decided by words."""
+    from perch.grounding import FakeGrounder
+    from perch.skills.cover import cover_points, missing_form, record_part
+
+    assert missing_form("missing 1", "The record asks for a plan; nothing you added shows "
+                        "one.") == []
+    assert missing_form("missing 1", "Your records show no mentoring plan, which the "
+                        "announcement asks for.") == []
+    gap = missing_form("missing 1", "The record does not specify a STEM sub-discipline.")
+    assert len(gap) == 2 and "'The record does not'" in gap[1] and "nothing you" in gap[0]
+    assert missing_form("missing 1", "The duration is not stated.")  # a gap, no "you"
+    assert missing_form("missing 1", "Chemical Catalysis research.")  # not about you
+    assert record_part("The record asks for a plan; nothing you added shows one.") == \
+        "The record asks for a plan"
+    opp, cv, docs, papers, awards = _cover_inputs()
+    pts = json.loads(cover_reply())["points"]
+    pts[0]["asks"] = "Chemical catalysis research."
+    bad = cover_reply(points=pts, missing=["The record does not state the duration."])
+    p, log = audited([bad, cover_reply()])
+    v, _ = cover_points(opp, cv, docs, papers, awards, p, grounder=FakeGrounder())
+    assert v.attempts == 2 and not v.flagged, v.errors
+    fed = p.inner.calls[1]["messages"][0].content
+    assert "point 1 asks is a fragment" in fed and "missing 1 says 'The record does not'" in fed
+    assert "nothing you added shows it" in fed
+    # layer 2 reads the record's part of a missing item, not the fixed clause after ";"
+    assert v.value.support["missing 1"] > 0 and not v.value.unsupported
+    p, _ = audited([bad, bad])
+    v, _ = cover_points(opp, cv, docs, papers, awards, p)
+    assert v.flagged and v.value is None
+    assert log.rejection_rate("cover_points") == (1, 2)
 
 
 def test_cover_points_grounder_flags_without_withholding_and_the_prompt_fits_the_model():
