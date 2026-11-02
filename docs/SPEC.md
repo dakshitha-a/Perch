@@ -84,8 +84,8 @@ Grants.gov + NIH Guide · SBIR.gov         provenance on every row              
                                                               per-thread hybrid search → RRF → eligibility filter → rerank
                                                                                         ↓
                                      Model layer (provider-agnostic: Anthropic · OpenAI-compatible · Ollama/vLLM)
-                                     Scout agent (allowlisted tools, budgets, Stop) + three bounded skills:
-                                     1 profile summariser · 2 fit explainer/reranker · 3 hand-off drafter
+                                     Scout agent (allowlisted tools, budgets, Stop) + four bounded skills:
+                                     1 profile summariser · 2 fit explainer/reranker · 3 hand-off drafter · 4 application points (S33)
                                      every output → citation validator (layer 1 deterministic, layer 2 grounding model)
                                                                                         ↓
                                      API (FastAPI, async jobs, audit log) · MCP server (same tools) · Web app (React + Vite)
@@ -124,10 +124,10 @@ Decision models are never used for skills 1–3 (profile summary, fit explanatio
 Two layers: the deterministic pipeline (what the back-test measures) and Scout on top.
 
 Scout can: run a brief end to end, each step as soon as the model asks for it; take plain-language follow-ups ("foundations only, under $200k"); monitor (award within 12 months of ending or new opportunity above threshold → refresh and draft a notification; built in S16, shelved in S23 until users have accounts); explain its ranking from its records.
-A student brief gets its own allowlist instead (S24): search_options, check_option, explain_verdict, read_cv, compare_options, draft_note and get_record. They read only rule results and records, never the CV text, and run only in a private session; the MCP server keeps the researcher tools.
+A student brief gets its own allowlist instead (S24, S33): search_options, check_option, explain_verdict, read_cv, compare_options, draft_note, cover_points and get_record. All but cover_points read only rule results and records; cover_points (S33) reads the CV, the interests note and the achievements, with contact details blanked, on the session's models, and returns checked points for a cover letter. Student Scout runs only in a private session; the MCP server keeps the researcher tools.
 
-Scout cannot: call anything outside the allowlist (no web, no shell); state a number or date not in a cited record; send email or change a record; exceed the per-brief budget; read anything about a researcher that is not a public record.
-Tools: `build_profile · list_awards · search_opportunities(route, filters) · get_org_signals · explain_fit · compare · draft_handoff · get_record`, fixed to the brief's researcher; the MCP server adds `resolve_author` and an `author_id` argument, because its client starts without a researcher. Every call logged with args and result hashes; a brief is replayable.
+Scout cannot: call anything outside the allowlist (no web, no shell); state a number or date not in a cited record; send email or change a record; exceed the per-brief budget; read anything about a researcher that is not a public record or a document they added to the session.
+Tools: `build_profile · list_awards · search_opportunities(route, filters) · get_org_signals · explain_fit · compare · draft_handoff · cover_points · get_record`, fixed to the brief's researcher (cover_points, S33, is model skill 4: the points a cover letter for one record could make, each citing the record and the CV, a document, a paper or an award); the MCP server adds `resolve_author` and an `author_id` argument, because its client starts without a researcher. Every call logged with args and result hashes; a brief is replayable.
 UI (S28, `docs/design/SCOUT_SPEC.md`): each step runs as soon as the model asks for it; a Stop button ends the question between steps. Above the answer, "How Scout read your question" lists each finished step with its filters; the step cards fold under the answer, each saying where it ran: code, a local model or a named Cloud provider. The fit and hand-off steps' model spend counts toward the session budget.
 
 Provider layer: one interface for chat, tool calling, structured output; adapters for Anthropic, OpenAI-compatible endpoints, Ollama and vLLM; model per role in config; fallback mode (structured prompts + validator) for small local models that tool-call poorly; three models benchmarked on the back-test.

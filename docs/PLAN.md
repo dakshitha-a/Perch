@@ -427,15 +427,30 @@ Done when: the ZIP builds from a clean clone and runs, the demo is live and clea
 
 ---
 
-## S33 — Freeze and package
+## S33 — Application points, both audiences sold equally
 
-Goal: ship. Everything but the tag is done in S32; Dakshitha runs this session.
+Goal: Scout gains a fourth model skill, **cover_points**: for one grant, fellowship or sample scholarship, the points a cover letter could make, each citing the record and the applicant's CV, documents, papers or awards. Researchers and students get it alike. The rules, spec, README and tracker are rebalanced so the student side is sold as fully as the researcher side (Dakshitha, 2026-11-01).
+
+1. Rules and spec: standing rule 5 names four model jobs; a session's models may read the CV and documents with contact details blanked; the student "never reads the CV text" line is dropped; SPEC §1, §3, §5 and §8 give students equal standing; DECISIONS rows; this plan.
+2. Skill 4 `perch/skills/cover.py` (schema, instructions, validator closure, grounder flags) and contact blanking in the shared prompt view; `cover_points` on both Scout allowlists with the code-written answer line, the full points on the card, the session budget and the MCP list; tests on SYNTHETIC text; the Scout prompt measured against the compaction ceiling.
+3. Web: the points block on the Scout card with Copy, example questions for both audiences, the consent wording at the student start and the CV box, Help entries; every stale "no model reads the CV" claim replaced.
+4. Docs and balance: README opening and tour (student section beside the researcher hero, a points section for both), SPEC, SCOUT_SPEC §7 and §10, PRIVATE_MODE, private-mode.md, mcp.md, ARCHITECTURE, RESULTS.md.
+5. QA: `make test`, walk with axe on the dev server through the new step for both audiences, two bench tasks on the local model, rehearsal questions for both audiences, canary; fix what fails.
+6. Demo rebuilt from `main`; rehearsal and walk on the public URL; `make package`; tracker numbers; HANDOFF rewritten.
+
+Done when: both audiences can ask Scout for cover-letter points and get checked, cited points on the card; `make test` green; the demo is rebuilt and clean; README and tracker sell both audiences equally.
+
+---
+
+## S34 — Freeze and package
+
+Goal: ship. Everything but the tag is done in S33; Dakshitha runs this session.
 
 1. Confirm `make test`, `make package` from a clean clone and the live demo one last time.
 2. Free the dev test servers: `make decide-down` stops the dev Clef-flash and Clef units, and the demo's own servers stay up. Then tell the other session sharing the node that those GPUs are free (details in the local notes). The Clef rows of `make bench` need `make decide-up` again after this.
 3. Freeze: tag `v0.1-demo`; nothing on `main` after that except README typos.
 
-Done when: tag pushed; tracker complete.
+Done when: tag pushed; tracker complete. (Was S33 until 2026-11-01.)
 
 ---
 
@@ -497,3 +512,4 @@ Not scheduled. Dakshitha orders these.
 | 2026-11-01 | S31 | Five QA rounds in all, in place of the stop rule and the ten-round cap | Dakshitha: "bring the total no of rounds to 5" | Dakshitha |
 | 2026-11-01 | S32 | "After Demo Day (roadmap)" section added, with the deployment decision (fully local, hybrid or cloud-only; zero-data-retention key if cloud) as its first item; ARCHITECTURE, SPEC §4 and §11 and `docs/deploy.md` carry the same decision | Dakshitha: the deployment mode and the key type are the deployer's decision | Dakshitha |
 | 2026-11-01 | S32 | Task 6b added: documents on Cloud by informed consent (Q33), the gate switched on, the deployment mode and key type documented as the deployer's decision in the architecture, spec, deploy guide, README and roadmap | Dakshitha answered Q33 and asked for the deployment choice on the roadmap | Dakshitha |
+| 2026-11-01 | S33, S34 | S33 added: the cover_points model skill for both audiences, the rules and spec amended, README and tracker rebalanced; the freeze moves to S34 | Dakshitha asked whether Scout could explain what to highlight in a cover letter from the CV, allowed rule 5 and the spec to change, and asked that the student side be sold as fully as the researcher side | Dakshitha |
