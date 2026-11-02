@@ -23,7 +23,7 @@ How Perch fits together, which steps of a brief use a model, what runs where in 
 
 - **Code, no model:** fetching, eligibility, dates and the citation check are plain code. Numbers and dates are copied from records, never written by a model.
 - **Search:** the embedder and reranker are small local models. Nothing in the back-test beat them measurably.
-- **Writing:** the profile summary, fit explanation, hand-off draft and application points are written by the chat model. Every one passes the citation validator before it is shown; the explanations and the points pass the grounding check too, and the hand-off opening does not.
+- **Writing:** the profile summary, fit explanation, hand-off draft and application points are written by the chat model. Every one passes the citation validator before it is shown; the hand-off opening skips the grounding check (README, Known limits).
 - **Grounding check:** Clef reads each sentence beside the record it cites, and flags a sentence the record does not support.
 - **Scout and decide:** Scout calls only allowlisted tools. Decide gives typed yes-or-no and score answers with a confidence.
 

@@ -83,7 +83,7 @@ A student brief reads a CV by rule, lists public fellowships and sample scholars
 - **The key and the code follow the same rules,** so a perfect match is a check of the code, not evidence the rules suit real awards. Fellowships are real public listings with no key and are not scored; their best verdict is "may be eligible" by design.
 - **Leakage:** none on seven checks: no sample record in the public API, none in public briefs, no persona canary in an export, data file or app log, and no export without the sample banner. Rerun over HTTP on the rebuilt demo in S32, clean (`docs/TRACKER.md`, key numbers). Briefs took 45 to 57 s.
 - **Scout on the student path:** the rehearsal gate's student runs are part of the 45 of 45 above, and the student export fell from 1,391 lines to about 410 in QA round 5 (`docs/TRACKER.md`, key numbers).
-- **Cover points (S33):** the `cover_points` skill serves both audiences. Its bench numbers, two tasks on the local model for each audience, will be filled in by S33 task 5 and are UNVERIFIED until then.
+- **Cover points (S33):** the `cover_points` skill serves both audiences. Its bench numbers, two bench tasks on the local model, will be filled in by S33 task 5 and are UNVERIFIED until then.
 
 ## Industry leads
 

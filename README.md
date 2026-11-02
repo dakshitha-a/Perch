@@ -27,7 +27,7 @@ hand-off to the right Temple office, which you send yourself.
 <table>
 <tr>
 <td align="center" width="33%"><img src="docs/tour/icon-record.svg" width="32" alt=""><br><b>Every claim has a record</b><br><sub>Dates, amounts and eligibility are copied from the record, never generated, for grants and scholarships alike.</sub></td>
-<td align="center" width="33%"><img src="docs/tour/icon-lock.svg" width="32" alt=""><br><b>Keeps nothing about you</b><br><sub>Every brief lives in memory, on local models by default. A CV is read in the session with contact details blanked.</sub></td>
+<td align="center" width="33%"><img src="docs/tour/icon-lock.svg" width="32" alt=""><br><b>Keeps nothing about you</b><br><sub>Every brief lives in memory, on local models by default. Models see a CV only with contact details blanked.</sub></td>
 <td align="center" width="33%"><img src="docs/tour/icon-draft.svg" width="32" alt=""><br><b>Nothing is sent</b><br><sub>Hand-offs, notes and cover-letter points are drafts for you to edit.</sub></td>
 </tr>
 </table>
