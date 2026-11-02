@@ -2288,9 +2288,29 @@ async def ux_side(w: Walk, page: Page, base: str, tag: str) -> None:
     await page.click("[data-key=seg-r]")  # the landing remembers the Student choice
     await page.fill("#q", AUTHOR)
     await page.click(".searchbox button[type=submit]")
-    if await side_dialog(w, page, tag, "researcher", "side-to-researcher"):
-        await page.locator("#models-dialog button", has_text="Keep the").click()
-        await page.wait_for_selector("#tab-routes", timeout=20000)
+    if not await side_dialog(w, page, tag, "researcher", "side-to-researcher"):
+        return
+    await page.locator("#models-dialog button", has_text="Keep the").click()
+    await page.wait_for_selector("#tab-routes", timeout=20000)
+    # End on the way to a researcher: the pick survives and a fresh session builds its brief.
+    await page.evaluate(home)
+    await page.wait_for_selector(".landing")
+    await page.click("[data-key=seg-r]")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    if not await side_dialog(w, page, tag, "researcher", "side-to-researcher-end"):
+        return
+    await page.click("[data-key=side-ok]")
+    try:
+        await page.wait_for_selector("[data-key=build]", timeout=20000)
+    except Exception:
+        w.errors.append(f"{tag}: one side: after End the researcher's pick was lost")
+        return
+    await page.click("[data-key=build]")
+    await page.wait_for_selector("#tab-routes", timeout=60000)
+    await wait_built(page)
+    if await page.locator(".student-start, [data-key=st-build]").count():
+        w.errors.append(f"{tag}: one side: the fresh researcher brief shows the student form")
     await end_session(page)
 
 

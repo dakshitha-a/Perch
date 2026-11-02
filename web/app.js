@@ -716,7 +716,7 @@ const SIDE_WORDS = { researcher: ["a researcher", "researcher"], student: ["a st
 async function sideGuard(target) {
   let sess = null;
   try { sess = await privApi.session(); } catch { /* ended: nothing to cross */ }
-  const go_on = () => { S.sideChecked = true; route(); };
+  const go_on = () => { S.sideChecked = true; route(); S.sideChecked = false; };
   if (!crossesSide(sess, target)) { go_on(); return; }
   const held = target === "student" ? "researcher" : "student";
   const list = mode.discards(sess.documents || [], true);
