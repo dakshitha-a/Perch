@@ -194,3 +194,141 @@ def test_handoff_opening_carries_no_citation_keys_and_a_private_researcher_signs
                      source_url="private://session", fetched_at=T)
     d = draft_handoff(OFFICES["research_development"], you, items, papers, None)
     assert d.body.endswith("Best regards,\n") and "(private)" not in d.body
+
+
+# --- skill 4, cover points (S33; SYNTHETIC text only) ---
+
+CV_TEXT = """SYNTHETIC CV, an invented person. Canary PERCH-CANARY-TEST-CV
+
+## Contact
+lab.vale""" + "@" + """example.invalid, 215-555-0100, https://example.invalid/vale
+
+## Education
+- PhD, Biomedical Engineering, SYNTHETIC Institute, 2021
+
+## Appointments
+- Assistant Professor, SYNTHETIC Department of Bioengineering, 2023 to present
+
+## Funding
+- SYNTHETIC seed grant SEED-0000-01, insole force sensing, $40,000
+
+## Skills
+- Wearable sensor design; gait analysis
+"""
+
+
+def _cover_inputs():
+    from perch.private.inputs import make_doc
+    from perch.schemas import Award
+
+    cv = make_doc("cv", CV_TEXT)
+    proposal = make_doc("proposal", "SYNTHETIC draft aims: a shoe-worn sensor that records "
+                        "ground reaction force at home for people with gait change.")
+    opp = OPP.model_copy(update={"description": "SYNTHETIC announcement: supports early-career "
+                                 "investigators developing wearable sensing for movement "
+                                 "disorders. Applicants describe prior sensor work and a "
+                                 "mentoring plan."})
+    award = Award(id="nih:1", source="nih_reporter", source_url="https://example.invalid/a",
+                  fetched_at=T, agency="NIH", award_number="R03SYN000001",
+                  title="SYNTHETIC pilot award on insole sensors", activity_code="R03",
+                  start_date=date(2022, 1, 1), end_date=date(2023, 12, 31), amount=50000.0)
+    return opp, cv, [proposal], list(WORKS.values()), [award]
+
+
+def cover_reply(points=None, missing=None, cited=None):
+    points = points if points is not None else [
+        {"asks": "The announcement supports wearable sensing for movement disorders.",
+         "asks_ids": ["PAR-1"], "you": "You proposed a shoe-worn sensor that records ground "
+         "reaction force at home.", "you_ids": ["proposal"]},
+        {"asks": "It asks applicants to describe prior sensor work.", "asks_ids": ["PAR-1"],
+         "you": "You hold a SYNTHETIC seed grant on insole force sensing.",
+         "you_ids": ["private:cv"]},
+        {"asks": "It supports early-career investigators.", "asks_ids": ["PAR-1"],
+         "you": "You are an Assistant Professor since 2023 [private:cv].",
+         "you_ids": ["private:cv", "nih:1"]}]
+    return json.dumps({"reasoning": "r", "points": points,
+                       "missing": missing if missing is not None else
+                       ["The announcement asks for a mentoring plan."],
+                       "cited_ids": cited or ["PAR-1", "private:cv", "proposal", "nih:1"]})
+
+
+def test_cover_points_pass_cite_the_target_and_applicant_records_and_show_no_contacts():
+    from perch.skills.cover import cover_points
+
+    opp, cv, docs, papers, awards = _cover_inputs()
+    p, log = audited([cover_reply()])
+    v, records = cover_points(opp, cv, docs, papers, awards, p)
+    assert not v.flagged and v.attempts == 1, v.errors
+    pts = v.value.points
+    assert [x.asks_ids for x in pts] == [["PAR-1"]] * 3
+    assert pts[0].you_ids == ["private:proposal"]  # the dropped prefix is put back
+    assert pts[2].you == "You are an Assistant Professor since 2023."  # inline ids go
+    assert v.value.missing == ["The announcement asks for a mentoring plan."]
+    assert set(records) == {"PAR-1", "private:cv", "private:proposal", "W1", "W2", "W3",
+                            "nih:1"}
+    sent = p.inner.calls[0]
+    text = sent["system"] + sent["messages"][0].content
+    assert "lab.vale" not in text and "215-555-0100" not in text and "https://" not in text
+    assert "[contact removed]" in text and "Education:" in text and "SEED-0000-01" in text
+    assert "[nih:1] NIH award R03SYN000001" in text and "[W1]" in text
+    assert log.rejection_rate("cover_points") == (0, 1)
+
+
+def test_cover_points_regenerate_on_a_bad_id_or_an_invented_number_then_withhold():
+    from perch.skills.cover import cover_points
+
+    opp, cv, docs, papers, awards = _cover_inputs()
+    bad = cover_reply(points=[{"asks": "It supports wearable sensing.", "asks_ids": ["PAR-1"],
+                               "you": "You built sensors.", "you_ids": ["W9"]}] * 3)
+    p, log = audited([bad, cover_reply()])
+    v, _ = cover_points(opp, cv, docs, papers, awards, p)
+    assert v.attempts == 2 and not v.flagged
+    fed = p.inner.calls[1]["messages"][0].content
+    assert "rejected" in fed and "W9" in fed
+    # a point whose asks cites a paper, a you that judges odds, an invented amount: twice
+    odds = cover_reply(points=[
+        {"asks": "It supports wearable sensing.", "asks_ids": ["W1"],
+         "you": "You are a strong candidate with good odds.", "you_ids": ["private:cv"]},
+        {"asks": "It pays $900,000.", "asks_ids": ["PAR-1"], "you": "You built sensors.",
+         "you_ids": ["private:cv"]},
+        {"asks": "It asks for prior sensor work.", "asks_ids": ["PAR-1"],
+         "you": "You should apply.", "you_ids": []}])
+    p, log = audited([odds, odds])
+    v, _ = cover_points(opp, cv, docs, papers, awards, p)
+    assert v.flagged and v.value is None
+    joined = " ".join(v.errors)
+    for word in ("asks_ids must be exactly [PAR-1]", "'strong candidate'", "900000", "at least one",
+                 "'should apply'"):
+        assert word in joined, word
+    assert log.rejection_rate("cover_points") == (2, 2)
+
+
+def test_cover_points_grounder_flags_without_withholding_and_the_prompt_fits_the_model():
+    from perch.grounding import FakeGrounder
+    from perch.private.inputs import make_doc
+    from perch.skills.cover import PROMPT_CHARS, cover_points
+
+    opp, cv, docs, papers, awards = _cover_inputs()
+    pts = json.loads(cover_reply())["points"]
+    pts[1]["you"] = "You trained dolphins underwater."  # nothing in the CV says so
+    p, log = audited([cover_reply(points=pts)])
+    v, _ = cover_points(opp, cv, docs, papers, awards, p, grounder=FakeGrounder())
+    assert not v.flagged and v.value.unsupported == ["You trained dolphins underwater."]
+    assert set(v.value.support) >= {"point 1 asks", "point 1 you", "missing 1"}
+    assert log.rejection_rate("cover_points", layer=2) == (1, 1)
+    # the worst case: a long CV, every document kind, six long papers and awards
+    big_cv = make_doc("cv", CV_TEXT + "\n## Publications\n" + "- SYNTHETIC paper line\n" * 400)
+    big_docs = [make_doc(k, f"SYNTHETIC {k} text. " * 400)
+                for k in ("proposal", "direction", "manuscript", "interests")]
+    from perch.private.student import achievement_docs
+    big_docs += achievement_docs("\n".join(f"{i}. SYNTHETIC achievement {i} " + "words " * 200
+                                           for i in range(1, 6)))
+    long_papers = [w.model_copy(update={"abstract": "SYNTHETIC abstract words. " * 200})
+                   for w in papers] * 3
+    p, _ = audited([cover_reply(), cover_reply()])
+    v, records = cover_points(opp, big_cv, big_docs, long_papers, awards * 4, p,
+                              context=["Open to year 4; your CV says 3."])
+    sent = p.inner.calls[0]
+    assert len(sent["system"]) + len(sent["messages"][0].content) < PROMPT_CHARS
+    assert "Rule check, written by code:\n- Open to year 4" in sent["messages"][0].content
+    assert "private:cv" in records and len([k for k in records if k.startswith("W")]) <= 6
