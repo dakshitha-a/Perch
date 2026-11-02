@@ -446,3 +446,42 @@ def test_cover_points_reach_the_app_and_no_page_promises_that_no_model_reads_the
 
     assert cover.CV_CHARS == 3500 and (cover.MIN_POINTS, cover.MAX_POINTS) == (3, 6)
     assert cover.MAX_MISSING == 3 and cover.MAX_PAPERS == 6
+
+
+def test_the_era_note_and_the_foundation_office_are_fixed_text():
+    """Live-checked 2026-11-02: the hand-off carries one fixed ERA note and its link, Help
+    repeats both and says where foundation leads will go. The foundation office is not an
+    office a request can pick."""
+    from perch.offices import (
+        FOUNDATION_NOTE,
+        FOUNDATION_OFFICE,
+        OFFICES,
+        SUBMISSION_NOTE,
+        SUBMISSION_URL,
+    )
+
+    handoff = (ROOT / "web/handoff.js").read_text()
+    help_js = (ROOT / "web/help.js").read_text()
+    for src in (handoff, help_js):
+        assert SUBMISSION_NOTE in src and SUBMISSION_URL in src
+    assert FOUNDATION_NOTE in help_js
+    assert "Foundations are not covered yet" not in help_js.replace(FOUNDATION_NOTE, "")
+    assert FOUNDATION_OFFICE.key not in OFFICES
+    assert FOUNDATION_OFFICE.key not in {o.key for o in OFFICES.values()}
+
+
+def test_the_foundation_office_cannot_be_asked_for_a_handoff(tmp_path):
+    c, _ = make(tmp_path)
+    r = c.post("/briefs/nope/handoff", json={"office": "cfr"})
+    assert r.status_code == 422  # an unknown office key is refused before any brief is read
+
+
+def test_the_temple_submission_fixtures_hold_the_quoted_sentences_and_no_email():
+    fx = ROOT / "tests/fixtures/temple"
+    ovpr = (fx / "ovpr_proposal_development.html").read_text()
+    cfr = (fx / "cfr_fundraising_resources.html").read_text()
+    assert ("All proposals must be routed through ERA for institutional review and approval "
+            "prior to submission.") in ovpr
+    assert "Faculty and program directors should work with their school" in cfr
+    assert "notify CFR of potential proposals" in cfr
+    assert "@" not in ovpr and "@" not in cfr

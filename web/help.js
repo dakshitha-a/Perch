@@ -197,7 +197,7 @@ function pipeline() {
     ["person", "You decide", ["you"],
       "You keep or dismiss leads, compare them and open any record."],
     ["pen", "Draft the hand-off", ["model", "code"],
-      "On request, a language model writes the opening paragraph of an email to a Temple office; code writes the list of leads, dates, amounts and papers. The paragraph is checked like every other model text. You edit and send it; Perch sends no email and writes to no outside system."],
+      "On request, a language model writes the opening paragraph of an email to a Temple office; code writes the list of leads, dates, amounts and papers. The paragraph is checked like every other model text. You edit and send it; Perch sends no email and writes to no outside system. Before anything goes to a sponsor, Temple routes it through ERA for institutional review and approval. That covers every grant proposal and any company agreement that brings Temple funding. Your assigned research administrator supports that step. The hand-off screen links to Find your research administrator at https://research.temple.edu/researchadministration/contact-us/find-your-res-administrator. Foundations are not covered yet. When they are, foundation leads will go to Temple's Office of Corporate and Foundation Relations, through your school's or college's development team, as that office's page asks."],
     ["pen", "Points for a cover letter", ["model", "rules"],
       "When you ask Scout, a language model reads one record and your own records, a CV and documents with contact details blanked, papers and awards, and writes 3 to 6 points: what the record asks for, cited to the record, beside what your records show, cited to them. Rules check every sentence against the record it cites, send a failed set back once, then withhold it, and the checking model flags a sentence it cannot match. The points are yours to put in your own words; they never enter an export or a hand-off draft."],
   ];
@@ -259,7 +259,7 @@ function limits() {
       h("li", { text: "It sends no email and writes to no outside system. Hand-offs are drafts for you to copy." }),
       h("li", { text: "It does not confirm your personal eligibility, such as career stage, citizenship or internal limited-submission rules. When it keeps a call limited by career stage, it marks it for you to check. Read each record." }),
       h("li", { text: "It does not tell you to apply, or predict whether you would win. A brief is a starting point." }),
-      h("li", { text: "It covers federal opportunities posted on Grants.gov, and industry leads from public papers and NIH small-business awards. Foundations are not covered yet." }),
+      h("li", { text: "It covers federal opportunities posted on Grants.gov, and industry leads from public papers and NIH small-business awards." }),
       h("li", { text: "It does not know whether a company wants to fund research. Industry leads are inferences from public signals." }),
       h("li", { text: "It searches public records only: papers, public federal awards and posted opportunities. Documents you add, such as a CV or a draft proposal, are read in your session and never stored." }),
       h("li", { text: "It keeps nothing about you, so it cannot watch for changes or show you a brief again later. Save an export if you want to keep one." })));

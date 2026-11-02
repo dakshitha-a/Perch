@@ -1254,6 +1254,12 @@ async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
         await w.snap(page, tag, "f13-compare-320")
         await page.set_viewport_size(PHONE)
         await page.wait_for_timeout(300)
+    # The ERA note sits under the To line: shown, and says Temple routes it through ERA.
+    sn = page.locator("[data-key=submission-note]")
+    if not await sn.count() or not await sn.first.is_visible() or "routes it through ERA" not in await sn.first.inner_text():
+        w.errors.append(f"{tag}: the hand-off does not show the ERA submission note")
+    elif await sn.first.locator("a").get_attribute("href") != "https://research.temple.edu/researchadministration/contact-us/find-your-res-administrator":
+        w.errors.append(f"{tag}: the ERA submission note links elsewhere")
     if not phone:
         await page.locator("[data-key=handoff-make]").click()
         await page.wait_for_selector("#handoff-body", timeout=90000)

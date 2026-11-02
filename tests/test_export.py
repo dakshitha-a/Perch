@@ -234,3 +234,16 @@ def test_researcher_export_inference_speaks_to_the_researcher():
         assert "researcher&#x27;s SYNTHETIC" not in out
         assert "researcher's SYNTHETIC" not in out
         assert "Your SYNTHETIC tool fits, and you build it" in out
+
+
+def test_the_researcher_export_carries_the_era_note_once_under_the_grants_heading():
+    """The ERA step is a fixed note after the Grants heading, never per lead, and never in
+    a student brief."""
+    from perch.offices import SUBMISSION_NOTE, SUBMISSION_URL
+
+    brief, leads, opps, works = _inputs()
+    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, []))
+    assert md.count(SUBMISSION_NOTE) == 1 and md.count(SUBMISSION_URL) == 1
+    assert md.index("## Grants (") < md.index(SUBMISSION_NOTE) < md.index("### 1. SYN-1")
+    sbrief, sleads, recs = _student_inputs()
+    assert SUBMISSION_NOTE not in ex.to_markdown(ex.student_blocks(sbrief, sleads, recs))

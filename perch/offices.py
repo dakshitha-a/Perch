@@ -39,6 +39,34 @@ OFFICES: dict[str, Office] = {
 }
 
 
+# Checked live on 2026-11-02. research.temple.edu's Proposal Development & Submission page
+# says "All proposals must be routed through ERA for institutional review and approval prior
+# to submission." and links "Find Your Research Administrator". The Contracts and Agreements
+# page of Innovation and Technology Commercialization says that where Temple receives
+# funding under a company agreement, the PI and department submit the project for approval
+# using eRA. Both are informational: routing does not change (docs/SOURCES.md).
+SUBMISSION_URL = ("https://research.temple.edu/researchadministration/contact-us/"
+                  "find-your-res-administrator")
+SUBMISSION_NOTE = ("Before anything goes to a sponsor, Temple routes it through ERA for "
+                   "institutional review and approval. That covers every grant proposal and "
+                   "any company agreement that brings Temple funding. Your assigned research "
+                   "administrator supports that step.")
+
+# The office foundation leads will go to, checked on 2026-11-02 on its CFR Fundraising
+# Resources page: it asks faculty and program directors to work with their school's or
+# college's development team to notify CFR of potential proposals. Foundation records are
+# not covered yet (SPEC v1.5 row); when they are, foundation leads go here. A separate
+# constant, not in OFFICES: service.py and the Scout tools index OFFICES by a request key,
+# so adding it there would make it selectable.
+FOUNDATION_OFFICE = Office(
+    "cfr", "Corporate and Foundation Relations",
+    "https://alumni.temple.edu/giving/ways-give/corporate-foundation-relations/"
+    "cfr-fundraising-resources", "foundation")
+FOUNDATION_NOTE = ("Foundations are not covered yet. When they are, foundation leads will go "
+                   "to Temple's Office of Corporate and Foundation Relations, through your "
+                   "school's or college's development team, as that office's page asks.")
+
+
 # One fixed line on the Industry tab and in every industry hand-off (QA cycle 1, Q13). It
 # names no company and claims nothing about any: the office makes the check (rule 10).
 RESEARCH_SECURITY = ("Companies outside the United States may need a research-security "

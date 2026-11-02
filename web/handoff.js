@@ -6,6 +6,9 @@ import { maskOn, maskToggle, onMaskChange } from "./private.js";
 import { h, fill, icon } from "./dom.js";
 
 const WHAT = { A: "grants", B: "industry leads" };
+// Mirrors perch/offices.py (a test checks they match): the ERA step before anything goes out.
+const SUBMISSION_URL = "https://research.temple.edu/researchadministration/contact-us/find-your-res-administrator";
+const SUBMISSION_NOTE = "Before anything goes to a sponsor, Temple routes it through ERA for institutional review and approval. That covers every grant proposal and any company agreement that brings Temple funding. Your assigned research administrator supports that step.";
 const MAILTO_MAX = 1800; // longer mailto links get cut off by some mail apps
 
 // Per brief: the chosen office, and per office the draft as the user has edited it.
@@ -99,6 +102,8 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     h("p", { class: "office-link" }, h("span", { text: "To: left blank for you. " }),
       h("a", { href: office.url, target: "_blank", rel: "noopener",
       text: `${office.name} contacts on research.temple.edu` })),
+    h("p", { class: "hint submission-note", "data-key": "submission-note" }, h("span", { text: SUBMISSION_NOTE + " " }),
+      h("a", { href: SUBMISSION_URL, target: "_blank", rel: "noopener", text: "Find your research administrator" })),
     // The mask setting this draft uses, the same one as the Export menu's (review W6).
     api.mode === "private" && docs ? maskToggle("handoff-mask") : null, // nothing to mask without documents (U12)
     h("div", { class: "actions" }, make), status];

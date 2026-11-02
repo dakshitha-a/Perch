@@ -17,7 +17,7 @@ from datetime import date
 
 from perch import datefmt, egress
 from perch.compare import COLUMNS, Row, award_size, lower_first
-from perch.offices import RESEARCH_SECURITY, for_route
+from perch.offices import RESEARCH_SECURITY, SUBMISSION_NOTE, SUBMISSION_URL, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
 from perch.score import band, match_text
 from perch.sources import grants_gov, temple
@@ -244,6 +244,8 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     a = [x for x in shown if x.route == "A" and x.record_id in opps]
     b = [x for x in shown if x.route == "B"]
     out.append(Block("h2", f"Grants ({len(a)})"))
+    out.append(Block("note", SUBMISSION_NOTE))
+    out.append(Block("link", "Find your research administrator", href=SUBMISSION_URL))
     if not a:
         out.append(Block("p", "No open opportunity passed the eligibility check."))
     if n := sum(x.route == "A" for x in gone):  # numbered 1 to n, with no gaps (Q11)
