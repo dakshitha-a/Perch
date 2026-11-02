@@ -383,3 +383,48 @@ console.log(JSON.stringify(CASES.map((t) => secondPerson(t))));
     got = json.loads(r.stdout)
     assert got == [second_person(t) for t in cases]
     assert got[0].startswith("Your work") and "you develop" in got[1] and "you focus" in got[1]
+
+
+def test_cover_points_reach_the_app_and_no_page_promises_that_no_model_reads_the_cv():
+    """S33: the Scout card renders cover_points with a Copy button and both audiences get
+    the example question and the rail line; the start screen, the CV box, the Cloud dialog
+    and Help say when a model reads the CV, and no page still promises that none does."""
+    web = {n: (WEB_DIR / n).read_text() for n in ("scout.js", "app.js", "student.js", "help.js")}
+    scout = web["scout.js"]
+    for s in ("function pointsBlock(", "What could my cover letter for the top lead say?",
+              "What should my application for my top option highlight?",
+              "Points for a cover letter, for one lead, from your CV, documents and papers",
+              "Points for a cover letter, for one option, from your CV, interests and "
+              "achievements", "Copy the points",
+              "Perch never sends this, and it never enters an export or a hand-off draft.",
+              "A model reads your CV only when you ask for cover-letter points, with contact "
+              "details blanked.",
+              "A model reads your documents only when you ask for cover-letter points, with "
+              "contact details blanked.",
+              "class: \"cite private\"", "Sample data"):
+        assert s in scout, s
+    assert "The points below are the step’s result." in scout  # the code-written answer line
+    css = (WEB_DIR / "styles.css").read_text()
+    assert ".scout-points {" in css
+    assert "overflow-wrap: anywhere" in css.split(".scout-points {")[1][:200]
+    assert ".scout-points .btn.points-copy { min-height: 44px; }" in css
+    assert ("A model on this server reads it only when you ask Scout for cover-letter points, "
+            "with contact details blanked, unless you choose Cloud and confirm."
+            ) in web["student.js"]
+    assert "and gives Scout cover-letter points when you ask" in web["app.js"]
+    assert "the fit explanations, cover-letter points and drafts Scout asks for" in web["app.js"]
+    assert "writes those four texts instead" in web["app.js"]
+    help_ = web["help.js"]
+    assert "Points for a cover letter" in help_ and "3 to 6 points" in help_
+    assert "cut at 3,500 characters" in help_  # cover.CV_CHARS
+    # The withdrawn promise (Q43) is gone from every page and from the redesign source. The
+    # hand-off sentence "no model reads them for it" stays: code writes that opening.
+    redesign = (ROOT / "docs/design/redesign/StudentStart.dc.html").read_text()
+    for text in (*web.values(), redesign):
+        for banned in ("no model reads it", "no model reads the CV", "never with a model",
+                       "never reads your CV", "never reads the CV"):
+            assert banned not in text, banned
+    from perch.skills import cover
+
+    assert cover.CV_CHARS == 3500 and (cover.MIN_POINTS, cover.MAX_POINTS) == (3, 6)
+    assert cover.MAX_MISSING == 3 and cover.MAX_PAPERS == 6

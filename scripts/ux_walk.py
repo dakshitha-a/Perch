@@ -2073,12 +2073,167 @@ async def ux_zoom(w: Walk, page: Page, base: str, tag: str) -> None:
     await end_session(page)
 
 
+# S33: the cover-letter points block on a Scout card, for both audiences, at the laptop
+# width and at 360 px. The geometry check (no sideways scroll, a 44 px Copy button) is run
+# on the real block, then proven to fail on a block broken through the CSSOM (the app's
+# CSP refuses a style tag), then run again on the restored block. The report keeps all
+# three results under "points".
+NARROW = {"width": 360, "height": 780}
+POINTS_GEOMETRY = """() => { const b = document.querySelector('.scout-points'); if (!b) return null;
+  const br = b.getBoundingClientRect(); const copy = b.querySelector('.points-copy');
+  const cr = copy ? copy.getBoundingClientRect() : null;
+  const past = [...b.querySelectorAll('*')].filter(el => el.getClientRects().length && el.getBoundingClientRect().right > br.right + 1);
+  return { blockScroll: b.scrollWidth - b.clientWidth,
+    pageScroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    copyH: cr ? Math.round(cr.height) : null, copyW: cr ? Math.round(cr.width) : null,
+    past: past.length, pastBy: past.length ? Math.round(Math.max(...past.map(el => el.getBoundingClientRect().right)) - br.right) : 0,
+    open: b.open, withheld: Boolean(b.querySelector('.notice.warn')) && !b.querySelector('.points-list'),
+    points: b.querySelectorAll('.points-list > li').length, missing: b.querySelectorAll('.points-missing li').length,
+    chips: b.querySelectorAll('.cite').length, locks: b.querySelectorAll('.cite.private').length,
+    samples: b.querySelectorAll('.cite.sample, .sample-badge').length, flagged: b.querySelectorAll('.flagged').length,
+    summary: (b.querySelector('summary') || {}).innerText || '',
+    answerByCode: Boolean(b.parentElement.querySelector('.scout-answer.by-code')),
+    width: innerWidth }; }"""
+BREAK_POINTS = """() => { const b = document.querySelector('.scout-points'); if (!b) return false;
+  const copy = b.querySelector('.points-copy'); if (copy) copy.style.cssText = 'min-height: 0; height: 30px; padding: 0;';
+  const list = b.querySelector('.points-list'); if (list) list.style.cssText = 'width: 1400px; white-space: nowrap;';
+  return true; }"""
+RESTORE_POINTS = """() => { for (const el of document.querySelectorAll('.scout-points .points-copy, .scout-points .points-list')) el.style.cssText = ''; }"""
+TOUR_EXPAND = """() => { const v = document.querySelector('#panel > .scout'); if (v) v.style.cssText = 'height: auto;';
+  const b = document.querySelector('.scout-scroll'); if (b) b.style.cssText = 'overflow: visible; -webkit-mask-image: none; mask-image: none;';
+  for (const el of document.querySelectorAll('.bar, .tabs-wrap')) el.style.cssText = 'position: static;'; }"""
+TOUR_RESTORE = """() => { for (const el of document.querySelectorAll('#panel > .scout, .scout-scroll, .bar, .tabs-wrap')) el.style.cssText = ''; }"""
+
+
+def points_problems(g: dict | None) -> list[str]:
+    """What the geometry check holds against a points block: nothing scrolls sideways, no
+    child runs past the block's edge, and the Copy button meets the 44 px target."""
+    if g is None:
+        return ["no points block on the card"]
+    out = []
+    if g["blockScroll"] > 0:
+        out.append(f"the points block scrolls sideways by {g['blockScroll']} px")
+    if g["pageScroll"] > 0:
+        out.append(f"the page scrolls sideways by {g['pageScroll']} px")
+    if g["past"]:
+        out.append(f"{g['past']} elements run {g['pastBy']} px past the block's edge")
+    if not g["withheld"] and (g["copyH"] is None or g["copyH"] < 44):
+        out.append(f"the Copy button is {g['copyH']} px tall, under the 44 px target")
+    return out
+
+
+async def scout_ask_long(page: Page, q: str, seconds: int = 420) -> None:
+    """Ask and wait: a points step runs a model generation and a grounding pass."""
+    await page.fill("#scout-q", q)
+    await page.click(".scout-ask button[type=submit]")
+    await page.wait_for_timeout(500)
+    for _ in range(seconds * 10):
+        if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
+            break
+        await page.wait_for_timeout(100)
+
+
+async def points_states(w: Walk, page: Page, tag: str, question: str, shot: Path | None, retry: bool = True) -> None:
+    """Ask for the points on the open Scout tab; check and capture the block at the laptop
+    width and at 360 px. A withheld set is asked once more in a new conversation."""
+    await page.wait_for_selector("#scout-q")
+    await scout_ask_long(page, question)
+    g = await page.evaluate(POINTS_GEOMETRY)
+    if g is None or (g["withheld"] and retry):
+        why = "no points block" if g is None else "the local model's points were withheld"
+        w.errors.append(f"{tag}: points: {why} on the first run; asked once more")
+        await page.click("[data-key=scout-new-any]")
+        await page.wait_for_timeout(500)
+        return await points_states(w, page, tag, question, shot, retry=False)
+    if g is None:
+        w.errors.append(f"{tag}: points: no points block after asking twice")
+        await w.snap(page, tag, "points-none", full=True)
+        return
+    if g["withheld"]:
+        w.errors.append(f"{tag}: points: withheld twice by the local model (not a layout finding)")
+    if not g["open"]:
+        w.errors.append(f"{tag}: points: the block is not open by default")
+    if not g["answerByCode"]:
+        w.errors.append(f"{tag}: points: the answer line above the block is not marked as code")
+    if not g["withheld"] and (not g["chips"] or g["points"] < 3):
+        w.errors.append(f"{tag}: points: {g['points']} points with {g['chips']} citation chips")
+    results = {}
+    for vtag, view in (("laptop", LAPTOP), ("360", NARROW)):
+        await page.set_viewport_size(view)
+        await page.wait_for_timeout(600)
+        await page.evaluate("() => { const b = document.querySelector('.scout-points'); b && b.scrollIntoView({ block: 'start' }); }")
+        await page.wait_for_timeout(300)
+        real = await page.evaluate(POINTS_GEOMETRY)
+        before = points_problems(real)
+        for e in before:
+            w.errors.append(f"{tag}: points at {vtag}: {e}")
+        # Prove the check bites: break the block through the CSSOM, expect failures, restore.
+        await page.evaluate(BREAK_POINTS)
+        broken = points_problems(await page.evaluate(POINTS_GEOMETRY))
+        await page.evaluate(RESTORE_POINTS)
+        after = points_problems(await page.evaluate(POINTS_GEOMETRY))
+        if not broken:
+            w.errors.append(f"{tag}: points at {vtag}: the geometry check did not fail on a broken block")
+        if after != before:
+            w.errors.append(f"{tag}: points at {vtag}: the geometry check changed after the restore: {after}")
+        results[vtag] = {"geometry": real, "problems": before, "broken_problems": broken, "restored_problems": after}
+        await w.snap(page, tag, f"points-{vtag}", full=True)
+        self_state = w.states[-1]
+        self_state["points"] = results[vtag]
+        if vtag == "laptop" and shot is not None:
+            # The tour picture shows the whole block: the chat box is let grow for the shot
+            # and the sticky header unstuck, through the CSSOM, then both are put back.
+            await page.evaluate(TOUR_EXPAND)
+            await page.wait_for_timeout(300)
+            await page.locator(".scout-points").screenshot(path=str(shot))
+            await page.evaluate(TOUR_RESTORE)
+            await page.wait_for_timeout(300)
+    await page.set_viewport_size(LAPTOP)
+
+
+async def ux_points_pi(w: Walk, page: Page, base: str, tag: str) -> None:
+    """S33: the researcher example question on the demo researcher's brief."""
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector(".cand", timeout=20000)
+    await pick_and_build(page)
+    await page.wait_for_selector("#tab-routes", timeout=60000)
+    await wait_built(page)
+    await page.click("#tab-scout")
+    await points_states(w, page, tag, "What could my cover letter for the top lead say?",
+                        ROOT / "docs/tour/points-researcher.png")
+    await end_session(page)
+
+
+async def ux_points_student(w: Walk, page: Page, base: str, tag: str) -> None:
+    """S33: the student example question on the SYNTHETIC persona-ug brief."""
+    persona = STUDENTS[0]
+    await page.goto(base + "/#/")
+    await page.wait_for_selector(".landing")
+    await page.click("[data-key=seg-s]")
+    await page.click("[data-key=student]")
+    await page.wait_for_selector("#st-cv", timeout=20000)
+    for kind in ("cv", "interests", "achievements"):
+        await page.fill(f"#st-{kind}", (SYN / persona / f"{kind}.md").read_text())
+    await page.click("[data-key=st-build]")
+    await page.wait_for_selector("#progress", timeout=20000)
+    await w.step(tag, "built", wait_built(page))
+    await page.wait_for_timeout(1000)
+    await page.click("#tab-scout")
+    await points_states(w, page, tag, "What should my application for my top option highlight?",
+                        ROOT / "docs/tour/points-student.png")
+    await end_session(page)
+
+
 UX_FLOWS = (("ux-laptop", "LAPTOP", "ux_pi"), ("ux-phone", "PHONE", "ux_pi"), ("ux-scout", "LAPTOP", "ux_scout"),
             ("ux-student", "LAPTOP", "ux_student"), ("ux-student-phone", "PHONE", "ux_student"),
             ("ux-sample", "LAPTOP", "ux_sample"), ("ux-queued", "LAPTOP", "ux_queued"), ("ux-docs", "LAPTOP", "ux_docs"),
             ("ux-landing", "LAPTOP", "ux_landing"), ("ux-landing-phone", "PHONE", "ux_landing"),
             ("ux-zoom", "LAPTOP", "ux_zoom"), ("ux-cloud-docs", "LAPTOP", "ux_cloud_docs"),
-            ("ux-cloud-docs-phone", "PHONE", "ux_cloud_docs"))
+            ("ux-cloud-docs-phone", "PHONE", "ux_cloud_docs"),
+            ("ux-points", "LAPTOP", "ux_points_pi"), ("ux-points-student", "LAPTOP", "ux_points_student"))
 
 
 async def main(base: str, axe: str | None, out: Path, only: list[str], ux: list[str] | None = None) -> None:
