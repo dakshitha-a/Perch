@@ -433,8 +433,7 @@ def test_cover_points_reach_the_app_and_no_page_promises_that_no_model_reads_the
     assert "the fit explanations, cover-letter points and drafts Scout asks for" in web["app.js"]
     assert "writes those four texts instead" in web["app.js"]
     help_ = web["help.js"]
-    assert "Points for a cover letter" in help_ and "3 to 6 points" in help_
-    assert "cut at 3,500 characters" in help_  # cover.CV_CHARS
+    assert "cover-letter points" in help_  # Help stays short; the detail is in SPEC
     # The withdrawn promise (Q43) is gone from every page and from the redesign source. The
     # hand-off sentence "no model reads them for it" stays: code writes that opening.
     redesign = (ROOT / "docs/design/redesign/StudentStart.dc.html").read_text()
@@ -446,6 +445,22 @@ def test_cover_points_reach_the_app_and_no_page_promises_that_no_model_reads_the
 
     assert cover.CV_CHARS == 3500 and (cover.MIN_POINTS, cover.MAX_POINTS) == (3, 6)
     assert cover.MAX_MISSING == 3 and cover.MAX_PAPERS == 6
+
+
+def test_help_is_a_short_visual_guide_with_one_architecture_diagram():
+    """Help (2 Nov): figures animate with CSS only, one reduced-motion block stops them on
+    their final state, and the architecture SVG is an image with a label and a text list."""
+    help_js = (WEB_DIR / "help.js").read_text()
+    css = (WEB_DIR / "styles.css").read_text()
+    assert 'role: "img"' in help_js and '"aria-label": ARCH_LABEL' in help_js
+    assert 'class: "sr-only"' in help_js  # the text list beside the diagram
+    assert "setInterval" not in help_js and "setTimeout" not in help_js
+    external = help_js.replace("https://research.temple.edu", "")
+    external = external.replace("http://www.w3.org/2000/svg", "")
+    assert "data:" not in help_js and "http" not in external  # no data URIs, no outside assets
+    assert css.count("@media (prefers-reduced-motion: reduce) {\n  .help .fx") == 1
+    block = css.split("@media (prefers-reduced-motion: reduce) {\n  .help .fx")[1].split("\n}")[0]
+    assert "animation: none !important" in block and ".arch-dot" in block
 
 
 def test_the_era_note_and_the_foundation_office_are_fixed_text():

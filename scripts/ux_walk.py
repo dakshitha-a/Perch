@@ -122,6 +122,19 @@ EVIDENCE = """() => {
 
 
 # Leftovers of the ask-first mode, gone since S27: no Approve or Skip, no "Waiting for you".
+
+# U39 (rewritten 2 Nov): Help is a short visual guide. The probe counts the words a reader
+# gets, finds the visible architecture diagram (one of two layouts, the other is display:none)
+# and the sideways overflow at the current width.
+HELP_PROBE = """() => { const help = document.querySelector('.help');
+  const vis = [...document.querySelectorAll('.help svg[role=img]')].filter((s) => s.getClientRects().length);
+  const over = [...document.querySelectorAll('.help *')].filter((e) => e.getBoundingClientRect().right > innerWidth + 1
+    && e.getClientRects().length).map((e) => e.tagName + '.' + String(e.getAttribute('class')).slice(0, 30)).slice(0, 4);
+  return { words: help.innerText.split(/\\s+/).filter(Boolean).length, diagram: vis.length,
+           label: vis[0] ? vis[0].getAttribute('aria-label') : null, sw: document.documentElement.scrollWidth,
+           cw: document.documentElement.clientWidth, over,
+           motion: [...document.styleSheets].some((ss) => { try { return [...ss.cssRules].some((r) => r.media && /prefers-reduced-motion: reduce/.test(r.conditionText || r.media.mediaText) && /help|fig/.test(r.cssText)); } catch (e) { return false; } }) }; }"""
+
 GATE = """() => [...document.querySelectorAll('.scout-card, .help, main')].some(el =>
   el.querySelector(':scope > .scout-actions') || /Waiting for you|\\bApprove\\b/.test(el.innerText))"""
 # A MutationObserver counts loading placeholders put into an Evidence box that is already
