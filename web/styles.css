@@ -673,8 +673,31 @@ body.on-help .banner { display: none; }
 
 @media (max-width: 639px) {
   .g-step, .anatomy { grid-template-columns: minmax(0, 1fr); }
-  .g-steps { gap: 28px; }
-  .fig { min-height: 0; }
+  .g-steps { gap: 18px; }
+  .g-step { gap: 6px; }
+  .help-block { gap: 10px; padding: 14px 0 16px; }
+  .fig { min-height: 0; padding: 8px 10px; }
+  .fx { gap: 6px; }
+  .pic-card { padding: 6px 10px; gap: 5px; }
+  .pic-branch { height: 44px; }
+  .pic-btn { min-height: 28px; }
+  .g-t { row-gap: 2px; }
+  .callouts { gap: 8px; }
+  .anatomy { gap: 10px; }
+  .anat .pic-card { gap: 8px; }
+  .priv, .plain-list { gap: 8px; }
+  .fig .fx { zoom: .8; }
+  .help p, .help li, .help .lede { font-size: 15px; line-height: 1.4; }
+  .g-t h3 { font-size: 16px; }
+  .help .section-title { font-size: 20px; }
+  .help-head { gap: 8px; }
+  .help-owl { width: 56px; height: 56px; }
+  .fig .pic-card.box { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+  .fig .pic-card.box .ph + .ph { display: none; }
+  .fig .dim-later, .fig .pic-card:has(> .pic-row.in1:first-child):has(+ .chip) { display: none; }
+  .fig .pic-card + .pic-card:last-child:has(.fit) { display: none; }
+  .anat { padding: 8px; }
+  .callouts li { font-size: 14px; }
   .arch-w { display: none; }
   .arch-v { display: block; }
 }

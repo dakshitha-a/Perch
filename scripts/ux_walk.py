@@ -124,6 +124,7 @@ EVIDENCE = """() => {
 # Leftovers of the ask-first mode, gone since S27: no Approve or Skip, no "Waiting for you".
 
 HELP_WORDS_MAX = 2300  # a third of the 6,891 words the old page had
+HELP_PHONE_MAX_PX = 5600  # Help at 390 px wide was 6,901 px tall before the 2 Nov phone tightening
 # U39 (rewritten 2 Nov): Help is a short visual guide. The probe counts the words a reader
 # gets, finds the visible architecture diagram (one of two layouts, the other is display:none)
 # and the sideways overflow at the current width.
@@ -133,7 +134,10 @@ HELP_PROBE = """() => { const help = document.querySelector('.help');
     && e.getClientRects().length).map((e) => e.tagName + '.' + String(e.getAttribute('class')).slice(0, 30)).slice(0, 4);
   return { words: help.innerText.split(/\\s+/).filter(Boolean).length, diagram: vis.length,
            label: vis[0] ? vis[0].getAttribute('aria-label') : null, sw: document.documentElement.scrollWidth,
-           cw: document.documentElement.clientWidth, over,
+           cw: document.documentElement.clientWidth, over, height: document.documentElement.scrollHeight,
+           clipped: vis[0] ? [...vis[0].querySelectorAll('g')].flatMap((g) => { const r = g.querySelector('rect').getBBox();
+             return [...g.querySelectorAll('text')].filter((t) => t.getBBox().y + t.getBBox().height > r.y + r.height - 2
+               || t.getBBox().x + t.getBBox().width > r.x + r.width).map((t) => t.textContent.slice(0, 20)); }) : [],
            motion: [...document.styleSheets].some((ss) => { try { return [...ss.cssRules].some((r) => r.media && /prefers-reduced-motion: reduce/.test(r.conditionText || r.media.mediaText) && /help|fig/.test(r.cssText)); } catch (e) { return false; } }) }; }"""
 
 GATE = """() => [...document.querySelectorAll('.scout-card, .help, main')].some(el =>
@@ -1847,9 +1851,13 @@ async def ux_landing(w: Walk, page: Page, base: str, tag: str) -> None:
         w.errors.append(f"{tag}: U39: Help scrolls sideways ({hp['sw']} > {hp['cw']} px) {hp['over']}")
     if not hp["motion"]:
         w.errors.append(f"{tag}: U39: Help has no reduced-motion block")
+    if phone and hp["height"] > HELP_PHONE_MAX_PX:
+        w.errors.append(f"{tag}: U39: Help is {hp['height']} px tall on a phone (max {HELP_PHONE_MAX_PX})")
+    if hp["clipped"]:
+        w.errors.append(f"{tag}: U39: diagram text runs past its box {hp['clipped']}")
     if await page.evaluate("() => /hello/i.test(document.querySelector('.help').innerText)"):
         w.errors.append(f"{tag}: U40: Help still says hello")
-    print(f"{tag}: Help words {hp['words']}, scroll {hp['sw']}/{hp['cw']}")
+    print(f"{tag}: Help words {hp['words']}, height {hp['height']}, scroll {hp['sw']}/{hp['cw']}")
     await help_snap(w, page, tag, "u-help-top", full=True)
     if phone:
         return

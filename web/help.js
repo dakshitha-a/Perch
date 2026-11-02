@@ -208,7 +208,7 @@ const SR_LIST = [
 ];
 
 function archSvg(vertical) {
-  const W = vertical ? 340 : 800, NW = vertical ? 340 : 170, NH = vertical ? 84 : 100, GAP = vertical ? 20 : 40, RG = 52;
+  const W = vertical ? 340 : 800, NW = vertical ? 340 : 170, NH = vertical ? 66 : 100, GAP = vertical ? 16 : 40, RG = 52;
   const pos = (i) => {  // top-left of node i
     if (vertical) return [0, i * (NH + GAP)];
     const r = i < 4 ? 0 : 1, c = r ? 7 - i : i;
@@ -220,14 +220,23 @@ function archSvg(vertical) {
   let d = `M${mid[0][0]} ${mid[0][1]}`;
   if (vertical) d += ` V${mid[7][1]}`; else d += ` H${mid[3][0]} V${mid[4][1]} H${mid[7][0]}`;
   kids.push(s("path", { d, class: "arch-rail" }), s("circle", { r: 5, class: "arch-dot", style: `offset-path: path("${d}")` }));
-  NODES.forEach(([kind, title, lines], i) => {
+  const rewrap = (lines) => {  // the column is wide enough for two lines a node
+    const words = lines.join(" ").split(" "), out = [""];
+    for (const w of words) {
+      if ((out[out.length - 1] + " " + w).trim().length > 46) out.push(w);
+      else out[out.length - 1] = (out[out.length - 1] + " " + w).trim();
+    }
+    return out;
+  };
+  NODES.forEach(([kind, title, lines0], i) => {
+    const lines = vertical ? rewrap(lines0) : lines0;
     const [x, y] = pos(i);
     kids.push(s("g", { class: `arch-n ${kind}` },
       s("rect", { x, y, width: NW, height: NH, rx: 12 }),
       s("circle", { cx: x + 17, cy: y + 19, r: 10, class: "arch-num" }),
       s("text", { x: x + 17, y: y + 19, class: "arch-numt" }, String(i + 1)),
       s("text", { x: x + 34, y: y + 24, class: "arch-t" }, title),
-      lines.map((l, j) => s("text", { x: x + 14, y: y + (vertical ? 44 : 50) + j * (vertical ? 16 : 18), class: "arch-s" }, l))));
+      lines.map((l, j) => s("text", { x: x + 14, y: y + (vertical ? 42 : 50) + j * (vertical ? 15 : 18), class: "arch-s" }, l))));
     if (i === 7) return;
     // an arrowhead in the gap after node i
     const [x2, y2] = pos(i + 1);
@@ -239,8 +248,8 @@ function archSvg(vertical) {
     kids.push(s("polygon", { points: pts, class: "arch-head" }));
   });
   // the side lane: boxes drawn after the nodes
-  const top = vertical ? 8 * NH + 7 * GAP + 26 : 2 * NH + RG + 30;
-  const lw = vertical ? W : 392, lh = vertical ? 70 : 72;
+  const top = vertical ? 8 * NH + 7 * GAP + 18 : 2 * NH + RG + 30;
+  const lw = vertical ? W : 392, lh = vertical ? 68 : 72;
   LANE.forEach(([t, lines], i) => {
     const x = vertical ? 0 : i * (lw + 16), y = vertical ? top + i * (lh + 12) : top;
     kids.push(s("g", { class: "arch-lane" }, s("rect", { x, y, width: lw, height: lh, rx: 12 }),
