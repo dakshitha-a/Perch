@@ -7,10 +7,12 @@ each recording into docs/tour/<scene>.webp.
 Researchers appear by alias only: every API response passing through the browser has the
 researcher's display name replaced with their alias from data/overrides/pi_aliases.csv,
 as the replay preview does. Paper titles and records are public and shown as they are.
+The points scene asks Scout for cover-letter points and retries a withheld card in a new
+conversation, up to three tries; if all are withheld it films nothing.
 Private mode is filmed with the SYNTHETIC persona-1 files.
 
   uv run --with playwright --with pillow python scripts/tour/film.py \\
-      [--base http://127.0.0.1:8090] [--scenes hero industry handoff scout private student]
+      [--base http://127.0.0.1:8090] [--scenes hero industry handoff scout points private student]
 
 The demo (`make demo`) or a dev server on the same settings must be up, with private mode
 on for the private and student scenes.
@@ -43,6 +45,7 @@ PERSONA = ROOT / "data/synthetic/persona-1"
 AUTHOR = "A5026494099"  # PI-4, the demo researcher
 VIEW = {"width": 1280, "height": 800}
 SCOUT_Q = "Which of my NSF leads close by 1 Mar 2027?"  # one of Scout's own examples
+POINTS_Q = "What could my cover letter for the top lead say?"  # another of Scout's examples
 
 
 def aliases() -> dict[str, str]:
@@ -211,7 +214,13 @@ async def handoff(page: Page, base: str) -> Recorder:
     await rec.hold(2600)
     make = page.locator("[data-key=handoff-make]")
     await make.scroll_into_view_if_needed()
-    await rec.focus(page.locator("#handoff-title"), pad=120)
+    # The title down to the To line and the ERA note under it, then the button.
+    form = await page.evaluate("""() => { const a = document.querySelector('#handoff-title')
+        .getBoundingClientRect(), b = document.querySelector('[data-key=submission-note]')
+        .getBoundingClientRect();
+        return {x: a.x, y: a.y, width: a.width, height: b.bottom - a.y}; }""")
+    await rec.focus(form, pad=40)
+    await rec.hold(2400)
     await click(page, make)
     subject = page.locator("[data-key=handoff-subject]")
     await rec.quickly(lambda: subject.wait_for(timeout=120_000), speed=8)
@@ -269,6 +278,66 @@ async def scout(page: Page, base: str) -> Recorder:
     await rec.hold(1400)
     rec.wide()
     await rec.hold(800)
+    await rec.stop()
+    return rec
+
+
+async def points(page: Page, base: str) -> Recorder | None:
+    """Cover-letter points (S33): ask Scout for the top lead. A withheld card starts a new
+    conversation and asks again, up to three tries; if all are withheld nothing is filmed."""
+    await open_brief(page, base)
+    await page.click("#tab-scout")
+    await page.wait_for_timeout(800)
+    rec = Recorder(page, "points", RAW)
+    await rec.start()
+    await rec.hold(700)
+    block = None
+    for attempt in range(3):
+        if attempt:
+            await click(page, page.locator("[data-key=scout-new], [data-key=scout-new-any]").first)
+            await rec.hold(400)
+        q = page.locator("#scout-q")
+        await click(page, q)
+        await q.press_sequentially(POINTS_Q, delay=40)
+        await rec.hold(300)
+        await click(page, page.locator(".scout-ask button[type=submit]"))
+        rec.wide()
+        await rec.quickly(lambda: page.locator(".scout-x").last.locator(".scout-answer")
+                          .wait_for(timeout=240_000), speed=8)
+        await page.wait_for_timeout(1500)
+        block = page.locator(".scout-points").last
+        withheld = await block.count() == 0 or await block.locator(".notice.warn").count() > 0
+        print(f"points attempt {attempt + 1}: {'withheld' if withheld else 'ok'}")
+        if not withheld:
+            break
+        block = None
+    if block is None:
+        await rec.stop()
+        return None
+    await block.evaluate("e => e.scrollIntoView({block: 'start'})")
+    await page.wait_for_timeout(300)
+    lines = block.locator(".points-list > li").first
+    await rec.focus(block.locator("summary"), pad=24)
+    await rec.hold(900)
+    await rec.focus(lines, pad=24)
+    await rec.hold(4200)
+    miss = block.locator(".points-missing")
+    copy = block.locator("button.points-copy")
+    # Still missing down to the Copy button and its hint, as one box as wide as the card.
+    top = miss if await miss.count() else copy
+    await top.scroll_into_view_if_needed()
+    await block.evaluate("e => e.scrollIntoView({block: 'end'})")
+    await page.wait_for_timeout(300)
+    A = await top.bounding_box()
+    B = await copy.bounding_box()
+    W = await block.bounding_box()
+    tail = {"x": W["x"], "y": A["y"], "width": W["width"], "height": B["y"] + B["height"] - A["y"] + 40}
+    await rec.focus(tail, pad=24)
+    await rec.hold(3200)
+    await click(page, copy)
+    await rec.hold(1200)
+    rec.wide()
+    await rec.hold(700)
     await rec.stop()
     return rec
 
@@ -359,7 +428,7 @@ async def student(page: Page, base: str) -> Recorder:
 
 
 SCENES = {"hero": hero, "industry": industry, "handoff": handoff, "scout": scout,
-          "private": private, "student": student}
+          "points": points, "private": private, "student": student}
 
 
 async def main(base: str, names: list[str], width: int, fps: int, quality: int) -> None:
@@ -377,8 +446,11 @@ async def main(base: str, names: list[str], width: int, fps: int, quality: int) 
             await alias_responses(page, alias)
             errors: list[str] = []
             page.on("pageerror", lambda e, errors=errors: errors.append(str(e)))
-            await SCENES[name](page, base)
+            filmed = await SCENES[name](page, base)
             await ctx.close()
+            if filmed is None:
+                print(f"{name}: not filmed")
+                continue
             subprocess.run([sys.executable, str(Path(__file__).with_name("animate.py")),
                             str(RAW / name), str(OUT / f"{name}.webp"), "--width", str(width),
                             "--fps", str(fps), "--quality", str(quality)], check=True)
