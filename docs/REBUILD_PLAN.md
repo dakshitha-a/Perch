@@ -213,12 +213,19 @@ Dakshitha (3 Nov): Scout comes up empty on most questions outside a fixed set. A
 2. **Open questions go to the cloud model.** Scout answers in its own words, using the provider's native tool use. The MCP server stays as an extra way in for outside clients, and it no longer shapes how Scout works inside Perch.
 3. **Tools become read tools.** Scout gets a small set of broad read tools: search records, read one record, read the user's brief, read parts of their CV and entries, and read their saved items. The tools are still allowlisted (rule 5), and none of them writes or sends anything.
 4. **The grounding contract.** Every sentence about a record or about the user cites the record or the CV part it comes from. Layer 1 still checks every number, date and link, and MiniCheck still flags unsupported sentences. General guidance, such as how to structure a personal statement, is allowed and is shown under a "General advice" label. It may not name an award or state a number, date or eligibility fact.
-5. **Feedback on the user's own material.** Scout may give feedback on the user's CV and entries against a cited record, for example what a fellowship asks for that the CV does not yet show.
-6. **Budgets.** A per-account daily budget is shown to the user.
-7. **A new bench.** The old 30-task bench measures tool choice on a fixed set. It is replaced by a set of open questions written by Perch-dev and Dakshitha, scored for citation validity, MiniCheck flags, empty answers and answer usefulness, which a person grades. Questions where the old Scout came up empty are included. The old bench is kept as a baseline.
-8. **Review:** an Opus review with fresh context of prompt injection through record text and CV text, since Scout now writes more freely.
+5. **A scope guardrail, so API spend goes only to Perch's job (Dakshitha, 3 Nov).** Scout answers questions about funding, scholarships, fellowships, applications, the user's own brief, CV and entries, and how to use Perch. It does not solve general tasks, such as math problems, coding, homework or essays unrelated to an application, and it does not offer therapy or personal counselling.
+   - **A cheap gate first.** Each question goes first through a small, cheap model call with a short fixed prompt and a cap of a few output tokens. The call answers only "in scope" or "out of scope". Questions with a button match skip the gate entirely.
+   - **Code writes the refusal.** An out-of-scope question gets a fixed, polite reply written by code, with example questions Scout can answer. The large model is never called for it.
+   - **Distress gets care, not a refusal.** A question that reads as personal distress gets a fixed message pointing to Temple's student counselling service, with its link verified live before it ships (rule 10). Scout does not try to counsel.
+   - **Belt and braces.** Scout's system prompt also states the scope, so a question that slips past the gate is still declined in one sentence.
+   - **Abuse limits.** Out-of-scope questions count toward the daily budget at a small fixed cost, so repeated misuse runs out quickly.
+   - **Measured.** The open-question bench adds an out-of-scope set: math, coding, trivia, therapy-style and mixed questions. It reports how many are blocked, how many in-scope questions are wrongly blocked, and the gate's cost per question.
+6. **Feedback on the user's own material.** Scout may give feedback on the user's CV and entries against a cited record, for example what a fellowship asks for that the CV does not yet show.
+7. **Budgets.** A per-account daily budget is shown to the user.
+8. **A new bench.** The old 30-task bench measures tool choice on a fixed set. It is replaced by a set of open questions written by Perch-dev and Dakshitha, scored for citation validity, MiniCheck flags, empty answers and answer usefulness, which a person grades. Questions where the old Scout came up empty are included. The old bench is kept as a baseline.
+9. **Review:** an Opus review with fresh context of prompt injection through record text and CV text, and of ways around the scope gate, since Scout now writes more freely.
 
-Done when: the open-question bench is reported against the old Scout, and the review's must-fix items are closed.
+Done when: the open-question bench, including the out-of-scope set, is reported against the old Scout, and the review's must-fix items are closed.
 
 ### Phase 9 — QA cycle (S46)
 
