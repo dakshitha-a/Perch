@@ -1,11 +1,17 @@
 UV ?= uv
 
-.PHONY: test demo demo-units demo-seed demo-down demo-status gpus bench tracker package hooks \
+.PHONY: test test-pg demo demo-units demo-seed demo-down demo-status gpus bench tracker package hooks \
 	decide-up decide-down decide-status
 
 test:
 	$(UV) run ruff check .
 	$(UV) run pytest
+
+# Postgres tests: needs a superuser URL; the default is the local test server.
+# The tests create and drop their own database named perch_test_a_*.
+test-pg:
+	PERCH_TEST_DATABASE_URL=$${PERCH_TEST_DATABASE_URL:-postgresql://postgres:perchtest@127.0.0.1:55432/postgres} \
+		$(UV) run pytest tests/test_store.py tests/test_postgres.py -p no:cacheprovider
 
 # The demo (S9, deploy-2gpu, hybrid): models as systemd user units on two GPUs, the app
 # in Docker on 127.0.0.1:8090. One command: `make demo`. GPUs default to 6 and 7.

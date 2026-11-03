@@ -26,7 +26,7 @@ def test_corpus_loads_into_its_own_store_under_source_synthetic(samples):
     assert 400 <= len(samples) <= 600
     repo = SQLiteRepository(":memory:")
     assert S.load_samples(repo) == len(samples)
-    stored = repo.list(Scholarship)
+    stored = repo.list(Scholarship, include_samples=True)
     assert {s.source for s in stored} == {"synthetic"}
     assert all(re.fullmatch(r"sample:sch-\d{4}", s.id) for s in stored)
     assert all(s.canary and s.canary.startswith(S.CANARY_PREFIX) and s.canary in s.purpose

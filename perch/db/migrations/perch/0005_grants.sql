@@ -31,6 +31,6 @@ GRANT USAGE ON SEQUENCE job_events_id_seq, spend_ledger_id_seq, ingest_runs_id_s
 
 -- perch_definer: only what the definer functions need.
 GRANT SELECT, INSERT, UPDATE, DELETE ON users TO perch_definer;
-GRANT DELETE ON consents, user_data, job_events, spend_ledger TO perch_definer;
+GRANT SELECT, DELETE ON consents, user_data, job_events, spend_ledger TO perch_definer;
 GRANT SELECT, UPDATE, DELETE ON jobs TO perch_definer;
 GRANT SELECT (at, actor), UPDATE (actor) ON audit_log TO perch_definer;

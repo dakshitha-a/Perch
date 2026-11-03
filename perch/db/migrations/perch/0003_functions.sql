@@ -77,16 +77,8 @@ LANGUAGE sql SECURITY DEFINER SET search_path = public, pg_temp AS $$
      AND (o.priority, o.run_after, o.created_at) < (me.priority, me.run_after, me.created_at);
 $$;
 
--- Hand the definer functions to perch_definer (perch_owner is a member since 0001).
-GRANT CREATE ON SCHEMA public TO perch_definer;
-ALTER FUNCTION perch_login_user(bytea, bytea) OWNER TO perch_definer;
-ALTER FUNCTION perch_claim_job(text, text[], int) OWNER TO perch_definer;
-ALTER FUNCTION perch_inactive_users(interval, int) OWNER TO perch_definer;
-ALTER FUNCTION perch_delete_user_rows(uuid) OWNER TO perch_definer;
-ALTER FUNCTION perch_null_old_actors(interval) OWNER TO perch_definer;
-ALTER FUNCTION perch_queue_position(uuid) OWNER TO perch_definer;
-REVOKE CREATE ON SCHEMA public FROM perch_definer;
-
+-- Privileges first, while perch_owner still owns the functions: a role that does not own
+-- an object cannot change its ACL.
 REVOKE EXECUTE ON FUNCTION perch_login_user(bytea, bytea), perch_claim_job(text, text[], int),
   perch_inactive_users(interval, int), perch_delete_user_rows(uuid),
   perch_null_old_actors(interval), perch_queue_position(uuid) FROM PUBLIC;
@@ -96,3 +88,13 @@ GRANT EXECUTE ON FUNCTION perch_claim_job(text, text[], int) TO perch_worker;
 GRANT EXECUTE ON FUNCTION perch_inactive_users(interval, int) TO perch_worker;
 GRANT EXECUTE ON FUNCTION perch_delete_user_rows(uuid) TO perch_worker;
 GRANT EXECUTE ON FUNCTION perch_null_old_actors(interval) TO perch_worker;
+
+-- Hand the definer functions to perch_definer (perch_owner is a member since 0001).
+GRANT CREATE ON SCHEMA public TO perch_definer;
+ALTER FUNCTION perch_login_user(bytea, bytea) OWNER TO perch_definer;
+ALTER FUNCTION perch_claim_job(text, text[], int) OWNER TO perch_definer;
+ALTER FUNCTION perch_inactive_users(interval, int) OWNER TO perch_definer;
+ALTER FUNCTION perch_delete_user_rows(uuid) OWNER TO perch_definer;
+ALTER FUNCTION perch_null_old_actors(interval) OWNER TO perch_definer;
+ALTER FUNCTION perch_queue_position(uuid) OWNER TO perch_definer;
+REVOKE CREATE ON SCHEMA public FROM perch_definer;

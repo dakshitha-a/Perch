@@ -21,8 +21,10 @@ BEGIN
 END
 $$;
 
--- A role can hand an object to another role only if it is a member of that role.
-GRANT perch_definer TO perch_owner;
+-- A role can hand an object to another role only if it can SET ROLE to it. INHERIT FALSE
+-- (PostgreSQL 16 or later) matters: with inheritance, perch_owner would pick up the
+-- perch_definer policies and FORCE row-level security would no longer bind the owner.
+GRANT perch_definer TO perch_owner WITH INHERIT FALSE, SET TRUE;
 
 DO $$
 BEGIN

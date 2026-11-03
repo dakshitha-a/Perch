@@ -48,7 +48,7 @@ def ensure_samples() -> int:
     and by `perch samples`, never from inside a private session."""
     want = read_samples()
     with SQLiteRepository(sample_db()) as repo:
-        have = {s.id: s for s in repo.list(Scholarship)}
+        have = {s.id: s for s in repo.list(Scholarship, include_samples=True)}
         if have != {s.id: s for s in want}:
             repo.conn.execute("DELETE FROM records WHERE kind = 'scholarship'")
             repo.conn.commit()
