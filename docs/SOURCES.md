@@ -38,3 +38,10 @@ Parsing rules (all in code, no model reads the page):
 - **Amount:** a sentence with a dollar amount and an award word (award, stipend, scholarship, fellowship, grant, funding, prize, up to, worth). "up to $X" is a ceiling, "$X to $Y" and "between $X and $Y" a range, a single "$X" both ends. Sentences with million, billion, fee, cost, charge, tuition, salary, or a per-month, per-year or similar rate are skipped, and so is $0. Euro, pound and other currencies are skipped and counted. Different amounts on one page mean none is kept.
 - **Ended awards:** a page that says the award was terminated, discontinued, suspended or is no longer accepting applications keeps no value.
 - **Quote:** the exact sentence, trimmed to about 300 characters around the match.
+
+## Temple award pages (rebuild Phase 1, inventoried 2026-11-03)
+
+- **Where the list lives:** every page is a row in `data/temple/inventory.csv`, with owner, audience, kind, HTTP status, robots.txt result, sign-in flag and fetch time. `docs/v1/TEMPLE_INVENTORY.md` summarises it.
+- **What was read:** 142 public pages answered 200, and robots.txt blocked none. 316 further pages are listed from sitemaps only.
+- **What was not read:** 3 sign-in pages, ScholarshipUniverse, InfoReady and a merit-scholarship login, are listed and were not read. Temple Japan's site sits outside temple.edu and is not covered.
+- **Terms of use:** UNVERIFIED for each school page. Phase 4 reads each page once, at one request a second per host, within robots.txt.
