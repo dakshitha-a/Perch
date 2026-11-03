@@ -23,7 +23,7 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 
 ### Dakshitha decided
 
-- **Standing rules 1 and 5 change as proposed.** The proposed wording is below. Dakshitha edits CLAUDE.md, because the agent may not edit standing rules.
+- **Standing rules 1 and 5 change as proposed.** The wording below was applied to CLAUDE.md on 3 Nov at Dakshitha's request.
 - **The researcher side stays, behind a student-first UI.** Students land first. The researcher path is ported to the new stack.
 - **Sentence checking uses MiniCheck on CPU.** MiniCheck is already the default grounder in `perch/grounding.py`. Clef and its GPU servers are retired.
 - **Jev is a bench challenger only.** Jev is a hosted decision model. The existing `perch/llm/systemone.py` adapter says it is Jev-compatible, but that is UNVERIFIED: the Jev site shows a `POST /v1/decide` endpoint, so compatibility is checked when access arrives. Its site says it is in early access. Its privacy page is template text, and it states no data-retention terms. Jev gets a bench row once we have access and written data terms. A switch would be a later decision based on those numbers.
@@ -116,7 +116,7 @@ Each session follows the session protocol in CLAUDE.md. Code agents work in work
 
 ### Phase 0 — Rules, decisions, clean-up (S34)
 
-1. Dakshitha applies the rule 1 and 5 wording, or edits it. Perch-dev updates CLAUDE.md's engineering conventions to name Postgres with pgvector as the deployment store, and adds the award-title exception to the public-ready convention: award titles copied from Temple's public pages may name people, while staff names and contacts stay out. `tests/test_public_hygiene.py` follows.
+1. Rules 1 and 5 were amended in CLAUDE.md on 3 Nov at Dakshitha's request. Perch-dev updates CLAUDE.md's engineering conventions to name Postgres with pgvector as the deployment store, and adds the award-title exception to the public-ready convention: award titles copied from Temple's public pages may name people, while staff names and contacts stay out. `tests/test_public_hygiene.py` follows.
 2. Record the decisions above in `docs/DECISIONS.md` and the plan change in `docs/PLAN.md`. This step was done on 3 Nov.
 3. Create the branch `rebuild/v1` from `main`.
 4. Stop the dev Clef units with `make decide-down`, then tell the other session sharing the node that those GPUs are free. The public demo stays up as the fallback.

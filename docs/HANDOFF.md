@@ -7,7 +7,7 @@ Written at the close of S33 (2026-11-02). S33 ran in one orchestrating context w
 - **Read this first.** The S34 freeze is superseded. The plan is `docs/REBUILD_PLAN.md`, in 12 phases, S34 to S48. Its decisions are in `docs/DECISIONS.md`, and its open items are Q46 in `bridge/QUESTIONS.md`.
 - **The fallback.** The hybrid demo is frozen at d6f6210. It is saved as tag `v0.1-demo-fallback`, branch `fallback/v0.1-demo`, a Docker image, a copy of the demo store and the package ZIP. The local notes list the machine paths. `main` stays on the fallback until the rebuild passes the Friday gate on Thursday 5 Nov at 6:00 pm.
 - **Where rebuild work happens.** On the branch `rebuild/v1`, which Phase 0 creates.
-- **What S34 needs first.** Dakshitha applies, or edits, the proposed wording for standing rules 1 and 5 in CLAUDE.md. The wording is in the plan.
+- **Rules amended.** Standing rules 1 and 5 were amended in CLAUDE.md on 3 Nov at Dakshitha's request. Q46 is fully answered. S34 starts with Phase 0, task 1's convention updates.
 - **What changes.** No GPUs. Model work moves to a cloud provider; embedding, rerank and MiniCheck move to CPU. Postgres with pgvector, Redis and a job queue. Temple SSO through OIDC, with a guest mode. CVs and entries are stored encrypted per user. Private mode is removed. Real Temple scholarships get a Temple-only toggle and school tags. Scout becomes an open, grounded assistant, and fixed questions move to code.
 
 ## Where things stand
