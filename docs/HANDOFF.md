@@ -70,6 +70,14 @@ Written at the close of S33 (2026-11-02). S33 ran in one orchestrating context w
 - **Demo.** Rebuilt with a no-cache image: 43fcf0b8e192, with 0fae31fa7724 kept as perch-demo:prev. The served help.js and styles.css match the repo. Rehearsal 7 of 7 (one run each). Public walk 32 states, 0 errors, 1 axe flag: the same u-card-inference scroll artifact noted above, not on Help.
 - **Not done.** The phone page is still 5,248 px; going shorter would need smaller or fewer figures. The diagram's moving dot uses offset-path and was not checked in Safari or Firefox.
 
+## Fellowship deadlines and amounts from each award's page (2026-11-02, after the S33 close, Dakshitha)
+
+- **What it does.** `perch fetch fellowship-details` reads each SDFA fellowship's own linked page, one page per record, with robots.txt respected and one request a second per site. Code parses a deadline only from a deadline sentence with a full future date, preferring a campus deadline, and never infers a year. It parses an amount only from an award or stipend sentence, skipping fees, million-dollar totals, conflicting amounts and pages that say an award ended. Each value keeps its sentence, the page link and the fetch time; a schema validator refuses a value whose digits are not in its sentence.
+- **Live run (2 Nov 2026).** 64 of 76 pages read. 2 were skipped by robots (cdc.gov, ed.gov). 7 were dead links (404) and 3 refused automated requests (403). It found 4 deadlines and 11 amounts on 15 records. Most SDFA pages give campus deadlines with no year, so those stay "not stated". The builder hand-checked all 16 values: 15 were right, and the wrong one led to a general parser fix.
+- **Display.** The student card and Compare add "from the award's page". The evidence panel shows the sentence, the fetch date and a link to the page. The export reads "Deadline: 18 Dec 2026 (from the award's page, fetched 2 Nov 2026)". A public fellowship that states only a ceiling shows "Up to $X". Sample cards are unchanged.
+- **Checks.** 470 tests green (31 new, on six saved real pages with staff contacts removed). Dev walk (student, ux-laptop, ux-phone) 73 states, 0 errors, 0 axe. Demo rebuilt with a no-cache image: 3d413fc3e613, with 43fcf0b8e192 kept as perch-demo:prev; the same walk on the public URL gave 73 states, 0 errors, 0 axe.
+- **Not done.** A deadline stays on a record until the next fetch, even after it passes; rerun the fetch before Demo Day. The 10 dead or blocked links in the SDFA list are not fixed. Sponsor terms of use are UNVERIFIED in docs/SOURCES.md. The evidence panel was not screenshotted at 390 px; its quote wraps anywhere and its link text is short.
+
 ## Next: S34, freeze (Dakshitha)
 
 1. Confirm `make test`, `make package` from a clean clone and the live demo one last time.

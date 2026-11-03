@@ -80,7 +80,8 @@ holds every sentence to the record it cites.
 Choose Student, and Perch opens a private session before any text leaves your
 browser. Paste or upload a CV, and add a note on your interests or a few
 achievements. Perch lists fellowships from public records and scholarships from
-a sample database. Code checks each one against your CV by rule, says
+a sample database. Where a fellowship's own page states a deadline or an award
+amount, code copies it with the sentence it came from. Code checks each one against your CV by rule, says
 "eligible", "may be eligible" or "not eligible", and lists what you would still
 need. A short model sentence says why it may fit, checked against the listing
 and your own text. Keep the best, compare them, and draft a note to Scholar
