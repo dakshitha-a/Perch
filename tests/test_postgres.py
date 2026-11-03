@@ -310,3 +310,25 @@ def test_grants_follow_the_contract(pg_clean):
         with pytest.raises(errors.CheckViolation):
             c.execute("INSERT INTO audit_log (event, detail) VALUES ('x', %s::jsonb)",
                       ('{"k": "' + "a" * 3000 + '"}',))
+
+
+# --- shred_log (crypto review finding 4) ---
+
+def test_perch_web_can_log_only_its_own_shred(pg_clean):
+    a, b = login(pg_clean.web, b"subject-shred-a"), login(pg_clean.web, b"subject-shred-b")
+    pool = pg.make_pool(pg_clean.web, max_size=2)
+    try:
+        with pg.user_tx(pool, a) as c:
+            c.execute("INSERT INTO shred_log (user_id) VALUES (%s)", (a,))
+        with pytest.raises(errors.InsufficientPrivilege):
+            with pg.user_tx(pool, a) as c:
+                c.execute("INSERT INTO shred_log (user_id) VALUES (%s)", (b,))
+        with pytest.raises(errors.InsufficientPrivilege):  # no signed-in user at all
+            with pg.public_tx(pool) as c:
+                c.execute("INSERT INTO shred_log (user_id) VALUES (%s)", (b,))
+    finally:
+        pool.close()
+    with connect(pg_clean.worker) as c:  # the worker records inactivity purges for any id
+        c.execute("INSERT INTO shred_log (user_id) VALUES (%s)", (b,))
+        ids = {r[0] for r in c.execute("SELECT user_id FROM shred_log")}
+    assert ids == {a, b}

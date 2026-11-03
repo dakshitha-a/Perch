@@ -192,3 +192,25 @@ The current tests are good on AAD binding, tampering, the version downgrade, res
 - **Error handling:** Errors carry fixed text and `from None` suppresses the context. The only log line is `shredded user=<uuid>`. The secrets-in-errors tests cover plaintext, the data key, the wrapped key and the blob.
 - **Role isolation:** `perch_web` and `perch_worker` have no CONNECT on the keys database, because CONNECT is revoked from PUBLIC. They hold no membership in `perch_keys`. In `perch`, `user_data` is fenced with ENABLE and FORCE RLS, and `perch_owner` is kept out of the definer policies with `INHERIT FALSE`.
 - **Timing and oracles:** No padding or timing oracle exists. GCM verifies the tag in constant time inside OpenSSL, and the distinct error classes reveal nothing beyond what the caller already owns.
+
+## Fixes
+
+Branch `s37-cryptofix`. Commits: `2791795` (1), `7057db0` (4), `d6f08b4` (everything else). `make test` 516 passed and 40 skipped without Postgres; `make test-keys` 60 passed; `make test-pg` 28 passed. New keys migration `0002_owner_locking_kcv.sql`; new main migration `0007_shred_log_rls.sql`.
+
+- **1 Fixed (2791795).** The cache holds immutable `bytes` and hands them out by value, so eviction only removes an entry and never touches a key in use. In-place zeroing is dropped. Tests: the reviewer's reproduction (clear the cache after the key is fetched, assert the blob does not open under a zero key) and a four-thread stress test with a constant evictor. Both failed before the fix.
+- **2 Fixed (d6f08b4).** The trigger and the new `KeyRepository.shred` take the same per-user advisory lock; shred tombstones and deletes in one transaction. `reconcile_shreds` uses the same method, so it tombstones first. Two-connection tests cover both orders.
+- **3 Fixed (d6f08b4).** Owner role `perch_keys_owner` (NOLOGIN) owns the tables and the trigger function. `perch_keys` has no DELETE or TRUNCATE on tombstones and cannot alter or drop the trigger. Tests run the repository as `perch_keys` and assert the forbidden statements fail. The ARCHITECTURE section 2.1 row is not updated, because that file was out of scope.
+- **4 Fixed (7057db0).** RLS enabled and forced on `shred_log`. `perch_web` may insert only `perch_uid()`. `perch_worker` may insert and read any row. Test in `tests/test_postgres.py`. The optional cross-check in reconcile is not done.
+- **5 Fixed (d6f08b4).** New `KeyMissing`. `KeyShredded` only on a tombstone. `encrypt_field(..., create=False)` creates version 1 only with `create=True`; `UserData.put` must pass it after checking that the user has no rows.
+- **6 Partly fixed (d6f08b4).** `PERCH_MASTER_KEY_ID` is required. A key check value per id is stored in `key_masters` and verified before the first key operation or by `crypto.verify_masters()`. A reused id with a different key is refused. Not done: the heartbeat gate for `rotate-master`, which needs worker and CLI changes outside this task's files.
+- **7 Fixed (d6f08b4).** `WrappedKey.__repr__` shows ids only.
+- **8 Fixed (d6f08b4).** `KeyRepository` uses a `psycopg_pool` pool (max 8) and `decrypt_many` does one tombstone check per batch.
+- **9 Not fixed.** Accepted risk; it needs a revision column in `perch`. It should be written into section 10.
+- **10 Fixed (d6f08b4).** The trigger raises SQLSTATE `P0K01`. Only that code maps to `KeyShredded`; other integrity errors become a fixed-text `CryptoError`.
+- **11 Fixed (d6f08b4).** Unwrap requires 32 bytes.
+- **12 Fixed (d6f08b4).** Every hook runs; failures are counted and raised once as a fixed-text `CryptoError` after the keys are gone. Ordering of the ledger hook before `shred_log` is the registrar's job and is noted in the docstring.
+- **13 Not fixed.** Left as documented; a bound would weaken the guard.
+- **14 Not fixed.** Needs the ops runbook, which is out of scope. A start-up check on `SHOW` would fail on the Postgres defaults.
+- **15 Not fixed.** Existing tests and callers use non-UUID row ids; an allowlist belongs with `perch/user/data.py`.
+- **16 Fixed (d6f08b4).** Tests added for concurrent eviction, shred racing an insert (both orders), swapped wrapped keys, tombstone protection, `shred_log`, missing versus shredded, master id mismatch, `WrappedKey` repr, and the AAD user id isolated. Not done: the T1 end-to-end test, which waits for `perch/user/data.py`.
+- **17 Not fixed.** Waits for the `reconcile-shreds` command.
