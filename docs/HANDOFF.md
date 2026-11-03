@@ -1,6 +1,6 @@
 # HANDOFF.md — state for the next context window
 
-Written at the close of S35 (2026-11-03, 19:00 EST). Dakshitha asked on 3 Nov for S35 to S48 to run back to back in one orchestrating context, so this file is updated at each close.
+Written at the close of S36 (2026-11-03, 19:45 EST). Dakshitha asked on 3 Nov for S35 to S48 to run back to back in one orchestrating context, so this file is updated at each close.
 
 ## Read this first
 
@@ -14,14 +14,15 @@ Written at the close of S35 (2026-11-03, 19:00 EST). Dakshitha asked on 3 Nov fo
 
 - **S34, Phase 0, done.** Conventions name Postgres with pgvector; the award-title exception; `rebuild/v1` created; dev GPUs 1 and 2 released.
 - **S35, Phase 1, done.** The contract every later phase builds on is `docs/ARCHITECTURE_V1.md`. Read its section for the phase, not the whole file.
+- **S36, Phase 2a, done.** Migrations under `perch/db/migrations/perch/` and `keys/`, `PostgresRepository`, `perch/crypto.py` and `perch/keystore.py`. Test targets: `make test`, `make test-pg`, `make test-keys`, against the test containers `perch-test-pg` on 127.0.0.1:55432 and `perch-test-redis` on 127.0.0.1:56379.
 - **Inputs from S35.** `data/temple/inventory.csv` lists 461 Temple pages for Phase 4. `docs/v1/REUSE_MAP.md` is the brief for Phases 5 to 8. `docs/v1/PROVIDER_AND_SSO.md` holds prices, tiers and Temple SSO facts. `docs/v1/DESIGN_REVIEW.md` is the closed review.
 - **Spend.** The ledger stands at $2.60. `.env` caps it at $32.60, which is the $30 rebuild budget on top.
 - **Tests.** 470 green on `rebuild/v1`.
 
-## Next: S36, Phase 2a
+## Next: S37, Phase 2b
 
-- **The work.** Postgres schema and migrations, `PostgresRepository` behind `perch/store/base.py`, and the encryption module with its separate key database, all as `docs/ARCHITECTURE_V1.md` sections 2 and 6 specify.
-- **Images on this machine.** `pgvector/pgvector:0.8.0-pg16`, `redis:7-alpine` and `quay.io/keycloak/keycloak:26.0` are pulled.
+- **The work.** The job manager with `PostgresRunner` and `perch worker`, Redis for sessions, quotas and the cache, the public corpus migrated into Postgres with every vector computed once, Docker Compose for web, worker, Postgres, Redis and Keycloak, and an Opus review of the encryption module.
+- **Loose ends from S36.** Wire the shred hooks for shred_log, Redis and the rekey job; add the `perch keys rotate-master` and `perch reconcile-shreds` commands; a web route to withdraw consent needs UPDATE on `consents`.
 
 ## Worth knowing
 
