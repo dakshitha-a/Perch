@@ -71,7 +71,55 @@ def grounders() -> list[tuple[str, Grounder]]:
     ]
 
 
+def cpu_minicheck(out_dir: str) -> None:
+    """S38: MiniCheck arm only, forced CPU, per-pair latency. Writes to out_dir only."""
+    import json
+    import statistics
+    from pathlib import Path
+
+    import torch
+
+    data = pairs()
+    g = grounders_minicheck()
+    lat, scores = [], []
+    for doc, claim, _ in data:
+        t = time.perf_counter()
+        scores.append(g.support(doc, [claim])[0])
+        lat.append(time.perf_counter() - t)
+    pos = [s for s, (_, _, y) in zip(scores, data, strict=True) if y]
+    neg = [s for s, (_, _, y) in zip(scores, data, strict=True) if not y]
+    q = sorted(lat)
+    res = {"grounder": "MiniCheck-RoBERTa-Large (CPU, S38)", "pairs": len(data),
+           "false_flag_rate": round(sum(s <= THRESHOLD for s in pos) / len(pos), 3),
+           "miss_rate": round(sum(s > THRESHOLD for s in neg) / len(neg), 3),
+           "auc": round(auc(pos, neg), 3), "s_per_claim": round(sum(lat) / len(lat), 3),
+           "lat_median_s": round(statistics.median(lat), 3),
+           "lat_p95_s": round(q[min(len(q) - 1, int(0.95 * len(q)))], 3),
+           "cpu_count": os.cpu_count(), "torch_threads": torch.get_num_threads(),
+           "cuda_visible_devices": os.environ.get("CUDA_VISIBLE_DEVICES"),
+           "cuda_available": torch.cuda.is_available()}
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    with (out / "grounders_cpu.csv").open("w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, list(res))
+        w.writeheader()
+        w.writerow(res)
+    (out / "grounders_cpu.json").write_text(json.dumps(res, indent=1))
+    print(res)
+
+
+def grounders_minicheck() -> Grounder:
+    from perch.grounding import MiniCheckGrounder
+
+    return MiniCheckGrounder(device="cpu")
+
+
 def main() -> None:
+    import sys
+
+    if "--cpu-minicheck" in sys.argv:
+        cpu_minicheck(sys.argv[sys.argv.index("--cpu-minicheck") + 1])
+        return
     data = pairs()
     rows = []
     for name, g in grounders():

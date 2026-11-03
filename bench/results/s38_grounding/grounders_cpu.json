@@ -1,0 +1,14 @@
+{
+ "grounder": "MiniCheck-RoBERTa-Large (CPU, S38)",
+ "pairs": 40,
+ "false_flag_rate": 0.0,
+ "miss_rate": 0.1,
+ "auc": 0.922,
+ "s_per_claim": 0.362,
+ "lat_median_s": 0.361,
+ "lat_p95_s": 0.488,
+ "cpu_count": 255,
+ "torch_threads": 12,
+ "cuda_visible_devices": "",
+ "cuda_available": false
+}
