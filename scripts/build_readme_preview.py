@@ -54,7 +54,9 @@ HEIGHT = """(function () {
 def render(src: str) -> str:
     # GitHub renders Markdown inside HTML blocks when a blank line separates them;
     # python-markdown needs markdown="1" on those blocks to do the same.
-    src = re.sub(r"<(div|td)([^>]*)>", r'<\1\2 markdown="1">', src)
+    src = re.sub(r"<(div|td|details)([^>]*)>", r'<\1\2 markdown="1">', src)
+    # GitHub nests a list item indented by 2 spaces; python-markdown wants 4.
+    src = re.sub(r"(?m)^( {2,})(?=[-*] )", lambda m: " " * (2 * len(m.group(1))), src)
     return markdown.markdown(src, extensions=["tables", "fenced_code", "md_in_html"])
 
 
