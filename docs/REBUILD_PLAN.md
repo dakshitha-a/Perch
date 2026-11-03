@@ -17,7 +17,7 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 - **The rule:** `main` stays on the fallback until the rebuild passes the Friday gate below. Rebuild work happens on the branch `rebuild/v1` and merges into `main` only when green.
 - **The Friday gate:** the submission is due 6 Nov 2026 at 12:00 pm. At 6:00 pm on Thursday 5 Nov, the orchestrator checks the gate and reports. If the gate fails, the fallback is submitted, the rebuild branch is linked as the deployment track, and this plan becomes the roadmap slide.
 - **The gate:** the student path works end to end on the new stack. A guest can sign in, see Temple awards with the toggle and tags, and build a brief on a cloud model with CPU ranking. `make test` is green. The walk with axe is clean on the new screens. The demo URL serves the new build.
-- **Honest estimate:** the full plan is about 14 sessions. Before Friday, Phases 0 to 4 and part of Phase 6 might be done at best. The gate is most likely met by a partial rebuild, or the fallback is submitted.
+- **Honest estimate:** the full plan is about 15 sessions. Before Friday, Phases 0 to 4 and part of Phase 6 might be done at best. The gate is most likely met by a partial rebuild, or the fallback is submitted.
 
 ## Decisions taken on 3 Nov 2026
 
@@ -26,7 +26,7 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 - **Standing rules 1 and 5 change as proposed.** The proposed wording is below. Dakshitha edits CLAUDE.md, because the agent may not edit standing rules.
 - **The researcher side stays, behind a student-first UI.** Students land first. The researcher path is ported to the new stack.
 - **Sentence checking uses MiniCheck on CPU.** MiniCheck is already the default grounder in `perch/grounding.py`. Clef and its GPU servers are retired.
-- **Jev is a bench challenger only.** Jev is a hosted decision model, and the existing `perch/llm/systemone.py` adapter is written for its API shape. Its site says it is in early access. Its privacy page is template text, and it states no data-retention terms. Jev gets a bench row once we have access and written data terms. A switch would be a later decision based on those numbers.
+- **Jev is a bench challenger only.** Jev is a hosted decision model. The existing `perch/llm/systemone.py` adapter says it is Jev-compatible, but that is UNVERIFIED: the Jev site shows a `POST /v1/decide` endpoint, so compatibility is checked when access arrives. Its site says it is in early access. Its privacy page is template text, and it states no data-retention terms. Jev gets a bench row once we have access and written data terms. A switch would be a later decision based on those numbers.
 - **Stored user data is kept until the user deletes it,** with an automatic purge after 12 months of inactivity.
 - **If CPU rerank is too slow, measure and then shrink.** If one brief's rerank takes over 10 seconds on CPU, Perch reranks fewer candidates and caches the results. The back-test is rerun for whatever setup ships, and the result is reported as measured.
 - **Temple award pages are read once and cached for now.** Those awards have run for years and change slowly. For a real deployment, Temple supplies a verified dataset through an API, a database or a structured file, and Perch imports it.
@@ -40,9 +40,9 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 - **CPU models stay the same models.** The embedder stays Qwen3-Embedding-0.6B and the reranker stays Qwen3-Reranker-0.6B. Keeping the same models means the back-test rows stay comparable, and no query costs money.
 - **Cloud models through `perch/llm/`.** Anthropic is the default provider. Rule 6 is unchanged, so an OpenAI-compatible provider can be swapped in by config. Model choices per job are measured in Phase 3, not assumed.
 - **Sign-in through an interface.** The `AuthProvider` interface has an OIDC implementation for Temple SSO. Temple's SSO service supports SAML, OIDC and CAS. Development uses Keycloak in Docker as a stand-in identity provider. A guest mode lets judges try Perch without an account, and it stores nothing.
-- **Envelope encryption for user data.** Each user gets their own data key, AES-256-GCM through the `cryptography` package. A master key wraps each data key. In development the master key comes from `.env`. In production it comes from a key management service. Deleting a user destroys their data key, which makes every copy of their data unreadable, backups included.
+- **Envelope encryption for user data.** Each user gets their own data key, AES-256-GCM through the `cryptography` package. A master key wraps each data key. In development the master key comes from `.env`. In production it comes from a key management service. Deleting a user destroys their data key, which makes their rows unreadable. Wrapped keys live in their own table with their own backup and retention, so restoring a database backup does not bring a deleted key back.
 - **Containers, not a specific cloud.** Docker images for web and worker, Docker Compose for one host, and manifests that also run under Kubernetes. Postgres and Redis can be self-run or managed.
-- **Scout stays,** with a daily budget per account in place of the old per-address caps.
+- **Scout is rebuilt as an open, grounded assistant (Dakshitha).** Fixed questions move to code. Open questions go to the cloud model with read tools and cited answers. A daily budget per account replaces the old per-address caps. Phase 8 has the detail.
 
 ### Proposed wording for standing rules 1 and 5 (Dakshitha to apply)
 
@@ -88,7 +88,7 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 | `brief.py`, `retrieve.py`, `rerank.py`, `score.py`, `eligibility.py`, `route_b.py`, `student.py` | Deterministic pipeline | Kept. Retrieval moves to pgvector. Rerank runs on CPU in the worker. |
 | `perch/validate.py`, `perch/grounding.py` | Layers 1 and 2 | Kept. MiniCheck on CPU is the only grounder. |
 | `perch/skills/` | Four model jobs | Kept and run on the cloud model. |
-| `perch/scout/` | Agent loop and tools | Kept. Budgets move to per-account quotas. |
+| `perch/scout/` | Agent loop, ten researcher and eight student tools, code-written answers | Loop and validator kept. Tools merge into a few broad read tools. Fixed questions move to code. Budgets move to per-account quotas. |
 | `perch/llm/` | Providers, budget, audit, `decide`, systemone | Kept. The spend ledger moves to Postgres. Systemone stays for the Jev bench row only. |
 | `perch/private/` | Sessions in memory, the student brief, the CV parse, warm briefs | Split up. The student brief, the CV parse, the file inputs and the threads move into the main package. Memory sessions, the write overlay and warm briefs are deleted. |
 | `perch/egress.py`, `perch/privacy.py` | Private-mode masks and egress filter | Deleted. Contact blanking before model calls is kept and moved into `perch/llm/`. |
@@ -128,10 +128,12 @@ Done when: the inventory, the reuse map and the reviewed architecture document a
 1. Postgres schema and migrations: records, record vectors in pgvector, users, user data keys, encrypted user rows, briefs, stages, jobs, the audit log and the spend ledger.
 2. `PostgresRepository` behind `perch/store/base.py`. The existing repository tests are run against both SQLite and Postgres.
 3. The encryption module: data-key creation, wrapping, field encryption, key rotation and crypto-shredding. Tests prove a deleted user's rows cannot be read.
-4. The job manager: a `PostgresRunner`, the `perch worker` command, retries, timeouts and a dead-letter state. A test proves no job runs twice when ten workers start together.
-5. Redis for sessions, quotas and the response cache.
-6. Migrate the current public corpus into Postgres and compute every record vector once.
-7. Docker Compose for local development: web, worker, Postgres, Redis and Keycloak.
+4. Wrapped data keys live in a separate key table with its own backup schedule and retention, so a restore of the data backup cannot revive a deleted key.
+5. The job manager: a `PostgresRunner`, the `perch worker` command, retries, timeouts and a dead-letter state. A test proves no job runs twice when ten workers start together.
+6. Redis for sessions, quotas and the response cache.
+7. Migrate the current public corpus into Postgres and compute every record vector once.
+8. Docker Compose for local development: web, worker, Postgres, Redis and Keycloak.
+9. **Review:** an Opus review with fresh context of the encryption module and key handling, before anything is built on it.
 
 Done when: the corpus is in Postgres, a brief job runs on a worker from the queue, and the encryption tests pass.
 
@@ -191,22 +193,29 @@ Done when: no private-mode code remains, and the leakage check passes after fail
 
 Done when: the walk is clean with axe on laptop and phone, and the review's must-fix items are closed.
 
-### Phase 8 — Scout on cloud (S44)
+### Phase 8 — Scout, rebuilt as an open, grounded assistant (S44, S45)
 
-1. Scout runs on the cloud model as a job per turn, with the same tool allowlists.
-2. A per-account daily budget, shown to the user.
-3. The Scout bench is rerun on the cloud model and the result is reported.
+Dakshitha (3 Nov): Scout comes up empty on most questions outside a fixed set. A fixed set is better served by a script, so Scout should answer open questions well, as long as its answers are grounded in cited records and the user's own CV.
 
-Done when: the Scout bench is reported and budgets hold under test.
+1. **Fixed questions go to code.** The questions Scout handles well today, such as top leads, deadlines, compare and the hand-off, become buttons and deterministic answers written by code. No model is needed for them.
+2. **Open questions go to the cloud model.** Scout answers in its own words, using the provider's native tool use. The MCP server stays as an extra way in for outside clients, and it no longer shapes how Scout works inside Perch.
+3. **Tools become read tools.** Scout gets a small set of broad read tools: search records, read one record, read the user's brief, read parts of their CV and entries, and read their saved items. The tools are still allowlisted (rule 5), and none of them writes or sends anything.
+4. **The grounding contract.** Every sentence about a record or about the user cites the record or the CV part it comes from. Layer 1 still checks every number, date and link, and MiniCheck still flags unsupported sentences. General guidance, such as how to structure a personal statement, is allowed and is shown under a "General advice" label. It may not name an award or state a number, date or eligibility fact.
+5. **Feedback on the user's own material.** Scout may give feedback on the user's CV and entries against a cited record, for example what a fellowship asks for that the CV does not yet show.
+6. **Budgets.** A per-account daily budget is shown to the user.
+7. **A new bench.** The old 30-task bench measures tool choice on a fixed set. It is replaced by a set of open questions written by Perch-dev and Dakshitha, scored for citation validity, MiniCheck flags, empty answers and answer usefulness, which a person grades. Questions where the old Scout came up empty are included. The old bench is kept as a baseline.
+8. **Review:** an Opus review with fresh context of prompt injection through record text and CV text, since Scout now writes more freely.
 
-### Phase 9 — QA cycle (S45)
+Done when: the open-question bench is reported against the old Scout, and the review's must-fix items are closed.
+
+### Phase 9 — QA cycle (S46)
 
 1. Tester then fixer, on Sonnet, for two rounds.
 2. Measured: `make test`, the full walk with axe, the bench, the rehearsal script on the new stack, and the leakage check.
 
 Done when: two rounds close with no open must-fix items.
 
-### Phase 10 — Load test and operations (S46)
+### Phase 10 — Load test and operations (S47)
 
 1. A load test with a pinned Python tool against the Compose stack, at 1,000 simulated users and the mixes above. The cloud model is replaced by the fake provider with measured latencies injected, so the test costs nothing. A small run of 20 briefs on the real provider confirms those latencies.
 2. Report p50 and p95 per path, errors, worker queue depth and tokens per minute. State the provider tier that the measured peak needs. Every number is reported as measured, whether or not it meets the target.
@@ -215,7 +224,7 @@ Done when: two rounds close with no open must-fix items.
 
 Done when: the load-test report and the runbook are committed.
 
-### Phase 11 — Security review, docs and release (S47)
+### Phase 11 — Security review, docs and release (S48)
 
 1. **Review:** an Opus security review with fresh context on encryption, sign-in, sessions, injection through record text, quotas and secrets. Every must-fix item is fixed, then re-checked.
 2. The docs are rewritten against the code: README, SPEC, ARCHITECTURE, SOURCES, RESULTS, the hosted spec and the deck's deployment slide. The last step checks every claim against the code.
@@ -238,3 +247,4 @@ Done when: the review is closed, the docs are verified, and the tag is pushed.
 - **SSO:** Temple IT must register Perch as an application before real sign-in works. Until then, guest mode and Keycloak cover the demo.
 - **Provider limits:** the needed rate-limit tier is a contract question for Temple.
 - **Jev:** access and data terms are unknown, so it stays off the request path.
+- **Names in award titles:** many endowed scholarships carry a donor's name in their title. The public-ready convention allows no other people's names in tracked files, so Q46 asks whether award titles are an exception or the dataset stays untracked.

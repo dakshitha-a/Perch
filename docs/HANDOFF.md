@@ -2,6 +2,14 @@
 
 Written at the close of S33 (2026-11-02). S33 ran in one orchestrating context with subagents (backend, docs, hosted spec, UI, QA, demo rebuild), under Dakshitha's delegation of product and design decisions (2026-10-31) and three new directions given on 2026-11-01: a fourth model job for cover-letter points, standing rule 5 and the spec open to edits, and both audiences sold equally. From S34 on the main session runs on Opus with the advisor on Fable, and every subagent call sets its model (CLAUDE.md, "Working with agents").
 
+## Replanned: the deployment rebuild (3 Nov 2026, Dakshitha)
+
+- **Read this first.** The S34 freeze is superseded. The plan is `docs/REBUILD_PLAN.md`, in 12 phases, S34 to S48. Its decisions are in `docs/DECISIONS.md`, and its open items are Q46 in `bridge/QUESTIONS.md`.
+- **The fallback.** The hybrid demo is frozen at d6f6210. It is saved as tag `v0.1-demo-fallback`, branch `fallback/v0.1-demo`, a Docker image, a copy of the demo store and the package ZIP. The local notes list the machine paths. `main` stays on the fallback until the rebuild passes the Friday gate on Thursday 5 Nov at 6:00 pm.
+- **Where rebuild work happens.** On the branch `rebuild/v1`, which Phase 0 creates.
+- **What S34 needs first.** Dakshitha applies, or edits, the proposed wording for standing rules 1 and 5 in CLAUDE.md. The wording is in the plan.
+- **What changes.** No GPUs. Model work moves to a cloud provider; embedding, rerank and MiniCheck move to CPU. Postgres with pgvector, Redis and a job queue. Temple SSO through OIDC, with a guest mode. CVs and entries are stored encrypted per user. Private mode is removed. Real Temple scholarships get a Temple-only toggle and school tags. Scout becomes an open, grounded assistant, and fixed questions move to code.
+
 ## Where things stand
 
 - **The build is ready to freeze, again.** `main` holds S33's feature and every check. 421 tests green. Scout bench on the local model 30 of 30 tasks, 0 wrong tool, including the new cover-points task. Rehearsal on the dev server 21 of 21, with the two new cover-letter questions 3 of 3 each. Full walk with axe on the dev server 227 states, 0 errors, 0 axe violations, 0 sideways scroll. Canary clean with the CV now reaching the chat model for cover points. On the public demo after the rebuild: rehearsal 21 of 21, walk 227 states clean, canary and leakage clean.
