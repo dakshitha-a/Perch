@@ -46,7 +46,7 @@ from perch.skills.handoff import Draft, draft_handoff
 from perch.skills.summary import summarise_profile
 from perch.sources import nih_reporter, nsf
 from perch.sources import openalex as oa
-from perch.store.base import VectorIndex
+from perch.store.base import Repository, VectorIndex
 from perch.store.sqlite import SQLiteRepository
 from perch.validate import Validated
 
@@ -110,8 +110,12 @@ class Clients:
 
 class BriefService:
     def __init__(self, db: str | Path, models: Models, clients: Clients,
-                 overrides: Path = aw.OVERRIDES) -> None:
+                 overrides: Path = aw.OVERRIDES,
+                 repo_factory: Callable[[], Repository] | None = None,
+                 index_new: bool = True) -> None:
         self.db = str(db)
+        self.repo_factory = repo_factory  # worker with PERCH_DATABASE_URL: Postgres reads
+        self.index_new = index_new  # False when the vector index is filled by ingest
         self.models = models
         self.clients = clients
         self.overrides = overrides
@@ -123,6 +127,8 @@ class BriefService:
         self.quiet_errors = False  # private sessions: exception type only, no traceback
 
     def repo(self) -> SQLiteRepository:
+        if self.repo_factory is not None:
+            return self.repo_factory()  # type: ignore[return-value]
         return SQLiteRepository(self.db)
 
     # --- create and read ---
@@ -213,11 +219,12 @@ class BriefService:
         """True when the brief should stop before its next stage (a session's own rule)."""
         return False
 
-    def run(self, brief_id: str) -> None:
+    def run(self, brief_id: str) -> str:
+        """Run the build; return the brief's final status (the job handler fails on 'failed')."""
         with self.repo() as r:
             b = r.get(Brief, brief_id)
         if b is None:
-            return
+            return "missing"
         b.status = "running"
         names = [s.name for s in b.stages] or list(STAGES)  # a student brief has its own
         current = names[0]
@@ -270,6 +277,7 @@ class BriefService:
         with self.repo() as r:
             r.upsert([b])
         self._ctx.pop(b.id, None)
+        return b.status
 
     def _researcher(self, r: SQLiteRepository, b: Brief) -> Researcher:
         res = r.get(Researcher, b.researcher_id)
@@ -348,7 +356,8 @@ class BriefService:
             brief = route_a(res, r, self.models.get("index"), self.models.get("embedder"),
                             self.models.get("reranker"), c, RerankCache(self.rerank_cache),
                             top=o.get("top", 10), timings_log=self.timings_log,
-                            profile=self._ctx.get(b.id, {}).get("profile"))
+                            profile=self._ctx.get(b.id, {}).get("profile"),
+                            index_new=self.index_new)
             leads = [Lead(id=f"{b.id}:{i}", source=x.opportunity.source,
                           source_url=x.opportunity.source_url,
                           fetched_at=x.opportunity.fetched_at, brief_id=b.id, route="A",

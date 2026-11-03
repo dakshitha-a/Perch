@@ -556,6 +556,13 @@ def build_parser() -> argparse.ArgumentParser:
     wk.add_argument("--concurrency", type=int, default=None, help="job threads; default "
                     "PERCH_WORKER_CONCURRENCY or 16")
     wk.add_argument("--kinds", default=None, help="comma list; default PERCH_WORKER_KINDS or all")
+    ky = sub.add_parser("keys", help="key tasks")
+    kysub = ky.add_subparsers(dest="keys_command", required=True)
+    rm = kysub.add_parser("rotate-master", help="re-wrap data keys under the current master key")
+    rm.add_argument("--old", default=None, help="default PERCH_MASTER_KEY_PREV_ID")
+    rm.add_argument("--new", default=None, help="default PERCH_MASTER_KEY_ID")
+    sub.add_parser("reconcile-shreds", help="re-assert tombstones from all three sources "
+                   "after a restore")
     sv = sub.add_parser("serve", help="run the HTTP API")
     sv.add_argument("--host", default="127.0.0.1")
     sv.add_argument("--port", type=int, default=8100)
@@ -575,22 +582,80 @@ def cmd_worker(args: argparse.Namespace) -> int:
 
     from perch.jobs import PostgresRunner, set_brief_service
 
-    def brief_service() -> object:  # built on first use; the brief build still reads SQLite
-        from perch.service import BriefService, Clients, default_models
+    n = args.concurrency or int(env("PERCH_WORKER_CONCURRENCY", "16") or 16)
+    runner = PostgresRunner(pool_size=2 * n + 4)
 
-        return BriefService(args.db, default_models(False, Path(args.db).parent, None),
-                            Clients(openalex=default_client), Path(args.overrides))
+    def brief_service() -> object:  # built on first use
+        from dataclasses import replace
+
+        from perch.service import BriefService, Clients, default_models
+        from perch.store.hybrid import HybridRepository
+        from perch.store.postgres import PgVectorIndex
+
+        models = default_models(False, Path(args.db).parent, None)
+        # Public records and the vector index come from Postgres; briefs stay in scratch
+        # SQLite until they become encrypted user data. Ingest fills the index.
+        from perch.profiles import current
+
+        models = replace(models, index=lambda: PgVectorIndex(
+            index_name="opportunities", embedder=current().embedder, pool=runner.pool))
+        scratch = Path(args.db).with_name("briefs.db")
+        return BriefService(args.db, models, Clients(openalex=default_client),
+                            Path(args.overrides),
+                            repo_factory=lambda: HybridRepository(runner.pool, scratch),
+                            index_new=False)
 
     set_brief_service(brief_service)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    n = args.concurrency or int(env("PERCH_WORKER_CONCURRENCY", "16") or 16)
     kinds = [k for k in (args.kinds or env("PERCH_WORKER_KINDS", "") or "").split(",") if k]
-    runner = PostgresRunner(pool_size=2 * n + 4)
+    from perch import shredhooks
+    from perch.redisx import get_client
+
+    stop_sub = shredhooks.install(runner.pool, get_client() if env("PERCH_REDIS_URL") else None,
+                                  runner)
     stop = threading.Event()
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: stop.set())
     runner.run_forever(f"{socket.gethostname()}-{os.getpid()}", kinds, n, stop)
+    stop_sub()
     runner.close()
+    return 0
+
+
+def cmd_keys(args: argparse.Namespace) -> int:
+    from perch import crypto
+
+    if args.keys_command == "rotate-master":
+        old = args.old or env("PERCH_MASTER_KEY_PREV_ID")
+        new = args.new or env("PERCH_MASTER_KEY_ID")
+        if not old or not new:
+            print("Set PERCH_MASTER_KEY_ID and PERCH_MASTER_KEY_PREV_ID, or pass --old/--new.",
+                  file=sys.stderr)
+            return 2
+        try:
+            n = crypto.rotate_master(old, new)
+        except crypto.CryptoError as e:
+            print(f"rotate-master stopped: {type(e).__name__}", file=sys.stderr)
+            return 1
+        print(f"Rewrapped {n} rows from {old} to {new}. Remove the old key when this reads 0.")
+    return 0
+
+
+def cmd_reconcile_shreds(args: argparse.Namespace) -> int:
+    from perch import crypto, shredhooks
+    from perch.store.pg import make_pool
+
+    keys_dsn = env("PERCH_KEYS_DATABASE_URL")
+    if not keys_dsn:
+        print("Set PERCH_KEYS_DATABASE_URL.", file=sys.stderr)
+        return 2
+    pool = make_pool()
+    try:
+        ids = shredhooks.tombstone_union(keys_dsn, pool)
+        revived = crypto.reconcile_shreds(ids)
+    finally:
+        pool.close()
+    print(f"Reconciled {len(ids)} shredded users; {revived} had key rows that were removed.")
     return 0
 
 
@@ -632,6 +697,10 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
         return cmd_db(args)
     if args.command == "worker":
         return cmd_worker(args)
+    if args.command == "keys":
+        return cmd_keys(args)
+    if args.command == "reconcile-shreds":
+        return cmd_reconcile_shreds(args)
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory
     args.grants_factory = grants_factory
     commands = {"resolve": cmd_resolve, "samples": cmd_samples,

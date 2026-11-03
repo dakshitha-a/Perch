@@ -630,7 +630,9 @@ def brief_handler(ctx: JobContext) -> str | None:
     if _brief_service is None:
         raise PermanentError("no_handler")
     brief_id = ctx.payload["brief_id"]
-    _brief_service().run(brief_id)
+    status = _brief_service().run(brief_id)
+    if status in ("failed", "missing"):  # the brief row holds the stage detail, never the log
+        raise PermanentError("brief_failed" if status == "failed" else "brief_missing")
     return f"brief:{brief_id}"
 
 
