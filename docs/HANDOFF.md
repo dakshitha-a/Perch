@@ -1,6 +1,6 @@
 # HANDOFF.md — state for the next context window
 
-Written at the close of S34 (2026-11-03, 17:25 EST). S34 was Phase 0 of the deployment rebuild.
+Written at the close of S35 (2026-11-03, 19:00 EST). Dakshitha asked on 3 Nov for S35 to S48 to run back to back in one orchestrating context, so this file is updated at each close.
 
 ## Read this first
 
@@ -10,30 +10,25 @@ Written at the close of S34 (2026-11-03, 17:25 EST). S34 was Phase 0 of the depl
 - **The gate.** Thursday 5 Nov at 6:00 pm. The student path must work end to end on the new stack, or the fallback is submitted on 6 Nov.
 - **The full S33-era hand-off** is on `main` and in git history at d6f6210, if a detail of the old build is needed.
 
-## What S34 did
+## Where the rebuild stands
 
-- **Conventions.** CLAUDE.md now names Postgres with pgvector as the deployment store. SQLite stays behind `perch/store/base.py` for unit tests only, and LanceDB is dropped. pg_search was not carried forward, because the plan does not use it.
-- **Award-title exception.** Award titles copied from Temple's public pages may name people, such as a donor. Staff names and contacts stay out. The hygiene scan reads docs, the README, questions and `web/`, not `data/`, so award data needs no allowlist; the test's docstring says so.
-- **Branch.** `rebuild/v1` was created from `main` at d84a573 and pushed with upstream.
-- **GPUs.** `make decide-down` stopped and disabled the two dev Clef units. GPUs 1 and 2 now show about 2 MiB each. The uracil session was messaged. The four demo units on GPUs 6 and 7 are untouched, and the public demo answers 200.
-- **Checks.** 470 tests green on `rebuild/v1`.
-- **Already on record before the session.** The rebuild decisions (DECISIONS, 3 Nov) and the API budget of about $30 of the $100 cap for the rebuild.
+- **S34, Phase 0, done.** Conventions name Postgres with pgvector; the award-title exception; `rebuild/v1` created; dev GPUs 1 and 2 released.
+- **S35, Phase 1, done.** The contract every later phase builds on is `docs/ARCHITECTURE_V1.md`. Read its section for the phase, not the whole file.
+- **Inputs from S35.** `data/temple/inventory.csv` lists 461 Temple pages for Phase 4. `docs/v1/REUSE_MAP.md` is the brief for Phases 5 to 8. `docs/v1/PROVIDER_AND_SSO.md` holds prices, tiers and Temple SSO facts. `docs/v1/DESIGN_REVIEW.md` is the closed review.
+- **Spend.** The ledger stands at $2.60. `.env` caps it at $32.60, which is the $30 rebuild budget on top.
+- **Tests.** 470 green on `rebuild/v1`.
 
-## Next: S35, Phase 1 — discovery and design
+## Next: S36, Phase 2a
 
-- **The five tasks** are in `docs/REBUILD_PLAN.md`, Phase 1: the Temple award inventory, Temple SSO facts, provider facts, the reuse map, and `docs/ARCHITECTURE_V1.md`. An Opus design review follows.
-- **Delegation fits here.** The inventory and the provider facts are independent read-only research jobs and can run in parallel on Sonnet. The reuse map reads `perch/private/`, `perch/api.py`, `perch/scout/` and `web/`, and is the brief for Phases 5 to 8. The architecture document comes after the map.
-- **Rules to keep in view.** Rule 2: a page is recorded with its status and robots.txt before any parser exists. Pages behind AccessNet are listed, not read. SSO claim names stay UNVERIFIED until Temple IT answers.
+- **The work.** Postgres schema and migrations, `PostgresRepository` behind `perch/store/base.py`, and the encryption module with its separate key database, all as `docs/ARCHITECTURE_V1.md` sections 2 and 6 specify.
+- **Images on this machine.** `pgvector/pgvector:0.8.0-pg16`, `redis:7-alpine` and `quay.io/keycloak/keycloak:26.0` are pulled.
 
-## Not done or worth knowing
+## Worth knowing
 
-- **The dev server on 8091** and the dev embed/rerank on GPU 3 were not touched in S34.
-- **Untracked bench output.** Nine `bench/results/scout_s32*` folders sit untracked in the checkout. They are not this session's and were not committed.
-- **A hygiene failure in Phase 1 may be expected.** `test_researcher_names_stay_out_of_shareable_docs` scans `docs/**/*.md`, so `docs/SOURCES.md` is in scope. If a Temple award title written there contains a demo researcher's last name, the test fails. The fix then is a narrow allowlist of those award titles in the test, not a change to the convention.
-- **The tracker milestone** "Code freeze" is now "Rebuild gate", Thu 5 Nov 18:00.
-- **The tracker tests tile** reads the latest row's count, now 470.
+- **A hygiene failure may be expected later.** `test_researcher_names_stay_out_of_shareable_docs` scans `docs/**/*.md`. If a Temple award title contains a demo researcher's last name, the fix is a narrow allowlist of those titles in the test.
+- **Faculty internal funding is thin.** The OVPR page is stale, and live calls are likely on InfoReady behind sign-in.
+- **Untracked bench output.** Nine `bench/results/scout_s32*` folders are not this rebuild's and stay uncommitted.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 
-- **Q45 (Dakshitha):** the Fox School scholarships. Recommendation: fold it into Phase 1's inventory and Phase 4's import, and close it.
-- Q46 is answered and built into the plan.
+- **Q45 (Dakshitha):** Fox School scholarships. The inventory covers the Fox page; Phase 4 imports it. Recommendation: close Q45.
