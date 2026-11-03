@@ -34,7 +34,12 @@ def test_allows_normal_text():
 
 def test_researcher_names_stay_out_of_shareable_docs():
     """Docs, the tracker and the README use aliases (PI-1 ...); names live only in
-    data/overrides/pi_aliases.csv."""
+    data/overrides/pi_aliases.csv.
+
+    Exception (CLAUDE.md, 2026-11-03): award titles copied from Temple's public pages
+    may name people. Award data lives under data/, which this scan does not read, so
+    the exception needs no allowlist here; staff names and contacts stay out of every
+    tracked file."""
     import csv
     import re
     import unicodedata
