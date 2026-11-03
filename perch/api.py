@@ -56,7 +56,7 @@ from perch import compare as cmp
 from perch import egress
 from perch import export as ex
 from perch.config import env
-from perch.jobs import JobRunner
+from perch.jobs import ClosureRunner
 from perch.request_models import BriefOptions, HandoffRequest, ScoutRequest
 from perch.schemas import (
     USER_KINDS,
@@ -350,9 +350,9 @@ def up(url: str) -> bool:
         return False
 
 
-def create_app(service: BriefService, runner: JobRunner,
+def create_app(service: BriefService, runner: ClosureRunner,
                resolver: type[oa.OpenAlexClient] | None = None,
-               web_dir: Path | None = WEB_DIR, scout_runner: JobRunner | None = None,
+               web_dir: Path | None = WEB_DIR, scout_runner: ClosureRunner | None = None,
                scout_log: ScoutLog | None = None, stored_briefs: bool | None = None) -> FastAPI:
     if stored_briefs is None:
         stored_briefs = env("PERCH_STORED_BRIEFS") == "1"

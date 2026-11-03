@@ -544,6 +544,10 @@ def build_parser() -> argparse.ArgumentParser:
     dbsub = dbp.add_subparsers(dest="db_command", required=True)
     mg = dbsub.add_parser("migrate", help="apply the SQL migrations to the perch database")
     mg.add_argument("--dsn", default=None, help="admin or owner URL; default PERCH_DATABASE_URL")
+    wk = sub.add_parser("worker", help="run job threads against the Postgres queue")
+    wk.add_argument("--concurrency", type=int, default=None, help="job threads; default "
+                    "PERCH_WORKER_CONCURRENCY or 16")
+    wk.add_argument("--kinds", default=None, help="comma list; default PERCH_WORKER_KINDS or all")
     sv = sub.add_parser("serve", help="run the HTTP API")
     sv.add_argument("--host", default="127.0.0.1")
     sv.add_argument("--port", type=int, default=8100)
@@ -552,6 +556,34 @@ def build_parser() -> argparse.ArgumentParser:
     sv.add_argument("--log-level", default="warning",
                     choices=["critical", "error", "warning", "info", "debug"])
     return p
+
+
+def cmd_worker(args: argparse.Namespace) -> int:
+    import logging
+    import os
+    import signal
+    import socket
+    import threading
+
+    from perch.jobs import PostgresRunner, set_brief_service
+
+    def brief_service() -> object:  # built on first use; the brief build still reads SQLite
+        from perch.service import BriefService, Clients, default_models
+
+        return BriefService(args.db, default_models(False, Path(args.db).parent, None),
+                            Clients(openalex=default_client), Path(args.overrides))
+
+    set_brief_service(brief_service)
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    n = args.concurrency or int(env("PERCH_WORKER_CONCURRENCY", "16") or 16)
+    kinds = [k for k in (args.kinds or env("PERCH_WORKER_KINDS", "") or "").split(",") if k]
+    runner = PostgresRunner(pool_size=2 * n + 4)
+    stop = threading.Event()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, lambda *_: stop.set())
+    runner.run_forever(f"{socket.gethostname()}-{os.getpid()}", kinds, n, stop)
+    runner.close()
+    return 0
 
 
 def cmd_db(args: argparse.Namespace) -> int:
@@ -576,6 +608,8 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
     args.db = args.db or env("PERCH_DB", DEFAULT_DB)
     if args.command == "db":
         return cmd_db(args)
+    if args.command == "worker":
+        return cmd_worker(args)
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory
     args.grants_factory = grants_factory
     commands = {"resolve": cmd_resolve, "samples": cmd_samples,

@@ -16,7 +16,7 @@ test-keys:
 # The tests create and drop their own database named perch_test_a_*.
 test-pg:
 	PERCH_TEST_DATABASE_URL=$${PERCH_TEST_DATABASE_URL:-postgresql://postgres:perchtest@127.0.0.1:55432/postgres} \
-		$(UV) run pytest tests/test_store.py tests/test_postgres.py -p no:cacheprovider
+		$(UV) run pytest tests/test_store.py tests/test_postgres.py tests/test_jobs_pg.py -p no:cacheprovider
 
 # The demo (S9, deploy-2gpu, hybrid): models as systemd user units on two GPUs, the app
 # in Docker on 127.0.0.1:8090. One command: `make demo`. GPUs default to 6 and 7.

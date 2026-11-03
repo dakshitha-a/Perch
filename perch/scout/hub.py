@@ -14,7 +14,7 @@ from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from perch.jobs import JobRunner
+from perch.jobs import ClosureRunner
 from perch.scout import make_scout
 from perch.scout.log import ScoutLog
 from perch.scout.loop import Scout, Session
@@ -37,7 +37,7 @@ class Entry:
 
 
 class ScoutHub:
-    def __init__(self, service: object, runner: JobRunner, log: ScoutLog | None = None,
+    def __init__(self, service: object, runner: ClosureRunner, log: ScoutLog | None = None,
                  private: object | None = None) -> None:
         """`private`: PrivateSettings for a private session's own hub (no log, local
         models only)."""
