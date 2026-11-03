@@ -279,4 +279,5 @@ def test_cards_and_evidence_carry_the_hint_string():
     assert 'const FROM_PAGE = "from the award\'s page"' in student
     assert "fromPage(r)" in student and "details_url" in student
     assert "(from the award's page)" in app and "deadline_quote" in app
-    assert "fetched ${f.formatDate(r.details_fetched_at)}" in app and "Not stated in the record" in app
+    assert "fetched ${f.formatDate(r.details_fetched_at)}" in app
+    assert "Not stated in the record" in app
