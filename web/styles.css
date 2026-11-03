@@ -1394,3 +1394,6 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
   html:has(#keep-float .keep-float) { scroll-padding-bottom: 92px; }
 }
 .field dd .from-page { color: var(--ink-3); font-size: 13px; font-weight: 500; }
+.page-read { margin: 12px 0 4px; }
+.page-read .hint { margin: 0 0 6px; }
+.page-read blockquote { margin: 0 0 8px; padding-left: 10px; border-left: 3px solid var(--line, #d8ddd6); font-size: 14px; overflow-wrap: anywhere; }

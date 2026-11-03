@@ -156,6 +156,13 @@ def test_apply_page_fills_value_quote_url_and_time():
     assert new.amount_min is None and new.amount_quote is None
 
 
+def test_page_saying_the_award_ended_keeps_no_value():
+    page = ("<main>" + "x " * 150 + "<p>This fellowship was terminated in 2025.</p>"
+            "<p>The Payne Fellowship provides up to $104,000 towards graduate school.</p></main>")
+    new = fd.apply_page(rec(), "https://x.org/", page, NOW)
+    assert new.amount_max is None and new.deadline is None
+
+
 def test_validator_demands_quote_and_page():
     t = datetime(2026, 11, 2, tzinfo=UTC)
     with pytest.raises(ValidationError):
@@ -272,4 +279,4 @@ def test_cards_and_evidence_carry_the_hint_string():
     assert 'const FROM_PAGE = "from the award\'s page"' in student
     assert "fromPage(r)" in student and "details_url" in student
     assert "(from the award's page)" in app and "deadline_quote" in app
-    assert "Page fetched" in app and "Not stated in the record" in app
+    assert "fetched ${f.formatDate(r.details_fetched_at)}" in app and "Not stated in the record" in app

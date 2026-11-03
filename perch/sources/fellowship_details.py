@@ -397,10 +397,18 @@ class Fetcher:
         return c
 
 
+# A page that says the award is over keeps no value: a figure on it may belong to the part
+# that ended (a record can list several awards on one page).
+_ENDED = re.compile(r"\b(?:terminated|discontinued|suspended|cancel+ed|on\s+hiatus|"
+                    r"no\s+longer\s+(?:accepting|offered|available|awarded))\b", re.I)
+
+
 def apply_page(rec: Scholarship, final_url: str, page: str, now: datetime,
                report: Report | None = None) -> Scholarship:
     """The record with deadline and amount filled from the page's text, or left None."""
     lines = html_to_lines(page)
+    if any(_ENDED.search(ln) for ln in lines):
+        lines = []
     today = now.astimezone(UTC).date()
     upd: dict = {"details_url": final_url, "details_fetched_at": now, "deadline": None,
                  "deadline_quote": None, "amount_min": None, "amount_max": None,

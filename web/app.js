@@ -2182,10 +2182,6 @@ function recordView(r) {
       field("Field", titled(r.field_of_study)),
       field("Amount", page && r.amount_max != null ? [amt, pageHint] : amt),
       field("Deadline", page && r.deadline ? [f.formatDate(r.deadline), pageHint] : (f.formatDate(r.deadline) || "Not stated in the record")),
-      page && r.deadline_quote ? field("Deadline, as the page words it", `\u201c${r.deadline_quote}\u201d`) : null,
-      page && r.amount_quote ? field("Amount, as the page words it", `\u201c${r.amount_quote}\u201d`) : null,
-      page && f.safeUrl(r.details_url) ? field("Page read for these", h("a", { href: f.safeUrl(r.details_url), target: "_blank", rel: "noopener", text: r.details_url })) : null,
-      page ? field("Page fetched", f.formatDate(r.details_fetched_at)) : null,
       field("Minimum GPA", e.gpa_min != null ? e.gpa_min.toFixed(2) : null),
       field("Undergraduate year", (e.class_year || []).join(", ")),
       field("Majors", (e.major || []).join(", ")),
@@ -2198,6 +2194,11 @@ function recordView(r) {
       field("Source", SOURCES[r.source] || r.source),
       field("Fetched", f.formatDate(r.fetched_at)),
       r.source === "synthetic" ? field("Test marker", r.canary, "muted") : null),
+    page && (r.deadline_quote || r.amount_quote) ? h("div", { class: "page-read" },
+      h("p", { class: "hint", text: `Copied by code from the award's page, fetched ${f.formatDate(r.details_fetched_at)}:` }),
+      r.deadline_quote ? h("blockquote", {}, h("b", { text: "Deadline: " }), `\u201c${r.deadline_quote}\u201d`) : null,
+      r.amount_quote ? h("blockquote", {}, h("b", { text: "Amount: " }), `\u201c${r.amount_quote}\u201d`) : null,
+      f.safeUrl(r.details_url) ? h("p", {}, h("a", { href: f.safeUrl(r.details_url), target: "_blank", rel: "noopener", text: "Open the page these came from" })) : null) : null,
     r.source !== "synthetic" && f.safeUrl(r.source_url) ? h("p", {}, h("a", { href: f.safeUrl(r.source_url), target: "_blank", rel: "noopener", text: "Open the public page" })) : null);
     return out.filter(Boolean);
   }
