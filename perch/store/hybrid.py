@@ -1,0 +1,63 @@
+"""Public records from Postgres, brief working records in a scratch SQLite file.
+
+In v1 a brief and its leads are user data (encrypted, Phase 3). Until that lands, the worker's
+brief build keeps them in a scratch store and reads every public kind from PostgresRepository.
+Nothing here is used by the web process.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Iterable, Sequence
+from datetime import date
+from pathlib import Path
+
+from psycopg_pool import ConnectionPool
+
+from perch.schemas import Record, Work
+from perch.store.base import Page, R, Repository
+from perch.store.denorm import STORED_KINDS
+from perch.store.postgres import PostgresRepository
+from perch.store.sqlite import SQLiteRepository
+
+
+class HybridRepository(Repository):
+    def __init__(self, pool: ConnectionPool, scratch: str | Path) -> None:
+        self.pg = PostgresRepository(role="worker", pool=pool)
+        self.scratch = SQLiteRepository(str(scratch))
+
+    def _side(self, kind: str) -> Repository:
+        return self.pg if kind in STORED_KINDS else self.scratch
+
+    def upsert(self, records: Iterable[Record]) -> int:
+        recs = list(records)
+        n = self.pg.upsert([r for r in recs if r.kind in STORED_KINDS])
+        return n + self.scratch.upsert([r for r in recs if r.kind not in STORED_KINDS])
+
+    def get(self, cls: type[R], id: str) -> R | None:
+        return self._side(cls.kind).get(cls, id)
+
+    def list(self, cls: type[R], *, include_samples: bool = False) -> list[R]:
+        return self._side(cls.kind).list(cls, include_samples=include_samples)
+
+    def get_any(self, id: str) -> Record | None:
+        return self.pg.get_any(id) or self.scratch.get_any(id)
+
+    def works_by_author(self, author_id: str) -> list[Work]:
+        return self.pg.works_by_author(author_id)
+
+    def browse(self, cls: type[R], *, temple_only: bool = False, schools: Sequence[str] = (),
+               audience_level: Sequence[str] = (), q: str | None = None,
+               closes_after: date | None = None, limit: int = 50,
+               cursor: str | None = None) -> Page[R]:
+        return self.pg.browse(cls, temple_only=temple_only, schools=schools,
+                              audience_level=audience_level, q=q, closes_after=closes_after,
+                              limit=limit, cursor=cursor)
+
+    def epoch(self) -> int:
+        return self.pg.epoch()
+
+    def bump_epoch(self) -> int:
+        return self.pg.bump_epoch()
+
+    def close(self) -> None:
+        self.scratch.close()  # the pool is shared and owned by the worker
