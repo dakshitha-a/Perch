@@ -331,7 +331,8 @@ async def points(page: Page, base: str) -> Recorder | None:
     A = await top.bounding_box()
     B = await copy.bounding_box()
     W = await block.bounding_box()
-    tail = {"x": W["x"], "y": A["y"], "width": W["width"], "height": B["y"] + B["height"] - A["y"] + 40}
+    tail = {"x": W["x"], "y": A["y"], "width": W["width"],
+            "height": B["y"] + B["height"] - A["y"] + 40}
     await rec.focus(tail, pad=24)
     await rec.hold(3200)
     await click(page, copy)
