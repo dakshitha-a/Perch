@@ -32,23 +32,23 @@
     <rect x="296" y="68" width="128" height="52" rx="6"/>
     <rect x="434" y="68" width="128" height="52" rx="6"/>
   </g>
-  <rect x="572" y="68" width="128" height="52" rx="6" fill="none" stroke="#e4eae6" stroke-opacity="0.25" stroke-dasharray="2 3"/>
+  <rect x="572" y="68" width="128" height="52" rx="6" fill="none" stroke="#e4eae6" stroke-opacity="0.35" stroke-dasharray="5 3"/>
   <g font-size="13" font-weight="600" fill="#e4eae6">
     <text x="30" y="90">OpenAlex</text>
     <text x="168" y="90">NIH RePORTER</text>
     <text x="306" y="90">NSF Awards</text>
     <text x="444" y="90">Grants.gov</text>
-    <text x="582" y="90" opacity="0.55">SBIR.gov</text>
+    <text x="582" y="90">Fellowships</text>
   </g>
   <g font-size="11" fill="#e4eae6" opacity="0.75">
     <text x="30" y="108">papers, companies</text>
     <text x="168" y="108">awards, SBIR/STTR</text>
     <text x="306" y="108">awards, dates</text>
     <text x="444" y="108">open, archived calls</text>
-    <text x="582" y="108" opacity="0.7">API down, unused</text>
+    <text x="582" y="108">Temple list, pages</text>
   </g>
   <g stroke="#e4eae6" stroke-opacity="0.6" fill="none" marker-end="url(#oa)">
-    <path d="M84 120 V148"/><path d="M222 120 V148"/><path d="M360 120 V148"/><path d="M498 120 V148"/>
+    <path d="M84 120 V148"/><path d="M222 120 V148"/><path d="M360 120 V148"/><path d="M498 120 V148"/><path d="M636 120 V148"/>
   </g>
 
   <!-- fetchers and store -->
@@ -62,7 +62,7 @@
   </g>
   <g font-size="11.5" fill="#e4eae6" opacity="0.8">
     <text x="36" y="189">Rate-limited and retried. Each record keeps its source, link and fetch time. Numbers are copied.</text>
-    <text x="36" y="265">Researchers, works, awards, opportunities, organisations, leads and briefs; embedding and rerank caches.</text>
+    <text x="36" y="265">Researchers, works, awards, opportunities, and organisations; embedding and rerank caches.</text>
   </g>
   <path d="M360 200 V224" stroke="#e4eae6" stroke-opacity="0.6" fill="none" marker-end="url(#oa)"/>
   <g stroke="#e4eae6" stroke-opacity="0.6" fill="none" marker-end="url(#oa)">
