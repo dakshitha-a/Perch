@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 import threading
+from collections.abc import Sequence
 from pathlib import Path
 
 import lancedb
@@ -45,14 +46,22 @@ class LanceIndex(VectorIndex):
         self.table.create_index("text", config=FTS(stem=True, remove_stop_words=True))
         return len(rows)
 
-    def dense(self, vector: list[float], k: int) -> list[tuple[str, float]]:
+    def dense(self, vector: list[float], k: int, *, temple_only: bool = False,
+              schools: Sequence[str] = (), include_samples: bool = False
+              ) -> list[tuple[str, float]]:
+        if temple_only or schools:
+            raise NotImplementedError("LanceIndex has no record filters")
         if self.table is None:
             return []
         hits = (self.table.search(list(map(float, vector)), vector_column_name="vector")
                 .metric("cosine").limit(k).to_list())
         return [(h["id"], 1.0 - float(h["_distance"])) for h in hits]
 
-    def bm25(self, query: str, k: int) -> list[tuple[str, float]]:
+    def bm25(self, query: str, k: int, *, temple_only: bool = False,
+             schools: Sequence[str] = (), include_samples: bool = False
+             ) -> list[tuple[str, float]]:
+        if temple_only or schools:
+            raise NotImplementedError("LanceIndex has no record filters")
         # Keep words only: the FTS query parser treats some punctuation as syntax.
         q = " ".join(re.findall(r"[A-Za-z0-9]+", query))
         if self.table is None or not q:

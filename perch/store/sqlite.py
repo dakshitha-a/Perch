@@ -6,12 +6,15 @@ are stored alongside so they can be queried without parsing JSON.
 
 from __future__ import annotations
 
+import base64
 import sqlite3
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
+from datetime import date
 from pathlib import Path
 
 from perch.schemas import RECORD_TYPES, Record, Work
-from perch.store.base import R, Repository
+from perch.store.base import Page, R, Repository
+from perch.store.denorm import columns, matches_text
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS records (
@@ -23,6 +26,7 @@ CREATE TABLE IF NOT EXISTS records (
     data TEXT NOT NULL,
     PRIMARY KEY (kind, id)
 );
+CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value INTEGER NOT NULL);
 """
 
 
@@ -50,11 +54,43 @@ class SQLiteRepository(Repository):
         ).fetchone()
         return cls.model_validate_json(row[0]) if row else None
 
-    def list(self, cls: type[R]) -> list[R]:
+    def list(self, cls: type[R], *, include_samples: bool = False) -> list[R]:
+        extra = "" if include_samples else " AND source != 'synthetic'"
         rows = self.conn.execute(
-            "SELECT data FROM records WHERE kind = ? ORDER BY id", (cls.kind,)
+            f"SELECT data FROM records WHERE kind = ?{extra} ORDER BY id", (cls.kind,)
         ).fetchall()
         return [cls.model_validate_json(r[0]) for r in rows]
+
+    def browse(self, cls: type[R], *, temple_only: bool = False, schools: Sequence[str] = (),
+               audience_level: Sequence[str] = (), q: str | None = None,
+               closes_after: date | None = None, limit: int = 50,
+               cursor: str | None = None) -> Page[R]:
+        def keep(r: R) -> bool:
+            c = columns(r)
+            return ((not temple_only or c.temple_funded)
+                    and (not schools or bool(set(schools) & set(c.schools)))
+                    and (not audience_level or bool(set(audience_level) & set(c.audience_level)))
+                    and (not q or matches_text(r, q))
+                    and (closes_after is None
+                         or (c.deadline is not None and c.deadline >= closes_after)))
+
+        hits = [r for r in self.list(cls) if keep(r)]
+        after = base64.urlsafe_b64decode(cursor.encode()).decode() if cursor else None
+        page = [r for r in hits if after is None or r.id > after]
+        more = len(page) > limit
+        page = page[:limit]
+        nxt = base64.urlsafe_b64encode(page[-1].id.encode()).decode() if more else None
+        return Page(items=page, next_cursor=nxt, total=len(hits))
+
+    def epoch(self) -> int:
+        row = self.conn.execute("SELECT value FROM meta WHERE key = 'epoch'").fetchone()
+        return row[0] if row else 0
+
+    def bump_epoch(self) -> int:
+        with self.conn:
+            self.conn.execute("INSERT INTO meta VALUES ('epoch', 1) "
+                              "ON CONFLICT(key) DO UPDATE SET value = value + 1")
+        return self.epoch()
 
     def get_any(self, id: str) -> Record | None:
         row = self.conn.execute("SELECT kind, data FROM records WHERE id = ? ORDER BY kind LIMIT 1",
