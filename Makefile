@@ -1,11 +1,16 @@
 UV ?= uv
 
 .PHONY: test demo demo-units demo-seed demo-down demo-status gpus bench tracker package hooks \
-	decide-up decide-down decide-status
+	decide-up decide-down decide-status test-keys
 
 test:
 	$(UV) run ruff check .
 	$(UV) run pytest
+
+# Key-store tests against a test Postgres (creates and drops perch_test_b_* databases).
+PERCH_TEST_KEYS_DATABASE_URL ?= postgresql://postgres:perchtest@127.0.0.1:55432/postgres
+test-keys:
+	PERCH_TEST_KEYS_DATABASE_URL=$(PERCH_TEST_KEYS_DATABASE_URL) $(UV) run pytest tests/test_crypto.py tests/test_keystore.py
 
 # The demo (S9, deploy-2gpu, hybrid): models as systemd user units on two GPUs, the app
 # in Docker on 127.0.0.1:8090. One command: `make demo`. GPUs default to 6 and 7.
