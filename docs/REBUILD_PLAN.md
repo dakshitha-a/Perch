@@ -44,11 +44,23 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 - **Containers, not a specific cloud.** Docker images for web and worker, Docker Compose for one host, and manifests that also run under Kubernetes. Postgres and Redis can be self-run or managed.
 - **Scout is rebuilt as an open, grounded assistant (Dakshitha).** Fixed questions move to code. Open questions go to the cloud model with read tools and cited answers. A daily budget per account replaces the old per-address caps. Phase 8 has the detail.
 
+### Security and speed (Dakshitha asked Perch-dev to lead, 3 Nov)
+
+- **User rows are fenced in the database.** Postgres row-level security limits every user-data table to the signed-in user's id, so a bug in a query cannot read another user's rows.
+- **Least privilege.** The web process and the worker use separate database roles. Neither can read the key table directly; only the key service code can unwrap a data key.
+- **Sessions.** Sign-in sessions are random ids in Redis, sent as HttpOnly, Secure, SameSite cookies, with a short idle timeout. Every write request carries a CSRF token.
+- **Transport and headers.** TLS between every service, a strict Content-Security-Policy, and no third-party scripts, as today.
+- **Secrets.** Secrets come from the environment or a secrets manager, never from files in the image. The master key never leaves the key management service in production.
+- **Logs.** Structured logs hold ids and hashes, never user text. The Phase 6 leakage check enforces it.
+- **Fast reads.** pgvector uses an HNSW index. A connection pooler sits in front of Postgres. The web process is async and never runs a model.
+- **Fast CPU models.** Each worker loads its models once. Phase 3 measures int8 ONNX versions of the embedder and reranker, and uses them only if the back-test shows no loss.
+- **Fast first answers.** The brief page shows the deterministic leads first and streams the model text in as it arrives, as the staged brief already does.
+
 ### Proposed wording for standing rules 1 and 5 (Dakshitha to apply)
 
 - **Rule 1, proposed:** "Public data only in the repo. No private or unpublished text in the repo, fixtures, tests, logs, or examples. Any sample data is synthetic and labelled `SYNTHETIC`. Perch does not accept unpublished research. A signed-in user's own CV and entries are stored encrypted under that user's key, may be sent to the deployment's contracted cloud provider after one consent at sign-up, and are deleted when the user asks or after 12 months of inactivity. Tests of user data use SYNTHETIC text only."
 - **Rule 5, proposed change:** keep the first part. Replace the CV sentence with: "A session's models may read the user's CV and entries. Contact details (emails, phones, links) are blanked before any model sees them. User data is stored only encrypted, never in logs, caches or the audit log in plain text, and never leaves the deployment except to its contracted provider."
-- **A related build-time note:** the one-time extraction of Temple award pages uses a cloud model as an offline data-preparation step. It is not a runtime model job. Every value it produces is checked by code against a quoted page sentence (rules 2 and 3), and the output is a reviewed dataset file. Dakshitha confirms this reading in Q46.
+- **A related build-time note:** the one-time extraction of Temple award pages uses a cloud model as an offline data-preparation step. It is not a runtime model job. Every value it produces is checked by code against a quoted page sentence (rules 2 and 3), and the output is a reviewed dataset file. Dakshitha confirmed this on 3 Nov (Q46).
 
 ## Target architecture
 
@@ -104,11 +116,11 @@ Each session follows the session protocol in CLAUDE.md. Code agents work in work
 
 ### Phase 0 — Rules, decisions, clean-up (S34)
 
-1. Dakshitha applies the rule 1 and 5 wording, or edits it. Perch-dev updates CLAUDE.md's engineering conventions to name Postgres with pgvector as the deployment store.
+1. Dakshitha applies the rule 1 and 5 wording, or edits it. Perch-dev updates CLAUDE.md's engineering conventions to name Postgres with pgvector as the deployment store, and adds the award-title exception to the public-ready convention: award titles copied from Temple's public pages may name people, while staff names and contacts stay out. `tests/test_public_hygiene.py` follows.
 2. Record the decisions above in `docs/DECISIONS.md` and the plan change in `docs/PLAN.md`. This step was done on 3 Nov.
 3. Create the branch `rebuild/v1` from `main`.
 4. Stop the dev Clef units with `make decide-down`, then tell the other session sharing the node that those GPUs are free. The public demo stays up as the fallback.
-5. Confirm the API budget: about $30 of the $100 cap is planned for the rebuild (see Budget).
+5. The API budget is confirmed: about $30 of the $100 cap for the rebuild (Dakshitha, 3 Nov).
 
 Done when: the rules are amended, the branch exists, and the dev GPUs are released.
 
@@ -247,4 +259,4 @@ Done when: the review is closed, the docs are verified, and the tag is pushed.
 - **SSO:** Temple IT must register Perch as an application before real sign-in works. Until then, guest mode and Keycloak cover the demo.
 - **Provider limits:** the needed rate-limit tier is a contract question for Temple.
 - **Jev:** access and data terms are unknown, so it stays off the request path.
-- **Names in award titles:** many endowed scholarships carry a donor's name in their title. The public-ready convention allows no other people's names in tracked files, so Q46 asks whether award titles are an exception or the dataset stays untracked.
+- **Names in award titles:** many endowed scholarships carry a donor's name in their title. The public-ready convention allows no other people's names in tracked files, so award titles copied from Temple's public pages become an exception (Dakshitha, 3 Nov).
