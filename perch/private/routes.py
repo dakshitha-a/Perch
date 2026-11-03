@@ -48,7 +48,7 @@ from perch import compare as cmp
 from perch import egress
 from perch import export as ex
 from perch.config import env
-from perch.jobs import JobRunner
+from perch.jobs import ClosureRunner
 from perch.privacy import PrivateSettings, consent_warning
 from perch.private.inputs import (
     FORMATS,
@@ -172,8 +172,8 @@ def per_hour(name: str, default: int) -> int:
     return int(env(name) or default)
 
 
-def add_private_routes(app: FastAPI, service: object, runner: JobRunner,
-                       scout_runner: JobRunner, *, brief_view: Callable, export_json: Callable,
+def add_private_routes(app: FastAPI, service: object, runner: ClosureRunner,
+                       scout_runner: ClosureRunner, *, brief_view: Callable, export_json: Callable,
                        export_blocks: Callable, load: Callable, limiter: type,
                        client_key: Callable[[Request], str],
                        settings: PrivateSettings | None = None) -> PrivateSessions:
