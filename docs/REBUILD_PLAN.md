@@ -25,6 +25,7 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 
 - **Standing rules 1 and 5 change as proposed.** The wording below was applied to CLAUDE.md on 3 Nov at Dakshitha's request.
 - **The researcher side stays, behind a student-first UI.** Students land first. The researcher path is ported to the new stack.
+- **Both sides get the whole architecture (Dakshitha, 3 Nov).** Every phase applies to researchers and students alike: cloud and CPU models, Postgres, the job queue, caching, SSO accounts, encrypted storage of CVs and entries, the removal of private mode, the Temple-only toggle and school tags, and the open Scout with its scope guardrail. Where a step names one side, the other side gets the same step.
 - **Sentence checking uses MiniCheck on CPU.** MiniCheck is already the default grounder in `perch/grounding.py`. Clef and its GPU servers are retired.
 - **Jev is a bench challenger only.** Jev is a hosted decision model. The existing `perch/llm/systemone.py` adapter says it is Jev-compatible, but that is UNVERIFIED: the Jev site shows a `POST /v1/decide` endpoint, so compatibility is checked when access arrives. Its site says it is in early access. Its privacy page is template text, and it states no data-retention terms. Jev gets a bench row once we have access and written data terms. A switch would be a later decision based on those numbers.
 - **Stored user data is kept until the user deletes it,** with an automatic purge after 12 months of inactivity.
@@ -66,7 +67,7 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 
 ### Request paths and what each one costs
 
-- **Browse and filter:** a student opens the Temple awards list, flips the Temple-only toggle and picks school tags. This is a database read with a cached response. It needs no model and no worker.
+- **Browse and filter:** a student opens the Temple awards list, or a researcher opens the funding list, then flips the Temple-only toggle and picks school tags. This is a database read with a cached response. It needs no model and no worker.
 - **Build a brief:** a signed-in user asks for their brief. The web process puts a job on the queue and the page polls for stages, as it does today. A worker embeds the query on CPU, retrieves with pgvector, applies the rules, reranks on CPU, then calls the cloud model for the summary and explanations. MiniCheck on CPU checks each sentence.
 - **Ask Scout:** each turn is a job. The worker runs the loop on the cloud model with the same allowlisted tools.
 - **Hand-off and cover points:** cloud model calls through the same job path, with the same validator.
@@ -75,7 +76,7 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 ### What 1,000 concurrent users means here
 
 - **The definition:** 1,000 signed-in users active in the same 5-minute window.
-- **The assumed mix:** every user browses, and up to 1 in 5 builds a brief in that window. That is about 40 briefs a minute at the peak. The mix is an assumption, and the load test reports results at several mixes.
+- **The assumed mix:** every user browses, and up to 1 in 5 builds a brief in that window, split between student and researcher briefs. That is about 40 briefs a minute at the peak. The mix is an assumption, and the load test reports results at several mixes.
 - **Targets to test against:** browse p95 under 300 ms. A brief completes with p95 under 90 seconds at the peak mix. No errors from our own services.
 - **The real ceiling is the provider.** At peak, the cloud provider's per-minute token limit decides how many briefs run at once. That limit is a contract number and is UNVERIFIED until Temple's account tier is known. The load test measures tokens per brief so the needed tier can be stated.
 
@@ -85,7 +86,7 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 - **Researcher profiles:** OpenAlex author data and topic threads are public. They are cached per author for 7 days and shared across users.
 - **Researcher pre-cache:** a nightly job runs the deterministic stages for every Temple-affiliated OpenAlex author. Those stages are retrieval, rules and rerank. A researcher's first brief then needs only the model text.
 - **Model text on public inputs:** a fit explanation for a researcher depends only on public records. It is cached by record id, profile hash, prompt version and model version.
-- **Model text on user data:** a student's explanations depend on their CV. They are stored only in that user's encrypted rows and never in a shared cache.
+- **Model text on user data:** any explanation, hand-off or cover point that uses a user's CV or entries, for a student or a researcher, depends on their own data. They are stored only in that user's encrypted rows and never in a shared cache.
 - **HTTP cache:** the awards list, filters and record pages are cached in Redis for a short time and refreshed after each ingest.
 - **Provider prompt caching:** fixed system prompts and tool schemas are sent as cacheable prefixes, which the Anthropic adapter supports.
 
@@ -126,7 +127,7 @@ Done when: the rules are amended, the branch exists, and the dev GPUs are releas
 
 ### Phase 1 — Discovery and design (S35)
 
-1. **Temple award inventory.** Find every public Temple page that lists scholarships, fellowships or awards. Sources include each school and college, Student Financial Services, Scholar Development and Fellowships Advising, the Graduate School, the Honors Program, Education Abroad and the international campuses. Search each temple.edu sitemap, check each page's HTTP status and robots.txt, and record every page in `docs/SOURCES.md`. Pages behind AccessNet sign-in, ScholarshipUniverse included, are listed and not read.
+1. **Temple award inventory.** Find every public Temple page that lists scholarships, fellowships or awards for students, and every page that lists Temple's internal research funding for faculty, such as seed grants, school research awards and OVPR internal programs. Sources include each school and college, Student Financial Services, Scholar Development and Fellowships Advising, the Graduate School, the Honors Program, Education Abroad and the international campuses. Search each temple.edu sitemap, check each page's HTTP status and robots.txt, and record every page in `docs/SOURCES.md`. Pages behind AccessNet sign-in, ScholarshipUniverse included, are listed and not read.
 2. **Temple SSO facts.** Record what Temple's public pages say about OIDC and SAML registration. The claim names, such as school or role, are UNVERIFIED until Temple IT answers. The plan does not depend on a school claim.
 3. **Provider facts.** Record the default model per job, prices and rate-limit tiers from the provider's current documentation.
 4. **Reuse map.** A line-by-line map of `perch/private/`, `perch/api.py` and `web/` into keep, move and delete. This map is the brief for Phase 5.
@@ -164,7 +165,7 @@ Done when: a brief runs with no GPU anywhere, and the bench rows for the new set
 
 1. A one-time reader for the inventoried pages. It fetches each page politely, at one request per second per site and within robots.txt, and saves `<main>` only, with staff names and emails removed.
 2. Extraction into `Scholarship` records. A cloud model may propose fields. Code keeps an amount, date, link or eligibility value only when it appears in a quoted sentence from that page. A year is never inferred. The rest stays "not stated".
-3. New fields: `school` from the page's owner, `temple_funded` only when the page says the award is Temple's, and an audience level.
+3. Temple internal research funding goes into `Opportunity` records for the researcher side, with the same checks. New fields on both record types: `school` from the page's owner, `temple_funded` only when the page says the award is Temple's, and an audience level.
 4. Dedupe across sites, because university-wide programs appear on several school pages. Each kept record links every page it appeared on.
 5. Write the reviewed result to a versioned dataset file with provenance on every row (rule 4), and load it at deploy time.
 6. **The verified-feed seam:** an importer that reads Temple's own dataset from an API, a database or a CSV or JSON file into the same records. The ScholarshipUniverse module becomes one implementation of it once a real export is seen.
@@ -175,19 +176,20 @@ Done when: the Temple dataset is loaded, the hand-check is reported, and `docs/S
 
 ### Phase 5 — Sign-in, accounts and user data (S41)
 
-1. The `AuthProvider` interface with an OIDC implementation, tested against the Keycloak stand-in.
-2. Guest mode: no account, nothing stored, short-lived, with a clear banner.
-3. Account roles: student, researcher and office staff. Staff screens are out of scope for v1. The role exists so they can be added.
-4. Consent at sign-up, naming the provider that will read the user's CV and entries.
-5. CV and entry storage, encrypted per user. The existing CV parse and contact blanking are kept.
-6. Delete my data, which destroys the user's key, and the 12-month inactivity purge job.
-7. Per-account quotas replace the per-address and per-hour caps.
+1. The `AuthProvider` interface with an OIDC implementation, tested against the Keycloak stand-in. Researchers and students sign in the same way.
+2. A researcher links their account to their OpenAlex author id once, so their brief, saved leads and hand-off drafts follow them across visits.
+3. Guest mode for both sides: no account, nothing stored, short-lived, with a clear banner.
+4. Account roles: student, researcher and office staff. Staff screens are out of scope for v1. The role exists so they can be added.
+5. Consent at sign-up, naming the provider that will read the user's CV and entries.
+6. CV and entry storage for both sides, encrypted per user. The existing CV parse and contact blanking are kept.
+7. Delete my data, which destroys the user's key, and the 12-month inactivity purge job.
+8. Per-account quotas replace the per-address and per-hour caps.
 
 Done when: a user can sign in, store a CV, build a brief, sign out, return and see it, then delete it all.
 
 ### Phase 6 — Remove private mode (S42)
 
-1. Follow the Phase 1 reuse map. Move the student brief, CV parse, inputs and threads out of `perch/private/`.
+1. Follow the Phase 1 reuse map. Move the student brief, CV parse, inputs and threads out of `perch/private/`. The researcher brief, which also runs in a private session today, moves onto the same account-based path.
 2. Delete memory sessions, the write overlay, warm briefs, the egress filter, the masks, the Local or Cloud dialog and the second Cloud warning.
 3. Replace the canary with a user-data leakage check. It plants a SYNTHETIC CV with a canary token and proves the token never appears in logs, caches, the audit log, job payloads or any plain-text column. The check must fail first, on a planted leak.
 4. Remove the private-mode tests, and keep any that still test a kept behaviour.
@@ -196,9 +198,9 @@ Done when: no private-mode code remains, and the leakage check passes after fail
 
 ### Phase 7 — Student-first UI (S43)
 
-1. The landing page leads with students, and researchers are one click away.
-2. The awards list gets a Temple-only toggle and school tags across the top. Tags come from the `school` field. Records with no stated school show under "All Temple".
-3. Saved awards, past briefs and an account page with delete-my-data.
+1. The landing page leads with students, and researchers are one click away. Every researcher screen is ported to the new stack: Find, the brief, leads, compare, hand-off, export and Scout.
+2. The awards list and the researcher funding list both get a Temple-only toggle and school tags across the top. Tags come from the `school` field. Records with no stated school show under "All Temple".
+3. Saved awards and saved leads, past briefs and hand-off drafts, and an account page with delete-my-data, for both sides.
 4. Help is rewritten for the new flow, with every claim checked against the code.
 5. The walk gains flows for sign-in, guest, filters and delete. Each new geometry check is proven to fail first.
 6. **Review:** an Opus UI/UX review with fresh context on the new screens.
@@ -216,7 +218,7 @@ Dakshitha (3 Nov): Scout comes up empty on most questions outside a fixed set. A
 5. **A scope guardrail, so API spend goes only to Perch's job (Dakshitha, 3 Nov).** Scout answers questions about funding, scholarships, fellowships, applications, the user's own brief, CV and entries, and how to use Perch. It does not solve general tasks, such as math problems, coding, homework or essays unrelated to an application, and it does not offer therapy or personal counselling.
    - **A cheap gate first.** Each question goes first through a small, cheap model call with a short fixed prompt and a cap of a few output tokens. The call answers only "in scope" or "out of scope". Questions with a button match skip the gate entirely.
    - **Code writes the refusal.** An out-of-scope question gets a fixed, polite reply written by code, with example questions Scout can answer. The large model is never called for it.
-   - **Distress gets care, not a refusal.** A question that reads as personal distress gets a fixed message pointing to Temple's student counselling service, with its link verified live before it ships (rule 10). Scout does not try to counsel.
+   - **Distress gets care, not a refusal.** A question that reads as personal distress gets a fixed message pointing to Temple's counselling service for students, or its employee assistance program for faculty and staff, with each link verified live before it ships (rule 10). Scout does not try to counsel.
    - **Belt and braces.** Scout's system prompt also states the scope, so a question that slips past the gate is still declined in one sentence.
    - **Abuse limits.** Out-of-scope questions count toward the daily budget at a small fixed cost, so repeated misuse runs out quickly.
    - **Measured.** The open-question bench adds an out-of-scope set: math, coding, trivia, therapy-style and mixed questions. It reports how many are blocked, how many in-scope questions are wrongly blocked, and the gate's cost per question.
@@ -256,7 +258,7 @@ Done when: the review is closed, the docs are verified, and the tag is pushed.
 
 - **Spent so far:** $2.60 of the $100 Anthropic cap, from the spend ledger on 3 Nov.
 - **Planned for the rebuild, an estimate:** about $5 for the grounding and Scout bench reruns, about $5 for Temple page extraction, about $10 for smoke tests and rehearsals, and about $10 of margin. That is about $30 in total, inside the cap.
-- **Not yet known:** the cost per student brief on the cloud model is UNVERIFIED. Phase 3 measures it. The deck uses only measured numbers.
+- **Not yet known:** the cost per student brief and per researcher brief on the current code and cloud model is UNVERIFIED. The $0.0915 per researcher brief from S8 predates the S27 to S31 changes. Phase 3 measures it. The deck uses only measured numbers.
 
 ## Risks
 
