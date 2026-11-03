@@ -78,6 +78,22 @@ Written at the close of S33 (2026-11-02). S33 ran in one orchestrating context w
 - **Checks.** 470 tests green (31 new, on six saved real pages with staff contacts removed). Dev walk (student, ux-laptop, ux-phone) 73 states, 0 errors, 0 axe. Demo rebuilt with a no-cache image: 3d413fc3e613, with 43fcf0b8e192 kept as perch-demo:prev; the same walk on the public URL gave 73 states, 0 errors, 0 axe.
 - **Not done.** A deadline stays on a record until the next fetch, even after it passes; rerun the fetch before Demo Day. The 10 dead or blocked links in the SDFA list are not fixed. Sponsor terms of use are UNVERIFIED in docs/SOURCES.md. The evidence panel was not screenshotted at 390 px; its quote wraps anywhere and its link text is short.
 
+## After the S33 close, 3 Nov 2026 (Dakshitha)
+
+- **Checkup 2 screenshots.** Twelve stills and a contact sheet are in `docs/screenshots/checkup2/`, taken from the public demo with PI-4 and the SYNTHETIC persona-ug. The README in that folder has one line per image.
+- **The tracker artifact is current.** Both UI replays were re-recorded from the current build on 3 Nov: PI-4 is brief `MCp4CdcfZLK8` and persona-ug is the student replay. The stale-replay warning is gone. The Tests tile reads 470. Two "May be behind" notes remain:
+  - QA cycle 5. This one is noise: a finished review doc does not go stale.
+  - `bench/results/RESULTS.md`. This one is real: it was rendered on 29 Oct, before the 30–31 Oct ranking changes.
+- **The hosted spec was refreshed** (v2.0, as built, 3 Nov). An Opus review then found 13 must-fix items before the page goes to judges, including a stale Scout number, MRR 0.149 that should be 0.144, a Clef-flash step no demo brief runs, a nav that covers headings on a phone, clipped SVG text, and internal ids. **The full prompt is in `build/prompts/spec-fixes.md`** (gitignored, on this machine); paste it into an orchestrator context. It also covers the two tracker notes and the back-test rerun decision. The spec artifact is still private; share it once those fixes are in.
+- **The README was rewritten** from a copy-edit and a UI/UX review, both on Opus:
+  - The tour is one feature per section, with full-width clips. It went from about 1,025 to 700 words.
+  - Results moved up, and Known limits is folded.
+  - Stale facts were fixed: ten Scout tools; the 30 of 30 bench; about 40 s per brief; one side per session; the ERA note; the fellowship source.
+  - There is no live demo link in the README, because the URL carries the machine name. The submission gives the link.
+  - The architecture figure was redrawn: four skills, the student path, Local or Cloud, the fellowship source, and no stored briefs.
+- **The clips were refilmed** from the build behind the public demo, at 12 fps, 1.35 to 1.67 MB each. That covers all six, plus a new `docs/tour/points.webp`. Dark-mode clips are deferred: every clip shows a light-theme frame on GitHub's dark page.
+- **Open: Fox School scholarships (Q45).** They are not integrated. See `bridge/QUESTIONS.md` 45 for what the page holds and the recommendation.
+
 ## Next: S34, freeze (Dakshitha)
 
 1. Confirm `make test`, `make package` from a clean clone and the live demo one last time.
@@ -86,4 +102,5 @@ Written at the close of S33 (2026-11-02). S33 ran in one orchestrating context w
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 
-- **None open.** Q44 (hand-off offices, 2026-11-02) is on record and built. Q43 (cover-letter points, rule 5) was decided by Dakshitha on 2026-11-01 and built in S33.
+- **Q45 open (Dakshitha):** whether to add the Fox School scholarships list before the freeze. See bridge/QUESTIONS.md.
+- Q44 (hand-off offices, 2026-11-02) is on record and built. Q43 (cover-letter points, rule 5) was decided by Dakshitha on 2026-11-01 and built in S33.
