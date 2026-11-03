@@ -59,7 +59,7 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | Milestone | Date | Needs | Ready? |
 |---|---|---|---|
 | Checkup 2 | Tue 3 Nov | S0–S7 | |
-| Code freeze | Thu 5 Nov 12:00 | S33 built and verified, S34 tags | S33 done; S34 is the tag |
+| Rebuild gate | Thu 5 Nov 18:00 | the student path works end to end on the rebuild (S35 onward), or the fallback is submitted | Phase 0 done in S34; the gate is in `docs/REBUILD_PLAN.md` |
 | Submission | Fri 6 Nov 12:00 | ZIP + links | |
 
 ## Key numbers (keep current)

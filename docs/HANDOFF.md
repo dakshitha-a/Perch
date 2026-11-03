@@ -29,6 +29,8 @@ Written at the close of S34 (2026-11-03, 17:25 EST). S34 was Phase 0 of the depl
 
 - **The dev server on 8091** and the dev embed/rerank on GPU 3 were not touched in S34.
 - **Untracked bench output.** Nine `bench/results/scout_s32*` folders sit untracked in the checkout. They are not this session's and were not committed.
+- **A hygiene failure in Phase 1 may be expected.** `test_researcher_names_stay_out_of_shareable_docs` scans `docs/**/*.md`, so `docs/SOURCES.md` is in scope. If a Temple award title written there contains a demo researcher's last name, the test fails. The fix then is a narrow allowlist of those award titles in the test, not a change to the convention.
+- **The tracker milestone** "Code freeze" is now "Rebuild gate", Thu 5 Nov 18:00.
 - **The tracker tests tile** reads the latest row's count, now 470.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
