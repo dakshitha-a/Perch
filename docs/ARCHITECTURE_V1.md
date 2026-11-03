@@ -126,7 +126,7 @@ Two databases on one server in dev. In production the keys database should be a 
 | `perch_owner` | yes, migrate only | all objects in `perch` | `migrate` | DDL. Never used at runtime. |
 | `perch_web` | yes | nothing | `web` | See table below. Row-level security applies. |
 | `perch_worker` | yes | nothing | `worker` | See table below. Row-level security applies. |
-| `perch_keys` | yes | all objects in `perch_keys` | `perch/keystore.py` in both processes | ALL on `user_keys` and `key_tombstones` in the keys database. No grant in `perch`. |
+| `perch_keys` | yes | all objects in `perch_keys` | `perch/keystore.py` in both processes | SELECT, INSERT and UPDATE on `user_keys`, SELECT and INSERT on `key_tombstones`, through functions that take an advisory lock per user. The tables are owned by `perch_keys_owner`, a non-login role, so the runtime role cannot drop tombstones or disable the trigger (S37 crypto review). No grant in `perch`. |
 | `perch_definer` | no, NOLOGIN | the SECURITY DEFINER functions only, not the tables | called through those functions | Only the table grants those functions need, plus an explicit RLS policy `TO perch_definer USING (true) WITH CHECK (true)` on every fenced table. |
 
 | Table (database `perch`) | `perch_web` | `perch_worker` |

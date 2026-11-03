@@ -214,3 +214,27 @@ Branch `s37-cryptofix`. Commits: `2791795` (1), `7057db0` (4), `d6f08b4` (everyt
 - **15 Not fixed.** Existing tests and callers use non-UUID row ids; an allowlist belongs with `perch/user/data.py`.
 - **16 Fixed (d6f08b4).** Tests added for concurrent eviction, shred racing an insert (both orders), swapped wrapped keys, tombstone protection, `shred_log`, missing versus shredded, master id mismatch, `WrappedKey` repr, and the AAD user id isolated. Not done: the T1 end-to-end test, which waits for `perch/user/data.py`.
 - **17 Not fixed.** Waits for the `reconcile-shreds` command.
+
+## Re-check
+
+Re-checked on 2026-11-03 against `rebuild/v1` at `11e63d1`, a read-only pass over the current code. `make test-keys` passed 60 tests. `tests/test_postgres.py -k shred` passed.
+
+- **1 Closed.**
+  - **Code:** `_cache_get` and `_cache_put` in `perch/crypto.py` now store and return immutable `bytes`. Eviction only drops the cache entry.
+  - **Reproduction:** I re-ran the original reproduction, with `clear_cache()` injected between fetching the key and using it. The blob no longer opens under the all-zero key, and it opens under the real key.
+- **2 Closed.**
+  - **Code:** The trigger in `perch/db/migrations/keys/0002_owner_locking_kcv.sql:36-44` and `KeyRepository.shred` in `perch/keystore.py:308-317` take the same per-user advisory lock. `KeyRepository.shred` tombstones and deletes in one transaction, and `reconcile_shreds` now uses it.
+  - **Reproduction:** I held an uncommitted key insert that had already passed the trigger. `repo.shred` waited on the lock, then deleted 1 row, and 0 rows were left. Before the fix, this left 1 row behind.
+- **3 Closed.**
+  - **Code:** `0002_owner_locking_kcv.sql:6-22` moves the tables and the trigger function to `perch_keys_owner`, which is NOLOGIN. `perch_keys` gets no membership in it.
+  - **Grants on `key_tombstones`:** SELECT and INSERT only.
+  - **Grants on `user_keys`:** SELECT, INSERT and DELETE, plus UPDATE on three columns only.
+  - **Tests:** They assert that `perch_keys` cannot run the forbidden statements.
+  - **Still open in the docs:** ARCHITECTURE section 2.1 still says `perch_keys` has `ALL`. That row should be updated.
+- **4 Closed.**
+  - **Code:** `perch/db/migrations/perch/0007_shred_log_rls.sql` enables and forces RLS on `shred_log`. `perch_web` may insert only `perch_uid()`, so an insert with no user set is refused. `perch_worker` may insert any id.
+  - **Test:** `test_perch_web_can_log_only_its_own_shred` passes.
+- **5 Closed in this module; one caller duty remains.**
+  - **Code:** The new `KeyMissing` error is raised when there is no key row and no tombstone. `KeyShredded` is raised only when a tombstone exists. `encrypt_field` creates version 1 only when `create=True`.
+  - **Remaining duty:** The guarantee holds only if `perch/user/data.py` passes `create=True` after it has confirmed the user has no `user_data` rows. Review that when the module is built.
+- **New MUST-FIX:** None found.
