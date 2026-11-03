@@ -23,6 +23,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from perch.keystore import (
     CryptoError,
     DecryptError,
+    KeyMissing,
     KeyRepository,
     KeyShredded,
     KeyStore,
@@ -34,8 +35,10 @@ __all__ = [
     "Aad",
     "CryptoError",
     "DecryptError",
+    "KeyMissing",
     "KeyShredded",
     "configure",
+    "decrypt_many",
     "decrypt_field",
     "encrypt_field",
     "evict_user",
@@ -46,6 +49,7 @@ __all__ = [
     "rotate_data_key",
     "rotate_master",
     "shred",
+    "verify_masters",
 ]
 
 log = logging.getLogger("perch.crypto")
@@ -105,6 +109,7 @@ class _State:
         self.counts: dict[tuple[UUID, int], int] = {}
         self.shred_hooks: list[Callable[[UUID], None]] = []
         self.rekey_hook: Callable[[UUID], None] | None = None
+        self.verified = False
 
 
 _S = _State()
@@ -125,11 +130,11 @@ def configure(
     """
     _S.repo = repo
     _S.ks = keystore
-    if shred_hooks is not None:
-        _S.shred_hooks = list(shred_hooks)
+    _S.shred_hooks = list(shred_hooks or [])
     _S.rekey_hook = rekey_hook
     clear_cache()
     _S.counts.clear()
+    _S.verified = False
 
 
 def _repo() -> KeyRepository:
@@ -142,6 +147,19 @@ def _ks() -> KeyStore:
     if _S.ks is None:
         _S.ks = key_store()
     return _S.ks
+
+
+def verify_masters() -> None:
+    """Check every master key id this process holds against the key check values stored in the
+    keys database (registering new ids). Raises CryptoError on a mismatch. Call at start; the
+    crypto functions also call it once before their first key operation."""
+    _repo().verify_masters(_ks().check_values())
+    _S.verified = True
+
+
+def _ensure_verified() -> None:
+    if not _S.verified:
+        verify_masters()
 
 
 def evict_user(user_id: UUID) -> None:
@@ -183,11 +201,16 @@ def _cache_put(user_id: UUID, version: int, key: bytes) -> bytes:
     return key
 
 
-def _data_key(user_id: UUID, version: int) -> bytes:
-    """The unwrapped data key. Raises KeyShredded when the user is tombstoned or has no row."""
+def _data_key(user_id: UUID, version: int, *, checked: bool = False) -> bytes:
+    """The unwrapped data key, as immutable bytes. Raises KeyShredded when the user is
+    tombstoned and KeyMissing when there is neither a tombstone nor a key row.
+
+    checked=True means the caller already ran the tombstone check for this operation
+    (decrypt_many does it once for a batch).
+    """
     repo = _repo()
     # Tombstone first, every time: a restored key row must not decrypt anything.
-    if repo.is_tombstoned(user_id):
+    if not checked and repo.is_tombstoned(user_id):
         evict_user(user_id)
         raise KeyShredded("the user's key has been shredded")
     cached = _cache_get(user_id, version)
@@ -195,7 +218,8 @@ def _data_key(user_id: UUID, version: int) -> bytes:
         return cached
     wk = repo.get(user_id, version)
     if wk is None:
-        raise KeyShredded("no key for this user and version")
+        raise KeyMissing("no key row for this user and version, and no tombstone")
+    _ensure_verified()
     return _cache_put(user_id, version, _ks().unwrap(wk))
 
 
@@ -208,6 +232,7 @@ def new_data_key(user_id: UUID) -> int:
     if repo.is_tombstoned(user_id):
         raise KeyShredded("the user's key has been shredded")
     ks = _ks()
+    _ensure_verified()
     for _ in range(5):
         latest = repo.latest(user_id)
         version = (latest.key_version if latest else 0) + 1
@@ -219,21 +244,26 @@ def new_data_key(user_id: UUID) -> int:
     raise CryptoError("could not create a key version after repeated conflicts")
 
 
-def _newest(user_id: UUID) -> tuple[int, bytes]:
+def _newest(user_id: UUID, create: bool = False) -> tuple[int, bytes]:
     repo = _repo()
     if repo.is_tombstoned(user_id):
         raise KeyShredded("the user's key has been shredded")
     latest = repo.latest(user_id)
     if latest is None:
+        if not create:
+            # An empty keys database must not silently mint version 1 for a user whose
+            # blobs already exist; only a caller that knows this is a first write says so.
+            raise KeyMissing("no key for this user; pass create=True on a first write")
         # First use: insert version 1 with ON CONFLICT DO NOTHING, then re-read, so two
         # racing first writes agree on one key.
+        _ensure_verified()
         data_key = os.urandom(32)
         wrapped, master_id = _ks().wrap(data_key, user_id=user_id, key_version=1)
         repo.put(WrappedKey(user_id, 1, wrapped, master_id))
         latest = repo.latest(user_id)
         if latest is None:
             raise CryptoError("could not create the first key")
-    return latest.key_version, _data_key(user_id, latest.key_version)
+    return latest.key_version, _data_key(user_id, latest.key_version, checked=True)
 
 
 def _count(user_id: UUID, version: int) -> None:
@@ -245,11 +275,15 @@ def _count(user_id: UUID, version: int) -> None:
         raise CryptoError("nonce guard tripped: rotate this user's data key")
 
 
-def encrypt_field(user_id: UUID, plaintext: bytes, aad: Aad) -> bytes:
-    """Encrypt under the user's newest key version, creating version 1 on first use."""
+def encrypt_field(user_id: UUID, plaintext: bytes, aad: Aad, *, create: bool = False) -> bytes:
+    """Encrypt under the user's newest key version.
+
+    Version 1 is created only when create=True (the caller has checked that the user has no
+    stored blobs yet); otherwise a user with no key row raises KeyMissing.
+    """
     if aad.user_id != user_id:
         raise CryptoError("aad.user_id must equal user_id")
-    version, key = _newest(user_id)
+    version, key = _newest(user_id, create)
     _count(user_id, version)
     nonce = os.urandom(12)
     ct = AESGCM(key).encrypt(nonce, plaintext, aad.to_bytes(version))
@@ -262,45 +296,67 @@ def key_version_of(blob: bytes) -> int:
     return int.from_bytes(blob[1:5], "big")
 
 
-def decrypt_field(user_id: UUID, blob: bytes, aad: Aad) -> bytes:
-    """Raises KeyShredded, DecryptError. Uses the version in the blob header."""
+def _open(user_id: UUID, blob: bytes, aad: Aad, *, checked: bool) -> bytes:
     if aad.user_id != user_id:
         raise DecryptError("aad.user_id must equal user_id")
     version = key_version_of(blob)
-    key = _data_key(user_id, version)
+    key = _data_key(user_id, version, checked=checked)
     try:
         return AESGCM(key).decrypt(blob[5:17], blob[17:], aad.to_bytes(version))
     except InvalidTag:
         raise DecryptError("blob failed authentication") from None
 
 
-def shred(user_id: UUID) -> None:
-    """Tombstone, delete every key row, run the registered hooks, evict caches. Idempotent.
+def decrypt_field(user_id: UUID, blob: bytes, aad: Aad) -> bytes:
+    """Raises KeyShredded, KeyMissing, DecryptError. Uses the version in the blob header."""
+    return _open(user_id, blob, aad, checked=False)
 
-    Hooks (shred_log insert, ledger object, perch:shred publish) are registered through
-    configure(); they run after the keys are gone, so a failing hook never leaves keys alive.
+
+def decrypt_many(user_id: UUID, items: list[tuple[bytes, Aad]]) -> list[bytes]:
+    """Decrypt a batch for one user with a single tombstone check (one list page, not 50
+    key-database round trips). Raises on the first failure, like decrypt_field."""
+    if not items:
+        return []
+    repo = _repo()
+    if repo.is_tombstoned(user_id):
+        evict_user(user_id)
+        raise KeyShredded("the user's key has been shredded")
+    return [_open(user_id, blob, aad, checked=True) for blob, aad in items]
+
+
+def shred(user_id: UUID) -> None:
+    """Tombstone and delete every key row in one locked transaction, evict caches, then run the
+    registered hooks. Idempotent.
+
+    Every hook runs even if an earlier one fails; failures are counted and raised together at
+    the end as one CryptoError with fixed text, after the keys are already gone. Register the
+    ledger object (the copy outside both databases) before the shred_log insert.
     """
     repo = _repo()
-    repo.tombstone(user_id)
-    repo.delete_all(user_id)
+    repo.shred(user_id)
     evict_user(user_id)
     with _S.lock:
         for k in [k for k in _S.counts if k[0] == user_id]:
             del _S.counts[k]
+    failed = 0
     for hook in list(_S.shred_hooks):
-        hook(user_id)
-    log.info("shredded user=%s", user_id)
+        try:
+            hook(user_id)
+        except Exception:  # noqa: BLE001 - messages may hold data; count only
+            failed += 1
+    log.info("shredded user=%s hook_failures=%d", user_id, failed)
+    if failed:
+        raise CryptoError("the user's keys are shredded but a shred hook failed; retry shred")
 
 
 def reconcile_shreds(user_ids: set[UUID]) -> int:
-    """After a restore: for every id in the union of the three tombstone sources, delete any
-    key rows and re-assert the tombstone. Returns ids that still had key rows."""
+    """After a restore: for every id in the union of the three tombstone sources, tombstone
+    first, then delete any key rows. Returns ids that still had key rows."""
     repo = _repo()
     revived = 0
     for uid in sorted(user_ids, key=str):
-        if repo.delete_all(uid):
+        if repo.shred(uid):
             revived += 1
-        repo.tombstone(uid)
         evict_user(uid)
     return revived
 

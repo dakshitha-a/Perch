@@ -9,17 +9,23 @@ from __future__ import annotations
 
 import base64
 import binascii
+import hashlib
+import hmac
 import os
 import threading
 from abc import ABC, abstractmethod
+from contextlib import AbstractContextManager
 from typing import NamedTuple
 from uuid import UUID
 
 import psycopg
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from psycopg_pool import ConnectionPool
 
 WRAP_VERSION = 0x01
+TOMBSTONED_SQLSTATE = "P0K01"  # raised by the user_keys trigger (keys migration 0002)
+_KCV_LABEL = b"perch/v1/kcv"
 
 
 class CryptoError(Exception):
@@ -34,11 +40,32 @@ class DecryptError(CryptoError):
     """Tag mismatch, wrong AAD, or a truncated blob."""
 
 
+class KeyMissing(CryptoError):
+    """No key row and no tombstone: the keys database is wrong or stale, not a shred."""
+
+
 class WrappedKey(NamedTuple):
     user_id: UUID
     key_version: int
     wrapped: bytes
     master_key_id: str
+
+    def __repr__(self) -> str:  # never print the wrapped key
+        return (
+            f"WrappedKey(user_id={self.user_id}, key_version={self.key_version}, "
+            f"master_key_id={self.master_key_id!r})"
+        )
+
+
+def check_value(master: bytes) -> bytes:
+    """Key check value: proves a master id still names the same key material."""
+    return hmac.new(master, _KCV_LABEL, hashlib.sha256).digest()
+
+
+def _checked_data_key(key: bytes) -> bytes:
+    if len(key) != 32:
+        raise DecryptError("wrapped key is malformed")
+    return key
 
 
 def wrap_aad(user_id: UUID, key_version: int, master_key_id: str) -> bytes:
@@ -63,6 +90,10 @@ class KeyStore(ABC):
 
     @abstractmethod
     def unwrap(self, wk: WrappedKey) -> bytes: ...
+
+    def check_values(self) -> dict[str, bytes]:
+        """Master id -> key check value for every master key this store holds."""
+        return {}
 
 
 def _decode_master(raw: str) -> bytes:
@@ -89,7 +120,9 @@ class EnvKeyStore(KeyStore):
         if not raw:
             raise CryptoError("PERCH_MASTER_KEY is not set")
         self._keys: dict[str, bytes] = {}
-        self._current = e.get("PERCH_MASTER_KEY_ID") or "m1"
+        self._current = e.get("PERCH_MASTER_KEY_ID", "")
+        if not self._current:
+            raise CryptoError("PERCH_MASTER_KEY_ID must be set with PERCH_MASTER_KEY")
         self._keys[self._current] = _decode_master(raw)
         prev = e.get("PERCH_MASTER_KEY_PREV", "")
         if prev:
@@ -101,6 +134,9 @@ class EnvKeyStore(KeyStore):
     @property
     def current_master_id(self) -> str:
         return self._current
+
+    def check_values(self) -> dict[str, bytes]:
+        return {mid: check_value(k) for mid, k in self._keys.items()}
 
     def wrap(self, data_key: bytes, *, user_id: UUID, key_version: int) -> tuple[bytes, str]:
         nonce = os.urandom(12)
@@ -117,11 +153,12 @@ class EnvKeyStore(KeyStore):
         if len(w) < 1 + 12 + 16 or w[0] != WRAP_VERSION:
             raise DecryptError("wrapped key is malformed")
         try:
-            return AESGCM(key).decrypt(
+            plain = AESGCM(key).decrypt(
                 w[1:13], w[13:], wrap_aad(wk.user_id, wk.key_version, wk.master_key_id)
             )
         except InvalidTag:
             raise DecryptError("wrapped key failed authentication") from None
+        return _checked_data_key(plain)
 
 
 class KmsKeyStore(KeyStore):
@@ -169,23 +206,46 @@ def key_store(env: dict[str, str] | None = None) -> KeyStore:
 
 
 class KeyRepository:
-    """The only code that opens PERCH_KEYS_DATABASE_URL."""
+    """The only code that opens PERCH_KEYS_DATABASE_URL. One small connection pool."""
 
-    def __init__(self, url: str | None = None) -> None:
+    def __init__(self, url: str | None = None, *, max_size: int = 8) -> None:
         self._url = url
+        self._max = max_size
+        self._pool: ConnectionPool | None = None
+        self._pool_lock = threading.Lock()
 
-    def _connect(self) -> psycopg.Connection:
-        url = self._url or os.environ.get("PERCH_KEYS_DATABASE_URL", "")
-        if not url:
-            raise CryptoError("PERCH_KEYS_DATABASE_URL is not set")
-        return psycopg.connect(url, autocommit=True)
+    def _conn(self) -> AbstractContextManager[psycopg.Connection]:
+        """A pooled autocommit connection (a context manager that returns it to the pool)."""
+        if self._pool is None:
+            with self._pool_lock:
+                if self._pool is None:
+                    url = self._url or os.environ.get("PERCH_KEYS_DATABASE_URL", "")
+                    if not url:
+                        raise CryptoError("PERCH_KEYS_DATABASE_URL is not set")
+                    pool = ConnectionPool(
+                        url,
+                        min_size=1,
+                        max_size=self._max,
+                        kwargs={"autocommit": True},
+                        check=ConnectionPool.check_connection,
+                        open=False,
+                    )
+                    pool.open(wait=False)
+                    self._pool = pool
+        return self._pool.connection()
+
+    def close(self) -> None:
+        with self._pool_lock:
+            if self._pool is not None:
+                self._pool.close()
+                self._pool = None
 
     @staticmethod
     def _wk(row: tuple) -> WrappedKey:
         return WrappedKey(row[0], row[1], bytes(row[2]), row[3])
 
     def get(self, user_id: UUID, key_version: int) -> WrappedKey | None:
-        with self._connect() as c:
+        with self._conn() as c:
             row = c.execute(
                 "SELECT user_id, key_version, wrapped_key, master_key_id FROM user_keys "
                 "WHERE user_id = %s AND key_version = %s",
@@ -194,7 +254,7 @@ class KeyRepository:
         return self._wk(row) if row else None
 
     def latest(self, user_id: UUID) -> WrappedKey | None:
-        with self._connect() as c:
+        with self._conn() as c:
             row = c.execute(
                 "SELECT user_id, key_version, wrapped_key, master_key_id FROM user_keys "
                 "WHERE user_id = %s ORDER BY key_version DESC LIMIT 1",
@@ -205,22 +265,28 @@ class KeyRepository:
     def put(self, wk: WrappedKey) -> bool:
         """Insert with ON CONFLICT DO NOTHING. True when this call inserted the row.
 
-        Raises KeyShredded when the database trigger refuses a tombstoned user.
+        Raises KeyShredded when the database trigger refuses a tombstoned user. Any other
+        integrity error becomes a CryptoError with fixed text (the driver message can quote
+        the failing row).
         """
         try:
-            with self._connect() as c:
+            with self._conn() as c:
                 cur = c.execute(
                     "INSERT INTO user_keys (user_id, key_version, wrapped_key, master_key_id) "
                     "VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING",
                     (wk.user_id, wk.key_version, wk.wrapped, wk.master_key_id),
                 )
                 return cur.rowcount == 1
-        except psycopg.errors.IntegrityConstraintViolation:
-            raise KeyShredded("user key is tombstoned") from None
+        except psycopg.errors.Error as e:
+            if e.sqlstate == TOMBSTONED_SQLSTATE:
+                raise KeyShredded("user key is tombstoned") from None
+            if isinstance(e, psycopg.errors.IntegrityError | psycopg.errors.DataError):
+                raise CryptoError("key row was refused by the keys database") from None
+            raise
 
     def rewrap(self, old: WrappedKey, wrapped: bytes, master_key_id: str) -> bool:
         """Replace the wrapping of one row if it still has the old master id."""
-        with self._connect() as c:
+        with self._conn() as c:
             cur = c.execute(
                 "UPDATE user_keys SET wrapped_key = %s, master_key_id = %s "
                 "WHERE user_id = %s AND key_version = %s AND master_key_id = %s",
@@ -229,31 +295,58 @@ class KeyRepository:
             return cur.rowcount == 1
 
     def delete_all(self, user_id: UUID) -> int:
-        with self._connect() as c:
+        with self._conn() as c:
             return c.execute("DELETE FROM user_keys WHERE user_id = %s", (user_id,)).rowcount
 
     def tombstone(self, user_id: UUID) -> None:
-        with self._connect() as c:
+        with self._conn() as c:
             c.execute(
                 "INSERT INTO key_tombstones (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
                 (user_id,),
             )
 
+    def shred(self, user_id: UUID) -> int:
+        """Tombstone, then delete every key row, in one transaction under the per-user
+        advisory lock that the user_keys trigger also takes. Returns key rows deleted."""
+        with self._conn() as c, c.transaction():
+            c.execute("SELECT pg_advisory_xact_lock(hashtextextended(%s::text, 0))", (user_id,))
+            c.execute(
+                "INSERT INTO key_tombstones (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                (user_id,),
+            )
+            return c.execute("DELETE FROM user_keys WHERE user_id = %s", (user_id,)).rowcount
+
     def is_tombstoned(self, user_id: UUID) -> bool:
-        with self._connect() as c:
+        with self._conn() as c:
             return (
                 c.execute("SELECT 1 FROM key_tombstones WHERE user_id = %s", (user_id,)).fetchone()
                 is not None
             )
 
     def all_for_master(self, master_key_id: str, limit: int) -> list[WrappedKey]:
-        with self._connect() as c:
+        with self._conn() as c:
             rows = c.execute(
                 "SELECT user_id, key_version, wrapped_key, master_key_id FROM user_keys "
                 "WHERE master_key_id = %s ORDER BY user_id, key_version LIMIT %s",
                 (master_key_id, limit),
             ).fetchall()
         return [self._wk(r) for r in rows]
+
+    def verify_masters(self, values: dict[str, bytes]) -> None:
+        """Register each master id's key check value on first sight; refuse a different key
+        under an id that is already registered."""
+        for mid, kcv in values.items():
+            with self._conn() as c:
+                c.execute(
+                    "INSERT INTO key_masters (master_key_id, kcv) VALUES (%s, %s) "
+                    "ON CONFLICT DO NOTHING",
+                    (mid, kcv),
+                )
+                row = c.execute(
+                    "SELECT kcv FROM key_masters WHERE master_key_id = %s", (mid,)
+                ).fetchone()
+            if row is None or not hmac.compare_digest(bytes(row[0]), kcv):
+                raise CryptoError("a master key id is registered with different key material")
 
 
 class InMemoryKeyRepository(KeyRepository):
@@ -264,6 +357,7 @@ class InMemoryKeyRepository(KeyRepository):
         self._lock = threading.Lock()
         self.keys: dict[tuple[UUID, int], WrappedKey] = {}
         self.tombstones: set[UUID] = set()
+        self.masters: dict[str, bytes] = {}
 
     def get(self, user_id: UUID, key_version: int) -> WrappedKey | None:
         return self.keys.get((user_id, key_version))
@@ -299,7 +393,25 @@ class InMemoryKeyRepository(KeyRepository):
             return len(gone)
 
     def tombstone(self, user_id: UUID) -> None:
-        self.tombstones.add(user_id)
+        with self._lock:
+            self.tombstones.add(user_id)
+
+    def shred(self, user_id: UUID) -> int:
+        with self._lock:
+            self.tombstones.add(user_id)
+            gone = [k for k in self.keys if k[0] == user_id]
+            for k in gone:
+                del self.keys[k]
+            return len(gone)
+
+    def close(self) -> None:
+        return None
+
+    def verify_masters(self, values: dict[str, bytes]) -> None:
+        with self._lock:
+            for mid, kcv in values.items():
+                if not hmac.compare_digest(self.masters.setdefault(mid, kcv), kcv):
+                    raise CryptoError("a master key id is registered with different key material")
 
     def is_tombstoned(self, user_id: UUID) -> bool:
         return user_id in self.tombstones
