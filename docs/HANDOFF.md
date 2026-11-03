@@ -1,114 +1,37 @@
 # HANDOFF.md — state for the next context window
 
-Written at the close of S33 (2026-11-02). S33 ran in one orchestrating context with subagents (backend, docs, hosted spec, UI, QA, demo rebuild), under Dakshitha's delegation of product and design decisions (2026-10-31) and three new directions given on 2026-11-01: a fourth model job for cover-letter points, standing rule 5 and the spec open to edits, and both audiences sold equally. From S34 on the main session runs on Opus with the advisor on Fable, and every subagent call sets its model (CLAUDE.md, "Working with agents").
+Written at the close of S34 (2026-11-03, 17:25 EST). S34 was Phase 0 of the deployment rebuild.
 
-## Replanned: the deployment rebuild (3 Nov 2026, Dakshitha)
+## Read this first
 
-- **Read this first.** The S34 freeze is superseded. The plan is `docs/REBUILD_PLAN.md`, in 12 phases, S34 to S48. Its decisions are in `docs/DECISIONS.md`, and its open items are Q46 in `bridge/QUESTIONS.md`.
-- **The fallback.** The hybrid demo is frozen at d6f6210. It is saved as tag `v0.1-demo-fallback`, branch `fallback/v0.1-demo`, a Docker image, a copy of the demo store and the package ZIP. The local notes list the machine paths. `main` stays on the fallback until the rebuild passes the Friday gate on Thursday 5 Nov at 6:00 pm.
-- **Where rebuild work happens.** On the branch `rebuild/v1`, which Phase 0 creates.
-- **Rules amended.** Standing rules 1 and 5 were amended in CLAUDE.md on 3 Nov at Dakshitha's request. Q46 is fully answered. S34 starts with Phase 0, task 1's convention updates.
-- **What changes.** No GPUs. Model work moves to a cloud provider; embedding, rerank and MiniCheck move to CPU. Postgres with pgvector, Redis and a job queue. Temple SSO through OIDC, with a guest mode. CVs and entries are stored encrypted per user. Private mode is removed. Real Temple scholarships get a Temple-only toggle and school tags. Scout becomes an open, grounded assistant, and fixed questions move to code.
+- **Work on `rebuild/v1`.** From S35 every commit lands on `rebuild/v1`, and so does the bookkeeping: the tracker, this file, the session files, decisions and questions. "`make test` green on `main`" in the session protocol reads as green on `rebuild/v1` until the Friday gate. `main` is not developed (DECISIONS, 2026-11-03, S34).
+- **The plan.** `docs/REBUILD_PLAN.md`, 12 phases, S34 to S48. Read the phase for the current session, not the whole file.
+- **The fallback.** The hybrid demo is frozen at d6f6210: tag `v0.1-demo-fallback`, branch `fallback/v0.1-demo`, a Docker image, a store copy and the package ZIP. The local notes list the machine paths. `main` sits a few docs-only commits after it, ending at d84a573.
+- **The gate.** Thursday 5 Nov at 6:00 pm. The student path must work end to end on the new stack, or the fallback is submitted on 6 Nov.
+- **The full S33-era hand-off** is on `main` and in git history at d6f6210, if a detail of the old build is needed.
 
-## Where things stand
+## What S34 did
 
-- **The build is ready to freeze, again.** `main` holds S33's feature and every check. 421 tests green. Scout bench on the local model 30 of 30 tasks, 0 wrong tool, including the new cover-points task. Rehearsal on the dev server 21 of 21, with the two new cover-letter questions 3 of 3 each. Full walk with axe on the dev server 227 states, 0 errors, 0 axe violations, 0 sideways scroll. Canary clean with the CV now reaching the chat model for cover points. On the public demo after the rebuild: rehearsal 21 of 21, walk 227 states clean, canary and leakage clean.
-- **What S33 added: cover-letter points for both audiences.** Scout's tenth researcher tool and eighth student tool, `cover_points`, backed by model skill 4 (`perch/skills/cover.py`). For one grant, fellowship or sample scholarship it returns 3 to 6 points, each with an "asks" half cited to the record and a "you" half cited to the CV, a session document, a paper or a public award, plus up to three gaps phrased as what the applicant's records do not show. Layer 1 checks every sentence, advice words are banned, a failed set is regenerated once then withheld, and the grounder flags unsupported sentences. Code writes the answer line; the full points sit on the card with citation chips, lock marks for private records, a Still missing list and a Copy button. The tool runs on the session's hand-off provider, counts toward the session budget, and follows the session's Local or Cloud choice. Contact details (emails, phones, links, ORCIDs) are blanked in every model prompt view of a private document, for every skill. The CV is capped at about 3,500 characters in the prompt. A sample scholarship gives sample points and the card and answer say so. Ask "What could my cover letter for the top lead say?" or "What should my application for my top option highlight?".
-- **Rules and spec changed (Dakshitha).** Standing rule 5 names four model jobs and allows a session's models to read the CV and documents with contact details blanked. The student "never reads the CV text" line is gone from SPEC §8, SCOUT_SPEC §7, Help, the student start screen and the privacy guide. SPEC §1 lists students as a primary user with Scholar Development and Fellowships Advising and Student Financial Services as receiving offices. The hosted spec is v2.0 "as built" at the same URL, source tracked at `docs/design/spec.html`.
-- **The README sells both audiences.** The opening names researchers and students; the student tour section sits beside the researcher hero; a "Points for your cover letter" section covers both (no clip yet; `docs/tour/points-researcher.png`, `points-student.png` and `points-sample.png` exist as stills).
-- **What the presenter should know:** everything in the S32 hand-off still holds (warm briefs at server start, about 12 to 14 Scout questions per conversation, persona-1's top lead closes on 6 Nov, Cloud stays off unless a visitor chooses it, show the researcher export). New: the cover-letter question takes 10 to 18 s on the researcher brief and 9 to 10 s on the student brief on a quiet server; the points are model text and may carry an amber "could not be matched" flag, which is the grounding check doing its job; a sample scholarship's points are badged Sample data.
+- **Conventions.** CLAUDE.md now names Postgres with pgvector as the deployment store. SQLite stays behind `perch/store/base.py` for unit tests only, and LanceDB is dropped. pg_search was not carried forward, because the plan does not use it.
+- **Award-title exception.** Award titles copied from Temple's public pages may name people, such as a donor. Staff names and contacts stay out. The hygiene scan reads docs, the README, questions and `web/`, not `data/`, so award data needs no allowlist; the test's docstring says so.
+- **Branch.** `rebuild/v1` was created from `main` at d84a573 and pushed with upstream.
+- **GPUs.** `make decide-down` stopped and disabled the two dev Clef units. GPUs 1 and 2 now show about 2 MiB each. The uracil session was messaged. The four demo units on GPUs 6 and 7 are untouched, and the public demo answers 200.
+- **Checks.** 470 tests green on `rebuild/v1`.
+- **Already on record before the session.** The rebuild decisions (DECISIONS, 3 Nov) and the API budget of about $30 of the $100 cap for the rebuild.
 
-## What S33 did, task by task
+## Next: S35, Phase 1 — discovery and design
 
-1. Rules, spec, plan, decisions (rule 5; SPEC §8; S33 inserted, freeze moved to S34; Q43 on record).
-2. Backend: skill 4, contact blanking, the tool on both allowlists, the loop's code-written answer, the card, the budget, MCP; 11 tests; Scout's system prompt grew 365 chars (about 91 tokens), far under the 6,400-token compaction ceiling.
-3. UI: the points block, example questions, consent wording at the student start and the CV box, Help; walk flows with a geometry check proven to fail first.
-4. Docs balance: README, SPEC §1, §3, §4, §5, §7, §8, SCOUT_SPEC, PRIVATE_MODE, private-mode.md, mcp.md, ARCHITECTURE, RESULTS.md. 4b: the hosted spec rebuilt as v2.0.
-5. QA: docs claims checked against the code; the gap wording fixed; bench, rehearsal, sample path, canary, full walk, Cloud dialog; numbers into RESULTS.md and SUMMARY.md.
-6. Demo rebuilt from `main` in 1 min 23 s (image 5dbdfb9abcee, previous kept as perch-demo:prev); rehearsal on the public URL 21 of 21; walk 227 states, 0 errors, 0 axe; canary and student leakage clean; `make package` 33.9 MB, 448 files, 420 passed and 1 skipped from the unzipped copy.
+- **The five tasks** are in `docs/REBUILD_PLAN.md`, Phase 1: the Temple award inventory, Temple SSO facts, provider facts, the reuse map, and `docs/ARCHITECTURE_V1.md`. An Opus design review follows.
+- **Delegation fits here.** The inventory and the provider facts are independent read-only research jobs and can run in parallel on Sonnet. The reuse map reads `perch/private/`, `perch/api.py`, `perch/scout/` and `web/`, and is the brief for Phases 5 to 8. The architecture document comes after the map.
+- **Rules to keep in view.** Rule 2: a page is recorded with its status and robots.txt before any parser exists. Pages behind AccessNet are listed, not read. SSO claim names stay UNVERIFIED until Temple IT answers.
 
-## Known limits (honest list)
+## Not done or worth knowing
 
-- Everything in the S32 list still applies (Scout varies off-script on the local model; G21 and G23 partly open; student retrieval 1 of 12; the back-test tune is partly fitted; GRANTED and CREST unchecked).
-- **Cover points are model text checked by code and a grounding model, not by a person.** A record that states little beyond its title gives few points. The grounder flags sentences it cannot match; on the sample scholarship it flagged 3 of the sentences in one live run.
-- **The second Cloud warning lists the documents but does not name cover points** as one of the uses; the Local / Cloud dialog above it does. Not changed in S33.
-- **The three architecture SVGs still draw three model jobs and no student path**; their captions say so.
-- **`bench/results/SUMMARY.md` is generated by `make bench`**, which will overwrite the cover-points paragraph QA added; the numbers also live in `docs/RESULTS.md`.
-- **No clip of the points step** in the README yet; three stills exist.
-- **`bench/student_mode.py` writes a stale sentence** into `bench/results/STUDENT_MODE.md` ("40 records" where the S27 setting is 100); the task 6 agent reverted the output, and the script's text template is still wrong.
-- **The S33 ZIP in `dist/` was built from d61d29d**, one commit before the close; S34 rebuilds it from the tagged commit.
-
-## After the S33 close (2026-11-02)
-
-- **Back to your options.** On the student form it showed whenever the session held any brief, so after a researcher run it opened the researcher's routes. The session now reports `brief_student`, and the button shows only for a student brief.
-- **One side per session (Dakshitha).** A session holds a researcher brief or a student brief, never both. Arriving at Find, Your documents or the student form with the other side's brief open shows a warning listing what goes. End session and start fresh ends it and opens the form empty; Keep goes back to the brief. The server answers 409 to the other side's brief. Decision row, Help text, tests and the walk flow `ux-side` cover it.
-- **Checks.** 422 tests green. `ux-side` (laptop and phone, Keep and End in both directions) and `ux-student` on the public URL: 14 states, 0 errors, 0 axe. `ux-side` is in the walk's default set, so the freeze's full walk covers it. The full walk, rehearsal and canary were not rerun; the freeze reruns them.
-- **Demo.** Rebuilt from f678feb in 26 s, image f1299e0a01e9; the S33 image is kept as perch-demo:prev. The ZIP in `dist/` predates these commits.
-
-## Hand-off offices checked live (2026-11-02, after the S33 close)
-
-- **Routing is unchanged.** A live check of Temple's pages found it right for what Perch covers. Grants go to Research Development. Industry leads go to Innovation and Technology Commercialization. Fellowships go to Scholar Development and Fellowships Advising, whose list has graduate headings. Scholarships go to Student Financial Services.
-- **New: the ERA note.** The researcher hand-off screen, the researcher export and Help now say that every grant proposal, and any company agreement that brings Temple funding, goes through ERA for institutional review and approval. The note links Find Your Research Administrator. The draft email itself is unchanged.
-- **New: the future foundation office.** `FOUNDATION_OFFICE` in `perch/offices.py` records Corporate and Foundation Relations, reached through the school's or college's development team. It is not selectable, because Perch covers no foundations yet. Help says so.
-- **Sources.** Two new fixtures (the OVPR proposal page and the CFR resources page, `<main>` only, email removed). Pages that list staff names are cited by URL in `docs/SOURCES.md` and not kept.
-- **Checks.** 426 tests green. The walk check for the note failed before the UI edit and passes after. On the public URL: ux-laptop, ux-phone, ux-side and ux-student, 31 states, 0 errors, 0 axe, 0 sideways scroll. Rehearsal 20 of 21: one run of "What are my top three leads and why?" cited a record without naming its title; runs 1 and 2 passed, and the change does not touch Scout. The canary was not rerun; it runs on local data and this change does not touch the private path.
-- **Demo.** Torn down and rebuilt from scratch at 3e4b7ab: `make demo-down`, a no-cache image build, then `make demo` (units, store kept, container) in 117 s. Image ba0491b957ca; 67beccbaa6b5 kept as perch-demo:prev. All four model units and the app answer 200; the public URL serves the note. Rehearsal after the rebuild: 6 of 7 on the first pass (the cover-letter points were withheld after two failed citation checks, the designed fallback), then researcher 12 of 12.
-- **Not done.** The team pitch and team pages still say "Grants & foundations" though no foundation records exist; those pages carry teammates' work and were left for Dakshitha. The design canvas does not show the note. Confirming the routing with the offices themselves stays with the business team.
-- **Wording to weigh at S34.** The note's first sentence ("Before anything goes to a sponsor") is broader than the page's "All proposals must be routed through ERA"; its second sentence scopes it to proposals and funded company agreements. Tightening it touches `perch/offices.py`, `web/handoff.js`, `web/help.js` and the walk's check.
-
-## Full exports and record facts (2026-11-02, after the S33 close, Dakshitha)
-
-- **Exports give the full brief.** A private session's exports (print or PDF, Markdown, JSON; researcher and student) no longer withhold anything. The profile summary, topics, explanations, inferences, rule notes and the CV values in student verdict lines all print as on screen. Dakshitha's reason: the session is fenced and purged, and the export is the user's own summary of what fits.
-- **The note.** An export from a session with documents says: "This brief includes text drawn from your documents. The file stays on your computer after the session ends." The old "N model texts withheld" banner and the JSON `withheld` key are gone.
-- **The export's only mask.** A box in the Export menu, "Mask my ongoing research", shows only when the session holds a draft proposal, research direction or unpublished work. It masks phrases from those three documents alone (`egress.ResearchMasker`), never the CV, names or identifiers. Unmask works on one key per session.
-- **Hand-offs unchanged.** Default withholding stays. Their box is now labelled "Mask private text in hand-offs".
-- **Record facts in every export.** Each grant now lists Match, status, rule notes, "Eligible applicants include" (the screen's higher-education rule) and "From the record:", a description excerpt cut by code at a sentence end within 600 characters. The student export adds Match, Agency and the excerpt.
-- **Two phone fixes found by QA.** The HTML export wraps long DOIs and links. Card tags wrap, so a long agency name no longer widens a 390 px page.
-- **Checks.** 438 tests green. QA on the dev server: PI-1 with and without a SYNTHETIC direction, all 10 grants with every record fact and no Withheld text; the research mask hid the direction phrase in 3 places and left the CV plain; unmask restored it; the hand-off still withheld. Student persona-phd: CV values plain, 20 Match lines, SAMPLE banner present, no mask box. Walk ux-laptop and ux-phone plus workflow: 30 states, 0 errors, 0 axe, 0 sideways scroll; the new hint check failed first on a changed string. Canary clean (no token on disk, in /tmp or in the six journals; export_full 10 and 15).
-- **Docs.** README (what an export holds), SPEC, PRIVATE_MODE, private-mode.md, QA_PLAN rows 18 and 19, RESULTS, Help and the hosted spec source. The design canvas sources show the new menu.
-- **Demo.** Torn down and rebuilt from scratch at 0a113b3: `make demo-down` (3 s), `docker compose build --no-cache` (85 s), `make demo` (30 s); every model unit and the app answered 200 within about 4 minutes. Image 0fae31fa7724; ba0491b957ca kept as perch-demo:prev. On the public URL: the served private.js carries both new box labels; rehearsal 21 of 21 with no retry; canary ok (0 token hits in data, /tmp and six journals, no data file changed, 0 new cache keys, export_full 15). Walk workflow, ux-laptop and ux-phone: 30 states, 0 errors, 0 sideways scroll, 1 axe violation. It is target-size on a citation link in the phone state u-card-inference, and a rerun of ux-phone alone repeats it. The screenshot shows why: the walk scrolls the inference box into view, and the citation link above it sits under the sticky tab bar. Scrolling shows the link in full. The live inference text decides where it lands, and this change did not touch that layout.
-- **Not done.** The walk's u-card-inference axe flag is a scroll-position artifact; a fix would scroll that state so no link sits under the tab bar (a walk change, not an app change). The walk's mask check runs only in workflow-sample; no walk flow covers a student or CV-only session with documents (QA covered it with a one-off script). The team pitch and team pages were not touched.
-
-## Help as a short visual guide (2026-11-02, after the S33 close, Dakshitha)
-
-- **What changed.** Help went from 6,891 rendered words to 958. It now has five researcher steps and four student steps, each one or two lines beside a CSS-animated figure built from the app's own parts. A lead-card figure with five numbered callouts explains Match and its bands, Keep and Dismiss, the record link, copied dates and the Model text tag. One inline architecture diagram shows sources, fetch, store, search and rank, explain, check, your brief and you, with a side lane for documents and Local or Cloud. Privacy is four lines and Good to know is five bullets, which keep the research-security, ERA and foundation notes word for word.
-- **Cut.** The long step texts, the twelve-stage pipeline, the scoring essay, the labels list, Quick answers and the jump nav. The detail stays in SPEC and PRIVATE_MODE.
-- **Motion.** CSS only; one reduced-motion block stops every animation (0 running under emulation) and shows each figure complete. Figures are aria-hidden; the diagram has role img, a label and one hidden text list.
-- **Checks.** 439 tests green; ruff clean. Every Help claim checked against the code. Axe clean on Help in both themes at 1280, 390 and 360 px; no sideways scroll (the old page was 500 px wide at 390). The U39 walk check now tests the word count, the diagram, text inside diagram boxes and the phone height; each new check failed on the old page first. Dev walk 32 states, 0 errors, 0 axe. Page height 4,468 px at 1280 and 5,248 px at 390 (6,901 before).
-- **Demo.** Rebuilt with a no-cache image: 43fcf0b8e192, with 0fae31fa7724 kept as perch-demo:prev. The served help.js and styles.css match the repo. Rehearsal 7 of 7 (one run each). Public walk 32 states, 0 errors, 1 axe flag: the same u-card-inference scroll artifact noted above, not on Help.
-- **Not done.** The phone page is still 5,248 px; going shorter would need smaller or fewer figures. The diagram's moving dot uses offset-path and was not checked in Safari or Firefox.
-
-## Fellowship deadlines and amounts from each award's page (2026-11-02, after the S33 close, Dakshitha)
-
-- **What it does.** `perch fetch fellowship-details` reads each SDFA fellowship's own linked page, one page per record, with robots.txt respected and one request a second per site. Code parses a deadline only from a deadline sentence with a full future date, preferring a campus deadline, and never infers a year. It parses an amount only from an award or stipend sentence, skipping fees, million-dollar totals, conflicting amounts and pages that say an award ended. Each value keeps its sentence, the page link and the fetch time; a schema validator refuses a value whose digits are not in its sentence.
-- **Live run (2 Nov 2026).** 64 of 76 pages read. 2 were skipped by robots (cdc.gov, ed.gov). 7 were dead links (404) and 3 refused automated requests (403). It found 4 deadlines and 11 amounts on 15 records. Most SDFA pages give campus deadlines with no year, so those stay "not stated". The builder hand-checked all 16 values: 15 were right, and the wrong one led to a general parser fix.
-- **Display.** The student card and Compare add "from the award's page". The evidence panel shows the sentence, the fetch date and a link to the page. The export reads "Deadline: 18 Dec 2026 (from the award's page, fetched 2 Nov 2026)". A public fellowship that states only a ceiling shows "Up to $X". Sample cards are unchanged.
-- **Checks.** 470 tests green (31 new, on six saved real pages with staff contacts removed). Dev walk (student, ux-laptop, ux-phone) 73 states, 0 errors, 0 axe. Demo rebuilt with a no-cache image: 3d413fc3e613, with 43fcf0b8e192 kept as perch-demo:prev; the same walk on the public URL gave 73 states, 0 errors, 0 axe.
-- **Not done.** A deadline stays on a record until the next fetch, even after it passes; rerun the fetch before Demo Day. The 10 dead or blocked links in the SDFA list are not fixed. Sponsor terms of use are UNVERIFIED in docs/SOURCES.md. The evidence panel was not screenshotted at 390 px; its quote wraps anywhere and its link text is short.
-
-## After the S33 close, 3 Nov 2026 (Dakshitha)
-
-- **Checkup 2 screenshots.** Twelve stills and a contact sheet are in `docs/screenshots/checkup2/`, taken from the public demo with PI-4 and the SYNTHETIC persona-ug. The README in that folder has one line per image.
-- **The tracker artifact is current.** Both UI replays were re-recorded from the current build on 3 Nov: PI-4 is brief `MCp4CdcfZLK8` and persona-ug is the student replay. The stale-replay warning is gone. The Tests tile reads 470. Two "May be behind" notes remain:
-  - QA cycle 5. This one is noise: a finished review doc does not go stale.
-  - `bench/results/RESULTS.md`. This one is real: it was rendered on 29 Oct, before the 30–31 Oct ranking changes.
-- **The hosted spec was refreshed** (v2.0, as built, 3 Nov). An Opus review then found 13 must-fix items before the page goes to judges, including a stale Scout number, MRR 0.149 that should be 0.144, a Clef-flash step no demo brief runs, a nav that covers headings on a phone, clipped SVG text, and internal ids. **The full prompt is in `build/prompts/spec-fixes.md`** (gitignored, on this machine); paste it into an orchestrator context. It also covers the two tracker notes and the back-test rerun decision. The spec artifact is still private; share it once those fixes are in.
-- **The README was rewritten** from a copy-edit and a UI/UX review, both on Opus:
-  - The tour is one feature per section, with full-width clips. It went from about 1,025 to 700 words.
-  - Results moved up, and Known limits is folded.
-  - Stale facts were fixed: ten Scout tools; the 30 of 30 bench; about 40 s per brief; one side per session; the ERA note; the fellowship source.
-  - There is no live demo link in the README, because the URL carries the machine name. The submission gives the link.
-  - The architecture figure was redrawn: four skills, the student path, Local or Cloud, the fellowship source, and no stored briefs.
-- **The clips were refilmed** from the build behind the public demo, at 12 fps, 1.35 to 1.67 MB each. That covers all six, plus a new `docs/tour/points.webp`. Dark-mode clips are deferred: every clip shows a light-theme frame on GitHub's dark page.
-- **Open: Fox School scholarships (Q45).** They are not integrated. See `bridge/QUESTIONS.md` 45 for what the page holds and the recommendation.
-
-## Next: S34, freeze (Dakshitha)
-
-1. Confirm `make test`, `make package` from a clean clone and the live demo one last time.
-2. `make decide-down` to stop the dev Clef-flash and Clef units (GPUs 1 and 2); tell the other session sharing the node that those GPUs are free (details in the local notes). The dev server on 8091 can be stopped with `build/devdemo/serve.sh stop`.
-3. Tag `v0.1-demo`; nothing on `main` after that except README typos.
+- **The dev server on 8091** and the dev embed/rerank on GPU 3 were not touched in S34.
+- **Untracked bench output.** Nine `bench/results/scout_s32*` folders sit untracked in the checkout. They are not this session's and were not committed.
+- **The tracker tests tile** reads the latest row's count, now 470.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 
-- **Q45 open (Dakshitha):** whether to add the Fox School scholarships list before the freeze. See bridge/QUESTIONS.md.
-- Q44 (hand-off offices, 2026-11-02) is on record and built. Q43 (cover-letter points, rule 5) was decided by Dakshitha on 2026-11-01 and built in S33.
+- **Q45 (Dakshitha):** the Fox School scholarships. Recommendation: fold it into Phase 1's inventory and Phase 4's import, and close it.
+- Q46 is answered and built into the plan.
