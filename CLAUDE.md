@@ -22,7 +22,7 @@ The plan is organised by **session**, each sized to one context window. Dakshith
 
 ## Working with agents (Dakshitha, 2026-11-01)
 
-The main session is the **orchestrator**. It plans, writes the briefs, owns the tracker, the decisions, the questions and the hand-off, and writes no feature code itself (session bookkeeping only). Everything else is delegated, and every delegation chooses its model.
+The main session is the **orchestrator** and the manager of the rebuild (Dakshitha, 2026-11-03): one orchestrating context runs every session from here until the code freeze, after each `/clear`. It plans, writes the briefs, owns the tracker, the decisions, the questions and the hand-off, and delegates the implementation to subagents; every delegation chooses its model. It may do small work itself when that is cheaper than a brief. The workflow is run for low context and token use: summaries back from agents, not file dumps; no re-reading of files an agent already reported on; heavy agents staggered.
 
 - **Models.** The main session runs on Claude Opus with the advisor set to Claude Fable. Only the advisor runs on Fable. Every `Agent` call sets `model`: Haiku for simple, well-specified jobs (greps, string checks, running a script and reporting its numbers); Sonnet for implementation against a clear brief, QA runbooks, doc sweeps and the demo rebuild; Opus only for judgment-heavy work such as independent reviews with fresh context or hard debugging. Never leave `model` unset.
 - **Advisor.** Call it twice per session: once after orientation and before the approach is fixed, and once before closing. It forwards the whole transcript, so keep the main session lean (summaries, not file dumps) and do not call it for reactive steps.
@@ -32,6 +32,7 @@ The main session is the **orchestrator**. It plans, writes the briefs, owns the 
 - **QA and reviews.** QA is a tester-then-fixer pass on Sonnet with measured results (tests, walk with axe, bench, rehearsal, canary). Reviews run on Opus with fresh context, given the code and not the builder's conclusions.
 - **Usage.** The account's usage window is shared by every agent, so heavy agents are staggered, and the orchestrator checks in on cost: one agent costs more than it looks, since it re-reads the repo.
 - **When not to delegate.** A handful of tool calls, a lookup whose target is known, or a fix in one file: the orchestrator does it in place.
+- **UI changes (Dakshitha, 2026-11-03).** Every UI change gets two subagent passes. Before: a design agent proposes the decisions and changes, and the orchestrator puts any real design fork to Dakshitha with the recommendation first. After: a reviewer with fresh context reviews the built screens, given the code and screenshots and not the builder's conclusions. Must-fix items are fixed and re-checked before the task closes.
 
 ## Standing rules (never break these)
 

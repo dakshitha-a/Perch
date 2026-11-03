@@ -112,7 +112,7 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 
 ## Phases and sessions
 
-Each session follows the session protocol in CLAUDE.md. Code agents work in worktrees on Sonnet. Reviews run on Opus with fresh context and are given the code, not the builder's conclusions. QA is tester-then-fixer on Sonnet.
+Each session follows the session protocol in CLAUDE.md. One orchestrating context manages every session and delegates the work, keeping its own context and token use low (Dakshitha, 3 Nov). Every UI change has a design agent before it and a fresh-context review after it. Code agents work in worktrees on Sonnet. Reviews run on Opus with fresh context and are given the code, not the builder's conclusions. QA is tester-then-fixer on Sonnet.
 
 ### Phase 0 — Rules, decisions, clean-up (S34)
 
