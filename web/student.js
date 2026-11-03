@@ -291,6 +291,10 @@ export function matchPill(score, band, what = "the papers") {
 }
 
 const NO_FACTS = "no-facts";
+// A public fellowship's deadline or amount was copied by code from the award's own page.
+const FROM_PAGE = "from the award's page";
+const fromPage = (r) => r.kind === "scholarship" && r.source === "temple_sdfa" && Boolean(r.details_url);
+const withHint = (text, r) => (fromPage(r) && text !== NOT_STATED ? `${text} (${FROM_PAGE})` : text);
 // The deadline as the record gives it: "Expires 7 May 2028" for a parent announcement,
 // the record's words where standard dates apply (T17).
 function dueText(r, d) {
@@ -339,8 +343,8 @@ function card(l, { openEvidence, setLead, papers }, common = []) {
       ? (common.includes(NO_FACTS) ? null : h("p", { class: "hint no-size", text: sch ? "Deadline and amount: not stated in the record." : "Deadline: not stated in the record." }))
       : h("dl", { class: "facts" },
         // G17: an expiry sits under its own label, as on the researcher card (F20)
-        h("div", { class: "fact" }, h("dt", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? "Announcement" : "Deadline" }), h("dd", { text: dueText(r, deadline) })),
-        sch ? h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", { text: amount })) : null),
+        h("div", { class: "fact" }, h("dt", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? "Announcement" : "Deadline" }), h("dd", {}, dueText(r, deadline), deadline && fromPage(r) ? h("span", { class: "from-page", text: ` ${FROM_PAGE}` }) : null)),
+        sch ? h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, amount, amount !== NOT_STATED && fromPage(r) ? h("span", { class: "from-page", text: ` ${FROM_PAGE}` }) : null)) : null),
     l.verdict_lines.length && !(l.verdict_lines.length === 1 && common.includes(l.verdict_lines[0])) ? h("div", { class: "reason" }, h("b", { text: l.verdict === "not eligible" ? "Why not: " : "To check: " }), // T23: not a second "Why"
       l.verdict_lines.length === 1 ? h("span", { text: l.verdict_lines[0] })
         : h("ul", { class: "notes" }, l.verdict_lines.map((x) => h("li", { text: x })))) : null,
@@ -394,7 +398,7 @@ function plainExplanation(text) {
 
 function amountText(r) {
   if (r.amount_min != null && r.amount_max != null && r.amount_min !== r.amount_max) return `${f.money(r.amount_min)} to ${f.money(r.amount_max)}`;
-  if (r.amount_max != null) return f.money(r.amount_max);
+  if (r.amount_max != null) return r.source === "temple_sdfa" && r.amount_min == null ? `Up to ${f.money(r.amount_max)}` : f.money(r.amount_max);
   return NOT_STATED;
 }
 
@@ -440,8 +444,8 @@ export function studentCompare(panel, ctx) {
         l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null),
       h("td", {}, verdictChip(l.verdict)),
       // G17: under the Deadline column an expiry says it is none
-      h("td", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? `None stated; the announcement expires ${f.formatDate(d)}` : dueText(r, d) }),
-      h("td", { text: sch ? amountText(r) : "See the record" }),
+      h("td", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? `None stated; the announcement expires ${f.formatDate(d)}` : withHint(dueText(r, d), r) }),
+      h("td", { text: sch ? withHint(amountText(r), r) : "See the record" }),
       h("td", { text: l.gaps.map((x, i) => (i ? f.lowerFirst(x) : x)).join("; ") || "Nothing listed" }), // R17, T24
       h("td", { text: officeName(l.route) }));
   };

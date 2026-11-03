@@ -380,11 +380,7 @@ SAMPLE_BANNER = ("SAMPLE DATA: the Scholarships section lists invented records f
 
 
 def _amount(s: Scholarship) -> str:
-    if s.amount_min is not None and s.amount_max is not None and s.amount_min != s.amount_max:
-        return f"${s.amount_min:,.0f} to ${s.amount_max:,.0f}"
-    if s.amount_max is not None:
-        return f"${s.amount_max:,.0f}"
-    return "Not in the record"
+    return datefmt.amount_text(s) or "Not in the record"
 
 
 def _source_name(rec: object) -> str:
@@ -534,8 +530,11 @@ def _student_option(i: int, x: Lead, rec: object, office: object, names: dict[st
         if NO_FACTS not in common:
             items.append(NO_FACTS_LINE)
     elif isinstance(rec, Scholarship):
-        items.append(f"Deadline: {_day(rec.deadline) if rec.deadline else 'Not in the record'}")
-        items.append(f"Amount: {_amount(rec)}")
+        page = f" ({datefmt.from_page_note(rec)})" if datefmt.from_page(rec) else ""
+        items.append(f"Deadline: {_day(rec.deadline) if rec.deadline else 'Not in the record'}"
+                     + (page if rec.deadline else ""))
+        items.append(f"Amount: {_amount(rec)}"
+                     + (page if _amount(rec) != "Not in the record" else ""))
     elif isinstance(rec, Opportunity):  # F3: one rule for every deadline, as the card
         label = "Announcement" if datefmt.expires_only(rec) else "Deadline"  # G17, F20
         items.append(f"{label}: {datefmt.closes(rec) or 'Not in the record'}")

@@ -22,6 +22,32 @@ def day(d: date) -> str:
     return f"{d.day} {MONTHS[d.month - 1]} {d.year}"
 
 
+FROM_PAGE = "from the award's page"
+
+
+def from_page(rec: object) -> bool:
+    """True when a public fellowship's deadline or amount was copied from its own page."""
+    return bool(getattr(rec, "details_url", None)) and getattr(rec, "source", "") == "temple_sdfa"
+
+
+def from_page_note(rec: object) -> str:
+    """"from the award's page, fetched 2 Nov 2026" for a record whose value came from it."""
+    at = getattr(rec, "details_fetched_at", None)
+    return f"{FROM_PAGE}, fetched {day(at.date())}" if at else FROM_PAGE
+
+
+def amount_text(rec: object) -> str | None:
+    """A scholarship's amount as the cards write it, or None when it states none. A public
+    record with only a ceiling reads "Up to $X": the page said "up to"."""
+    lo, hi = getattr(rec, "amount_min", None), getattr(rec, "amount_max", None)
+    if lo is not None and hi is not None and lo != hi:
+        return f"${lo:,.0f} to ${hi:,.0f}"
+    if hi is not None:
+        return (f"Up to ${hi:,.0f}" if lo is None and getattr(rec, "source", "") == "temple_sdfa"
+                else f"${hi:,.0f}")
+    return None
+
+
 def shown(v: str) -> str:
     """An ISO date as the cards write it ("15 Feb 2027"); any other text, such as
     "Proposals accepted anytime" or "Not in the record", as it is (Q22, R1)."""

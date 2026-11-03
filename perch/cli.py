@@ -127,9 +127,11 @@ def cmd_fetch(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
         return fetch_opportunities(args)
     if args.source == "temple":
         return fetch_temple(args)
+    if args.source == "fellowship-details":
+        return fetch_fellowship_details(args)
     if args.source != "openalex":
         print(f"Unknown source {args.source!r}. Available: openalex, awards, opportunities, "
-              "temple.", file=sys.stderr)
+              "temple, fellowship-details.", file=sys.stderr)
         return 2
     if not args.author_id:
         print("perch fetch openalex needs an author id.", file=sys.stderr)
@@ -157,6 +159,24 @@ def fetch_temple(args: argparse.Namespace) -> int:
         repo.upsert(recs)
     print(f"Stored {len(recs)} awards from {temple.SDFA_NAME} ({temple.SDFA_LIST}) in "
           f"{args.db}. The page states no amounts or deadlines.")
+    return 0
+
+
+def fetch_fellowship_details(args: argparse.Namespace) -> int:
+    """Deadlines and amounts for the public fellowship records, read from each record's
+    own page (one GET per record, robots.txt respected, no crawl). Run `fetch temple` first."""
+    from perch.schemas import Scholarship
+    from perch.sources import fellowship_details as fd
+
+    with SQLiteRepository(args.db) as repo:
+        recs = repo.list(Scholarship)
+        if not any(r.source == "temple_sdfa" for r in recs):
+            print("No temple_sdfa records in the store. Run `perch fetch temple` first.",
+                  file=sys.stderr)
+            return 2
+        updated, rep = fd.fill_details(recs, pages_dir=args.pages_dir)
+        repo.upsert([r for r in updated if r.source == "temple_sdfa"])
+    print("\n".join(rep.lines()))
     return 0
 
 
@@ -467,7 +487,7 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser("resolve", help="find a Temple researcher in OpenAlex")
     r.add_argument("query", help="name, ORCID iD or OpenAlex author id")
     f = sub.add_parser("fetch", help="fetch records from a source into the store")
-    f.add_argument("source", help="openalex, awards, opportunities or temple")
+    f.add_argument("source", help="openalex, awards, opportunities, temple or fellowship-details")
     f.add_argument("author_id", nargs="?", help="OpenAlex author id, e.g. A5026494099")
     f.add_argument("--statuses", default=grants_gov.OPEN_STATUSES,
                    help="opportunities: Grants.gov statuses (default forecasted|posted)")
@@ -475,6 +495,8 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--limit", type=int, default=None, help="opportunities: stop after N")
     f.add_argument("--opp-num", action="append", default=[],
                    help="opportunities: fetch this number in any status (repeatable)")
+    f.add_argument("--pages-dir", default=None,
+                   help="fellowship-details: save each page's extracted text here (hand-checks)")
     pr = sub.add_parser("profile", help="key papers, awards and the public award horizon")
     pr.add_argument("author_id", help="OpenAlex author id")
     pr.add_argument("--papers", type=int, default=10, help="key papers to show (default 10)")

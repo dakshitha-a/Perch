@@ -6,6 +6,7 @@ Numbers and dates are typed fields copied from the source record by a fetcher
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, date, datetime
 from typing import ClassVar, Literal
 
@@ -330,6 +331,11 @@ class Scholarship(Record):
     amount_min: float | None = None
     amount_max: float | None = None
     deadline: date | None = None
+    details_url: str | None = Field(
+        default=None, description="Page the deadline or amount was copied from (final URL)")
+    details_fetched_at: datetime | None = None
+    deadline_quote: str | None = Field(default=None, description="Exact text of the deadline")
+    amount_quote: str | None = Field(default=None, description="Exact text of the amount")
     eligibility: ScholarshipEligibility = Field(default_factory=ScholarshipEligibility)
     application_requirements: ScholarshipRequirements | None = Field(
         default=None, description="None: the record does not list them")
@@ -349,7 +355,34 @@ class Scholarship(Record):
         if (self.amount_min is not None and self.amount_max is not None
                 and self.amount_min > self.amount_max):
             raise ValueError("amount_min is above amount_max")
+        if self.source == "temple_sdfa":
+            self._check_details()
         return self
+
+    def _check_details(self) -> None:
+        """A deadline or amount on a public fellowship record came from the award's own
+        page: it must carry the sentence, the page URL and the fetch time, and the value
+        must appear in that sentence (standing rules 3 and 4)."""
+        has_amount = self.amount_min is not None or self.amount_max is not None
+        if not (self.deadline or has_amount):
+            return
+        if not self.details_url or self.details_fetched_at is None:
+            raise ValueError("a deadline or amount needs details_url and details_fetched_at")
+        if self.deadline:
+            q = self.deadline_quote or ""
+            if not q:
+                raise ValueError("a deadline needs its deadline_quote")
+            d = self.deadline
+            if (str(d.year) not in q
+                    or not re.search(rf"(?<!\d)0?{d.day}(?!\d)", q)):
+                raise ValueError("the deadline's day and year are not in its quote")
+        if has_amount:
+            q = (self.amount_quote or "").replace(",", "")
+            if not q:
+                raise ValueError("an amount needs its amount_quote")
+            for v in (self.amount_min, self.amount_max):
+                if v is not None and str(int(v)) not in q:
+                    raise ValueError("the amount is not in its quote")
 
 
 # Records about a visitor: served only to the session or brief they belong to.

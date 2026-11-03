@@ -16,7 +16,15 @@ from collections.abc import Callable
 from datetime import date
 
 from perch.compare import lower_first
-from perch.datefmt import day, expires_only, no_deadline, placeholder_close
+from perch.datefmt import (
+    amount_text,
+    day,
+    expires_only,
+    from_page,
+    from_page_note,
+    no_deadline,
+    placeholder_close,
+)
 from perch.llm import Tool
 from perch.schemas import Lead, Opportunity, Record, Scholarship
 from perch.scout.tools import (
@@ -57,14 +65,12 @@ def record_of(service: object, lead: Lead) -> Record | None:
 def facts_of(rec: Record | None) -> dict:
     """Deadline and amount, copied from the record or marked as not stated."""
     if isinstance(rec, Scholarship):
-        amt = (f"${rec.amount_min:,.0f} to ${rec.amount_max:,.0f}"  # as the cards (T27)
-               if rec.amount_min is not None and rec.amount_max is not None
-               and rec.amount_min != rec.amount_max
-               else f"${rec.amount_max:,.0f}" if rec.amount_max is not None
-               else NOT_STATED)
-        return {"title": rec.name, "sponsor": rec.sponsor,
-                "deadline": day(rec.deadline) if rec.deadline else NOT_STATED,  # Q22
-                "amount": amt}
+        out = {"title": rec.name, "sponsor": rec.sponsor,
+               "deadline": day(rec.deadline) if rec.deadline else NOT_STATED,  # Q22
+               "amount": amount_text(rec) or NOT_STATED}  # as the cards (T27)
+        if from_page(rec) and (rec.deadline or amount_text(rec)):
+            out["value_source"] = from_page_note(rec)  # deadline and amount, when stated
+        return out
     if isinstance(rec, Opportunity):
         out = {"title": rec.title, "sponsor": rec.agency,
                "amount": f"${rec.award_ceiling:,.0f}" if rec.award_ceiling else NOT_STATED}
@@ -355,6 +361,8 @@ def _due(f: dict) -> str:
     if f.get("announcement_expires"):
         return f"announcement expires {f['announcement_expires']}"
     d = f.get("deadline") or NOT_STATED
+    if d[:1].isdigit() and f.get("value_source"):  # the date came from the award's page
+        return f"deadline {d} ({f['value_source'].split(',')[0]})"
     return f"deadline {d}" if d == NOT_STATED or d[:1].isdigit() else lower_first(d)
 
 

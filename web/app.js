@@ -2168,7 +2168,11 @@ function recordView(r) {
       if (req.fafsa) items.push("FAFSA");
     }
     const amt = r.amount_max != null ? (r.amount_min != null && r.amount_min !== r.amount_max
-      ? `${f.money(r.amount_min)} to ${f.money(r.amount_max)}` : f.money(r.amount_max)) : "Not stated in the record";
+      ? `${f.money(r.amount_min)} to ${f.money(r.amount_max)}`
+      : (r.source === "temple_sdfa" && r.amount_min == null ? `Up to ${f.money(r.amount_max)}` : f.money(r.amount_max))) : "Not stated in the record";
+    // A public fellowship's deadline or amount is copied by code from the award's own page.
+    const page = r.source === "temple_sdfa" && Boolean(r.details_url);
+    const pageHint = h("span", { class: "from-page", text: " (from the award's page)" });
     out.push(r.source === "synthetic" ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: "Sample data" }),
       h("span", { text: " An invented record from a test corpus. Not a real scholarship." })) : null,
     h("h2", { class: "rec-title", id: "evidence-title", text: r.name }),
@@ -2176,8 +2180,12 @@ function recordView(r) {
       field("Sponsor", r.sponsor), field("Purpose", (r.purpose || "").replace(CANARY_TAIL, "")), field("Type", titled(r.award_type)),
       field("Level", titled(r.level_of_study) || "Not stated in the record"),
       field("Field", titled(r.field_of_study)),
-      field("Amount", amt),
-      field("Deadline", f.formatDate(r.deadline) || "Not stated in the record"),
+      field("Amount", page && r.amount_max != null ? [amt, pageHint] : amt),
+      field("Deadline", page && r.deadline ? [f.formatDate(r.deadline), pageHint] : (f.formatDate(r.deadline) || "Not stated in the record")),
+      page && r.deadline_quote ? field("Deadline, as the page words it", `\u201c${r.deadline_quote}\u201d`) : null,
+      page && r.amount_quote ? field("Amount, as the page words it", `\u201c${r.amount_quote}\u201d`) : null,
+      page && f.safeUrl(r.details_url) ? field("Page read for these", h("a", { href: f.safeUrl(r.details_url), target: "_blank", rel: "noopener", text: r.details_url })) : null,
+      page ? field("Page fetched", f.formatDate(r.details_fetched_at)) : null,
       field("Minimum GPA", e.gpa_min != null ? e.gpa_min.toFixed(2) : null),
       field("Undergraduate year", (e.class_year || []).join(", ")),
       field("Majors", (e.major || []).join(", ")),
