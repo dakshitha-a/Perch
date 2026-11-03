@@ -1,0 +1,36 @@
+{
+  "realm": "perch",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": false,
+  "sslRequired": "none",
+  "attributes": {"_comment": "DEV ONLY. SYNTHETIC test user with a placeholder credential. Never import into a real deployment."},
+  "users": [
+    {
+      "username": "synthetic-user-1",
+      "enabled": true,
+      "firstName": "SYNTHETIC",
+      "lastName": "User",
+      "credentials": [{"type": "password", "value": "synthetic-dev-only", "temporary": false}]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "perch-web",
+      "name": "Perch web",
+      "enabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "secret": "${PERCH_OIDC_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://127.0.0.1:8190/*", "http://localhost:8190/*"],
+      "webOrigins": ["http://127.0.0.1:8190"],
+      "attributes": {"pkce.code.challenge.method": "S256"},
+      "defaultClientScopes": ["profile"],
+      "optionalClientScopes": []
+    }
+  ]
+}
