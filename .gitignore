@@ -27,6 +27,7 @@ data/*
 !data/overrides/
 !data/backtest/
 !data/synthetic/
+!data/temple/
 *.lance
 
 # Archives (input zips; the submission ZIP from `make package`)
