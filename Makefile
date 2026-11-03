@@ -1,6 +1,6 @@
 UV ?= uv
 
-.PHONY: v1-up v1-down test test-pg test-keys demo demo-units demo-seed demo-down demo-status gpus bench tracker package hooks \
+.PHONY: v1-up v1-down test test-pg test-keys test-redis demo demo-units demo-seed demo-down demo-status gpus bench tracker package hooks \
 	decide-up decide-down decide-status
 
 test:
@@ -11,6 +11,11 @@ test:
 PERCH_TEST_KEYS_DATABASE_URL ?= postgresql://postgres:perchtest@127.0.0.1:55432/postgres
 test-keys:
 	PERCH_TEST_KEYS_DATABASE_URL=$(PERCH_TEST_KEYS_DATABASE_URL) $(UV) run pytest tests/test_crypto.py tests/test_keystore.py
+
+# Redis tests: DB 15 of the local test server only (it is flushed).
+PERCH_TEST_REDIS_URL ?= redis://127.0.0.1:56379/15
+test-redis:
+	PERCH_TEST_REDIS_URL=$(PERCH_TEST_REDIS_URL) $(UV) run pytest tests/test_redis.py
 
 # Postgres tests: needs a superuser URL; the default is the local test server.
 # The tests create and drop their own database named perch_test_a_*.
