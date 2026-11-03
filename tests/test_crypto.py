@@ -292,3 +292,59 @@ def test_no_secrets_in_logs_or_errors(repo, caplog):
         assert s.decode("latin-1") not in text
         assert s.hex() not in text
         assert base64.b64encode(s).decode() not in text
+
+
+# ---- review findings (docs/v1/CRYPTO_REVIEW.md) ----
+
+
+def test_eviction_between_key_fetch_and_use_never_seals_under_zero_key(repo, monkeypatch):
+    """Finding 1: a cache clear after the key is fetched must not zero the caller's key."""
+    from cryptography.exceptions import InvalidTag
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    uid = uuid4()
+    aad = aad_for(uid)
+    real_count = crypto._count
+
+    def count_then_evict(u, v):
+        real_count(u, v)
+        crypto.clear_cache()  # eviction lands after the key was handed out
+
+    monkeypatch.setattr(crypto, "_count", count_then_evict)
+    blob = crypto.encrypt_field(uid, CANARY, aad)
+    monkeypatch.setattr(crypto, "_count", real_count)
+    with pytest.raises(InvalidTag):
+        AESGCM(bytes(32)).decrypt(blob[5:17], blob[17:], aad.to_bytes(1))
+    assert crypto.decrypt_field(uid, blob, aad) == CANARY
+
+
+def test_concurrent_eviction_stress(repo):
+    import threading
+
+    uid = uuid4()
+    aad = aad_for(uid)
+    crypto.encrypt_field(uid, b"warm", aad)
+    stop = threading.Event()
+    errors: list[BaseException] = []
+
+    def evictor():
+        while not stop.is_set():
+            crypto.clear_cache()
+            crypto.evict_user(uid)
+
+    def worker():
+        try:
+            for _ in range(300):
+                blob = crypto.encrypt_field(uid, CANARY, aad)
+                assert crypto.decrypt_field(uid, blob, aad) == CANARY
+        except BaseException as e:  # noqa: BLE001
+            errors.append(e)
+
+    ev = threading.Thread(target=evictor)
+    ws = [threading.Thread(target=worker) for _ in range(4)]
+    ev.start()
+    [t.start() for t in ws]
+    [t.join() for t in ws]
+    stop.set()
+    ev.join()
+    assert not errors

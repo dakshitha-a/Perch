@@ -101,7 +101,7 @@ class _State:
         self.ks: KeyStore | None = None
         self.lock = threading.Lock()
         # (user, version) -> (key, expires_at), most recently used last
-        self.cache: OrderedDict[tuple[UUID, int], tuple[bytearray, float]] = OrderedDict()
+        self.cache: OrderedDict[tuple[UUID, int], tuple[bytes, float]] = OrderedDict()
         self.counts: dict[tuple[UUID, int], int] = {}
         self.shred_hooks: list[Callable[[UUID], None]] = []
         self.rekey_hook: Callable[[UUID], None] | None = None
@@ -144,51 +144,46 @@ def _ks() -> KeyStore:
     return _S.ks
 
 
-def _zero(buf: bytearray) -> None:
-    for i in range(len(buf)):
-        buf[i] = 0
-
-
 def evict_user(user_id: UUID) -> None:
-    """Drop a user's cached keys in this process (called on a perch:shred message)."""
+    """Drop a user's cached keys in this process (called on a perch:shred message).
+
+    Cached keys are immutable bytes handed out by value, so a caller that already holds one
+    keeps a valid key; eviction only removes the cache entry.
+    """
     with _S.lock:
         for k in [k for k in _S.cache if k[0] == user_id]:
-            _zero(_S.cache.pop(k)[0])
+            del _S.cache[k]
 
 
 def clear_cache() -> None:
     """Drop every cached key (called on every pub/sub reconnect)."""
     with _S.lock:
-        for key, _ in _S.cache.values():
-            _zero(key)
         _S.cache.clear()
 
 
-def _cache_get(user_id: UUID, version: int) -> bytearray | None:
+def _cache_get(user_id: UUID, version: int) -> bytes | None:
     with _S.lock:
         hit = _S.cache.get((user_id, version))
         if hit is None:
             return None
         if hit[1] <= time.monotonic():
-            _zero(_S.cache.pop((user_id, version))[0])
+            del _S.cache[(user_id, version)]
             return None
         _S.cache.move_to_end((user_id, version))
         return hit[0]
 
 
-def _cache_put(user_id: UUID, version: int, key: bytes) -> bytearray:
-    buf = bytearray(key)
+def _cache_put(user_id: UUID, version: int, key: bytes) -> bytes:
+    key = bytes(key)
     with _S.lock:
-        old = _S.cache.pop((user_id, version), None)
-        if old:
-            _zero(old[0])
-        _S.cache[(user_id, version)] = (buf, time.monotonic() + CACHE_TTL_S)
+        _S.cache.pop((user_id, version), None)
+        _S.cache[(user_id, version)] = (key, time.monotonic() + CACHE_TTL_S)
         while len(_S.cache) > CACHE_SIZE:
-            _zero(_S.cache.popitem(last=False)[1][0])
-    return buf
+            _S.cache.popitem(last=False)
+    return key
 
 
-def _data_key(user_id: UUID, version: int) -> bytearray:
+def _data_key(user_id: UUID, version: int) -> bytes:
     """The unwrapped data key. Raises KeyShredded when the user is tombstoned or has no row."""
     repo = _repo()
     # Tombstone first, every time: a restored key row must not decrypt anything.
@@ -224,7 +219,7 @@ def new_data_key(user_id: UUID) -> int:
     raise CryptoError("could not create a key version after repeated conflicts")
 
 
-def _newest(user_id: UUID) -> tuple[int, bytearray]:
+def _newest(user_id: UUID) -> tuple[int, bytes]:
     repo = _repo()
     if repo.is_tombstoned(user_id):
         raise KeyShredded("the user's key has been shredded")
@@ -257,7 +252,7 @@ def encrypt_field(user_id: UUID, plaintext: bytes, aad: Aad) -> bytes:
     version, key = _newest(user_id)
     _count(user_id, version)
     nonce = os.urandom(12)
-    ct = AESGCM(bytes(key)).encrypt(nonce, plaintext, aad.to_bytes(version))
+    ct = AESGCM(key).encrypt(nonce, plaintext, aad.to_bytes(version))
     return bytes([BLOB_VERSION]) + version.to_bytes(4, "big") + nonce + ct
 
 
@@ -274,7 +269,7 @@ def decrypt_field(user_id: UUID, blob: bytes, aad: Aad) -> bytes:
     version = key_version_of(blob)
     key = _data_key(user_id, version)
     try:
-        return AESGCM(bytes(key)).decrypt(blob[5:17], blob[17:], aad.to_bytes(version))
+        return AESGCM(key).decrypt(blob[5:17], blob[17:], aad.to_bytes(version))
     except InvalidTag:
         raise DecryptError("blob failed authentication") from None
 
