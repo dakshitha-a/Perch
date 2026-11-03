@@ -540,6 +540,10 @@ def build_parser() -> argparse.ArgumentParser:
     m.add_argument("--llm", default=None, help="provider spec for the model-backed tools")
     sub.add_parser("samples", help="load the SYNTHETIC sample scholarships into their own "
                    "store (student mode)")
+    dbp = sub.add_parser("db", help="database tasks (Postgres)")
+    dbsub = dbp.add_subparsers(dest="db_command", required=True)
+    mg = dbsub.add_parser("migrate", help="apply the SQL migrations to the perch database")
+    mg.add_argument("--dsn", default=None, help="admin or owner URL; default PERCH_DATABASE_URL")
     sv = sub.add_parser("serve", help="run the HTTP API")
     sv.add_argument("--host", default="127.0.0.1")
     sv.add_argument("--port", type=int, default=8100)
@@ -550,6 +554,18 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def cmd_db(args: argparse.Namespace) -> int:
+    from perch.db.migrate import migrate
+
+    dsn = args.dsn or env("PERCH_DATABASE_URL")
+    if not dsn:
+        print("Set PERCH_DATABASE_URL or pass --dsn.", file=sys.stderr)
+        return 2
+    applied = migrate(dsn)
+    print("Applied: " + (", ".join(applied) if applied else "nothing, already current"))
+    return 0
+
+
 def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None = None,
          nih_factory: Callable[[], nih_reporter.NIHReporterClient] = nih_reporter.NIHReporterClient,
          nsf_factory: Callable[[], nsf.NSFClient] = nsf.NSFClient,
@@ -558,6 +574,8 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
     load_dotenv()
     args = build_parser().parse_args(argv)
     args.db = args.db or env("PERCH_DB", DEFAULT_DB)
+    if args.command == "db":
+        return cmd_db(args)
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory
     args.grants_factory = grants_factory
     commands = {"resolve": cmd_resolve, "samples": cmd_samples,
