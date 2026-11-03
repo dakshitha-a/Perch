@@ -1,0 +1,32 @@
+# Perch v1 images: web and worker. CPU only, no CUDA. Build from the repo root:
+#   docker build -f deploy/compose/Dockerfile.v1 --target web .
+# `web` never loads a model, so it skips the ml extra. `worker` adds the ml extra and swaps
+# the CUDA torch wheel in uv.lock for the CPU wheel of the same version.
+FROM python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159 AS base
+COPY --from=ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 /uv /usr/local/bin/uv
+ENV UV_PROJECT_ENVIRONMENT=/opt/venv UV_LINK_MODE=copy UV_COMPILE_BYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY pyproject.toml uv.lock README.md LICENSE ./
+
+FROM base AS web
+RUN uv sync --frozen --no-dev --extra anthropic --no-install-project
+COPY perch ./perch
+COPY web ./web
+COPY deploy/compose/migrate.py ./deploy/compose/migrate.py
+RUN uv sync --frozen --no-dev --extra anthropic
+RUN useradd --system --uid 10001 perch
+USER perch
+EXPOSE 8000
+CMD ["/opt/venv/bin/perch", "serve", "--host", "0.0.0.0", "--port", "8000"]
+
+FROM base AS worker
+RUN uv sync --frozen --no-dev --extra anthropic --extra ml --no-install-project
+# uv.lock pins torch 2.14.1+cu126; replace it with the CPU build so no CUDA libraries ship.
+RUN uv pip install --python /opt/venv/bin/python --reinstall --no-deps \
+    --index-url https://download.pytorch.org/whl/cpu "torch==2.14.1+cpu"
+COPY perch ./perch
+RUN uv pip install --python /opt/venv/bin/python --no-deps .
+RUN useradd --system --uid 10001 --create-home perch
+USER perch
+ENV CUDA_VISIBLE_DEVICES=""
+CMD ["/opt/venv/bin/perch", "worker"]

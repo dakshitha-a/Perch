@@ -1,0 +1,154 @@
+# Perch v1 stack (ARCHITECTURE_V1 section 1.1), development ports. The live fallback demo
+# is the separate root docker-compose.yml on 8090; this file never touches it.
+#
+#   make v1-up      start the stack (needs a .env; see .env.example)
+#   make v1-down    stop it, keeping the volumes
+#
+# Every host port is bound to 127.0.0.1. Passwords and keys come from the environment
+# (.env), never from this file. `web` and `worker` rely on a /health route and a
+# `perch worker` command that land in later S37 tasks; until then those two containers
+# may fail their healthcheck or exit.
+name: perch-v1
+
+x-app-env: &app-env
+  PERCH_ENV: dev
+  PERCH_DB_POOL_MAX: "10"
+  PERCH_REDIS_URL: redis://redis:6379/0
+  PERCH_KEYSTORE: env
+  PERCH_MASTER_KEY: ${PERCH_MASTER_KEY:?set PERCH_MASTER_KEY in .env}
+  PERCH_MASTER_KEY_ID: ${PERCH_MASTER_KEY_ID:-m1}
+  PERCH_KEYS_DATABASE_URL: postgresql://perch_keys:${PERCH_KEYS_PASSWORD:?set}@postgres:5432/perch_keys
+  PERCH_PUBLIC_URL: http://127.0.0.1:8190
+  PERCH_COOKIE_INSECURE: "1"
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.0-pg16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: perch
+    ports: ["127.0.0.1:5433:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d perch"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:6380:6379"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?set KEYCLOAK_ADMIN_PASSWORD in .env}
+      KC_HTTP_ENABLED: "true"
+      # Read by the realm import as ${PERCH_OIDC_CLIENT_SECRET}.
+      PERCH_OIDC_CLIENT_SECRET: ${PERCH_OIDC_CLIENT_SECRET:?set PERCH_OIDC_CLIENT_SECRET in .env}
+    ports: ["127.0.0.1:8180:8080"]
+    volumes:
+      - ./keycloak/perch-realm.json:/opt/keycloak/data/import/perch-realm.json:ro
+      - kcdata:/opt/keycloak/data/h2
+    healthcheck:
+      # The image has no curl; open the port from bash.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /realms/perch HTTP/1.0\\r\\n\\r\\n' >&3 && head -n1 <&3 | grep -q 200"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+    restart: unless-stopped
+
+  migrate:
+    build: &web-build
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.v1
+      target: web
+    image: perch-v1-web
+    command: ["/opt/venv/bin/python", "/app/deploy/compose/migrate.py"]
+    environment:
+      ADMIN_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/perch
+      ADMIN_KEYS_DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/perch_keys
+      PERCH_OWNER_PASSWORD: ${PERCH_OWNER_PASSWORD:?set PERCH_OWNER_PASSWORD in .env}
+      PERCH_WEB_PASSWORD: ${PERCH_WEB_PASSWORD:?set PERCH_WEB_PASSWORD in .env}
+      PERCH_WORKER_PASSWORD: ${PERCH_WORKER_PASSWORD:?set PERCH_WORKER_PASSWORD in .env}
+      PERCH_KEYS_PASSWORD: ${PERCH_KEYS_PASSWORD:?set PERCH_KEYS_PASSWORD in .env}
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
+
+  web:
+    build: *web-build
+    image: perch-v1-web
+    environment:
+      <<: *app-env
+      PERCH_DATABASE_URL: postgresql://perch_web:${PERCH_WEB_PASSWORD}@postgres:5432/perch
+      PERCH_AUTH_PROVIDER: oidc
+      PERCH_OIDC_ISSUER: http://keycloak:8080/realms/perch
+      PERCH_OIDC_CLIENT_ID: perch-web
+      PERCH_OIDC_CLIENT_SECRET: ${PERCH_OIDC_CLIENT_SECRET}
+      PERCH_PEPPER: ${PERCH_PEPPER:-}
+      PERCH_PEPPER_GUEST: ${PERCH_PEPPER_GUEST:-}
+    ports: ["127.0.0.1:8190:8000"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+      keycloak: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "/opt/venv/bin/python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.v1
+      target: worker
+    image: perch-v1-worker
+    environment:
+      <<: *app-env
+      PERCH_PROFILE: cloud-cpu
+      PERCH_DATABASE_URL: postgresql://perch_worker:${PERCH_WORKER_PASSWORD}@postgres:5432/perch
+      PERCH_DATABASE_DIRECT_URL: postgresql://perch_worker:${PERCH_WORKER_PASSWORD}@postgres:5432/perch
+      PERCH_TORCH_THREADS: ${PERCH_TORCH_THREADS:-4}
+      PERCH_WORKER_CONCURRENCY: ${PERCH_WORKER_CONCURRENCY:-16}
+      PERCH_AUDIT_KEY: ${PERCH_AUDIT_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    healthcheck:
+      # Liveness only. The heartbeat row (ARCHITECTURE_V1 section 3) is the real signal.
+      test: ["CMD", "/opt/venv/bin/python", "-c", "import perch"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  kcdata:

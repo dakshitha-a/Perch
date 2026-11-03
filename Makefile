@@ -1,6 +1,6 @@
 UV ?= uv
 
-.PHONY: test test-pg test-keys demo demo-units demo-seed demo-down demo-status gpus bench tracker package hooks \
+.PHONY: v1-up v1-down test test-pg test-keys demo demo-units demo-seed demo-down demo-status gpus bench tracker package hooks \
 	decide-up decide-down decide-status
 
 test:
@@ -16,7 +16,7 @@ test-keys:
 # The tests create and drop their own database named perch_test_a_*.
 test-pg:
 	PERCH_TEST_DATABASE_URL=$${PERCH_TEST_DATABASE_URL:-postgresql://postgres:perchtest@127.0.0.1:55432/postgres} \
-		$(UV) run pytest tests/test_store.py tests/test_postgres.py tests/test_jobs_pg.py -p no:cacheprovider
+		$(UV) run pytest tests/test_store.py tests/test_postgres.py tests/test_jobs_pg.py tests/test_corpus_migrate.py -p no:cacheprovider
 
 # The demo (S9, deploy-2gpu, hybrid): models as systemd user units on two GPUs, the app
 # in Docker on 127.0.0.1:8090. One command: `make demo`. GPUs default to 6 and 7.
@@ -102,3 +102,12 @@ decide-down:
 decide-status:
 	@systemctl --user --no-pager status $(DECIDE_UNITS) | grep -E 'Loaded|Active|service -' || true
 	@for p in 8097 8098; do printf "port $$p health: "; curl -s 127.0.0.1:$$p/health || echo down; echo; done
+
+# The v1 Compose stack (deploy/compose/docker-compose.v1.yml), development ports 8190,
+# 5433, 6380 and 8180 on 127.0.0.1. Needs a .env with the v1 entries of .env.example.
+V1_COMPOSE = docker compose -f deploy/compose/docker-compose.v1.yml --env-file .env
+v1-up:
+	$(V1_COMPOSE) up -d --build
+
+v1-down:
+	$(V1_COMPOSE) down

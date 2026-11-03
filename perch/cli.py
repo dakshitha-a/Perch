@@ -544,6 +544,14 @@ def build_parser() -> argparse.ArgumentParser:
     dbsub = dbp.add_subparsers(dest="db_command", required=True)
     mg = dbsub.add_parser("migrate", help="apply the SQL migrations to the perch database")
     mg.add_argument("--dsn", default=None, help="admin or owner URL; default PERCH_DATABASE_URL")
+    mc = dbsub.add_parser("migrate-corpus", help="copy the public corpus into Postgres")
+    mc.add_argument("--dsn", default=None, help="write URL; default PERCH_DATABASE_URL")
+    mc.add_argument("--sqlite", default=None, help="record store; default the --db store")
+    mc.add_argument("--lance", default=None, help="Lance dir; default <store dir>/lance")
+    mc.add_argument("--samples", default=None, help="SYNTHETIC sample store; default "
+                    "PERCH_SAMPLE_DB or <store dir>/sample.db; 'none' skips it")
+    mc.add_argument("--cache", default=None, help="embedding cache; default "
+                    "<store dir>/cache/embeddings.db")
     wk = sub.add_parser("worker", help="run job threads against the Postgres queue")
     wk.add_argument("--concurrency", type=int, default=None, help="job threads; default "
                     "PERCH_WORKER_CONCURRENCY or 16")
@@ -593,6 +601,20 @@ def cmd_db(args: argparse.Namespace) -> int:
     if not dsn:
         print("Set PERCH_DATABASE_URL or pass --dsn.", file=sys.stderr)
         return 2
+    if args.db_command == "migrate-corpus":
+        from perch.db.corpus import CorpusError, format_report, migrate_corpus
+
+        base = Path(args.sqlite or args.db)
+        sample = args.samples or env("PERCH_SAMPLE_DB") or str(base.parent / "sample.db")
+        try:
+            rep = migrate_corpus(dsn, base, Path(args.lance or base.parent / "lance"),
+                                 None if sample == "none" else Path(sample),
+                                 Path(args.cache or base.parent / "cache/embeddings.db"))
+        except CorpusError as e:
+            print(f"migrate-corpus stopped: {e}", file=sys.stderr)
+            return 1
+        print(format_report(rep))
+        return 1 if rep["verify"]["mismatches"] else 0
     applied = migrate(dsn)
     print("Applied: " + (", ".join(applied) if applied else "nothing, already current"))
     return 0
