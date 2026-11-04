@@ -1,0 +1,10 @@
+Unreviewed rows: 0
+title           reviewed  31  wrong   0  missing   0  error   0.0%  95% CI 0.0% to 11.0%
+amount          reviewed  31  wrong   2  missing   0  error   6.5%  95% CI 1.8% to 20.7%
+deadline        reviewed  31  wrong   0  missing   2  error   6.5%  95% CI 1.8% to 20.7%
+apply_url       reviewed  31  wrong   0  missing   0  error   0.0%  95% CI 0.0% to 11.0%
+eligibility     reviewed  31  wrong   2  missing   7  error  29.0%  95% CI 16.1% to 46.6%
+temple_funded   reviewed  31  wrong   0  missing  19  error  61.3%  95% CI 43.8% to 76.3%
+audience_level  reviewed  31  wrong   3  missing   1  error  12.9%  95% CI 5.1% to 28.9%
+overall         reviewed 217  errors  36  error  16.6%  95% CI 12.2% to 22.1%
+Rows are fields of records, so they are not independent; the interval treats them as if they were. Report the record count too.
