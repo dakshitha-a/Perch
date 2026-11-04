@@ -237,3 +237,23 @@ def test_the_old_scout_baseline_still_runs():
 
     assert callable(getattr(b, "main", None)) or hasattr(b, "TASKS")
     assert isinstance(TestClient, type)
+
+
+def test_student_buttons_keep_samples_apart_from_public_fellowships(stack):
+    from perch.scout.buttons import SAMPLE_HEADING
+
+    env, c, svc, bid, script = stack
+    got = c.get(f"/briefs/{bid}").json()
+    for route in ("F", "S"):
+        lead = next(x for x in got["leads"] if x["route"] == route
+                    and x["verdict"] != "not eligible")
+        assert c.post(f"/briefs/{bid}/leads/{lead['id']}/keep").status_code == 200
+    sid = None
+    for intent in ("top_leads", "deadlines", "compare"):
+        v = turn(env, c, sid, bid, {"intent": intent})
+        sid = v["id"]
+        text = v["messages"][-1]["text"]
+        before, mark, after = text.partition(SAMPLE_HEADING)
+        assert mark and "[sample:" in after and "[sample:" not in before, text
+        cited = [ln for ln in after.splitlines() if "[" in ln]
+        assert cited and all("[sample:" in ln for ln in cited), text

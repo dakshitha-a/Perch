@@ -75,14 +75,38 @@ def _result(intent: str, lines: list[str], ids: list[str], **extra: object) -> d
             "flagged": False, "unsupported": [], "general": None, **extra}
 
 
-def top_leads(data: ScoutData) -> dict[str, Any]:
-    rows = _leads(data)[:TOP_N]
+SAMPLE_HEADING = ("Sample scholarships (invented for a demonstration, kept apart from the "
+                  "public leads):")
+
+
+def _split(rows: list[tuple[Lead, Record]]
+           ) -> tuple[list[tuple[Lead, Record]], list[tuple[Lead, Record]]]:
+    """Public records and SYNTHETIC samples, never one list (standing rule 11)."""
+    return ([(x, r) for x, r in rows if r.source != "synthetic"],
+            [(x, r) for x, r in rows if r.source == "synthetic"])
+
+
+def _section(heading: str, rows: list[tuple[Lead, Record]], as_of: date, ids: list[str]
+             ) -> list[str]:
     if not rows:
+        return []
+    out = [heading]
+    for i, (_, rec) in enumerate(rows, 1):
+        f = facts(rec, as_of)
+        out.append(_line(f, i))
+        ids.append(f["id"])
+    return out
+
+
+def top_leads(data: ScoutData) -> dict[str, Any]:
+    pub, smp = _split(_leads(data))
+    if not pub and not smp:
         raise IntentError("The brief has no leads to show.")
-    fs = [facts(rec, data.as_of) for _, rec in rows]
-    lines = ["The strongest leads in your brief, in its own order:",
-             *[_line(f, i) for i, f in enumerate(fs, 1)]]
-    return _result("top_leads", lines, [f["id"] for f in fs])
+    ids: list[str] = []
+    lines = _section("The strongest leads in your brief, in its own order:", pub[:TOP_N],
+                     data.as_of, ids)
+    lines += _section(SAMPLE_HEADING, smp[:TOP_N], data.as_of, ids)
+    return _result("top_leads", lines, ids)
 
 
 def _sort_key(rec: Record, as_of: date) -> date | None:
@@ -95,26 +119,30 @@ def _sort_key(rec: Record, as_of: date) -> date | None:
     return None
 
 
-def deadlines(data: ScoutData) -> dict[str, Any]:
-    rows = _leads(data)
-    if not rows:
-        raise IntentError("The brief has no leads to show.")
+def _by_deadline(rows: list[tuple[Lead, Record]], as_of: date, head: str, ids: list[str]
+                 ) -> list[str]:
     dated = sorted(((d, x, rec) for x, rec in rows
-                    if (d := _sort_key(rec, data.as_of)) is not None
-                    and d >= data.as_of), key=lambda t: (t[0], t[1].rank or 0))
+                    if (d := _sort_key(rec, as_of)) is not None and d >= as_of),
+                   key=lambda t: (t[0], t[1].rank or 0))
     other = [(x, rec) for x, rec in rows if all(rec is not r for _, _, r in dated)]
-    lines = ["Deadlines from the records, soonest first:"]
-    ids: list[str] = []
-    for i, (_, _, rec) in enumerate(dated, 1):
-        f = facts(rec, data.as_of)
-        lines.append(_line(f, i))
-        ids.append(f["id"])
+    out = _section(head, [(x, r) for _, x, r in dated], as_of, ids)
     if other:
-        lines.append("No dated deadline in the record:")
+        out.append("No dated deadline in the record:")
         for _, rec in other:
-            f = facts(rec, data.as_of)
-            lines.append(_line(f))
+            f = facts(rec, as_of)
+            out.append(_line(f))
             ids.append(f["id"])
+    return out
+
+
+def deadlines(data: ScoutData) -> dict[str, Any]:
+    pub, smp = _split(_leads(data))
+    if not pub and not smp:
+        raise IntentError("The brief has no leads to show.")
+    ids: list[str] = []
+    lines = _by_deadline(pub, data.as_of, "Deadlines from the records, soonest first:", ids)
+    if smp:
+        lines += _by_deadline(smp, data.as_of, SAMPLE_HEADING, ids)
     return _result("deadlines", lines, ids)
 
 
@@ -127,13 +155,15 @@ def compare_kept(data: ScoutData) -> dict[str, Any]:
     if not kept:
         raise IntentError("You have kept no leads yet. Keep two or more leads on the brief, "
                           "then compare them here.")
-    fs = [facts(rec, data.as_of) for _, rec in kept]
-    lines = ["Your kept leads, side by side:", *[_line(f, i) for i, f in enumerate(fs, 1)]]
+    pub, smp = _split(kept)
+    ids: list[str] = []
+    lines = _section("Your kept leads, side by side:", pub, data.as_of, ids)
+    lines += _section(SAMPLE_HEADING, smp, data.as_of, ids)
     table = None
     if data.audience != "student":  # researcher briefs have the compare table
         with data.repo() as r:
             table = rows_json(compare(b, leads, r))
-    return _result("compare", lines, [f["id"] for f in fs], table=table)
+    return _result("compare", lines, ids, table=table)
 
 
 def handoff(data: ScoutData, draft: Callable[[], dict[str, Any] | None] | None

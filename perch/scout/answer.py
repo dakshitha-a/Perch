@@ -201,6 +201,29 @@ def check_sentence(s: Sentence, seen: dict[str, Record]) -> None:
         s.errors.append("a number or date with no cited record")
 
 
+def mixed_blocks(g: Graded, seen: dict[str, Record]) -> None:
+    """A block (a heading or prose line with the bullets under it) may not cite a SYNTHETIC sample
+    together with a public record (standing rule 11). The error goes on the block's last
+    sentence, so that sentence is the one removed if the answer is shown flagged."""
+    block: list[Sentence] = []
+
+    def close() -> None:
+        ids = {c for s in block for c in s.cites}
+        smp = {c for c in ids if seen[c].source == "synthetic"}
+        if smp and smp != ids:
+            block[-1].errors.append("a sample record and a public record are in the same "
+                                    "list or sentence: list them apart")
+        block.clear()
+
+    for ln in g.lines:
+        heading = len(ln.sentences) == 1 and ln.sentences[0].text.rstrip().endswith(":")
+        if (heading or not ln.prefix) and block:  # a bullet joins the block above it
+            close()
+        block.extend(ln.sentences)
+    if block:
+        close()
+
+
 def check_general(text: str, names: set[str], seen: dict[str, Record]) -> list[str]:
     """Why a General advice part is not allowed, or []. No award names, numbers, dates,
     eligibility words or citations."""
@@ -261,6 +284,7 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
     g = Graded(lines, general, check_general(general, names, seen) if general else [])
     for s in g.sentences:
         check_sentence(s, seen)
+    mixed_blocks(g, seen)
     if grounder is not None and g.ok:
         for s in g.sentences:
             if not s.cites:

@@ -277,8 +277,17 @@ class ReadTools:
             if x.gaps:
                 row["gaps"] = x.gaps[:4]
             rows.append(row)
-        return {"leads": rows,
-                "note": "Leads are in the brief's own order, the strongest first."}
+        # SYNTHETIC samples are kept apart from public leads (standing rule 11).
+        public = [r for r in rows if not r.get("sample")]
+        sample = [r for r in rows if r.get("sample")]
+        out: dict[str, Any] = {"leads": public,
+                               "note": "Leads are in the brief's own order, the strongest first."}
+        if sample:
+            out["sample_leads"] = sample
+            out["sample_note"] = ("sample_leads are invented records for a demonstration. Never "
+                                  "list or compare them together with leads, and say they are "
+                                  "samples.")
+        return out
 
     def read_cv_part(self, part: str | None = None) -> dict[str, Any]:
         text = self.data.cv_text()

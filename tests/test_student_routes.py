@@ -1,23 +1,20 @@
-"""Exports, samples, the hand-off and Scout on a student brief, through the account routes
-(S42, ported from test_student.py). SYNTHETIC text only; needs the test Postgres and Redis
-(`make test-user`)."""
+"""Exports, samples and the hand-off on a student brief, through the account routes
+(S42, ported from test_student.py). The Scout tests of this file moved to
+tests/test_scout_v2_account.py when Scout was rebuilt (S44). SYNTHETIC text only; needs the
+test Postgres and Redis (`make test-user`)."""
 
 from __future__ import annotations
 
-import json
 import time
 
 import pytest
 
-from perch.llm.fake import FakeProvider
 from tests.conftest import PG_URL
 from tests.student_helpers import (
     account_app,
     add_persona,
-    canaries,
     consent,
     run_brief,
-    student_reply,
 )
 from tests.test_user_account import REDIS_URL, env, rds  # noqa: F401 - fixtures
 
@@ -131,172 +128,3 @@ def test_a_brief_poll_answers_304_while_nothing_changed(env, tmp_path, monkeypat
     _keep(c, bid, got["leads"][0])
     changed = c.get(f"/briefs/{bid}", headers={"If-None-Match": tag})
     assert changed.status_code == 200 and changed.headers["etag"] != tag
-
-
-# --- Scout on a student brief, through the account path ---
-
-def _ask(c, bid, question, sid=None):
-    r = (c.post(f"/scout/{sid}/ask", json={"question": question}) if sid
-         else c.post(f"/briefs/{bid}/scout", json={"question": question}))
-    assert r.status_code == 202, r.text
-    v = r.json()
-    for _ in range(50):
-        v = c.get(f"/scout/{v['id']}").json()
-        if not v["busy"] and v["status"] != "running":
-            return v
-        time.sleep(0.1)
-    raise AssertionError("Scout did not finish")
-
-
-def test_student_scout_uses_only_the_student_tools_and_never_shows_the_cv(
-        env, tmp_path, monkeypatch):  # noqa: F811
-    from perch.llm import ToolCall
-    from perch.scout.student_tools import STUDENT_ALLOWLIST
-    from perch.scout.tools import ALLOWLIST
-
-    consent(env, monkeypatch)
-    add_persona(env, "persona-ug")
-    steps = iter([[ToolCall("c1", "search_options", {"route": "S"})],
-                  [ToolCall("c2", "read_cv", {})],
-                  [ToolCall("c3", "search_opportunities", {"route": "A"})],  # not allowed
-                  [ToolCall("c4", "draft_note", {"route": "S"})],
-                  "Your sample options are listed above, and the note is ready to copy."])
-
-    def reply(messages, system, schema):
-        if system and system.startswith("You are Scout"):
-            assert "student" in system and "SAMPLE" in system
-            return next(steps)
-        return student_reply(messages, system, schema)
-
-    c, svc = account_app(env, tmp_path, monkeypatch, responder=reply)
-    got = run_brief(env, svc, c)
-    bid = got["_id"]
-    lead = next(x for x in got["leads"] if x["route"] == "S" and x["verdict"] != "not eligible")
-    _keep(c, bid, lead)
-    v = _ask(c, bid, "What can I apply for?")
-    cards = {x["tool"]: x for x in v["exchanges"][0]["cards"]}
-    assert set(cards) == {"search_options", "read_cv", "search_opportunities", "draft_note"}
-    assert cards["search_opportunities"]["status"] == "refused"
-    assert set(STUDENT_ALLOWLIST).isdisjoint(set(ALLOWLIST) - {"get_record", "cover_points"})
-    assert cards["search_options"]["status"] == "done"
-    assert all(r.startswith("sample:") for r in cards["search_options"]["records"])
-    assert cards["read_cv"]["status"] == "done"
-    note = cards["draft_note"]["draft"]
-    assert note and "SAMPLE" in note["body"] and note["office"] == "Student Financial Services"
-    x = v["exchanges"][0]
-    assert x["answer_by"] == "code" and x["answer"].startswith(
-        "The note to Student Financial Services is below. Perch never sends it")
-    assert not any(t in json.dumps(v) for t in canaries("persona-ug"))  # no CV text in the view
-
-
-def test_one_user_cannot_open_anothers_scout_session_or_brief(env, tmp_path, monkeypatch):  # noqa: F811
-    from tests.user_helpers import new_user
-
-    consent(env, monkeypatch)
-    add_persona(env, "persona-ug")
-    c, svc = account_app(env, tmp_path, monkeypatch, responder=lambda m, s, sc: "An answer.")
-    got = run_brief(env, svc, c)
-    bid = got["_id"]
-    v = _ask(c, bid, "Hello?")
-    env.session.user_id = new_user(env.pg)  # another account, same cookie
-    assert c.get(f"/scout/{v['id']}").status_code == 404
-    assert c.get(f"/briefs/{bid}").status_code == 404
-    assert c.get(f"/briefs/{bid}/export.md").status_code == 404
-
-
-def _compare_answers(c, svc, bid, got, answers):
-    """Keep one fellowship and one sample, ask Scout to compare them; the fake model calls
-    compare_options, then gives each answer in turn, built from the tool result's ids."""
-    from perch.llm import ToolCall
-
-    for route in ("F", "S"):
-        lead = next(x for x in got["leads"] if x["route"] == route
-                    and x["verdict"] != "not eligible")
-        _keep(c, bid, lead)
-    seen: dict = {}
-
-    def reply(messages, system, schema):
-        if system and system.startswith("You are Scout"):
-            last = messages[-1]
-            if last.tool_results:
-                res = json.loads(last.tool_results[0].content)
-                seen["result"] = res
-                rows = [r for k in ("rows", "fellowships", "sample_scholarships")
-                        for r in res.get(k, [])]
-                seen["f"] = next(r["id"] for r in rows if not r.get("sample"))
-                seen["s"] = next(r["id"] for r in rows if r.get("sample"))
-            if not seen:
-                return [ToolCall("c1", "compare_options", {})]
-            return next(answers).format(f=seen["f"], s=seen["s"])
-        return student_reply(messages, system, schema)
-
-    svc.models.provider = lambda spec: FakeProvider(responder=reply)
-    v = _ask(c, bid, "Compare my kept options")
-    return v["exchanges"][-1], seen["result"]
-
-
-def test_scout_never_lists_samples_with_public_fellowships(env, tmp_path, monkeypatch):  # noqa: F811
-    """Q1, standing rule 11, enforced by code: compare_options returns two groups, and an
-    answer whose list or sentence cites a sample with a public record is rewritten once,
-    then withheld."""
-    consent(env, monkeypatch)
-    add_persona(env, "persona-ug")
-    c, svc = account_app(env, tmp_path, monkeypatch)
-    got = run_brief(env, svc, c)
-    bid = got["_id"]
-    mixed = "Your kept options:\n- A fellowship [{f}]\n- A sample scholarship [{s}]"
-    x, res = _compare_answers(c, svc, bid, got, iter([mixed, mixed]))
-    assert "rows" not in res and res["fellowships"] and res["sample_scholarships"]
-    assert x["answer"] is None and x["flagged"]
-    assert any("sample" in e for e in x["errors"])
-    one = "The fellowship [{f}] and the sample scholarship [{s}] are kept."
-    x, _ = _compare_answers(c, svc, bid, got, iter([one, one]))
-    assert x["answer"] is None and x["flagged"]
-    apart = ("Fellowships:\n- A fellowship [{f}]\n\nSample scholarships (invented):\n"
-             "- A sample scholarship [{s}]")
-    x, _ = _compare_answers(c, svc, bid, got, iter([apart]))
-    assert x["answer"] and not x["flagged"], x["errors"]
-
-
-def test_student_cover_points_on_a_fellowship_and_on_a_sample(env, tmp_path, monkeypatch):  # noqa: F811
-    """S33: cover_points on the student allowlist reads the CV, interests and achievements
-    for one option; a sample option is allowed and the result stays marked sample. The
-    answer line is code; no CV text reaches the view."""
-    from perch.llm import ToolCall
-    from tests.test_scout import points_reply
-
-    consent(env, monkeypatch)
-    add_persona(env, "persona-ug")
-    c, svc = account_app(env, tmp_path, monkeypatch)
-    got = run_brief(env, svc, c)
-    bid = got["_id"]
-    fellowship = next(x for x in got["leads"] if x["route"] == "F"
-                      and x["verdict"] != "not eligible")
-    sample = next(x for x in got["leads"] if x["route"] == "S"
-                  and x["verdict"] != "not eligible")
-    steps = iter([[ToolCall("c1", "cover_points", {"record_id": fellowship["record_id"]})],
-                  [ToolCall("c2", "cover_points", {"record_id": sample["record_id"]})]])
-
-    def reply(messages, system, schema):
-        if system and system.startswith("You are Scout"):
-            assert "cover_points reads the CV itself for one option" in system
-            return next(steps)
-        return points_reply(messages, system, schema) or student_reply(messages, system, schema)
-
-    svc.models.provider = lambda spec: FakeProvider(responder=reply)
-    v = _ask(c, bid, "What points could my application make for it?")
-    v = _ask(c, bid, "And for the sample one?", sid=v["id"])
-    first, second = v["exchanges"]
-    pts = first["cards"][0]["points"]
-    assert first["cards"][0]["status"] == "done"
-    assert pts["for"]["id"] == fellowship["record_id"] and pts["for"]["sample"] is False
-    assert all(p["asks_ids"] == [fellowship["record_id"]] for p in pts["points"])
-    assert pts["points"][0]["you_ids"] == ["user:cv"] and pts["status"] == "done"
-    assert pts["sources"]["user:cv"] == "Your CV" and "note" not in pts
-    assert first["answer_by"] == "code" and first["answer"].startswith(
-        f"Points for {pts['for']['title']} are below: 3 points")
-    spts = second["cards"][0]["points"]
-    assert spts["for"]["id"].startswith("sample:") and spts["for"]["sample"] is True
-    assert second["answer"].endswith("Perch never sends anything. This is an invented sample "
-                                     "record.")
-    assert not any(t in json.dumps(v) for t in canaries("persona-ug"))

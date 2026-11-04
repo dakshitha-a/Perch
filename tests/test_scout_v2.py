@@ -458,3 +458,24 @@ def test_a_tool_argument_error_goes_back_to_the_model(service):
 def test_messages_carry_no_job_ids_or_payload_text():
     m = Message("user", "q")
     assert m.tool_calls == []
+
+
+# --- samples stay apart (standing rule 11) ---
+
+def test_an_answer_may_not_list_a_sample_with_a_public_record(service):
+    from perch.schemas import Opportunity, Scholarship
+
+    with service.repo() as r:
+        opp = r.get(Opportunity, OPP)
+    smp = Scholarship(id="sample:x1", source="synthetic", source_url="perch://sample",
+                      fetched_at=utcnow(), name="Fictional Sample Award",
+                      canary="SYNTHETIC-canary-sample-test", sponsor="Fictional Sample Fund")
+    seen = {OPP: opp, smp.id: smp}
+    mixed = f"Your kept options:\n- A public one [{OPP}]\n- A sample one [{smp.id}]"
+    g = ans.grade(mixed, seen, set(), AS_OF)
+    assert not g.ok and any("same list" in e for e in g.errors)
+    one = f"The public one [{OPP}] and the sample one [{smp.id}] are kept."
+    assert not ans.grade(one, seen, set(), AS_OF).ok
+    apart = (f"Public options:\n- A public one [{OPP}]\n\nSample options, invented:\n"
+             f"- A sample one [{smp.id}]")
+    assert ans.grade(apart, seen, set(), AS_OF).ok
