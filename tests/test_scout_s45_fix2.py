@@ -248,6 +248,7 @@ def _seen_with_entries():
     t = ReadTools(ScoutData(repo=lambda: None, audience="student"))  # type: ignore[arg-type]
     t.read_saved()
     t.read_entries()
+    t.read_cv_part()
     return {**t.seen, **SEEN}
 
 
@@ -260,7 +261,9 @@ def test_placeholder_sentences_in_the_subject_first_shape_pass():
         assert g.ok, (text, g.removed())
     for text in ["Your saved list is empty, but you qualify for all of them [user:saved].",
                  "Your entries are empty, so you are a strong fit [user:entries].",
-                 "Your saved items show strong research experience [user:saved]."]:
+                 "Your saved items show strong research experience [user:saved].",
+                 "Your CV has no weaknesses [user:cv].",
+                 "Your CV shows nothing that would weaken your case [user:cv]."]:
         assert not ans.grade(text, seen, set(), AS_OF).ok, text
 
 

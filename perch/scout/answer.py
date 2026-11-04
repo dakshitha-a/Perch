@@ -66,7 +66,19 @@ ABSENT_WORDS = 20  # a "nothing found" sentence is short; a long one may be hidi
 # that cites nothing but a placeholder id, which still passes the no-record checks (S46 replay).
 EMPTY_RE = re.compile(
     r"\b(?:is|are|was|were|looks?|seems?|still)\s+empty\b|"
-    r"\b(?:holds?|has|have|contains?|shows?|lists?|gives?)\s+(?:none|nothing|no)\b", re.I)
+    r"\b(?:holds?|has|have|contains?|shows?|lists?|gives?)\s+(?:none|nothing)\b", re.I)
+EMPTY_TAIL_NEG = re.compile(r"\b(?:no|not|nothing|none)\b|n['’]t\b", re.I)
+
+
+def _says_empty(body: str) -> bool:
+    """The subject-first "nothing found" shape, and nothing after it but the end of the sentence
+    or another negation ("is empty, so there are no notes"): "Your CV shows nothing that would
+    weaken your case" is a claim, not an empty result."""
+    m = EMPTY_RE.search(body)
+    if not m:
+        return False
+    tail = body[m.end():]
+    return not tail.strip(" .,;:!*_") or bool(EMPTY_TAIL_NEG.search(tail))
 # The system prompt's own disclaimer (texts.SCOUT_SYSTEM): the exact sentence needs no record.
 DISCLAIMER_RE = re.compile(
     r"^[\W_]*Perch (?:does not|doesn['’]t) confirm personal eligibility\.?[\W_]*$", re.I)
@@ -460,7 +472,7 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
         # so alone it can back only a sentence that says so (S45 S4).
         if ids and all(i in PLACEHOLDER_IDS for i in ids):
             if not (len(body.split()) <= ABSENT_WORDS
-                    and (ABSENT_RE.search(body) or EMPTY_RE.search(body))):
+                    and (ABSENT_RE.search(body) or _says_empty(body))):
                 s.fail("placeholder_only", "an empty-result id such as [user:saved] supports "
                        "only a sentence that says nothing was found; do not cite it for a claim",
                        ids[0])
