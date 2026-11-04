@@ -64,16 +64,16 @@ def ledger() -> list[dict]:
 
 def main() -> int:
     names = tuple(sys.argv[1:]) or PERSONAS
+    from dataclasses import replace
+
+    import perch.service as service
     from bench.student_mode import persona_inputs
     from perch.jobs import PostgresRunner
-    from perch.schemas import Lead
+    from perch.profiles import current
     from perch.service import BriefService, Clients, default_models
     from perch.store.hybrid import HybridRepository
     from perch.store.postgres import PgVectorIndex
-    from perch.profiles import current
-    import perch.service as service
     from perch.user.briefs import MemoryBriefStore, using_store
-    from dataclasses import replace
 
     runner = PostgresRunner(os.environ['PERCH_DATABASE_URL'], pool_size=8)
     tmp = Path(tempfile.mkdtemp(prefix="perch-s46-"))
@@ -86,7 +86,7 @@ def main() -> int:
     captured: list = []
     orig = service.explain_leads
 
-    def spy(*a, **k):  # noqa: ANN002, ANN003
+    def spy(*a, **k):  # noqa: ANN002, ANN003, ANN202
         r = orig(*a, **k)
         captured.extend(r)
         return r
@@ -121,7 +121,8 @@ def main() -> int:
         row = {"persona": name, "status": status, "leads": len(leads),
                "eligible_leads": sum(x.verdict != "not eligible" for x in leads),
                "explained_attempted": len(captured), "shown": len(shown),
-               "withheld": len(withheld), "minicheck_unsupported": unsupported, "mc_opp_sentence": mc_opp,
+               "withheld": len(withheld), "minicheck_unsupported": unsupported,
+               "mc_opp_sentence": mc_opp,
                "mc_finding": mc_find,
                "attempts_total": sum(r.attempts for r in captured),
                "model_calls": len(new), **tok, "usd": round(cost, 4),
