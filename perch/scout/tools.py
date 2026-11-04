@@ -133,7 +133,7 @@ def _profile(ctx: ScoutContext, author_id: str | None) -> Profile:
     embedder = ctx.service.models.get("embedder")
     p = build_threads(res.id, works, embedder, ctx.as_of)
     if docs := _session_docs(ctx):  # R6: the documents' threads, as the brief built them
-        from perch.private.threads import add_threads
+        from perch.threads import add_threads
 
         p = add_threads(p, docs, embedder)
     ctx.profile = p

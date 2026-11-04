@@ -255,6 +255,10 @@ class JobContext:
         self._timed_out = False
 
     @property
+    def pool(self) -> ConnectionPool:
+        return self._runner.pool
+
+    @property
     def _token(self) -> list[Any]:
         return [self.job_id, self.lease_owner, self.attempt]
 
@@ -630,10 +634,20 @@ def brief_handler(ctx: JobContext) -> str | None:
     if _brief_service is None:
         raise PermanentError("no_handler")
     brief_id = ctx.payload["brief_id"]
-    status = _brief_service().run(brief_id)
-    if status in ("failed", "missing"):  # the brief row holds the stage detail, never the log
-        raise PermanentError("brief_failed" if status == "failed" else "brief_missing")
-    return f"brief:{brief_id}"
+    from perch.user.briefs import store_for_job, using_store
+
+    store = store_for_job(ctx)  # user_data row, or Redis for a guest; None: the SQLite path
+    if store is None:
+        status = _brief_service().run(brief_id)
+    else:
+        if not store.load():
+            raise PermanentError("permanent")
+        ctx.save_partial(store.result_ref)  # the page reads partial text from the same row
+        with using_store(store):
+            status = _brief_service().run(brief_id)
+    if status in ("failed", "missing"):  # the brief holds the stage detail, never the log
+        raise PermanentError("permanent")
+    return store.result_ref if store is not None else f"brief:{brief_id}"
 
 
 @register("precache", max_attempts=3, timeout_s=900, priority=8)

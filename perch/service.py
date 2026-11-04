@@ -10,6 +10,7 @@ and the brief failed and keeps the error text.
 
 from __future__ import annotations
 
+import contextvars
 import secrets
 import threading
 import traceback
@@ -51,6 +52,7 @@ from perch.sources import nih_reporter, nsf
 from perch.sources import openalex as oa
 from perch.store.base import Repository, VectorIndex
 from perch.store.sqlite import SQLiteRepository
+from perch.user.briefs import current_store
 from perch.validate import VALIDATOR_VERSION, Validated
 
 # Explanations come before the summary: they are what the Routes tab waits for (P2).
@@ -134,19 +136,21 @@ class BriefService:
         self.quiet_errors = False  # private sessions: exception type only, no traceback
 
     def repo(self) -> SQLiteRepository:
-        if self.repo_factory is not None:
-            return self.repo_factory()  # type: ignore[return-value]
-        return SQLiteRepository(self.db)
+        base = (self.repo_factory() if self.repo_factory is not None
+                else SQLiteRepository(self.db))
+        store = current_store.get()  # an account's or a guest's brief lives outside this store
+        return store.wrap(base) if store is not None else base  # type: ignore[return-value]
 
     # --- create and read ---
 
     def create(self, author_id: str, *, as_of: date | None = None, top: int = 10,
                explain: bool = True, min_amount: float | None = None,
-               agencies: list[str] | None = None, context: dict | None = None) -> Brief:
+               agencies: list[str] | None = None, context: dict | None = None,
+               brief_id: str | None = None) -> Brief:
         aid = oa.parse_author_id(author_id)
         if not aid:
             raise ValueError(f"not an OpenAlex author id: {author_id!r}")
-        bid = secrets.token_urlsafe(9)
+        bid = brief_id or secrets.token_urlsafe(9)
         b = Brief(id=bid, source="perch", source_url=f"perch://briefs/{bid}", fetched_at=now(),
                   researcher_id=f"https://openalex.org/{aid}",
                   stages=[Stage(name=n) for n in STAGES],
@@ -223,8 +227,10 @@ class BriefService:
             r.upsert([b])
 
     def cancelled(self, b: Brief) -> bool:
-        """True when the brief should stop before its next stage (a session's own rule)."""
-        return False
+        """True when the brief should stop before its next stage (a session's own rule, or the
+        job's lease lost or cancelled)."""
+        store = current_store.get()
+        return bool(store is not None and store.cancelled())
 
     def run(self, brief_id: str) -> str:
         """Run the build; return the brief's final status (the job handler fails on 'failed')."""
@@ -261,7 +267,9 @@ class BriefService:
                                         "replaced this one.")
                     stage(current, "running")
                     if current in BACKGROUND and current != names[-1]:
-                        t = threading.Thread(target=beside, args=(current,), daemon=True,
+                        # copy_context: the side thread writes to the same brief store
+                        t = threading.Thread(target=contextvars.copy_context().run,
+                                             args=(beside, current), daemon=True,
                                              name=f"perch-{current}")
                         t.start()
                         side.append(t)
@@ -336,9 +344,15 @@ class BriefService:
         with self.repo() as r:  # the author's public threads: 7-day shared cache when present
             p = precache.author_profile(self.public_cache, r, self.models.get("embedder"),
                                         b.researcher_id, as_of)
+        store = current_store.get()
+        docs = store.user_docs() if store is not None else []
+        if docs:  # the account's own documents: query threads, never cached or cited as public
+            from perch.threads import add_threads as add_user_threads
+
+            p = add_user_threads(p, docs, self.models.get("embedder"))
         said = said_text(b.options)
         if said:  # normal-mode context: a query thread, never a citable record
-            from perch.private.threads import add_threads
+            from perch.threads import add_threads
 
             p = add_threads(p, [Work(id=SAID_ID, source="user", source_url="perch://said",
                                      fetched_at=now(), title="You said", abstract=said)],
@@ -423,9 +437,12 @@ class BriefService:
     def _text_cache(self, b: Brief) -> bool:
         """True when this brief's model text depends on public inputs only (section 5)."""
         p = self._ctx.get(b.id, {}).get("profile")
+        store = current_store.get()
         return bool(self.public_cache is not None and p is not None
                     and precache.profile_is_public(p)
-                    and is_public_input(InputContext(direction_text=bool(said_text(b.options)))))
+                    and is_public_input(InputContext(
+                        reads_user_data=bool(store is not None and store.reads_user_data),
+                        direction_text=bool(said_text(b.options)))))
 
     def _run_summary(self, b: Brief) -> tuple[str, bool]:
         if not b.options.get("explain"):

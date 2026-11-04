@@ -45,12 +45,12 @@ from perch.privacy import PrivateSettings, refuse_endpoints, refuse_if_not_local
 from perch.private.cv import CVFacts, parse_cv, sponsor_match
 from perch.private.inputs import KINDS, PrivateDoc
 from perch.private.store import OverlayRepository, ReadOnlyCacheEmbedder
-from perch.private.threads import add_threads
 from perch.profile import Thread
 from perch.rerank import RerankCache
 from perch.schemas import Brief, Lead, Record, Researcher, Stage, Work, utcnow
 from perch.score import match_score
 from perch.service import SAID_ID, STAGES, BriefService, Models, brief_options
+from perch.threads import add_threads
 
 YOU = "private:you"  # the researcher of a brief with no public profile
 IDLE_SECONDS = 30 * 60

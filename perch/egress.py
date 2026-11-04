@@ -17,6 +17,12 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
+from perch.llm.contacts import (  # noqa: F401 - moved in S41; re-exported until Phase 6
+    CONTACT_KINDS,
+    CONTACT_REMOVED,
+    PATTERNS,
+    blank_contacts,
+)
 from perch.schemas import Record
 
 PRIVATE = "private"
@@ -27,31 +33,6 @@ WARNING = ("Masking hides names, contact details and identifiers, and phrases th
 PHRASE_WORDS = 4  # a private phrase is at least this many words in a row
 STUB = 3  # words left between a masked phrase and its clause's end that join it (T11)
 BOUNDARY = re.compile(r"[.,;:!?()\[\]\n]")
-
-# Typed identifiers found by pattern. Names and institutions have no reliable pattern;
-# the caller passes them as terms (S13: from the CV parse).
-PATTERNS = [
-    ("EMAIL", re.compile(r"\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+\b")),
-    ("ORCID", re.compile(r"\b\d{4}-\d{4}-\d{4}-\d{3}[\dX]\b")),
-    ("PHONE", re.compile(r"(?<!\w)(?:\+?1[ .-]?)?\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b")),
-    ("AWARD", re.compile(r"\b\d?[A-Z]\d{2}[A-Z]{2}\d{6}(?:-\d{2}[A-Z\d]*)?\b")),  # NIH
-    ("URL", re.compile(r"https?://\S+")),
-]
-
-
-# S33: a session's model may read the CV and documents (standing rule 5 as amended),
-# with contact details blanked in every prompt view. The stored text is unchanged: the
-# student rules and the CV parse read it.
-CONTACT_KINDS = ("EMAIL", "PHONE", "ORCID", "URL")
-CONTACT_REMOVED = "[contact removed]"
-
-
-def blank_contacts(text: str) -> str:
-    """The text with every email, phone number, ORCID and link replaced by a marker."""
-    for kind, rx in PATTERNS:
-        if kind in CONTACT_KINDS:
-            text = rx.sub(CONTACT_REMOVED, text)
-    return text
 
 
 def is_private_id(i: str) -> bool:
