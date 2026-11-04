@@ -2,7 +2,7 @@
 
 Independent UI and UX review of Phase 7, written on 4 Nov 2026. The reviewer read `docs/REBUILD_PLAN.md` Phase 7, `docs/design/S43_DESIGN.md`, the S43 rows in `docs/DECISIONS.md`, `docs/design/A11Y_CHECKLIST.md`, the web code, the three route files and every screenshot in `build/s43_walk/` and `build/s43_walk_signin/`. No server was run. Each finding names the screen, the place in the code, what is wrong and a fix.
 
-Counts: 7 must-fix, 17 should-fix, 9 nice-to-have.
+Counts: 7 must-fix, 19 should-fix, 9 nice-to-have.
 
 ---
 
@@ -116,6 +116,7 @@ Counts: 7 must-fix, 17 should-fix, 9 nice-to-have.
 - **Where:** the brief's sub-line "Fellowships and sample scholarships, checked against your CV by rule" in `web/app.js`, and the hint at `web/student.js` line 250.
 - **What is wrong:** the banner right below says "Built from an invented SYNTHETIC student. Nothing here is about you." The two lines contradict each other.
 - **Fix:** when the brief is the sample persona, say "checked against the sample student's CV by rule". The same applies to "Still needed" and "your achievement A" wording on its cards.
+- **A second false line:** the guest start screen at `web/student.js` line 73 says "Nothing in it is about you, and its scholarships are invented too." The sample brief's Fellowships route holds real public listings, such as NRSA F31 and the NSF Graduate Research Fellowship. Only the sample route is invented. Say "Its sample scholarships are invented. The fellowships it checks are real public listings."
 
 ### S9. Help contradicts the guest hand-off
 
@@ -179,6 +180,20 @@ Counts: 7 must-fix, 17 should-fix, 9 nice-to-have.
 - **Where:** `web/api.js` line 56, "Perch's server did not answer. Check that `perch serve` is running." Also the fallback "The server answered 500."
 - **What is wrong:** a student does not run `perch serve`. The message tells them nothing they can act on.
 - **Fix:** "Perch could not be reached. Check your connection and try again." For unknown codes: "Something went wrong on Perch's side. Try again in a minute."
+
+### S18. A guest sees a live "Draft the email" button on the researcher Compare
+
+- **Screen:** the guest researcher brief, Compare, in `w1280-brief-researcher-compare.png` and `w360-brief-researcher-compare.png`.
+- **Where:** the hand-off section in `web/handoff.js` and `web/app.js`. `web/api.js` maps `account_required` to "guests cannot draft hand-offs", so the press can only fail.
+- **What is wrong:** design section 5 says a guest sees "Sign in to draft a hand-off". The button invites an action that ends in an error. The line above it also says Perch "does not save it", but hand-off drafts are now stored jobs for signed-in users.
+- **Fix:** for a guest, replace the button with "Sign in to draft a hand-off", linking to sign-in with the current hash. Check the "does not save it" sentence against the hand-off job code and correct it.
+
+### S19. The welcome screen rebuilds itself on every tick
+
+- **Screen:** welcome, steps 1 and 2.
+- **Where:** `web/account.js` lines 31 to 36 and 57 to 88. Each checkbox change calls `draw()`, which replaces the whole screen with `fill(root, ...)`.
+- **What is wrong:** the checkbox the user just ticked is destroyed and rebuilt. Focus comes back through `data-key`, but a screen reader may lose the state change or read the page again. Text typed in the OpenAlex field survives only because it is kept in `state`.
+- **Fix:** update in place. Show or hide the OpenAlex field, and set Continue's `disabled` and its hint, without rebuilding the checkboxes.
 
 ---
 
