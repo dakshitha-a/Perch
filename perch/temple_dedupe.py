@@ -28,6 +28,7 @@ None rather than a guess (rule 10); the UI shows it under "All Temple".
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -123,11 +124,14 @@ class DedupeReport:
     output_records: int = 0
     merged_groups: int = 0
     conflicts: list[Conflict] = field(default_factory=list)
+    # Same award, same page, read twice with different values: merged, those fields blanked.
+    blanked: list[Conflict] = field(default_factory=list)
 
     def lines(self) -> list[str]:
         return [f"Dedupe: {self.input_records} records in, {self.output_records} out, "
                 f"{self.merged_groups} merged groups, {len(self.conflicts)} conflicting pairs "
-                "kept apart."]
+                f"kept apart, {len(self.blanked)} same-page reads with fields set to not "
+                "stated."]
 
 
 def _richness(r: Rec) -> int:
@@ -272,9 +276,67 @@ def merge(members: list[Rec]) -> Rec:
     return base
 
 
+_BLANK_QUOTES = {"apply_url": ("apply_url", "link"), "amount": ("amount",),
+                 "deadline": ("deadline", "deadline_text", "deadline_date")}
+
+
+def _blank(r: Rec, fields: set[str]) -> Rec:
+    """The record with these fields set to "not stated", their quotes dropped."""
+    up: dict[str, Any] = {}
+    if "apply_url" in fields:
+        up["apply_url"] = None
+    if "amount" in fields:
+        up.update({"amount_min": None, "amount_max": None} if isinstance(r, Scholarship)
+                  else {"award_floor": None, "award_ceiling": None, "amount_quote": None})
+    if "deadline" in fields:
+        up.update({"deadline": None} if isinstance(r, Scholarship)
+                  else {"close_date": None, "deadline_quote": None})
+    drop = {q for f in fields for q in _BLANK_QUOTES[f]}
+    up["field_quotes"] = {k: v for k, v in r.field_quotes.items() if k not in drop}
+    return r.model_copy(update=up)
+
+
+def reconcile_same_id(records: list[Rec]) -> tuple[list[Rec], list[Conflict]]:
+    """Records with the same id are the same award on the same page, read twice (two
+    extraction runs). They always merge. A field they state differently is set to "not
+    stated" on every copy, because neither value can be preferred (S40); each such pair is
+    logged."""
+    # Ids are cut from the title, so two long titles on one page can share an id. Those are
+    # different awards: each gets a short hash of its full title appended.
+    titles: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for r in records:
+        titles[(r.kind, r.id)].add(norm_title(title_of(r)))
+    fixed: list[Rec] = []
+    for r in records:
+        if len(titles[(r.kind, r.id)]) > 1:
+            h = hashlib.sha1(norm_title(title_of(r)).encode()).hexdigest()[:4]
+            r = r.model_copy(update={"id": f"{r.id}-{h}"})
+        fixed.append(r)
+    by_id: dict[tuple[str, str], list[Rec]] = defaultdict(list)
+    for r in fixed:
+        by_id[(r.kind, r.id)].append(r)
+    out: list[Rec] = []
+    log: list[Conflict] = []
+    for key in sorted(by_id):
+        copies = by_id[key]
+        bad: set[str] = set()
+        for i, a in enumerate(copies):
+            for b in copies[i + 1:]:
+                bad.update(conflicts_between(a, b))
+        if bad:
+            log.append(Conflict(title=title_of(copies[0]), ids=[c.id for c in copies[:2]],
+                                source_urls=[c.source_url for c in copies[:2]],
+                                fields=sorted(bad)))
+            copies = [_blank(c, bad) for c in copies]
+        out.extend(copies)
+    return out, log
+
+
 def dedupe(records: list[Rec]) -> tuple[list[Rec], DedupeReport]:
     """Merged records in id order, and a report that lists every conflicting pair."""
     rep = DedupeReport(input_records=len(records))
+    records, same_id = reconcile_same_id(records)
+    rep.blanked = same_id
     groups: dict[tuple[str, str], list[Rec]] = defaultdict(list)
     for r in records:
         groups[(r.kind, norm_title(title_of(r)))].append(r)

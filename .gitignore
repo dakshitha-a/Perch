@@ -46,3 +46,7 @@ CLAUDE.local.md
 .DS_Store
 Thumbs.db
 !data/sbir/
+
+# Raw Temple extraction output keeps names that the dataset build removes (S40); never commit it.
+data/temple/extracted*.jsonl
+data/temple/extracted*.jsonl.pages

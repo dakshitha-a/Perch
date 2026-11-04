@@ -153,3 +153,34 @@ def test_single_university_office_page_is_temple_wide_with_no_school():
                        "https://x.example/1")])[0]
     assert r.scope == "temple_wide" and r.schools == []
     assert [s.page_owner for s in r.seen_on] == ["SDFA"]
+
+
+def test_same_id_reads_merge_and_disagreeing_fields_become_not_stated() -> None:
+    from perch.temple_dedupe import dedupe
+    recs = _same_id_pair()
+    out, rep = dedupe(recs)
+    assert len(out) == 1 and len(rep.blanked) == 1 and not rep.conflicts
+    assert out[0].apply_url is None and "apply_url" not in out[0].field_quotes
+
+
+def _same_id_pair():  # noqa: ANN202
+    import json
+    from pathlib import Path
+
+    from perch.temple_dataset import parse_row
+    line = next(x for x in Path("data/temple/pilot_s39.jsonl").read_text("utf-8").splitlines()
+                if '"apply_url": "http' in x)
+    a = parse_row(line)
+    d = json.loads(a.model_dump_json())
+    d["apply_url"] = "https://example.org/other-form"
+    d["field_quotes"]["apply_url"] = "Apply at https://example.org/other-form today."
+    b = type(a).model_validate(d)
+    return [a, b]
+
+
+def test_two_titles_sharing_a_cut_id_stay_two_records() -> None:
+    from perch.temple_dedupe import dedupe
+    a, b = _same_id_pair()
+    b = b.model_copy(update={"name": a.name + " for Prospective Students", "apply_url": None})
+    out, _ = dedupe([a, b])
+    assert len(out) == 2 and len({r.id for r in out}) == 2
