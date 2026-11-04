@@ -64,3 +64,23 @@ under 10 s at the median is **14** (9.4 s, p95 10.6 s). The `cloud-cpu` profile 
 `rerank_in = 14`; the GPU profiles keep 100 (the S27 value). The back-test gain at 100
 (MRR 0.067 to 0.149 with topic queries) was measured at 100 candidates, so the Phase 3
 re-measure must price this cut. It is a mechanism choice here, not a measured quality result.
+
+## End-to-end brief on a worker (scripts/e2e_brief_job.py --compare)
+
+Fake LLM provider (no cloud call, so fit and summary text is flagged and costs no time),
+cloud-cpu profile, 16 cores as above, a copy of the migrated database, one 10-lead brief
+for one public researcher, Route B left out. Each phase runs on a fresh worker with an empty
+local embedding cache, after a warm-up brief for another researcher that loads the models
+(model load is not in the numbers). `public_cache` is emptied between the phases.
+
+| Case | Seconds |
+|---|---|
+| Brief, no pre-cache (cold) | 82.6 |
+| Pre-cache job for that researcher (offline, nightly) | 80.4 |
+| Brief after the pre-cache, on a fresh worker | 2.2 |
+
+The cold brief is dominated by embedding the researcher's papers into threads; the
+pre-cache stores those threads (the 7-day `author` cache) and the retrieval, rules and
+rerank result (the `precache` entry), so the first brief needs only the model text. The
+real model-text time (Haiku and Sonnet calls) is not in these numbers. These are two
+researchers on a loaded node: a measurement of mechanism, not a throughput claim.

@@ -14,7 +14,8 @@ local embedding cache starts empty) and reports the seconds of the measured brie
   cold    a warm-up brief for a second researcher (loads the models), then the measured brief
   warm    a `precache` job for the measured researcher on one worker; then, on a second fresh
           worker, the same warm-up brief and the measured brief
-The measured brief in the warm phase reads the stored retrieval, rules and rerank result.
+`public_cache` is emptied between the phases. The measured brief in the warm phase reads
+the stored author profile and the stored retrieval, rules and rerank result.
 Set PERCH_E2E_DSN to a copy of the database: the run writes jobs and `public_cache` rows.
 """
 
@@ -123,6 +124,8 @@ def main() -> int:
             c_state, c_leads, cold = w.brief(measured)
         finally:
             w.stop()
+        with psycopg.connect(DSN) as c:  # the cold phase wrote author-profile cache rows
+            c.execute("DELETE FROM public_cache")
         print("phase warm: precache on one worker")
         w = Worker(runner, "precache")
         try:
