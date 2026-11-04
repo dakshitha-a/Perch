@@ -170,6 +170,30 @@ def test_recent_distress_only_within_a_minute():
     assert not recent_distress([])
 
 
+# --- S5: more contact shapes ---
+
+def test_more_phone_link_and_email_shapes_are_blanked():
+    from perch.llm.contacts import blank_contacts
+
+    for t in ["(215)204-1234", "215-2041234", "(215) 2041234", "020 7946 0958", "x.ai/jdoe",
+              "bit.ly/abc", "t.me/jdoe", "jdoe at temple dot edu", "jdoe [at] temple [dot] edu"]:
+        assert blank_contacts(t) == "[contact removed]", t
+    assert blank_contacts("orcid.org/0000-0002-1825-0097") == "[contact removed]"
+    assert blank_contacts("https://orcid.org/0000-0002-1825-0097") == "[contact removed]"
+    assert blank_contacts("email me at jdoe at temple dot edu please") == (
+        "email me at [contact removed] please")
+
+
+def test_a_ten_digit_grant_number_after_its_word_is_kept():
+    from perch.llm.contacts import blank_contacts
+
+    for t in ["grant 1234567890 awarded", "Award No. 1234567890", "Project ID: 1234567890"]:
+        assert blank_contacts(t) == t, t
+    assert blank_contacts("call 2155550100") == "call [contact removed]"
+    for t in ["meet at 5 and look at the data", "i.e./e.g. fine", "see a.b/c"]:
+        assert blank_contacts(t) == t, t
+
+
 # --- R3: history drops budget-answered and unanswered user messages ---
 
 def test_history_drops_budget_answered_and_unanswered_user_messages():
