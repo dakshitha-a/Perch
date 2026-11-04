@@ -79,7 +79,8 @@ _CLOUD_CPU = ModelProfile(
     rerank_in=14,
     retrieval="dense",
     roles={"gate": _HAIKU, "profile_summary": _HAIKU, "fit_explainer": _SONNET,
-           "handoff": _SONNET, "cover_points": _SONNET, "scout": _SONNET},
+           "handoff": _SONNET, "cover_points": _SONNET, "scout": _SONNET,
+           "extract": _HAIKU},
 )
 
 # v1 default from 2026-11-04 (Dakshitha): the same cloud roles, with the embedder, reranker

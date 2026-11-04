@@ -94,7 +94,32 @@ class Award(Record):
     )
 
 
-class Opportunity(Record):
+Scope = Literal["temple_wide", "school", "external"]
+AudienceLevel = Literal["undergraduate", "graduate", "faculty", "postdoc", "mixed"]
+
+
+class TemplePageFields(BaseModel):
+    """Optional Phase 4 fields shared by Opportunity and Scholarship (ARCHITECTURE_V1 D-14).
+
+    `schools` and `scope` follow D-14 (a program may sit on several school pages), so the
+    page owner from the inventory goes into `schools` when it is a school, and `page_owner`
+    keeps the inventory owner as written. `temple_funded` is True only when a quoted
+    sentence says Temple offers the award. `field_quotes` maps a field name to the page
+    sentence its value was copied from. All default to empty so old records still load.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    page_owner: str | None = None
+    scope: Scope | None = None
+    schools: list[str] = Field(default_factory=list)
+    temple_funded: bool | None = None
+    audience_level: AudienceLevel | None = None
+    apply_url: str | None = Field(default=None, description="Link copied from a page sentence")
+    field_quotes: dict[str, str] = Field(default_factory=dict)
+
+
+class Opportunity(Record, TemplePageFields):
     kind: ClassVar[str] = "opportunity"
 
     opportunity_number: str
@@ -118,6 +143,21 @@ class Opportunity(Record):
     archive_date: date | None = None
     assistance_listings: list[str] = Field(default_factory=list, description="CFDA / ALN")
     funding_instruments: list[str] = Field(default_factory=list)
+    deadline_quote: str | None = Field(default=None, description="Page sentence with the deadline")
+    amount_quote: str | None = Field(default=None, description="Page sentence with the amount")
+    details_url: str | None = None
+    details_fetched_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def _temple_pages_quotes(self) -> Opportunity:
+        """A Temple page value carries the sentence it came from (rules 3 and 4)."""
+        if self.source == "temple_pages":
+            if self.close_date and not (self.deadline_quote and self.details_url):
+                raise ValueError("a close_date needs its deadline_quote and details_url")
+            if (self.award_ceiling is not None or self.award_floor is not None) \
+                    and not (self.amount_quote and self.details_url):
+                raise ValueError("an amount needs its amount_quote and details_url")
+        return self
 
     def agency_label(self) -> str:
         """The agency, with its department when there is one: "Air Force Academy
@@ -312,7 +352,7 @@ class ScholarshipRequirements(BaseModel):
         return out
 
 
-class Scholarship(Record):
+class Scholarship(Record, TemplePageFields):
     """A scholarship, fellowship, grant or prize for a student (S17).
 
     Two kinds live under this type and never mix in a list (standing rule 11):
@@ -355,7 +395,7 @@ class Scholarship(Record):
         if (self.amount_min is not None and self.amount_max is not None
                 and self.amount_min > self.amount_max):
             raise ValueError("amount_min is above amount_max")
-        if self.source == "temple_sdfa":
+        if self.source in ("temple_sdfa", "temple_pages"):
             self._check_details()
         return self
 

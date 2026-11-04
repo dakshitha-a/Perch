@@ -4,7 +4,7 @@ A provider spec is "<adapter>:<model>", e.g. "ollama:qwen3.8:27b",
 "anthropic:claude-sonnet-5-5", "openai:Qwen/Qwen3-8B" or "fake:fake-1". Each role
 reads PERCH_LLM_<ROLE> from the environment, then PERCH_LLM_DEFAULT, then the
 built-in default below. Roles: profile_summary, fit_explainer, handoff, cover_points,
-scout, gate.
+scout, gate, extract (Temple page extraction, Phase 4).
 """
 
 from __future__ import annotations
@@ -27,7 +27,8 @@ __all__ = ["ChatResult", "Message", "Provider", "ProviderError", "Refusal", "Tok
            "Tool", "ToolCall", "ToolResult", "Usage", "cost_usd", "get_provider",
            "provider_for_role"]
 
-ROLES = ("gate", "profile_summary", "fit_explainer", "handoff", "cover_points", "scout")
+ROLES = ("gate", "profile_summary", "fit_explainer", "handoff", "cover_points", "scout",
+         "extract")
 # Fallback when no profile applies; the chat model per profile is in perch/profiles.py.
 DEFAULT_SPEC = "ollama:qwen3.8:27b"
 

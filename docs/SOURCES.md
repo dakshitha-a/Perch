@@ -45,3 +45,10 @@ Parsing rules (all in code, no model reads the page):
 - **What was read:** 142 public pages answered 200, and robots.txt blocked none. 316 further pages are listed from sitemaps only.
 - **What was not read:** 3 sign-in pages, ScholarshipUniverse, InfoReady and a merit-scholarship login, are listed and were not read. Temple Japan's site sits outside temple.edu and is not covered.
 - **Terms of use:** UNVERIFIED for each school page. Phase 4 reads each page once, at one request a second per host, within robots.txt.
+
+### Temple pages reader (S39, 2026-11-04)
+
+- **Reader:** `perch fetch temple-pages` (`perch/sources/temple_pages.py`). A row is fetched only when the inventory says http 200, robots allowed and no sign-in. One request a second per host, the Perch user agent, robots.txt read once per host, retries on 429 and 5xx after Retry-After.
+- **Run of 2026-11-04:** of 461 inventory rows, 142 pages fetched, 0 failed, 0 retries. 316 rows skipped because the inventory has no http 200 for them. 3 rows skipped because they need sign-in or have no robots result.
+- **What is kept:** `<main>` only. Mailto, tel and obfuscated-email links, email addresses, phone numbers, staff names beside a role, person lists and winner lists are removed by code. Cleaned pages sit in `data/cache/temple_pages/`, which is gitignored. Three cleaned pages are kept as fixtures in `tests/fixtures/temple_pages/`.
+- **Extraction:** `perch/temple_extract.py`. A model proposes records with the sentence number for each field. Code keeps a value only when it is in that sentence. A year is never inferred.

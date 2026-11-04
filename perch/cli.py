@@ -129,9 +129,11 @@ def cmd_fetch(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
         return fetch_temple(args)
     if args.source == "fellowship-details":
         return fetch_fellowship_details(args)
+    if args.source == "temple-pages":
+        return fetch_temple_pages(args)
     if args.source != "openalex":
         print(f"Unknown source {args.source!r}. Available: openalex, awards, opportunities, "
-              "temple, fellowship-details.", file=sys.stderr)
+              "temple, fellowship-details, temple-pages.", file=sys.stderr)
         return 2
     if not args.author_id:
         print("perch fetch openalex needs an author id.", file=sys.stderr)
@@ -160,6 +162,31 @@ def fetch_temple(args: argparse.Namespace) -> int:
     print(f"Stored {len(recs)} awards from {temple.SDFA_NAME} ({temple.SDFA_LIST}) in "
           f"{args.db}. The page states no amounts or deadlines.")
     return 0
+
+
+def fetch_temple_pages(args: argparse.Namespace) -> int:
+    """Read the inventoried Temple pages once (REBUILD_PLAN Phase 4 task 1). Network only:
+    one request a second per host, robots.txt honoured, `<main>` kept, contacts scrubbed.
+    Cleaned pages go to data/cache/temple_pages/ (gitignored)."""
+    from pathlib import Path
+
+    from perch.sources import temple_pages as tp
+
+    rows = tp.read_inventory(Path(args.inventory))
+    rep = tp.read_pages(rows, Path(args.cache_dir), limit=args.limit, refresh=args.refresh)
+    print("\n".join(rep.lines()))
+    return 0
+
+
+def cmd_extract(args: argparse.Namespace) -> int:
+    """Propose award records from the cached Temple pages with the `extract` model role;
+    code keeps a value only when it is in a quoted sentence of the page."""
+    from pathlib import Path
+
+    from perch import temple_extract as te
+
+    return te.run_pilot(Path(args.cache_dir), Path(args.out), pilot=args.pilot,
+                        budget_usd=args.budget)
 
 
 def fetch_fellowship_details(args: argparse.Namespace) -> int:
@@ -487,7 +514,8 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser("resolve", help="find a Temple researcher in OpenAlex")
     r.add_argument("query", help="name, ORCID iD or OpenAlex author id")
     f = sub.add_parser("fetch", help="fetch records from a source into the store")
-    f.add_argument("source", help="openalex, awards, opportunities, temple or fellowship-details")
+    f.add_argument("source", help="openalex, awards, opportunities, temple, fellowship-details "
+                   "or temple-pages")
     f.add_argument("author_id", nargs="?", help="OpenAlex author id, e.g. A5026494099")
     f.add_argument("--statuses", default=grants_gov.OPEN_STATUSES,
                    help="opportunities: Grants.gov statuses (default forecasted|posted)")
@@ -495,8 +523,21 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--limit", type=int, default=None, help="opportunities: stop after N")
     f.add_argument("--opp-num", action="append", default=[],
                    help="opportunities: fetch this number in any status (repeatable)")
+    f.add_argument("--inventory", default="data/temple/inventory.csv",
+                   help="temple-pages: the inventory CSV")
+    f.add_argument("--cache-dir", default="data/cache/temple_pages",
+                   help="temple-pages: where cleaned pages are cached")
+    f.add_argument("--refresh", action="store_true", help="temple-pages: refetch cached pages")
     f.add_argument("--pages-dir", default=None,
                    help="fellowship-details: save each page's extracted text here (hand-checks)")
+    ex = sub.add_parser("extract", help="propose award records from cached pages")
+    ex.add_argument("source", choices=["temple-pages"])
+    ex.add_argument("--cache-dir", default="data/cache/temple_pages")
+    ex.add_argument("--out", default="data/temple/pilot_s39.jsonl")
+    ex.add_argument("--pilot", type=int, default=20,
+                    help="pages to extract, spread across owners")
+    ex.add_argument("--budget", type=float, default=1.0,
+                    help="stop when this many USD have been spent in the run")
     pr = sub.add_parser("profile", help="key papers, awards and the public award horizon")
     pr.add_argument("author_id", help="OpenAlex author id")
     pr.add_argument("--papers", type=int, default=10, help="key papers to show (default 10)")
@@ -734,6 +775,8 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
         return cmd_precache(args)
     if args.command == "keys":
         return cmd_keys(args)
+    if args.command == "extract":
+        return cmd_extract(args)
     if args.command == "reconcile-shreds":
         return cmd_reconcile_shreds(args)
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory
