@@ -26,7 +26,6 @@ from typing import Literal
 
 from perch.datefmt import day
 from perch.llm import ChatResult, Message, Provider, ToolCall, ToolResult, cost_usd
-from perch.privacy import LOCAL_ADAPTERS, PrivateSettings, refuse_if_not_local
 from perch.score import match_text
 from perch.scout.log import ScoutLog, digest
 from perch.scout.tools import (
@@ -47,6 +46,8 @@ from perch.validate import (
     find_dates,
     norm_number,
 )
+
+LOCAL_ADAPTERS = ("ollama", "openai", "fake")  # self-hosted model servers and the test fake
 
 Policy = Literal["native", "structured"]
 
@@ -253,7 +254,6 @@ class Session:
     id: str
     policy: Policy
     model: str
-    private: bool
     messages: list[Message] = field(default_factory=list)
     cards: list[Card] = field(default_factory=list)
     status: Literal["running", "done", "stopped", "failed"] = "running"
@@ -376,7 +376,7 @@ def _scrub(text: str, allowed: set[str], cites: bool) -> str:
 class Scout:
     def __init__(self, provider: Provider, ctx: ScoutContext, *,
                  policy: Policy | None = None, budget: ScoutBudget | None = None,
-                 log: ScoutLog | None = None, private: PrivateSettings | None = None,
+                 log: ScoutLog | None = None,
                  brief_note: str | Callable[[], str] = "", table: dict | None = None,
                  rules: str | None = None, who: str | None = None,
                  answer_check: Callable[[str, dict], list[str]] | None = None) -> None:
@@ -385,23 +385,12 @@ class Scout:
         tools, fixed to the session's researcher (SESSION_TOOLS). `answer_check`: one more
         check on the answer, with the records the tools returned, such as the student's
         rule that samples never share a list with public records (Q1)."""
-        if private is not None:
-            refuse_if_not_local(provider, private)
-            log = None  # no Scout log (Q14); the tools' caches are S13's job
         self.provider, self.ctx = provider, ctx
         self.policy: Policy = policy or ("native" if "tools" in provider.capabilities
                                          else "structured")
         self.budget = budget or ScoutBudget()
         self.log = log
-        self.private = private is not None
-        who = who or ("a researcher with no public profile; the brief was built from the "
-                      "documents they added, and build_profile, explain_fit and "
-                      "search_opportunities use those documents. If asked to quote a "
-                      "document, say that Scout does not quote documents in its own words; "
-                      "cover_points reads them for one lead. Never say you have no access "
-                      "to them, and never ask for an OpenAlex ID or an upload"
-                      if (ctx.researcher_id or "").startswith("private:")
-                      else f"researcher {ctx.full_author_id(None)} (OpenAlex)")
+        who = who or f"researcher {ctx.full_author_id(None)} (OpenAlex)"
         self.table = table or SESSION_TOOLS
         self.answer_check = answer_check
         # The brief note says which leads are kept. Kept marks change between questions,
@@ -420,7 +409,7 @@ class Scout:
 
     def open(self) -> Session:
         s = Session(id=secrets.token_urlsafe(9), policy=self.policy,
-                    model=self.provider.spec, private=self.private)
+                    model=self.provider.spec)
         if self.log:
             self.log.write({"kind": "session", "session": s.id, "model": s.model,
                             "policy": s.policy,

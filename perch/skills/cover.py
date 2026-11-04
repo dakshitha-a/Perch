@@ -28,11 +28,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from perch import egress
 from perch.datefmt import day
 from perch.grounding import THRESHOLD, Grounder
 from perch.llm import Message
 from perch.llm.audit import AuditedProvider
+from perch.llm.contacts import blank_contacts
 from perch.schemas import Award, Opportunity, Record, Work
 from perch.skills import (
     GROUND_RULES,
@@ -158,7 +158,7 @@ def record_key(r: Record) -> str:
 def cv_view(doc: Work, chars: int = CV_CHARS) -> str:
     """The CV with its contact details blanked, the sections that bear on an application
     first (education, positions, funding and honours, skills), cut at `chars`."""
-    text = egress.blank_contacts(doc.abstract or "")
+    text = blank_contacts(doc.abstract or "")
     secs = sections(text)
     first = [k for k in secs if any(w in k for w in CV_SECTIONS)]
     parts = []
@@ -186,8 +186,8 @@ def full_view(r: Record) -> str:
     """A record as the grounder reads it: the whole text, a private document blanked."""
     if isinstance(r, Award):
         return award_view(r)
-    if isinstance(r, Work) and r.source == egress.PRIVATE:
-        return f"{r.title}\n{egress.blank_contacts(r.abstract or '')}"
+    if isinstance(r, Work) and r.source == "user":
+        return f"{r.title}\n{blank_contacts(r.abstract or '')}"
     if isinstance(r, Work):
         return work_view(r, abstract_chars=4000)
     return opportunity_view(r, description_chars=4000) if isinstance(r, Opportunity) else ""
@@ -207,7 +207,7 @@ def build_prompt(o: Opportunity, cv: Work | None, docs: list[Work], papers: list
         candidates.append((cv, cv_view(cv)))
     candidates += [(d, work_view(d, abstract_chars=DOC_CHARS)) for d in docs]
     candidates += [(w, work_view(w, abstract_chars=PAPER_CHARS))
-                   for w in egress.public_only(papers)[:MAX_PAPERS]]
+                   for w in [x for x in papers if x.source != "user"][:MAX_PAPERS]]
     candidates += [(a, award_view(a)) for a in awards]
     label = "\n\nApplicant records:\n"
     budget = PROMPT_CHARS - system_chars - len(head) - len(tail) - len(label) - 100
@@ -270,8 +270,8 @@ def cover_points(o: Opportunity, cv: Work | None, docs: list[Work], papers: list
     checked = {**records, target: with_context(o, context)}
 
     def known(i: object) -> str:
-        i = str(i).strip("[] ")  # models drop the "private:" prefix of a session record
-        return f"private:{i}" if i not in records and f"private:{i}" in records else i
+        i = str(i).strip("[] ")  # models drop the "user:" prefix of a user document
+        return f"user:{i}" if i not in records and f"user:{i}" in records else i
 
     def generate(feedback: list[str]) -> Points:
         msg = prompt + ("\n\nYour previous answer was rejected: " + "; ".join(feedback)

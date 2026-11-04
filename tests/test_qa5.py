@@ -32,22 +32,22 @@ def _node(script: str) -> object:
 @pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
 def test_document_keys_render_as_document_citations():
     """G1: the fit model cites a document as [proposal]; the brief's cited_ids hold
-    private:proposal. The bracket group stayed as text, and each finding kept its own
+    user:proposal. The bracket group stayed as text, and each finding kept its own
     trailing key, so a card read "...gait change [proposal]."."""
     segs, parsed = _node("""
 import * as f from "MODULE";
-const k = new Set(["HT1", "private:proposal", "private:manuscript"]);
+const k = new Set(["HT1", "user:proposal", "user:manuscript"]);
 console.log(JSON.stringify([
   f.segments("aligns with research [HT1, proposal, manuscript].", k, new Set(["HT1"])),
-  f.parseExplanation("The award supports work [HT1]. Cited work: private:proposal proposed "
-    + "insole sensing [proposal]; private:manuscript recorded plantar force [manuscript].",
+  f.parseExplanation("The award supports work [HT1]. Cited work: user:proposal proposed "
+    + "insole sensing [proposal]; user:manuscript recorded plantar force [manuscript].",
     [...k], new Set(["HT1"]))]));
 """)
-    assert segs == ["aligns with research ", {"cite": "HT1"}, {"cite": "private:proposal"},
-                    {"cite": "private:manuscript"}, "."]
+    assert segs == ["aligns with research ", {"cite": "HT1"}, {"cite": "user:proposal"},
+                    {"cite": "user:manuscript"}, "."]
     assert parsed["findings"] == [
-        {"paper": "private:proposal", "text": "proposed insole sensing"},
-        {"paper": "private:manuscript", "text": "recorded plantar force"}]
+        {"paper": "user:proposal", "text": "proposed insole sensing"},
+        {"paper": "user:manuscript", "text": "recorded plantar force"}]
     app = (WEB / "app.js").read_text()
     assert "From your documents" in app and '"your documents"' in app
 
@@ -251,8 +251,8 @@ def test_the_page_reads_start_over_as_the_server_does():
 def test_student_mode_leaves_out_forecasted_nih_fellowships():
     """G13: a forecast (FOR-NS-25-004) showed as "may be eligible"; Help says forecasts
     are not shown."""
-    from perch.private.student import nih_records
     from perch.scholarships import nih_fellowships
+    from perch.student import nih_records
 
     mk = lambda n, status: Opportunity(id=f"grants_gov:{n}", opportunity_number=n,  # noqa: E731
                                        title=f"SYNTHETIC {n}", agency="NIH", activity_code="F31",
@@ -292,7 +292,7 @@ def test_student_export_one_line_not_eligible_withheld_note_and_announcement_lab
     assert "> The explanation was withheld: it failed the checks twice." in part
     assert "One line each: the option, the rule it does not meet, and its Match." in md
     assert ("- SYNTHETIC fellowship 1, kept: Open to undergraduate years 1 and 2; your CV "
-            "value is withheld. Match 35 (weak).") in md
+            "says year 4. Match 35 (weak).") in md
 
 
 def test_rule_lines_join_years_and_levels_in_words():
@@ -303,30 +303,9 @@ def test_rule_lines_join_years_and_levels_in_words():
     assert _levels(["bachelor's", "graduate"]) == "bachelor's and graduate"
 
 
-def test_a_documents_export_has_no_bare_record_line_or_award_horizon():
-    """G16: persona-1's export held "Public award horizon: no public award found", from a
-    search that never ran, and a bare "Researcher record (private)" line."""
-    from perch import export as ex
-    from perch.schemas import Researcher
-
-    from .test_export import _inputs
-
-    brief, leads, opps, works = _inputs()
-    brief.researcher_id, brief.topics = "private:you", []
-    you = Researcher(id="private:you", display_name="You (private)",
-                     **{**KW, "source": "private", "source_url": "private://session"})
-    md = ex.to_markdown(ex.blocks(brief, you, leads, opps, {}, works, [], documents=True))
-    assert "award horizon" not in md and "Researcher record" not in md
-    assert "## Research profile" not in md
-    b2, l2, o2, w2 = _inputs()
-    md = ex.to_markdown(ex.blocks(b2, None, l2, o2, {}, w2, []))
-    assert "Public award horizon" in md and "## Research profile" in md
-
-
-def test_a_paper_is_named_in_full_once_per_lead_and_bare_masked_findings_go():
+def test_a_paper_is_named_in_full_once_per_lead():
     """G21: every PI-4 grant named the same two papers by full title in the Model text and
-    the Inference; masked student descriptions all ended "Cited work: one of your
-    achievements [PRIVATE-PHRASE-1]; ..."."""
+    the Inference."""
     from perch import export as ex
 
     from .test_export import _inputs
@@ -336,11 +315,6 @@ def test_a_paper_is_named_in_full_once_per_lead_and_bare_masked_findings_go():
     md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, []))
     assert md.count("“A SYNTHETIC paper on six word titles”") == 1
     assert "Inference: The tool fits (“A SYNTHETIC paper on six…”)." in md
-    assert ex.bare_findings_out("X funds work. Cited work: one of your achievements "
-                                "[PRIVATE-PHRASE-1]; your CV [PRIVATE-PHRASE-2].") == \
-        "X funds work."
-    assert ex.bare_findings_out("X. Cited work: one of your achievements led a survey.") == \
-        "X. Cited work: one of your achievements led a survey."
 
 
 # --- G18: a follow-up's filters, by kind ---

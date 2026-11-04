@@ -1,6 +1,4 @@
-"""Request bodies shared by the stored-brief API (perch.api) and the session routes
-(perch.private.routes). One definition each (review W15); the session routes add only
-what differs."""
+"""Request bodies of the brief API (perch.api). One definition each (review W15)."""
 
 from __future__ import annotations
 

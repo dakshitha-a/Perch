@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import re
 
-from perch import egress
+from perch.llm.contacts import blank_contacts
 from perch.schemas import Opportunity, Work
 
 
@@ -44,13 +44,13 @@ def short_work_id(w: Work) -> str:
 
 
 def work_view(w: Work, abstract_chars: int = 600) -> str:
-    """A paper, or a session document, as a model prompt shows it. A private document's
+    """A paper, or a user document, as a model prompt shows it. A user's own document's
     contact details are blanked before the cut (S33), so no prompt view holds them."""
     year = w.publication_year or "n.d."
     venue = f"; {w.venue}" if w.venue else ""
     text = w.abstract or ""
-    if text and w.source == egress.PRIVATE:
-        text = egress.blank_contacts(text)
+    if text and w.source == "user":
+        text = blank_contacts(text)
     abstract = f"\n  Abstract: {text[:abstract_chars]}" if text else ""
     return f"[{short_work_id(w)}] ({year}{venue}) {w.title}{abstract}"
 

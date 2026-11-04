@@ -20,7 +20,10 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
+from dataclasses import dataclass, field
 from datetime import date, datetime
+from functools import lru_cache
+from pathlib import Path
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -31,7 +34,8 @@ from perch.config import env
 from perch.schemas import Brief, Lead, Record, Work
 from perch.store.base import Page, R, Repository
 from perch.user.data import NotFound, UserData
-from perch.user.models import Audience, StoredBrief, UserDoc
+from perch.user.inputs import make_doc
+from perch.user.models import Audience, CvDoc, EntryDoc, StoredBrief, UserDoc
 
 if TYPE_CHECKING:
     from perch.auth.session import Session
@@ -51,6 +55,35 @@ def using_store(store: BriefStore | None) -> Iterator[None]:
         yield
     finally:
         current_store.reset(tok)
+
+
+@dataclass
+class StudentInputs:
+    """What a student brief reads: the CV text, the interests note and the achievements (one
+    text each). Held only for the length of the job; never written anywhere in plain text."""
+
+    cv: str
+    interests: UserDoc | None = None
+    entries: list[str] = field(default_factory=list)
+
+
+PERSONAS = {"persona-ug": "SYNTHETIC persona-ug"}  # the guest's student sample (ARCH 7.4)
+SYNTHETIC_DIR = Path(__file__).resolve().parents[2] / "data/synthetic"
+
+
+def persona_inputs(name: str) -> StudentInputs:
+    """The SYNTHETIC student persona's CV, interests and achievements (rule 12). Only the
+    names in PERSONAS are read."""
+    from perch.student import achievements
+
+    if name not in PERSONAS:
+        raise LookupError("unknown sample persona")
+    d = SYNTHETIC_DIR / name
+    return StudentInputs(cv=(d / "cv.md").read_text(encoding="utf-8"),
+                         interests=make_doc("interests",
+                                            (d / "interests.md").read_text(encoding="utf-8")),
+                         entries=achievements((d / "achievements.md").read_text(
+                             encoding="utf-8")))
 
 
 class BriefStore(ABC):
@@ -82,6 +115,14 @@ class BriefStore(ABC):
         """User documents (CV text excluded) that become query threads. Empty for guests."""
         return []
 
+    def cv_text(self) -> str | None:
+        """The CV the brief reads, for the researcher's career-stage and sponsor rules."""
+        return None
+
+    def student_inputs(self) -> StudentInputs:
+        """The CV, interests and achievements a student brief reads."""
+        raise LookupError("this brief has no student inputs")
+
     def flush(self) -> None:
         with self._lock:
             if self.brief is None:
@@ -97,6 +138,22 @@ class BriefStore(ABC):
                 return None
             by_id = self.leads
             return self.brief, [by_id[i] for i in self.brief.lead_ids if i in by_id]
+
+
+def _sample(record_id: str) -> Record | None:
+    """A SYNTHETIC sample scholarship by id, read from the sample store (rule 11). A student
+    brief's sample leads point at these; they are never written to the public store."""
+    from perch.scholarships import sample_db
+
+    p = sample_db()
+    return _sample_map(str(p), p.stat().st_mtime_ns if p.exists() else 0).get(record_id)
+
+
+@lru_cache(maxsize=4)
+def _sample_map(path: str, mtime_ns: int) -> dict[str, Record]:  # noqa: ARG001 - cache key
+    from perch.student import samples
+
+    return {s.id: s for s in samples()} if mtime_ns else {}
 
 
 class StoreRepository(Repository):
@@ -132,7 +189,10 @@ class StoreRepository(Repository):
                 return b if b is not None and b.id == id else None  # type: ignore[return-value]
             if cls is Lead:
                 return self.store.leads.get(id)  # type: ignore[return-value]
-        return self.base.get(cls, id)
+        got = self.base.get(cls, id)
+        if got is None and id.startswith("sample:") and cls.kind == "scholarship":
+            return _sample(id)  # type: ignore[return-value]
+        return got
 
     def list(self, cls: type[R], *, include_samples: bool = False) -> list[R]:
         with self.store._lock:
@@ -148,7 +208,7 @@ class StoreRepository(Repository):
                 return self.store.brief
             if id in self.store.leads:
                 return self.store.leads[id]
-        return self.base.get_any(id)
+        return self.base.get_any(id) or (_sample(id) if id.startswith("sample:") else None)
 
     def works_by_author(self, author_id: str) -> list[Work]:
         return self.base.works_by_author(author_id)
@@ -205,7 +265,7 @@ class UserBriefStore(BriefStore):
         self.brief = sb.brief
         self.leads = {x.id: x for x in sb.leads}
         self._doc_ids = [UUID(i) for i in sb.brief.options.get("user_data") or []]
-        self.reads_user_data = bool(self._doc_ids)
+        self.reads_user_data = bool(self._doc_ids) or bool(sb.brief.options.get("student"))
         return True
 
     def _write(self, sb: StoredBrief) -> None:
@@ -226,7 +286,7 @@ class UserBriefStore(BriefStore):
         """True when this brief hands the user's own text to a model: documents or a typed
         direction. The job checks the consent row before it reads either (section 7.5)."""
         o = self.brief.options if self.brief is not None else {}
-        return bool(self._doc_ids or (o.get("direction") or "").strip())
+        return bool(self._doc_ids or o.get("student") or (o.get("direction") or "").strip())
 
     def user_docs(self) -> list[Work]:
         """The documents of kind proposal, direction and manuscript this brief reads, as Works
@@ -244,6 +304,32 @@ class UserBriefStore(BriefStore):
         return out
 
 
+    def cv_text(self) -> str | None:
+        for rid in self._doc_ids:
+            with self._conn() as c:
+                try:
+                    got = self.ud.get(self.user_id, rid, CvDoc, conn=c)
+                except Exception:  # noqa: BLE001 - a row of another model is not the CV
+                    got = None
+            if got is not None:
+                return got.text
+        return None
+
+    def student_inputs(self) -> StudentInputs:
+        """The side's CV, its interests note and its entries (oldest first, so entry A is
+        the first one the student added). Read inside the job's transaction."""
+        with self._conn() as c:
+            cvs = self.ud.list(self.user_id, "cv", self.audience, CvDoc, limit=1, conn=c)
+            docs = self.ud.list(self.user_id, "doc", self.audience, UserDoc, limit=50, conn=c)
+            entries = self.ud.list(self.user_id, "entry", self.audience, EntryDoc, limit=50,
+                                   conn=c)
+        if not cvs:
+            raise ValueError("student mode needs a CV")
+        interests = next((d for _, d in docs if d.id == "user:interests"), None)
+        return StudentInputs(cv=cvs[0][1].text, interests=interests,
+                             entries=[e.text for _, e in reversed(entries)])
+
+
 # --- guest: Redis, public inputs only ---
 
 class GuestBriefStore(BriefStore):
@@ -254,6 +340,12 @@ class GuestBriefStore(BriefStore):
                  ) -> None:
         super().__init__(brief_id)
         self.r, self.gsid_hash, self.job_id = r, gsid_hash, job_id
+
+    def student_inputs(self) -> StudentInputs:
+        """A guest has no CV: the student brief reads the SYNTHETIC persona named in its
+        options (rule 12), and the brief carries the sample label."""
+        name = (self.brief.options.get("persona") if self.brief else None) or ""
+        return persona_inputs(name)
 
     @property
     def state_key(self) -> str:
@@ -294,7 +386,8 @@ def read_guest_result(r: redis.Redis, job_id: UUID | str) -> StoredBrief | None:
 # --- creation and the job's store ---
 
 def create_user_brief(svc: BriefService, ud: UserData, user_id: UUID, audience: Audience,
-                      author_id: str, *, doc_ids: Sequence[UUID] = (), **options: object) -> Brief:
+                      author_id: str | None, *, doc_ids: Sequence[UUID] = (), **options: object
+                      ) -> Brief:
     """Create the brief row (status queued). Its id is the user_data row id; the job payload
     carries that id and nothing else. `doc_ids` are the user_data rows of the documents the
     brief reads: ids only go into the options, and a brief that reads any is user-derived."""
@@ -304,18 +397,23 @@ def create_user_brief(svc: BriefService, ud: UserData, user_id: UUID, audience: 
     if doc_ids:
         ctx = {**(options.pop("context", None) or {}), "user_data": [str(i) for i in doc_ids]}
         options["context"] = ctx
-    store = UserBriefStore(ud, user_id, audience, bid, reads_user_data=bool(doc_ids))
+    student = audience == "student"  # a student brief always reads the CV and entries
+    store = UserBriefStore(ud, user_id, audience, bid, reads_user_data=bool(doc_ids) or student)
     with using_store(store):
-        return svc.create(author_id, brief_id=bid, **options)
+        return svc.create(author_id, brief_id=bid, audience=audience, **options)
 
 
-def create_guest_brief(svc: BriefService, r: redis.Redis, gsid_hash: str, author_id: str,
-                       **options: object) -> Brief:
+def create_guest_brief(svc: BriefService, r: redis.Redis, gsid_hash: str, author_id: str | None,
+                       *, audience: Audience = "researcher", **options: object) -> Brief:
+    """A guest's student brief reads the SYNTHETIC persona-ug sample (rule 12) and says so in
+    its options; a guest's researcher brief reads a public author only."""
     import secrets
 
     bid = secrets.token_urlsafe(9)
+    if audience == "student":
+        options["extra"] = {"persona": "persona-ug", "sample": PERSONAS["persona-ug"]}
     with using_store(GuestBriefStore(r, gsid_hash, bid)):
-        return svc.create(author_id, brief_id=bid, **options)
+        return svc.create(author_id, brief_id=bid, audience=audience, **options)
 
 
 def store_for_job(ctx: JobContext, ud: UserData | None = None, r: redis.Redis | None = None
@@ -356,7 +454,8 @@ def guest_hash(sid: str) -> str:
     return hash_subject(sid)
 
 
-def compute_idempotency_key(owner: str, audience: str, author_id: str, doc_ids: Sequence[UUID],
+def compute_idempotency_key(owner: str, audience: str, author_id: str | None,
+                            doc_ids: Sequence[UUID],
                     options: dict, *, today: date | None = None) -> str:
     """Section 3.4: sha256 over the owner (user id, or the guest session hash), the side, the
     author id, the sorted document ids, a hash of the direction text, the other request
@@ -377,8 +476,18 @@ def compute_idempotency_key(owner: str, audience: str, author_id: str, doc_ids: 
     return hashlib.sha256(canon.encode()).hexdigest()
 
 
+def side_row_ids(ud: UserData, user_id: UUID, audience: str) -> list[UUID]:
+    """The ids of the CV, documents and entries of one side (rows only, no text)."""
+    from perch.store import pg
+
+    with pg.user_tx(ud.pool, user_id) as c:
+        rows = c.execute("SELECT id FROM user_data WHERE user_id = %s AND audience = %s "
+                         "AND kind IN ('cv','doc','entry')", (user_id, audience)).fetchall()
+    return [r[0] for r in rows]
+
+
 def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Redis,
-                 session: Session, author_id: str, *, idempotency_key: str | None = None,
+                 session: Session, author_id: str | None, *, idempotency_key: str | None = None,
                  doc_ids: Sequence[UUID] = (), **options: object) -> tuple[str, UUID]:
     """Create the brief where it lives and enqueue the job with ids only. Returns
     (brief_id, job_id). A signed-in user is held to the per-account rate and daily budget
@@ -390,14 +499,23 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     signed-in request reads documents or a direction text without the current consent."""
     from perch.user import quota
 
+    if session.audience == "student":
+        author_id = None  # a student has no author id; the brief reads the CV
+    elif not author_id:
+        raise ValueError("a researcher brief needs an OpenAlex author id")
     if session.user_id is not None:
         from perch.auth.deps import require_consent
 
         ctx_opt = options.get("context") or {}
-        if doc_ids or (isinstance(ctx_opt, dict) and (ctx_opt.get("direction") or "").strip()):
+        if (doc_ids or session.audience == "student"
+                or (isinstance(ctx_opt, dict) and (ctx_opt.get("direction") or "").strip())):
             require_consent(session)
+        # A student brief reads every CV, note and entry of the side, so the key names their
+        # row ids: a replaced CV or a new entry is a new brief, not the earlier one.
+        key_docs = (side_row_ids(ud, session.user_id, session.audience)
+                    if session.audience == "student" else doc_ids)
         key = idempotency_key or compute_idempotency_key(
-            str(session.user_id), session.audience, author_id, doc_ids, options)
+            str(session.user_id), session.audience, author_id, key_docs, options)
         found = _existing(runner, key, session.user_id, None)
         if found is not None:
             return found
@@ -424,7 +542,7 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     ok, retry = rate_limit(r, "guest_job", gh)
     if not ok:
         raise quota.RateLimited("guest_job", retry)
-    b = create_guest_brief(svc, r, gh, author_id, **options)
+    b = create_guest_brief(svc, r, gh, author_id, audience=session.audience, **options)
     job = runner.submit("brief", {"brief_id": b.id}, None, key,
                         audience=session.audience, guest_sid_hash=bytes.fromhex(gh))
     r.set(f"perch:gsess:{gh}:job:{b.id}", str(job), ex=ttl)  # brief id -> job id, for the read
@@ -438,6 +556,25 @@ def _existing(runner: JobRunner, key: str, user_id: UUID | None, guest: bytes | 
         return None
     got = find("brief", key, user_id, guest_sid_hash=guest)
     return (got[1]["brief_id"], got[0]) if got else None
+
+
+def open_store(ud: UserData, r: redis.Redis, session: Session, brief_id: str
+               ) -> BriefStore | None:
+    """The store holding this session's brief, loaded, or None (also for a brief that belongs
+    to someone else). Set it with `using_store` and every BriefService call reads and writes
+    that brief: one code path for the stored brief routes, signed in or guest."""
+    if session.user_id is not None:
+        try:
+            UUID(brief_id)
+        except ValueError:
+            return None
+        store: BriefStore = UserBriefStore(ud, session.user_id, session.audience, brief_id)
+    else:
+        gh = guest_hash(session.sid)
+        job = r.get(f"perch:gsess:{gh}:job:{brief_id}")
+        store = GuestBriefStore(r, gh, brief_id, UUID(job.decode() if isinstance(job, bytes)
+                                                      else job) if job else None)
+    return store if store.load() else None
 
 
 def load_brief(ud: UserData, r: redis.Redis, session: Session, brief_id: str

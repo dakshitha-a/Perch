@@ -29,6 +29,12 @@ work draft section""".split())
 QUERY_CHARS = 600  # opening text used as the thread's keyword and rerank query
 
 
+def public_thread(t: Thread) -> bool:
+    """A thread built from public OpenAlex works only: no document, nothing typed. Only such a
+    thread's rerank scores may be cached and shared."""
+    return bool(t.work_ids) and all(i.startswith("https://openalex.org/W") for i in t.work_ids)
+
+
 def chunks(text: str) -> list[str]:
     """Paragraphs packed into chunks of about CHUNK_CHARS."""
     out, cur = [], ""

@@ -2,13 +2,17 @@
 
   GET  /health[?deep=true]                     liveness; deep: each model service up or down
   GET  /authors/resolve?q=<name|orcid|id>      candidates for the Find screen
-Since S23 the web app runs every brief in a session (/private/*, perch/private/routes.py),
-and nothing about a visitor is stored. The stored-brief routes below exist only when
-PERCH_STORED_BRIEFS=1 (development, the bench, replays); otherwise they answer 404.
 
-  POST /briefs                                  {"author_id", "as_of"?, "top"?, "explain"?, ...}
-                                                a job (202), limited to 10 new briefs an hour
-                                                per visitor
+One set of brief routes serves both sides and both kinds of visitor. With account services
+(perch/auth, perch/user) a brief belongs to a signed-in user, stored encrypted, or to a guest,
+held in Redis for an hour; the session cookie says which. Without them (unit tests, the bench,
+replays) the routes work on the service's own store when `stored_briefs=True`, and answer 404
+otherwise.
+
+  POST /briefs                                  {"author_id"?, "as_of"?, "top"?, "explain"?, ...}
+                                                a job (202). A student's brief needs no author id:
+                                                it reads the CV and entries (a guest gets the
+                                                SYNTHETIC sample persona)
   GET  /briefs/{id}                             status, stages, profile, leads with records
   POST /briefs/{id}/leads/{lead_id}/keep        and /dismiss, /restore
   GET  /briefs/{id}/export.json[?status=kept]   brief, leads and every record they cite
@@ -18,6 +22,7 @@ PERCH_STORED_BRIEFS=1 (development, the bench, replays); otherwise they answer 4
   POST /briefs/{id}/handoff                     {"office", "lead_ids"?}: a hand-off draft to one
                                                 Temple office about the kept leads (skill 3);
                                                 returned, never stored or sent
+  GET  /briefs/{id}/student/note?route=F|S      a student's note to the office for one route
   GET  /records/{id}                            a stored public record, with provenance
   POST /briefs/{id}/scout                       {"question"}: a Scout session about the
                                                 brief (S10); each step runs at once (S28)
@@ -32,19 +37,23 @@ Briefs run as background jobs; poll GET /briefs/{id}. Nothing is sent anywhere.
 
 from __future__ import annotations
 
+import hashlib
 import ipaddress
+import json
 import logging
 import re
 import threading
 import time
 from collections import defaultdict, deque
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Literal
 from uuid import UUID
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -54,7 +63,6 @@ from pydantic import Field
 
 from perch import awards as aw
 from perch import compare as cmp
-from perch import egress
 from perch import export as ex
 from perch.auth.wiring import install_auth, readiness
 from perch.config import env
@@ -69,6 +77,7 @@ from perch.schemas import (
     Organisation,
     Record,
     Researcher,
+    Scholarship,
     Work,
 )
 from perch.scout.hub import Busy, ScoutHub
@@ -91,11 +100,12 @@ def draft_json(d: Draft) -> dict:
     return {"office": {"key": d.office.key, "name": d.office.name, "url": d.office.url},
             "to": "", "subject": d.subject, "body": d.body, "lead_ids": d.lead_ids,
             "cited_ids": d.cited_ids, "flagged": d.flagged, "model": d.model,
-            "withheld": d.withheld, "opening_by": d.opening_by}
+            "opening_by": d.opening_by}
 
 
 class BriefRequest(BriefOptions):
-    author_id: str = Field(description="OpenAlex author id, e.g. A5023080104")
+    author_id: str | None = Field(None, description="OpenAlex author id, e.g. A5023080104; "
+                                  "a student brief has none")
     agencies: list[str] = Field(default_factory=list)
     audience: Literal["researcher", "student"] | None = None  # v1: the session's side decides
     doc_ids: list[UUID] = Field(default_factory=list, max_length=20)  # signed in: user_data rows
@@ -121,6 +131,45 @@ async def account_session(request: Request) -> object | None:
     return sess
 
 
+async def optional_session(request: Request) -> object | None:
+    """The v1 session when there is one, else None: for routes that serve public records to
+    anyone and the user's own documents to their owner."""
+    if getattr(request.app.state, "user_services", None) is None:
+        return None
+    import inspect
+
+    from perch.auth import deps
+
+    fn = request.app.dependency_overrides.get(deps.session_optional, deps.session_optional)
+    sess = fn(request)
+    return await sess if inspect.isawaitable(sess) else sess
+
+
+def user_record(request: Request, sess: object | None, record_id: str) -> dict | None:
+    """One of the signed-in user's own documents, by the id an explanation cites it by:
+    `user:proposal`, `user:interests`, `user:achievement-a` (entries, oldest first). The CV is
+    not served; its parse is on the brief. Only the owner's rows are read."""
+    from perch.student import achievement_docs
+    from perch.user.models import EntryDoc, UserDoc
+
+    if sess is None or getattr(sess, "user_id", None) is None:
+        return None
+    sv = request.app.state.user_services
+    kind = record_id.split(":", 1)[1]
+    doc: UserDoc | None = None
+    if kind.startswith("achievement-"):
+        entries = [e.text for _, e in reversed(sv.ud.list(sess.user_id, "entry", sess.audience,
+                                                          EntryDoc, limit=50))]
+        doc = next((d for d in achievement_docs(entries) if d.id == record_id), None)
+    else:
+        doc = next((d for _, d in sv.ud.list(sess.user_id, "doc", sess.audience, UserDoc,
+                                             limit=50) if d.id == record_id), None)
+    if doc is None:
+        return None
+    return {"kind": "user", "id": doc.id, "title": doc.title, "text": doc.abstract,
+            "source": "user", "source_url": None, "fetched_at": doc.fetched_at.isoformat()}
+
+
 class WebFiles(StaticFiles):
     """The web app's files, revalidated on every load (S27). Without a Cache-Control
     header, browsers kept old scripts after a release, so visitors saw the previous app."""
@@ -135,16 +184,21 @@ def record_json(r: Record) -> dict:
     return {"kind": r.kind, **r.model_dump(mode="json")}
 
 
-def lead_json(lead: Lead, opp: Opportunity | None) -> dict:
+def lead_json(lead: Lead, r: Repository) -> dict:
+    """A lead with its record, by the lead's route: A a grant, B a company with its signals,
+    F and S a student's fellowship or scholarship. Every value is copied from the record."""
+    if lead.route == "B":
+        return _route_b(lead, r)
+    if lead.route in ("F", "S"):
+        return _student(lead, r)
+    opp = r.get(Opportunity, lead.record_id)
     return {**lead.model_dump(mode="json"),
             "opportunity": opp.model_dump(mode="json", exclude={"description"}) if opp else None}
 
 
-def student_json(lead: Lead, r: Repository) -> dict:
-    """A student-mode lead (route F or S) with its record: a Scholarship, or the NIH
-    Opportunity behind a fellowship. Every value is copied from the record."""
-    from perch.schemas import Scholarship
-
+def _student(lead: Lead, r: Repository) -> dict:
+    """A student lead (route F or S) with its record: a Scholarship, or the NIH Opportunity
+    behind a fellowship."""
     rec = r.get(Scholarship, lead.record_id) or r.get(Opportunity, lead.record_id)
     out = {**lead.model_dump(mode="json"), "record": None}
     if isinstance(rec, Scholarship):
@@ -160,7 +214,7 @@ def student_json(lead: Lead, r: Repository) -> dict:
 SIGNAL_RECORDS = 25  # records sent per Route B signal, newest first; any beyond are counted (U38)
 
 
-def route_b_json(lead: Lead, r: Repository) -> dict:
+def _route_b(lead: Lead, r: Repository) -> dict:
     """A Route B lead with its organisation and, per signal, the code-written sentence and
     the newest few evidence records (title and date copied from each record)."""
     from perch.route_b import sentence
@@ -283,8 +337,8 @@ class SecurityHeaders:
             await self.app(scope, receive, send)
             return
         docs = scope.get("path", "") in ("/docs", "/redoc", "/docs/oauth2-redirect")
-        # A session's answers are never kept by the browser's HTTP cache (review P3).
-        private = scope.get("path", "").startswith("/private")
+        # A user's answers are never kept by the browser's HTTP cache (review P3).
+        private = scope.get("path", "").startswith(("/briefs", "/scout", "/me"))
 
         async def add(message: dict) -> None:
             if message["type"] == "http.response.start":
@@ -380,12 +434,11 @@ def create_app(service: BriefService, runner: ClosureRunner,
                resolver: type[oa.OpenAlexClient] | None = None,
                web_dir: Path | None = WEB_DIR, scout_runner: ClosureRunner | None = None,
                scout_log: ScoutLog | None = None, stored_briefs: bool | None = None) -> FastAPI:
-    if stored_briefs is None:
-        stored_briefs = env("PERCH_STORED_BRIEFS") == "1"
+    stored_briefs = bool(stored_briefs)
 
-    def stored_only() -> None:
-        if not stored_briefs:
-            raise HTTPException(404, "Briefs are not stored on this server; use a session.")
+    def stored_only(request: Request) -> None:
+        if not stored_briefs and getattr(request.app.state, "user_services", None) is None:
+            raise HTTPException(404, "Briefs are not available on this server.")
 
     STORED = [Depends(stored_only)]
     app = FastAPI(title="Perch API", description="See every route to fund your work. "
@@ -462,7 +515,8 @@ def create_app(service: BriefService, runner: ClosureRunner,
     @app.post("/briefs", status_code=202, dependencies=STORED)
     def create_brief(req: BriefRequest, request: Request,
                      sess: object | None = Depends(account_session)) -> dict:
-        if not oa.parse_author_id(req.author_id):
+        student = sess is not None and sess.audience == "student"
+        if not student and not oa.parse_author_id(req.author_id or ""):
             raise HTTPException(422, f"not an OpenAlex author id: {req.author_id!r}")
         if sess is not None:  # v1: the brief lives in user_data (or Redis for a guest)
             from perch.redisx import QuotaExceeded
@@ -508,29 +562,50 @@ def create_app(service: BriefService, runner: ClosureRunner,
             raise HTTPException(404, f"no brief {brief_id!r}")
         return got
 
+    @contextmanager
+    def scope(request: Request, sess: object | None, brief_id: str) -> Iterator[None]:
+        """With accounts, the brief lives in its owner's store (encrypted rows, or Redis for a
+        guest): set it for the call, so every service call reads and writes that brief.
+        Another user's brief is a 404. Without accounts nothing changes."""
+        if sess is None:
+            yield
+            return
+        from perch.user.briefs import open_store, using_store
+
+        sv = request.app.state.user_services
+        store = open_store(sv.ud, sv.redis, sess, brief_id)
+        if store is None:
+            raise HTTPException(404, {"error": "not_found"})
+        with using_store(store):
+            yield
+
+    def signed_in(sess: object | None) -> None:
+        """Hand-offs and Scout need an account (guests store nothing; ARCHITECTURE_V1 7.4)."""
+        if sess is not None and sess.user_id is None:
+            raise HTTPException(403, {"error": "account_required"})
+        if sess is not None:
+            from perch.auth.deps import require_consent
+
+            require_consent(sess)
+
     @app.get("/briefs/{brief_id}", dependencies=STORED)
     def get_brief(brief_id: str, request: Request,
-                  sess: object | None = Depends(account_session)) -> dict:
-        if sess is not None:
-            from perch.user.briefs import load_brief
+                  sess: object | None = Depends(account_session)) -> Response:
+        """The brief, with an ETag: a poll that sends the last ETag gets 304 and no body
+        while nothing changed (review P3)."""
+        with scope(request, sess, brief_id):
+            out = brief_view(brief_id)
+        body = json.dumps(jsonable_encoder(out), separators=(",", ":")).encode()
+        tag = '"' + hashlib.sha256(body).hexdigest()[:20] + '"'
+        if request.headers.get("if-none-match") == tag:
+            return Response(status_code=304, headers={"ETag": tag})
+        return Response(body, media_type="application/json", headers={"ETag": tag})
 
-            sv = request.app.state.user_services
-            sb = load_brief(sv.ud, sv.redis, sess, brief_id)
-            if sb is None:
-                raise HTTPException(404, {"error": "not_found"})
-            return brief_view(brief_id, loaded=(sb.brief, sb.leads))
-        return brief_view(brief_id)
-
-    def brief_view(brief_id: str, svc: BriefService = service,
-                   loaded: tuple[Brief, list[Lead]] | None = None) -> dict:
-        b, leads = loaded or load(brief_id, svc)
+    def brief_view(brief_id: str, svc: BriefService = service) -> dict:
+        b, leads = load(brief_id, svc)
         with svc.repo() as r:
             res = r.get(Researcher, b.researcher_id)
-            opps = {x.record_id: r.get(Opportunity, x.record_id) for x in leads
-                    if x.route == "A"}
-            out = [lead_json(x, opps.get(x.record_id)) if x.route == "A"
-                   else route_b_json(x, r) if x.route == "B" else student_json(x, r)
-                   for x in leads]
+            out = [lead_json(x, r) for x in leads]
             ov = aw.load_overrides(res.id, svc.overrides) if res else None
             linked = aw.link_stored(res, r.list(Award), ov) if res and ov else []
             pids = {i for t in b.threads for i in t.get("work_ids", [])[:KEY_PAPERS]}
@@ -558,27 +633,24 @@ def create_app(service: BriefService, runner: ClosureRunner,
             raise HTTPException(404, f"no lead {lead_id!r} in brief {brief_id!r}")
         return lead.model_dump(mode="json")
 
-    @app.post("/briefs/{brief_id}/leads/{lead_id}/keep", dependencies=STORED)
-    def keep(brief_id: str, lead_id: str) -> dict:
-        return set_status(brief_id, lead_id, "kept")
-
-    @app.post("/briefs/{brief_id}/leads/{lead_id}/dismiss", dependencies=STORED)
-    def dismiss(brief_id: str, lead_id: str) -> dict:
-        return set_status(brief_id, lead_id, "dismissed")
-
-    @app.post("/briefs/{brief_id}/leads/{lead_id}/restore", dependencies=STORED)
-    def restore(brief_id: str, lead_id: str) -> dict:
-        return set_status(brief_id, lead_id, "new")
+    @app.post("/briefs/{brief_id}/leads/{lead_id}/{action}", dependencies=STORED)
+    def lead_action(brief_id: str, lead_id: str, action: Literal["keep", "dismiss", "restore"],
+                    request: Request, sess: object | None = Depends(account_session)) -> dict:
+        status = {"keep": "kept", "dismiss": "dismissed", "restore": "new"}[action]
+        with scope(request, sess, brief_id):
+            return set_status(brief_id, lead_id, status)
 
     @app.get("/briefs/{brief_id}/export.json", dependencies=STORED)
-    def export(brief_id: str, status: str | None = None) -> dict:
-        return export_json(brief_id, status)
+    def export(brief_id: str, request: Request, status: str | None = None,
+               sess: object | None = Depends(account_session)) -> dict:
+        with scope(request, sess, brief_id):
+            return export_json(brief_id, status)
 
-    def export_json(brief_id: str, status: str | None = None, svc: BriefService = service,
-                    masker: egress.Masker | None = None, documents: bool = False) -> dict:
-        """`documents`: a session holding documents; every model text counts as private."""
+    def export_json(brief_id: str, status: str | None = None, svc: BriefService = service
+                    ) -> dict:
+        """The whole brief: the user's own, so nothing is withheld. A sample persona's
+        records stay in a list of their own (rule 11)."""
         b, leads = load(brief_id, svc)
-        documents = documents or bool(b.options.get("documents"))
         if status:  # e.g. ?status=kept: the Keep bar's download
             leads = [x for x in leads if x.status == status]
         ids = {b.researcher_id, *(x.record_id for x in leads)}
@@ -588,36 +660,10 @@ def create_app(service: BriefService, runner: ClosureRunner,
                 if not c.startswith("W")}
         ids |= {i for x in leads for sig in x.signals for i in sig.record_ids}
         with svc.repo() as r:
-            records = [record_json(x) for x in
-                       egress.public_only(y for y in (r.get_any(i) for i in sorted(ids)) if y)]
-        out_leads = [{**x.model_dump(mode="json"),
-                      "explanation": egress.release_model(x.explanation, x.cited_ids, masker,
-                                                          documents),
-                      "inference": egress.release_model(x.inference, x.cited_ids, masker,
-                                                        documents),
-                      # Layer 2 flags quote the model's own sentences, so they leave alike.
-                      "unsupported": [egress.release_model(u, x.cited_ids, masker, documents)
-                                      for u in x.unsupported],
-                      "notes": [egress.release(n, ["private:cv"], masker) if "(private)" in n
-                                else n for n in x.notes],
-                      # Student mode: the rule lines and gaps are written by code, so they
-                      # stay; only model text is withheld (Q12). A CV value in a line is
-                      # dropped, or masked on opt-in (Q42).
-                      "verdict_lines": [egress.release_cv_line(v, masker)
-                                        for v in x.verdict_lines],
-                      "gaps": [egress.release_cv_line(g, masker) for g in x.gaps],
-                      } for x in leads]
-        brief = b.model_dump(mode="json")
-        brief.update(summary=egress.release_model(b.summary, [], masker, documents),
-                     topics=[t for t in (egress.release_model(x, [], masker, documents)
-                                         for x in b.topics) if t != egress.WITHHELD],
-                     threads=[egress.release_thread(t, masker) for t in b.threads])
-        out = {"brief": brief, "leads": out_leads, "records": records,
+            records = [record_json(y) for y in (r.get_any(i) for i in sorted(ids)) if y]
+        out_leads = [x.model_dump(mode="json") for x in leads]
+        out = {"brief": b.model_dump(mode="json"), "leads": out_leads, "records": records,
                "notice": grants_gov.ATTRIBUTION}
-        if documents and masker is not None:  # an export that holds documents says so
-            out["documents_note"] = ex.DOCUMENTS_NOTE
-            if getattr(masker, "active", False):
-                out["masked_note"] = ex.MASKED_NOTE
         if any(x.sample for x in leads):
             out["sample_notice"] = ex.SAMPLE_BANNER
             # G23, rule 11: SYNTHETIC samples never share a list with public records
@@ -628,21 +674,16 @@ def create_app(service: BriefService, runner: ClosureRunner,
             out["records"] = [r for r in records if r.get("source") != "synthetic"]
         return out
 
-    def export_blocks(brief_id: str, status: str | None, svc: BriefService = service,
-                      masker: egress.Masker | None = None,
-                      documents: bool = False) -> tuple[list, str]:
+    def export_blocks(brief_id: str, status: str | None, svc: BriefService = service
+                      ) -> tuple[list, str]:
         b, leads = load(brief_id, svc)
-        documents = documents or bool(b.options.get("documents"))
         if status:
             leads = [x for x in leads if x.status == status]
         if b.options.get("student"):
-            from perch.schemas import Scholarship
-
             with svc.repo() as r:
                 recs = {x.record_id: r.get(Scholarship, x.record_id)
                         or r.get(Opportunity, x.record_id) for x in leads}
-            return (ex.student_blocks(b, leads, recs, masker=masker, documents=documents),
-                    "Perch student brief (private)")
+            return ex.brief_blocks(b, leads, records=recs), "Perch student brief"
         with svc.repo() as r:
             res = r.get(Researcher, b.researcher_id)
             opps = {x.record_id: o for x in leads if x.route == "A"
@@ -656,50 +697,86 @@ def create_app(service: BriefService, runner: ClosureRunner,
                                                                       b.summary or "")}
             works = {w.id: w for w in (r.get(Work, i) for i in sorted(wids)) if w}
             rows = cmp.compare(b, leads, r, "kept")
-        name = ("your documents" if b.researcher_id.startswith("private:")  # F27
-                else res.display_name if res else b.researcher_id)
-        return (ex.blocks(b, res, leads, opps, orgs, works, rows, masker=masker,
-                          documents=documents),
+        docs = bool(b.options.get("user_data"))  # the brief read the user's own documents
+        name = res.display_name if res else b.researcher_id
+        return (ex.brief_blocks(b, leads, researcher=res, opps=opps, orgs=orgs, works=works,
+                                compare_rows=rows, documents=docs),
                 f"Perch brief: {name}")
 
     @app.get("/briefs/{brief_id}/export.md", dependencies=STORED)
-    def export_md(brief_id: str, status: Literal["kept"] | None = None) -> Response:
-        bs, _ = export_blocks(brief_id, status)
+    def export_md(brief_id: str, request: Request, status: Literal["kept"] | None = None,
+                  sess: object | None = Depends(account_session)) -> Response:
+        with scope(request, sess, brief_id):
+            bs, _ = export_blocks(brief_id, status)
         return Response(ex.to_markdown(bs), media_type="text/markdown; charset=utf-8",
                         headers={"Content-Disposition":
                                  f'attachment; filename="perch-brief-{brief_id}.md"'})
 
     @app.get("/briefs/{brief_id}/export.html", dependencies=STORED)
-    def export_html(brief_id: str, status: Literal["kept"] | None = None) -> Response:
-        bs, title = export_blocks(brief_id, status)
+    def export_html(brief_id: str, request: Request, status: Literal["kept"] | None = None,
+                    sess: object | None = Depends(account_session)) -> Response:
+        with scope(request, sess, brief_id):
+            bs, title = export_blocks(brief_id, status)
         return Response(ex.to_html(bs, title), media_type="text/html; charset=utf-8")
 
     @app.get("/briefs/{brief_id}/compare", dependencies=STORED)
-    def compare_view(brief_id: str, status: Literal["kept", "all"] = "kept") -> dict:
-        b, leads = load(brief_id)
-        with service.repo() as r:
-            rows = cmp.compare(b, leads, r, None if status == "all" else status)
+    def compare_view(brief_id: str, request: Request,
+                     status: Literal["kept", "all"] = "kept",
+                     sess: object | None = Depends(account_session)) -> dict:
+        with scope(request, sess, brief_id):
+            b, leads = load(brief_id)
+            with service.repo() as r:
+                rows = cmp.compare(b, leads, r, None if status == "all" else status)
         return cmp.rows_json(rows)
 
     handoff_limiter = RateLimiter(int(env("PERCH_HANDOFF_PER_HOUR") or 30))
 
     @app.post("/briefs/{brief_id}/handoff", dependencies=STORED)
-    def handoff(brief_id: str, req: HandoffRequest, request: Request) -> dict:
-        load(brief_id)
-        wait = handoff_limiter.take(client_key(request))
-        if wait:
-            raise HTTPException(429, f"Too many drafts this hour. Try again in {wait // 60 + 1} "
-                                "minutes.", headers={"Retry-After": str(wait)})
-        try:
-            d = service.handoff(brief_id, req.office, req.lead_ids or None)
-        except LookupError as e:  # F26: nothing kept for that office
-            raise HTTPException(422, str(e)) from e
+    def handoff(brief_id: str, req: HandoffRequest, request: Request,
+                sess: object | None = Depends(account_session)) -> dict:
+        signed_in(sess)
+        with scope(request, sess, brief_id):
+            b, _ = load(brief_id)
+            if b.options.get("student"):  # student notes come from /student/note
+                raise HTTPException(422, "A student brief drafts its note to the office from "
+                                    "the Compare tab.")
+            wait = handoff_limiter.take(client_key(request))
+            if wait:
+                raise HTTPException(429, f"Too many drafts this hour. Try again in "
+                                    f"{wait // 60 + 1} minutes.",
+                                    headers={"Retry-After": str(wait)})
+            try:
+                d = service.handoff(brief_id, req.office, req.lead_ids or None)
+            except LookupError as e:  # F26: nothing kept for that office
+                raise HTTPException(422, str(e)) from e
         if d is None:
             raise HTTPException(404, f"no brief {brief_id!r}")
         return draft_json(d)
 
+    @app.get("/briefs/{brief_id}/student/note", dependencies=STORED)
+    def student_note(brief_id: str, route: Literal["F", "S"], request: Request,
+                     sess: object | None = Depends(account_session)) -> dict:
+        """The Compare tab's note for one route, written by code (review W9): the same
+        function as Scout's draft_note, so there is one source."""
+        from perch.scout.student_tools import facts_of, record_of, write_note
+
+        with scope(request, sess, brief_id):
+            b, leads = load(brief_id)
+            if not b.options.get("student"):
+                raise HTTPException(422, "Only a student brief has a note.")
+            kept = [x for x in leads if x.status == "kept" and x.route == route]
+            if not kept:
+                raise HTTPException(404, "Nothing kept for that office.")
+            return write_note(route, [(x, facts_of(record_of(service, x))) for x in kept])
+
     @app.get("/records/{record_id:path}")
-    def get_record(record_id: str) -> dict:
+    def get_record(record_id: str, request: Request,
+                   sess: object | None = Depends(optional_session)) -> dict:
+        if record_id.startswith("user:"):  # the signed-in user's own document or entry
+            doc = user_record(request, sess, record_id)
+            if doc is None:
+                raise HTTPException(404, f"no record {record_id!r}")
+            return doc
         with service.repo() as r:
             x = r.get_any(record_id)
             if x is None and re.fullmatch(r"[AWI]\d+", record_id):  # short OpenAlex id
@@ -721,46 +798,56 @@ def create_app(service: BriefService, runner: ClosureRunner,
                                 f"hour reached. Try again in {wait // 60 + 1} minutes.",
                                 headers={"Retry-After": str(wait)})
 
-    @app.post("/briefs/{brief_id}/scout", status_code=202, dependencies=STORED)
-    def scout_start(brief_id: str, req: ScoutRequest, request: Request) -> dict:
-        b, _ = load(brief_id)
-        if b.status != "done":
-            raise HTTPException(409, "Scout can start once the brief has finished.")
-        if not req.question.strip():
-            raise HTTPException(422, "Ask Scout a question.")
-        ask_allowed(request)
-        return scout_view(hub.start(brief_id, b.researcher_id, req.question.strip()))
+    def owner_of(sess: object | None) -> str | None:
+        return None if sess is None else str(sess.user_id)
 
-    def entry(sid: str):  # noqa: ANN202 - an Entry
+    @app.post("/briefs/{brief_id}/scout", status_code=202, dependencies=STORED)
+    def scout_start(brief_id: str, req: ScoutRequest, request: Request,
+                    sess: object | None = Depends(account_session)) -> dict:
+        signed_in(sess)
+        with scope(request, sess, brief_id):
+            b, _ = load(brief_id)
+            if b.status != "done":
+                raise HTTPException(409, "Scout can start once the brief has finished.")
+            if not req.question.strip():
+                raise HTTPException(422, "Ask Scout a question.")
+            ask_allowed(request)
+            return scout_view(hub.start(brief_id, b.researcher_id, req.question.strip(),
+                                        owner=owner_of(sess)))
+
+    def entry(sid: str, sess: object | None):  # noqa: ANN202 - an Entry
         e = hub.get(sid)
-        if e is None:
+        if e is None or e.owner != owner_of(sess):  # another user's session is a 404
             raise HTTPException(404, "No such Scout session. Sessions end when the server "
                                 "restarts.")
         return e
 
     @app.get("/scout/{sid}", dependencies=STORED)
-    def scout_get(sid: str) -> dict:
-        return scout_view(entry(sid))
+    def scout_get(sid: str, sess: object | None = Depends(account_session)) -> dict:
+        return scout_view(entry(sid, sess))
 
     @app.post("/scout/{sid}/{action}", status_code=202, dependencies=STORED)
     def scout_act(sid: str, action: Literal["ask", "stop"],
-                  req: ScoutRequest, request: Request) -> dict:
-        e = entry(sid)
+                  req: ScoutRequest, request: Request,
+                  sess: object | None = Depends(account_session)) -> dict:
+        e = entry(sid, sess)
         if action == "ask":
             if not req.question.strip():
                 raise HTTPException(422, "Ask Scout a question.")
             ask_allowed(request)
         try:
-            hub.act(e, action, req.question.strip())
+            with scope(request, sess, e.brief_id):
+                hub.act(e, action, req.question.strip())
         except Busy as err:
             raise HTTPException(409, str(err)) from err
         return scout_view(e)
 
-    from perch.private.routes import add_private_routes
+    from perch.scholarships import ensure_samples
 
-    add_private_routes(app, service, runner, scout_runner or runner, brief_view=brief_view,
-                       export_json=export_json, export_blocks=export_blocks, load=load,
-                       limiter=RateLimiter, client_key=client_key)
+    try:  # the SYNTHETIC sample store a student brief reads (rule 11)
+        ensure_samples()
+    except OSError:
+        logging.getLogger("perch").warning("the sample store could not be prepared")
 
     from perch.user.routes import router as user_router
 

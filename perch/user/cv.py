@@ -1,8 +1,8 @@
-"""Deterministic CV parse for private mode. Never a model.
+"""Deterministic CV parse. Never a model.
 
 Reads the doctoral degree year, the current rank, the appointments, the sponsors of
 listed funding, and whether a substantial NIH research award is listed. Used for two
-rules, both shown on the lead as private and both written by code:
+rules, both shown on the lead and both written by code:
 
 - Career-stage unlock: NIH defines an early-stage investigator as someone within 10
   years of their terminal research degree or the end of post-graduate clinical
@@ -65,7 +65,7 @@ class CVFacts:
                 and not self.nih_substantial)
 
     def esi_note(self) -> str:
-        return (f"May be eligible as an early-stage investigator per your CV (private): "
+        return (f"May be eligible as an early-stage investigator per your CV: "
                 f"doctorate {self.degree_year}, no substantial NIH award listed. NIH's rule "
                 f"also counts clinical training and extensions; check {ESI_URL}")
 

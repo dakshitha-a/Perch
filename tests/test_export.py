@@ -2,7 +2,6 @@
 
 from datetime import UTC, date, datetime
 
-from perch import egress
 from perch import export as ex
 from perch.schemas import Brief, Lead, Opportunity, Work
 
@@ -43,21 +42,20 @@ def test_export_names_papers_numbers_without_gaps_and_writes_dates_as_the_screen
     assert "last public award): 30 Jun 2016" in md and "2026-10-31" not in md
 
 
-def test_a_documents_export_says_withheld_once_per_line_and_where_it_came_from():
-    """Q24: "Topics withheld: Withheld: ..." and "Inference: Withheld: ..." said it
-    twice, and the header said public records only."""
+def test_a_documents_export_says_where_it_came_from_and_prints_model_text_in_full():
+    """Q24: the header says the brief read the user's own documents. The brief is the user's
+    own (S42), so nothing is withheld or masked: the summary, topics and inference print."""
     brief, leads, opps, works = _inputs()
+    brief.summary = "A SYNTHETIC summary."
     md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, [], documents=True))
     assert "Built by Perch from your documents and public records." in md
     assert "Built from public records" not in md
-    for line in md.splitlines():
-        assert line.count("ithheld") <= 1, line
-    assert "Topics withheld: this text draws on private documents" in md
-    assert "Inference withheld: this text draws on private documents" in md
-    masked = egress.Masker()
-    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, [], masker=masked,
-                                  documents=True))
+    assert ex.DOCUMENTS_NOTE in md
+    assert "A SYNTHETIC summary." in md and "SYNTHETIC topic" in md
     assert "Inference: The tool fits" in md and "(2024)" in md
+    assert "ithheld" not in md
+    plain = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, []))
+    assert "Built from public records by Perch" in plain and ex.DOCUMENTS_NOTE not in plain
 
 
 def test_the_kept_leads_table_writes_closes_as_the_screen():
@@ -80,7 +78,7 @@ def _student_inputs():
     """A SYNTHETIC student brief: three fellowships (the second dismissed) and one sample."""
     from perch.schemas import Scholarship, ScholarshipEligibility
 
-    brief = Brief(id="s", researcher_id="private:student", options={"as_of": "2026-10-31",
+    brief = Brief(id="s", researcher_id="user:you", options={"as_of": "2026-10-31",
                                                                      "student": True}, **KW)
     pub = {"source": "temple_sdfa", "source_url": "https://undergraduate.temple.edu/x",
            "fetched_at": T}
@@ -99,8 +97,8 @@ def _student_inputs():
                       verdict_lines=["Asks for a GPA of at least 3.50; your CV says 3.40."],
                       gaps=["2 letters of recommendation; your CV lists 1 referee", "An essay"],
                       explanation="[sch-0001] supports undergraduates. Cited work: "
-                      "private:achievement-a led a SYNTHETIC survey [achievement-a].",
-                      cited_ids=["sample:sch-0001", "private:achievement-a"],
+                      "user:achievement-a led a SYNTHETIC survey [achievement-a].",
+                      cited_ids=["sample:sch-0001", "user:achievement-a"],
                       source="synthetic", source_url="synthetic://sample/sch-0001",
                       fetched_at=T))
     return brief, leads, recs
@@ -116,21 +114,14 @@ def test_the_student_export_numbers_without_gaps_and_counts_dismissed():
     assert "1 kept, 3 shown, 1 dismissed." in md
 
 
-def test_student_exports_keep_the_rule_and_drop_the_cv_value():
-    """Q42: a rule line in a student export keeps the rule and drops the value the rule
-    read from the CV; with masking chosen the value is masked, with its key in memory."""
+def test_student_exports_keep_the_rule_and_the_cv_value():
+    """Q42, changed in S42: the brief is the student's own, built from their CV, so a rule
+    line keeps the value the rule read from it ("your CV says 3.40")."""
     brief, leads, recs = _student_inputs()
     md = ex.to_markdown(ex.student_blocks(brief, leads, recs))
-    assert "Asks for a GPA of at least 3.50; your CV value is withheld." in md
-    assert "2 letters of recommendation; your CV value is withheld" in md
-    assert "3.40" not in md and "1 referee" not in md
-    assert "Still needed: 2 letters of recommendation; your CV value is withheld; an essay" in md
-    m = egress.Masker()
-    md = ex.to_markdown(ex.student_blocks(brief, leads, recs, masker=m))
-    assert "your CV says \\[CV-VALUE-1\\]." in md and "3.40" not in md
-    assert m.unmask("[CV-VALUE-1]") == "3.40"
-    assert egress.release_cv_line("Your CV does not say your level of study.") == \
-        "Your CV does not say your level of study."
+    assert "Asks for a GPA of at least 3.50; your CV says 3.40." in md
+    assert "withheld" not in md.replace("The explanation was withheld", "")
+    assert "Still needed: 2 letters of recommendation; your CV lists 1 referee; an essay" in md
 
 
 def test_student_record_links_name_their_source_not_the_url():
@@ -150,8 +141,8 @@ def test_student_record_links_name_their_source_not_the_url():
 
 def test_exports_render_citations_as_the_screen_with_no_raw_ids():
     """R9: the profile summary kept "[W7166556526, ...]", a documents export kept
-    "[private:manuscript]" and "[HT942526PRPIIRA, proposal, manuscript]", and a masked
-    student export kept "[sch-0001] supports ..." and "private:achievement-a [...]"."""
+    "[user:manuscript]" and "[HT942526PRPIIRA, proposal, manuscript]", and a
+    student export kept "[sch-0001] supports ..." and "user:achievement-a [...]"."""
     import re
 
     brief, leads, opps, works = _inputs()
@@ -162,38 +153,19 @@ def test_exports_render_citations_as_the_screen_with_no_raw_ids():
     assert "SYNTHETIC tools (“A SYNTHETIC paper”, 2024; a paper on file)." in md
     assert "The program funds SYNTHETIC work. Cited work: “A SYNTHETIC paper” (2024) " \
         "developed a SYNTHETIC tool." in md  # its own number and the repeat go, as on the card
-    assert not re.search(r"\bW\d{5,}|private:", md)
+    assert not re.search(r"\bW\d{5,}|user:", md)
     text = ex.name_papers("Fits [HT942526PRPIIRA, proposal, manuscript] and "
-                          "[private:manuscript].", works)
+                          "[user:manuscript].", works)
     assert text == "Fits (HT942526PRPIIRA; your draft proposal; your unpublished work) and " \
         "(your unpublished work)."
-    m = egress.Masker()
-    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, [], masker=m,
-                                  documents=True))
-    assert not re.search(r"\bW\d{5,}|private:", md)
+    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, [], documents=True))
+    assert not re.search(r"\bW\d{5,}|user:", md)
     s_brief, s_leads, recs = _student_inputs()
-    m = egress.Masker()
-    md = ex.to_markdown(ex.student_blocks(s_brief, s_leads, recs, masker=m))
+    md = ex.to_markdown(ex.student_blocks(s_brief, s_leads, recs))
     assert "Quillfen SYNTHETIC Award (sample) supports undergraduates." in md
     assert "Cited work: one of your achievements led a SYNTHETIC survey." in md
     model = "\n".join(x for x in md.splitlines() if x.startswith("> **Model:**"))
-    assert not re.search(r"\bsch-\d|private:|\[achievement", model)
-    assert ex.name_papers("A [PRIVATE-PHRASE-1] phrase.", {}) == "A [PRIVATE-PHRASE-1] phrase."
-
-
-def test_a_withholding_export_no_longer_carries_a_count_banner():
-    """R10, replaced 2026-11-02: the "N model texts withheld" banner is gone; the
-    withheld lines themselves stay for a caller that passes no masker."""
-    brief, leads, opps, works = _inputs()
-    brief.summary = "A SYNTHETIC summary."
-    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, [], documents=True))
-    lines = [x for x in md.splitlines() if x.startswith("> ") and "withheld: this text" in x
-             or x == "> **Model:** " + egress.WITHHELD]
-    assert len(lines) == 4  # summary, topics, explanation, inference
-    assert "model texts withheld" not in md and not hasattr(egress, "withheld_note")
-    s_brief, s_leads, recs = _student_inputs()
-    md = ex.to_markdown(ex.student_blocks(s_brief, s_leads, recs))
-    assert "model text withheld" not in md and md.count(egress.WITHHELD) == 1
+    assert not re.search(r"\bsch-\d|user:|\[achievement", model)
 
 
 def test_the_industry_section_says_what_the_tab_says_and_one_line_when_skipped():

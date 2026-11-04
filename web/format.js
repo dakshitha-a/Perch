@@ -136,7 +136,7 @@ export function shortId(id) {
 
 // Split text into plain strings and citation ids. Ids are [BRACKETED] tokens or bare
 // OpenAlex work ids (W followed by digits).
-const ID = "[A-Za-z0-9][A-Za-z0-9.:\\-]*"; // private ids carry a colon (private:proposal)
+const ID = "[A-Za-z0-9][A-Za-z0-9.:\\-]*"; // user document ids carry a colon (user:proposal)
 const TOKEN = new RegExp(`\\[(${ID}(?:,\\s*${ID})*)\\]|\\b(W\\d{5,})\\b`, "g");
 
 // F2: a card's citation of its own record that stands in a sentence as a noun ("the aims
@@ -176,10 +176,10 @@ export function secondPerson(text) {
 }
 
 // G1: the fit model cites a document by its short key ("[proposal]"); the record is
-// private:proposal.
+// user:proposal.
 const DOC_KEYS = /^(?:cv|proposal|direction|manuscript)$/;
 export function docId(id, known) {
-  return DOC_KEYS.test(id) && (!known || known.has(`private:${id}`)) ? `private:${id}` : id;
+  return DOC_KEYS.test(id) && (!known || known.has(`user:${id}`)) ? `user:${id}` : id;
 }
 
 export function segments(text, known = null, own = null) {
@@ -224,7 +224,7 @@ export function parseExplanation(text, citedIds = [], own = null) {
   const findings = [];
   for (const part of body.split(/;\s+/)) {
     // A finding's own trailing citation is dropped: the document or paper heads its line (G1).
-    const m = part.match(/^(W\d+|private:[a-z]+)\s+([\s\S]*?)(?:\s*\[(?:W\d+|private:[a-z]+|cv|proposal|direction|manuscript)\])?$/);
+    const m = part.match(/^(W\d+|user:[a-z]+)\s+([\s\S]*?)(?:\s*\[(?:W\d+|user:[a-z]+|cv|proposal|direction|manuscript)\])?$/);
     if (!m || !m[2].trim()) return { raw: segments(s, known) };
     findings.push({ paper: m[1], text: m[2].trim().replace(/\.$/, "") });
   }

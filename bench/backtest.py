@@ -129,7 +129,7 @@ def rank_one(r: dict[str, str], works: list[Work], opps: dict[str, Opportunity],
              index: VectorIndex, embedder: Embedder, reranker: Reranker | None,
              cache: RerankCache | None, mode: str, months: int, config: str,
              extra: list[Work] | None = None, rerank_in: int = RERANK_IN) -> Row:
-    """`extra`: documents added as threads the way private mode adds them (S13 task 8)."""
+    """`extra`: documents added as threads (perch.threads)."""
     t0 = time.perf_counter()
     start = date.fromisoformat(r["award_start"])
     as_of = start - timedelta(days=1)
@@ -137,7 +137,7 @@ def rank_one(r: dict[str, str], works: list[Work], opps: dict[str, Opportunity],
     pool = {i for i, o in opps.items() if in_window(o.open_date, o.close_date, start, months)}
     profile = build_threads(f"https://openalex.org/{r['openalex_id']}", works, embedder, as_of)
     if extra:
-        from perch.private.threads import add_threads
+        from perch.threads import add_threads
 
         profile = add_threads(profile, extra, embedder)
     c = Constraints(as_of=as_of, check_dates=False)

@@ -90,25 +90,16 @@ class ScoutContext:
         return f"https://openalex.org/{aid}"
 
 
-def _private(ctx: ScoutContext) -> bool:
-    """A brief built from the user's documents alone, with no public profile (R6)."""
-    return (ctx.researcher_id or "").startswith("private:")
+def _user_docs(ctx: ScoutContext) -> list[Work]:  # noqa: ARG001 - the store is in the context
+    """The user's own documents the brief reads (a proposal, a direction, an interests note),
+    from the brief store the caller set; none for a guest or without accounts."""
+    from perch.user.briefs import current_store
 
-
-def _session_docs(ctx: ScoutContext) -> list[Work]:
-    """The documents of a private session, which its brief's threads come from (R6)."""
-    records = getattr(ctx.service, "private_records", None)
-    return list(records().values()) if records else []
+    store = current_store.get()
+    return store.user_docs() if store is not None else []
 
 
 def _researcher(ctx: ScoutContext, author_id: str | None) -> Researcher:
-    if author_id is None and _private(ctx):  # R6: the documents brief's own researcher
-        with ctx.service.repo() as r:
-            res = r.get(Researcher, ctx.researcher_id)
-        if res is None:
-            raise ToolError("this brief was built from the user's documents and has no "
-                            "public profile; answer from the brief's leads")
-        return res
     full = ctx.full_author_id(author_id)
     with ctx.service.repo() as r:
         res = r.get(Researcher, full)
@@ -125,14 +116,14 @@ def _profile(ctx: ScoutContext, author_id: str | None) -> Profile:
         return ctx.profile
     with ctx.service.repo() as r:
         works = r.works_by_author(res.id)
-        if not works and not _private(ctx):
+        if not works:
             with ctx.service.clients.openalex() as c:
                 works = list(c.iter_works(res.id))
             r.upsert(works)
     ctx.researcher_id = res.id
     embedder = ctx.service.models.get("embedder")
     p = build_threads(res.id, works, embedder, ctx.as_of)
-    if docs := _session_docs(ctx):  # R6: the documents' threads, as the brief built them
+    if docs := _user_docs(ctx):  # R6: the documents' threads, as the brief built them
         from perch.threads import add_threads
 
         p = add_threads(p, docs, embedder)
@@ -206,7 +197,7 @@ def build_profile(ctx: ScoutContext, author_id: str | None = None) -> dict:
     p = _profile(ctx, author_id)
     with ctx.service.repo() as r:
         works = {w.id: w for w in r.works_by_author(p.researcher_id)}
-    works.update({d.id: d for d in _session_docs(ctx)})
+    works.update({d.id: d for d in _user_docs(ctx)})
     rid = ctx.see(_researcher(ctx, author_id))
     threads = []
     # t06: the labels, shares and counts are written by code, so an answer citing the
@@ -234,10 +225,6 @@ def build_profile(ctx: ScoutContext, author_id: str | None = None) -> dict:
 
 def list_awards(ctx: ScoutContext, author_id: str | None = None) -> dict:
     res = _researcher(ctx, author_id)
-    if _private(ctx) and author_id is None:
-        return {"researcher": ctx.see(res), "awards": [], "horizon_award": None,
-                "note": "This brief was built from the user's documents, with no public "
-                "profile, so no public award is linked."}
     with ctx.service.repo() as r:
         ov = aw.load_overrides(res.id, ctx.service.overrides)
         linked = aw.link_stored(res, r.list(Award), ov)
@@ -286,19 +273,17 @@ def search_opportunities(ctx: ScoutContext, route: str = "A", author_id: str | N
     p = _profile(ctx, author_id)  # the works are in the store; a session's documents count
     s = ctx.service
     extra = {}
-    if _session_docs(ctx):  # a document's thread is never cached (P6, R6)
-        from perch.private.session import public_thread
+    if _user_docs(ctx):  # a document's thread is never cached (P6, R6)
+        from perch.threads import public_thread
 
         extra = {"profile": p, "cacheable": public_thread}
-    elif _private(ctx):
-        extra = {"profile": p}
     with s.repo() as r:
         b = route_a(res, r, s.models.get("index"), s.models.get("embedder"),
                     s.models.get("reranker"), c, RerankCache(s.rerank_cache),
                     # F16: a sort looks at the widest list, then cuts it to top; cut first,
                     # "top 1 by ceiling" was the best match, whatever its ceiling
                     top=20 if sort != "match" else max(1, min(int(top), 20)), timings_log=None,
-                    index_new=getattr(s, "index_writes", True), **extra)  # a private session: no
+                    index_new=getattr(s, "index_writes", True), **extra)
     leads = []
     in_brief = {x.record_id: i for i, x in enumerate(_brief_leads(ctx), 1)}
     for i, x in enumerate(b.leads, 1):
@@ -493,7 +478,7 @@ def explain_fit(ctx: ScoutContext, opportunity_id: str) -> dict:
     p = _profile(ctx, None)
     with ctx.service.repo() as r:
         works = {w.id: w for w in r.works_by_author(p.researcher_id)}
-    works.update({d.id: d for d in _session_docs(ctx)})  # R6: as the brief explained it
+    works.update({d.id: d for d in _user_docs(ctx)})  # R6: as the brief explained it
     system, papers = profile_prompt(p, works)
     v = explain_one(o, system, papers, ctx.explainer, ctx.service.models.get("grounder"))
     if not v.value:
@@ -688,21 +673,18 @@ def draft_handoff(ctx: ScoutContext, office: str | None = None,
     with ctx.service.repo() as r:
         papers = [w for w in (r.get_any(f"https://openalex.org/{c}") for c in wids) if w]
     s = ctx.service
-    # F7: the same rule as the Compare tab's draft (service.handoff): with the session's
-    # documents in play and no masking, code writes the opening and no model runs.
-    docs = _session_docs(ctx)
+    # The same call as the Compare tab's draft (service.handoff): the model may read the
+    # user's own documents, after the consent given at sign-up.
+    docs = _user_docs(ctx)
     d = draft(off, res, items, papers, ctx.handoff or s._audited("handoff", s.models.handoff_spec),
-              private=docs or None)
+              user_docs=docs or None)
     for x, rec in items:
         if rec:
             ctx.see(rec)
         if x.route == "B":
             ctx.see(x)
-    from perch.skills.handoff import DOCS_OPENING_NOTE
-
     return {"office": off.name, "office_page": off.url, "to": "", "subject": d.subject,
             "body": d.body, "opening_withheld": d.flagged, "opening_by": d.opening_by,
-            **({"opening_note": DOCS_OPENING_NOTE} if d.withheld else {}),
             "note": "A draft only. Perch never sends it. Show it to the user to edit and send; "
             "the To line is for them to fill in from the office page."}
 
@@ -735,8 +717,6 @@ def _target(ctx: ScoutContext, key: str) -> tuple[Opportunity, Lead | None]:
 
 def _awards(ctx: ScoutContext) -> list[Award]:
     """The researcher's public awards, one record per award, as list_awards links them."""
-    if _private(ctx):
-        return []
     res = _researcher(ctx, None)
     with ctx.service.repo() as r:
         ov = aw.load_overrides(res.id, ctx.service.overrides)
@@ -745,27 +725,25 @@ def _awards(ctx: ScoutContext) -> list[Award]:
             for s in aw.summarise(linked, res, ov)]
 
 
-def split_docs(docs: list[Work]) -> tuple[Work | None, list[Work]]:
-    """A session's documents as the skill takes them: the CV apart, the achievements note
-    split into one record per achievement, as the student brief splits it."""
-    from perch.private.student import achievement_docs
+def applicant_docs(ctx: ScoutContext) -> tuple[Work | None, list[Work]]:
+    """The user's own documents as the cover-points skill takes them: the CV apart (contact
+    details blanked when it is made), then the other documents. From the brief store the
+    caller set; empty for a guest."""
+    from perch.user.briefs import current_store
+    from perch.user.inputs import make_doc
 
-    cv, others = None, []
-    for d in docs:
-        if d.id == "private:cv":
-            cv = d
-        elif d.id == "private:achievements":
-            others += achievement_docs(d.abstract or "", d.fetched_at)
-        else:
-            others.append(d)
-    return cv, others
+    store = current_store.get()
+    if store is None:
+        return None, []
+    text = store.cv_text()
+    return (make_doc("cv", text) if text else None), store.user_docs()
 
 
 def source_title(r: Record) -> str:
     if isinstance(r, Opportunity):
         return r.title
     title = getattr(r, "title", None) or getattr(r, "name", None) or r.id
-    return title.removesuffix(" (private)")
+    return title
 
 
 def cover_result(ctx: ScoutContext, target: Record, title: str, key: str, v: object,
@@ -800,7 +778,7 @@ def cover_points(ctx: ScoutContext, record_id: str) -> dict:
 
     key = record_id.strip().strip("[]")
     o, lead = _target(ctx, key)
-    cv, docs = split_docs(_session_docs(ctx))
+    cv, docs = applicant_docs(ctx)
     wids = [c for c in (lead.cited_ids if lead else []) if c.startswith("W")]
     if not wids:  # not on a brief, or a lead that cites no paper: the profile's top ones
         p = _profile(ctx, None)

@@ -9,8 +9,7 @@ from __future__ import annotations
 from datetime import date
 
 from perch.llm import spec_for_role
-from perch.llm.audit import AuditedProvider, AuditLog, CountedProvider
-from perch.privacy import PrivateSettings
+from perch.llm.audit import AuditedProvider, CountedProvider
 from perch.schemas import Brief, Lead, Opportunity, Organisation
 from perch.scout.log import ScoutLog
 from perch.scout.loop import Policy, Scout, ScoutBudget, Session
@@ -22,10 +21,10 @@ __all__ = ["Scout", "ScoutBudget", "ScoutContext", "Session", "make_scout"]
 def make_scout(service: object, author_id: str, *, as_of: date | None = None,
                brief_id: str | None = None, llm: str | None = None,
                policy: Policy | None = None, log: ScoutLog | None = None,
-               private: PrivateSettings | None = None,
                budget: ScoutBudget | None = None) -> Scout:
-    """`service` is a perch.service.BriefService. Private sessions log nothing anywhere."""
-    audit = AuditLog(None) if private else service.audit
+    """`service` is a perch.service.BriefService. A brief that reads the user's own text is
+    read through the brief store the caller has set (perch.user.briefs.using_store)."""
+    audit = service.audit
     provider = AuditedProvider(service.models.provider(llm or spec_for_role("scout")), audit,
                                "scout")
     # The two model-backed tools count toward the session budget (S28), so each session
@@ -37,8 +36,8 @@ def make_scout(service: object, author_id: str, *, as_of: date | None = None,
                                                       or spec_for_role("handoff")),
                               audit, "handoff")
     ctx = ScoutContext(service, as_of or date.today(), explainer=explainer, handoff=handoff)
-    # A private brief with no public profile has no OpenAlex id; tools that need one say so.
-    ctx.researcher_id = (author_id if author_id.startswith("private:")
+    # A student brief has no OpenAlex id; tools that need one say so.
+    ctx.researcher_id = (author_id if author_id.startswith("user:")
                          else ctx.full_author_id(author_id))
     note, table, rules, who, check = "", None, None, None, None
     if brief_id and (got := service.get(brief_id)):
@@ -53,9 +52,7 @@ def make_scout(service: object, author_id: str, *, as_of: date | None = None,
                 student_brief_note,
             )
 
-            if private is None:
-                raise PermissionError("student Scout runs only in a private session")
-            table, rules, who = STUDENT_TOOLS, STUDENT_RULES, "a student (private session)"
+            table, rules, who = STUDENT_TOOLS, STUDENT_RULES, "a student"
             check = mixed_lists
 
             def note() -> str:  # read again at each question: kept marks change (Q4)
@@ -63,9 +60,8 @@ def make_scout(service: object, author_id: str, *, as_of: date | None = None,
         else:
             def note() -> str:
                 return brief_note(ctx, b, (service.get(b.id) or (None, []))[1])
-    return Scout(provider, ctx, policy=policy, log=None if private else log,
-                 private=private, brief_note=note, budget=budget, table=table, rules=rules,
-                 who=who, answer_check=check)
+    return Scout(provider, ctx, policy=policy, log=log, brief_note=note, budget=budget,
+                 table=table, rules=rules, who=who, answer_check=check)
 
 
 def brief_note(ctx: ScoutContext, b: Brief, leads: list[Lead]) -> str:

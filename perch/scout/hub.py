@@ -8,6 +8,7 @@ flags the running question, which ends at the next step.
 
 from __future__ import annotations
 
+import contextvars
 import secrets
 import threading
 from collections import OrderedDict
@@ -31,23 +32,22 @@ class Entry:
     scout: Scout
     session: Session
     brief_id: str
+    owner: str | None = None  # the user id; a Scout session is only its owner's
     busy: bool = False
     error: str | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
 
 
 class ScoutHub:
-    def __init__(self, service: object, runner: ClosureRunner, log: ScoutLog | None = None,
-                 private: object | None = None) -> None:
-        """`private`: PrivateSettings for a private session's own hub (no log, local
-        models only)."""
-        self.service, self.runner, self.log, self.private = service, runner, log, private
+    def __init__(self, service: object, runner: ClosureRunner, log: ScoutLog | None = None
+                 ) -> None:
+        self.service, self.runner, self.log = service, runner, log
         self.entries: OrderedDict[str, Entry] = OrderedDict()
 
-    def start(self, brief_id: str, researcher_id: str, question: str) -> Entry:
-        scout = make_scout(self.service, researcher_id, brief_id=brief_id,
-                           log=self.log, private=self.private)
-        e = Entry(scout, scout.open(), brief_id)
+    def start(self, brief_id: str, researcher_id: str, question: str,
+              owner: str | None = None) -> Entry:
+        scout = make_scout(self.service, researcher_id, brief_id=brief_id, log=self.log)
+        e = Entry(scout, scout.open(), brief_id, owner)
         self.entries[e.session.id] = e
         while len(self.entries) > MAX_SESSIONS:
             self.entries.popitem(last=False)
@@ -74,9 +74,13 @@ class ScoutHub:
             e.busy, e.error = True, None
             e.session.stop_asked = False  # a Stop meant for the last question
 
+        # The job runs in a copy of this request's context, so it reads the same brief store
+        # (an account's encrypted brief, set by the route) as the request did.
+        ctx = contextvars.copy_context()
+
         def job() -> None:
             try:
-                fn()
+                ctx.run(fn)
             except Exception as err:  # noqa: BLE001 - shown by type only, never the text
                 e.error = f"Scout stopped: {type(err).__name__}"
                 e.session.status = "failed"
