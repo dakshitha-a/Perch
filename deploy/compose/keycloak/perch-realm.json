@@ -4,14 +4,22 @@
   "registrationAllowed": false,
   "loginWithEmailAllowed": false,
   "sslRequired": "none",
-  "attributes": {"_comment": "DEV ONLY. SYNTHETIC test user with a placeholder credential. Never import into a real deployment."},
+  "attributes": {
+    "_comment": "DEV ONLY. SYNTHETIC test user with a placeholder credential. Never import into a real deployment."
+  },
   "users": [
     {
       "username": "synthetic-user-1",
       "enabled": true,
       "firstName": "SYNTHETIC",
       "lastName": "User",
-      "credentials": [{"type": "password", "value": "synthetic-dev-only", "temporary": false}]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "synthetic-dev-only",
+          "temporary": false
+        }
+      ]
     }
   ],
   "clients": [
@@ -26,11 +34,31 @@
       "directAccessGrantsEnabled": false,
       "implicitFlowEnabled": false,
       "serviceAccountsEnabled": false,
-      "redirectUris": ["http://127.0.0.1:8190/*", "http://localhost:8190/*"],
-      "webOrigins": ["http://127.0.0.1:8190"],
-      "attributes": {"pkce.code.challenge.method": "S256"},
-      "defaultClientScopes": ["profile"],
+      "redirectUris": [
+        "http://127.0.0.1:8190/*",
+        "http://localhost:8190/*"
+      ],
+      "webOrigins": [
+        "http://127.0.0.1:8190"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "defaultClientScopes": [
+        "profile"
+      ],
       "optionalClientScopes": []
+    }
+  ],
+  "requiredActions": [
+    {
+      "alias": "VERIFY_PROFILE",
+      "name": "Verify Profile",
+      "providerId": "VERIFY_PROFILE",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 90,
+      "config": {}
     }
   ]
 }

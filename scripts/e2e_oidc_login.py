@@ -232,10 +232,14 @@ def run(keys_ready: bool) -> None:
          f"http {done.status_code} {done.text[:80]}" if done is not None else "no redirect")
     if done is None or done.status_code != 302:
         return
-    sc = done.headers.get("set-cookie", "").lower()
+    # The callback also clears the binder cookie (Max-Age=0), so check the session cookie's
+    # own Set-Cookie header only.
+    sids = [h.lower() for h in done.headers.get_list("set-cookie")
+            if h.lower().startswith(("perch_sid=", "__host-perch_sid="))]
+    sc = sids[0] if sids else ""
     step("session cookie: HttpOnly, SameSite=Lax, Path=/, no Max-Age, no Domain",
-         "perch_sid=" in sc and "httponly" in sc and "samesite=lax" in sc and "path=/" in sc
-         and "max-age" not in sc and "domain" not in sc.split("perch_oidc")[0])
+         bool(sc) and "httponly" in sc and "samesite=lax" in sc and "path=/" in sc
+         and "max-age" not in sc and "domain" not in sc, sc.split(";", 1)[-1].strip())
     step("redirect target", done.headers["location"].startswith("/welcome?return_to=/briefs")
          or done.headers["location"] == "/briefs", done.headers["location"])
 
