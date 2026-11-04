@@ -111,7 +111,7 @@ export async function renderList(root, ctx) {
   let filters = null, results = null, error = null, busy = true, gen = 0;
   const groupsEl = h("div", { class: "groups", "aria-busy": "true" });
   const barEl = h("div", { class: "filter-bar" });
-  const countEl = h("span", { class: "count", "aria-hidden": "true" });
+  const countEl = h("span", { class: "list-count", "aria-hidden": "true" });
   const showToggle = () => filters && (aud === "researcher" || filters.total !== filters.temple_total);
   const total = () => (results ? results.reduce((n, g) => n + g.total, 0) : 0);
 
@@ -261,6 +261,7 @@ export async function renderSamples(root, ctx) {
   function draw() {
     listEl.setAttribute("aria-busy", "false");
     fill(listEl,
+      items.length ? h("h2", { class: "sr-only", text: "Sample records" }) : null,
       items.length ? h("ul", { class: "leads", "aria-label": "Sample records" }, items.map((r) => recordCard(r, ctx)))
         : h("p", { class: "lede", text: aud === "student" ? "There are no sample records." : "There are no sample funding opportunities. The sample records are scholarships." }),
       next ? h("button", { class: "btn more", type: "button", "data-key": "more-samples", onclick: more }, h("span", { text: "Show more" })) : null);

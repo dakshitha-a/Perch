@@ -1371,7 +1371,7 @@ body.signed-in #theme { display: none; }
 .student-go a.btn { text-decoration: none; }
 
 /* lists */
-.list-screen .count { display: block; margin-top: 4px; color: var(--ink-3); font-size: 14px; min-height: 1.5em; }
+.list-screen .list-count { display: block; margin-top: 4px; color: var(--ink-3); font-size: 14px; min-height: 1.5em; }
 .filter-bar { display: grid; gap: 12px; }
 .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
 .filter-row .searchbox { flex: 1 1 260px; min-width: 0; }
@@ -1431,4 +1431,8 @@ body.signed-in #theme { display: none; }
 .del-dialog form { display: grid; gap: 12px; }
 .dlg-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .brief-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.seg button { min-height: 44px; }
 .my-perch .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+
+.bar-tools, .acct-slot { flex-wrap: nowrap; }
+@media (max-width: 479px) { .bar-in { flex-wrap: nowrap; } .chip.guest-chip { padding: 2px 8px; } }

@@ -1,2462 +1,538 @@
-"""Walk every screen of the running app for each audience, with automatic checks (S21).
+"""Walk the v1 student-first UI with automatic checks (S43; replaces the S21 private-mode walk).
 
-  uv run --no-project --with playwright python scripts/ux_walk.py \\
-      [--base http://127.0.0.1:8090] [--axe PATH/axe.min.js (axe-core 4.10.2, cdnjs)] [--out build/ux] [--only pi student private]
+  scripts/walk_server.py                      # a dev server on 127.0.0.1:8191 (see its docstring)
+  uv run --no-project --with playwright --with httpx python scripts/ux_walk.py \\
+      [--base http://127.0.0.1:8191] [--out build/s43_walk] [--widths 1280 360] \\
+      [--only landing guest awards funding samples briefs mocked] \\
+      [--login-helper scripts/e2e_oidc_login.py]   # adds the real sign-in flow
+      [--plant NAME]                               # break one thing on purpose (see PLANTS)
 
-Audiences: the PI demo researcher (PI-4, by OpenAlex id), the three SYNTHETIC student
-personas (persona-ug, persona-masters, persona-phd) and the SYNTHETIC researcher
-persona-1 with private documents. Each flow is captured on a phone (390 px) and a laptop
-(1280 px); the PI flow also in dark mode. Researchers appear by alias only, as in the
-README clips (scripts/tour/film.py).
+Flows, each at every width:
+  landing   signed-out landing, old copy gone, no dead modules, guest start and the banner on every
+            guest screen
+  awards    the Temple awards list: toggle rule, school tags (counts, geometry), two groups, level,
+            search, empty state, Show more, no sample record in a public list
+  funding   the funding list: Temple toggle, tags, focus order
+  samples   the sample screen: a badge on every card
+  briefs    a guest brief for a public author id and for the SYNTHETIC sample persona, keep and compare
+  mocked    welcome, account page, delete dialog and My Perch against a stubbed signed-in session
+            (the stubs are in this file; no sign-in service is needed, and the walk says so)
+  signin    with --login-helper only: the real sign-in through the dev Keycloak, then welcome,
+            account, My Perch and delete. `login(base)` of the helper returns an httpx client whose
+            session cookie is copied into the browser.
 
-At every captured state the script records, in <out>/report-<groups>.json:
-- axe-core violations (WCAG 2.0 to 2.2 A and AA), if --axe points at axe.min.js;
-- interactive elements smaller than 44 px (the design's target) and 24 px (WCAG 2.2 AA);
-- sideways scroll;
-- whether the session frame shows (the Local / Cloud switch state, the frame line, and the
-  body class that marks Cloud on). Since S23 every brief is a session; the PI flow also
-  opens the cloud warning and dismisses it, so no cloud call is made.
-It also tabs through Find and a brief and records the focus order and whether each focus
-is visible. S25 reruns this script before the freeze.
+Every captured state records axe-core violations (WCAG 2.0 to 2.2 A and AA), targets smaller than
+44 px and sideways scroll. Page errors and console errors are findings. `--plant` applies one
+deliberate fault with Playwright (no source edits), so a check is shown to FAIL before it is
+trusted; each plant is expected to make exactly its named check fail.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
-import glob
+import importlib.util
 import json
-import os
 import re
 import sys
-from collections.abc import Awaitable
 from pathlib import Path
 
-from playwright.async_api import Browser, BrowserContext, Page, Route, async_playwright
+from playwright.async_api import Browser, Page, Route, async_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "scripts/tour"))
-from film import alias_responses, aliases  # noqa: E402
-
-SYN = ROOT / "data/synthetic"
-AUTHOR = "A5026494099"  # PI-4, the demo researcher
-PHONE = {"width": 390, "height": 844}
-LAPTOP = {"width": 1280, "height": 860}
-STUDENTS = ("persona-ug", "persona-masters", "persona-phd")
-
+AUTHOR = "A5026494099"  # PI-4, the demo researcher (a public OpenAlex id)
+VIEWS = {1280: {"width": 1280, "height": 860}, 360: {"width": 360, "height": 780}}
+OLD_COPY = ("Nothing about you is stored", "Local · nothing stored")
+PLANTS = ["guest_banner", "no_sample_public", "badge_on_samples", "tag_row_360", "tag_row_contained",
+          "counts_from_server", "focus_order", "delete_keyboard", "delete_guard", "old_copy",
+          "no_dead_modules"]
 PROBE = """() => {
   const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
     return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; };
   const name = (el) => (el.getAttribute('aria-label') || el.innerText || el.value || el.id || el.tagName)
     .trim().replace(/\\s+/g, ' ').slice(0, 50);
   const small = [];
-  for (const el of document.querySelectorAll('a[href], button, input, select, textarea, summary, [role=switch], [role=tab], label.btn')) {
-    if (!vis(el) || el.closest('[hidden]')) continue;
-    if (el.type === 'checkbox' || el.type === 'radio') continue;  // the label is the target
+  for (const el of document.querySelectorAll('a[href], button, input, select, textarea, summary, [role=switch], [role=radio]')) {
+    if (!vis(el) || el.closest('[hidden]') || el.closest('dialog:not([open])')) continue;
+    if (el.type === 'checkbox' || el.type === 'file') continue;
     const r = el.getBoundingClientRect();
-    const inline = el.tagName === 'A' && !el.classList.contains('btn') && getComputedStyle(el).display === 'inline';
-    if (r.width < 44 || r.height < 44) small.push({ el: name(el), tag: el.tagName.toLowerCase(),
-      w: Math.round(r.width), h: Math.round(r.height), inline, under24: r.width < 24 || r.height < 24 });
+    // exempt: a link or the guest link inside a sentence, and a card title button (a text link, 25 px
+    // tall, which meets WCAG 2.2's 24 px minimum); both are counted in `under24` only if smaller
+    const inline = (el.tagName === 'A' && !el.classList.contains('btn') && getComputedStyle(el).display === 'inline')
+      || el.classList.contains('linkish') || el.classList.contains('title-btn');
+    if (inline) { if (r.height < 24 && !el.classList.contains('linkish')) small.push({ el: name(el), w: Math.round(r.width), h: Math.round(r.height), under24: true }); continue; }
+    if (r.width < 44 || r.height < 44) small.push({ el: name(el), w: Math.round(r.width), h: Math.round(r.height) });
   }
-  const chip = document.querySelector('#status-chip');
   return { small, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    session: { word: chip && chip.innerText.trim(), frame: Boolean(chip && vis(chip)),
-      text: chip && chip.getAttribute('aria-label'),
-      cloudBody: document.body.classList.contains('cloud-on') },
     title: document.title, hash: location.hash };
 }"""
-
-FOCUS = """() => {
-  const el = document.activeElement; if (!el || el === document.body) return null;
-  const s = getComputedStyle(el);
-  const shown = (s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0) || s.boxShadow !== 'none';
-  const r = el.getBoundingClientRect();
-  return { el: (el.getAttribute('aria-label') || el.innerText || el.placeholder || el.id || el.tagName)
-    .trim().replace(/\\s+/g, ' ').slice(0, 40), tag: el.tagName.toLowerCase(), role: el.getAttribute('role'),
-    visible: shown, onscreen: r.bottom > 0 && r.top < innerHeight };
-}"""
-
-
-# Layout checks the screenshots alone missed (S27). A pill group is stretched when it is
-# much wider than its buttons.
-STRETCH = """() => [...document.querySelectorAll('.route-switch, .seg')].filter(g => g.offsetParent)
-  .filter(g => getComputedStyle(g).display !== 'grid')
-  .map(g => [g, [...g.children].reduce((w, c) => w + c.getBoundingClientRect().width, 0)])
-  .filter(([g, inner]) => g.getBoundingClientRect().width > inner + 40)
-  .map(([g, inner]) => `${g.className} is ${Math.round(g.getBoundingClientRect().width)} px wide `
-       + `for ${Math.round(inner)} px of buttons`)"""
-# With the page scrolled, the side rail and the Evidence box must end inside the window,
-# and the shortlist must not be cut off.
-RAIL = """() => {
-  const out = [], vh = innerHeight, rail = document.querySelector('.cols > .rail');
-  if (!rail || getComputedStyle(rail).position !== 'sticky') return out;
-  for (const [sel, label] of [['.cols > .rail', 'rail'], ['.rail-evidence', 'Evidence box']]) {
-    const el = document.querySelector(sel);
-    if (el && el.getBoundingClientRect().bottom > vh + 1)
-      out.push(`${label} ends ${Math.round(el.getBoundingClientRect().bottom - vh)} px below the window`);
-  }
-  const sl = document.querySelector('.rail .shortlist');
-  if (sl && !sl.querySelector('li') && sl.scrollHeight > sl.clientHeight + 1)
-    out.push('the empty shortlist is cut off');
-  return out; }"""
-
-
-# The open Evidence (rail or phone sheet): no text past its right edge, and no long
-# text shown twice.
-EVIDENCE = """() => {
-  const out = [];
-  for (const box of document.querySelectorAll('.rail-evidence, .sheet-body')) {
-    if (!box.offsetParent && getComputedStyle(box).position !== 'fixed') continue;
-    const r = box.getBoundingClientRect();
-    if (!r.width) continue;
-    const edge = r.right - parseFloat(getComputedStyle(box).paddingRight) + 1;
-    const wide = [...box.querySelectorAll('p, dd, li, h2, h3, a')]
-      .filter(el => el.getClientRects().length && el.getBoundingClientRect().right > edge);
-    if (wide.length) out.push(`${wide.length} text blocks run ${Math.round(Math.max(...wide.map(
-      el => el.getBoundingClientRect().right)) - edge)} px past the Evidence box's edge`);
-    const longs = [...box.querySelectorAll('.long')].map(el => el.textContent.replace(/…$/, '').slice(0, 200));
-    if (longs.some((t, i) => longs.findIndex(u => u.startsWith(t) || t.startsWith(u)) !== i))
-      out.push('the same long text is shown twice');
-  }
-  return out; }"""
-
-
-# Leftovers of the ask-first mode, gone since S27: no Approve or Skip, no "Waiting for you".
-
-HELP_WORDS_MAX = 2300  # a third of the 6,891 words the old page had
-HELP_PHONE_MAX_PX = 5600  # Help at 390 px wide was 6,901 px tall before the 2 Nov phone tightening
-# U39 (rewritten 2 Nov): Help is a short visual guide. The probe counts the words a reader
-# gets, finds the visible architecture diagram (one of two layouts, the other is display:none)
-# and the sideways overflow at the current width.
-HELP_PROBE = """() => { const help = document.querySelector('.help');
-  const vis = [...document.querySelectorAll('.help svg[role=img]')].filter((s) => s.getClientRects().length);
-  const over = [...document.querySelectorAll('.help *')].filter((e) => e.getBoundingClientRect().right > innerWidth + 1
-    && e.getClientRects().length).map((e) => e.tagName + '.' + String(e.getAttribute('class')).slice(0, 30)).slice(0, 4);
-  return { words: help.innerText.split(/\\s+/).filter(Boolean).length, diagram: vis.length,
-           label: vis[0] ? vis[0].getAttribute('aria-label') : null, sw: document.documentElement.scrollWidth,
-           cw: document.documentElement.clientWidth, over, height: document.documentElement.scrollHeight,
-           clipped: vis[0] ? [...vis[0].querySelectorAll('g')].flatMap((g) => { const r = g.querySelector('rect').getBBox();
-             return [...g.querySelectorAll('text')].filter((t) => t.getBBox().y + t.getBBox().height > r.y + r.height - 2
-               || t.getBBox().x + t.getBBox().width > r.x + r.width).map((t) => t.textContent.slice(0, 20)); }) : [],
-           motion: [...document.styleSheets].some((ss) => { try { return [...ss.cssRules].some((r) => r.media && /prefers-reduced-motion: reduce/.test(r.conditionText || r.media.mediaText) && /help|fig/.test(r.cssText)); } catch (e) { return false; } }) }; }"""
-
-GATE = """() => [...document.querySelectorAll('.scout-card, .help, main')].some(el =>
-  el.querySelector(':scope > .scout-actions') || /Waiting for you|\\bApprove\\b/.test(el.innerText))"""
-# A MutationObserver counts loading placeholders put into an Evidence box that is already
-# open; going from record to record must crossfade, not blank to the owl (S27).
-WATCH_FLASH = """() => { window.__flash = 0; const seen = (n) => n.nodeType === 1 && (n.matches('.loading')
-  || n.querySelector('.loading'));
-  for (const box of document.querySelectorAll('#evidence-body, #rail-ev'))
-    new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (seen(n)) window.__flash++; })
-      .observe(box, { childList: true, subtree: true }); }"""
-
-
-async def checks_flow(w: Walk, page: Page, base: str, tag: str) -> None:
-    """Motion and chat checks the static screenshots missed (S27): opening Evidence must not
-    move the page, going from paper to paper must not flash, Scout shows no approval gate
-    while a step runs, and the question box stays in the window as the chat grows."""
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_selector(".cand", timeout=20000)
-    await pick_and_build(page)
-    await page.wait_for_selector("#tab-routes", timeout=60000)
-    await w.step(tag, "built", wait_built(page))
-    await page.click("#tab-profile")
-    await page.wait_for_timeout(600)
-    papers = page.locator("button.paper")
-    before = await page.locator("#panel").bounding_box()
-    await papers.nth(0).click()
-    await page.wait_for_selector("#evidence .rec-title")
-    await page.wait_for_timeout(500)
-    after = await page.locator("#panel").bounding_box()
-    if abs(before["x"] - after["x"]) > 1 or abs(before["width"] - after["width"]) > 1:
-        w.errors.append(f"{tag}: evidence: motion: opening Evidence moved the page "
-                        f"({round(before['width'])} -> {round(after['width'])} px wide)")
-    await w.snap(page, tag, "evidence-open")
-    await page.evaluate(WATCH_FLASH)
-    for i in (1, 2):
-        await papers.nth(i).click(force=True)
-        await page.wait_for_timeout(700)
-    if n := await page.evaluate("() => window.__flash"):
-        w.errors.append(f"{tag}: evidence: motion: going from paper to paper blanked Evidence {n} times")
-    # A click anywhere outside the Evidence card closes it (S27).
-    await page.mouse.click(20, 40 if page.viewport_size["width"] < 700 else page.viewport_size["height"] // 2)
-    await page.wait_for_timeout(500)
-    if await page.evaluate("() => !document.querySelector('#evidence').hidden"):
-        w.errors.append(f"{tag}: evidence: a click outside the Evidence card did not close it")
-        await page.keyboard.press("Escape")
-    # Open Scout from the top of the page, as a reader does straight after the brief loads.
-    await page.evaluate("() => window.scrollTo(0, 0)")
-    await page.wait_for_timeout(200)
-    await page.click("#tab-scout")
-    await page.wait_for_selector("#scout-q")
-    if await page.evaluate("() => Boolean(document.querySelector('#panel aside'))"):
-        w.errors.append(f"{tag}: scout: a side box sits beside the chat; its content belongs in the welcome")
-    # The question box is on the bottom edge from the first view, before anything is asked (S27).
-    await page.wait_for_timeout(400)
-    box = await page.locator("#scout-q").bounding_box()
-    vh = page.viewport_size["height"]
-    if not box or box["y"] + box["height"] > vh or vh - (box["y"] + box["height"]) > 40:
-        w.errors.append(f"{tag}: scout: chat: on first open the question box is not on the bottom edge of the window "
-                        f"(bottom at {round(box['y'] + box['height']) if box else '?'} px, window {vh} px)")
-    await w.snap(page, tag, "scout-welcome")
-    # No scroll bar on the chat, and the page's bar shows only near the pointer (S27).
-    if await page.evaluate("() => getComputedStyle(document.querySelector('.scout-scroll')).scrollbarWidth !== 'none'"):
-        w.errors.append(f"{tag}: scout: chat: the conversation shows a scroll bar")
-    vw = page.viewport_size["width"]
-    await page.mouse.move(vw // 2, page.viewport_size["height"] // 2)
-    if not await page.evaluate("() => /transparent|rgba\\(0, 0, 0, 0\\) rgba\\(0, 0, 0, 0\\)/.test(getComputedStyle(document.documentElement).scrollbarColor)"):
-        w.errors.append(f"{tag}: page: the scroll bar shows while the pointer is away from it")
-    await page.mouse.move(vw - 3, page.viewport_size["height"] // 2)
-    if await page.evaluate("() => /rgba\\(0, 0, 0, 0\\) rgba\\(0, 0, 0, 0\\)/.test(getComputedStyle(document.documentElement).scrollbarColor)"):
-        w.errors.append(f"{tag}: page: the scroll bar stays hidden with the pointer over it")
-    await page.wait_for_selector("#scout-q")
-    for q in ("Why does the top lead fit?", "Only R21 grants that close by 2027-03-01"):
-        await page.fill("#scout-q", q)
-        await page.click(".scout-ask button[type=submit]")
-        gate = False
-        for _ in range(900):  # up to 90 s per question
-            gate = gate or await page.evaluate(GATE)
-            if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
-                break
-            await page.wait_for_timeout(100)
-        if gate:
-            w.errors.append(f"{tag}: scout: an approval card or button showed while Scout ran")
-        await page.wait_for_timeout(300)
-        box = await page.locator("#scout-q").bounding_box()
-        vh = page.viewport_size["height"]
-        if not box or box["y"] + box["height"] > vh or box["y"] < 0:
-            w.errors.append(f"{tag}: scout: chat: the question box is outside the window after {q!r}")
-        elif vh - (box["y"] + box["height"]) > 40:
-            w.errors.append(f"{tag}: scout: chat: the question box sits {round(vh - box['y'] - box['height'])} px "
-                            "above the bottom of the window")
-        seen = await page.evaluate("""() => { const box = document.querySelector('.scout-scroll');
-          const qs = document.querySelectorAll('.scout-x > .scout-q'); if (!box || !qs.length) return false;
-          const b = box.getBoundingClientRect(), r = qs[qs.length - 1].getBoundingClientRect();
-          return box.scrollHeight - box.scrollTop - box.clientHeight < 32 || (r.top >= b.top - 1 && r.top < b.bottom); }""")
-        if not seen:
-            w.errors.append(f"{tag}: scout: chat: the newest reply is not in view after {q!r}")
-        await w.snap(page, tag, "scout-chat")
-    grow = await page.evaluate("() => document.documentElement.scrollHeight - innerHeight")
-    if grow > 400 and page.viewport_size["width"] >= 700:
-        w.errors.append(f"{tag}: scout: chat: the page grows {grow} px past the window; "
-                        "older replies should scroll inside the chat")
-    # S28: how Scout read the question sits above the answer, the step cards are folded under
-    # it with where each step ran, and no step names a researcher (Scout is fixed to the brief).
-    read = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x');
-      const x = xs[xs.length - 1]; if (!x) return null;
-      const steps = x.querySelector('details.scout-steps');
-      return {read: Boolean(x.querySelector('.scout-read li')), folded: Boolean(steps && !steps.open),
-        where: x.querySelectorAll('.scout-where').length, cards: x.querySelectorAll('.scout-card').length,
-        researcher: [...x.querySelectorAll('.chip')].some(c => /^Researcher:/.test(c.innerText))}; }""")
-    if not read or not read["read"]:
-        w.errors.append(f"{tag}: scout: no 'How Scout read your question' block above the answer")
-    if not read or not read["folded"]:
-        w.errors.append(f"{tag}: scout: the step cards are not folded under the answer")
-    if read and read["where"] < read["cards"]:
-        w.errors.append(f"{tag}: scout: {read['cards'] - read['where']} step cards do not say where they ran")
-    if read and read["researcher"]:
-        w.errors.append(f"{tag}: scout: a step names a researcher; Scout is fixed to the brief")
-    await w.snap(page, tag, "scout-read")
-    # Stop ends a question between steps; the page says so and a follow-up still works.
-    await page.fill("#scout-q", "Compare my top three leads and explain why the first one fits")
-    await page.click(".scout-ask button[type=submit]")
-    try:
-        await page.wait_for_selector(".scout-stop", timeout=15000)
-        await page.click(".scout-stop")
-    except Exception:  # noqa: BLE001 - reported as a finding
-        w.errors.append(f"{tag}: scout: no Stop button while Scout works")
-    for _ in range(900):
-        if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
-            break
-        await page.wait_for_timeout(100)
-    last = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
-      return {stopped: Boolean(x.querySelector('.scout-stopped')), answer: Boolean(x.querySelector('.scout-answer')),
-        warn: (x.querySelector('.notice') || {}).innerText || ''}; }""")
-    if not (last["stopped"] or last["answer"]) or last["warn"]:
-        w.errors.append(f"{tag}: scout: after Stop the page shows neither the stop note nor an answer {last['warn']!r}")
-    await w.snap(page, tag, "scout-stopped")
-    await page.goto(base + "/#/help")
-    await page.wait_for_timeout(600)
-    if await page.evaluate(GATE):
-        w.errors.append(f"{tag}: help: the Scout picture still shows Approve or Waiting for you")
-
-
-async def help_snap(w: Walk, page: Page, tag: str, name: str, full: bool = False) -> None:
-    """Help's figures loop, so a still is taken with reduced motion on: every figure then
-    shows its final state and the shot is the same each run."""
-    await page.emulate_media(reduced_motion="reduce")
-    await page.wait_for_timeout(200)
-    await w.snap(page, tag, name, full=full)
-    await page.emulate_media(reduced_motion="no-preference")
-
-
-async def sort_stays(w: Walk, page: Page, tag: str) -> None:
-    """The sort switch must stay put when the sort changes (S27)."""
-    boxes = []
-    for key in ("closing", "order"):
-        btn = page.locator(f"[data-key=sort-{key}]")
-        if await btn.count():
-            await btn.click()
-            await page.wait_for_timeout(150)
-            boxes.append(await page.locator(".sort-switch").bounding_box())
-    # At laptop width the sort switch shares the Grants | Industry (or Fellowships |
-    # Scholarships) row, as Dakshitha asked.
-    toggle = await page.locator(".route-row > .route-switch:not(.sort-switch)").bounding_box()
-    if page.viewport_size["width"] >= 1024 and toggle and boxes and \
-            abs(toggle["y"] - boxes[-1]["y"]) > 2:
-        w.errors.append(f"{tag}: sort: layout: the sort switch is not on the toggle's row")
-    if len(boxes) < 2:
-        w.errors.append(f"{tag}: sort: no sort switch")
-    elif any(abs(b["x"] - boxes[0]["x"]) > 1 or abs(b["y"] - boxes[0]["y"]) > 1 for b in boxes):
-        w.errors.append(f"{tag}: sort: layout: the sort switch moves when the sort changes")
-
-
-# Console errors the flows cause on purpose: the browser logs every 4xx answer as a failed
-# resource load (a check that a session ended answers 401, a missing brief 404).
-EXPECTED_CONSOLE = re.compile(r"^Failed to load resource: the server responded with a status "
-                              r"of (401|404|409|422|429)")
-
-
-async def html_export(w: Walk, page: Page, tag: str) -> None:
-    """Print or save as PDF opens the export as a blob: page, which inherits the app's
-    CSP. Its style and print script must run: no console error, the page styled, and the
-    button calls print (review S11)."""
-    async with page.context.expect_page() as got:
-        await page.click(".export-pop button:has-text('Print or save as PDF')")
-    pdf = await got.value
-    w.watch(pdf, f"{tag}: html export")
-    await pdf.wait_for_load_state()
-    await pdf.wait_for_timeout(400)
-    width = await pdf.evaluate("() => getComputedStyle(document.body).maxWidth")
-    if width != "820px":
-        w.errors.append(f"{tag}: html export: its style did not apply (body max-width {width})")
-    await pdf.evaluate("() => { window.__printed = false; window.print = () => { window.__printed = true; }; }")
-    await pdf.click("button.print")
-    if not await pdf.evaluate("() => window.__printed"):
-        w.errors.append(f"{tag}: html export: the print button did nothing")
-    await w.snap(pdf, tag, "html-export")
-    await pdf.close()
+AXE = """async () => { const r = await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a',
+  'wcag21aa', 'wcag22aa', 'best-practice'] });
+  return r.violations.map(v => ({ id: v.id, impact: v.impact, n: v.nodes.length,
+    targets: v.nodes.slice(0, 3).map(x => x.target.join(' ')) })); }"""
+TAGS = """() => { const row = document.querySelector('.tag-row'); if (!row) return null;
+  const chips = [...row.querySelectorAll('.tag-chip')];
+  return { sw: row.scrollWidth, cw: row.clientWidth, ox: getComputedStyle(row).overflowX,
+    pageOver: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    chips: chips.map(c => ({ label: c.querySelector('span').textContent,
+      count: c.querySelector('.n') ? Number(c.querySelector('.n').textContent) : null,
+      h: Math.round(c.getBoundingClientRect().height) })) }; }"""
 
 
 class Walk:
-    def __init__(self, out: Path, axe: str | None) -> None:
-        self.out = out
-        self.axe = axe
+    def __init__(self, out: Path, axe: Path, plant: str | None) -> None:
+        self.out, self.axe, self.plant = out, axe, plant
         self.states: list[dict] = []
         self.errors: list[str] = []
-        self.focus: dict[str, list] = {}
+        self.checks: list[tuple[str, bool, str]] = []
+        self.requests: list[str] = []
 
-    async def snap(self, page: Page, tag: str, name: str, full: bool = False) -> None:
-        await page.wait_for_timeout(250)
-        path = self.out / f"{tag}-{len([s for s in self.states if s['tag'] == tag]) + 1:02d}-{name}.png"
-        await page.screenshot(path=str(path), full_page=full)
-        probe = await page.evaluate(PROBE)
-        state = {"tag": tag, "name": name, "shot": path.name, **probe}
-        for problem in await page.evaluate(STRETCH):
-            self.errors.append(f"{tag}: {name}: layout: {problem}")
-        if self.axe:
-            if not await page.evaluate("() => Boolean(window.axe)"):
-                # Evaluated through the debugger, not as a <script> tag: the app's CSP
-                # (review S11) refuses inline scripts, and that refusal would be logged.
-                await page.evaluate(Path(self.axe).read_text() + "\n;0")
-            res = await page.evaluate("""async () => {
-              const r = await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'] });
-              return r.violations.map(v => ({ id: v.id, impact: v.impact, help: v.help, n: v.nodes.length,
-                targets: v.nodes.slice(0, 4).map(x => x.target.join(' ')),
-                summary: v.nodes[0] && v.nodes[0].failureSummary.slice(0, 240) })); }""")
-            state["axe"] = res
+    def check(self, name: str, ok: bool, detail: str = "") -> None:
+        self.checks.append((name, bool(ok), detail))
+
+    async def snap(self, page: Page, tag: str, name: str, full: bool = True) -> dict:
+        await page.wait_for_timeout(300)
+        shot = self.out / f"{tag}-{name}.png"
+        height = await page.evaluate("document.documentElement.scrollHeight")
+        # a long list is cut at 2000 px so the picture can be read
+        clip = {"x": 0, "y": 0, "width": page.viewport_size["width"], "height": min(height, 2000)}
+        await page.screenshot(path=str(shot), full_page=full, clip=clip if full else None)
+        state = {"tag": tag, "name": name, "shot": shot.name, **await page.evaluate(PROBE)}
+        if not await page.evaluate("() => Boolean(window.axe)"):
+            await page.evaluate(self.axe.read_text() + "\n;0")  # not a <script>: the CSP refuses those
+        state["axe"] = await page.evaluate(AXE)
         self.states.append(state)
+        return state
 
     def watch(self, page: Page, tag: str) -> None:
-        """Page errors and console errors are findings. A CSP refusal is only a console
-        error, never a page error (review S11)."""
         page.on("pageerror", lambda e: self.errors.append(f"{tag}: page error: {e}"))
-        page.on("console", lambda m: self.errors.append(f"{tag}: console error: {m.text[:200]}")
-                if m.type == "error" and not EXPECTED_CONSOLE.search(m.text) else None)
-
-    async def step(self, tag: str, what: str, coro: Awaitable) -> bool:
-        try:
-            await coro
-            return True
-        except Exception as e:  # noqa: BLE001 - a failed step is a finding, the walk goes on
-            self.errors.append(f"{tag}: {what}: {type(e).__name__}: {str(e).splitlines()[0][:200]}")
-            return False
-
-    async def tab_through(self, page: Page, key: str, n: int = 30) -> None:
-        await page.evaluate("() => { document.activeElement && document.activeElement.blur(); window.scrollTo(0, 0); }")
-        seq = []
-        for _ in range(n):
-            await page.keyboard.press("Tab")
-            seq.append(await page.evaluate(FOCUS))
-        self.focus[key] = seq
+        page.on("console", lambda m: self.errors.append(f"{tag}: console error: {m.text[:160]}")
+                if m.type == "error" and "Failed to load resource" not in m.text else None)
+        page.on("request", lambda r: self.requests.append(r.url))
 
 
-async def new_page(browser: Browser, view: dict, names: dict, scheme: str = "light",
-                   motion: str = "no-preference") -> tuple[BrowserContext, Page]:
-    ctx = await browser.new_context(viewport=view, color_scheme=scheme, reduced_motion=motion,
-                                    device_scale_factor=1, has_touch=view is PHONE, is_mobile=view is PHONE)
+async def new_page(browser: Browser, w: Walk, tag: str, view: dict, base: str) -> Page:
+    ctx = await browser.new_context(viewport=view, reduced_motion="reduce", device_scale_factor=1,
+                                    has_touch=view["width"] < 600, is_mobile=view["width"] < 600)
     page = await ctx.new_page()
-    await alias_responses(page, names)
-    await page.route("**/watch**", lambda route: alias_watch(route, names))
-    return ctx, page
-
-
-async def alias_watch(route: Route, names: dict) -> None:
-    """The What changed screen names watched researchers; film.py's filter does not cover it."""
-    try:
-        r = await route.fetch()
-    except Exception:  # noqa: BLE001 - the page closed mid-request
-        return
-    body = await r.text()
-    for real, alias in names.items():
-        body = body.replace(real, alias)
-    await route.fulfill(response=r, body=body)
-
-
-async def pi_flow(w: Walk, page: Page, base: str, tag: str) -> None:
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await w.snap(page, tag, "find")
-    if tag == "pi-laptop":
-        await w.tab_through(page, "find")
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    await w.step(tag, "candidate", page.wait_for_selector(".cand", timeout=20000))
-    await w.snap(page, tag, "candidate")
-    if await page.locator(".cand button.btn.outline").count():  # an exact id picks itself (W1)
-        await page.locator(".cand button.btn.outline").first.click()
-        await page.wait_for_timeout(500)
-    await page.click("[data-key=more-ctx]")  # Tell Perch more starts folded (W1)
-    await page.wait_for_timeout(300)
-    await w.snap(page, tag, "context", full=True)
-    if tag == "pi-laptop":
-        await w.tab_through(page, "context", 30)
-    await page.click("[data-key=build]")
-    await page.wait_for_selector("#tab-routes", timeout=60000)
-    await w.step(tag, "built", wait_built(page))  # a live run: briefs are never reused (S23)
-    await page.wait_for_timeout(1000)
-    await page.click("#tab-profile")
-    await w.snap(page, tag, "profile", full=True)
-    await page.click("#tab-routes")
-    await page.wait_for_timeout(800)
-    await w.snap(page, tag, "routes-grants")
-    await w.snap(page, tag, "routes-grants-full", full=True)
-    await sort_stays(w, page, tag)
-    lead = page.locator(".leads > li").first
-    await w.step(tag, "why", lead.locator("summary[data-key=why]").click())
-    await lead.scroll_into_view_if_needed()
-    await w.snap(page, tag, "lead-why")
-    if await w.step(tag, "evidence", lead.locator(".title-btn").click()):
-        await page.wait_for_selector(".rec-title")
-        await page.wait_for_timeout(400)
-        await w.snap(page, tag, "evidence-opportunity")
-        for problem in await page.evaluate(EVIDENCE):
-            w.errors.append(f"{tag}: evidence: layout: {problem}")
-        more = page.locator(".rail-evidence .more-btn, .sheet-body .more-btn").first
-        if await more.count() and await more.is_visible():
-            para = page.locator(".rail-evidence .long, .sheet-body .long").first
-            before = (await para.bounding_box() or {}).get("height", 0)
-            await more.click()
-            await page.wait_for_timeout(200)
-            after = (await para.bounding_box() or {}).get("height", 0)
-            if after <= before:
-                w.errors.append(f"{tag}: evidence: Show the full text did not open the text")
-            await more.scroll_into_view_if_needed()
-            await w.snap(page, tag, "evidence-expanded")
-        await page.evaluate("() => window.scrollBy(0, 600)")
-        await page.wait_for_timeout(300)
-        for problem in await page.evaluate(RAIL):
-            w.errors.append(f"{tag}: evidence scrolled: layout: {problem}")
-        await w.snap(page, tag, "evidence-scrolled")
-        await page.evaluate("() => window.scrollTo(0, 0)")
-        await page.keyboard.press("Escape")
-    if await w.step(tag, "export", page.click("[data-key=export]")):
-        await page.wait_for_timeout(300)
-        await w.snap(page, tag, "export-menu")
-        if tag == "pi-laptop":
-            await w.step(tag, "html export", html_export(w, page, tag))
-            await page.click("[data-key=export]")
-        await page.keyboard.press("Escape")
-    if tag == "pi-laptop":
-        await w.tab_through(page, "routes", 40)
-    await w.step(tag, "industry", page.click("[data-key=route-B]"))
-    await page.wait_for_timeout(600)
-    await w.snap(page, tag, "routes-industry", full=True)
-    await page.click("[data-key=route-A]")
-    await page.wait_for_timeout(400)
-    leads = page.locator(".leads > li")
-    await page.evaluate(OPEN_WEAK)
-    for i in (0, 1):
-        await w.step(tag, f"keep {i}", leads.nth(i).locator(".btn.keep").click())
-        await page.wait_for_timeout(300)
-    await w.snap(page, tag, "shortlist")
-    await page.click("#tab-compare")
-    await page.wait_for_timeout(1200)
-    await w.snap(page, tag, "compare", full=True)
-    if await w.step(tag, "handoff", page.locator("[data-key=handoff-make]").click()):
-        await w.step(tag, "handoff draft", page.wait_for_selector("#handoff-body", timeout=90000))
-        await w.snap(page, tag, "handoff", full=True)
-    await page.click("#tab-scout")
-    await page.wait_for_timeout(800)
-    await w.snap(page, tag, "scout", full=True)
-    # The Local / Cloud dialog: the warning is shown and read, then cancelled; no cloud call.
-    await page.click("#status-chip")
-    await page.wait_for_selector("#models-dialog[open]")
-    await w.snap(page, tag, "models-dialog")
-    cloud = page.locator("#models-dialog input[value=cloud]")
-    if await cloud.count() and not await cloud.is_disabled():
-        await cloud.check()
-        await page.wait_for_timeout(300)
-        warn = await page.locator("#models-dialog .warn-box").first.inner_text()
-        if "Anthropic" not in warn:
-            w.errors.append(f"{tag}: no cloud warning naming the provider: {warn[:80]}")
-        await w.snap(page, tag, "cloud-warning")
-    await page.click("#models-dialog button:has-text('Cancel')")
-    await page.wait_for_timeout(300)
-    await page.goto(base + "/#/help")
-    await page.wait_for_timeout(800)
-    await help_snap(w, page, tag, "help", full=True)
-
-
-# Weak matches fold under "Weaker matches (N)" (U24); flows that keep the second lead
-# open the fold first, as a reader would.
-OPEN_WEAK = "() => document.querySelectorAll('details.weak-fold').forEach(d => { d.open = true; })"
-
-
-async def end_session(page: Page) -> None:
-    await page.click("#end-session")
-    await page.wait_for_selector("#models-dialog[open]")
-    await page.click("[data-key=end-ok]")
-
-
-async def reasons_open(w: Walk, page: Page, tag: str, sel: str) -> None:
-    """With a CV or current research given, each card's reasons start open (S27, Dakshitha)."""
-    n, shut = await page.evaluate(f"""() => {{ const d = [...document.querySelectorAll('{sel}')];
-      return [d.length, d.filter((x) => !x.open).length]; }}""")
-    if not n:
-        w.errors.append(f"{tag}: reasons: no reason blocks found ({sel})")
-    elif shut:
-        w.errors.append(f"{tag}: reasons: {shut} of {n} reason blocks start closed")
-
-
-async def docs_cards_read_clean(w: Walk, page: Page, tag: str) -> None:
-    """G1 (QA round 5): on a brief built from documents alone, no card holds a raw citation
-    key such as "[proposal]", the reasons name documents, not papers, and the Match pill
-    says it matches the documents."""
-    got = await page.evaluate("""() => {
-      const cards = [...document.querySelectorAll('.leads > li.card.lead')];
-      return { text: cards.map((c) => c.innerText).join('\\n'),
-        hints: cards.map((c) => (c.querySelector('.why > summary .hint') || {}).textContent || ''),
-        heads: cards.map((c) => (c.querySelector('.why h4.mini') || {}).textContent || ''),
-        pills: cards.map((c) => (c.querySelector('.fit') || {}).title || '') }; }""")
-    raw = re.findall(r"[^\n]{0,40}\[[^\]\n]*\][^\n]{0,8}", got["text"])
-    if raw:
-        w.errors.append(f"{tag}: G1: card text holds a raw citation: {raw[:2]}")
-    if bad := [h for h in got["hints"] + got["heads"] if "paper" in h]:
-        w.errors.append(f"{tag}: G1: a documents-only card names papers: {bad[:2]}")
-    if bad := [p for p in got["pills"] if p and "your documents" not in p]:
-        w.errors.append(f"{tag}: G1: the Match pill reads {bad[0]!r}")
-
-
-async def wait_built(page: Page, timeout: int = 300_000) -> None:
-    await page.wait_for_function("""() => { const p = document.querySelector('#progress');
-      return p && /ready|finished|failed/i.test(p.innerText) && !/Building|Searching/i.test(p.innerText.split('\\n')[0]); }""",
-                                 timeout=timeout)
-
-
-async def student_flow(w: Walk, page: Page, base: str, persona: str, views: list[tuple[str, dict]]) -> None:
-    tag = f"{persona}"
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.click("[data-key=seg-s]")
-    await page.click("[data-key=student]")
-    await page.wait_for_selector("#st-cv", timeout=20000)
-    await w.snap(page, tag, "student-form", full=True)
-    for kind in ("cv", "interests", "achievements"):
-        await page.fill(f"#st-{kind}", (SYN / persona / f"{kind}.md").read_text())
-    await w.snap(page, tag, "student-added", full=True)
-    await page.click("[data-key=st-build]")
-    await page.wait_for_selector("#progress", timeout=20000)
-    await page.wait_for_timeout(4000)
-    await w.snap(page, tag, "student-building")
-    await w.step(tag, "built", wait_built(page))
-    await page.wait_for_timeout(1000)
-    for vtag, view in views:
-        await page.set_viewport_size(view)
-        t = f"{tag}-{vtag}"
-        await page.click("#tab-profile")
-        await w.snap(page, t, "profile", full=True)
-        await page.click("#tab-routes")
-        await page.wait_for_timeout(500)
-        await w.snap(page, t, "fellowships", full=True)
-        await reasons_open(w, page, t, "details.why.explain")
-        await page.click("[data-key=route-S]")
-        await page.wait_for_timeout(500)
-        await w.snap(page, t, "scholarships")
-        await sort_stays(w, page, t)
-        await w.snap(page, t, "scholarships-full", full=True)
-        if await w.step(t, "evidence", page.locator(".leads > li .title-btn").first.click()):
-            await page.wait_for_selector(".rec-title")
-            await page.wait_for_timeout(400)
-            await w.snap(page, t, "evidence-sample")
-            await page.keyboard.press("Escape")
-        if vtag == views[0][0]:
-            for i in (0, 1):
-                await w.step(t, f"keep {i}", page.locator(".leads > li").nth(i).locator(".btn.keep").click())
-                await page.wait_for_timeout(300)
-        await page.click("#tab-compare")
-        await page.wait_for_timeout(800)
-        await w.snap(page, t, "compare", full=True)
-        if vtag == views[0][0]:
-            await w.tab_through(page, f"{persona}-compare", 25)
-            await page.click("#tab-scout")
-            await page.wait_for_timeout(500)
-            await w.snap(page, t, "scout", full=True)
-            if persona == STUDENTS[0]:  # student Scout answers on its own tools (S28)
-                await page.fill("#scout-q", "Only options with a deadline after 2027-03-01")
-                await page.click(".scout-ask button[type=submit]")
-                await page.wait_for_timeout(500)
-                for _ in range(1200):
-                    if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
-                        break
-                    await page.wait_for_timeout(100)
-                got = await page.evaluate("""() => ({read: Boolean(document.querySelector('.scout-read li')),
-                  warn: (document.querySelector('.scout-x .notice') || {}).innerText || '',
-                  code: [...document.querySelectorAll('.scout-where')].every(x => x.textContent === 'Code, no model'),
-                  raw: [...document.querySelectorAll('.scout-read .chip')].some(x => /^[a-z]+_[a-z_]+:/.test(x.textContent))})""")
-                if not got["read"] or got["warn"] or not got["code"] or got["raw"]:
-                    w.errors.append(f"{t}: scout: a student question did not finish cleanly {got}")
-                await w.snap(page, t, "scout-answer", full=True)
-    await w.step(tag, "end", end_session(page))
-    await page.wait_for_timeout(1200)
-    await w.snap(page, tag, "after-end")
-
-
-async def private_flow(w: Walk, page: Page, base: str) -> None:
-    tag = "persona-1"
-    files = {"cv": "cv.md", "proposal": "specific_aims_draft.md", "manuscript": "unpublished_manuscript.md"}
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.click("[data-key=more-opts]")
-    await page.click("[data-key=docs-link]")
-    await page.wait_for_selector("#doc-cv", timeout=20000)  # the session opens on arrival (U41)
-    await page.wait_for_timeout(500)
-    await w.snap(page, tag, "private-start", full=True)
-    for kind, name in files.items():
-        await page.fill(f"#doc-{kind}", (SYN / "persona-1" / name).read_text())
-        await page.locator(f"#doc-{kind} ~ .doc-actions button:has-text('Add text')").click()
-        await page.wait_for_timeout(500)
-    await w.snap(page, tag, "private-added", full=True)
-    await page.click("button:has-text('Build brief')")
-    await page.wait_for_timeout(5000)
-    await w.snap(page, tag, "private-building")
-    await w.step(tag, "built", wait_built(page))
-    await page.click("#tab-profile")
-    await w.snap(page, tag, "private-profile", full=True)
-    await page.click("#tab-routes")
-    await page.wait_for_timeout(500)
-    await w.snap(page, tag, "private-routes", full=True)
-    await reasons_open(w, page, tag, ".explain > details.why")
-    await docs_cards_read_clean(w, page, tag)
-    await page.goto(base + "/#/help")
-    await page.wait_for_timeout(600)
-    await help_snap(w, page, tag, "private-on-help")
-    await w.step(tag, "end", end_session(page))
-    await page.wait_for_timeout(1000)
-
-
-# ---------- the workflow review's findings (S30, docs/design/WORKFLOW_REVIEW.md W1 to W18) ----------
-# Each check names its finding. Every one failed on the build before its fix.
-
-BUILD_BUTTONS = """() => [...document.querySelectorAll('[data-key=build], [data-key=build-top]')]
-  .filter(b => b.offsetParent).length"""
-
-
-async def doc_click_listeners(page: Page) -> int:
-    """Click listeners on document, read through the debugger (W17)."""
-    cdp = await page.context.new_cdp_session(page)
-    doc = await cdp.send("Runtime.evaluate", {"expression": "document"})
-    got = await cdp.send("DOMDebugger.getEventListeners", {"objectId": doc["result"]["objectId"]})
-    await cdp.detach()
-    return sum(1 for x in got["listeners"] if x["type"] == "click")
-
-
-async def pick_and_build(page: Page) -> None:
-    """From the pick screen to a running brief, whichever presses the screen still needs."""
-    if await page.locator(".cand button.btn.outline").count():
-        await page.locator(".cand button.btn.outline").first.click()
-        await page.wait_for_timeout(300)
-    await page.locator("[data-key=build], [data-key=build-top]").first.click()
-
-
-# Counts each landing drawn into #main from the first script on (W17).
-COUNT_LANDINGS = """new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes)
-  if (n.nodeType === 1 && n.classList.contains('landing')) window.__landings = (window.__landings || 0) + 1; })
-  .observe(document, { childList: true, subtree: true });"""
-
-
-async def workflow_pi(w: Walk, page: Page, base: str, tag: str) -> None:
-    await page.add_init_script(COUNT_LANDINGS)
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.wait_for_timeout(1000)
-    if (n := await page.evaluate("() => window.__landings")) != 1:  # W17
-        w.errors.append(f"{tag}: W17: the landing was drawn {n} times on one load")
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_function("() => { const t = document.querySelector('#pick-title');"
-                                 " return t && !/Searching/.test(t.innerText); }", timeout=20000)
-    # W1: an exact id with one match opens Ready to build, with one Build button.
-    title = await page.locator("#pick-title").inner_text()
-    if not title.startswith("Ready to build"):
-        w.errors.append(f"{tag}: W1: an exact OpenAlex id with one match still asks {title!r}")
-    if await page.locator(".cand button.btn.outline").count():
-        await page.locator(".cand button.btn.outline").first.click()
-        await page.wait_for_timeout(300)
-    if (n := await page.evaluate(BUILD_BUTTONS)) != 1:
-        w.errors.append(f"{tag}: W1: the ready screen shows {n} Build brief buttons")
-    await w.snap(page, tag, "w1-ready", full=True)
-    await page.locator("[data-key=build], [data-key=build-top]").first.click()
-    await page.wait_for_selector("#tab-routes", timeout=60000)
-    await wait_built(page)
-    await page.wait_for_timeout(600)
-    # W4: the title is the one control that opens Evidence; a marker beside it says so.
-    n_ev = await page.locator(".leads > li [data-key=evidence]").count()
-    if n_ev:
-        w.errors.append(f"{tag}: W4: {n_ev} lead cards carry an Evidence button beside the title that opens the same record")
-    if not await page.evaluate("() => [...document.querySelectorAll('.leads > li .lead-title')].filter(t => t.checkVisibility())"
-                               ".every(t => /Evidence/.test(t.innerText))"):  # folded weak matches are not shown (U24)
-        w.errors.append(f"{tag}: W4: a lead title has no visible Evidence marker")
-    # W2: Keep sits in the card head, not under the explanation.
-    gap = await page.evaluate("""() => { const c = document.querySelector('.leads > li');
-      const k = c && c.querySelector('.btn.keep'); if (!k) return null;
-      return Math.round(k.getBoundingClientRect().top - c.getBoundingClientRect().top); }""")
-    if gap is None or gap > 120:
-        w.errors.append(f"{tag}: W2: Keep sits {gap} px below the top of its card")
-    await page.evaluate(OPEN_WEAK)
-    for i in (0, 1):
-        await page.locator(".leads > li .btn.keep").nth(i).click()
-        await page.wait_for_timeout(250)
-        live = await page.locator("#live").inner_text()
-        if "bar at the bottom" in live:  # W7
-            w.errors.append(f"{tag}: W7: after Keep the screen reader hears {live!r}")
-    await page.wait_for_timeout(300)
-    # W3: the kept count is not repeated in the subtitle or as a Kept tag.
-    sub = await page.evaluate("() => (document.querySelector('.routes-sub') || {}).innerText || ''")
-    if "kept" in sub:
-        w.errors.append(f"{tag}: W3: the routes subtitle repeats the kept count: {sub!r}")
-    if n := await page.evaluate("() => [...document.querySelectorAll('.leads .tag')].filter(t => t.innerText.trim() === 'Kept').length"):
-        w.errors.append(f"{tag}: W3: {n} cards carry a Kept tag beside a Kept button")
-    await w.snap(page, tag, "w2-kept")
-    # W5: the Evidence panel links the source once.
-    await page.locator(".leads > li .title-btn").first.click()
-    await page.wait_for_selector("#rail-ev .rec-title, #evidence-body .rec-title")
-    await page.wait_for_timeout(300)
-    dup = await page.evaluate("""() => { const box = document.querySelector('#rail-ev');
-      const top = box && box.querySelector('.source-top a'); if (!top) return 0;
-      return [...box.querySelectorAll('a[href]')].filter(a => a.href === top.href).length; }""")
-    if dup > 1:
-        w.errors.append(f"{tag}: W5: the Evidence panel links the same source URL {dup} times")
-    await w.snap(page, tag, "w5-evidence")
-    # W17: rendering the brief again does not add a document click listener.
-    n0 = await doc_click_listeners(page)
-    for _ in range(3):
-        await page.goto(base + "/#/help")
-        await page.wait_for_timeout(300)
-        await page.goto(base + "/#/brief/private/routes")
-        await page.wait_for_selector("#tab-routes")
-        await page.wait_for_timeout(400)
-    if (n1 := await doc_click_listeners(page)) > n0:
-        w.errors.append(f"{tag}: W17: three more brief renders left {n1 - n0} more click listeners on document")
-    # W6: the hand-off shows the mask setting it uses, and both toggles are one state.
-    await page.click("#tab-compare")
-    await page.wait_for_selector("table.compare", timeout=30000)
-    await page.wait_for_timeout(500)
-    ho, tb = await page.evaluate("""() => [document.querySelector('.handoff'), document.querySelector('table.compare')]
-      .map(x => x ? Math.round(x.getBoundingClientRect().top) : null)""")
-    if ho is None or tb is None or ho > tb:
-        w.errors.append(f"{tag}: W2: the hand-off box sits below the comparison table ({ho} against {tb} px)")
-    await w.step(tag, "W6", mask_follows(w, page, tag))
-    await w.snap(page, tag, "w6-compare", full=True)
-    await w18_reload(w, page, base, tag)
-
-
-NEW_EXPORT_HINT = ("Exports include text from your documents. Check the box to mask phrases from "
-                   "your ongoing research before sharing the file.")
-
-
-async def mask_follows(w: Walk, page: Page, tag: str) -> None:
-    """W6, in a session that holds documents: the hand-off shows the mask setting it
-    uses; the Export menu has its own box for ongoing research. Without documents neither shows (U12)."""
-    held = await page.evaluate("""async () => { const t = sessionStorage.getItem('perch.session');
-      const r = await fetch('/private/session', {headers: {'X-Perch-Private': t}}); return (await r.json()).documents.length; }""")
-    mask = page.locator(".handoff input[type=checkbox]")
-    if not held:
-        if await mask.count():
-            w.errors.append(f"{tag}: U12: a mask box beside Draft the email in a session with no documents")
-        return
-    if not await mask.count():
-        w.errors.append(f"{tag}: W6: no mask setting beside Draft the email; it hides in the Export menu")
-    else:
-        # 2026-11-02: the hand-off's mask and the Export menu's "Mask my ongoing research"
-        # are two settings. The hint says exports include the documents' text.
-        research = await page.evaluate("""async () => { const t = sessionStorage.getItem('perch.session');
-          const r = await fetch('/private/session', {headers: {'X-Perch-Private': t}});
-          return (await r.json()).documents.filter(d => ['proposal', 'direction', 'manuscript'].includes(d.kind)).length; }""")
-        await mask.check()
-        await page.click("[data-key=export]")
-        await page.wait_for_timeout(300)
-        pop = await page.locator(".export-pop").inner_text()
-        if NEW_EXPORT_HINT not in pop:
-            w.errors.append(f"{tag}: X1: the Export menu does not show the hint {NEW_EXPORT_HINT!r}")
-        if "leave out text drawn from your documents" in pop:
-            w.errors.append(f"{tag}: X1: the Export menu still says exports leave out your documents' text")
-        box = page.locator(".export-pop [data-key=export-mask]")
-        if research:
-            if not await box.is_visible():
-                w.errors.append(f"{tag}: X1: no 'Mask my ongoing research' box in a session with ongoing research")
-            else:
-                if await box.is_checked():
-                    w.errors.append(f"{tag}: X1: the Export menu's box follows the hand-off's mask; they are two settings")
-                if "Mask my ongoing research" not in pop:
-                    w.errors.append(f"{tag}: X1: the Export menu's box is not labelled 'Mask my ongoing research'")
-                await box.check()
-        elif await box.is_visible():
-            w.errors.append(f"{tag}: X1: a 'Mask my ongoing research' box in a session with no ongoing research")
-        await page.keyboard.press("Escape")
-        await page.wait_for_timeout(200)
-        if not await mask.is_checked():
-            w.errors.append(f"{tag}: W6: ticking the Export menu's box cleared the hand-off's mask box")
-        await mask.uncheck()
-        if research:
-            await page.click("[data-key=export]")
-            await page.wait_for_timeout(200)
-            await box.uncheck()
-            await page.keyboard.press("Escape")
-
-
-async def w18_reload(w: Walk, page: Page, base: str, tag: str) -> None:
-    # W18: a reload asks first, then resumes the brief; a new tab does not share it.
-    await page.click("#tab-routes")
-    await page.wait_for_timeout(300)
-    seen: list[str] = []
-
-    async def on_dialog(d) -> None:  # noqa: ANN001 - a playwright Dialog
-        seen.append(d.type)
-        await d.accept()
-    page.on("dialog", on_dialog)
-    await page.reload()
-    page.remove_listener("dialog", on_dialog)
-    if "beforeunload" not in seen:
-        w.errors.append(f"{tag}: W18: reloading a brief gave no beforeunload prompt")
-    try:
-        await page.wait_for_selector("#tab-routes", timeout=15000)
-        await wait_built(page, 30000)
-        label = await page.locator("#tab-compare").get_attribute("aria-label")
-        if label != "Compare, 2 kept":
-            w.errors.append(f"{tag}: W18: after a reload the brief came back without its kept leads ({label!r})")
-    except Exception:  # noqa: BLE001 - reported as a finding
-        w.errors.append(f"{tag}: W18: a reload lost the brief (landed on {page.url.split('#')[-1]!r})")
-    await w.snap(page, tag, "w18-reloaded")
-    other = await page.context.new_page()
-    await other.goto(base + "/#/brief/private/routes")
-    await other.wait_for_timeout(1500)
-    if await other.locator("#tab-routes").count():
-        w.errors.append(f"{tag}: W18: a new tab opened the first tab's session")
-    await other.close()
-    token = await page.evaluate("() => { try { return sessionStorage.getItem('perch.session'); } catch { return null; } }")
-    if token:
-        await page.evaluate("""(t) => fetch('/private/end', {method: 'POST', headers: {'X-Perch-Private': t}})""", token)
-        page.on("dialog", on_dialog)
-        await page.reload()
-        page.remove_listener("dialog", on_dialog)
-        try:
-            await page.wait_for_selector(".session-ended", timeout=15000)
-        except Exception:  # noqa: BLE001 - reported as a finding
-            w.errors.append(f"{tag}: W18: after the server ended the session, a reload did not land on the start with the notice")
-        await w.snap(page, tag, "w18-expired")
-
-
-async def workflow_sample(w: Walk, page: Page, base: str, tag: str) -> None:
-    """W18 and rule 11: a brief steered by the SYNTHETIC sample keeps its Sample data banner
-    after a reload."""
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_selector(".cand", timeout=20000)
-    if await page.locator(".cand button.btn.outline").count():
-        await page.locator(".cand button.btn.outline").first.click()
-    await page.click("[data-key=more-ctx]")
-    await page.click("[data-key=fill-sample]")
-    await page.wait_for_selector(".sample-status")
-    await page.click("[data-key=build]")
-    await page.wait_for_selector("#tab-routes", timeout=60000)
-    await wait_built(page)
-    if not await page.locator(".sample-note").count():
-        w.errors.append(f"{tag}: rule 11: a brief steered by the sample has no Sample data banner")
-    await page.locator(".leads > li .btn.keep").first.click()  # the sample's draft aims are a document
-    await page.click("#tab-compare")
-    await page.wait_for_selector(".handoff", timeout=30000)
-    await page.wait_for_timeout(500)
-    await w.step(tag, "W6", mask_follows(w, page, tag))
-    await page.click("#tab-routes")
-    page.on("dialog", lambda d: asyncio.ensure_future(d.accept()))
-    await page.reload()
-    await page.wait_for_selector("#tab-routes", timeout=20000)
-    await page.wait_for_timeout(800)
-    if not await page.locator(".sample-note").count():
-        w.errors.append(f"{tag}: W18: after a reload the sample-steered brief lost its Sample data banner")
-    await w.snap(page, tag, "w18-sample-reloaded")
-    await end_session(page)
-
-
-async def workflow_student(w: Walk, page: Page, base: str, tag: str) -> None:
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.click("[data-key=seg-s]")
-    await page.click("[data-key=student]")
-    await page.wait_for_selector("#st-cv", timeout=20000)
-    for kind in ("cv", "interests", "achievements"):
-        await page.fill(f"#st-{kind}", (SYN / "persona-ug" / f"{kind}.md").read_text())
-    await page.click("[data-key=st-build]")
-    await page.wait_for_selector("#progress", timeout=20000)
-    await wait_built(page)
-    await page.wait_for_timeout(500)
-    if n := await page.locator(".leads > li [data-key^=evidence-]").count():
-        w.errors.append(f"{tag}: W4: {n} option cards carry an Evidence button beside the title")
-    await page.locator(".leads > li .btn.keep").first.click()
-    await page.wait_for_timeout(300)
-    await page.click("#tab-compare")
-    await page.wait_for_selector("table.compare", timeout=30000)
-    await page.wait_for_timeout(800)
-    # W8: the note shows at once, has no dead To box, and Open in my mail app sends the edited text.
-    if not await page.locator(".draft textarea").count():
-        w.errors.append(f"{tag}: W8: the code-written note needs a Draft the note press")
-        if await page.locator("[data-key=st-draft]").count():
-            await page.click("[data-key=st-draft]")
-            await page.wait_for_selector(".draft textarea")
-    if await page.locator("#st-to").count():
-        w.errors.append(f"{tag}: W8: the note has a To box that nothing reads")
-    ho, tb = await page.evaluate("""() => [document.querySelector('.handoff'), document.querySelector('table.compare')]
-      .map(x => x ? Math.round(x.getBoundingClientRect().top) : null)""")
-    if ho is None or tb is None or ho > tb:
-        w.errors.append(f"{tag}: W2: the note sits below the comparison table ({ho} against {tb} px)")
-    await page.locator(".draft textarea").fill((await page.locator(".draft textarea").input_value()) + "\nEDITED-W8")
-    await page.evaluate("""() => window.addEventListener('click', (e) => {
-      const a = e.target.closest('a[href^="mailto"], [data-key=st-mail]');
-      if (a) { window.__mail = a.getAttribute('href'); e.preventDefault(); } })""")
-    mail = page.locator(".draft .actions a:has-text('Open in my mail app')")
-    if await mail.count():
-        await mail.click()
-        got = await page.evaluate("() => decodeURIComponent(window.__mail || '')")
-        if "EDITED-W8" not in got:
-            w.errors.append(f"{tag}: W8: Open in my mail app sends the note as first drawn, not as edited")
-    else:
-        w.errors.append(f"{tag}: W8: no Open in my mail app button on a note about public fellowships")
-    await w.snap(page, tag, "w8-note", full=True)
-    await end_session(page)
-
-
-async def workflow_private(w: Walk, page: Page, base: str, tag: str) -> None:
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.click("[data-key=more-opts]")
-    await page.click("[data-key=docs-link]")
-    await page.wait_for_selector("#doc-proposal", timeout=20000)
-    await page.fill("#doc-proposal", (SYN / "persona-1/specific_aims_draft.md").read_text())
-    await page.locator("#doc-proposal ~ .doc-actions button:has-text('Add text')").click()
-    await page.wait_for_function("() => !document.querySelector('#doc-proposal')", timeout=20000)
-    await page.click(".private button:has-text('Build brief')")
-    await page.wait_for_selector("#progress", timeout=20000)
-    await page.wait_for_timeout(500)
-    if not page.url.endswith("/routes"):  # W11
-        w.errors.append(f"{tag}: W11: a private brief lands on {page.url.split('#')[-1]!r}, not on Routes")
-    await wait_built(page)
-    # W10: End session on Your documents asks first, as the header's does.
-    await page.goto(base + "/#/private")
-    await page.wait_for_selector(".private")
-    await page.click(".private .doc-actions button:has-text('End session')")
-    try:
-        await page.wait_for_selector("#models-dialog[open]", timeout=3000)
-        await w.snap(page, tag, "w10-confirm")
-        await page.click("#models-dialog button:has-text('Keep working')")
-        await end_session(page)
-    except Exception:  # noqa: BLE001 - reported as a finding
-        w.errors.append(f"{tag}: W10: End session on Your documents ended the session without asking")
-
-
-# ---------- the UX review's findings (S30, docs/design/UX_REVIEW_S29.md U1 to U28) ----------
-# Each check names its finding. Every one failed on the build before its fix.
-
-YEAR_NOW = 2026
-
-
-SECURITY = ("Companies outside the United States may need a research-security review before any "
-            "contact; the office makes that check.")  # Q13's fixed line
-
-
-def far_years(text: str) -> list[str]:
-    """Years more than ten years out: a placeholder close date shown as if real (U3)."""
-    return [y for y in re.findall(r"\b(2\d{3})\b", text) if int(y) > YEAR_NOW + 10]
-
-
-async def ux_pi(w: Walk, page: Page, base: str, tag: str) -> None:
-    phone = page.viewport_size["width"] < 700
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    x_landing = (await page.locator(".wordmark").bounding_box())["x"]
-    if not phone:  # U17: the paste nudge clears when the field changes
-        cv = (SYN / "persona-1/cv.md").read_text()
-        await page.evaluate("""(t) => { const q = document.querySelector('#q'); const dt = new DataTransfer();
-          dt.setData('text/plain', t); q.value = t; q.dispatchEvent(new InputEvent('input', {bubbles: true}));
-          q.dispatchEvent(new ClipboardEvent('paste', {clipboardData: dt, bubbles: true})); }""", cv)
-        await page.wait_for_selector(".nudge", timeout=3000)
-        await page.fill("#q", AUTHOR)
-        await page.wait_for_timeout(200)
-        if await page.locator(".nudge").count() or await page.locator(".searchbox button[type=submit]").is_disabled():
-            w.errors.append(f"{tag}: U17: after the field is cleared and an ID typed, the paste offer stays and Find is disabled")
-            await page.click(".nudge button:has-text('Keep it here')")
-        await page.goto(base + "/#/help")
-        await page.wait_for_timeout(500)
-        x_help = (await page.locator(".wordmark").bounding_box())["x"]
-        await page.goto(base + "/#/")
-        await page.wait_for_selector(".landing")
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_selector(".cand", timeout=20000)
-    if await page.locator(".cand button.btn.outline").count():
-        await page.locator(".cand button.btn.outline").first.click()
-        await page.wait_for_timeout(300)
-    near = await page.evaluate("""() => { const c = [...document.querySelectorAll('label.check')].find(l => /Explain each lead/.test(l.innerText));
-      const b = document.querySelector('[data-key=build]'); if (!c || !b) return null;
-      const r = c.getBoundingClientRect(), k = b.getBoundingClientRect();
-      return { inBox: Boolean(c.closest('.box, .more-panel')), gap: Math.max(0, r.top - k.bottom, k.top - r.bottom) }; }""")
-    if near is None or near["inBox"] or near["gap"] > 60:  # U42
-        w.errors.append(f"{tag}: U42: Explain each lead is not beside Build brief {near}")
-    await w.snap(page, tag, "u-pick")
-    await pick_and_build(page)
-    await page.wait_for_selector("#tab-routes", timeout=60000)
-    await wait_built(page)
-    await page.wait_for_timeout(800)
-    vw, vh = page.viewport_size["width"], page.viewport_size["height"]
-    if not phone:  # U18: one header on every screen
-        x_brief = (await page.locator(".wordmark").bounding_box())["x"]
-        if len({round(x_landing), round(x_help), round(x_brief)}) > 1:
-            w.errors.append(f"{tag}: U18: the wordmark moves between screens (landing {x_landing:.0f}, "
-                            f"help {x_help:.0f}, brief {x_brief:.0f} px)")
-    # T15: a weak card (Match under 40) labels its model sentence How it relates
-    weak = await page.evaluate("""() => [...document.querySelectorAll('#panel .leads > li')].filter(li => {
-        const m = li.querySelector('.fit'); const n = m ? parseInt((m.innerText.match(/\\d+/) || [100])[0], 10) : 100;
-        const s = li.querySelector('details.why > summary'); return n < 40 && s && /Why it fits/.test(s.innerText); }).length""")
-    if weak:
-        w.errors.append(f"{tag}: T15: {weak} weak cards say Why it fits")
-    # F2: a card's model sentence never stops on a word that needs a noun after it
-    hang = await page.evaluate(DANGLING)
-    if hang:
-        w.errors.append(f"{tag}: F2: card sentences end on a dangling word: {hang[:2]}")
-    meta = await page.evaluate("() => (document.querySelector('.brief-meta') || {}).textContent || ''")
-    if re.search(r"Brief as of \d+ ", meta):  # F23: the date's parts never part
-        w.errors.append(f"{tag}: F23: the brief date can break inside: {meta[-30:]!r}")
-    await w.snap(page, tag, "u-routes", full=not phone)
-    if phone:  # U5: the first lead shows in the first view
-        top = await page.evaluate("() => document.querySelector('.leads > li').getBoundingClientRect().top + scrollY")
-        if top + 140 > vh:
-            w.errors.append(f"{tag}: U5: the first lead starts at y = {top:.0f} px on a {vh} px screen")
-        await page.click(".pcard .steps summary")  # opened, the steps take the card's width
-        await page.wait_for_timeout(200)
-        wide = await page.evaluate("() => document.querySelector('.pcard .steps ol').getBoundingClientRect().width")
-        if wide < vw * 0.7:
-            w.errors.append(f"{tag}: U5: the opened steps are squeezed into {wide:.0f} px")
-        await w.snap(page, tag, "u-steps-open")
-        await page.click(".pcard .steps summary")
-    # F12: a card's inference and fit texts speak to the researcher, as the export and
-    # Scout do: no "The researcher's" (it read so while the export said "Your")
-    third = await page.evaluate("""() => { const out = { boxes: 0, hits: [] };
-      for (const el of document.querySelectorAll('#panel .leads > li .inference > p:not(.inference-label), '
-          + '#panel .leads > li .explain p.what, #panel .leads > li ul.findings li > p')) {
-        if (el.closest('.inference')) out.boxes++;
-        if (/\\b[Tt]he researcher\\b/.test(el.textContent)) out.hits.push(el.textContent.slice(0, 90)); }
-      return out; }""")
-    if not third["boxes"]:
-        w.errors.append(f"{tag}: F12: no card shows an inference, so its wording went unchecked")
-    elif third["hits"]:
-        w.errors.append(f"{tag}: F12: {len(third['hits'])} card texts say the researcher, not you: "
-                        f"{third['hits'][:2]}")
-    card = page.locator("#panel .leads > li").filter(has=page.locator(".inference")).first
-    if await card.count():  # the card with its inference open, to look at
-        why = card.locator("details.why > summary")
-        shut = await why.count() and not await card.locator("details.why").evaluate("d => d.open")
-        if shut:
-            await why.click()
-        await card.locator(".inference").scroll_into_view_if_needed()
-        await w.snap(page, tag, "u-card-inference")
-        if shut:
-            await why.click()
-        await page.evaluate("() => window.scrollTo(0, 0)")
-    dup = await page.evaluate("""() => [...document.querySelectorAll('#panel details.why')].filter(d => {
-      const inf = [...d.querySelectorAll('.inference .paper-cite')].map(b => b.dataset.key);
-      const own = new Set([...d.querySelectorAll('.findings .paper-ref')].map(b => b.dataset.key));
-      return inf.length && inf.every(k => own.has(k)); }).length""")
-    if dup:  # U35
-        w.errors.append(f"{tag}: U35: {dup} Inference boxes repeat the paper chips listed just above them")
-    lab = await page.evaluate("""() => { const sw = document.querySelector('#panel .route-row .sort-switch'); const l = document.querySelector('#panel .route-row .sort-label');
-      return { label: l ? l.innerText.trim() : null, before: Boolean(l && sw && (l.compareDocumentPosition(sw) & Node.DOCUMENT_POSITION_FOLLOWING)) }; }""")
-    if lab["label"] != "Sort" or not lab["before"]:  # U36
-        w.errors.append(f"{tag}: U36: the sort switch has no visible Sort label {lab}")
-    # U24 as Q6 decided: the first five cards always show open, whatever their band; the
-    # fold holds only weak cards after the fifth, with its count
-    weak = await page.evaluate("""() => {
-      const top = [...document.querySelectorAll('#panel .leads > li')].filter(li => !li.closest('details'));
-      const inFold = [...document.querySelectorAll('#panel details.weak-fold .leads > li')];
-      const fold = document.querySelector('#panel details.weak-fold > summary');
-      return { open: top.length, weakAfter: top.slice(5).filter(li => li.querySelector('.fit.weak')).length,
-               foldNotWeak: inFold.filter(li => !li.querySelector('.fit.weak')).length, inFold: inFold.length,
-               fold: fold ? fold.innerText : null }; }""")
-    if weak["open"] < min(5, weak["open"] + weak["inFold"]):
-        w.errors.append(f"{tag}: Q6: only {weak['open']} cards show open before the Weaker matches fold")
-    if weak["weakAfter"] or weak["foldNotWeak"]:
-        w.errors.append(f"{tag}: Q6: weak cards after the fifth sit open, or the fold holds a stronger card {weak}")
-    elif weak["fold"] is not None and not re.search(r"\d", weak["fold"]):
-        w.errors.append(f"{tag}: U24: the weak-match fold does not state its count ({weak['fold']!r})")
-    # Q3: a placeholder close date never shows on a card; the record's words do
-    cards = await page.evaluate("() => [...document.querySelectorAll('#panel .leads > li .fact.close')].map(x => x.innerText)")
-    if far := [c for c in cards if far_years(c)]:
-        w.errors.append(f"{tag}: Q3: a card shows a placeholder close date as real ({far[0]!r})")
-    # Q27: Home and End move along the tabs (WAI-ARIA tabs)
-    await page.focus("#tab-routes")
-    await page.keyboard.press("End")
-    await page.wait_for_timeout(300)
-    last = await page.evaluate("() => document.activeElement && document.activeElement.id")
-    await page.keyboard.press("Home")
-    await page.wait_for_timeout(300)
-    first = await page.evaluate("() => [document.activeElement && document.activeElement.id, location.hash]")
-    tabs = await page.evaluate("() => [...document.querySelectorAll('[role=tab]')].map(t => t.id)")
-    if last != tabs[-1] or first[0] != tabs[0] or not first[1].endswith("/routes"):
-        w.errors.append(f"{tag}: Q27: End went to {last!r} and Home to {first[0]!r}; the tabs are {tabs}")
-    await page.wait_for_timeout(300)
-    # U25: filter chips from the leads' own agency and activity-code values
-    chips = await page.evaluate("""() => [...document.querySelectorAll('#panel .filter-chips button')].map(b => b.innerText.trim())""")
-    if not chips:
-        w.errors.append(f"{tag}: U25: no filter chips on Routes")
-    else:
-        vals = await page.evaluate("""() => [...document.querySelectorAll('#panel .leads > li .tags .tag')].map(t => t.textContent.trim())""")
-        stray = [c for c in chips if re.sub(r"\s*\d+$", "", c) not in vals and not c.startswith("All")]
-        if stray:
-            w.errors.append(f"{tag}: U25: filter chips not built from the leads' own values: {stray}")
-        await page.locator("#panel .filter-chips button").nth(1).click()  # the largest agency
-        await page.wait_for_timeout(300)
-        want = re.sub(r"\s*\d+$", "", chips[1])
-        got = await page.evaluate("""(v) => [...document.querySelectorAll('#panel .leads > li')].map(li =>
-          [...li.querySelectorAll('.tags .tag')].some(t => t.textContent.trim() === v))""", want)
-        if not got or not all(got):
-            w.errors.append(f"{tag}: U25: the {want} chip left other agencies in the list")
-        await w.snap(page, tag, "u-filtered")
-        await page.locator("#panel .filter-chips button").first.click()
-        await page.wait_for_timeout(300)
-    # U9 and U27: the rail (laptop only)
-    if not phone:
-        await page.locator(".leads > li .title-btn").first.click()
-        await page.wait_for_selector("#rail-ev .rec-title")
-        await page.wait_for_timeout(400)
-        fade = await page.evaluate("""() => { const b = document.querySelector('#rail-ev'); const s = getComputedStyle(b);
-          const a = getComputedStyle(b, '::after');
-          return { over: b.scrollHeight > b.clientHeight + 2, bar: s.scrollbarColor, width: s.scrollbarWidth,
-                   fade: (s.maskImage && s.maskImage !== 'none') || (s.webkitMaskImage && s.webkitMaskImage !== 'none')
-                     || (a.content !== 'none' && /gradient/.test(a.backgroundImage)) }; }""")
-        if fade["over"] and (re.match(r"transparent|rgba\(0, 0, 0, 0\)", fade["bar"] or "")  # the thumb's colour
-                             or fade["width"] == "none" or not fade["fade"]):
-            w.errors.append(f"{tag}: U27: the Evidence rail is cut with no visible scroll bar or fade {fade}")
-        once = await page.evaluate("() => document.body.innerText.split('is not endorsed or certified by').length - 1")
-        if once != 1:  # F21: the Grants.gov line prints once, in the footer
-            w.errors.append(f"{tag}: F21: the Grants.gov attribution prints {once} times with a record open")
-        await w.snap(page, tag, "u-rail")
-        await page.click("[data-key=route-B]")
-        await page.wait_for_timeout(500)
-        if not await page.locator("#rail-ev .empty-ev").count():
-            w.errors.append(f"{tag}: U9: after a switch to Industry the rail still shows the grant record")
-        await page.locator(".leads > li .title-btn").first.click()
-        await page.wait_for_selector("#rail-ev .rec-title")
-        await page.click("[data-key=route-A]")
-        await page.wait_for_timeout(400)
-        if not await page.locator("#rail-ev .empty-ev").count():
-            w.errors.append(f"{tag}: U9: after a switch back to Grants the rail still shows the company record")
-        await page.wait_for_timeout(300)
-        await page.keyboard.press("Escape")
-    # U12: no mask block in the Export menu while the session holds no documents
-    await page.click("[data-key=export]")
-    await page.wait_for_timeout(300)
-    if phone:  # U1: the menu stays on screen
-        r = await page.locator(".export-pop").bounding_box()
-        if r["x"] < 0 or r["x"] + r["width"] > vw:
-            w.errors.append(f"{tag}: U1: the Export menu runs from x = {r['x']:.0f} to {r['x'] + r['width']:.0f} on a {vw} px screen")
-    if await page.locator(".export-pop input[type=checkbox]").count() or \
-            "Unmask" in await page.locator(".export-pop").inner_text():
-        w.errors.append(f"{tag}: U12: the Export menu shows the mask controls in a session with no documents")
-    await w.snap(page, tag, "u-export")
-    await page.keyboard.press("Escape")
-    # U13 and U14: Industry
-    await page.click("[data-key=route-B]")
-    await page.wait_for_timeout(600)
-    names = await page.evaluate("() => [...document.querySelectorAll('#panel .leads > li .title-btn > span:first-child')].map(s => s.innerText)")
-    keys = [(n.split()[0].lower(), (re.search(r"\(([^)]*)\)\s*$", n) or [None, ""])[1]) for n in names]
-    dup = [n for n, k in zip(names, keys, strict=False) if keys.count(k) > 1]
-    if dup:
-        w.errors.append(f"{tag}: U13: one company shows as separate industry leads: {dup}")
-    iso = await page.evaluate(r"() => [...document.querySelectorAll('#panel .signals p')].map(p => p.innerText).filter(t => /\d{4}-\d{2}-\d{2}/.test(t))")
-    if iso:
-        w.errors.append(f"{tag}: U14: industry sentences write dates as {iso[0][:90]!r}")
-    gone = await page.evaluate(r"""() => [...document.querySelectorAll('#panel .signals > li')].map(li => {
-      const n = parseInt((li.querySelector('p') || {}).innerText, 10); const m = li.querySelector('.hint');
-      return m && /more in the export/.test(m.innerText) ? [n, m.innerText] : null; }).filter(x => x && x[0] <= 25)""")
-    if gone:  # U38
-        w.errors.append(f"{tag}: U38: {gone[0][1]!r} on a signal with only {gone[0][0]} records")
-    if SECURITY not in await page.locator("#panel").inner_text():  # Q13
-        w.errors.append(f"{tag}: Q13: the Industry tab does not carry the research-security line")
-    await w.snap(page, tag, "u-industry", full=not phone)
-    if phone:  # U16: the kept pill stays off the Industry warning
-        await page.click("[data-key=route-A]")
-        await page.wait_for_timeout(300)
-        await page.evaluate(OPEN_WEAK)
-        for i in (0, 1):
-            await page.locator(".leads > li .btn.keep").nth(i).click()
-            await page.wait_for_timeout(250)
-        await page.evaluate("() => window.scrollTo(0, 0)")
-        await page.click("[data-key=route-B]")
-        await page.wait_for_timeout(600)
-        hit = await page.evaluate("""() => { const p = document.querySelector('.keep-float'), n = document.querySelector('.infer-note');
-          if (!p || !n || getComputedStyle(p).visibility === 'hidden') return false;
-          const a = p.getBoundingClientRect(), b = n.getBoundingClientRect();
-          return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top; }""")
-        if hit:
-            w.errors.append(f"{tag}: U16: the kept pill covers the Industry warning")
-        await w.snap(page, tag, "u-industry-pill")
-        await page.evaluate("() => window.scrollBy(0, 900)")  # past the warning the pill comes back
-        await page.wait_for_timeout(400)
-        if await page.evaluate("() => { const p = document.querySelector('.keep-float'); return !p || getComputedStyle(p).visibility === 'hidden'; }"):
-            w.errors.append(f"{tag}: U16: the kept pill stays hidden once the warning has scrolled away")
-        await page.evaluate("() => window.scrollTo(0, 0)")
-    await page.click("[data-key=route-A]")
-    await page.wait_for_timeout(300)
-    # U23: the profile says how its paper counts relate
-    await page.click("#tab-profile")
-    await page.wait_for_timeout(600)
-    twice = await page.evaluate("""() => [...document.querySelectorAll('#panel .block')].filter(b => /^Summary/.test(b.innerText))
-      .filter(b => b.querySelector('h2 .hint') && b.querySelector('.tag.model')).length""")
-    if twice:  # U35
-        w.errors.append(f"{tag}: U35: the Summary says it is model text in its header and in its tag line")
-    if not phone:
-        note = await page.evaluate("() => (document.querySelector('.threads-note') || {}).innerText || ''")
-        if not re.search(r"\d", note):
-            w.errors.append(f"{tag}: U23: Research threads give no note on how the paper counts relate")
-        await w.snap(page, tag, "u-profile", full=True)
-    await page.click("#tab-routes")
-    await page.wait_for_timeout(400)
-    if not phone:
-        # Keep the first two grants (the review's U3 steps), then Compare and the email
-        await page.evaluate(OPEN_WEAK)
-        kept = await page.locator(".leads > li .btn.keep.on").count()
-        for _i in range(kept, 2):
-            await page.locator(".leads > li .btn.keep:not(.on)").first.click()
-            await page.wait_for_timeout(250)
-    await page.click("#tab-compare")
-    await page.wait_for_selector("table.compare", timeout=30000)
-    await page.wait_for_timeout(600)
-    table = await page.locator("table.compare").inner_text()
-    if far := far_years(table):  # U3
-        w.errors.append(f"{tag}: U3: Compare shows a placeholder close date as real ({far[0]})")
-    if re.search(r"\d{4,} days after", table):
-        w.errors.append(f"{tag}: U3: Compare counts tens of thousands of days to a close date")
-    if "Perch’s order" in table or "Match" not in table:  # U6
-        w.errors.append(f"{tag}: U6: Compare shows Perch's order, not the card's Match")
-    sub = await page.evaluate("() => [...document.querySelectorAll('#panel .hint')].map(x => x.innerText).join(' ')")
-    marks = await page.evaluate("""() => [...document.querySelectorAll('table.compare thead th')].map(th =>
-      ({ text: th.innerText.trim(), btn: Boolean(th.querySelector('button')), mark: (th.querySelector('.sort-mark') || {}).textContent || '',
-         top: Math.round((th.querySelector('button, span') || th).getBoundingClientRect().top),
-         shown: th.getBoundingClientRect().height > 2 }))""")
-    if phone:  # U15
-        if "Press a column name to sort" in sub and not await page.locator("#panel select.compare-sort").count():
-            w.errors.append(f"{tag}: U15: on a phone the table has no column names, but the hint says to press one")
-        if await page.evaluate("() => [...document.querySelectorAll('table.compare td')].some(td => /[↕▲▼]/.test(td.dataset.label || ''))"):
-            w.errors.append(f"{tag}: U15: the stacked cells' labels carry the sort mark")
-    else:
-        if any(not m["mark"].strip() for m in marks if m["btn"]):
-            w.errors.append(f"{tag}: U15: sortable headers carry no sort mark until pressed")
-        if len({m["top"] for m in marks}) > 1:
-            w.errors.append(f"{tag}: U15: the header labels do not line up ({sorted({m['top'] for m in marks})})")
-    await w.snap(page, tag, "u-compare", full=True)
-    if phone:  # F13: Tab never stops on the hidden header row or an unseen element
-        await page.focus("#tab-compare")
-        lost = []
-        for _ in range(14):
-            await page.keyboard.press("Tab")
-            got = await page.evaluate("""() => { const el = document.activeElement; if (!el || el === document.body) return null;
-              const r = el.getBoundingClientRect();
-              return { el: (el.innerText || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30),
-                head: Boolean(el.closest('thead')), unseen: r.width < 2 || r.height < 2 }; }""")
-            if got and (got["head"] or got["unseen"]):
-                lost.append(got)
-        if lost:
-            w.errors.append(f"{tag}: F13: {len(lost)} Tab stops on Compare are hidden, e.g. {lost[:2]}")
-        await page.set_viewport_size({"width": 320, "height": 640})
-        await page.wait_for_timeout(400)
-        cut = await page.evaluate("""() => [...document.querySelectorAll('table.compare td .cell-text')]
-          .filter(c => c.scrollWidth > c.clientWidth + 1 || c.getBoundingClientRect().right > innerWidth + 1).map(c => c.innerText)""")
-        if cut:
-            w.errors.append(f"{tag}: F13: at 320 px Compare cuts its cells: {cut[:2]}")
-        await w.snap(page, tag, "f13-compare-320")
-        await page.set_viewport_size(PHONE)
-        await page.wait_for_timeout(300)
-    # The ERA note sits under the To line: shown, and says Temple routes it through ERA.
-    sn = page.locator("[data-key=submission-note]")
-    if not await sn.count() or not await sn.first.is_visible() or "routes it through ERA" not in await sn.first.inner_text():
-        w.errors.append(f"{tag}: the hand-off does not show the ERA submission note")
-    elif await sn.first.locator("a").get_attribute("href") != "https://research.temple.edu/researchadministration/contact-us/find-your-res-administrator":
-        w.errors.append(f"{tag}: the ERA submission note links elsewhere")
-    if not phone:
-        await page.locator("[data-key=handoff-make]").click()
-        await page.wait_for_selector("#handoff-body", timeout=90000)
-        body = await page.locator("#handoff-body").input_value()
-        ui = await page.evaluate("""() => ({ tag: (document.querySelector('.draft .model-note .tag') || {}).innerText || null,
-          btns: [...document.querySelectorAll('.draft .actions .btn')].map(b => b.innerText.trim()) })""")
-        if ui["tag"] not in (None, "Model text") or ui["btns"] != ["Copy the draft", "Open in my mail app"]:
-            w.errors.append(f"{tag}: U34: the researcher's note reads {ui}")
-        if far := far_years(body):
-            w.errors.append(f"{tag}: U3: the email says a placeholder close date as real ({far[0]})")
-        if re.search(r"\b\d{4}-\d{2}-\d{2}\b", body):
-            w.errors.append(f"{tag}: U14: the email writes dates as 2026-09-29")
-        await w.snap(page, tag, "u-handoff", full=True)
-    # U22: at 320 px the tabs fit
-    if phone:
-        await page.set_viewport_size({"width": 320, "height": 640})
-        await page.click("#tab-scout")
-        await page.wait_for_timeout(500)
-        clip = await page.evaluate("""() => { const t = document.querySelector('.tabs');
-          const cut = [...t.querySelectorAll('.tab')].filter(b => { const r = b.getBoundingClientRect(), p = t.getBoundingClientRect();
-            return r.left < p.left - 1 || r.right > p.right + 1 || b.scrollWidth > b.clientWidth + 1; }).map(b => b.innerText);
-          const chip = document.querySelector('#status-chip .chip-word');
-          return { cut, scroll: t.scrollWidth > t.clientWidth + 1,
-                   chipLines: Math.round(chip.getBoundingClientRect().height / parseFloat(getComputedStyle(chip).lineHeight || 20)) }; }""")
-        if clip["cut"] or clip["scroll"]:
-            w.errors.append(f"{tag}: U22: at 320 px the tabs are clipped {clip['cut']}")
-        if clip["chipLines"] > 1:
-            w.errors.append(f"{tag}: U22: at 320 px the status chip wraps to {clip['chipLines']} lines")
-        await w.snap(page, tag, "u-320")
-        await page.set_viewport_size(PHONE)
-    await end_session(page)
-
-
-async def scout_ask(page: Page, q: str) -> None:
-    await page.fill("#scout-q", q)
-    await page.click(".scout-ask button[type=submit]")
-    await page.wait_for_timeout(500)
-    for _ in range(1500):  # up to 150 s
-        if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
-            break
-        await page.wait_for_timeout(100)
-
-
-# F2: the last word of each card sentence, when it is a word that needs a noun after it
-DANGLING = r"""() => [...document.querySelectorAll('#panel .explain p.what, #panel .inference p:last-child, #panel .fit-why > span:not(.tag)')]
-  .map(p => p.innerText.trim()).filter(t => /\b(of|in|with|by|for|to|the|a|an|from|at|on|into|than)\s*\.$/i.test(t))
-  .map(t => t.slice(-50))"""
-
-
-SCOUT_FACTS = r"""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
-  const a = x && x.querySelector('.scout-answer');
-  return { answer: Boolean(a), tagged: Boolean(a && a.querySelector('.tag.model')),
-    text: a ? a.innerText : '', bullets: a ? /(^|\n)\s*[*-] /.test(a.innerText) : false,
-    money: a ? (a.innerText.match(/\$\d[\d,]*\.\d\b/) || [null])[0] : null,
-    raw: [...x.querySelectorAll('.scout-read .chip, .scout-answer .cite')].map(c => c.innerText)
-      .filter(t => /(^|\W)(grants_gov|sample|nih_reporter|openalex):|\bsample:/.test(t)),
-    results: [...x.querySelectorAll('.scout-read-result')].map(r => r.innerText) }; }"""
-
-
-async def ux_scout(w: Walk, page: Page, base: str, tag: str) -> None:
-    """U6, U7 and U8 on a researcher brief: Scout's numbers, model tag and raw ids."""
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_selector(".cand", timeout=20000)
-    await pick_and_build(page)
-    await page.wait_for_selector("#tab-routes", timeout=60000)
-    await wait_built(page)
-    await page.click("#tab-scout")
-    await page.wait_for_selector("#scout-q")
-    iso = await page.evaluate(r"() => [...document.querySelectorAll('.scout-try .chip')].map(c => c.innerText).filter(t => /\d{4}-\d{2}-\d{2}/.test(t))")
-    if iso:  # F18: dates as the app writes them
-        w.errors.append(f"{tag}: F18: example chips write ISO dates: {iso}")
-    await scout_ask(page, "What are my top three leads and why?")
-    got = await page.evaluate(SCOUT_FACTS)
-    if re.search(r"\bthe researcher\b", got["text"], re.I):  # F12
-        w.errors.append(f"{tag}: F12: demo question 1 speaks of the researcher: {got['text'][:120]!r}")
-    if re.search(r"\b(of|in|with|by|for|to|the)\s*\.(\s|$)", re.sub(r"\s+", " ", got["text"])):  # F2
-        w.errors.append(f"{tag}: F2: demo question 1 has a sentence that stops on a dangling word")
-    await scout_ask(page, "Which of these close before March?")
-    scoped = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
-      return [...x.querySelectorAll('.scout-read .chip')].map(c => c.innerText); }""")
-    if "Within: your brief" not in scoped:  # F1: "these" searched the brief alone
-        w.errors.append(f"{tag}: F1: demo question 2 did not search the brief alone: {scoped}")
-    await scout_ask(page, "When is the next NSF deadline, and why does the top lead fit?")
-    got = await page.evaluate(SCOUT_FACTS)
-    if got["answer"] and not got["tagged"]:
-        w.errors.append(f"{tag}: U7: Scout's answer carries no Model text tag")
-    if any(re.match(r"→ fit \d+$", r) for r in got["results"]):
-        w.errors.append(f"{tag}: U6: Scout's step shows a fit number unlike the card's Match: {got['results']}")
-    if got["raw"]:
-        w.errors.append(f"{tag}: U8: Scout shows raw record keys: {got['raw'][:3]}")
-    if got["bullets"]:
-        w.errors.append(f"{tag}: U8: Scout's answer shows literal markdown bullets")
-    if got["money"]:
-        w.errors.append(f"{tag}: U8: Scout's answer shows an amount as {got['money']}")
-    if not got["answer"]:
-        w.errors.append(f"{tag}: scout: no answer to check ({got['results']})")
-    chips = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
-      return [...x.querySelectorAll('.scout-read .chip')].map(c => c.innerText); }""")
-    if odd := [c for c in chips if re.match(r"[a-z]+_[a-z_]+:", c) or re.search(r"\b20\d\d-\d\d-\d\d\b", c)
-               or re.search(r": [a-z]+_[a-z]+$", c)]:  # T9: plain labels, dates as on the cards
-        w.errors.append(f"{tag}: T9: Scout's filter chips read {odd}")
-    if re.search(r"\b20\d\d-\d\d-\d\d\b", got["text"]):  # Q22: dates as on the cards
-        w.errors.append(f"{tag}: Q22: Scout's answer writes an ISO date: {got['text'][:120]!r}")
-    meta = await page.evaluate("""() => ({ line: (document.querySelector('.scout-meta') || {}).innerText || '',
-      steps: [...document.querySelectorAll('.scout-steps')].map(d => d.textContent).join(' ') })""")
-    if re.search(r"tokens|Model \w+:", meta["line"]) or not re.search(r"Local model|Cloud", meta["line"]):  # U32
-        w.errors.append(f"{tag}: U32: the line under the chat reads {meta['line']!r}, not just where the model runs")
-    if "tokens" not in meta["steps"]:
-        w.errors.append(f"{tag}: U32: the Steps disclosure does not hold the model and token count")
-    # after U32: a follow-up answered from earlier results has no Steps list of its own
-    await scout_ask(page, "Why does the top lead fit?")
-    papers = await page.evaluate(r"""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
-      const all = [...x.querySelectorAll('.scout-answer .cite')].map(c => [c.innerText.trim(), c.getAttribute('aria-label') || '']);
-      return { all: all.length, raw: all.filter(([t, l]) => /^W\d{5,}$/.test(t) || /W\d{5,}/.test(l)) }; }""")
-    if papers["raw"]:  # Q8: papers named by title and year, not by OpenAlex work id
-        w.errors.append(f"{tag}: Q8: Scout cites papers by raw work id {papers['raw'][:2]}")
-    await w.snap(page, tag, "u-scout", full=True)
-    # R3: after a hand-off draft the answer line is code, not model prose about the draft
-    await page.click("#tab-routes")
-    await page.evaluate(OPEN_WEAK)
-    for _i in (0, 1):
-        await page.locator(".leads > li .btn.keep:not(.on)").first.click()
-        await page.wait_for_timeout(300)
-    await page.click("#tab-scout")
-    await page.wait_for_selector("#scout-q")
-    await scout_ask(page, "Draft the hand-off for my kept grants.")
-    got = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
-      const a = x.querySelector('.scout-answer'); return { text: a ? a.innerText : '', model: Boolean(a && a.querySelector('.tag.model')),
-        draft: Boolean(x.querySelector('.scout-draft')) }; }""")
-    if not got["draft"] or got["model"] or "is below. Perch never sends it" not in got["text"]:
-        w.errors.append(f"{tag}: R3: after the draft step the answer reads {got['text'][:140]!r} (Model text tag: {got['model']})")
-    label = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const d = xs[xs.length - 1].querySelector('.scout-draft');
-      return d ? [...d.querySelectorAll('.provenance .tag')].map(t => t.innerText) : []; }""")
-    if len(label) != 1:  # F7: Scout's draft says who wrote its opening, model or code
-        w.errors.append(f"{tag}: F7: Scout's draft of a public brief labels its opening {label}")
-    await w.snap(page, tag, "r-scout-draft", full=True)
-    # F11: a table in an answer is a table, never raw pipes
-    await scout_ask(page, "Compare my kept leads")
-    tab = await page.evaluate(r"""() => { const xs = document.querySelectorAll('.scout-x'); const a = xs[xs.length - 1].querySelector('.scout-answer');
-      return a ? { pipes: /^\s*\|.*\|\s*$/m.test(a.innerText.replace(/\t/g, ' ')) && !a.querySelector('table'), table: Boolean(a.querySelector('table')) } : null; }""")
-    if tab and tab["pipes"]:
-        w.errors.append(f"{tag}: F11: Scout's compare answer shows a raw pipe table")
-    await w.snap(page, tag, "f11-scout-compare", full=True)
-
-    # F11: the renderer, whatever the model writes: the next view's answer is a pipe table
-    async def table(route: Route) -> None:
-        r = await route.fetch()
-        v = await r.json()
-        if v.get("exchanges") and not v.get("busy") and v["exchanges"][-1].get("answer"):
-            v["exchanges"][-1]["answer"] = ("Side by side:\n| Lead | Closes |\n| :--- | :--- |\n"
-                                            "| MPS Chem [grants_gov:26-519] | Proposals accepted anytime |\n"
-                                            "| TP [grants_gov:PD-26-366Y] | Proposals accepted anytime |")
-        await route.fulfill(response=r, json=v)
-
-    await page.route("**/private/scout/*", table)
-    await scout_ask(page, "Compare my kept leads in a table")
-    got = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const a = xs[xs.length - 1].querySelector('.scout-answer');
-      const t = a && a.querySelector('table.scout-table');
-      return { rows: t ? t.querySelectorAll('tbody tr').length : 0, cites: t ? t.querySelectorAll('.cite').length : 0,
-               raw: a ? a.innerText.includes('|') : true }; }""")
-    if got != {"rows": 2, "cites": 2, "raw": False}:
-        w.errors.append(f"{tag}: F11: a pipe table in an answer renders as {got}")
-    await w.snap(page, tag, "f11-scout-table", full=True)
-    await page.unroute("**/private/scout/*", table)
-    # T4: when the conversation's budget is spent, the chat offers a new conversation. The
-    # budget is not spent for real: the next view is marked as the server marks it.
-    async def spent(route: Route) -> None:
-        r = await route.fetch()
-        v = await r.json()
-        if v.get("exchanges") and not v.get("busy"):
-            v["exchanges"][-1].update(status="stopped", answer=None, limit=True,
-                                      errors=["stopped at the token budget (120,000)"])
-        await route.fulfill(response=r, json=v)
-
-    await page.route("**/private/scout/*", spent)
-    q = "Which lead has the largest award ceiling?"
-    await scout_ask(page, q)
-    got = await page.evaluate("""() => { const b = document.querySelector('.scout-limit [data-key=scout-new]');
-      return { button: Boolean(b), text: (document.querySelector('.scout-limit') || {}).innerText || '' }; }""")
-    await w.snap(page, tag, "t4-scout-limit", full=True)
-    await page.unroute("**/private/scout/*", spent)
-    if not got["button"] or "Start a new conversation" not in got["text"]:
-        w.errors.append(f"{tag}: T4: a spent conversation offers no new one: {got['text'][:120]!r}")
-    else:  # F14: the stopped question is asked again in the new conversation
-        await page.click(".scout-limit [data-key=scout-new]")
-        await page.wait_for_timeout(500)
-        for _ in range(1500):
-            if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
-                break
-            await page.wait_for_timeout(100)
-        after = await page.evaluate(r"""() => ({ qs: [...document.querySelectorAll('.scout-x > .scout-q')].map(p => p.innerText.replace(/^You asked:\s*/, '')),
-          withheld: [...document.querySelectorAll('.scout-x .notice.warn')].some(n => /withheld/.test(n.innerText)) })""")
-        if after["qs"] != [q]:
-            w.errors.append(f"{tag}: F14: Start a new conversation did not ask the stopped question again: {after['qs']}")
-        if after["withheld"]:  # F16: the largest-ceiling answer passes the check
-            w.errors.append(f"{tag}: F16: the largest-ceiling answer was withheld")
-        await w.snap(page, tag, "f14-scout-asked-again", full=True)
-    # F9: New conversation is always beside the box, and "start over" opens one
-    if not await page.locator("[data-key=scout-new-any]").count():
-        w.errors.append(f"{tag}: F9: no New conversation control beside the question box")
-    await page.fill("#scout-q", "start over")
-    await page.click(".scout-ask button[type=submit]")
-    await page.wait_for_timeout(500)
-    after = await page.evaluate("""() => ({ xs: document.querySelectorAll('.scout-x').length,
-      tries: document.querySelectorAll('.scout-try .chip').length, focus: document.activeElement && document.activeElement.id })""")
-    if after["xs"] or not after["tries"] or after["focus"] != "scout-q":
-        w.errors.append(f"{tag}: F9: \"start over\" left {after}")
-    await w.snap(page, tag, "f9-scout-start-over", full=True)
-    await end_session(page)
-
-
-async def ux_student(w: Walk, page: Page, base: str, tag: str) -> None:
-    """U4, U10, U20, U21 and U8 on the SYNTHETIC student path."""
-    phone = page.viewport_size["width"] < 700
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.click("[data-key=seg-s]")
-    await page.click("[data-key=student]")
-    await page.wait_for_selector("#st-cv", timeout=20000)
-    if phone:  # U4: an empty submit says so where the button is
-        await page.click("[data-key=st-build]")
-        await page.wait_for_timeout(500)
-        got = await page.evaluate("""() => { const e = document.querySelector('.student-start .notice.error, [role=alert]');
-          const r = e && e.getBoundingClientRect(); const a = document.activeElement;
-          return { err: Boolean(e), seen: Boolean(r && r.top >= 0 && r.bottom <= innerHeight),
-                   focus: Boolean(a && e && (e.contains(a) || a.id === 'st-cv')),
-                   invalid: (document.querySelector('#st-cv') || {}).getAttribute('aria-invalid') }; }""")
-        if not got["err"] or not got["seen"]:
-            w.errors.append(f"{tag}: U4: an empty submit shows no error in view {got}")
-        if got["invalid"] != "true":
-            w.errors.append(f"{tag}: U4: the CV box is not marked aria-invalid after an empty submit")
-        await w.snap(page, tag, "u-empty")
-        # R4: a file Perch cannot read says so by the button, in plain words, with focus moved
-        await page.set_input_files(".st-cv input[type=file]", files=[{
-            "name": "cv.txt", "mimeType": "text/plain", "buffer": "SYNTHETIC caf\u00e9 CV".encode("latin-1")}])
-        await page.fill("#st-interests", "SYNTHETIC interest in watersheds")
-        await page.click("[data-key=st-build]")
-        await page.wait_for_selector(".go-row .notice.error", timeout=20000)
-        await page.wait_for_timeout(300)
-        got = await page.evaluate("""() => { const e = document.querySelector('.go-row .notice.error');
-          const r = e.getBoundingClientRect(); const a = document.activeElement;
-          return { text: e.innerText.trim(), seen: r.top >= 0 && r.bottom <= innerHeight,
-                   focus: a && a.getAttribute('data-key'), top: document.querySelectorAll('.student-start > .notice.error').length }; }""")
-        if not got["seen"] or got["focus"] != "st-build" or got["top"] or not got["text"].startswith("cv.txt could not be read"):
-            w.errors.append(f"{tag}: R4: an unreadable CV file gives {got}")
-        await w.snap(page, tag, "r-file-error")
-        await page.locator(".st-cv .added button:has-text('Remove')").click()
-        await page.wait_for_selector("#st-cv")
-    for kind in ("cv", "interests", "achievements"):
-        await page.fill(f"#st-{kind}", (SYN / "persona-masters" / f"{kind}.md").read_text())
-    await page.click("[data-key=st-build]")
-    await page.wait_for_selector("#progress", timeout=20000)
-    await wait_built(page)
-    await page.wait_for_timeout(800)
-    chip = await page.evaluate("() => [document.querySelector('#status-chip').innerText.trim(), document.querySelector('#status-chip').getAttribute('aria-label')]")
-    if not chip[0].startswith("Local only") or "only" not in (chip[1] or ""):  # Q7, as U37 on the documents page
-        w.errors.append(f"{tag}: Q7: with the CV held the chip reads {chip[0]!r}")
-    # Q17, T15: in the weak band the model's sentence is labelled as how it relates, not why it fits
-    why = await page.evaluate("""() => [...document.querySelectorAll('#panel .leads > li')].filter(li => {
-        const m = li.querySelector('.fit'); const n = m ? parseInt((m.innerText.match(/\\d+/) || [100])[0], 10) : 100;
-        return n < 40 && /Why it may fit/.test((li.querySelector('.fit-reason') || {}).innerText || ''); }).length""")
-    if why:
-        w.errors.append(f"{tag}: Q17: {why} options in the weak band say Why it may fit")
-    # U20: no rule line or empty-facts line repeated on most cards
-    rep = await page.evaluate("""() => { const cards = [...document.querySelectorAll('#panel .leads > li')].filter(li => !li.closest('details'));
-      const seen = {}; for (const c of cards) for (const p of new Set([...c.querySelectorAll('.reason, .no-size')].map(x => x.innerText.trim()).filter(t => t.length > 30)))
-        seen[p] = (seen[p] || 0) + 1;
-      return { n: cards.length, rep: Object.entries(seen).filter(([, k]) => k >= Math.max(3, 0.6 * cards.length)).map(([t]) => t.slice(0, 70)) }; }""")
-    if rep["n"] >= 3 and rep["rep"]:
-        w.errors.append(f"{tag}: U20: most option cards repeat the same text: {rep['rep'][:3]}")
-    await w.snap(page, tag, "u-fellowships", full=True)
-    wording = await page.evaluate("""() => ({ tags: [...new Set([...document.querySelectorAll('#panel .leads .tag.model')].map(t => t.innerText.trim()))],
-      based: [...document.querySelectorAll('#panel .leads summary')].filter(x => /based on/.test(x.innerText)).length,
-      sort: (document.querySelector('#panel .route-row .sort-label') || {}).innerText || null })""")
-    if wording["tags"] not in ([], ["Model text"]) or wording["based"]:  # U34
-        w.errors.append(f"{tag}: U34: student cards use other words than the researcher's {wording}")
-    if wording["sort"] != "Sort":  # U36
-        w.errors.append(f"{tag}: U36: the student sort switch has no visible Sort label")
-    # U33: a sample's Evidence keeps the canary out of Purpose, in a muted Test marker row
-    await page.click("[data-key=route-S]")
-    await page.wait_for_timeout(500)
-    caps = await page.evaluate(r"""() => [...document.querySelectorAll('#panel .reason')].map(r => r.innerText)
-      .filter(t => /^Still needed: .*; [A-Z][a-z]/.test(t)).slice(0, 2)""")
-    if caps:  # R17: joined phrases read lower case mid-sentence (sample cards hold the most)
-        w.errors.append(f"{tag}: R17: a Still needed line has capitals mid-sentence: {caps}")
-    await page.locator(".leads > li .title-btn").first.click()
-    await page.wait_for_selector(".rec-title", timeout=10000)
-    await page.wait_for_timeout(500)
-    rows = await page.evaluate("""() => { const box = document.querySelector('#evidence-body .rec-title') && document.querySelector('#evidence').hidden === false
-      ? document.querySelector('#evidence-body') : document.querySelector('#rail-ev');
-      return Object.fromEntries([...box.querySelectorAll('.fields .field')].map(f => [f.querySelector('dt').innerText.trim(), f.querySelector('dd').innerText.trim()])); }""")
-    if "canary" in rows.get("Purpose", "").lower() or "SYNTHETIC sample record" in rows.get("Purpose", ""):
-        w.errors.append(f"{tag}: U33: the Purpose row carries the canary text: {rows['Purpose'][-70:]!r}")
-    if not re.fullmatch(r"PERCH-CANARY-SCH-\d+", rows.get("Test marker", "")):
-        w.errors.append(f"{tag}: U33: no Test marker row with the canary (rows: {sorted(rows)})")
-    raw = [f"{k}={rows[k]!r}" for k in ("Type", "Level", "Field", "Enrollment") if rows.get(k) and rows[k][0].islower()]
-    if raw:
-        w.errors.append(f"{tag}: U33: raw lowercase values in Evidence: {raw}")
-    await w.snap(page, tag, "u-sample-evidence")
-    if phone:
-        await page.click("#evidence-close")
-        await page.wait_for_timeout(400)
-    await page.click("[data-key=route-F]")
-    await page.wait_for_timeout(400)
-    if not phone:
-        await page.locator(".leads > li .btn.keep").first.click()
-        await page.wait_for_timeout(300)
-        await page.click("[data-key=route-S]")
-        await page.wait_for_timeout(500)
-        for _i in (0, 1):
-            await page.locator(".leads > li .btn.keep:not(.on)").first.click()
-            await page.wait_for_timeout(300)
-        sl = await page.evaluate("""() => ({ head: document.querySelector('.shortlist-head span').innerText,
-          lists: [...document.querySelectorAll('.shortlist ul')].map(u => [...u.querySelectorAll('.kind-short')].map(k => k.innerText)) })""")
-        if "sample" not in sl["head"] or any(len(set(x)) > 1 for x in sl["lists"]):
-            w.errors.append(f"{tag}: U10: the shortlist mixes public and sample options under one count {sl}")
-        await w.snap(page, tag, "u-shortlist")
-        await page.click("#tab-compare")
-        await page.wait_for_selector("table.compare", timeout=30000)
-        await page.wait_for_timeout(800)
-        got = await page.evaluate("""() => ({ tables: [...document.querySelectorAll('#panel table.compare')].map(t =>
-            ({ sample: t.querySelectorAll('tbody tr .tag.sample, tbody tr .sample-badge').length, rows: t.querySelectorAll('tbody tr').length })),
-          label: document.querySelector('#tab-compare').getAttribute('aria-label'),
-          sl: (document.querySelector('.shortlist-head span') || {}).innerText || '' })""")
-        mixed = [t for t in got["tables"] if 0 < t["sample"] < t["rows"]]
-        if mixed or len(got["tables"]) < 2:
-            w.errors.append(f"{tag}: U10: one Compare table mixes public fellowships and sample scholarships {got['tables']}")
-        if "sample" not in (got["label"] or ""):
-            w.errors.append(f"{tag}: U10: the kept count does not split public from sample ({got['label']!r})")
-        note = await page.evaluate("""() => ({ subject: Boolean(document.querySelector('.draft input.input')),
-          btns: [...document.querySelectorAll('.draft .actions .btn')].map(b => b.innerText.trim()),
-          bare: [...document.querySelectorAll('table.compare td')].filter(td => td.innerText.trim() === 'Not stated').length })""")
-        if not note["subject"] or note["btns"] not in (["Copy the draft", "Open in my mail app"], ["Copy the draft"]) or note["bare"]:  # U34
-            w.errors.append(f"{tag}: U34: the student's note reads {note}")
-        await w.snap(page, tag, "u-compare", full=True)
-        await page.click("#tab-scout")
-        await page.wait_for_selector("#scout-q")
-        await scout_ask(page, "List all my options, fellowships and scholarships, with a deadline after 2026-11-01")
-        got = await page.evaluate(SCOUT_FACTS)
-        if got["raw"]:
-            w.errors.append(f"{tag}: U8: Scout shows raw record keys: {got['raw'][:3]}")
-        mix = await page.evaluate("""() => { const xs = document.querySelectorAll('.scout-x'); const x = xs[xs.length - 1];
-          const a = x && x.querySelector('.scout-answer'); if (!a) return null;
-          const lists = [...a.querySelectorAll('ul, ol, p')];
-          return lists.some(l => /sample/i.test(l.innerText) && l.querySelector(".cite:not(.sample)") && l.querySelector(".cite.sample")); }""")
-        if mix:
-            w.errors.append(f"{tag}: U10: Scout lists sample scholarships with public fellowships under one heading")
-        await w.snap(page, tag, "u-scout", full=True)
-    # U21: back to the documents: a held document shows no empty paste box
-    await page.click(".brief .back")
-    await page.wait_for_selector("#st-cv, .added", timeout=10000)
-    await page.wait_for_timeout(400)
-    both = await page.evaluate("""() => [...document.querySelectorAll('.box')].filter(b => b.querySelector('.added')
-      && [...b.querySelectorAll('textarea')].some(t => t.offsetParent)).length""")
-    if both:
-        w.errors.append(f"{tag}: U21: {both} boxes show a held document and an empty paste box together")
-    await w.snap(page, tag, "u-back-docs", full=True)
-    await end_session(page)
-
-
-async def ux_sample(w: Walk, page: Page, base: str, tag: str) -> None:
-    """U11: a researcher card steered by the SYNTHETIC sample says the cited item is a document."""
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_selector(".cand", timeout=20000)
-    if await page.locator(".cand button.btn.outline").count():
-        await page.locator(".cand button.btn.outline").first.click()
-    await page.click("[data-key=more-ctx]")
-    await page.click("[data-key=fill-sample]")
-    await page.wait_for_selector(".sample-status")
-    await page.click("[data-key=build]")
-    await page.wait_for_selector("#tab-routes", timeout=60000)
-    await wait_built(page)
-    await page.wait_for_timeout(800)
-    bad = await page.evaluate("""() => [...document.querySelectorAll('#panel details.why')].filter(d => d.querySelector('.paper-ref.private'))
-      .map(d => ({ head: (d.querySelector('h4.mini') || {}).innerText || '',
-                   badge: [...d.querySelectorAll('.paper-ref.private')].every(p => p.querySelector('.sample-badge')) }))
-      .filter(x => !/document/.test(x.head) || !x.badge)""")
-    if bad:
-        w.errors.append(f"{tag}: U11: a card cites the sample document under {bad[0]['head']!r} (badge: {bad[0]['badge']})")
-    await w.snap(page, tag, "u-sample-cite", full=True)
-    await end_session(page)
-
-
-async def ux_queued(w: Walk, page: Page, base: str, tag: str) -> None:
-    """U19: while a brief waits for another, the headline says it waits. The first brief
-    poll is answered as queued, as the server answers while another brief runs."""
-    async def queued(route: Route) -> None:
-        r = await route.fetch()
-        if r.status != 200:
-            await route.fulfill(response=r)
+    w.watch(page, tag)
+    if w.plant == "no_dead_modules":
+        await page.add_init_script("addEventListener('DOMContentLoaded', () => import('/mode.js').catch(() => 0))")
+    if w.plant == "delete_keyboard":  # open the dialog without moving focus into it
+        await page.add_init_script("HTMLDialogElement.prototype.showModal = function () {"
+                                   " this.setAttribute('open', ''); document.activeElement.blur(); }")
+    return page
+
+
+async def until(page: Page, expr: str, arg: object = None, secs: float = 30, every: float = 0.25) -> None:
+    """Poll a page expression. Playwright's own wait_for_function evaluates a string, which the
+    app's CSP refuses, so this evaluates through the debugger as everything else does."""
+    end = asyncio.get_event_loop().time() + secs
+    while asyncio.get_event_loop().time() < end:
+        if await page.evaluate(expr, arg):
             return
-        d = await r.json()
-        d["brief"]["status"] = "queued"
-        for s in d["brief"]["stages"]:
-            s["status"], s["started_at"], s["finished_at"] = "pending", None, None
-        body = json.dumps(d)
-        for real, alias in aliases().items():  # this handler replaces film.py's alias filter
-            body = body.replace(real, alias)
-        await route.fulfill(response=r, body=body, headers={**r.headers, "etag": "", "content-encoding": ""})
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_selector(".cand", timeout=20000)
-    await page.route("**/private/brief", queued)
-    await pick_and_build(page)
-    await page.wait_for_selector("#progress .p-head", timeout=20000)
-    await page.wait_for_timeout(500)
-    head = await page.locator("#progress .p-head").inner_text()
-    if not head.startswith("Waiting"):
-        w.errors.append(f"{tag}: U19: a queued brief's headline reads {head!r}")
-    await w.snap(page, tag, "u-queued")
-    await page.unroute("**/private/brief")
-    await end_session(page)
+        await asyncio.sleep(every)
+    raise TimeoutError(f"waited {secs:.0f} s for: {expr[:80]}")
 
 
-async def ux_landing(w: Walk, page: Page, base: str, tag: str) -> None:
-    """U29, U30, U31 and U41: the landing screen, the no-match screen and the documents path."""
-    phone = page.viewport_size["width"] < 700
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    if phone:  # U29: the search placeholder is not cut, at 390 and at 320 px
-        for width in (390, 320):
-            await page.set_viewport_size({"width": width, "height": 844})
-            await page.reload()
-            await page.wait_for_selector(".landing")
-            fit = await page.evaluate("""() => { const q = document.querySelector('#q'), s = getComputedStyle(q);
-              const c = document.createElement('canvas').getContext('2d'); c.font = `${s.fontWeight} ${s.fontSize} ${s.fontFamily}`;
-              return { text: q.placeholder, need: c.measureText(q.placeholder).width,
-                       room: q.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight) }; }""")
-            if fit["need"] > fit["room"]:
-                w.errors.append(f"{tag}: U29: at {width} px the placeholder {fit['text']!r} needs {fit['need']:.0f} px "
-                                f"and the box has {fit['room']:.0f}")
-            if width == 390:
-                await w.snap(page, tag, "u-landing")
-        await page.set_viewport_size(PHONE)
-        await page.reload()
-        await page.wait_for_selector(".landing")
-    await page.fill("#q", "   ")  # F25: an empty Find says what to type
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_timeout(300)
-    hint = await page.evaluate("() => [(document.querySelector('#q-hint') || {}).innerText, document.querySelector('#q').getAttribute('aria-invalid')]")
-    if hint != ["Type a name, ORCID iD or OpenAlex ID.", "true"]:
-        w.errors.append(f"{tag}: F25: an empty Find says {hint}")
-    await w.snap(page, tag, "f25-empty-find")
-    await page.fill("#q", "")
-    summary = await page.locator("[data-key=more-opts]").inner_text()  # U31
-    if re.search(r"more options", summary, re.I):
-        w.errors.append(f"{tag}: U31: the fold holds a description and a link but is named {summary!r}")
-    await page.click("[data-key=more-opts]")
-    await w.snap(page, tag, "u-more-opts")
-    await page.fill("#q", "zzqxw florbington")  # U30: the example id stays on one line
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_selector(".page-sub", timeout=20000)
-    await page.wait_for_timeout(300)
-    lines = await page.evaluate("""() => { const sub = document.querySelector('.page-sub');
-      const tw = document.createTreeWalker(sub, NodeFilter.SHOW_TEXT); const id = '0000-0000-0000-0000';
-      for (let n = tw.nextNode(); n; n = tw.nextNode()) { const i = n.data.indexOf(id); if (i < 0) continue;
-        const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + id.length); return r.getClientRects().length; }
-      return -1; }""")
-    if lines != 1:  # T16: the example is the iD's shape, which fails its checksum, not a real person's
-        w.errors.append(f"{tag}: U30, T16: the example ORCID iD shape is drawn on {lines} lines")
-    await w.snap(page, tag, "u-no-match")
-    if not phone:
-        await page.goto(base + "/#/")  # Q18: a placeholder ORCID iD fails its checksum
-        await page.wait_for_selector(".landing")
-        await page.fill("#q", "0000-0000-0000-0000")
-        await page.click(".searchbox button[type=submit]")
-        await page.wait_for_selector("#pick-title", timeout=20000)
-        await page.wait_for_timeout(500)
-        got = await page.evaluate("() => [document.querySelector('#pick-title').innerText, (document.querySelector('.notice.error') || {}).innerText || '', document.querySelectorAll('[data-key=build]').length]")
-        if got[2] or "not a valid ORCID" not in got[0] + got[1]:
-            w.errors.append(f"{tag}: Q18: the all-zero ORCID iD gives {got[0]!r} {got[1]!r} and {got[2]} Build buttons")
-        if "not a valid ORCID" in got[1]:  # R15: the heading says it; the notice adds only the reason
-            w.errors.append(f"{tag}: R15: the ORCID error says it twice: {got[0]!r} {got[1]!r}")
-        for q in ("A12", "A123456789"):  # R5: a short id is refused before any lookup; an unknown one says so
-            await page.goto(base + "/#/")
-            await page.wait_for_selector(".landing")
-            await page.fill("#q", q)
-            await page.click(".searchbox button[type=submit]")
-            await page.wait_for_selector("#pick-title", timeout=30000)
-            await page.wait_for_function("() => !/Searching/.test(document.querySelector('#pick-title').innerText)", timeout=30000)
-            got = await page.evaluate("() => [document.querySelector('#pick-title').innerText, (document.querySelector('.notice.error') || {}).innerText || '']")
-            want = "That is not an OpenAlex author ID." if q == "A12" else "No OpenAlex author has that ID."
-            if got[0] != want or re.search(r"internal error|HTTPStatusError|could not be searched", got[1]) or got[0] in got[1]:
-                w.errors.append(f"{tag}: R5: {q!r} gives {got}")
-            if q == "A12":
-                await w.snap(page, tag, "r-bad-id")
-        # R14: one work and no citations read in the singular (SYNTHETIC candidates, served here)
-        syn = [{"id": f"https://openalex.org/A900000000{i}", "display_name": f"SYNTHETIC Person {i}",
-                "institutions": ["Temple University"], "works_count": n, "cited_by_count": k,
-                "source": "openalex", "source_url": "https://api.openalex.org/authors", "fetched_at": "2026-11-01T00:00:00Z"}
-               for i, n, k in ((1, 44, 15161), (2, 1, 1))]
-        await page.route("**/authors/resolve*", lambda r: r.fulfill(json={"candidates": syn}))
-        await page.goto(base + "/#/")
-        await page.wait_for_selector(".landing")
-        await page.fill("#q", "SYNTHETIC surname")
-        await page.click(".searchbox button[type=submit]")
-        await page.wait_for_selector(".cand", timeout=20000)
-        metas = await page.locator(".cand-meta2").all_inner_texts()
-        await page.unroute("**/authors/resolve*")
-        if not any("1 work ·" in m and "1 citation ·" in m for m in metas) or any(re.search(r"\b1 works\b|\b1 citations\b", m) for m in metas):
-            w.errors.append(f"{tag}: R14: the candidate cards read {metas}")
-        await page.goto(base + "/#/")  # Q19: a lower-case OpenAlex id finds the same person
-        await page.wait_for_selector(".landing")
-        await page.fill("#q", AUTHOR.lower())
-        await page.click(".searchbox button[type=submit]")
-        await page.wait_for_selector("#pick-title", timeout=20000)
-        await page.wait_for_timeout(500)
-        title = await page.locator("#pick-title").inner_text()
-        if not title.startswith("Ready to build"):
-            w.errors.append(f"{tag}: Q19: {AUTHOR.lower()!r} gives {title!r}")
-    await page.goto(base + "/#/")  # U40: the owl keeps no "say hello" invitation
-    await page.wait_for_selector(".landing")
-    owls = await page.evaluate("() => [...document.querySelectorAll('button.owl, .owl[role=button], [aria-label*=Scout]')].map(o => o.getAttribute('aria-label'))")
-    if any(re.search(r"hello", x or "", re.I) for x in owls):
-        w.errors.append(f"{tag}: U40: the owl's label still invites a hello {owls}")
-    await page.goto(base + "/#/help")  # U39: Help is a short visual guide
-    await page.wait_for_selector(".help")
-    await page.wait_for_timeout(400)
-    hp = await page.evaluate(HELP_PROBE)
-    if hp["words"] > HELP_WORDS_MAX:
-        w.errors.append(f"{tag}: U39: Help has {hp['words']} words, over {HELP_WORDS_MAX}")
-    if hp["diagram"] != 1 or not hp["label"]:
-        w.errors.append(f"{tag}: U39: Help shows {hp['diagram']} architecture diagrams with role img (want 1) {hp['label']!r}")
-    if hp["sw"] > hp["cw"]:
-        w.errors.append(f"{tag}: U39: Help scrolls sideways ({hp['sw']} > {hp['cw']} px) {hp['over']}")
-    if not hp["motion"]:
-        w.errors.append(f"{tag}: U39: Help has no reduced-motion block")
-    if phone and hp["height"] > HELP_PHONE_MAX_PX:
-        w.errors.append(f"{tag}: U39: Help is {hp['height']} px tall on a phone (max {HELP_PHONE_MAX_PX})")
-    if hp["clipped"]:
-        w.errors.append(f"{tag}: U39: diagram text runs past its box {hp['clipped']}")
-    if await page.evaluate("() => /hello/i.test(document.querySelector('.help').innerText)"):
-        w.errors.append(f"{tag}: U40: Help still says hello")
-    print(f"{tag}: Help words {hp['words']}, height {hp['height']}, scroll {hp['sw']}/{hp['cw']}")
-    await help_snap(w, page, tag, "u-help-top", full=True)
-    if phone:
-        return
-    await page.goto(base + "/#/")  # U41: the documents path opens its session on arrival
-    await page.wait_for_selector(".landing")
-    await page.click("[data-key=more-opts]")
-    await page.click("[data-key=docs-link]")
-    try:
-        await page.wait_for_selector("#p-author", timeout=10000)
-    except Exception:  # noqa: BLE001 - reported as a finding
-        w.errors.append(f"{tag}: U41: the documents path does not open its form without a press on Start a session")
-        return
-    top = await page.evaluate("""() => { const t = document.querySelector('.private-statement, .private .plain');
-      const f = document.querySelector('.private-docs'); return t && f ? t.getBoundingClientRect().bottom <= f.getBoundingClientRect().top : false; }""")
-    if not top:
-        w.errors.append(f"{tag}: U41: the privacy text does not sit above the documents form")
-    await w.snap(page, tag, "u-docs-arrival")
-    await end_session(page)
+async def go(page: Page, base: str, hash_: str, ready: str) -> None:
+    if not page.url.startswith(base):
+        await page.goto(base + "/")
+    await page.evaluate("(h) => { location.hash = h; }", hash_)
+    await page.wait_for_selector(ready, timeout=30_000)
 
 
-async def ux_docs(w: Walk, page: Page, base: str, tag: str) -> None:
-    """U28: the documents-only path shows no real researcher's id as an example."""
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.click("[data-key=more-opts]")
-    await page.click("[data-key=docs-link]")
-    await page.wait_for_selector("#p-author", timeout=20000)
-    ph = await page.locator("#p-author").get_attribute("placeholder") or ""
-    if re.search(r"A\d{6,}", ph):
-        w.errors.append(f"{tag}: U28: the OpenAlex ID box's example is a real id ({ph!r})")
-    chip = lambda: page.evaluate("() => document.querySelector('#status-chip').innerText.trim()")  # noqa: E731
-    # R4: an empty file's error sits in its own box, in plain words, and takes focus
-    await page.set_input_files("#doc-proposal ~ .doc-actions input[type=file]", files=[{
-        "name": "aims.md", "mimeType": "text/markdown", "buffer": b""}])
-    await page.wait_for_selector("#doc-proposal-error", timeout=20000)
-    got = await page.evaluate("""() => { const e = document.querySelector('#doc-proposal-error');
-      return { text: e.innerText.trim(), focus: document.activeElement === e,
-               top: document.querySelectorAll('.private > .notice.error').length }; }""")
-    if got["text"] != "aims.md is empty: it holds no text Perch can read." or not got["focus"] or got["top"]:
-        w.errors.append(f"{tag}: R4: an empty file on Your documents gives {got}")
-    await w.snap(page, tag, "r-docs-file-error")
-    await page.fill("#doc-proposal", (SYN / "persona-1/specific_aims_draft.md").read_text())
-    await page.locator("#doc-proposal ~ .doc-actions button:has-text('Add text')").click()
-    await page.wait_for_function("() => !document.querySelector('#doc-proposal')", timeout=20000)
-    if not (await chip()).startswith("Local only"):  # U37
-        w.errors.append(f"{tag}: U37: the chip reads {await chip()!r} with a document held")
-    label = await page.get_attribute("#status-chip", "aria-label")
-    if "only" not in (label or ""):
-        w.errors.append(f"{tag}: U37: the chip's label does not explain 'only' ({label!r})")
-    await w.snap(page, tag, "u-docs")
-    await page.locator(".private-docs button:has-text('Remove')").first.click()
-    await page.wait_for_selector("#doc-proposal", timeout=10000)
-    if (await chip()).startswith("Local only"):
-        w.errors.append(f"{tag}: U37: the chip still says Local only after the document was removed")
-    text = await page.locator(".private").inner_text()
-    if "closing this tab" in text or "30 minutes without use" not in text:  # Q16
-        w.errors.append(f"{tag}: Q16: Your documents does not say the session ends after 30 minutes without use")
-    # Q25 and Q26: a documents-only brief's hand-off
-    for kind, name in (("cv", "cv.md"), ("proposal", "specific_aims_draft.md")):
-        await page.fill(f"#doc-{kind}", (SYN / "persona-1" / name).read_text())
-        await page.locator(f"#doc-{kind} ~ .doc-actions button:has-text('Add text')").click()
-        await page.wait_for_function(f"() => !document.querySelector('#doc-{kind}')", timeout=20000)
-    await page.click(".private button:has-text('Build brief')")
-    await page.wait_for_selector("#progress", timeout=20000)
-    await wait_built(page)
-    # T18: Industry on a documents-only brief is one plain sentence, with no warnings
-    await page.click("[data-key=route-B]")
-    await page.wait_for_timeout(500)
-    got = await page.evaluate("""() => { const p = document.querySelector('#panel');
-      return { text: p ? p.innerText : '', warn: Boolean(p && p.querySelector('.infer-note, .security-note')) }; }""")
-    if "Industry leads need public papers" not in got["text"] or got["warn"] or "0 industry leads" in got["text"]:
-        w.errors.append(f"{tag}: T18: Industry on a documents-only brief reads {got['text'][:160]!r}")
-    await w.snap(page, tag, "t18-docs-industry")
-    await page.click("[data-key=route-A]")
-    await page.wait_for_timeout(300)
-    await page.evaluate(OPEN_WEAK)
-    for _i in (0, 1):
-        await page.locator(".leads > li .btn.keep:not(.on)").first.click()
-        await page.wait_for_timeout(300)
-    await page.click("#tab-compare")
-    await page.wait_for_selector("[data-key=handoff-make]", timeout=30000)
-    await page.locator("[data-key=handoff-make]").click()
-    await page.wait_for_selector("#handoff-body", timeout=90000)
-    body = await page.locator("#handoff-body").input_value()
-    if "(private)" in body.splitlines()[-1] or not body.rstrip().endswith("Best regards,"):
-        w.errors.append(f"{tag}: Q26: the email signs off as {body.splitlines()[-1]!r}")
-    await page.locator(".handoff input[type=checkbox]").check()
-    try:
-        await page.wait_for_function("""() => { const n = document.querySelector('.draft .notice, .draft .model-note');
-          return !document.querySelector('.handoff [role=status]') && n && !/Choose masking/.test(n.innerText); }""", timeout=90000)
-    except Exception:  # noqa: BLE001 - reported as a finding
-        note = await page.evaluate("() => (document.querySelector('.draft .notice, .draft .model-note') || {}).innerText || ''")
-        w.errors.append(f"{tag}: Q25: after Mask private text the draft still reads {note[:90]!r}")
-    await w.snap(page, tag, "q-handoff-masked", full=True)
-    await end_session(page)
+# ---------- flows ----------
+
+async def flow_landing(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
+    page = await new_page(browser, w, tag, view, base)
+    await page.goto(base + "/")
+    await page.wait_for_selector(".landing h1")
+    await w.snap(page, tag, "landing")
+    if w.plant == "old_copy":
+        await page.evaluate("document.querySelector('.promises li:nth-child(2)').append(' Nothing about you is stored')")
+    text = await page.evaluate("document.body.innerText + ' ' + document.querySelector('meta[name=description]').content")
+    w.check("old_copy_gone", not any(s in text for s in OLD_COPY), "landing")
+    w.check("landing_student_first", await page.locator("[data-key=seg-s]").get_attribute("aria-checked") == "true"
+            and await page.locator("[data-key=browse-awards]").count() == 1, "Student chosen, Browse Temple awards present")
+    await page.click("[data-key=guest-start]")
+    await page.wait_for_selector("[data-key=guest-banner]")
+    notice = await page.evaluate("fetch('/auth/session').then(r => r.json()).then(j => j.notice)")
+    shots = {"#/": ".landing h1", "#/awards": ".tag-row", "#/funding": ".award", "#/samples/student": ".award",
+             "#/student": ".student-start"}
+    bad = []
+    for h, ready in shots.items():
+        await go(page, base, h, ready)
+        if w.plant == "guest_banner" and h == "#/funding":
+            await page.evaluate("document.querySelector('#banner').hidden = true")
+        banner = await page.evaluate("(() => { const b = document.querySelector('#banner'); return b.hidden ? '' : b.innerText; })()")
+        if not (notice and notice in banner):
+            bad.append(h)
+        if h == "#/":
+            await w.snap(page, tag, "landing-guest")
+    w.check("guest_banner", not bad, f"missing on {bad}" if bad else "on every guest screen, with the server's notice")
+    # a guest session from here on, for the list flows
+    body = await page.evaluate("document.body.innerText")
+    w.check("old_copy_gone_guest", not any(s in body for s in OLD_COPY), "guest")
+    await page.context.close()
 
 
-SESSION_GET = """async (path) => { const r = await fetch(path, { headers: { 'X-Perch-Private': sessionStorage.getItem('perch.session') } });
-  return r.json(); }"""
-DOCS_WARNING_PHRASES = ("API terms", "stores nothing", "this session only", "turn Cloud off again",
-                        "nothing more is sent", "until you confirm")
+async def sample_leak(page: Page) -> list[str]:
+    return await page.evaluate("""() => [...document.querySelectorAll('.award')]
+      .filter(c => String(c.dataset.id).startsWith('sample:') || c.dataset.sample === 'true' || c.querySelector('.tag.sample'))
+      .map(c => c.dataset.id)""")
 
 
-async def docs_warning(w: Walk, page: Page, tag: str, expect: list[str], notes: list[str]) -> None:
-    """Q33: the second warning in a documents session names the provider and lists exactly
-    the documents that would leave, with what each carries. The confirm is a plain button,
-    off until the box is ticked, and never has focus. The walk always cancels: no cloud call."""
-    provider = (await page.evaluate("async () => (await (await fetch('/private')).json()).cloud.provider")) or ""
-    await page.click("#status-chip")
-    await page.wait_for_selector("#models-dialog[open]")
-    cloud = page.locator("#models-dialog input[value=cloud]")
-    if await cloud.is_disabled():
-        w.errors.append(f"{tag}: Q33: Cloud is disabled in a documents session")
-        await page.click("#models-dialog [data-key=models-cancel]")
-        return
-    await cloud.check()
-    await page.wait_for_selector("[data-key=docs-warning]", timeout=5000)
-    got = await page.evaluate("""() => { const d = document.querySelector('#models-dialog');
-      const box = d.querySelector('[data-key=docs-warning]'); const ok = d.querySelector('[data-key=models-ok]');
-      return { items: [...box.querySelectorAll('.docs-leave li b')].map(b => b.innerText.trim()),
-               text: box.innerText, title: (box.querySelector('#docs-warn-title') || {}).innerText || '',
-               primary: ok.classList.contains('primary'), disabled: ok.disabled, label: ok.innerText.trim(),
-               focus: (document.activeElement || {}).getAttribute ? document.activeElement.getAttribute('data-key') : null }; }""")
-    if got["items"] != expect:
-        w.errors.append(f"{tag}: Q33: the warning lists {got['items']}, not {expect}")
-    if not provider or provider not in got["title"] or got["label"] != f"Send my documents to {provider}":
-        w.errors.append(f"{tag}: Q33: the warning does not name the provider ({got['title']!r}, {got['label']!r})")
-    missing = [x for x in (*DOCS_WARNING_PHRASES, *notes) if x not in got["text"]]
-    if missing:
-        w.errors.append(f"{tag}: Q33: the warning does not say {missing}")
-    if got["primary"] or not got["disabled"] or got["focus"] == "models-ok":
-        w.errors.append(f"{tag}: Q33: the confirm is the default or on before the tick {got}")
-    await page.check("#models-dialog [data-key=docs-understood]")
-    if await page.locator("#models-dialog [data-key=models-ok]").is_disabled():
-        w.errors.append(f"{tag}: Q33: the confirm stays off after the box is ticked")
-    await w.snap(page, tag, "q33-docs-warning")
-    await page.click("#models-dialog [data-key=models-cancel]")  # never confirm in the walk
-    await page.wait_for_selector("#models-dialog", state="hidden")
-    sess = await page.evaluate(SESSION_GET, "/private/session")
-    chip = await page.evaluate("() => document.querySelector('#status-chip').innerText.trim()")
-    if sess.get("cloud") or sess.get("cloud_documents") or not chip.startswith("Local only"):
-        w.errors.append(f"{tag}: Q33: after Cancel the session reads cloud={sess.get('cloud')}, chip {chip!r}")
+async def flow_awards(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
+    page = await new_page(browser, w, tag, view, base)
+    calls = {"filters": 0}
+    if w.plant == "no_sample_public":
+        async def leak(route: Route) -> None:
+            r = await route.fetch()
+            data = await r.json()
+            item = dict(data["groups"][0]["items"][0])
+            item.update(id="sample:sch-0001", sample=True, source="synthetic", name="Planted sample")
+            data["groups"][0]["items"].insert(0, item)
+            await route.fulfill(response=r, json=data)
+        await page.route(re.compile(r".*/awards\?.*"), leak)
+    if w.plant == "counts_from_server":
+        async def skew(route: Route) -> None:
+            calls["filters"] += 1
+            r = await route.fetch()
+            data = await r.json()
+            if calls["filters"] > 1:  # the chips were drawn from the first answer
+                for s in data["schools"]:
+                    s["count"] += 1
+            await route.fulfill(response=r, json=data)
+        await page.route(re.compile(r".*/filters\?.*"), skew)
+    await page.goto(base + "/#/awards")
+    await page.wait_for_selector(".tag-row")
+    await page.wait_for_selector(".award")
+    await w.snap(page, tag, "awards")
+    flt = await page.evaluate("fetch('/filters?audience=student').then(r => r.json())")
+    w.check("awards_toggle_rule", (await page.locator("[data-key=temple]").count() == 0) == (flt["total"] == flt["temple_total"])
+            and "Temple awards" in await page.locator("h1.page").inner_text(),
+            f"total {flt['total']}, temple_total {flt['temple_total']}: toggle hidden and the title says Temple awards")
+    tags = await page.evaluate(TAGS)
+    if w.plant == "tag_row_360":
+        await page.evaluate("""() => { const c = document.querySelectorAll('.tag-chip')[3];
+          c.style.height = '30px'; c.style.minHeight = '0'; c.querySelector('span').textContent += ' with a very long label added'; }""")
+        tags = await page.evaluate(TAGS)
+    if w.plant == "tag_row_contained":
+        await page.evaluate("document.querySelector('.tag-row').style.overflowX = 'visible'")
+        tags = await page.evaluate(TAGS)
+    low = [c for c in tags["chips"] if c["h"] < 44]
+    w.check("tag_row_chips_44", not low and tags["pageOver"] <= 0, f"{len(tags['chips'])} chips, shortest {min(c['h'] for c in tags['chips'])} px, page overflow {tags['pageOver']}")
+    if view["width"] < 600:
+        w.check("tag_row_contained", tags["sw"] > tags["cw"] and tags["pageOver"] <= 0 and tags["ox"] == "auto",
+                f"row scroll {tags['sw']} > client {tags['cw']}, page overflow {tags['pageOver']}")
+    flt2 = await page.evaluate("fetch('/filters?audience=student').then(r => r.json())")
+    shown = {c["label"]: c["count"] for c in tags["chips"] if c["count"] is not None}
+    want = {s["name"]: s["count"] for s in flt2["schools"]}
+    w.check("counts_from_server", shown == want, f"{len(shown)} chips; differ: {[k for k in want if shown.get(k) != want[k]][:3]}")
+    leak = await sample_leak(page)
+    w.check("no_sample_in_awards", not leak, f"cards with a sample id or badge: {leak}")
+    await page.click("[data-key=tag-s\\:CST]")
+    await page.wait_for_selector(".group-title:nth-of-type(1)")
+    await until(page, "() => document.querySelectorAll('.group-title').length === 2")
+    heads = await page.locator(".group-title").all_inner_texts()
+    w.check("school_two_groups", len(heads) == 2 and heads[0].startswith("CST (") and heads[1].startswith("Open across Temple ("), str(heads))
+    await w.snap(page, tag, "awards-school")
+    await page.select_option("#list-level", "undergraduate")
+    await page.wait_for_timeout(600)
+    await page.click("[data-key=tag-a]")
+    await page.wait_for_selector("[data-key^=more-]")
+    before = await page.locator(".award").count()
+    await page.click("[data-key^=more-]")
+    await until(page, "(n) => document.querySelectorAll('.award').length > n", before)
+    w.check("show_more", True, f"{before} cards, then more")
+    await page.fill("#list-q", "zzzzqqxx")
+    await page.wait_for_selector(".empty-list")
+    await w.snap(page, tag, "awards-empty")
+    await page.click("[data-key=clear]")
+    await page.wait_for_selector(".award")
+    w.check("clear_filters", True, "cards return")
+    await page.context.close()
 
 
-async def ux_cloud_docs(w: Walk, page: Page, base: str, tag: str) -> None:
-    """Q33 on SYNTHETIC documents: persona-1 on Your documents (a CV file and pasted text),
-    then persona-ug on the student form. Opens the second warning and cancels."""
-    await page.goto(base + "/#/private")
-    await page.wait_for_selector("#doc-cv", timeout=20000)
-    await page.set_input_files("#doc-cv ~ .doc-actions input[type=file]", files=[{
-        "name": "cv.md", "mimeType": "text/markdown", "buffer": (SYN / "persona-1/cv.md").read_bytes()}])
-    await page.wait_for_function("() => !document.querySelector('#doc-cv')", timeout=20000)
-    for kind, name in (("proposal", "specific_aims_draft.md"), ("manuscript", "unpublished_manuscript.md")):
-        await page.fill(f"#doc-{kind}", (SYN / "persona-1" / name).read_text())
-        await page.locator(f"#doc-{kind} ~ .doc-actions button:has-text('Add text')").click()
-        await page.wait_for_function(f"() => !document.querySelector('#doc-{kind}')", timeout=20000)
-    await docs_warning(w, page, tag, ["your CV (cv.md)", "your draft proposal (pasted text)",
-                                      "your unpublished manuscript (pasted text)"],
-                       ["contact details and career facts", "unpublished research"])
-    await end_session(page)
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.click("[data-key=seg-s]")
-    await page.click("[data-key=student]")
-    await page.wait_for_selector("#st-cv", timeout=20000)
-    for kind in ("cv", "interests", "achievements"):
-        r = await page.evaluate("""async ([kind, text]) => (await fetch('/private/documents', { method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-Perch-Private': sessionStorage.getItem('perch.session') },
-          body: JSON.stringify({ kind, text }) })).status""", [kind, (SYN / "persona-ug" / f"{kind}.md").read_text()])
-        if r != 201:
-            w.errors.append(f"{tag}: persona-ug {kind} was not added ({r})")
-    await page.evaluate("() => { location.hash = '#/'; }")  # the chip reads the session afresh
-    await page.wait_for_selector(".landing")
-    await docs_warning(w, page, tag, ["your CV (pasted text)", "your interests note (pasted text)",
-                                      "your achievements (pasted text)"],
-                       ["contact details and career facts"])
-    await end_session(page)
-
-
-async def focus_trace(page: Page, steps: int) -> tuple[list[dict], list[str]]:
-    """Press Tab `steps` times. Returns the focus steps hidden under the sticky header,
-    off the screen or under the kept pill (T12, G8), and the cells under the sticky Lead
-    column (F24)."""
-    hidden, side = [], []
-    for _ in range(steps):
+async def tab_order(page: Page) -> list[str]:
+    await page.focus("#list-title")
+    seq = []
+    for _ in range(9):
         await page.keyboard.press("Tab")
-        got = await page.evaluate("""() => { const el = document.activeElement; if (!el || el === document.body) return null;
-          const r = el.getBoundingClientRect(); let cover = 0;
-          // a control inside the sticky header is part of it, not under it (G8 at 320 px)
-          if (el.closest('.bar, .tabs-wrap') || el.classList.contains('skip')) return null;
-          // a sticky bar covers what lies below its top; the tabs still in place lower down
-          // the page cover nothing above them (G8 at 320 px)
-          for (const x of document.querySelectorAll('.bar, .tabs-wrap')) { const s = getComputedStyle(x);
-            if (s.position !== 'sticky' && s.position !== 'fixed') continue; const b = x.getBoundingClientRect();
-            if (b.top <= r.top && b.bottom > cover) cover = b.bottom; }
-          const p = document.querySelector('.keep-float'); let pill = false;
-          if (p && getComputedStyle(p).visibility !== 'hidden' && getComputedStyle(p).display !== 'none' && !p.contains(el)) {
-            const a = p.getBoundingClientRect(); pill = a.left < r.right && a.right > r.left && a.top < r.bottom && a.bottom > r.top; }
-          // F24: a focused cell is not half under the sticky Lead column
-          const cell = el.closest('table.compare td'); let side = false;
-          if (cell) { const row = cell.closest('tr').querySelector('th');
-            if (row && getComputedStyle(row).position === 'sticky') side = r.left < row.getBoundingClientRect().right - 1; }
-          // WCAG 2.4.11: hidden means none of it shows, under the header or off the screen
-          return { el: (el.innerText || el.getAttribute('aria-label') || el.tagName).trim().slice(0, 30),
-            under: r.bottom <= cover + 1 || r.bottom <= 0 || r.top >= innerHeight, pill, side }; }""")
-        if got and (got["under"] or got["pill"]):
-            hidden.append(got)
-        if got and got.get("side"):
-            side.append(got["el"])
-    return hidden, side
+        seq.append(await page.evaluate("""() => { const e = document.activeElement;
+          if (e.matches('[data-key=temple]')) return 'toggle'; if (e.id === 'list-q') return 'search';
+          if (e.closest('form[role=search]')) return 'search'; if (e.id === 'list-level') return 'level';
+          if (e.matches('.tag-chip')) return 'tag'; if (e.closest('.award')) return 'card'; return e.tagName; }"""))
+    return seq
 
 
-async def ux_zoom(w: Walk, page: Page, base: str, tag: str) -> None:
-    """Q9: laptop at 400% (320 x 215 CSS px): the focused question box is not hidden under
-    the header, and the kept pill does not cover the tabs."""
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_selector(".cand", timeout=20000)
-    await pick_and_build(page)
-    await page.wait_for_selector("#tab-routes", timeout=60000)
-    await wait_built(page)
-    await page.evaluate(OPEN_WEAK)
-    for i in (0, 1):
-        await page.locator(".leads > li .btn.keep").nth(i).click()
-        await page.wait_for_timeout(250)
-    await page.set_viewport_size({"width": 320, "height": 215})
-    await page.wait_for_timeout(400)
-    for y in (0, 400, 1200):
-        await page.evaluate(f"() => window.scrollTo(0, {y})")
-        await page.wait_for_timeout(300)
-        hit = await page.evaluate("""() => { const p = document.querySelector('.keep-float'), t = document.querySelector('.tabs-wrap');
-          if (!p || !t || getComputedStyle(p).visibility === 'hidden' || getComputedStyle(p).display === 'none') return false;
-          const a = p.getBoundingClientRect(), b = t.getBoundingClientRect();
-          return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top; }""")
-        if hit:
-            w.errors.append(f"{tag}: Q9: at 400% the kept pill covers the tabs (scrolled to {y} px)")
-            break
-    await w.snap(page, tag, "q-zoom-routes")
-    await page.click("#tab-scout")
-    await page.wait_for_selector("#scout-q")
-    await page.focus("#scout-q")
-    await page.wait_for_timeout(400)
-    got = await page.evaluate("""() => { const q = document.querySelector('#scout-q').getBoundingClientRect();
-      let cover = 0; for (const el of document.querySelectorAll('.bar, .tabs-wrap')) {
-        const s = getComputedStyle(el); if (s.position !== 'sticky' && s.position !== 'fixed') continue;
-        const r = el.getBoundingClientRect(); if (r.bottom > cover) cover = r.bottom; }
-      return { top: q.top, bottom: q.bottom, cover, vh: innerHeight }; }""")
-    if got["top"] < got["cover"] or got["bottom"] > got["vh"] or got["top"] < 0:
-        w.errors.append(f"{tag}: Q9: at 400% the focused question box sits at {got['top']:.0f} to {got['bottom']:.0f} px "
-                        f"under a header that ends at {got['cover']:.0f} px of {got['vh']} px")
-    await w.snap(page, tag, "q-zoom-scout")
-    # T12: at 200% (640 x 430 CSS px) focus on Compare and Profile is never under the
-    # sticky header or the kept pill (WCAG 2.4.11)
-    await page.set_viewport_size({"width": 640, "height": 430})
-    for tab in ("#tab-compare", "#tab-profile"):
-        await page.click(tab)
-        await page.wait_for_timeout(800)
-        hidden, side = await focus_trace(page, 30)
-        for el in side:
-            w.errors.append(f"{tag}: F24: at 200% the focused cell {el!r} sits under the sticky Lead column")
-        if hidden:
-            w.errors.append(f"{tag}: T12: at 200% {len(hidden)} focus steps on {tab} are hidden, e.g. {hidden[:2]}")
-        await w.snap(page, tag, f"t12-zoom200-{tab[5:]}")
-    # G8: at 320 x 640 the kept pill shows; no focus step lands under it (WCAG 2.4.11)
-    await page.set_viewport_size({"width": 320, "height": 640})
-    for tab in ("#tab-routes", "#tab-profile", "#tab-compare"):
-        await page.click(tab)
-        await page.wait_for_timeout(800)
-        await page.evaluate("() => window.scrollTo(0, 0)")
-        hidden, _ = await focus_trace(page, 40)
-        if hidden:
-            w.errors.append(f"{tag}: G8: at 320 x 640 {len(hidden)} focus steps on {tab} are hidden, e.g. {hidden[:2]}")
-        await w.snap(page, tag, f"g8-320-{tab[5:]}")
-    await page.set_viewport_size(LAPTOP)
-    await end_session(page)
+async def flow_funding(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
+    page = await new_page(browser, w, tag, view, base)
+    await page.goto(base + "/#/funding")
+    await page.wait_for_selector(".award")
+    w.check("funding_toggle_off", await page.locator("[data-key=temple]").get_attribute("aria-checked") == "false", "off by default")
+    await w.snap(page, tag, "funding")
+    await page.click("[data-key=temple]")
+    await until(page, "() => document.querySelector('[data-key=temple]').getAttribute('aria-checked') === 'true'")
+    await page.wait_for_selector(".award")
+    await w.snap(page, tag, "funding-temple")
+    if w.plant == "focus_order":
+        await page.evaluate("""() => { const row = document.querySelector('.filter-row'); row.append(row.firstElementChild); }""")
+    seq = await tab_order(page)
+    order = ["toggle", "search", "level", "tag", "card"]
+    firsts = [seq.index(k) for k in order if k in seq]
+    w.check("focus_order_lists", [k for k in order if k in seq] == order and firsts == sorted(firsts), " > ".join(dict.fromkeys(seq)))
+    leak = await sample_leak(page)
+    w.check("no_sample_in_funding", not leak, f"{leak}")
+    await page.context.close()
 
 
-# S33: the cover-letter points block on a Scout card, for both audiences, at the laptop
-# width and at 360 px. The geometry check (no sideways scroll, a 44 px Copy button) is run
-# on the real block, then proven to fail on a block broken through the CSSOM (the app's
-# CSP refuses a style tag), then run again on the restored block. The report keeps all
-# three results under "points".
-NARROW = {"width": 360, "height": 780}
-POINTS_GEOMETRY = """() => { const b = document.querySelector('.scout-points'); if (!b) return null;
-  const br = b.getBoundingClientRect(); const copy = b.querySelector('.points-copy');
-  const cr = copy ? copy.getBoundingClientRect() : null;
-  const past = [...b.querySelectorAll('*')].filter(el => el.getClientRects().length && el.getBoundingClientRect().right > br.right + 1);
-  return { blockScroll: b.scrollWidth - b.clientWidth,
-    pageScroll: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    copyH: cr ? Math.round(cr.height) : null, copyW: cr ? Math.round(cr.width) : null,
-    past: past.length, pastBy: past.length ? Math.round(Math.max(...past.map(el => el.getBoundingClientRect().right)) - br.right) : 0,
-    open: b.open, withheld: Boolean(b.querySelector('.notice.warn')) && !b.querySelector('.points-list'),
-    points: b.querySelectorAll('.points-list > li').length, missing: b.querySelectorAll('.points-missing li').length,
-    chips: b.querySelectorAll('.cite').length, locks: b.querySelectorAll('.cite.private').length,
-    samples: b.querySelectorAll('.cite.sample, .sample-badge').length, flagged: b.querySelectorAll('.flagged').length,
-    summary: (b.querySelector('summary') || {}).innerText || '',
-    answerByCode: Boolean(b.parentElement.querySelector('.scout-answer.by-code')),
-    width: innerWidth }; }"""
-BREAK_POINTS = """() => { const b = document.querySelector('.scout-points'); if (!b) return false;
-  const copy = b.querySelector('.points-copy'); if (copy) copy.style.cssText = 'min-height: 0; height: 30px; padding: 0;';
-  const list = b.querySelector('.points-list'); if (list) list.style.cssText = 'width: 1400px; white-space: nowrap;';
-  return true; }"""
-RESTORE_POINTS = """() => { for (const el of document.querySelectorAll('.scout-points .points-copy, .scout-points .points-list')) el.style.cssText = ''; }"""
-TOUR_EXPAND = """() => { const v = document.querySelector('#panel > .scout'); if (v) v.style.cssText = 'height: auto;';
-  const b = document.querySelector('.scout-scroll'); if (b) b.style.cssText = 'overflow: visible; -webkit-mask-image: none; mask-image: none;';
-  for (const el of document.querySelectorAll('.bar, .tabs-wrap')) el.style.cssText = 'position: static;'; }"""
-TOUR_RESTORE = """() => { for (const el of document.querySelectorAll('#panel > .scout, .scout-scroll, .bar, .tabs-wrap')) el.style.cssText = ''; }"""
+async def flow_samples(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
+    page = await new_page(browser, w, tag, view, base)
+    await page.goto(base + "/#/samples/student")
+    await page.wait_for_selector(".award")
+    if w.plant == "badge_on_samples":
+        await page.evaluate("document.querySelector('.award .tag.sample').remove()")
+    cards = await page.evaluate("[...document.querySelectorAll('.award')].map(c => Boolean(c.querySelector('.tag.sample')))")
+    w.check("badge_on_every_sample", bool(cards) and all(cards), f"{sum(cards)} of {len(cards)} cards badged")
+    w.check("samples_note", await page.locator(".sample-note").count() == 1, "sample note present")
+    await w.snap(page, tag, "samples")
+    await page.context.close()
 
 
-def points_problems(g: dict | None) -> list[str]:
-    """What the geometry check holds against a points block: nothing scrolls sideways, no
-    child runs past the block's edge, and the Copy button meets the 44 px target."""
-    if g is None:
-        return ["no points block on the card"]
-    out = []
-    if g["blockScroll"] > 0:
-        out.append(f"the points block scrolls sideways by {g['blockScroll']} px")
-    if g["pageScroll"] > 0:
-        out.append(f"the page scrolls sideways by {g['pageScroll']} px")
-    if g["past"]:
-        out.append(f"{g['past']} elements run {g['pastBy']} px past the block's edge")
-    if not g["withheld"] and (g["copyH"] is None or g["copyH"] < 44):
-        out.append(f"the Copy button is {g['copyH']} px tall, under the 44 px target")
-    return out
+async def build_wait(page: Page, secs: int = 420) -> str:
+    await until(page, "() => location.hash.startsWith('#/brief/')", secs=60)
+    bid = await page.evaluate("decodeURIComponent(location.hash.split('/')[2])")
+    await until(page, """(id) => fetch('/briefs/' + id).then(r => r.json()).then(j => ['done', 'failed']
+      .includes(j.brief.status))""", bid, secs=secs, every=3)
+    status = await page.evaluate("(id) => fetch('/briefs/' + id).then(r => r.json()).then(j => j.brief.status)", bid)
+    await page.wait_for_timeout(1500)
+    return status
 
 
-async def scout_ask_long(page: Page, q: str, seconds: int = 420) -> None:
-    """Ask and wait: a points step runs a model generation and a grounding pass."""
-    await page.fill("#scout-q", q)
-    await page.click(".scout-ask button[type=submit]")
-    await page.wait_for_timeout(500)
-    for _ in range(seconds * 10):
-        if await page.evaluate("() => !document.querySelector('.scout-wait') && !document.querySelector('.scout-ask button[disabled]')"):
-            break
-        await page.wait_for_timeout(100)
-
-
-async def points_states(w: Walk, page: Page, tag: str, question: str, shot: Path | None, retry: bool = True) -> None:
-    """Ask for the points on the open Scout tab; check and capture the block at the laptop
-    width and at 360 px. A withheld set is asked once more in a new conversation."""
-    await page.wait_for_selector("#scout-q")
-    await scout_ask_long(page, question)
-    g = await page.evaluate(POINTS_GEOMETRY)
-    if g is None or (g["withheld"] and retry):
-        why = "no points block" if g is None else "the local model's points were withheld"
-        w.errors.append(f"{tag}: points: {why} on the first run; asked once more")
-        await page.click("[data-key=scout-new-any]")
+async def keep_two(page: Page) -> int:
+    btns = page.locator("#panel .btn.keep")
+    n = min(2, await btns.count())
+    for i in range(n):
+        await btns.nth(i).click()
         await page.wait_for_timeout(500)
-        return await points_states(w, page, tag, question, shot, retry=False)
-    if g is None:
-        w.errors.append(f"{tag}: points: no points block after asking twice")
-        await w.snap(page, tag, "points-none", full=True)
-        return
-    if g["withheld"]:
-        w.errors.append(f"{tag}: points: withheld twice by the local model (not a layout finding)")
-    if not g["open"]:
-        w.errors.append(f"{tag}: points: the block is not open by default")
-    if not g["answerByCode"]:
-        w.errors.append(f"{tag}: points: the answer line above the block is not marked as code")
-    if not g["withheld"] and (not g["chips"] or g["points"] < 3):
-        w.errors.append(f"{tag}: points: {g['points']} points with {g['chips']} citation chips")
-    results = {}
-    for vtag, view in (("laptop", LAPTOP), ("360", NARROW)):
-        await page.set_viewport_size(view)
-        await page.wait_for_timeout(600)
-        await page.evaluate("() => { const b = document.querySelector('.scout-points'); b && b.scrollIntoView({ block: 'start' }); }")
-        await page.wait_for_timeout(300)
-        real = await page.evaluate(POINTS_GEOMETRY)
-        before = points_problems(real)
-        for e in before:
-            w.errors.append(f"{tag}: points at {vtag}: {e}")
-        # Prove the check bites: break the block through the CSSOM, expect failures, restore.
-        await page.evaluate(BREAK_POINTS)
-        broken = points_problems(await page.evaluate(POINTS_GEOMETRY))
-        await page.evaluate(RESTORE_POINTS)
-        after = points_problems(await page.evaluate(POINTS_GEOMETRY))
-        if not broken:
-            w.errors.append(f"{tag}: points at {vtag}: the geometry check did not fail on a broken block")
-        if after != before:
-            w.errors.append(f"{tag}: points at {vtag}: the geometry check changed after the restore: {after}")
-        results[vtag] = {"geometry": real, "problems": before, "broken_problems": broken, "restored_problems": after}
-        await w.snap(page, tag, f"points-{vtag}", full=True)
-        self_state = w.states[-1]
-        self_state["points"] = results[vtag]
-        if vtag == "laptop" and shot is not None:
-            # The tour picture shows the whole block: the chat box is let grow for the shot
-            # and the sticky header unstuck, through the CSSOM, then both are put back.
-            await page.evaluate(TOUR_EXPAND)
-            await page.wait_for_timeout(300)
-            await page.locator(".scout-points").screenshot(path=str(shot))
-            await page.evaluate(TOUR_RESTORE)
-            await page.wait_for_timeout(300)
-    await page.set_viewport_size(LAPTOP)
+    return n
 
 
-async def ux_points_pi(w: Walk, page: Page, base: str, tag: str) -> None:
-    """S33: the researcher example question on the demo researcher's brief."""
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_selector(".cand", timeout=20000)
-    await pick_and_build(page)
-    await page.wait_for_selector("#tab-routes", timeout=60000)
-    await wait_built(page)
-    await page.click("#tab-scout")
-    await points_states(w, page, tag, "What could my cover letter for the top lead say?",
-                        ROOT / "docs/tour/points-researcher.png")
-    await end_session(page)
-
-
-async def ux_points_student(w: Walk, page: Page, base: str, tag: str) -> None:
-    """S33: the student example question on the SYNTHETIC persona-ug brief."""
-    persona = STUDENTS[0]
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.click("[data-key=seg-s]")
-    await page.click("[data-key=student]")
-    await page.wait_for_selector("#st-cv", timeout=20000)
-    for kind in ("cv", "interests", "achievements"):
-        await page.fill(f"#st-{kind}", (SYN / persona / f"{kind}.md").read_text())
-    await page.click("[data-key=st-build]")
-    await page.wait_for_selector("#progress", timeout=20000)
-    await w.step(tag, "built", wait_built(page))
-    await page.wait_for_timeout(1000)
-    await page.click("#tab-scout")
-    await points_states(w, page, tag, "What should my application for my top option highlight?",
-                        ROOT / "docs/tour/points-student.png")
-    await end_session(page)
-
-
-async def side_dialog(w: Walk, page: Page, tag: str, want: str, name: str) -> bool:
-    """The one-side warning is open, names the side, and focuses the safe button."""
-    try:
-        await page.wait_for_selector("#models-dialog[open] #side-title", timeout=10000)
-    except Exception:
-        w.errors.append(f"{tag}: one side: no warning on the way to the {want} form")
-        return False
-    got = await page.evaluate("""() => [document.querySelector('#side-title').innerText,
-      document.activeElement && document.activeElement.innerText]""")
-    if want not in got[0] or not got[1].startswith("Keep the"):
-        w.errors.append(f"{tag}: one side: the warning reads {got}")
-    await w.snap(page, tag, name)
-    return True
-
-
-async def ux_side(w: Walk, page: Page, base: str, tag: str) -> None:
-    """2026-11-02: a session runs a researcher or a student, not both. Arriving at the other
-    side's form warns; Keep goes back to the brief, End starts the form fresh."""
-    await page.goto(base + "/#/")
-    await page.wait_for_selector(".landing")
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_selector("[data-key=build]", timeout=20000)
-    await page.click("[data-key=build]")
-    await page.wait_for_selector("#tab-routes", timeout=60000)
-    await wait_built(page)
-    home = "() => { location.hash = '#/'; }"
-    for keep in (True, False):
-        await page.evaluate(home)
-        await page.wait_for_selector(".landing")
-        await page.click("[data-key=seg-s]")
-        await page.click("[data-key=student]")
-        if not await side_dialog(w, page, tag, "student", "side-to-student"):
-            return
-        if keep:
-            await page.locator("#models-dialog button", has_text="Keep the").click()
-            await page.wait_for_selector("#tab-routes", timeout=20000)
-            continue
-        await page.click("[data-key=side-ok]")
-        await page.wait_for_selector("#st-cv", timeout=20000)
-        held = await page.evaluate("""() => [document.querySelectorAll('.student-start .added').length,
-          [...document.querySelectorAll('.student-start a.btn')].some((a) => /Back to your options/.test(a.innerText))]""")
-        if held != [0, False]:
-            w.errors.append(f"{tag}: one side: the fresh student form still shows the researcher's session {held}")
-    for kind in ("cv", "interests", "achievements"):
-        await page.fill(f"#st-{kind}", (SYN / "persona-ug" / f"{kind}.md").read_text())
-    await page.click("[data-key=st-build]")
-    await page.wait_for_selector("#progress", timeout=20000)
-    await wait_built(page)
-    await page.evaluate("() => { location.hash = '#/student'; }")  # the same side never asks
-    await page.wait_for_selector("#st-cv, .student-start", timeout=20000)
-    await page.wait_for_timeout(500)
-    if await page.locator("#models-dialog[open]").count():
-        w.errors.append(f"{tag}: one side: going back to the student form asked to end the session")
-    if not await page.locator(".student-start a.btn", has_text="Back to your options").count():
-        w.errors.append(f"{tag}: the student form lost Back to your options for its own brief")
-    await page.evaluate(home)
-    await page.wait_for_selector(".landing")
-    await page.click("[data-key=seg-r]")  # the landing remembers the Student choice
-    await page.fill("#q", AUTHOR)
-    await page.click(".searchbox button[type=submit]")
-    if not await side_dialog(w, page, tag, "researcher", "side-to-researcher"):
-        return
-    await page.locator("#models-dialog button", has_text="Keep the").click()
-    await page.wait_for_selector("#tab-routes", timeout=20000)
-    # End on the way to a researcher: the pick survives and a fresh session builds its brief.
-    await page.evaluate(home)
-    await page.wait_for_selector(".landing")
+async def flow_briefs(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
+    page = await new_page(browser, w, tag, view, base)
+    await page.goto(base + "/")
     await page.click("[data-key=seg-r]")
     await page.fill("#q", AUTHOR)
     await page.click(".searchbox button[type=submit]")
-    if not await side_dialog(w, page, tag, "researcher", "side-to-researcher-end"):
-        return
-    await page.click("[data-key=side-ok]")
-    try:
-        await page.wait_for_selector("[data-key=build]", timeout=20000)
-    except Exception:
-        w.errors.append(f"{tag}: one side: after End the researcher's pick was lost")
-        return
+    await page.wait_for_selector("[data-key=build], .cand button", timeout=60_000)
+    if not await page.locator("[data-key=build]").count():
+        await page.click(".cand button")
     await page.click("[data-key=build]")
-    await page.wait_for_selector("#tab-routes", timeout=60000)
-    await wait_built(page)
-    if await page.locator(".student-start, [data-key=st-build]").count():
-        w.errors.append(f"{tag}: one side: the fresh researcher brief shows the student form")
-    await end_session(page)
+    status = await build_wait(page)
+    w.check("guest_researcher_brief", status == "done", f"status {status}")
+    await w.snap(page, tag, "brief-researcher")
+    kept = await keep_two(page)
+    await page.evaluate("location.hash = location.hash.replace(/\\/[a-z]+$/, '/compare')")
+    await page.wait_for_timeout(1500)
+    await w.snap(page, tag, "brief-researcher-compare")
+    w.check("guest_keep_compare_researcher", kept > 0 and await page.locator("#panel table, #panel .compare").count() > 0, f"{kept} kept")
+    # the sample persona, as a guest
+    await page.evaluate("location.hash = '#/'")
+    await page.wait_for_selector("[data-key=seg-s]")
+    await page.click("[data-key=seg-s]")
+    await page.click("[data-key=fit]")
+    await page.click("[data-key=st-build]")
+    status = await build_wait(page)
+    w.check("guest_sample_persona_brief", status == "done", f"status {status}")
+    await w.snap(page, tag, "brief-student")
+    kept = await keep_two(page)
+    await page.evaluate("location.hash = location.hash.replace(/\\/[a-z]+$/, '/compare')")
+    await page.wait_for_timeout(1500)
+    await w.snap(page, tag, "brief-student-compare")
+    w.check("guest_keep_compare_student", kept > 0 and await page.locator("#panel table, #panel .compare").count() > 0, f"{kept} kept")
+    await page.context.close()
 
 
-UX_FLOWS = (("ux-laptop", "LAPTOP", "ux_pi"), ("ux-phone", "PHONE", "ux_pi"), ("ux-scout", "LAPTOP", "ux_scout"),
-            ("ux-student", "LAPTOP", "ux_student"), ("ux-student-phone", "PHONE", "ux_student"),
-            ("ux-sample", "LAPTOP", "ux_sample"), ("ux-queued", "LAPTOP", "ux_queued"), ("ux-docs", "LAPTOP", "ux_docs"),
-            ("ux-landing", "LAPTOP", "ux_landing"), ("ux-landing-phone", "PHONE", "ux_landing"),
-            ("ux-zoom", "LAPTOP", "ux_zoom"), ("ux-cloud-docs", "LAPTOP", "ux_cloud_docs"),
-            ("ux-cloud-docs-phone", "PHONE", "ux_cloud_docs"),
-            ("ux-points", "LAPTOP", "ux_points_pi"), ("ux-points-student", "LAPTOP", "ux_points_student"),
-            ("ux-side", "LAPTOP", "ux_side"), ("ux-side-phone", "PHONE", "ux_side"))
+# ---------- the stubbed signed-in session ----------
+
+CONSENT = "SYNTHETIC consent text for the walk. Perch may send the text of your CV to SYNTHETIC Provider. You can delete your data at any time."
 
 
-async def main(base: str, axe: str | None, out: Path, only: list[str], ux: list[str] | None = None) -> None:
+async def stub_signed_in(page: Page, state: dict) -> None:
+    def session() -> dict:
+        if state["gone"]:
+            return {"signed_in": False}
+        return {"signed_in": True, "guest": False, "roles": state["roles"], "audience": (state["roles"] or ["student"])[0],
+                "csrf": "walk-csrf", "display_name": "Sam Example Walker", "expires_at": 9999999999,
+                "consent": {"required": not state["consented"], "current_version": 1,
+                            "accepted_version": 1 if state["consented"] else 0, "provider_name": "SYNTHETIC Provider", "text": CONSENT},
+                "needs_welcome": not (state["roles"] and state["consented"])}
+
+    async def handle(route: Route) -> None:
+        url, method = route.request.url, route.request.method
+        if "/auth/session" in url:
+            return await route.fulfill(json=session())
+        if "/me/roles" in url:
+            state["roles"] = json.loads(route.request.post_data or "{}").get("roles", [])
+            return await route.fulfill(json={"roles": state["roles"]})
+        if "/me/consent" in url:
+            state["consented"] = True
+            return await route.fulfill(json={"consent_version": 1})
+        if "/me/delete" in url:
+            state["deleted_with"] = route.request.post_data
+            state["gone"] = True
+            return await route.fulfill(status=202, json={"ok": True})
+        if "/me/docs" in url:
+            return await route.fulfill(json=[{"id": "d1", "kind": "cv", "label": "CV", "chars": 900, "name": "cv.md"}])
+        if "/me/briefs" in url:
+            return await route.fulfill(json=[{"id": "b1", "status": "done", "researcher_id": "you", "created_at": "2026-11-03T12:00:00",
+                                              "leads": 12, "topics": []}])
+        await route.continue_()
+    for pat in ("**/auth/session", "**/me/**"):
+        await page.route(pat, handle)
+
+
+async def flow_mocked(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
+    page = await new_page(browser, w, tag, view, base)
+    state = {"roles": [], "consented": False, "gone": False, "deleted_with": None}
+    await stub_signed_in(page, state)
+    await page.goto(base + "/")
+    await page.wait_for_selector(".welcome")
+    w.check("signed_in_new_goes_to_welcome", "#/welcome" in page.url, page.url)
+    go_btn = page.locator("[data-key=continue]")
+    await w.snap(page, tag, "welcome")
+    w.check("welcome_continue_guarded", await go_btn.is_disabled(), "disabled before both steps")
+    await page.check("[data-key=role-student]")
+    await page.check("[data-key=agree]")
+    w.check("welcome_continue_enabled", await go_btn.is_enabled(), "enabled after both steps")
+    await go_btn.click()
+    await page.wait_for_selector(".landing h1")
+    await w.snap(page, tag, "after-welcome")
+    await page.evaluate("location.hash = '#/me'")
+    await page.wait_for_selector(".brief-row")
+    await w.snap(page, tag, "my-perch")
+    await page.evaluate("location.hash = '#/account'")
+    await page.wait_for_selector("#del-open")
+    await w.snap(page, tag, "account")
+    await page.click("#del-open")
+    await page.wait_for_timeout(200)
+    focused = await page.evaluate("document.activeElement.id + '|' + Boolean(document.activeElement.closest('dialog'))")
+    w.check("delete_takes_focus", focused == "del-word|true", focused)
+    if w.plant == "delete_guard":
+        await page.evaluate("document.querySelector('#del-go').disabled = false")
+    off0 = await page.locator("#del-go").is_disabled()
+    await page.fill("#del-word", "delet")
+    off1 = await page.locator("#del-go").is_disabled()
+    await page.fill("#del-word", "delete")
+    on = await page.locator("#del-go").is_enabled()
+    w.check("delete_guard", off0 and off1 and on, f"empty disabled {off0}, 'delet' disabled {off1}, 'delete' enabled {on}")
+    await w.snap(page, tag, "delete-dialog", full=False)
+    await page.keyboard.press("Escape")
+    await page.wait_for_timeout(300)
+    back = await page.evaluate("document.activeElement.id")
+    w.check("delete_escape_returns_focus", back == "del-open", f"focus on {back}")
+    await page.click("#del-open")
+    await page.fill("#del-word", "delete")
+    await page.click("#del-go")
+    await page.wait_for_selector("[data-key=flash-banner]")
+    banner = await page.locator("[data-key=flash-banner]").inner_text()
+    w.check("delete_sends_confirm_and_ends", json.loads(state["deleted_with"] or "{}") == {"confirm": "delete"}
+            and "deleted" in banner and await page.locator("#sign-in").count() == 1, banner.strip())
+    await w.snap(page, tag, "after-delete")
+    await page.context.close()
+
+
+async def flow_signin(w: Walk, browser: Browser, base: str, tag: str, view: dict, helper: str) -> None:
+    spec = importlib.util.spec_from_file_location("e2e_oidc_login", helper)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    client = mod.login(base)
+    page = await new_page(browser, w, tag, view, base)
+    await page.context.add_cookies([{"name": c.name, "value": c.value, "url": base} for c in client.cookies.jar])
+    await page.goto(base + "/")
+    await page.wait_for_selector("#acct-btn, .welcome", timeout=30_000)
+    if await page.locator(".welcome").count() or "#/welcome" in page.url:
+        await page.wait_for_selector(".welcome")
+        await w.snap(page, tag, "welcome")
+        for key in ("role-student", "agree"):
+            if not await page.locator(f"[data-key={key}]").is_checked():
+                await page.check(f"[data-key={key}]")
+        await page.click("[data-key=continue]")
+        await page.wait_for_selector("#acct-btn")
+    await w.snap(page, tag, "signed-in-landing")
+    for hash_, ready, name in (("#/student", ".student-start", "student-start"), ("#/me", ".my-perch", "my-perch"),
+                               ("#/account", "#del-open", "account")):
+        await go(page, base, hash_, ready)
+        await w.snap(page, tag, name)
+    await page.click("#del-open")
+    await page.fill("#del-word", "delete")
+    await page.click("#del-go")
+    await page.wait_for_selector("[data-key=flash-banner]")
+    await w.snap(page, tag, "after-delete")
+    w.check("signin_flow", True, "welcome, account, My Perch and delete ran")
+    await page.context.close()
+
+
+FLOWS = {"landing": flow_landing, "awards": flow_awards, "funding": flow_funding, "samples": flow_samples,
+         "briefs": flow_briefs, "mocked": flow_mocked}
+
+
+async def main(a: argparse.Namespace) -> int:
+    out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    names = aliases()
-    exe = sorted(glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome")))[-1]
-    w = Walk(out, axe)
+    w = Walk(out, Path(a.axe), a.plant)
     async with async_playwright() as p:
-        b = await p.chromium.launch(executable_path=exe, args=["--no-sandbox"])
-        if "pi" in only:
-            for tag, view, scheme in (("pi-laptop", LAPTOP, "light"), ("pi-phone", PHONE, "light"),
-                                      ("pi-laptop-dark", LAPTOP, "dark"), ("pi-phone-dark", PHONE, "dark")):
-                ctx, page = await new_page(b, view, names, scheme)
-                w.watch(page, tag)
-                await w.step(tag, "flow", pi_flow(w, page, base, tag))
-                await ctx.close()
-            ctx, page = await new_page(b, PHONE, names, motion="reduce")
-            await page.goto(base + "/#/")
-            await page.wait_for_selector(".landing")
-            w.focus["reduced-motion-animations"] = await page.evaluate("""() => [...document.querySelectorAll('*')]
-              .map(el => getComputedStyle(el)).filter(s => s.animationName !== 'none' && parseFloat(s.animationDuration) > 0.01
-              && s.animationIterationCount !== '1').length""")
-            await ctx.close()
-        if "checks" in only:
-            for tag, view in (("checks", LAPTOP), ("checks-phone", PHONE)):
-                ctx, page = await new_page(b, view, names)
-                w.watch(page, tag)
-                await w.step(tag, "flow", checks_flow(w, page, base, tag))
-                await ctx.close()
-        if "student" in only:
-            for i, persona in enumerate(STUDENTS):
-                first = ("phone", PHONE) if i != 1 else ("laptop", LAPTOP)
-                second = ("laptop", LAPTOP) if i != 1 else ("phone", PHONE)
-                ctx, page = await new_page(b, first[1], names, "dark" if i == 2 else "light")
-                w.watch(page, persona)
-                await w.step(persona, "flow", student_flow(w, page, base, persona, [first, second]))
-                await ctx.close()
-        if "private" in only:
-            ctx, page = await new_page(b, LAPTOP, names)
-            w.watch(page, "persona-1")
-            await w.step("persona-1", "flow", private_flow(w, page, base))
-            await ctx.close()
-        if "workflow" in only:
-            for tag, fn in (("workflow-pi", workflow_pi), ("workflow-student", workflow_student),
-                            ("workflow-private", workflow_private), ("workflow-sample", workflow_sample)):
-                ctx, page = await new_page(b, LAPTOP, names)
-                w.watch(page, tag)
-                await w.step(tag, "flow", fn(w, page, base, tag))
-                await ctx.close()
-        if "ux" in only:
-            for tag, view, fn in UX_FLOWS:
-                if ux and tag not in ux:
-                    continue
-                ctx, page = await new_page(b, globals()[view], names)
-                w.watch(page, tag)
-                await w.step(tag, "flow", globals()[fn](w, page, base, tag))
-                await ctx.close()
-        await b.close()
-    report = out / f"report-{'-'.join(only)}.json"
-    report.write_text(json.dumps({"states": w.states, "errors": w.errors, "focus": w.focus}, indent=1))
-    print(f"{len(w.states)} states, {len(w.errors)} errors -> {report}")
+        browser = await p.chromium.launch()
+        for width in a.widths:
+            tag = f"w{width}"
+            for name in a.only:
+                before = len(w.checks)
+                try:
+                    await FLOWS[name](w, browser, a.base, tag, VIEWS[width])
+                except Exception as e:  # noqa: BLE001 - a failed flow is a finding; the walk goes on
+                    w.errors.append(f"{tag}: {name}: {type(e).__name__}: {str(e).splitlines()[0][:200]}")
+                print(f"{tag} {name}: {len(w.checks) - before} checks", flush=True)
+            if a.login_helper:
+                try:
+                    await flow_signin(w, browser, a.base, tag, VIEWS[width], a.login_helper)
+                except Exception as e:  # noqa: BLE001
+                    w.errors.append(f"{tag}: signin: {type(e).__name__}: {str(e).splitlines()[0][:200]}")
+        await browser.close()
+    dead = [u for u in w.requests if re.search(r"/(mode|private)\.js", u)]
+    w.check("no_dead_modules", not dead, f"requests: {dead}")
+    report = {"checks": [{"name": n, "ok": ok, "detail": d} for n, ok, d in w.checks],
+              "errors": w.errors, "states": w.states, "plant": a.plant}
+    (out / f"report{'-' + a.plant if a.plant else ''}.json").write_text(json.dumps(report, indent=1))
+    for n, ok, d in w.checks:
+        print(f"{'PASS' if ok else 'FAIL'}  {n}  {d}")
+    axe = [(s["tag"], s["name"], v["id"], v["n"]) for s in w.states for v in s["axe"]]
+    side = [(s["tag"], s["name"], s["overflow"]) for s in w.states if s["overflow"] > 0]
+    small = [(s["tag"], s["name"], len(s["small"])) for s in w.states if s["small"]]
+    print(f"\n{len(w.states)} states; {len(w.errors)} errors; {len(axe)} axe violations; "
+          f"{len(side)} states with sideways scroll; {len(small)} states with targets under 44 px")
     for e in w.errors:
-        print(" ", e)
+        print("ERROR", e)
+    for x in axe:
+        print("AXE", *x)
+    for x in side:
+        print("SIDEWAYS", *x)
+    for st in w.states:
+        for v in st["axe"]:
+            print("AXE-DETAIL", st["tag"], st["name"], v["id"], v["targets"])
+        if st["small"]:
+            print("SMALL", st["tag"], st["name"], [f"{c['el'][:24]} {c['w']}x{c['h']}" for c in st["small"][:6]])
+    return 1 if any(not ok for _, ok, _ in w.checks) else 0
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--base", default="http://127.0.0.1:8090")
-    ap.add_argument("--axe", default=None)
-    ap.add_argument("--out", type=Path, default=ROOT / "build/ux")
-    ap.add_argument("--only", nargs="+", default=["pi", "checks", "student", "private", "workflow", "ux"])
-    ap.add_argument("--ux", nargs="+", default=None, help="with --only ux: just these flows, e.g. ux-phone")
-    a = ap.parse_args()
-    asyncio.run(main(a.base, a.axe, a.out, a.only, a.ux))
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
+    ap.add_argument("--base", default="http://127.0.0.1:8191")
+    ap.add_argument("--out", default="build/s43_walk")
+    ap.add_argument("--axe", default=str(ROOT / "scripts/walk_assets/axe.min.js"))
+    ap.add_argument("--widths", nargs="+", type=int, default=[1280, 360], choices=list(VIEWS))
+    ap.add_argument("--only", nargs="+", default=list(FLOWS), choices=list(FLOWS))
+    ap.add_argument("--login-helper", default=None)
+    ap.add_argument("--plant", default=None, choices=PLANTS)
+    sys.exit(asyncio.run(main(ap.parse_args())))

@@ -38,9 +38,6 @@ export function renderWelcome(root, ctx, returnTo) {
     h("input", { type: "checkbox", "data-key": `role-${key}`, checked: state[key],
       onchange: (e) => { state[key] = e.target.checked; draw(); } }),
     h("span", {}, h("b", { text: label }), hint ? h("span", { class: "hint", text: ` ${hint}` }) : null));
-  const sidesDone = state.student || state.researcher;
-  const ready = sidesDone && state.agreed && !state.busy;
-
   async function submit() {
     state.busy = true; state.error = null; draw();
     try {
@@ -58,6 +55,8 @@ export function renderWelcome(root, ctx, returnTo) {
   }
 
   function paint() {
+    const sidesDone = state.student || state.researcher;
+    const ready = sidesDone && state.agreed && !state.busy;
     // DRAFT copy (S43): the screen's headings and field labels, for Dakshitha to review.
     // The consent text itself is the server's, shown as sent.
     fill(root, h("div", { class: "screen welcome" },
