@@ -4,6 +4,7 @@ grading sheet and the scrub. No spend, no network. SYNTHETIC text only."""
 from __future__ import annotations
 
 import csv
+import json
 from datetime import date
 
 import pytest
@@ -125,3 +126,22 @@ def test_ids_and_judgement_helpers():
     assert so.judge({"set": "out", "kind": "therapy"}, "distress", "") == (True, False)
     assert so.judge({"set": "in", "kind": "x"}, "refusal", "") == (False, True)
     assert so.judge({"set": "distress", "kind": "distress"}, "refusal", "") == (False, False)
+
+
+def test_the_fake_run_writes_rule_reasons_and_drafts(tmp_path, questions):
+    """S45 fix: reasons.csv counts each rule's removals per answered question, and
+    drafts.jsonl holds each attempt's raw draft, its rule hits and the final answer."""
+    _, out = fake_run(tmp_path, of(questions, "in")[:4])
+    rs = rows_of(out / "reasons.csv")
+    assert rs and list(rs[0]) == so.REASON_FIELDS
+    assert all(r["shown_no_citation"].isdigit() for r in rs)
+    drafts = [json.loads(x) for x in (out / "drafts.jsonl").read_text().splitlines()]
+    assert drafts and {"id", "attempt", "shown", "draft", "removed", "kinds", "final"} <= set(
+        drafts[0])
+    assert any(d["shown"] for d in drafts)
+
+
+def test_shown_text_puts_general_advice_under_its_label():
+    assert so.shown_text({"text": "", "general": "Start early."}) == (
+        "General advice:\nStart early.")
+    assert so.shown_text({"text": "A [x]."}) == "A [x]."
