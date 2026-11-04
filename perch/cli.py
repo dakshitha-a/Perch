@@ -629,6 +629,21 @@ def build_parser() -> argparse.ArgumentParser:
     rm = kysub.add_parser("rotate-master", help="re-wrap data keys under the current master key")
     rm.add_argument("--old", default=None, help="default PERCH_MASTER_KEY_PREV_ID")
     rm.add_argument("--new", default=None, help="default PERCH_MASTER_KEY_ID")
+    rm.add_argument("--dry-run", action="store_true", help="count rows on the old id, "
+                    "change nothing")
+    rk = kysub.add_parser("rekey", help="re-encrypt stored blobs under each user's newest data "
+                          "key version (the old versions stay readable)")
+    rk.add_argument("--user", default=None, help="one user id; default every user whose data "
+                    "key was rotated")
+    rk.add_argument("--dry-run", action="store_true", help="count stale rows, change nothing")
+    tb = kysub.add_parser("tombstones", help="tombstone retention")
+    tbsub = tb.add_subparsers(dest="tombstones_command", required=True)
+    tp = tbsub.add_parser("purge", help="remove tombstones older than the retention (default "
+                          "400 days, never less than the longest backup); counts only. Without "
+                          "--apply it is a dry run.")
+    tp.add_argument("--apply", action="store_true", help="really delete; default is a dry run")
+    tp.add_argument("--days", type=int, default=None, help="retention; default "
+                    "PERCH_TOMBSTONE_RETENTION_DAYS or 400; refused below 400")
     sub.add_parser("reconcile-shreds", help="re-assert tombstones from all three sources "
                    "after a restore")
     sv = sub.add_parser("serve", help="run the HTTP API")
@@ -760,8 +775,18 @@ def cmd_precache(args: argparse.Namespace) -> int:
     return 0
 
 
+def _audit_pool():  # noqa: ANN202
+    """A pool for the audit row, or None when no database is configured."""
+    from perch.store.pg import make_pool
+
+    return make_pool(max_size=2) if env("PERCH_DATABASE_URL") else None
+
+
 def cmd_keys(args: argparse.Namespace) -> int:
-    from perch import crypto
+    from uuid import UUID
+
+    from perch import crypto, keyops
+    from perch.store.pg import make_pool
 
     if args.keys_command == "rotate-master":
         old = args.old or env("PERCH_MASTER_KEY_PREV_ID")
@@ -771,11 +796,63 @@ def cmd_keys(args: argparse.Namespace) -> int:
                   file=sys.stderr)
             return 2
         try:
-            n = crypto.rotate_master(old, new)
+            n = crypto.rotate_master(old, new, dry_run=args.dry_run)
         except crypto.CryptoError as e:
             print(f"rotate-master stopped: {type(e).__name__}", file=sys.stderr)
             return 1
+        if args.dry_run:
+            print(f"Dry run: {n} rows are wrapped under {old}. Nothing changed.")
+            return 0
+        pool = _audit_pool()
+        if pool is not None:
+            try:
+                keyops.audit(pool, "key_rotate_master", old_id=old, new_id=new, rows=n)
+            finally:
+                pool.close()
         print(f"Rewrapped {n} rows from {old} to {new}. Remove the old key when this reads 0.")
+    elif args.keys_command == "rekey":
+        try:
+            uid = UUID(args.user) if args.user else None
+        except ValueError:
+            print("--user must be a user id.", file=sys.stderr)
+            return 2
+        if not env("PERCH_DATABASE_URL"):
+            print("Set PERCH_DATABASE_URL.", file=sys.stderr)
+            return 2
+        pool = make_pool(max_size=4)
+        try:
+            if uid is not None:
+                res = {"users": 1, **keyops.rekey_user(pool, uid, dry_run=args.dry_run)}
+            else:
+                res = keyops.rekey_all(pool, dry_run=args.dry_run)
+            if not args.dry_run:
+                keyops.audit(pool, "key_rotate_data", **res)
+        except crypto.CryptoError as e:
+            print(f"rekey stopped: {type(e).__name__}", file=sys.stderr)
+            return 1
+        finally:
+            pool.close()
+        verb = "Dry run, nothing changed" if args.dry_run else "Rekeyed"
+        print(f"{verb}: users {res['users']}, stale rows {res['stale']}, re-encrypted "
+              f"{res['done']}, failed {res['failed']}.")
+        return 1 if res["failed"] else 0
+    elif args.keys_command == "tombstones":
+        if not env("PERCH_DATABASE_URL"):
+            print("Set PERCH_DATABASE_URL.", file=sys.stderr)
+            return 2
+        pool = make_pool(max_size=2)
+        try:
+            res = keyops.purge_old_tombstones(pool, dry_run=not args.apply, days=args.days)
+            if args.apply:
+                keyops.audit(pool, "tombstones_purge", **res)
+        except crypto.CryptoError as e:
+            print(f"tombstones purge stopped: {type(e).__name__}", file=sys.stderr)
+            return 1
+        finally:
+            pool.close()
+        print(("Removed" if args.apply else "Dry run, would remove")
+              + f" tombstones older than {res['retention_days']} days: key database "
+              f"{res['key_tombstones']}, shred_log {res['shred_log']}, ledger {res['ledger']}.")
     return 0
 
 

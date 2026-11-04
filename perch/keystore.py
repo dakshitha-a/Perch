@@ -15,6 +15,7 @@ import os
 import threading
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
+from datetime import UTC, datetime, timedelta
 from typing import NamedTuple
 from uuid import UUID
 
@@ -332,6 +333,28 @@ class KeyRepository:
             ).fetchall()
         return [self._wk(r) for r in rows]
 
+    def users_with_rotated_keys(self, after: UUID | None, limit: int) -> list[tuple[UUID, int]]:
+        """(user_id, newest version) for users with more than one key version, by user id."""
+        with self._conn() as c:
+            rows = c.execute(
+                "SELECT user_id, max(key_version) FROM user_keys "
+                "WHERE (%s::uuid IS NULL OR user_id > %s::uuid) "
+                "GROUP BY user_id HAVING max(key_version) > 1 ORDER BY user_id LIMIT %s",
+                (after, after, limit)).fetchall()
+        return [(r[0], r[1]) for r in rows]
+
+    def count_for_master(self, master_key_id: str) -> int:
+        with self._conn() as c:
+            return c.execute("SELECT count(*) FROM user_keys WHERE master_key_id = %s",
+                             (master_key_id,)).fetchone()[0]
+
+    def purge_tombstones(self, older_than_days: int, dry_run: bool = True) -> int:
+        """Delete (or with dry_run only count) tombstones older than the age, through the
+        definer function, which refuses an age under 400 days."""
+        with self._conn() as c:
+            return c.execute("SELECT perch_keys_purge_tombstones(make_interval(days => %s), %s)",
+                             (older_than_days, dry_run)).fetchone()[0]
+
     def verify_masters(self, values: dict[str, bytes]) -> None:
         """Register each master id's key check value on first sight; refuse a different key
         under an id that is already registered."""
@@ -357,6 +380,7 @@ class InMemoryKeyRepository(KeyRepository):
         self._lock = threading.Lock()
         self.keys: dict[tuple[UUID, int], WrappedKey] = {}
         self.tombstones: set[UUID] = set()
+        self.tombstone_at: dict[UUID, datetime] = {}  # tests backdate this
         self.masters: dict[str, bytes] = {}
 
     def get(self, user_id: UUID, key_version: int) -> WrappedKey | None:
@@ -395,10 +419,12 @@ class InMemoryKeyRepository(KeyRepository):
     def tombstone(self, user_id: UUID) -> None:
         with self._lock:
             self.tombstones.add(user_id)
+            self.tombstone_at.setdefault(user_id, datetime.now(UTC))
 
     def shred(self, user_id: UUID) -> int:
         with self._lock:
             self.tombstones.add(user_id)
+            self.tombstone_at.setdefault(user_id, datetime.now(UTC))
             gone = [k for k in self.keys if k[0] == user_id]
             for k in gone:
                 del self.keys[k]
@@ -415,6 +441,24 @@ class InMemoryKeyRepository(KeyRepository):
 
     def is_tombstoned(self, user_id: UUID) -> bool:
         return user_id in self.tombstones
+
+    def users_with_rotated_keys(self, after: UUID | None, limit: int) -> list[tuple[UUID, int]]:
+        newest: dict[UUID, int] = {}
+        for u, v in self.keys:
+            newest[u] = max(newest.get(u, 0), v)
+        rows = [(u, v) for u, v in newest.items()
+                if v > 1 and (after is None or str(u) > str(after))]
+        return sorted(rows, key=lambda r: str(r[0]))[:limit]
+
+    def count_for_master(self, master_key_id: str) -> int:
+        return sum(1 for w in self.keys.values() if w.master_key_id == master_key_id)
+
+    def purge_tombstones(self, older_than_days: int, dry_run: bool = True) -> int:
+        old = [u for u, at in self.tombstone_at.items()
+               if u in self.tombstones and at < datetime.now(UTC) - timedelta(days=older_than_days)]
+        if not dry_run:
+            self.tombstones.difference_update(old)
+        return len(old)
 
     def all_for_master(self, master_key_id: str, limit: int) -> list[WrappedKey]:
         rows = sorted(

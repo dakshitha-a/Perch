@@ -366,9 +366,9 @@ def test_purge_guests_removes_old_guest_jobs_only(pg_clean, worker_pool):
     assert ids == {new}
 
 
-def test_purge_handler_refuses_actions_it_does_not_own(pg_clean, worker_pool, monkeypatch):
+def test_purge_handler_refuses_a_rekey_without_a_user(pg_clean, worker_pool, monkeypatch):
     runner = PostgresRunner(pool=worker_pool, timing=FAST)
-    jid = runner.submit("purge", {"action": "rekey", "user_id": str(uuid.uuid4())}, None, "rk")
+    jid = runner.submit("purge", {"action": "rekey"}, None, "rk")
     run_worker(pg_clean, ["purge"], lambda: job_state(pg_clean, jid) in ("failed", "dead"))
     assert job_state(pg_clean, jid) == "failed"
     assert jobs.registered_kinds().count("purge") == 1
