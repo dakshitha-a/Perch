@@ -42,3 +42,14 @@ Tool allowlist, cross-user access, logging, rendering (textContent, no XSS) and 
   - Attempt 2 puts tool data in a user message, which makes injected record text easier to obey.
   - Help's "start a new one" conflicts with the daily budget.
   - The free distress path has no rate limit.
+
+## Re-checks 3 and 4 and the close (2026-11-04)
+
+- **Round 3 (Opus)** replaced the word lists with shapes and made distress screening independent of the budget. **Re-check 4** found the shapes held for headings, "nothing found" and placeholder sentences, and the free gate cap had no bypass.
+- **Must-fix from re-check 4, fixed by the orchestrator:** offers, how-to lead-ins and help lines could carry a reason or verdict after the allowed opening ("…, since you rank first on both?"); now removed (`help_with_claim`, and the tail rule on questions and lead-ins). Scout's waiting line claimed an amount filter, and Help offered cover-letter points that no screen requests; both removed.
+- **Left for S46 (should-fix):**
+  - Crisis regex: the research-noun guard also blocks "My grant got rejected and I want to die"; such messages still reach the gate, free when the budget is spent. "I'm planning to end it after the pilot" matches. A rate-limited crisis message gets a plain 429 without a screen. Ordinary out-of-budget questions use up the 10 free screens.
+  - Contacts: "@janedoe_lab", "jdoe@temple", spaced or spelled-out digits still reach the model; "NSF 2215204123" is over-blanked; "due at grants.gov" loses "due".
+  - Help says Scout "cites each claim"; reworded to exclude General advice, check again in S46.
+  - The cover-points route has no button in the UI.
+  - Stricter shapes withhold more: on the stored s45f drafts, clean drafts fell from 16 to 10. Templates for common process sentences ("I did not read <CV part>") would recover some.
