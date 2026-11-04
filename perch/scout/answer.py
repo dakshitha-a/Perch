@@ -60,8 +60,16 @@ ABSENT_RE = re.compile(
     r"\b(?:no|not|none|neither|nor|nothing|n't|cannot|can't|could not|couldn't|did not|"
     r"didn't)\b.*\b(?:record|records|result|results|match|matches|found|find|information|help|"
     r"answer|read|access|leads?|brief|saved|entries|entry|cv|items?|ids?)\b", re.I)
-# An offer or an instruction about using Perch or Scout: help text, not a record fact.
 ABSENT_WORDS = 20  # a "nothing found" sentence is short; a long one may be hiding a claim
+# The subject-first shape a sentence citing an empty-result id takes: "Your saved list is
+# empty [user:saved]", "Your CV and entries hold none [user:entries]". Used only for a sentence
+# that cites nothing but a placeholder id, which still passes the no-record checks (S46 replay).
+EMPTY_RE = re.compile(
+    r"\b(?:is|are|was|were|looks?|seems?|still)\s+empty\b|"
+    r"\b(?:holds?|has|have|contains?|shows?|lists?|gives?)\s+(?:none|nothing|no)\b", re.I)
+# The system prompt's own disclaimer (texts.SCOUT_SYSTEM): the exact sentence needs no record.
+DISCLAIMER_RE = re.compile(
+    r"^[\W_]*Perch (?:does not|doesn['’]t) confirm personal eligibility\.?[\W_]*$", re.I)
 HELP_VERBS = (r"(?:read|list|compare|search|show|check|open|look|tell|help|draft|find|answer|"
               r"keep|dismiss|restore|save|browse|build|press|click|pick|choose|ask|use|start|"
               r"add|upload|go|sign|type)")
@@ -430,7 +438,9 @@ def is_heading(s: Sentence, line: Line) -> bool:
 
 
 def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None = None,
-                   *, heading: bool = False) -> None:
+                   *, heading: bool = False, block: str = "") -> None:
+    """`block` is the lower-case text of the records the lines under a heading cite (see
+    `block_text`); a heading may name what that block cites."""
     raw = cites_in(s.text)
     ids: list[str] = []
     for c in raw:
@@ -449,7 +459,8 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
         # An empty-result placeholder ("user:saved", "user:brief") holds only "nothing found",
         # so alone it can back only a sentence that says so (S45 S4).
         if ids and all(i in PLACEHOLDER_IDS for i in ids):
-            if not (len(body.split()) <= ABSENT_WORDS and ABSENT_RE.search(body)):
+            if not (len(body.split()) <= ABSENT_WORDS
+                    and (ABSENT_RE.search(body) or EMPTY_RE.search(body))):
                 s.fail("placeholder_only", "an empty-result id such as [user:saved] supports "
                        "only a sentence that says nothing was found; do not cite it for a claim",
                        ids[0])
@@ -457,6 +468,9 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
                 _no_record_claims(s, body, names, seen, cited=True)
         return
     # No citation: allowed only for a sentence that states no record fact.
+    if DISCLAIMER_RE.match(s.text):
+        s.kind = "help"  # the exact disclaimer the system prompt asks for; nothing to check
+        return
     if heading:
         s.kind = "heading"
     elif s.text.rstrip("*_ ").endswith("?"):
@@ -471,7 +485,8 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
     # An uncited sentence of any exempt kind passes the same content checks as General
     # advice, so a heading, a question or a "nothing found" sentence cannot carry an award's
     # name or an eligibility rule (S45 S3).
-    _no_record_claims(s, body, names, seen, cited=False)
+    _no_record_claims(s, body, names, seen, cited=False,
+                      block=block if s.kind == "heading" else "")
     if s.kind == "help":
         return
     if validate.find_numbers(body) or validate.find_dates(body):
@@ -481,12 +496,15 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
 
 
 def _no_record_claims(s: Sentence, body: str, names: set[str] | None,
-                      seen: dict[str, Record], *, cited: bool) -> None:
-    """The General-advice content checks plus FIT_WORDS, for a sentence no real record backs."""
+                      seen: dict[str, Record], *, cited: bool, block: str = "") -> None:
+    """The General-advice content checks plus FIT_WORDS, for a sentence no real record backs.
+    With `block` (a heading over cited lines), an award name or code found in the records that
+    block cites is a label, not a claim, and so is the bare noun "eligibility" (S46 replay)."""
     how = "citing only an empty-result id" if cited else "with no citation"
-    for code, msg, d in general_reasons(body, names or set(), seen, cited=cited):
+    for code, msg, d in general_reasons(body, names or set(), seen, cited=cited, allow=block):
         s.fail(code, f"a {s.kind} sentence {how} {msg}", d)
-    if m := FIT_WORDS.search(body):
+    fit_body = re.sub(r"\beligibility\b", " ", body, flags=re.I) if block else body
+    if m := FIT_WORDS.search(fit_body):
         s.fail("uncited_fit_word", f"a {s.kind} sentence {how} may not say who may apply or how "
                f"well the user fits ({m.group(0)!r}); cite the record or leave it out", m.group(0))
 
@@ -528,11 +546,12 @@ def _named(text: str, start: int, end: int) -> bool:
     return bool(caps) and not opens
 
 
-def general_reasons(text: str, names: set[str], seen: dict[str, Record], *, cited: bool = False
-                    ) -> list[tuple[str, str, str]]:
+def general_reasons(text: str, names: set[str], seen: dict[str, Record], *, cited: bool = False,
+                    allow: str = "") -> list[tuple[str, str, str]]:
     """(REASONS code, message, detail) for every rule a General advice sentence breaks. With
     `cited`, the sentence is allowed its citation (an empty-result id) and only the rest is
-    checked."""
+    checked. `allow` is lower-case record text: an award name or code found in it is not
+    counted (a heading over lines that cite that record)."""
     out: list[tuple[str, str, str]] = []
     if cites_in(text) and not cited:
         out.append(("general_cite", "may not cite", ""))
@@ -550,12 +569,15 @@ def general_reasons(text: str, names: set[str], seen: dict[str, Record], *, cite
     if m := ELIGIBILITY.search(text):
         out.append(("general_eligibility_word",
                     "may not state an eligibility rule or a deadline", m.group(0)))
-    if m := validate.ID_RE.search(text):
+    for m in validate.ID_RE.finditer(text):
+        if allow and re.search(rf"(?<!\w){re.escape(m.group(0).lower())}(?!\w)", allow):
+            continue
         out.append(("general_award_code", "may not name an award by its code", m.group(0)))
+        break
     low = text.lower()
     hit = []
     for n in sorted(names | {title_key(r) for r in seen.values()}):
-        if not n:
+        if not n or (allow and n in allow):
             continue
         typed = bool(AWARD_WORD.search(n))  # "gilman scholarship" is a name in any case
         for m in re.finditer(rf"(?<!\w){re.escape(n)}(?!\w)", low):
@@ -573,6 +595,8 @@ def general_reasons(text: str, names: set[str], seen: dict[str, Record], *, cite
         if all(w.lower().strip(".'") in GENERIC_NAME_WORDS | {"the", "a", "an", "your", "this",
                                                                "that", "any", "each", "most",
                                                                "many", "some"} for w in lead):
+            continue
+        if allow and m.group(0).strip().lower() in allow:
             continue
         out.append(("general_named_award", "may not name an award: " + m.group(0).strip(),
                     m.group(0).strip()))
@@ -613,9 +637,11 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
     for the sentence, so MiniCheck is not spent on a sentence that will be regenerated."""
     grounded, general = split_general(normalise_cites(text, seen))
     g = Graded(parse(grounded), parse(general) if general else [])
-    for ln in g.lines:
+    for li, ln in enumerate(g.lines):
         for s in ln.sentences:
-            check_sentence(s, seen, names, heading=is_heading(s, ln))
+            h = is_heading(s, ln)
+            check_sentence(s, seen, names, heading=h,
+                           block=block_text(g.lines, li, seen) if h else "")
     for s in g.general_sentences:
         s.kind = "general"
         for code, msg, d in general_reasons(s.text, names, seen):
@@ -633,6 +659,22 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
                 p = grounder.support(doc, [strip_cites(s.text)])[0]  # whole claim, not re-split
                 s.support, s.supported = p, p > THRESHOLD
     return g
+
+
+def block_text(lines: list[Line], at: int, seen: dict[str, Record]) -> str:
+    """The lower-case title and evidence text of every returned record cited by the lines under
+    the heading at `at`, up to the next heading. Empty when no line under it cites a record."""
+    recs: dict[str, Record] = {}
+    for ln in lines[at + 1:]:
+        if len(ln.sentences) == 1 and is_heading(ln.sentences[0], ln):
+            break
+        for s in ln.sentences:
+            for c in cites_in(s.text):
+                rid = resolve(c, seen)
+                if rid is not None and rid not in PLACEHOLDER_IDS:
+                    recs[rid] = seen[rid]
+    return "\n".join(f"{title_key(r)}\n{validate.evidence(r).text}".lower()
+                     for r in recs.values())
 
 
 def _join(lines: list[Line], *, drop_failed: bool) -> str:
