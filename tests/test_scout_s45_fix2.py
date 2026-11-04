@@ -240,3 +240,62 @@ def test_the_result_that_would_cross_the_cap_is_cut_to_fit(service, monkeypatch)
     assert sum(len(t.content) for t in ok) <= 600
     assert json.loads(ok[0].content)["truncated"] is True
     assert any(t.is_error and "limit" in t.content for t in sent)
+
+
+# --- S46 replay of the s45c drafts: wrong removals fixed, the security cases kept ---
+
+def _seen_with_entries():
+    t = ReadTools(ScoutData(repo=lambda: None, audience="student"))  # type: ignore[arg-type]
+    t.read_saved()
+    t.read_entries()
+    t.read_cv_part()
+    return {**t.seen, **SEEN}
+
+
+def test_placeholder_sentences_in_the_subject_first_shape_pass():
+    seen = _seen_with_entries()
+    for text in ["Your saved list is empty [user:saved].",
+                 "Your CV and entries hold none [user:entries].",
+                 "Your entries are empty, so nothing there adds to the link [user:entries]."]:
+        g = ans.grade(text, seen, set(), AS_OF)
+        assert g.ok, (text, g.removed())
+    for text in ["Your saved list is empty, but you qualify for all of them [user:saved].",
+                 "Your entries are empty, so you are a strong fit [user:entries].",
+                 "Your saved items show strong research experience [user:saved].",
+                 "Your CV has no weaknesses [user:cv].",
+                 "Your CV shows nothing that would weaken your case [user:cv]."]:
+        assert not ans.grade(text, seen, set(), AS_OF).ok, text
+
+
+H1 = Scholarship(id="temple_pages:h1", name="SYNTHETIC Quillfen Harbor Award", **PUB,
+                 eligibility=ScholarshipEligibility(notes="Open to juniors in any major."))
+H2 = Scholarship(id="temple_pages:h2", name="SYNTHETIC Quillfen Meadow Award", **PUB)
+HSEEN = {**SEEN, H1.id: H1, H2.id: H2}
+BLOCK = "\n- It is open to juniors [temple_pages:h1]."
+NAMES = {"synthetic quillfen harbor award", "synthetic quillfen meadow award"}
+
+
+def test_a_heading_may_name_the_record_its_lines_cite():
+    for head in ["**SYNTHETIC Quillfen Harbor Award**", "**Eligibility in the record**",
+                 "**Eligibility points the record states:**"]:
+        g = ans.grade(head + BLOCK, HSEEN, NAMES, AS_OF)
+        assert g.ok, (head, g.removed())
+
+
+def test_a_heading_still_may_not_name_or_claim_what_its_lines_do_not_cite():
+    for text in ["**SYNTHETIC Quillfen Harbor Award**",  # no lines under it
+                 "**SYNTHETIC Quillfen Meadow Award**" + BLOCK,  # a record the lines do not cite
+                 "**SYNTHETIC Quillfen Harbor Award:**\n**Next**" + BLOCK,  # the block ends
+                 "**Eligibility: you qualify**" + BLOCK,
+                 "**International students welcome:**" + BLOCK,
+                 "**Undergraduates may apply:**" + BLOCK,
+                 "**R01**" + BLOCK]:  # a code none of the cited records holds
+        assert not ans.grade(text, HSEEN, NAMES, AS_OF).ok, text
+
+
+def test_the_system_prompts_disclaimer_needs_no_citation():
+    assert ans.grade("Perch does not confirm personal eligibility.", SEEN, set(), AS_OF).ok
+    assert ans.grade("- Perch doesn't confirm personal eligibility.", SEEN, set(), AS_OF).ok
+    for text in ["Perch does not confirm personal eligibility, but you qualify.",
+                 "Perch does not confirm personal eligibility, and it closes 1 Feb 2027."]:
+        assert not ans.grade(text, SEEN, set(), AS_OF).ok, text
