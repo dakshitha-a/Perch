@@ -61,6 +61,7 @@ ABSENT_RE = re.compile(
     r"didn't)\b.*\b(?:record|records|result|results|match|matches|found|find|information|help|"
     r"answer|read|access|leads?|brief|saved|entries|entry|cv|items?|ids?)\b", re.I)
 # An offer or an instruction about using Perch or Scout: help text, not a record fact.
+ABSENT_WORDS = 20  # a "nothing found" sentence is short; a long one may be hiding a claim
 HELP_VERBS = (r"(?:read|list|compare|search|show|check|open|look|tell|help|draft|find|answer|"
               r"keep|dismiss|restore|save|browse|build|press|click|pick|choose|ask|use|start|"
               r"add|upload|go|sign|type)")
@@ -89,7 +90,8 @@ MONTH_NAMES = re.compile(r"\b(?:january|february|march|april|june|july|august|se
 ELIGIBILITY = re.compile(
     r"\b(?:citizen\w*|gpa|grade point|residen(?:t|ts|cy|cies)\b|permanent resident\w*|"
     r"green card|visa status|required to be|open only to|only open to|restricted to|"
-    r"applicants must|(?:not\s+|in)eligible)\b", re.I)
+    r"applicants must|(?:not\s+|in)eligible|eligible for|qualif(?:y|ies|ied)|"
+    r"meets? the requirements?)\b", re.I)
 AWARD_PHRASE = re.compile(
     r"\b((?:[A-Z][\w'’&.-]*\s+){1,4})(?:Fellowship|Scholarship|Award|Grant|Prize|Program)s?\b")
 AWARD_WORD = re.compile(r"\b(?:scholarships?|fellowships?|awards?|grants?|prizes?|programs?|"
@@ -98,13 +100,15 @@ GENERIC_NAME_WORDS = {"research", "grant", "grants", "fellowship", "fellowships"
                       "scholarships", "award", "awards", "funding", "program", "programs",
                       "application", "applications", "opportunity", "opportunities"}
 HEADING_WORDS = 12
+# The ids a read tool returns for an empty result (perch/scout/read_tools.py `_empty`).
+PLACEHOLDER_IDS = frozenset({"user:brief", "user:saved", "user:entries", "user:cv"})
 
 # Every reason a sentence can be removed for. The first group is the grounded part, the second
 # the General advice part (and help sentences, which use the same checks).
 REASONS = (
     "no_citation", "cites_unreturned_id", "layer1_number", "layer1_date", "layer1_bad_date",
     "layer1_link", "layer1_action_word", "layer1_other", "uncited_number_or_date",
-    "uncited_link", "sample_mix",
+    "uncited_link", "sample_mix", "placeholder_only",
     "general_cite", "general_number", "general_date", "general_month", "general_link",
     "general_eligibility_word", "general_award_code", "general_named_award")
 
@@ -334,6 +338,12 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
         for e in validate.check(body, ids, seen).errors:
             if not e.startswith("cited id"):  # unresolved ids were reported above
                 s.fail(_layer1_code(e), e, _token(e))
+        # An empty-result placeholder ("user:saved", "user:brief") holds only "nothing found",
+        # so alone it can back only a sentence that says so (S45 S4).
+        if ids and all(i in PLACEHOLDER_IDS for i in ids) and not (
+                len(body.split()) <= ABSENT_WORDS and ABSENT_RE.search(body)):
+            s.fail("placeholder_only", "an empty-result id such as [user:saved] supports only a "
+                   "sentence that says nothing was found; do not cite it for a claim", ids[0])
         return
     # No citation: allowed only for a sentence that states no record fact.
     if heading:
@@ -342,14 +352,17 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
         s.kind = "question"
     elif HELP_RE.search(body):
         s.kind = "help"
-    elif ABSENT_RE.search(body):
+    elif len(body.split()) <= ABSENT_WORDS and ABSENT_RE.search(body):
         s.kind = "absent"
     else:
         s.fail("no_citation", f"sentence has no citation: {body[:80]!r}")
         return
+    # An uncited sentence of any exempt kind passes the same content checks as General
+    # advice, so a heading, a question or a "nothing found" sentence cannot carry an award's
+    # name or an eligibility rule (S45 S3).
+    for code, msg, d in general_reasons(body, names or set(), seen):
+        s.fail(code, f"a {s.kind} sentence with no citation {msg}", d)
     if s.kind == "help":
-        for code, msg, d in general_reasons(body, names or set(), seen):
-            s.fail(code, f"a help sentence with no citation {msg}", d)
         return
     if validate.find_numbers(body) or validate.find_dates(body):
         s.fail("uncited_number_or_date", "a number or date with no cited record")

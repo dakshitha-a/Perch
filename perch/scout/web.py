@@ -26,7 +26,7 @@ from perch.scout import buttons as btn
 from perch.scout import session, texts
 from perch.scout.job import account_data
 from perch.scout.read_tools import ScoutData
-from perch.scout.turn import Meter, TurnDeps, run_turn, user_message
+from perch.scout.turn import Meter, TurnDeps, message, run_turn, user_message
 from perch.user import quota
 from perch.user.data import NotFound
 from perch.user.models import ScoutSessionDoc
@@ -178,6 +178,14 @@ def ask(sv: UserServices, service: BriefService, uid: UUID, sid: UUID, *,
     q = (question or "").strip()
     if not q:
         raise HTTPException(422, "Ask Scout a question.")
+    if texts.DISTRESS_RE.search(q):
+        # Free and first: before the rate limit, the budget and any model. The reply is code-
+        # written text with Temple's own services, so a user out of budget still gets it (S45 S1).
+        um = user_message(question=q)
+        reply = message("assistant", "distress", texts.distress_message(audience),
+                        gate="keyword", reply_to=um["id"])
+        session.append(sv.ud, uid, sid, [um, reply])
+        return
     from perch.user.quota import RateLimited
 
     try:
