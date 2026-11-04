@@ -1,6 +1,6 @@
 # HANDOFF.md — state for the next context window
 
-Written at the close of S40 and S41 (2026-11-04, about 10:45 EST). Dakshitha asked for the sessions to run back to back in one orchestrating context ("carry on till everything is finished, all phases"), so this file is updated at each close.
+Written at the close of S40 and S41 (2026-11-04, about 10:45 EST), updated at 11:50 EST before a context compact. Dakshitha asked for the sessions to run back to back in one orchestrating context ("carry on till everything is finished, all phases"), so this file is updated at each close.
 
 ## Read this first
 
@@ -35,30 +35,35 @@ Written at the close of S40 and S41 (2026-11-04, about 10:45 EST). Dakshitha ask
   - **Database suites.** test-pg 48, test-keys 60, test-redis 88, test-user 43.
   - **Role passwords.** The Postgres test fixtures reset role passwords across the whole cluster. After `make test-pg` or `make test-user`, the e2e roles need their passwords from `.env.e2e` set again.
 
-## Running at this close
+## Running at this point (2026-11-04, about 11:50 EST)
 
-- **S42 (Phase 6), Sonnet worktree agent.**
-  - **The work.** It removes private mode per `docs/v1/REUSE_MAP.md`.
-  - **The leak check.** It builds a user-data leakage check that must fail on a planted leak before it passes.
-  - **When it reports.** Merge it, then run the leak check live.
-- **S43 backend, Sonnet worktree agent.**
-  - **The work.** The F1 and F2 Temple filter fix, the unstated scope, `/awards`, `/opportunities`, `/filters`, `/samples`, `/welcome`, and guest keep and dismiss.
-  - **When it reports.** Merge it.
-- **S43 design.** It is in `docs/design/S43_DESIGN.md`. Its forks are decided (DECISIONS, 2026-11-04).
-- **S43 frontend.** Start it after S42 merges, because both touch `web/`. Follow the design's gate list in order, then the walk with axe and a fresh-context Opus UI review.
-
-## Next after S43
-
-- **S44 and S45, Phase 8.** Scout rebuilt as an open, grounded assistant.
-- **S46, Phase 9.** QA, including v2's hand-check and the student brief cost.
-- **S47, Phase 10.**
-  - **CUDA worker image.** Build it.
-  - **Load test.** A measured concurrent GPU load test.
-  - **Spend.** Per-call spend reserve and settle.
-- **S48, Phase 11.**
-  - **Security review.** Fresh context.
-  - **Purge actions.** `rekey` and `tombstones`.
-  - **Docs and release.** Docs, the demo rebuild, `make package` and the tag.
+- **S42 done (Phase 6).** Private mode removed; leak check FAIL-then-PASS (`bench/results/s42_leak/`).
+- **S43 (Phase 7), not yet closed.**
+  - **Built and merged.** Backend: the browse routes, the Temple filter and unstated scope (migration 0009). Frontend: the student-first screens.
+  - **Walks.** The guest walk had 28 states and the real sign-in walk 16, all with 0 errors and 0 axe violations. Reports are in `bench/results/s43_walk/`.
+  - **Review.** The fresh-context Opus review is in `docs/design/S43_REVIEW.md`: 7 must-fix, 19 should-fix and 9 nice-to-have.
+  - **Fix agent running.** A Sonnet agent in a worktree is fixing M1 to M7 and the main should-fix items. When it reports:
+    1. Merge it.
+    2. Rerun the sign-in walk from the main checkout.
+    3. Resume the reviewer, or a fresh Opus agent, to re-check the must-fix items.
+    4. Close S43.
+- **Sign-in walk command.** Run it from the main checkout:
+  - **Start the app.** Reset the e2e role passwords from `.env.e2e`, then start the app on 8190 with `.env` and `.env.e2e` loaded and `PERCH_LLM_DEFAULT=fake:fake-1 perch serve --port 8190 --models fake`.
+  - **Run the walk.** `uv run --with playwright python scripts/ux_walk.py --base http://127.0.0.1:8190 --out build/s43_walk_signin --only landing --login-helper scripts/e2e_oidc_login.py`.
+  - **Stop the app.** Use an anchored pattern, `pkill -f "[p]erch serve --host 127.0.0.1 --port 8190"`.
+- **S44 done (Phase 8a).** Scout has buttons answered by code, open questions as worker jobs with six read-only tools, the Haiku scope gate, a code-written refusal and distress links verified live.
+- **S45 (Phase 8b), not yet closed.**
+  - **Built and merged.** Cover points on the account path, both distress links for everyone, cancel, the busy escape, and the open-question bench (`bench/scout_open.py`).
+  - **First real run.** It cost $1.55 and is in `bench/results/scout_open_s45/`.
+    - **Guardrails.** Out of scope: 24 of 24 refused, against 4 of 9 for the old Scout. Distress: 5 of 5, against 0 of 2.
+    - **In-scope grounding.** It over-withholds: only 4 of 33 answers pass Layer 1, and 7 come out empty.
+  - **Diagnosis agent running.** An Opus agent in a worktree is finding the over-strict rules, with each removed sentence labelled by its reason. When it reports:
+    1. Merge it.
+    2. Rerun the in-scope set on the real model with the command it gives, capped at about $1.20.
+    3. Run the fresh-context Opus injection and scope-gate review, Phase 8 task 9.
+    4. Fix the must-fix items and close S45.
+- **Spend.** About $5.60 of the $100 cap; the `.env` cap is $32.60.
+- **Tests at the last merge.** `make test` 601 passed; test-user 77.
 
 ## Worth knowing
 
