@@ -1,0 +1,208 @@
+{
+ "checks": [
+  {
+   "name": "cover_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "cover_guest_sees_signin_link",
+   "ok": true,
+   "detail": "18 cards, 18 sign-in links, 0 buttons"
+  },
+  {
+   "name": "cover_hidden_on_dismissed",
+   "ok": true,
+   "detail": "card LmXgCn09P6Eq:F10"
+  },
+  {
+   "name": "cover_button_on_every_card",
+   "ok": true,
+   "detail": "17 cards not dismissed, 17 buttons, 17 restore GETs"
+  },
+  {
+   "name": "cover_busy_status",
+   "ok": true,
+   "detail": "'A model is reading the record and your CV. This takes up to two minutes\u2026'"
+  },
+  {
+   "name": "cover_result_card",
+   "ok": true,
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'live': 'The points are ready below.'}"
+  },
+  {
+   "name": "cover_result_focus_and_announce",
+   "ok": true,
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'live': 'The points are ready below.'}"
+  },
+  {
+   "name": "cover_post_sends_csrf",
+   "ok": true,
+   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf')]"
+  },
+  {
+   "name": "cover_quota_alert",
+   "ok": true,
+   "detail": "\"SYNTHETIC: you have used today's allowance.\""
+  },
+  {
+   "name": "cover_result_survives_redraw",
+   "ok": true,
+   "detail": "result and error kept"
+  },
+  {
+   "name": "cover_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "cover_guest_sees_signin_link",
+   "ok": true,
+   "detail": "18 cards, 18 sign-in links, 0 buttons"
+  },
+  {
+   "name": "cover_hidden_on_dismissed",
+   "ok": true,
+   "detail": "card k07gU6KE7kLG:F10"
+  },
+  {
+   "name": "cover_button_on_every_card",
+   "ok": true,
+   "detail": "17 cards not dismissed, 17 buttons, 17 restore GETs"
+  },
+  {
+   "name": "cover_busy_status",
+   "ok": true,
+   "detail": "'A model is reading the record and your CV. This takes up to two minutes\u2026'"
+  },
+  {
+   "name": "cover_result_card",
+   "ok": true,
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'live': 'The points are ready below.'}"
+  },
+  {
+   "name": "cover_result_focus_and_announce",
+   "ok": true,
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'live': 'The points are ready below.'}"
+  },
+  {
+   "name": "cover_post_sends_csrf",
+   "ok": true,
+   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf')]"
+  },
+  {
+   "name": "cover_quota_alert",
+   "ok": true,
+   "detail": "\"SYNTHETIC: you have used today's allowance.\""
+  },
+  {
+   "name": "cover_result_survives_redraw",
+   "ok": true,
+   "detail": "result and error kept"
+  },
+  {
+   "name": "no_dead_modules",
+   "ok": true,
+   "detail": "requests: []"
+  },
+  {
+   "name": "targets_44_every_state",
+   "ok": true,
+   "detail": "0 targets under 44 px: []"
+  },
+  {
+   "name": "no_sideways_scroll",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "axe_clean_every_state",
+   "ok": true,
+   "detail": "[]"
+  }
+ ],
+ "errors": [],
+ "states": [
+  {
+   "tag": "w1280",
+   "name": "cover-guest",
+   "shot": "w1280-cover-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/LmXgCn09P6Eq/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-button",
+   "shot": "w1280-cover-button.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/LmXgCn09P6Eq/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-result",
+   "shot": "w1280-cover-result.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/LmXgCn09P6Eq/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-error",
+   "shot": "w1280-cover-error.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/LmXgCn09P6Eq/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-guest",
+   "shot": "w360-cover-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/k07gU6KE7kLG/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-button",
+   "shot": "w360-cover-button.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/k07gU6KE7kLG/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-result",
+   "shot": "w360-cover-result.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/k07gU6KE7kLG/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-error",
+   "shot": "w360-cover-error.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/k07gU6KE7kLG/routes",
+   "axe": []
+  }
+ ],
+ "plant": null
+}

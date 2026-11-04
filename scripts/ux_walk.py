@@ -807,8 +807,16 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
             and (await page.locator("a[data-key^=cover-]").first.inner_text()) == "Sign in to get cover-letter points",
             f"{cards} cards, {links} sign-in links, {btns} buttons")
     await w.snap(page, tag, "cover-guest")
+    # a dismissed card has no sign-in link or button (done as the guest: the stub below has no real session)
+    gone = await page.locator("#panel li.card.lead:has([data-key^=dismiss])").last.get_attribute("data-id")
+    await page.locator(f"#panel li.card.lead[data-id='{gone}'] [data-key^=dismiss]").click()
+    await page.wait_for_timeout(600)
+    card = page.locator(f"#panel li.card.lead[data-id='{gone}']")
+    w.check("cover_hidden_on_dismissed", await card.count() == 1 and "Restore" in (await card.text_content() or "")
+            and await card.locator("[data-key^=cover-]").count() == 0, f"card {gone}")
     got = await page.evaluate("(id) => fetch('/briefs/' + id).then(r => r.json())", bid)
-    rids = [x["record_id"] for x in got["leads"] if x["route"] == "F" and x["verdict"] != "not eligible"][:2]
+    rids = [x["record_id"] for x in got["leads"] if x["route"] == "F" and x["verdict"] != "not eligible"
+            and x["status"] != "dismissed"][:2]
     titles = {x["record_id"]: (x["record"].get("name") or x["record"].get("title") or x["record_id"]) for x in got["leads"]}
     seen: dict = {"posts": [], "gets": []}
 
@@ -850,13 +858,13 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await page.route(re.compile(r".*/briefs/[^/?]+/cover-points(\?.*)?$"), cover)
     await page.reload()
     await page.wait_for_selector("#panel li.card.lead button[data-key^=cover-]")
-    cards = await page.locator("#panel li.card.lead").count()
+    cards = await page.locator("#panel li.card.lead:not(:has([data-key^=restore]))").count()
     btns = await page.locator("#panel li.card.lead button[data-key^=cover-]").count()
     w.check("cover_button_on_every_card", cards > 0 and btns == cards
             and (await page.locator("button[data-key^=cover-]").first.inner_text()) == "Cover-letter points"
             and len(seen["gets"]) >= 1 and "job_id" not in seen["gets"][0],
-            f"{cards} cards, {btns} buttons, {len(seen['gets'])} restore GETs")
-    first, second = (page.locator(f"button[data-key=cover-{r}]") for r in rids)
+            f"{cards} cards not dismissed, {btns} buttons, {len(seen['gets'])} restore GETs")
+    first, second = (page.locator(f"button[data-key='cover-{r}']") for r in rids)
     await w.snap(page, tag, "cover-button")
     await first.click()
     status_line = await page.locator(f"[data-cover='{rids[0]}'] [role=status]").inner_text()
@@ -881,17 +889,15 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     alert = await page.locator(f"[data-cover='{rids[1]}'] [role=alert]").inner_text()
     w.check("cover_quota_alert", alert.strip() == "SYNTHETIC: you have used today's allowance."
             and not await second.is_disabled() and await page.evaluate(
-                "(r) => document.activeElement === document.querySelector(`button[data-key=cover-${r}]`)", rids[1]), repr(alert))
+                "(r) => document.activeElement === document.querySelector(`button[data-key='cover-${r}']`)", rids[1]), repr(alert))
     await w.snap(page, tag, "cover-error")
-    # a redraw (Keep) keeps the result: the state is held outside the card
-    await page.locator("#panel .btn.keep").first.click()
+    # the error sits on the second card, below the 2000 px cut of the page picture: shoot the card
+    await page.locator(f"li.card.lead:has([data-cover='{rids[1]}'])").screenshot(path=str(w.out / f"{tag}-cover-error-card.png"))
+    # a redraw (the sort switch) keeps the result: the state is held outside the card
+    await page.locator("[data-key=sort-closing]").click()
     await page.wait_for_timeout(500)
-    w.check("cover_result_survives_redraw", await page.locator(f"[data-cover='{rids[0]}'] .scout-points").count() == 1, "")
-    # a dismissed card has no button
-    await page.locator(f"li.card.lead:has([data-cover='{rids[1]}']) [data-key^=dismiss]").click()
-    await page.wait_for_timeout(500)
-    w.check("cover_hidden_on_dismissed", await page.locator(f"[data-cover='{rids[1]}']").count() == 0
-            and await page.locator("#panel details.dismissed li.card.lead [data-key^=cover-]").count() == 0, "")
+    w.check("cover_result_survives_redraw", await page.locator(f"[data-cover='{rids[0]}'] .scout-points").count() == 1
+            and await page.locator(f"[data-cover='{rids[1]}'] [role=alert]").count() == 1, "result and error kept")
     await page.context.close()
 
 

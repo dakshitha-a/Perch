@@ -265,9 +265,11 @@ def test_cover_points_reach_the_app_and_no_page_promises_that_no_model_reads_the
     assert ".scout-points .btn.points-copy { min-height: 44px; }" in css
     help_ = web["help.js"]
     # S46: the button calls /briefs/{id}/cover-points, so Help says what it does (and only that).
-    assert ("On a lead card, Cover-letter points asks a model to pair what the record asks for with "
-            "what your CV, entries and papers show, each line cited. It needs an account, it is "
-            "model text to put in your own words, and it is never sent or added to an export.") in help_
+    assert (
+        "On a lead card, Cover-letter points asks a model to pair what the record asks for with "
+        "what your CV, entries and papers show, each line cited. It needs an account, it is "
+        "model text to put in your own words, and it is never sent or added to an export."
+    ) in help_
     # The withdrawn promise (Q43) is gone from every page and from the redesign source. The
     # hand-off sentence "no model reads them for it" stays: code writes that opening.
     redesign = (ROOT / "docs/design/redesign/StudentStart.dc.html").read_text()
@@ -470,7 +472,8 @@ def test_scout_shows_the_checks_in_the_answer():
 
 def test_cover_points_button_is_wired_on_every_lead_card():
     """S46: a button on every lead card (not eligible included), none on a dismissed card; a guest
-    gets the sign-in link; the module holds the busy state and polls; the errors are the design's."""
+    gets the sign-in link; the module holds the busy state and polls; the errors are the design's.
+    """
     cover = (WEB_DIR / "cover.js").read_text()
     for s in ("Cover-letter points", "Points again", "Sign in to get cover-letter points",
               "A model writes these from your CV and papers. You put them in your own words.",

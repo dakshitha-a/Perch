@@ -1470,3 +1470,4 @@ html:has(body[data-screen="brief"]) { scroll-padding-top: calc(var(--bar-h, 56px
 .cover .actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .cover .hint, .cover .notice { margin: 0; }
 .cover > .btn { justify-self: start; }
+.cover .scout-points summary { min-height: 44px; }
