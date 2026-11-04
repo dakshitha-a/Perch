@@ -17,6 +17,11 @@ local embedding cache starts empty) and reports the seconds of the measured brie
 `public_cache` is emptied between the phases. The measured brief in the warm phase reads
 the stored author profile and the stored retrieval, rules and rerank result.
 Set PERCH_E2E_DSN to a copy of the database: the run writes jobs and `public_cache` rows.
+
+`--real N` (S38) runs N briefs for distinct researchers on the real provider under the
+`cloud-gpu` profile (run it through `PERCH_LIMIT_GPU=<i> scripts/run_limited.sh`) and
+prints the spend-ledger rows each brief added: calls, tokens and dollars. The adapter's
+PERCH_ANTHROPIC_BUDGET_USD cap applies.
 """
 
 from __future__ import annotations
@@ -33,12 +38,14 @@ from pathlib import Path
 import psycopg
 
 from perch.jobs import PostgresRunner
+from perch.llm.budget import LEDGER as BUDGET_LEDGER
 from perch.schemas import Brief, Lead, Stage
 from perch.service import STAGES, BriefService, Clients
 from perch.store.sqlite import SQLiteRepository
 
 DSN = os.environ.get("PERCH_E2E_DSN", "postgresql://postgres:perchtest@127.0.0.1:55432/perch_dev")
 TIMEOUT = float(os.environ.get("PERCH_E2E_TIMEOUT", "1800"))
+LEDGER = BUDGET_LEDGER  # relative to the repo root; the worker inherits this working directory
 
 
 def pick_researchers(n: int) -> list[str]:
@@ -55,12 +62,16 @@ def pick_researchers(n: int) -> list[str]:
 class Worker:
     """A `perch worker` subprocess with its own scratch directory."""
 
-    def __init__(self, runner: PostgresRunner, kinds: str) -> None:
+    def __init__(self, runner: PostgresRunner, kinds: str, real: bool = False) -> None:
         self.runner = runner
         self.dir = Path(tempfile.mkdtemp(prefix="perch-e2e-"))
         self.db = self.dir / "perch.db"
-        env = {**os.environ, "PERCH_DATABASE_URL": DSN, "PERCH_LLM_DEFAULT": "fake:fake-1"}
-        env.pop("ANTHROPIC_API_KEY", None)
+        env = {**os.environ, "PERCH_DATABASE_URL": DSN}
+        if real:
+            env["PERCH_PROFILE"] = "cloud-gpu"
+        else:
+            env["PERCH_LLM_DEFAULT"] = "fake:fake-1"
+            env.pop("ANTHROPIC_API_KEY", None)
         env.pop("PERCH_REDIS_URL", None)
         self.proc = subprocess.Popen(
             [sys.executable, "-m", "perch.cli", "--db", str(self.db), "worker",
@@ -101,11 +112,46 @@ class Worker:
         self.proc.wait(timeout=60)
 
 
+def ledger_rows() -> list[dict]:
+    import json
+    if not LEDGER.exists():
+        return []
+    return [json.loads(x) for x in LEDGER.read_text("utf-8").splitlines() if x.strip()]
+
+
+def real_run(runner: PostgresRunner, n: int) -> int:
+    rids = pick_researchers(n + 1)
+    w = Worker(runner, "brief", real=True)
+    ok = 0
+    try:
+        w.brief(rids[0])  # warm-up: loads the models; its spend is reported apart
+        for rid in rids[1:]:
+            before = len(ledger_rows())
+            state, leads, secs = w.brief(rid)
+            new = ledger_rows()[before:]
+            cost = sum(r.get("cost_usd", 0) for r in new)
+            toks = {k: sum(r.get(k, 0) for r in new) for k in
+                    ("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens")}
+            models = sorted({r.get("model", "") for r in new})
+            print(f"REAL researcher={rid} state={state} leads={leads} seconds={secs:.1f} "
+                  f"calls={len(new)} models={','.join(models)} "
+                  + " ".join(f"{k}={v}" for k, v in toks.items()) + f" usd={cost:.4f}",
+                  flush=True)
+            ok += state == "succeeded"
+    finally:
+        w.stop()
+    return 0 if ok == n else 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--compare", action="store_true", help="cold vs pre-cached, see the docstring")
+    ap.add_argument("--real", type=int, default=0, metavar="N",
+                    help="N briefs on the real provider (cloud-gpu), with ledger rows per brief")
     args = ap.parse_args()
     runner = PostgresRunner(DSN)
+    if args.real:
+        return real_run(runner, args.real)
     try:
         if not args.compare:
             (rid,) = pick_researchers(1)
