@@ -236,7 +236,7 @@ export function studentRoutes(panel, ctx) {
       onclick: () => setRoute(r) },
     // Shorter visible names keep the sort switch on this row at laptop width; the aria-label
     // keeps the full name, and the Sample data tag marks the sample route (S27).
-    h("span", { class: "lbl-long", "aria-hidden": "true", text: r === "F" ? "Fellowships" : "Scholarships and awards" }), h("span", { class: "lbl-short", "aria-hidden": "true", text: r === "F" ? "Fellowships" : "Samples" }),
+    h("span", { class: "lbl-long", "aria-hidden": "true", text: r === "F" ? "Temple awards and fellowships" : "Scholarships and awards" }), h("span", { class: "lbl-short", "aria-hidden": "true", text: r === "F" ? "Awards" : "Samples" }),
     r === "S" ? h("span", { class: "tag sample lbl-long", text: SAMPLE }) : null,
     done(r === "F" ? "fellowships" : "scholarships") ? h("span", { class: "route-n", text: String(n(r)) }) : null)));
   // DRAFT copy
@@ -467,7 +467,7 @@ export function studentCompare(panel, ctx) {
       h("h2", { class: "section-title", id: `cmp-${r}` }, h("span", { text: STUDENT_ROUTES[r] }),
         r === "S" ? h("span", { class: "tag sample", text: SAMPLE }) : null),
       h("div", { class: "table-wrap compare-wrap", role: "region", "aria-labelledby": `cmp-${r}`, tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
-        h("thead", {}, h("tr", {}, [r === "S" ? "Sample option" : "Fellowship", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
+        h("thead", {}, h("tr", {}, [r === "S" ? "Sample option" : "Award or fellowship", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
         h("tbody", {}, byOffice[r].map(row))))))),
     h("p", { class: "hint", text: `Each cell is copied from its record or checked against ${cvWords()} by rule. “Not stated in the record” means the listing leaves it blank.` }));
 }

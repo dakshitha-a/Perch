@@ -650,6 +650,10 @@ async def flow_signinfail(w: Walk, browser: Browser, base: str, tag: str, view: 
         w.check(f"signin_failure_lands_on_app {path.split('?')[0]}", not raw and want in text and "?signin" not in page.url,
                 f"hash {await page.evaluate('location.hash')!r}; banner: {(await page.locator('[data-key=flash-banner]').inner_text()).strip()}")
         if path == "/auth/login":
+            fit = (await page.locator("[data-key=fit]").inner_text()).strip()
+            links = await page.locator("#sign-in").count()
+            w.check("signin_unavailable_offers_sample", fit == "Try a sample student" and links == 0,
+                    f"fit button {fit!r}; header sign-in links {links}")
             await w.snap(page, tag, "signin-unavailable")
         await page.context.close()
 

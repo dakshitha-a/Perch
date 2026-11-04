@@ -259,7 +259,7 @@ function drawWho() {
   if (!sess.signed_in) {
     fill(who,
       sess.guest ? h("span", { class: "chip guest-chip", text: "Guest" }) : null,
-      h("a", { class: "btn quiet", id: "sign-in", href: signInHref(), text: "Sign in" }));
+      S.signinDown ? null : h("a", { class: "btn quiet", id: "sign-in", href: signInHref(), text: "Sign in" }));
     return;
   }
   const roles = sess.roles || [];
@@ -375,8 +375,12 @@ function renderFind() {
     : sess.guest
       ? h("button", { class: "btn", type: "button", "data-key": "fit", onclick: () => go("#/student") },
         h("span", { text: "Try a sample student" }))
-      : h("a", { class: "btn", "data-key": "fit", href: signInHref("#/student") },
-        h("span", { text: "Check my fit with my CV" }));
+      : S.signinDown
+        // Sign-in is unavailable (S43 M1): the fit button offers the guest sample instead.
+        ? h("button", { class: "btn", type: "button", "data-key": "fit", disabled: S.guestBusy, onclick: startGuest },
+          h("span", { text: "Try a sample student" }))
+        : h("a", { class: "btn", "data-key": "fit", href: signInHref("#/student") },
+          h("span", { text: "Check my fit with my CV" }));
   const guestLine = !sess.signed_in && !sess.guest && !replay
     ? h("p", { class: "guest-line hint" }, h("span", { text: "No account? " }),
       h("button", { class: "linkish", type: "button", "data-key": "guest-start", disabled: S.guestBusy,
@@ -743,7 +747,7 @@ function renderBrief() {
   const asOf = f.formatDate(d.brief.options.as_of).replace(/ /g, "\u00a0");
   // DRAFT copy: a guest's sample brief says whose CV it checks (S43 S8).
   const sampleBrief = Boolean(d.brief.options.persona);
-  const meta = student ? (sampleBrief ? `Fellowships and sample scholarships, checked against the sample student's CV by rule · as of ${asOf}`
+  const meta = student ? (sampleBrief ? `Temple awards, fellowships and sample scholarships, checked against the sample student's CV by rule · as of ${asOf}`
       : `Temple awards and fellowships, checked against your CV by rule · as of ${asOf}`)
     : [...(r.institutions || []), `Brief as of ${asOf}`].join(" · ");
   // Back: a student returns to the start screen, a researcher to the matches.
@@ -999,7 +1003,7 @@ function syncWarnings() {
 
 // The right rail on the list tab: the shortlist card above the evidence panel. Under
 // 900 px the rail hides and a floating keep pill takes the shortlist's place.
-const KIND_SHORT = { A: "Grant", B: "Industry", F: "Fellowship", S: "Sample" };
+const KIND_SHORT = { A: "Grant", B: "Industry", F: "Award", S: "Sample" };
 
 function leadTitle(l) {
   return (l.opportunity && l.opportunity.title) || (l.organisation && l.organisation.name)
@@ -1033,7 +1037,7 @@ function drawRail() {
         h("button", { class: "x", type: "button", "aria-label": `Remove from shortlist: ${leadTitle(l)}`,
           onclick: () => setLead(l.id, "restore") }, "×"));
       // A student's public fellowships and SYNTHETIC samples are two lists (U10, rule 11).
-      const groups = student ? [["F", "Fellowships"], ["S", "Samples"]].map(([r, t]) => [t, kept.filter((l) => l.route === r)])
+      const groups = student ? [["F", "Temple awards and fellowships"], ["S", "Samples"]].map(([r, t]) => [t, kept.filter((l) => l.route === r)])
         .filter(([, ls]) => ls.length) : [[null, kept]];
       fill(card,
         h("div", { class: "shortlist-head" }, h("h2", { id: "sl-title", text: "Your shortlist" }),
@@ -2293,6 +2297,7 @@ function init() {
   if (signin) {
     history.replaceState(null, "", "#/");
     // DRAFT copy
+    S.signinDown = signin === "unavailable";
     S.flash = signin === "unavailable"
       ? "Sign-in is not available right now. You can still try a sample student."
       : "Sign-in did not finish. Try again.";
