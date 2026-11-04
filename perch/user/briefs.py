@@ -458,3 +458,56 @@ def load_brief(ud: UserData, r: redis.Redis, session: Session, brief_id: str
             return got
     raw = r.get(f"perch:gsess:{gh}:brief:{brief_id}")
     return StoredBrief.model_validate_json(raw) if raw else None
+
+
+# --- keep, dismiss, restore on the session path (section 7.4, S43 fork F3) ---
+
+def set_lead_status(ud: UserData, r: redis.Redis, session: Session, brief_id: str,
+                    lead_id: str, status: str) -> Lead | None:
+    """Set one lead of the session's own brief to kept, dismissed or new, and return it; None
+    when the brief or the lead is not the session's. A signed-in user's brief is the encrypted
+    row, written with a stale-write check. A guest's brief is its Redis key: only the guest's own
+    session hash can reach it, and the write keeps the key's remaining life (no new hour).
+    The brief text is never logged."""
+    from perch.user.data import Conflict
+
+    if session.user_id is not None:
+        try:
+            row = UUID(brief_id)
+        except ValueError:
+            return None
+        for _ in range(3):
+            try:
+                got = ud.get_row(session.user_id, row, StoredBrief)
+            except NotFound:
+                return None
+            if got is None:
+                return None
+            sb, ts = got[0], got[1]
+            lead = next((x for x in sb.leads if x.id == lead_id), None)
+            if lead is None or lead.brief_id != brief_id:
+                return None
+            new = lead.model_copy(update={"status": status})
+            sb.leads = [new if x.id == lead_id else x for x in sb.leads]
+            try:
+                ud.update(session.user_id, row, sb, expect_updated_at=ts)
+            except Conflict:
+                continue
+            return new
+        raise Conflict("the brief kept changing")
+    gh = guest_hash(session.sid)
+    job = r.get(f"perch:gsess:{gh}:job:{brief_id}")
+    keys = ([f"perch:gres:{job.decode() if isinstance(job, bytes) else job}"] if job else [])
+    for key in [*keys, f"perch:gsess:{gh}:brief:{brief_id}"]:
+        raw = r.get(key)
+        if not raw:
+            continue
+        sb = StoredBrief.model_validate_json(raw)
+        lead = next((x for x in sb.leads if x.id == lead_id), None)
+        if lead is None:
+            return None
+        new = lead.model_copy(update={"status": status})
+        sb.leads = [new if x.id == lead_id else x for x in sb.leads]
+        r.set(key, sb.model_dump_json(), keepttl=True)
+        return new
+    return None

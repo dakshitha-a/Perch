@@ -210,3 +210,92 @@ def test_a_repeated_guest_request_returns_the_same_brief(env, pg_clean, tmp_path
     assert len(list(env.r.scan_iter("perch:gsess:*:brief:*"))) == 1
     g2 = _session(None, "g-2")
     assert submit_brief(svc, env.runner, env.ud, env.r, g2, KEY, as_of=ASOF)[0] != first[0]
+
+
+# --- keep, dismiss, restore and compare on the session path (S43 fork F3) ---
+
+def _session_app(env, tmp_path, sess):  # noqa: ANN001, ANN202, F811
+    c, svc = make(tmp_path)
+    c.app.state.user_services = UserServices(pool=env.pool, ud=env.ud, runner=env.runner,
+                                             redis=env.r)
+    c.app.dependency_overrides[deps.session_optional] = lambda request=None: sess
+    c.app.dependency_overrides[deps.require_csrf] = lambda: None
+    return c, svc
+
+
+def _leads(c, bid):  # noqa: ANN001, ANN202
+    return {x["lead"]["id"] if "lead" in x else x["id"]: x["status"]
+            for x in c.get(f"/briefs/{bid}").json()["leads"]}
+
+
+def test_guest_keeps_dismisses_and_compares_on_its_redis_brief(env, tmp_path):  # noqa: F811
+    from perch.user.briefs import GuestBriefStore, create_guest_brief, guest_hash, using_store
+
+    g = _session(None, "g-keep")
+    c, svc = _session_app(env, tmp_path, g)
+    gh = guest_hash(g.sid)
+    b = create_guest_brief(svc, env.r, gh, KEY, as_of=ASOF)
+    job = "00000000-0000-0000-0000-00000000f003"
+    store = GuestBriefStore(env.r, gh, b.id, job)  # type: ignore[arg-type]
+    assert store.load()
+    with using_store(store):
+        assert svc.run(b.id) == "done"
+    env.r.set(f"perch:gsess:{gh}:job:{b.id}", job, ex=3600)  # what the web layer records
+    lead = next(iter(_leads(c, b.id)))
+    env.r.expire(f"perch:gres:{job}", 1200)
+
+    assert c.post(f"/briefs/{b.id}/leads/{lead}/keep").json()["status"] == "kept"
+    assert _leads(c, b.id)[lead] == "kept"
+    assert 0 < env.r.ttl(f"perch:gres:{job}") <= 1200  # a write does not grant a new hour
+    rows = c.get(f"/briefs/{b.id}/compare").json()
+    assert len(rows["rows"]) == 1
+    assert c.post(f"/briefs/{b.id}/leads/{lead}/dismiss").json()["status"] == "dismissed"
+    assert c.get(f"/briefs/{b.id}/compare").json()["rows"] == []
+    assert c.post(f"/briefs/{b.id}/leads/{lead}/restore").json()["status"] == "new"
+    assert c.post(f"/briefs/{b.id}/leads/nope/keep").status_code == 404
+    assert c.post(f"/briefs/not-mine/leads/{lead}/keep").status_code == 404
+    other = _session(None, "g-other")  # another guest cannot reach this brief
+    c.app.dependency_overrides[deps.session_optional] = lambda request=None: other
+    assert c.post(f"/briefs/{b.id}/leads/{lead}/keep").status_code == 404
+    assert c.get(f"/briefs/{b.id}/compare").status_code == 404
+    assert sql(env.pg, "SELECT count(*) FROM user_data") == [(0,)]  # nothing stored for a guest
+
+
+def test_keep_and_compare_need_a_session_and_csrf_when_accounts_are_on(
+        env, tmp_path, monkeypatch):  # noqa: F811
+    c, _ = _session_app(env, tmp_path, None)
+    c.app.dependency_overrides.clear()  # the real session and CSRF checks
+    store = SessionStore(env.r)
+    c.app.state.sessions = store
+    monkeypatch.setenv("PERCH_PUBLIC_URL", "http://testserver")
+    assert c.post("/briefs/b1/leads/l1/keep").status_code == 401  # no session at all
+    assert c.get("/briefs/b1/compare").status_code == 401
+    g = asyncio.run(store.create_guest("researcher"))
+    c.cookies.set(settings.session_cookie_name(), g.sid)
+    assert c.post("/briefs/b1/leads/l1/keep").status_code == 403  # no Origin
+    bad = {"Origin": "http://testserver", "X-CSRF-Token": "wrong"}
+    assert c.post("/briefs/b1/leads/l1/keep", headers=bad).status_code == 403
+    good = {"Origin": "http://testserver", "X-CSRF-Token": g.csrf}
+    assert c.post("/briefs/b1/leads/l1/keep", headers=good).status_code == 404  # past CSRF
+    assert c.get("/briefs/b1/compare").status_code == 404  # a GET needs no token
+
+
+def test_a_signed_in_user_keeps_and_compares_on_the_encrypted_brief(env, tmp_path):  # noqa: F811
+    from perch.user.briefs import UserBriefStore, create_user_brief, using_store
+
+    s = _session(env.uid, "s-keep", consent=1)
+    c, svc = _session_app(env, tmp_path, s)
+    b = create_user_brief(svc, env.ud, env.uid, "researcher", KEY, as_of=ASOF)
+    store = UserBriefStore(env.ud, env.uid, "researcher", b.id)
+    assert store.load()
+    with using_store(store):
+        assert svc.run(b.id) == "done"
+    lead = next(iter(_leads(c, b.id)))
+    assert c.post(f"/briefs/{b.id}/leads/{lead}/keep").json()["status"] == "kept"
+    assert _leads(c, b.id)[lead] == "kept"
+    assert len(c.get(f"/briefs/{b.id}/compare").json()["rows"]) == 1
+    assert c.post(f"/briefs/{b.id}/leads/{lead}/dismiss").json()["status"] == "dismissed"
+    stranger = _session(new_user(env.pg), "s-x", consent=1)  # another user: 404, never 403
+    c.app.dependency_overrides[deps.session_optional] = lambda request=None: stranger
+    assert c.post(f"/briefs/{b.id}/leads/{lead}/keep").status_code == 404
+    assert c.get(f"/briefs/{b.id}/compare").status_code == 404

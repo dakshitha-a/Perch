@@ -173,7 +173,8 @@ def test_only_student_mode_opens_the_sample_store():
     """Rule 11: the back-test, the bench, the public API and the monitor cannot list a
     sample record, because only student-mode code opens the sample store."""
     allowed = {"perch/scholarships.py", "perch/private/student.py", "perch/private/routes.py",
-               "perch/cli.py", "bench/student_mode.py"}
+               "perch/cli.py", "bench/student_mode.py",
+               "perch/browse/routes.py"}  # the /samples route: SYNTHETIC only, its own list (S43)
     pat = re.compile(r"\b(sample_records|ensure_samples|read_samples|load_samples|SAMPLE_JSONL|"
                      r"sample_db)\b")
     users = {str(p.relative_to(ROOT)) for d in ("perch", "bench", "scripts")

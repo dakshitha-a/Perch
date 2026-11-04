@@ -1114,9 +1114,9 @@ All routes sit under one FastAPI app. "Auth" is the weakest allowed session: `no
 | `GET /authors/resolve` | kept | Auth `session`. Rate limited. Runs in `web` with the OpenAlex key and a single-host egress rule, D-13. Results are cached in Redis for the author cache TTL. |
 | `POST /briefs` | changed | Body gains `audience`. Returns `JobAccepted`. Auth `session`. |
 | `GET /briefs/{id}` | changed | Reads the encrypted `brief` row. Auth `session`. Guest reads Redis. |
-| `POST /briefs/{id}/leads/{lead_id}/keep`, `dismiss`, `restore` | kept | Auth `user`. Update the `brief` row. |
+| `POST /briefs/{id}/leads/{lead_id}/keep`, `dismiss`, `restore` | changed | Auth `session`, so a guest can keep and compare as section 7.4 says. A user updates the `brief` row. A guest updates the brief's Redis key and does not extend its hour. |
 | `GET /briefs/{id}/export.json`, `export.md`, `export.html` | changed | Shared `brief_blocks`. Auth `session`. |
-| `GET /briefs/{id}/compare` | changed | Shared `compare_rows`. |
+| `GET /briefs/{id}/compare` | changed | Shared `compare_rows`. Auth `session`. Reads the session's own brief. |
 | `POST /briefs/{id}/handoff` | changed | Now a job. Returns `JobAccepted`. Auth `user`. |
 | `GET /records/{record_id:path}` | changed | Public kinds only, served from the response cache. The user's own rows are served only from `/me/...` routes, which are never cached. |
 | `POST /briefs/{id}/scout` | changed | Creates a `scout_session` row and the first `scout_turn` job. Auth `user`. |
@@ -1132,7 +1132,7 @@ All routes sit under one FastAPI app. "Auth" is the weakest allowed session: `no
 | `POST /auth/logout` | session | none | `LogoutResult` |
 | `POST /auth/guest` | none, same-origin | `GuestStart {audience}` | `SessionView` |
 | `GET /auth/session` | none | none | `SessionView {signed_in, guest, roles, audience, csrf, display_name, consent_ok, usage}` |
-| `GET /welcome` | user | none | page |
+| `GET /welcome` | none | query `return_to` | 302 to `/#/welcome`, the app's own screen |
 | `POST /me/consent` | user | `ConsentAccept {version}` | `Ok` |
 | `POST /me/roles` | user | `RolesSet {roles: list[Literal["student","researcher"]]}` | `Ok` |
 | `POST /me/audience` | user | `AudienceSet {audience}` | `Ok` |
@@ -1150,10 +1150,10 @@ All routes sit under one FastAPI app. "Auth" is the weakest allowed session: `no
 | `GET /jobs/{id}` | session | none | `JobStatusView` |
 | `POST /jobs/{id}/cancel` | session | none | `Ok`. Guests are checked through `guest_tx`. |
 | `POST /me/consent/withdraw` | user | none | `Ok` |
-| `GET /awards` | none | `browse` query: `temple_only, schools[], level[], q, closes_after, cursor` | `Page[ScholarshipView]` |
-| `GET /opportunities` | none | same query set | `Page[OpportunityView]` |
-| `GET /filters` | none | query `audience` | `FilterView {schools[{name,count}], levels[]}` from the `schools` column |
-| `GET /samples` | none | query `audience` | `list[RecordView]`, every item badged `sample` |
+| `GET /awards` | none | query `temple_only, school, scope, level[], q, closes_after, group, cursor, limit` | `{kind, groups[{key, label, total, next_cursor, items[]}]}`. One group `all`; with `school`, two groups, `school` then `open` ("Open across Temple": scope `temple_wide` or `unstated`), never mixed. `temple_only` keeps records whose source is a Temple page. |
+| `GET /opportunities` | none | same query set | same shape |
+| `GET /filters` | none | query `audience` | `FilterView {audience, schools[{name,count}], levels[], total, temple_total}` from the stored rows; samples never count |
+| `GET /samples` | none | query `audience, cursor, limit` | `{audience, sample: true, notice, total, next_cursor, items[]}`, SYNTHETIC records only, every item `sample: true` |
 | `POST /briefs/{id}/cover-points` | user | `CoverRequest {record_id}` | `JobAccepted` |
 | `GET /briefs/{id}/cover-points/{record_id:path}` | user | none | `CoverView` |
 | `GET /briefs/{id}/handoff/{draft_id}` | user | none | `DraftView` |

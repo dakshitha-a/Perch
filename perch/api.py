@@ -121,6 +121,21 @@ async def account_session(request: Request) -> object | None:
     return sess
 
 
+async def account_session_csrf(request: Request) -> object | None:
+    """account_session, plus the CSRF check a session needs on a non-GET (section 7.3)."""
+    sess = await account_session(request)
+    if sess is not None:
+        import inspect
+
+        from perch.auth import deps
+
+        check = request.app.dependency_overrides.get(deps.require_csrf, deps.require_csrf)
+        out = check(request) if check is deps.require_csrf else check()
+        if inspect.isawaitable(out):
+            await out
+    return sess
+
+
 class WebFiles(StaticFiles):
     """The web app's files, revalidated on every load (S27). Without a Cache-Control
     header, browsers kept old scripts after a release, so visitors saw the previous app."""
@@ -552,23 +567,39 @@ def create_app(service: BriefService, runner: ClosureRunner,
                 "papers": papers,
                 "leads": out, "notice": grants_gov.ATTRIBUTION}
 
-    def set_status(brief_id: str, lead_id: str, status: str) -> dict:
+    def set_status(brief_id: str, lead_id: str, status: str, request: Request,
+                   sess: object | None) -> dict:
+        if sess is not None:  # v1: the session's own brief; a guest keeps leads in Redis (F3)
+            from perch.user.briefs import set_lead_status
+            from perch.user.data import Conflict
+
+            sv = request.app.state.user_services
+            try:
+                lead = set_lead_status(sv.ud, sv.redis, sess, brief_id, lead_id, status)
+            except Conflict:
+                raise HTTPException(409, {"error": "conflict"}) from None
+            if not lead:
+                raise HTTPException(404, {"error": "not_found"})
+            return lead.model_dump(mode="json")
         lead = service.set_lead_status(brief_id, lead_id, status)
         if not lead:
             raise HTTPException(404, f"no lead {lead_id!r} in brief {brief_id!r}")
         return lead.model_dump(mode="json")
 
     @app.post("/briefs/{brief_id}/leads/{lead_id}/keep", dependencies=STORED)
-    def keep(brief_id: str, lead_id: str) -> dict:
-        return set_status(brief_id, lead_id, "kept")
+    def keep(brief_id: str, lead_id: str, request: Request,
+             sess: object | None = Depends(account_session_csrf)) -> dict:
+        return set_status(brief_id, lead_id, "kept", request, sess)
 
     @app.post("/briefs/{brief_id}/leads/{lead_id}/dismiss", dependencies=STORED)
-    def dismiss(brief_id: str, lead_id: str) -> dict:
-        return set_status(brief_id, lead_id, "dismissed")
+    def dismiss(brief_id: str, lead_id: str, request: Request,
+                sess: object | None = Depends(account_session_csrf)) -> dict:
+        return set_status(brief_id, lead_id, "dismissed", request, sess)
 
     @app.post("/briefs/{brief_id}/leads/{lead_id}/restore", dependencies=STORED)
-    def restore(brief_id: str, lead_id: str) -> dict:
-        return set_status(brief_id, lead_id, "new")
+    def restore(brief_id: str, lead_id: str, request: Request,
+                sess: object | None = Depends(account_session_csrf)) -> dict:
+        return set_status(brief_id, lead_id, "new", request, sess)
 
     @app.get("/briefs/{brief_id}/export.json", dependencies=STORED)
     def export(brief_id: str, status: str | None = None) -> dict:
@@ -675,8 +706,18 @@ def create_app(service: BriefService, runner: ClosureRunner,
         return Response(ex.to_html(bs, title), media_type="text/html; charset=utf-8")
 
     @app.get("/briefs/{brief_id}/compare", dependencies=STORED)
-    def compare_view(brief_id: str, status: Literal["kept", "all"] = "kept") -> dict:
-        b, leads = load(brief_id)
+    def compare_view(brief_id: str, request: Request, status: Literal["kept", "all"] = "kept",
+                     sess: object | None = Depends(account_session)) -> dict:
+        if sess is not None:  # v1: a signed-in user's or a guest's own brief
+            from perch.user.briefs import load_brief
+
+            sv = request.app.state.user_services
+            sb = load_brief(sv.ud, sv.redis, sess, brief_id)
+            if sb is None:
+                raise HTTPException(404, {"error": "not_found"})
+            b, leads = sb.brief, sb.leads
+        else:
+            b, leads = load(brief_id)
         with service.repo() as r:
             rows = cmp.compare(b, leads, r, None if status == "all" else status)
         return cmp.rows_json(rows)
