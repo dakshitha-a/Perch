@@ -85,13 +85,20 @@ function figWho() {
     h("div", { class: "seg" },
       h("span", { class: "seg-b seg-off", text: "Researcher" }),
       h("span", { class: "seg-b seg-on", text: "Student" })),
-    h("span", { class: "pic-btn big in2" }, h("span", { text: "Start as a student" })));
+    h("span", { class: "pic-btn big in2" }, h("span", { text: "Browse Temple awards" })));
 }
 
 function figDocs() {
   return fig(
     card(h("b", { text: "Sample student" }), ph(90), ph(60)),
-    h("span", { class: "pic-btn in4" }, h("span", { text: "Try the sample student" })));
+    h("span", { class: "pic-btn in4" }, h("span", { text: "Try a sample student" })));
+}
+
+function figTags() {
+  return fig(
+    h("div", { class: "pic-row in1" }, h("span", { class: "chip", text: "All" }), h("span", { class: "chip", text: "All Temple" }), h("span", { class: "chip", text: "A school" })),
+    card(h("div", { class: "pic-row in2" }, ph(50), h("span", { class: "tag moss", text: "School" })), ph(70)),
+    card(h("div", { class: "pic-row in3" }, ph(40), h("span", { class: "tag", text: "Open across Temple" })), ph(60)));
 }
 
 function figVerdicts() {
@@ -143,7 +150,7 @@ function steps(id, title, items) {
 
 function researcher() {
   return steps("h-researcher", "If you are a researcher", [
-    ["Find the researcher", "Type a name, an ORCID iD or an OpenAlex ID, then press Find. Names are searched among Temple authors.", figFind()],
+    ["Find the researcher", "Type a name, an ORCID iD or an OpenAlex ID, then press Find. Names are searched among Temple authors. Browse funding lists open funding with no search.", figFind()],
     ["Confirm and build", "Check the institution and the papers, press This is the one, then Build brief. The owl rides the branch as each step finishes.", figBuild()],
     ["Read the routes and decide", "Grants and Industry are separate lists. Keep the leads worth a closer look and dismiss the rest. Kept leads gather in Your shortlist.", figRoutes()],
     ["Compare and hand off", "Compare puts your kept leads side by side. Pick an office and Perch drafts an email for you to edit and send. Drafting needs an account.", figHandoff(false)],
@@ -152,11 +159,13 @@ function researcher() {
 }
 
 function student() {
+  // DRAFT copy (S43): the student steps below were rewritten for the new flow.
   return steps("h-student", "If you are a student", [
-    ["Choose Student", "On the first screen choose Student, then press Start as a student.", figWho()],
-    ["Try the sample student", "Press Try the sample student. It is an invented SYNTHETIC student, labelled as sample data, because a CV of your own needs an account.", figDocs()],
+    ["Browse Temple awards", "Choose Student, then press Browse Temple awards. You need no account to look through the list. Every card links to the page it came from.", figWho()],
+    ["Narrow the list", "Pick a school tag to see that school’s awards first, then the awards open across Temple. The search box and the level menu narrow it further.", figTags()],
+    ["Check my fit", "Sign in, save your CV and press Find awards that fit. With no account, press Try a sample student: it is an invented SYNTHETIC student, labelled as sample data.", figDocs()],
     ["Read the verdicts", "Each option shows a rule check: Eligible, May be eligible or Not eligible. Still needed lists what the record asks for and your CV does not show.", figVerdicts()],
-    ["Compare and send the note", "Compare your kept options and pick the Temple office. Code writes a short note for you to copy or open in your mail app. A guest can do this too.", figHandoff(true)],
+    ["Compare and send the note", "Keep options, then Compare them and pick the Temple office. Code writes a short note for you to copy or open in your mail app. A guest can keep and compare too.", figHandoff(true)],
   ]);
 }
 
@@ -260,8 +269,12 @@ function architecture() {
 // ----- privacy and good to know -----
 
 function privacy() {
+  // DRAFT copy (S43): the privacy items, each checked against the code (the guest notice,
+  // the consent text and the delete route).
   const items = [
     ["person", "A guest session saves nothing.", " It ends after an hour. Hand-offs and Scout need an account."],
+    ["lock", "A CV you add is stored encrypted.", " Contact details are blanked before any text goes to the model provider named in the consent."],
+    ["close", "You can delete your data.", " Open the account menu, then Account and data, then Delete my data. Perch also deletes it after 12 months without use."],
     ["mail", "Perch sends nothing.", " Hand-offs are drafts. You send them."],
   ];
   return h("section", { class: "help-block", "aria-labelledby": "h-privacy" },
@@ -281,7 +294,7 @@ function goodToKnow() {
         h("a", { href: SUBMISSION_URL, target: "_blank", rel: "noopener", text: "Find your research administrator" }),
         h("span", { text: "." })),
       h("li", { text: FOUNDATION_NOTE }),
-      h("li", { text: "A Sample data badge marks invented SYNTHETIC records. They are not real opportunities." })),
+      h("li", { text: "A Sample data badge marks invented SYNTHETIC records. They are not real, and they live on their own screen, linked at the foot of each list." })),
     h("p", { class: "help-scout", text: "The full technical description is in the project’s docs." }));
 }
 
