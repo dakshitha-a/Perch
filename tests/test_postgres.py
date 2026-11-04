@@ -404,3 +404,18 @@ def test_migration_0009_rederives_scope_and_schools_for_stored_rows(tmp_path):
     assert got == {"temple_pages:a": ("unstated", ["CST"]), "temple_pages:b": ("unstated", []),
                    "temple_pages:c": ("temple_wide", ["CST", "Fox"]),
                    "temple_pages:d": ("unstated", []), "O1": ("external", [])}
+
+
+def test_vector_temple_only_means_listed_on_a_temple_page(pg_clean):
+    """The vector filter uses the browse rule: source on a Temple page, not temple_funded."""
+    on_page = sch(7).model_copy(update={"id": "temple_pages:v7", "source": "temple_pages"})
+    assert on_page.temple_funded is None
+    elsewhere = sch(8).model_copy(update={"id": "ext:v8", "source": "grants_gov"})
+    with PostgresRepository(pg_clean.worker) as repo:
+        repo.upsert([on_page, elsewhere])
+    idx = PgVectorIndex(pg_clean.worker, "scholarships")
+    idx.upsert(["temple_pages:v7", "ext:v8"], ["synthetic prize one", "synthetic prize two"],
+               [vec(5), vec(6)])
+    assert [i for i, _ in idx.dense(vec(5), 5, temple_only=True)] == ["temple_pages:v7"]
+    assert [i for i, _ in idx.bm25("synthetic prize", 5, temple_only=True)] == ["temple_pages:v7"]
+    assert {i for i, _ in idx.dense(vec(5), 5)} == {"temple_pages:v7", "ext:v8"}

@@ -213,7 +213,10 @@ class PgVectorIndex(VectorIndex):
         if not include_samples:
             parts.append("NOT sample")
         if temple_only:
-            parts.append("temple_funded")
+            # The same rule as browse: listed on a Temple page, not temple_funded (S43).
+            parts.append("EXISTS (SELECT 1 FROM records r WHERE r.kind = record_kind "
+                         "AND r.id = record_id AND r.source = ANY(%s))")
+            args.append(list(TEMPLE_SOURCES))
         if schools:
             parts.append("schools && %s")
             args.append(list(schools))
