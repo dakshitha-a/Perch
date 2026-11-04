@@ -693,6 +693,10 @@ def create_app(service: BriefService, runner: ClosureRunner,
                        export_json=export_json, export_blocks=export_blocks, load=load,
                        limiter=RateLimiter, client_key=client_key)
 
+    from perch.user.routes import router as user_router
+
+    app.include_router(user_router)  # /me/docs, /me/delete, /me/briefs, /usage (S41 part B)
+
     if web_dir and (web_dir / "index.html").is_file():  # after every API route
         app.mount("/", WebFiles(directory=web_dir, html=True), name="web")
     return app

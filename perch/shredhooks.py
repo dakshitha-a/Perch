@@ -19,13 +19,15 @@ from psycopg_pool import ConnectionPool
 from perch import crypto
 from perch.config import env
 from perch.redisx import publish_shred
+from perch.store import pg
 
 log = logging.getLogger("perch.shred")
 
 
 def shred_log_hook(pool: ConnectionPool) -> Callable[[UUID], None]:
     def hook(user_id: UUID) -> None:
-        with pool.connection() as c:
+        # user_tx: the web role's insert policy (migration 0007) checks perch.user_id
+        with pg.user_tx(pool, user_id) as c:
             c.execute("INSERT INTO shred_log (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
                       (user_id,))
     return hook

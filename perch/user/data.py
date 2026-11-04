@@ -159,11 +159,14 @@ class UserData:
                 raise Conflict("the row changed")
         return got[0]
 
-    def delete(self, user_id: UUID, row_id: UUID, *, conn: psycopg.Connection | None = None
-               ) -> bool:
+    def delete(self, user_id: UUID, row_id: UUID, *, kinds: tuple[str, ...] | None = None,
+               conn: psycopg.Connection | None = None) -> bool:
         with self._tx(user_id, conn) as c:
-            return c.execute("DELETE FROM user_data WHERE id = %s AND user_id = %s",
-                             (row_id, user_id)).rowcount > 0
+            return c.execute(
+                "DELETE FROM user_data WHERE id = %s AND user_id = %s "
+                "AND (%s::text[] IS NULL OR kind = ANY(%s))",
+                (row_id, user_id, list(kinds) if kinds else None,
+                 list(kinds) if kinds else None)).rowcount > 0
 
     def count(self, user_id: UUID, *, conn: psycopg.Connection | None = None) -> int:
         with self._tx(user_id, conn) as c:
