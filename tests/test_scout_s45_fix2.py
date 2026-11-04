@@ -101,3 +101,41 @@ def test_grade_uses_code_checks_then_minicheck_on_the_whole_sentence():
     assert by["It is your top-ranked lead [temple_pages:s2]."] is False
     assert g.unsupported == ["It is your top-ranked lead [temple_pages:s2]."]
     assert len(spy.calls) == 1 and spy.calls[0][1] == ["Open to juniors."]  # not re-split
+
+
+# --- R2, S3, S4: fit and eligibility words in sentences no real record backs ---
+
+def _empty_seen():
+    t = ReadTools(ScoutData(repo=lambda: None, audience="student"))  # type: ignore[arg-type]
+    t.read_saved()
+    t.read_brief()
+    return {**t.seen, **SEEN}
+
+
+NO_RECORD = [
+    "**International students welcome:**",
+    "**Undergraduates may apply:**",
+    "## You will likely win this one",
+    "You are eligible here, so would you like me to draft a hand-off?",
+    "Nothing in your CV stops you from applying to the top lead.",
+    "None of your leads require a U.S. degree.",
+    "You have not saved anything, but you are a strong fit for all of them [user:saved].",
+    "Nothing in your saved list requires citizenship [user:saved].",
+    "Nothing you saved is open to freshmen [user:saved].",
+]
+
+
+def test_no_record_sentences_cannot_carry_eligibility_or_fit_claims():
+    seen = _empty_seen()
+    for text in NO_RECORD:
+        g = ans.grade(text, seen, set(), AS_OF)
+        assert not g.ok, text
+
+
+def test_a_sentence_citing_a_real_record_may_use_the_same_words():
+    seen = _empty_seen()
+    for text in ["It is open to juniors [temple_pages:s3].",
+                 "Applicants may apply with a transcript [temple_pages:s3].",
+                 "You have nothing saved yet [user:saved].",
+                 "I found no records for that.", "Which one should I read in full?"]:
+        assert ans.grade(text, seen, set(), AS_OF).ok, text

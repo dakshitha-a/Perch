@@ -92,6 +92,16 @@ ELIGIBILITY = re.compile(
     r"green card|visa status|required to be|open only to|only open to|restricted to|"
     r"applicants must|(?:not\s+|in)eligible|eligible for|qualif(?:y|ies|ied)|"
     r"meets? the requirements?)\b", re.I)
+# Wider words for a sentence with no real record behind it (uncited, a heading, a question, a
+# "nothing found" sentence, or one citing only an empty-result id): any word that states or
+# implies who may apply or how well the user fits. Not used on a sentence citing a real record,
+# which may say "It is open to juniors [id]" (S45 fix round 2).
+FIT_WORDS = re.compile(
+    r"\b(?:eligib\w*|requires?|required|may apply|can apply|could apply|open to|welcomed?|"
+    r"(?:strong|good|great|best|perfect|natural|poor|weak) (?:fit|match|candidate)|"
+    r"you(?:['’]ll| will| would)(?: likely| probably)? (?:win|get it|be selected|be awarded)|"
+    r"(?:likely|likelihood|chance|chances) (?:to |of )?(?:win|winning|success)|"
+    r"qualif\w*|(?:stops?|prevents?|blocks?|bars?) you from applying|from applying)\b", re.I)
 AWARD_PHRASE = re.compile(
     r"\b((?:[A-Z][\w'’&.-]*\s+){1,4})(?:Fellowship|Scholarship|Award|Grant|Prize|Program)s?\b")
 AWARD_WORD = re.compile(r"\b(?:scholarships?|fellowships?|awards?|grants?|prizes?|programs?|"
@@ -110,7 +120,7 @@ REASONS = (
     "layer1_link", "layer1_action_word", "layer1_other", "uncited_number_or_date",
     "uncited_link", "sample_mix", "placeholder_only",
     "general_cite", "general_number", "general_date", "general_month", "general_link",
-    "general_eligibility_word", "general_award_code", "general_named_award")
+    "general_eligibility_word", "general_award_code", "general_named_award", "uncited_fit_word")
 
 
 @dataclass
@@ -438,10 +448,13 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
                 s.fail(_layer1_code(e), e, _token(e))
         # An empty-result placeholder ("user:saved", "user:brief") holds only "nothing found",
         # so alone it can back only a sentence that says so (S45 S4).
-        if ids and all(i in PLACEHOLDER_IDS for i in ids) and not (
-                len(body.split()) <= ABSENT_WORDS and ABSENT_RE.search(body)):
-            s.fail("placeholder_only", "an empty-result id such as [user:saved] supports only a "
-                   "sentence that says nothing was found; do not cite it for a claim", ids[0])
+        if ids and all(i in PLACEHOLDER_IDS for i in ids):
+            if not (len(body.split()) <= ABSENT_WORDS and ABSENT_RE.search(body)):
+                s.fail("placeholder_only", "an empty-result id such as [user:saved] supports "
+                       "only a sentence that says nothing was found; do not cite it for a claim",
+                       ids[0])
+            else:  # a "nothing found" sentence may not smuggle in an eligibility or fit claim
+                _no_record_claims(s, body, names, seen, cited=True)
         return
     # No citation: allowed only for a sentence that states no record fact.
     if heading:
@@ -458,14 +471,24 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
     # An uncited sentence of any exempt kind passes the same content checks as General
     # advice, so a heading, a question or a "nothing found" sentence cannot carry an award's
     # name or an eligibility rule (S45 S3).
-    for code, msg, d in general_reasons(body, names or set(), seen):
-        s.fail(code, f"a {s.kind} sentence with no citation {msg}", d)
+    _no_record_claims(s, body, names, seen, cited=False)
     if s.kind == "help":
         return
     if validate.find_numbers(body) or validate.find_dates(body):
         s.fail("uncited_number_or_date", "a number or date with no cited record")
     if validate.URL_RE.search(body):
         s.fail("uncited_link", "a link with no cited record")
+
+
+def _no_record_claims(s: Sentence, body: str, names: set[str] | None,
+                      seen: dict[str, Record], *, cited: bool) -> None:
+    """The General-advice content checks plus FIT_WORDS, for a sentence no real record backs."""
+    how = "citing only an empty-result id" if cited else "with no citation"
+    for code, msg, d in general_reasons(body, names or set(), seen, cited=cited):
+        s.fail(code, f"a {s.kind} sentence {how} {msg}", d)
+    if m := FIT_WORDS.search(body):
+        s.fail("uncited_fit_word", f"a {s.kind} sentence {how} may not say who may apply or how "
+               f"well the user fits ({m.group(0)!r}); cite the record or leave it out", m.group(0))
 
 
 def mixed_blocks(g: Graded, seen: dict[str, Record]) -> None:
@@ -505,11 +528,13 @@ def _named(text: str, start: int, end: int) -> bool:
     return bool(caps) and not opens
 
 
-def general_reasons(text: str, names: set[str], seen: dict[str, Record]
+def general_reasons(text: str, names: set[str], seen: dict[str, Record], *, cited: bool = False
                     ) -> list[tuple[str, str, str]]:
-    """(REASONS code, message, detail) for every rule a General advice sentence breaks."""
+    """(REASONS code, message, detail) for every rule a General advice sentence breaks. With
+    `cited`, the sentence is allowed its citation (an empty-result id) and only the rest is
+    checked."""
     out: list[tuple[str, str, str]] = []
-    if cites_in(text):
+    if cites_in(text) and not cited:
         out.append(("general_cite", "may not cite", ""))
     if validate.URL_RE.search(text):
         out.append(("general_link", "may not give a link", ""))
