@@ -678,7 +678,19 @@ def cmd_worker(args: argparse.Namespace) -> int:
     n = args.concurrency or int(env("PERCH_WORKER_CONCURRENCY", "16") or 16)
     runner = PostgresRunner(pool_size=2 * n + 4)
 
-    def brief_service() -> object:  # built on first use
+    built: list[object] = []
+    lock = threading.Lock()
+
+    def brief_service() -> object:
+        """One BriefService per worker process, built on first use. The job handlers call
+        this for every job; building it each time reloaded the embedder, reranker and
+        MiniCheck per brief and ran the GPU out of memory at four briefs in flight (S47)."""
+        with lock:
+            if not built:
+                built.append(make_brief_service())
+            return built[0]
+
+    def make_brief_service() -> object:
         from dataclasses import replace
 
         from perch.service import BriefService, Clients, default_models

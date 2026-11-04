@@ -1,0 +1,24 @@
+{
+ "claims_per_brief": 30,
+ "chunk_pairs": 34,
+ "reps": 5,
+ "current_s_per_brief": [
+  0.4886,
+  0.4745,
+  0.4705,
+  0.4747,
+  0.4678
+ ],
+ "batched_s_per_brief": [
+  0.4436,
+  0.4444,
+  0.4439,
+  0.4417,
+  0.4508
+ ],
+ "current_ms_per_claim_median": 15.82,
+ "batched_ms_per_claim_median": 14.8,
+ "max_abs_prob_difference": 0.0,
+ "gpu_peak_alloc_mib": 2036,
+ "speedup_median": 1.07
+}

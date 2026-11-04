@@ -60,6 +60,7 @@ extend-immutable-calls = ["fastapi.Depends"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN"]
+"bench/load/**" = ["ANN"]  # load-test harness: wraps and patches perch objects at run time
 "perch/shelved/monitor/tests/**" = ["ANN"]
 "scripts/render_tracker.py" = ["E501"]  # inline CSS
 "scripts/ux_walk.py" = ["E501"]  # inline JavaScript probes

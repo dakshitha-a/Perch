@@ -1,0 +1,134 @@
+{
+ "meta": {
+  "users": 1000,
+  "duration_s": 300.0,
+  "ramp_s": 30.0,
+  "requests": 48255,
+  "rps": 156.0,
+  "briefs": 200,
+  "post_fail": 0,
+  "finished_in_window": 0,
+  "failed_in_window": 0,
+  "brief_secs_p50": null,
+  "brief_secs_p95": null,
+  "max_queued": 68,
+  "max_running": 24,
+  "max_load1": 18.03,
+  "load_stop": false
+ },
+ "paths": {
+  "account_briefs": {
+   "n": 1407,
+   "ok": 1407,
+   "limited": 0,
+   "errors": 0,
+   "p50": 1118.4,
+   "p95": 16296.3
+  },
+  "account_docs": {
+   "n": 1350,
+   "ok": 1350,
+   "limited": 0,
+   "errors": 0,
+   "p50": 845.2,
+   "p95": 15649.6
+  },
+  "account_session": {
+   "n": 1365,
+   "ok": 1365,
+   "limited": 0,
+   "errors": 0,
+   "p50": 1112.3,
+   "p95": 16271.6
+  },
+  "account_usage": {
+   "n": 1452,
+   "ok": 1452,
+   "limited": 0,
+   "errors": 0,
+   "p50": 1312.2,
+   "p95": 16115.6
+  },
+  "brief_poll": {
+   "n": 6317,
+   "ok": 6317,
+   "limited": 0,
+   "errors": 0,
+   "p50": 1213.7,
+   "p95": 16531.4
+  },
+  "brief_post_guest": {
+   "n": 100,
+   "ok": 100,
+   "limited": 0,
+   "errors": 0,
+   "p50": 998.2,
+   "p95": 17307.8
+  },
+  "brief_post_user": {
+   "n": 100,
+   "ok": 100,
+   "limited": 0,
+   "errors": 0,
+   "p50": 369.5,
+   "p95": 16753.0
+  },
+  "browse_awards": {
+   "n": 13260,
+   "ok": 13259,
+   "limited": 0,
+   "errors": 1,
+   "p50": 83.5,
+   "p95": 15251.0
+  },
+  "browse_filters": {
+   "n": 6752,
+   "ok": 6751,
+   "limited": 0,
+   "errors": 1,
+   "p50": 77.3,
+   "p95": 15153.2
+  },
+  "browse_opps": {
+   "n": 6647,
+   "ok": 6646,
+   "limited": 0,
+   "errors": 1,
+   "p50": 166.7,
+   "p95": 15531.0
+  },
+  "browse_samples": {
+   "n": 3297,
+   "ok": 3296,
+   "limited": 0,
+   "errors": 1,
+   "p50": 134.3,
+   "p95": 15102.3
+  },
+  "guest_session": {
+   "n": 100,
+   "ok": 100,
+   "limited": 0,
+   "errors": 0,
+   "p50": 1770.4,
+   "p95": 17582.1
+  },
+  "scout_buttons": {
+   "n": 6108,
+   "ok": 6108,
+   "limited": 0,
+   "errors": 0,
+   "p50": 943.0,
+   "p95": 17207.4
+  },
+  "ALL": {
+   "n": 48255,
+   "ok": 48251,
+   "limited": 0,
+   "errors": 4,
+   "p50": 320.6,
+   "p95": 15858.1
+  }
+ },
+ "error_samples": {}
+}
