@@ -53,8 +53,8 @@ def main() -> int:
     os.environ.setdefault("PERCH_PUBLIC_URL", BASE)
     os.environ["PERCH_PUBLIC_URL"] = BASE
     os.environ["PERCH_COOKIE_INSECURE"] = "1"
-    os.environ.setdefault("PERCH_OIDC_ISSUER", "http://127.0.0.1:8180/realms/perch")
-    os.environ.setdefault("PERCH_OIDC_CLIENT_ID", "perch-web")
+    os.environ["PERCH_OIDC_ISSUER"] = "http://127.0.0.1:8180/realms/perch"
+    os.environ["PERCH_OIDC_CLIENT_ID"] = "perch-web"
     os.environ.setdefault("PERCH_CONSENT_PROVIDER_NAME", "SYNTHETIC Provider")
     os.environ.setdefault("PERCH_CONSENT_VERSION", "1")
     os.environ.pop("PERCH_ENV", None)
