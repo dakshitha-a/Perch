@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections import Counter
 from collections.abc import Iterable, Sequence
 from datetime import date
 from typing import TypeVar
@@ -20,6 +21,21 @@ class Page[T: Record](BaseModel):
     items: list[T]
     next_cursor: str | None = None
     total: int | None = None
+
+
+class Facets(BaseModel):
+    """What the filter bar needs: a count per school (highest first), the audience levels in
+    use, every public record of the kind, and how many are listed on a Temple page."""
+
+    schools: list[tuple[str, int]]
+    levels: list[str]
+    total: int
+    temple_total: int
+
+
+def sorted_counts(c: Counter[str]) -> list[tuple[str, int]]:
+    """Highest count first, ties by name."""
+    return sorted(c.items(), key=lambda kv: (-kv[1], kv[0]))
 
 
 class Repository(ABC):
@@ -51,9 +67,27 @@ class Repository(ABC):
     def browse(self, cls: type[R], *, temple_only: bool = False, schools: Sequence[str] = (),
                audience_level: Sequence[str] = (), q: str | None = None,
                closes_after: date | None = None, limit: int = 50,
-               cursor: str | None = None) -> Page[R]:
-        """Filtered, paged listing of public records ordered by id. Samples never appear."""
+               cursor: str | None = None, scopes: Sequence[str] = (),
+               exclude_schools: Sequence[str] = ()) -> Page[R]:
+        """Filtered, paged listing of public records ordered by id. Samples never appear.
+        `temple_only` keeps records listed on a Temple page (their source decides, fork F1).
+        `scopes` keeps records whose derived scope is in the list; `schools` keeps records that
+        name any of the schools. Empty means no filter."""
         raise NotImplementedError
+
+    def facets(self, cls: type[R]) -> Facets:
+        """Counts for the filter bar, from the stored rows. Samples never count."""
+        from perch.store.denorm import TEMPLE_SOURCES, columns
+
+        records = self.list(cls)
+        schools: Counter[str] = Counter()
+        levels: set[str] = set()
+        for r in records:
+            c = columns(r)
+            schools.update(c.schools)
+            levels.update(c.audience_level)
+        return Facets(schools=sorted_counts(schools), levels=sorted(levels), total=len(records),
+                      temple_total=sum(r.source in TEMPLE_SOURCES for r in records))
 
     def epoch(self) -> int:
         """Current ingest epoch (section 4.4); 0 before the first bump."""

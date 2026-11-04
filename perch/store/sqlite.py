@@ -64,10 +64,13 @@ class SQLiteRepository(Repository):
     def browse(self, cls: type[R], *, temple_only: bool = False, schools: Sequence[str] = (),
                audience_level: Sequence[str] = (), q: str | None = None,
                closes_after: date | None = None, limit: int = 50,
-               cursor: str | None = None) -> Page[R]:
+               cursor: str | None = None, scopes: Sequence[str] = (),
+               exclude_schools: Sequence[str] = ()) -> Page[R]:
         def keep(r: R) -> bool:
             c = columns(r)
             return ((not temple_only or r.source in TEMPLE_SOURCES)
+                    and (not scopes or c.scope in scopes)
+                    and not (set(exclude_schools) & set(c.schools))
                     and (not schools or bool(set(schools) & set(c.schools)))
                     and (not audience_level or bool(set(audience_level) & set(c.audience_level)))
                     and (not q or matches_text(r, q))

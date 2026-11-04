@@ -17,13 +17,13 @@ PERCH_TEST_REDIS_URL ?= redis://127.0.0.1:56379/15
 test-redis:
 	PERCH_TEST_REDIS_URL=$(PERCH_TEST_REDIS_URL) \
 		PERCH_TEST_DATABASE_URL=$${PERCH_TEST_DATABASE_URL:-postgresql://postgres:perchtest@127.0.0.1:55432/postgres} \
-		$(UV) run pytest tests/test_redis.py tests/test_auth.py tests/test_oidc.py -p no:cacheprovider
+		$(UV) run pytest tests/test_redis.py tests/test_auth.py tests/test_oidc.py tests/test_browse_routes.py -p no:cacheprovider
 
 # Postgres tests: needs a superuser URL; the default is the local test server.
 # The tests create and drop their own database named perch_test_a_*.
 test-pg:
 	PERCH_TEST_DATABASE_URL=$${PERCH_TEST_DATABASE_URL:-postgresql://postgres:perchtest@127.0.0.1:55432/postgres} \
-		$(UV) run pytest tests/test_store.py tests/test_postgres.py tests/test_jobs_pg.py tests/test_corpus_migrate.py -p no:cacheprovider
+		$(UV) run pytest tests/test_store.py tests/test_browse_routes.py tests/test_postgres.py tests/test_jobs_pg.py tests/test_corpus_migrate.py -p no:cacheprovider
 
 # User data (S41 part B): encrypted rows, briefs as user data, delete-my-data, purge, quotas.
 # Needs the test Postgres (also used as the keys server) and the test Redis.
