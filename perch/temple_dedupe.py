@@ -88,7 +88,11 @@ def deadline_of(r: Rec) -> tuple[str, str] | None:
 
 def _deadlines_conflict(a: tuple[str, str] | None, b: tuple[str, str] | None) -> bool:
     """A date and a bare text never conflict: the text has no year to compare."""
-    return bool(a and b and a[0] == b[0] and a[1] != b[1])
+    if not (a and b and a[0] == b[0] and a[1] != b[1]):
+        return False
+    # The same sentence read twice can give "no later than March 31" and "March 31": one
+    # text inside the other is one deadline, not two (S46: it blanked a kept deadline).
+    return not (a[0] == "text" and (a[1] in b[1] or b[1] in a[1]))
 
 
 def _fields(r: Rec) -> dict[str, Any]:
@@ -289,8 +293,8 @@ def _blank(r: Rec, fields: set[str]) -> Rec:
         up.update({"amount_min": None, "amount_max": None} if isinstance(r, Scholarship)
                   else {"award_floor": None, "award_ceiling": None, "amount_quote": None})
     if "deadline" in fields:
-        up.update({"deadline": None} if isinstance(r, Scholarship)
-                  else {"close_date": None, "deadline_quote": None})
+        up.update({"deadline": None, "deadline_quote": None} if isinstance(r, Scholarship)
+                  else {"close_date": None, "close_date_note": None, "deadline_quote": None})
     drop = {q for f in fields for q in _BLANK_QUOTES[f]}
     up["field_quotes"] = {k: v for k, v in r.field_quotes.items() if k not in drop}
     return r.model_copy(update=up)

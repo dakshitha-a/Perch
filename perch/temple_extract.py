@@ -148,7 +148,20 @@ _TEMPLE_OFFERS = re.compile(
     rf"|\b(?:offered|awarded|given|funded|sponsored|provided|administered|supported)\s+by\s+"
     rf"(?:the\s+)?(?:[\w&'-]+\s+){{0,6}}?(?:Temple|College|School|Office|Department|Division"
     rf"|Center|Centre|Institute|Program|Provost)\b"
-    rf"|\b(?:Each|Every)\s+year,?\s+{_UNIT}\s+{_VERB}\b")
+    rf"|\b(?:Each|Every)\s+year,?\s+{_UNIT}\s+{_VERB}\b"
+    # Explicit funding wording (S46 hand-check): "university-funded", "internal fund",
+    # "the Provost and the schools fund", an OVPR or Vice President for Research fund. A
+    # sponsor named on a Temple page is not enough; the wording must say the money is
+    # Temple's.
+    r"|\b(?:university|Temple|institutionally|internally)[- ](?:funded|supported)\b"
+    r"|\binternal(?:ly)?\s+(?:research\s+|seed\s+)?(?:fund|funds|funding|grants?)\b"
+    r"|\b(?:the\s+)?(?:Office\s+of\s+the\s+Provost|Provost(?:'s\s+Office)?)\s+and\s+"
+    r"(?:the\s+)?[\w&' -]{1,40}?\s+(?:fund|award|provide|sponsor)s?\b"
+    r"|\b(?:OVPR|Office\s+of\s+the\s+Vice\s+President\s+for\s+Research|"
+    r"Vice\s+President\s+for\s+Research)(?:'s)?\s+(?:internal\s+)?"
+    r"(?:fund|funds|funding|grants?|program)\b"
+    r"|\bfund\b[^.]{0,100}?\b(?:budget\s+)?approvals?\s+by\s+the\s+"
+    r"(?:Vice\s+President\s+for\s+Research|Provost|OVPR)\b")
 _LEVEL_WORDS = {
     "undergraduate": re.compile(r"\bundergraduate", re.I),
     "graduate": re.compile(r"(?<!under)\bgraduate\b", re.I),
@@ -237,23 +250,99 @@ def _quote(sentence: str, value: str) -> str:
     return _clip(sentence, i, i + len(value)) if i >= 0 else sentence[:QUOTE_MAX]
 
 
+_PER_AFTER = re.compile(
+    r"^\W*(?:/|per\b|for\s+(?:each|every)\b|each\b)\s*(?:\w+\s+){0,1}?"
+    r"(?:project|award|awardee|recipient|student|applicant|grant|team|scholar|fellow|proposal|"
+    r"investigator|scholarship|fellowship|prize|application)s?\b", re.I)
+_PER_BEFORE = re.compile(r"\b(?:each|every)\s+(?:project|award|awardee|recipient|applicant|team|"
+                         r"proposal)s?\b[^$]{0,60}$", re.I)
+_TOTAL_AFTER = re.compile(r"^\s*(?:/\s*year|per\s+year|annual|annually|a\s+year)?\s*"
+                          r"(?:fund|pool|budget)\b", re.I)
+_TOTAL_BEFORE = re.compile(
+    r"\b(?:fund\s+size|funds?\s+totals?|total\s+(?:fund|funding|budget|pool)|budget\s+of|"
+    r"fund\s+of|pool\s+of)\b[^.$]{0,25}$", re.I)
+_SECONDARY = re.compile(r"\b(?:allowances?|supplements?|travel|housing|relocation|"
+                        r"cost[- ]of[- ]\w+|fees?|tuition|expenses|insurance)\b", re.I)
+_PRIMARY = re.compile(r"\b(?:stipends?|awards?|scholarships?|grants?|fellowships?|prizes?|"
+                      r"funding)\b", re.I)
+_RANGE_GAP = re.compile(r"^\s*(?:to|through|-)\s*$", re.I)
+_AND_GAP = re.compile(r"^\s*and\s*$", re.I)
+_RANGE_CUE = re.compile(r"\b(?:between|ranges?|ranging|from)\b[^$]{0,30}$", re.I)
+
+
+def _usd_numbers(text: str) -> set[float]:
+    return {n for m in _USD.finditer(text)
+            if (n := _num(m.group("n") or m.group("n2") or m.group("n3"))) > 0}
+
+
+def resolve_amount(sentence: str, value: str | None = None,
+                   restrict: set[float] | None = None
+                   ) -> tuple[float | None, float | None] | None:
+    """(min, max) parsed by code from one quoted sentence, or None when absent or unclear.
+
+    The amounts the record may keep are those in `value` (the proposed text), or in
+    `restrict` (an existing record's numbers), or every dollar amount when neither is given.
+    Rules, in order:
+    - a per-award figure ("up to $50,000 per project") in the sentence wins over a fund total;
+    - a fund total ("$250,000/year fund", "fund size") alone is not an award amount;
+    - an allowance, fee or similar next to a stipend or award is another component, dropped;
+    - two amounts are a range only when the sentence says so ("$A to $B", "between", "from");
+      two amounts that are not a range are unclear and nothing is kept.
+    """
+    t = norm(sentence)
+    if value is not None:
+        v = norm(value)
+        if _OTHER.search(v) or re.search(r"\b(?:million|billion)\b", v, re.I):
+            return None
+        restrict = _usd_numbers(v)
+    ms = list(_USD.finditer(t))
+    items = []
+    for i, m in enumerate(ms):
+        n = _num(m.group("n") or m.group("n2") or m.group("n3"))
+        if n <= 0:
+            continue
+        nxt = ms[i + 1].start() if i + 1 < len(ms) else len(t)
+        before, after = t[:m.start()], t[m.end():min(nxt, m.end() + 60)]
+        items.append({
+            "n": n, "m": m, "before": before, "upto": bool(_UPTO.search(before)),
+            "per": bool(_PER_AFTER.search(after) or _PER_BEFORE.search(before[-90:])),
+            "total": bool(_TOTAL_AFTER.search(after) or _TOTAL_BEFORE.search(before[-60:])),
+            "second": bool(_SECONDARY.search(after[:40]) and not _PRIMARY.search(after[:40])),
+        })
+
+    def pick(chosen: list[dict]) -> tuple[float | None, float | None] | None:
+        nums = sorted({c["n"] for c in chosen})
+        if len(nums) == 1:
+            return (None, nums[0]) if chosen[0]["upto"] else (nums[0], nums[0])
+        if len(nums) == 2:
+            a, b = sorted(chosen, key=lambda c: c["m"].start())[:2]
+            gap = t[a["m"].end():b["m"].start()]
+            if _RANGE_GAP.match(gap) or (_AND_GAP.match(gap) and _RANGE_CUE.search(a["before"])):
+                return nums[0], nums[1]
+            if _RANGE_CUE.search(a["before"]) and len(gap) <= 40 and re.search(r"\bto\b", gap):
+                return nums[0], nums[1]
+        return None
+
+    per = [c for c in items if c["per"]]
+    if per:
+        return pick(per)
+    cands = [c for c in items if restrict is None or c["n"] in restrict]
+    cands = [c for c in cands if not c["total"]]
+    if not cands:
+        return None
+    got = pick(cands)
+    if got is None and any(not c["second"] for c in cands):
+        got = pick([c for c in cands if not c["second"]])  # a stipend, not its allowance
+    return got
+
+
 def _amounts(value: str, sentence: str) -> tuple[float | None, float | None] | None:
-    """(min, max) parsed by code from the quoted value, or None when absent or unclear."""
-    v = norm(value)
-    if _OTHER.search(v) or re.search(r"\b(?:million|billion)\b", v, re.I):
-        return None
-    ms = list(_USD.finditer(v))
-    nums = sorted({_num(m.group("n") or m.group("n2") or m.group("n3")) for m in ms})
-    nums = [n for n in nums if n > 0]
-    if not nums or len(nums) > 2:
-        return None
-    if len(nums) == 2:
-        return nums[0], nums[1]
-    start = ms[0].start()
-    before = norm(sentence)[:norm(sentence).find(v) + start] if v in norm(sentence) else v[:start]
-    if _UPTO.search(before):
-        return None, nums[0]
-    return nums[0], nums[0]
+    return resolve_amount(sentence, value)
+
+
+def _quoted_amount_ok(amount: tuple[float | None, float | None], quote: str) -> bool:
+    q = quote.replace(",", "")
+    return all(v is None or str(int(v)) in q for v in amount)
 
 
 def verify(raw: dict, sentences: list[str], page_text: str, *, url: str, owner: str,
@@ -279,6 +368,8 @@ def verify(raw: dict, sentences: list[str], page_text: str, *, url: str, owner: 
     if raw.get("amount_text"):
         if s and in_sentence(raw["amount_text"], s, money=True) and not is_contact_text(s):
             amount = _amounts(raw["amount_text"], s)
+            if amount and not _quoted_amount_ok(amount, _quote(s, raw["amount_text"])):
+                amount = None
         if amount:
             quotes["amount"] = _quote(s, raw["amount_text"])
             stats.keep("amount")
@@ -537,3 +628,46 @@ def run_extract(cache_dir: Path, out: Path, *, pilot: int | None = 20, run_all: 
 def run_pilot(cache_dir: Path, out: Path, pilot: int = 20, budget_usd: float = 1.0,
               provider: Provider | None = None) -> int:
     return run_extract(cache_dir, out, pilot=pilot, budget_usd=budget_usd, provider=provider)
+
+
+# --- post-extraction refinement (no model calls) ----------------------------------------
+
+def refine_record(r: Scholarship | Opportunity) -> Scholarship | Opportunity:
+    """The same code rules as `verify`, applied again to a record already extracted, using
+    only the quotes the record carries. Used by `build_dataset` so a fix to the amount or
+    temple_funded rules does not need a new extraction run. A value the rules no longer
+    accept is cleared with its quote; nothing is added that the quotes do not state."""
+    up: dict = {}
+    quotes = dict(r.field_quotes)
+    is_s = isinstance(r, Scholarship)
+    lo, hi = (r.amount_min, r.amount_max) if is_s else (r.award_floor, r.award_ceiling)
+    q = r.amount_quote or quotes.get("amount") or ""
+    cur = {v for v in (lo, hi) if v is not None}
+    if cur and q:
+        new = resolve_amount(q, restrict=cur)
+        if new is not None and not _quoted_amount_ok(new, q):
+            new = None
+        if new != (lo, hi):
+            if new is None:
+                quotes.pop("amount", None)
+                up["amount_quote"] = None
+            nlo, nhi = new or (None, None)
+            up.update({"amount_min": nlo, "amount_max": nhi} if is_s
+                      else {"award_floor": nlo, "award_ceiling": nhi})
+    if not r.temple_funded:
+        own = [x for k in ("eligibility", "amount", "deadline_text")
+               for x in (quotes.get(k) or "").split(" | ") if x]
+        # A bare "Program" is not enough here: a state program on a Temple page also
+        # "provides" money, so a match that names only a program is skipped.
+        def temple_says(x: str) -> bool:
+            m = _TEMPLE_OFFERS.search(x)
+            return bool(m) and (not re.search(r"\bProgram\b", m.group(0))
+                                or "Temple" in m.group(0))
+
+        hit = next((x for x in own if temple_says(x)), None)
+        if hit:
+            up["temple_funded"] = True
+            quotes["temple_funded"] = hit
+    if quotes != r.field_quotes:
+        up["field_quotes"] = quotes
+    return r.model_copy(update=up) if up else r

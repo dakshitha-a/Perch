@@ -184,3 +184,30 @@ def test_two_titles_sharing_a_cut_id_stay_two_records() -> None:
     b = b.model_copy(update={"name": a.name + " for Prospective Students", "apply_url": None})
     out, _ = dedupe([a, b])
     assert len(out) == 2 and len({r.id for r in out}) == 2
+
+
+def test_same_sentence_deadline_texts_do_not_blank_the_deadline() -> None:
+    """Two reads of one sentence gave "no later than March 31" and "March 31" (S46)."""
+    q = "SYNTHETIC Mail the form no later than March 31 to the office."
+    a = sch("temple_pages:q", "SYNTHETIC Quill Award", "CST", "https://x.example/1",
+            dtext="no later than March 31")
+    b = sch("temple_pages:q", "SYNTHETIC Quill Award", "CST", "https://x.example/1",
+            dtext="March 31")
+    a = a.model_copy(update={"deadline_quote": q})
+    b = b.model_copy(update={"deadline_quote": q})
+    out, rep = dedupe([a, b])
+    (r,) = out
+    assert rep.blanked == [] and r.deadline_quote == q
+    assert r.field_quotes["deadline_text"] in ("no later than March 31", "March 31")
+
+
+def test_different_deadline_texts_still_blank_and_clear_the_quote() -> None:
+    a = sch("temple_pages:q", "SYNTHETIC Quill Award", "CST", "https://x.example/1",
+            dtext="October 15")
+    b = sch("temple_pages:q", "SYNTHETIC Quill Award", "CST", "https://x.example/1",
+            dtext="March 15")
+    a = a.model_copy(update={"deadline_quote": "Due October 15."})
+    b = b.model_copy(update={"deadline_quote": "Due March 15."})
+    out, rep = dedupe([a, b])
+    assert len(rep.blanked) == 1
+    assert out[0].deadline_quote is None and "deadline_text" not in out[0].field_quotes

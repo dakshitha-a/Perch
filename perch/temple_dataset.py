@@ -28,7 +28,7 @@ from pathlib import Path
 from perch.schemas import Opportunity, Scholarship
 from perch.store.base import Repository
 from perch.temple_dedupe import DedupeReport, dedupe
-from perch.temple_extract import SOURCE, read_done
+from perch.temple_extract import SOURCE, read_done, refine_record
 from perch.temple_names import scrub_record
 
 DATASET_DIR = Path("data/temple/dataset")
@@ -98,6 +98,19 @@ def build_dataset(extracted: Path, out_dir: Path = DATASET_DIR, *, version: int 
     recs = read_records(extracted)
     if not recs:
         raise DatasetError(f"no records in {extracted}")
+    # The current amount and temple_funded rules are applied to every row first, from the
+    # quotes it carries, so an old extraction file needs no new model calls (S46).
+    refined = [refine_record(r) for r in recs]
+    changed = Counter()
+    for old, new in zip(recs, refined, strict=True):
+        if new is old:
+            continue
+        o, n = old.model_dump(), new.model_dump()
+        for f, keys in (("amount", ("amount_min", "amount_max", "award_floor", "award_ceiling")),
+                        ("temple_funded", ("temple_funded",))):
+            if any(o.get(k) != n.get(k) for k in keys):
+                changed[f] += 1
+    recs = refined
     merged, rep = dedupe(recs)
     # People's names outside award titles are removed from the evidence text (temple_names).
     merged = [scrub_record(r) for r in merged]
@@ -121,6 +134,7 @@ def build_dataset(extracted: Path, out_dir: Path = DATASET_DIR, *, version: int 
         "by_scope": dict(sorted(Counter(r.scope or "unstated" for r in merged).items())),
         "by_school": dict(sorted(Counter(s for r in merged for s in r.schools).items())),
         "merged_groups": rep.merged_groups,
+        "refined": dict(sorted(changed.items())),
         "conflicting_pairs": len(rep.conflicts),
         "sha256": sha256_file(path),
         "extraction_model": model_id or ", ".join(models) or "UNKNOWN",

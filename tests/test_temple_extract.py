@@ -273,3 +273,109 @@ def test_temple_funded_sentence_forms_from_the_s40_handcheck() -> None:
           "Students who receive awards must report them."]
     assert all(_TEMPLE_OFFERS.search(t) for t in yes)
     assert not any(_TEMPLE_OFFERS.search(t) for t in no)
+
+
+# --- S46 hand-check fixes: amounts and temple_funded wording (SYNTHETIC text) ---------
+
+def _res(sentence, value=None):
+    return te.resolve_amount(sentence, value)
+
+
+def test_per_award_figure_beats_the_fund_total() -> None:
+    s = ("The $250,000/year fund supports small projects, with awards of up to $50,000 "
+         "per project.")
+    assert _res(s, "$250,000") == (None, 50000)
+    assert _res(s) == (None, 50000)
+
+
+def test_fund_total_alone_is_not_an_award_amount() -> None:
+    s = "SYNTHETIC Fund Size: The $250,000/year fund supports several projects."
+    assert _res(s, "$250,000") is None
+    assert _res("The fund totals $90,000 each year.", "$90,000") is None
+    assert _res("Each award is $2,500.", "$2,500") == (2500, 2500)
+    assert _res("Prizes are a $5,000 award.", "$5,000") == (5000, 5000)
+
+
+def test_stipend_plus_allowance_is_not_a_range() -> None:
+    s = ("This SYNTHETIC fellowship gives three years of support, a $37,000 annual stipend "
+         "and a $16,000 cost-of-education allowance.")
+    assert _res(s, "$37,000 annual stipend and a $16,000 cost-of-education allowance") \
+        == (37000, 37000)
+    assert _res(s, "$37,000") == (37000, 37000)
+
+
+def test_a_range_is_kept_only_when_the_sentence_says_so() -> None:
+    assert _res("Awards range from $1,000 to $5,000.", "$1,000 to $5,000") == (1000, 5000)
+    assert _res("Awards are between $1,000 and $5,000.", "$1,000 and $5,000") == (1000, 5000)
+    assert _res("Awards of $1,000-$5,000 are made.", "$1,000-$5,000") == (1000, 5000)
+    assert _res("Prizes of $1,000 and $5,000 are given.", "$1,000 and $5,000") is None
+    assert _res("Awards of up to $4,000.", "$4,000") == (None, 4000)
+    # A range is not broken up by a component word after the second amount.
+    assert _res("Typically $600 to $1,000 in tuition remission.", "$600 to $1,000") \
+        == (600, 1000)
+    assert _res("A stipend ranging from $300 for freshmen to $500 for seniors.",
+                "$300 for freshmen to $500") == (300, 500)
+
+
+def test_the_amount_rules_reach_verify() -> None:
+    fund = "The SYNTHETIC Harbor Fund Size is a $250,000/year fund for small projects."
+    page = f"<main><p>The Quill Prize.</p><p>{fund}</p></main>"
+    sents = te.page_sentences(page, URL)
+    i = next(n for n, x in enumerate(sents) if "Harbor" in x)
+    p = FakeProvider(replies=[json.dumps({"awards": [award(
+        "Quill Prize", amount_text="$250,000", amount_sentence=i)]})])
+    (r,), st, _ = te.extract_page(p, META, page)
+    assert r.amount_max is None and r.amount_quote is None
+    assert st.fields_dropped["amount"] == 1
+
+
+def test_temple_funded_wording_widened_for_explicit_funding() -> None:
+    yes = ["Temple University Grants are university-funded, need-based grants.",
+           "The Office of the Provost and the schools fund the grants.",
+           "These grants come from an internal fund for faculty.",
+           "OVPR funding supports the program.",
+           "The Office of the Vice President for Research internal fund supports pilots.",
+           "The $250,000/year fund is subject to annual budget approvals by the Vice "
+           "President for Research."]
+    no = ["The Zarnow Science Foundation funds this award; contact the Office of the "
+          "Vice President for Research.",
+          "Funded by the SYNTHETIC Garnet Trust.",
+          "Applicants should submit through OVPR.",
+          "The award is listed on this Temple page.",
+          "Federal funding is available from outside sponsors."]
+    assert all(te._TEMPLE_OFFERS.search(t) for t in yes), [
+        t for t in yes if not te._TEMPLE_OFFERS.search(t)]
+    assert not any(te._TEMPLE_OFFERS.search(t) for t in no), [
+        t for t in no if te._TEMPLE_OFFERS.search(t)]
+
+
+def _rec(**kw):
+    q = kw.pop("field_quotes", {})
+    return Scholarship(id="temple_pages:x", name="SYNTHETIC Quill Award", source="temple_pages",
+                       source_url=URL, fetched_at=datetime(2026, 11, 4, tzinfo=UTC),
+                       details_url=URL, details_fetched_at=datetime(2026, 11, 4, tzinfo=UTC),
+                       field_quotes=q, **kw)
+
+
+def test_refine_record_fixes_old_amounts_and_temple_funded_from_quotes() -> None:
+    sent = ("This fellowship provides a $37,000 annual stipend and $16,000 "
+            "cost-of-education allowance.")
+    old = _rec(amount_min=16000, amount_max=37000, amount_quote=sent,
+               field_quotes={"amount": sent})
+    new = te.refine_record(old)
+    assert (new.amount_min, new.amount_max) == (37000, 37000)
+    fund = "The $250,000/year fund supports several projects."
+    gone = te.refine_record(_rec(amount_min=250000, amount_max=250000, amount_quote=fund,
+                                 field_quotes={"amount": fund}))
+    assert gone.amount_min is None and gone.amount_max is None and gone.amount_quote is None
+    assert "amount" not in gone.field_quotes
+    tf = te.refine_record(_rec(field_quotes={
+        "eligibility": "Grants are university-funded, need-based grants for undergraduates."}))
+    assert tf.temple_funded is True and "university-funded" in tf.field_quotes["temple_funded"]
+    ext = _rec(field_quotes={"eligibility": "Funded by the SYNTHETIC Garnet Trust."})
+    assert te.refine_record(ext).temple_funded is None
+    prog = _rec(field_quotes={"eligibility": "The SYNTHETIC Grow Vale Grant Program provides "
+                                             "money to residents."})
+    assert te.refine_record(prog).temple_funded is None  # a program is not proof it is Temple's
+    same = _rec(amount_min=2500, amount_max=2500, amount_quote="Pays $2,500.")
+    assert te.refine_record(same) is same

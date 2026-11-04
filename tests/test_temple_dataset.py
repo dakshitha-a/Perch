@@ -121,3 +121,15 @@ def test_cli_build_and_load(tmp_path, extracted, capsys):
     assert main(["--db", str(db), "temple", "load-dataset", str(f)]) == 0
     assert "Loaded 3 records" in capsys.readouterr().out
     assert main(["--db", str(db), "temple", "load-dataset", str(tmp_path / "none")]) == 1
+
+
+def test_build_applies_the_current_amount_and_temple_rules_without_a_model(tmp_path):
+    fund = "SYNTHETIC The $250,000/year fund supports several projects."
+    old = sch("temple_pages:f", "SYNTHETIC Harbor Fund", "CST", "https://x.example/f")
+    old = old.model_copy(update={"amount_min": 250000.0, "amount_max": 250000.0,
+                                 "amount_quote": fund, "field_quotes": {"amount": fund}})
+    path = _extracted(tmp_path / "x.jsonl", [old])
+    out, man, _ = td.build_dataset(path, tmp_path / "out")
+    (r,) = td.read_records(out)
+    assert r.amount_max is None and r.amount_quote is None
+    assert man["refined"] == {"amount": 1}
