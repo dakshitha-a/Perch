@@ -1,0 +1,51 @@
+{
+  "commit": "c786a95",
+  "named_places_clean": [
+    "files under the data directory (25 files)",
+    "output (stdout and stderr of the web process and the worker)",
+    "postgres audit_log.detail",
+    "postgres audit_log.event",
+    "postgres audit_log.model",
+    "postgres audit_log.prompt_hash",
+    "postgres audit_log.provider",
+    "postgres audit_log.role",
+    "postgres job_events.detail",
+    "postgres job_events.stage",
+    "postgres job_events.status",
+    "postgres jobs.audience",
+    "postgres jobs.error_code",
+    "postgres jobs.guest_sid_hash",
+    "postgres jobs.idempotency_key",
+    "postgres jobs.kind",
+    "postgres jobs.lease_owner",
+    "postgres jobs.payload",
+    "postgres jobs.result_ref",
+    "postgres jobs.state",
+    "postgres public_cache.key",
+    "postgres public_cache.meta",
+    "postgres public_cache.namespace",
+    "postgres public_cache.value",
+    "postgres user_data.audience",
+    "postgres user_data.blob",
+    "postgres user_data.kind",
+    "redis (5 keys)"
+  ],
+  "passed": false,
+  "places_scanned": 61,
+  "places_with_a_token": {
+    "logs (captured records, debug level)": [
+      "cv",
+      "failure"
+    ]
+  },
+  "planted_leak": true,
+  "token_kinds_planted": [
+    "cv",
+    "interests",
+    "entry",
+    "direction",
+    "question",
+    "bad_upload",
+    "failure"
+  ]
+}
