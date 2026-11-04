@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 
 class ScoutRequest(BaseModel):
     question: str = Field("", max_length=1000)
+    # A button (perch/scout/buttons.py): answered by code, no model. Signed-in accounts only.
+    intent: Literal["top_leads", "deadlines", "compare", "handoff"] | None = None
 
 
 class HandoffRequest(BaseModel):

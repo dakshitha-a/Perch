@@ -68,7 +68,12 @@ class CoverPointSet(_M):
 
 
 class ScoutSessionDoc(_M):
+    """One Scout conversation (Phase 8). Messages are `{id, role, kind, text, at, ...}`: a user
+    message holds the question or the button intent; an assistant message holds the answer and
+    its checks (perch/scout/turn.py). It is the only place the history lives, encrypted."""
+
     brief_id: str | None = None
+    audience: Audience | None = None
     messages: list[dict[str, Any]] = Field(default_factory=list)
 
 

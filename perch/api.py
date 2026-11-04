@@ -872,6 +872,46 @@ def create_app(service: BriefService, runner: ClosureRunner,
     def owner_of(sess: object | None) -> str | None:
         return None if sess is None else str(sess.user_id)
 
+    def accounts(request: Request) -> object | None:
+        return getattr(request.app.state, "user_services", None)
+
+    def scout_ids(sid: str) -> UUID:
+        try:
+            return UUID(sid)
+        except ValueError:
+            raise HTTPException(404, {"error": "not_found"}) from None
+
+    def scout_session_view(request: Request, sess: object, sid: UUID) -> dict:
+        from perch.scout import session as ssn
+        from perch.scout import web as sweb
+
+        sv = accounts(request)
+        got = ssn.load(sv.ud, sess.user_id, sid)
+        if got is None:  # another user's session is a 404
+            raise HTTPException(404, {"error": "not_found"})
+        return sweb.view(sv, sess.user_id, sid, got[0], got[2])
+
+    @app.get("/scout/buttons", dependencies=STORED)
+    def scout_buttons(sess: object | None = Depends(account_session)) -> dict:
+        """The fixed questions, answered by code (perch/scout/buttons.py)."""
+        from perch.scout import buttons as btn
+
+        signed_in(sess)
+        return {"buttons": btn.buttons(getattr(sess, "audience", None) or "researcher")}
+
+    @app.get("/briefs/{brief_id}/scout", dependencies=STORED)
+    def scout_for_brief(brief_id: str, request: Request,
+                        sess: object | None = Depends(account_session)) -> dict:
+        """The brief's latest Scout session, or null: how a reloaded page finds it again."""
+        from perch.scout import web as sweb
+
+        signed_in(sess)
+        sv = accounts(request)
+        if sv is None:
+            raise HTTPException(404, "Scout history needs accounts.")
+        ids = sweb.sessions_for(sv, sess.user_id, sess.audience, brief_id)
+        return {"session": scout_session_view(request, sess, ids[0]) if ids else None}
+
     @app.post("/briefs/{brief_id}/scout", status_code=202, dependencies=STORED)
     def scout_start(brief_id: str, req: ScoutRequest, request: Request,
                     sess: object | None = Depends(account_session)) -> dict:
@@ -880,8 +920,18 @@ def create_app(service: BriefService, runner: ClosureRunner,
             b, _ = load(brief_id)
             if b.status != "done":
                 raise HTTPException(409, "Scout can start once the brief has finished.")
-            if not req.question.strip():
+            if not req.question.strip() and not req.intent:
                 raise HTTPException(422, "Ask Scout a question.")
+            if sess is not None:  # v1: history in the account's encrypted row, jobs on a worker
+                from perch.scout import web as sweb
+
+                sv = accounts(request)
+                sid = sweb.start_session(sv, sess.user_id, sweb.audience_of(b), brief_id)
+                sweb.ask(sv, service, sess.user_id, sid, question=req.question,
+                         intent=req.intent)
+                return scout_session_view(request, sess, sid)
+            if req.intent:
+                raise HTTPException(403, {"error": "account_required"})
             ask_allowed(request)
             return scout_view(hub.start(brief_id, b.researcher_id, req.question.strip(),
                                         owner=owner_of(sess)))
@@ -894,13 +944,36 @@ def create_app(service: BriefService, runner: ClosureRunner,
         return e
 
     @app.get("/scout/{sid}", dependencies=STORED)
-    def scout_get(sid: str, sess: object | None = Depends(account_session)) -> dict:
+    def scout_get(sid: str, request: Request,
+                  sess: object | None = Depends(account_session)) -> dict:
+        if sess is not None:
+            signed_in(sess)
+            return scout_session_view(request, sess, scout_ids(sid))
         return scout_view(entry(sid, sess))
 
     @app.post("/scout/{sid}/{action}", status_code=202, dependencies=STORED)
-    def scout_act(sid: str, action: Literal["ask", "stop"],
+    def scout_act(sid: str, action: Literal["ask", "stop", "button"],
                   req: ScoutRequest, request: Request,
                   sess: object | None = Depends(account_session)) -> dict:
+        if sess is not None:
+            from perch.scout import session as ssn
+            from perch.scout import web as sweb
+
+            signed_in(sess)
+            sv, uid, u = accounts(request), sess.user_id, scout_ids(sid)
+            if action == "stop":
+                sweb.stop(sv, uid, u)
+            else:
+                if action == "button" and not req.intent:
+                    raise HTTPException(422, "Say which button.")
+                got = ssn.load(sv.ud, uid, u)
+                if got is None:
+                    raise HTTPException(404, {"error": "not_found"})
+                with scope(request, sess, got[0].brief_id or ""):
+                    sweb.ask(sv, service, uid, u, question=req.question, intent=req.intent)
+            return scout_session_view(request, sess, u)
+        if action == "button" or req.intent:
+            raise HTTPException(403, {"error": "account_required"})
         e = entry(sid, sess)
         if action == "ask":
             if not req.question.strip():
@@ -912,6 +985,16 @@ def create_app(service: BriefService, runner: ClosureRunner,
         except Busy as err:
             raise HTTPException(409, str(err)) from err
         return scout_view(e)
+
+    @app.delete("/scout/{sid}", dependencies=STORED)
+    def scout_delete(sid: str, request: Request,
+                     sess: object | None = Depends(account_session)) -> dict:
+        from perch.scout import web as sweb
+
+        signed_in(sess)
+        if sess is None or not sweb.delete(accounts(request), sess.user_id, scout_ids(sid)):
+            raise HTTPException(404, {"error": "not_found"})
+        return {"ok": True}
 
     from perch.scholarships import ensure_samples
 
