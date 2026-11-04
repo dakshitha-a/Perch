@@ -225,7 +225,7 @@ def open_answer(deps: TurnDeps, history: list[Message], question: str) -> dict[s
                 return message("assistant", "distress",
                                texts.distress_message(deps.data.audience), gate="model_declined")
             return message("assistant", "refusal", texts.REFUSAL, gate="model_declined")
-        this = ans.grade(text, tools.seen, names, deps.data.as_of, deps.grounder())
+        this = ans.grade(text, tools.seen, names, deps.data.as_of, deps.grounder(), tools)
         if deps.on_draft is not None:
             deps.on_draft(attempt, text, this)
         if graded is None or len(this.errors) < len(graded.errors):

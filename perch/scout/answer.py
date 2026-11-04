@@ -39,8 +39,9 @@ from typing import Any
 
 from perch import validate
 from perch.grounding import Grounder
-from perch.schemas import Record
-from perch.scout.read_tools import facts
+from perch.grounding import THRESHOLD
+from perch.schemas import Opportunity, Record, Scholarship
+from perch.scout.read_tools import NOT_STATED, ReadTools, facts
 from perch.scout.texts import GENERAL_LABEL
 
 CITE_RE = re.compile(r"\[([^\[\]]+)\]")
@@ -234,7 +235,8 @@ def strip_cites(text: str) -> str:
     def keep(m: re.Match) -> str:
         return " " if cites_in(m.group(0)) else m.group(0)
 
-    return re.sub(r"\s+", " ", CITE_RE.sub(keep, text)).strip()
+    out = re.sub(r"\s+", " ", CITE_RE.sub(keep, text)).strip()
+    return re.sub(r" ([.,;:!?])(?=\s|$)", r"\1", out)
 
 
 def normalise_cites(text: str, seen: dict[str, Record]) -> str:
@@ -283,7 +285,104 @@ def document_for(rec: Record, as_of: date) -> str:
     """What MiniCheck reads for one record: the card's own fields, then the record's text."""
     f = facts(rec, as_of)
     head = "\n".join(f"{k}: {v}" for k, v in f.items() if v not in (None, "", []))
-    return head + "\n" + validate.evidence(rec).text
+    extra = ""
+    if isinstance(rec, Scholarship):
+        # MiniCheck's passage only; validate.evidence() is unchanged, so no new number or date
+        # counts as supported by layer 1 (S45 fix round 2).
+        if rec.eligibility.notes:
+            extra += "\nEligibility: " + rec.eligibility.notes
+        if rec.application_requirements and rec.application_requirements.items():
+            extra += "\nApplication requirements: " + ", ".join(
+                rec.application_requirements.items()) + "."
+    return head + "\n" + validate.evidence(rec).text + extra
+
+
+# --- claims MiniCheck cannot score, checked by code against what the tools returned ---
+
+ORDINALS = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5}
+RANK_NUM_RE = re.compile(
+    r"\b(?:ranked|ranks|rank)\s*(?:number\s*|no\.?\s*|#)?(\d{1,2})\b|#(\d{1,2})\b", re.I)
+RANK_WORD_RE = re.compile(
+    r"\b(?:(top)[- ]?(?:ranked|lead|rank|pick|choice)|(?:your|the)\s+"
+    r"(first|second|third|fourth|fifth)\s+(?:lead|pick|choice|result|match)|"
+    r"ranked\s+(first|second|third|fourth|fifth)|(first|second|third|fourth|fifth)[- ]ranked)\b",
+    re.I)
+KEPT_RE = re.compile(r"\b(kept|shortlist(?:ed)?)\b", re.I)
+SAVED_RE = re.compile(r"\bsaved\b", re.I)
+NEG_RE = re.compile(r"\b(?:not|never|nothing|none|no)\b|n['’]t\b", re.I)
+ABSENCE_RE = re.compile(
+    r"\b(?:gives?|lists?|states?|has|have|provides?|shows?|includes?|mentions?|specif(?:y|ies)|"
+    r"says?|holds?|carries|contains?)\s+no\s+(?:\w+\s+){0,2}?(deadline|close date|amount|"
+    r"award size|requirements?)\b|"
+    r"\b(?:does\s+not|doesn['’]t|do\s+not|don['’]t)\s+(?:give|list|state|say|mention|specify|"
+    r"show|provide|include)\s+(?:a|an|any|the)?\s*(?:\w+\s+){0,2}?(deadline|close date|amount|"
+    r"award size|requirements?)\b|"
+    r"\bno\s+(?:\w+\s+){0,2}?(deadline|close date|amount|award size|requirements?)\s+"
+    r"(?:is|are|was|were)\s+(?:given|listed|stated|shown|in the record)\b", re.I)
+
+
+def _absent_fact(rec: Record, what: str, as_of: date) -> bool | None:
+    """Does this record lack the deadline, amount or requirements? None when it cannot say."""
+    what = what.lower()
+    if what in ("deadline", "close date"):
+        if isinstance(rec, Opportunity):
+            return not rec.close_date and not rec.close_date_note
+        if isinstance(rec, Scholarship):
+            return rec.deadline is None
+        return None
+    if what in ("amount", "award size"):
+        if isinstance(rec, Opportunity | Scholarship):
+            return facts(rec, as_of).get("amount") == NOT_STATED
+        return None
+    if isinstance(rec, Scholarship):
+        return not (rec.application_requirements and rec.application_requirements.items())
+    return None
+
+
+def code_check(text: str, ids: list[str], seen: dict[str, Record], tools: ReadTools | None,
+               as_of: date) -> bool | None:
+    """True or False when the claim is one of the shapes below and the tools gave the answer,
+    None when MiniCheck must decide. Shapes: a lead's rank or kept status, checked against the
+    rows read_brief and read_saved returned; "the record gives no deadline, amount or
+    requirements", checked against the record's fields. Every cited record must agree."""
+    body = strip_cites(text)
+    verdicts: list[bool] = []
+    if m := ABSENCE_RE.search(body):
+        what = next(g for g in m.groups() if g)
+        for i in ids:
+            v = _absent_fact(seen[i], what, as_of)
+            if v is None:
+                return None
+            verdicts.append(v)
+        return all(verdicts) if verdicts else None
+    if tools is None:
+        return None
+    rows = [i for i in ids if not i.startswith("user:")]
+    if not rows:
+        return None
+    ordered = sorted(tools.ranks, key=lambda k: tools.ranks[k])
+    claim = None
+    if tools.brief_read and (m := RANK_WORD_RE.search(body)):
+        top, *words = m.groups()
+        claim = ("pos", 1 if top else ORDINALS[next(w for w in words if w).lower()])
+    elif tools.brief_read and (m := RANK_NUM_RE.search(body)):
+        claim = ("rank", int(m.group(1) or m.group(2)))
+    if claim:
+        for i in rows:
+            if i not in tools.ranks:
+                return None
+            verdicts.append(ordered.index(i) + 1 == claim[1] if claim[0] == "pos"
+                            else tools.ranks[i] == claim[1])
+        return all(verdicts)
+    k, sv = KEPT_RE.search(body), SAVED_RE.search(body)
+    if k and tools.brief_read:
+        pool, at = tools.kept, k.start()
+    elif sv and tools.saved_read:
+        pool, at = tools.saved, sv.start()
+    else:
+        return None
+    neg = bool(NEG_RE.search(body[max(0, at - 25):at]))
+    return all((i in pool) != neg for i in rows)
 
 
 def _token(message: str) -> str:
@@ -485,7 +584,7 @@ def name_index(records: list[Record]) -> set[str]:
 
 
 def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
-          grounder: Grounder | None = None) -> Graded:
+          grounder: Grounder | None = None, tools: ReadTools | None = None) -> Graded:
     """Parse and check one answer. Layer 2 runs only when layer 1 and the citation rules pass
     for the sentence, so MiniCheck is not spent on a sentence that will be regenerated."""
     grounded, general = split_general(normalise_cites(text, seen))
@@ -498,14 +597,17 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
         for code, msg, d in general_reasons(s.text, names, seen):
             s.fail(code, "General advice " + msg, d)
     mixed_blocks(g, seen)
-    if grounder is not None and g.ok:
+    if g.ok:
         for s in g.sentences:
             if not s.cites:
                 continue
-            doc = "\n\n".join(document_for(seen[c], as_of) for c in s.cites)
-            c = grounder.check(doc, strip_cites(s.text))
-            if c:
-                s.support, s.supported = c[0].support, all(x.supported for x in c)
+            v = code_check(s.text, s.cites, seen, tools, as_of)
+            if v is not None:  # exact, so MiniCheck is not asked
+                s.support, s.supported = (1.0 if v else 0.0), v
+            elif grounder is not None:
+                doc = "\n\n".join(document_for(seen[c], as_of) for c in s.cites)
+                p = grounder.support(doc, [strip_cites(s.text)])[0]  # whole claim, not re-split
+                s.support, s.supported = p, p > THRESHOLD
     return g
 
 
