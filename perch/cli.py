@@ -556,6 +556,9 @@ def build_parser() -> argparse.ArgumentParser:
     wk.add_argument("--concurrency", type=int, default=None, help="job threads; default "
                     "PERCH_WORKER_CONCURRENCY or 16")
     wk.add_argument("--kinds", default=None, help="comma list; default PERCH_WORKER_KINDS or all")
+    pc = sub.add_parser("precache", help="enqueue the nightly researcher pre-cache jobs")
+    pc.add_argument("--limit", type=int, default=None, help="only the first N researchers")
+    pc.add_argument("--dry-run", action="store_true", help="count, enqueue nothing")
     ky = sub.add_parser("keys", help="key tasks")
     kysub = ky.add_subparsers(dest="keys_command", required=True)
     rm = kysub.add_parser("rotate-master", help="re-wrap data keys under the current master key")
@@ -581,6 +584,7 @@ def cmd_worker(args: argparse.Namespace) -> int:
     import threading
 
     from perch.jobs import PostgresRunner, set_brief_service
+    from perch.redisx import get_client
 
     n = args.concurrency or int(env("PERCH_WORKER_CONCURRENCY", "16") or 16)
     runner = PostgresRunner(pool_size=2 * n + 4)
@@ -600,16 +604,20 @@ def cmd_worker(args: argparse.Namespace) -> int:
         models = replace(models, index=lambda: PgVectorIndex(
             index_name="opportunities", embedder=current().embedder, pool=runner.pool))
         scratch = Path(args.db).with_name("briefs.db")
-        return BriefService(args.db, models, Clients(openalex=default_client),
-                            Path(args.overrides),
-                            repo_factory=lambda: HybridRepository(runner.pool, scratch),
-                            index_new=False)
+        svc = BriefService(args.db, models, Clients(openalex=default_client),
+                           Path(args.overrides),
+                           repo_factory=lambda: HybridRepository(runner.pool, scratch),
+                           index_new=False)
+        from perch.cache import PublicCache
+
+        svc.public_cache = PublicCache(
+            runner.pool, get_client() if env("PERCH_REDIS_URL") else None)
+        return svc
 
     set_brief_service(brief_service)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     kinds = [k for k in (args.kinds or env("PERCH_WORKER_KINDS", "") or "").split(",") if k]
     from perch import shredhooks
-    from perch.redisx import get_client
 
     stop_sub = shredhooks.install(runner.pool, get_client() if env("PERCH_REDIS_URL") else None,
                                   runner)
@@ -619,6 +627,31 @@ def cmd_worker(args: argparse.Namespace) -> int:
     runner.run_forever(f"{socket.gethostname()}-{os.getpid()}", kinds, n, stop)
     stop_sub()
     runner.close()
+    return 0
+
+
+def cmd_precache(args: argparse.Namespace) -> int:
+    """Enqueue one `precache` job per Temple-affiliated researcher (a worker runs them)."""
+    from datetime import date
+
+    from perch.jobs import PostgresRunner
+    from perch.precache import temple_affiliated
+    from perch.schemas import Researcher
+    from perch.store.postgres import PostgresRepository
+
+    runner = PostgresRunner()
+    try:
+        repo = PostgresRepository(role="worker", pool=runner.pool)
+        authors = [r.id for r in repo.list(Researcher) if temple_affiliated(r)]
+        if args.limit:
+            authors = authors[:args.limit]
+        today = date.today().isoformat()
+        for a in authors:  # the date in the key makes a second run the same day a no-op
+            if not args.dry_run:
+                runner.submit("precache", {"author_id": a}, None, f"precache:{a}:{today}")
+        print(f"{'would enqueue' if args.dry_run else 'enqueued'} {len(authors)} precache jobs")
+    finally:
+        runner.close()
     return 0
 
 
@@ -697,6 +730,8 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
         return cmd_db(args)
     if args.command == "worker":
         return cmd_worker(args)
+    if args.command == "precache":
+        return cmd_precache(args)
     if args.command == "keys":
         return cmd_keys(args)
     if args.command == "reconcile-shreds":

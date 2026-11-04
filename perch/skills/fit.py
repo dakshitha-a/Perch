@@ -32,6 +32,7 @@ from perch.skills import (
 from perch.validate import Check, Validated, check, generate_validated
 
 SKILL = "fit_explainer"
+PROMPT_VERSION = "fit-1"  # bump with INSTRUCTIONS or SCHEMA; keys cached text (tests/test_cache.py)
 SCHEMA = {
     "type": "object",
     "properties": {  # order matters: reasoning is generated before the answer

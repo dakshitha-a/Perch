@@ -636,6 +636,19 @@ def brief_handler(ctx: JobContext) -> str | None:
     return f"brief:{brief_id}"
 
 
+@register("precache", max_attempts=3, timeout_s=900, priority=8)
+def precache_handler(ctx: JobContext) -> str | None:
+    """Retrieval, rules and rerank for one public researcher, stored in `public_cache`."""
+    if _brief_service is None:
+        raise PermanentError("no_handler")
+    from perch import precache
+
+    report = precache.precache_author(_brief_service(), ctx.payload["author_id"])
+    if not report["stored"]:
+        raise PermanentError("handler_error")
+    return None
+
+
 # --- the original in-process closure runners (demo path and unit tests) ---
 
 

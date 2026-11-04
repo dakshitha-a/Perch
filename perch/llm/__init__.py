@@ -3,8 +3,8 @@
 A provider spec is "<adapter>:<model>", e.g. "ollama:qwen3.8:27b",
 "anthropic:claude-sonnet-5-5", "openai:Qwen/Qwen3-8B" or "fake:fake-1". Each role
 reads PERCH_LLM_<ROLE> from the environment, then PERCH_LLM_DEFAULT, then the
-built-in default below. Roles: profile_summary, fit_explainer, handoff, scout,
-decide.
+built-in default below. Roles: profile_summary, fit_explainer, handoff, cover_points,
+scout, gate.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ __all__ = ["ChatResult", "Message", "Provider", "ProviderError", "Refusal", "Tok
            "Tool", "ToolCall", "ToolResult", "Usage", "cost_usd", "get_provider",
            "provider_for_role"]
 
-ROLES = ("profile_summary", "fit_explainer", "handoff", "scout", "decide")
+ROLES = ("gate", "profile_summary", "fit_explainer", "handoff", "cover_points", "scout")
 # Fallback when no profile applies; the chat model per profile is in perch/profiles.py.
 DEFAULT_SPEC = "ollama:qwen3.8:27b"
 
@@ -80,7 +80,8 @@ def spec_for_role(role: str) -> str:
         raise ValueError(f"unknown role {role!r}; roles are {', '.join(ROLES)}")
     from perch.profiles import current
 
-    return env(f"PERCH_LLM_{role.upper()}") or env("PERCH_LLM_DEFAULT") or current().chat
+    return (env(f"PERCH_LLM_{role.upper()}") or env("PERCH_LLM_DEFAULT")
+            or current().spec_for(role))
 
 
 def provider_for_role(role: str) -> Provider:
