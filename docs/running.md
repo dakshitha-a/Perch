@@ -1,6 +1,6 @@
 # Running Perch
 
-> **v1 and the fallback.** `uv run perch serve --models fake` runs the app on SQLite with no accounts. The v1 stack (Postgres with pgvector, Redis, Keycloak for development, the web app and the worker) runs with `make v1-up` from `deploy/compose/docker-compose.v1.yml`; its worker is on the `cloud-cpu` profile today. Parts of this page, such as the sample store and private mode, describe the fallback build at the tag `v0.1-demo-fallback`.
+> **v1 and the fallback.** `uv run perch serve --models fake` runs the app on SQLite with no accounts. The v1 stack (Postgres with pgvector, Redis, Keycloak for development, the web app and the worker) runs with `make v1-up` from `deploy/compose/docker-compose.v1.yml`; its worker is on the `cloud-cpu` profile today. Operations (health, backups, capacity, upgrades) are in [deploy.md](deploy.md). Parts of this page, such as the sample store and private mode, describe the fallback build at the tag `v0.1-demo-fallback`.
 
 [Back to the README](../README.md)
 
