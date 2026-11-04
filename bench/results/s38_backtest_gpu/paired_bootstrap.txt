@@ -1,0 +1,13 @@
+all n=126 MRR diff -0.008 95% [-0.033, +0.016] hit@10 +4/-4
+## dense_4b minus dense_06b
+targeted n=48 MRR diff -0.010 95% [-0.061, +0.045] hit@10 +3/-3
+parent n=78 MRR diff -0.007 95% [-0.034, +0.010] hit@10 +1/-1
+## hybrid_4b minus hybrid_06b
+targeted n=48 MRR diff +0.001 95% [-0.041, +0.053] hit@10 +3/-3
+parent n=78 MRR diff -0.003 95% [-0.008, +0.000] hit@10 +0/-1
+## dense_06b minus hybrid_06b
+targeted n=48 MRR diff +0.017 95% [+0.001, +0.045] hit@10 +1/-0
+parent n=78 MRR diff +0.028 95% [-0.000, +0.073] hit@10 +3/-0
+## dense_4b minus hybrid_4b
+targeted n=48 MRR diff +0.007 95% [-0.000, +0.018] hit@10 +1/-0
+parent n=78 MRR diff +0.024 95% [+0.002, +0.058] hit@10 +4/-0

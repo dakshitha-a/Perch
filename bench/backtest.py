@@ -175,6 +175,8 @@ def make_reranker(key: str, device: str | None) -> Reranker:
     from perch.rerank import DEFAULT_MODEL
     from perch.rerank import make_reranker as make
 
+    if "/" in key:  # a cross-encoder model id such as Qwen/Qwen3-Reranker-4B (S38 GPU run)
+        return make(key, device)
     return make(DEFAULT_MODEL if key == "qwen3-reranker-0.6b" else f"systemone:{key}", device)
 
 
@@ -301,6 +303,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--strata", nargs="*", default=["targeted", "parent"])
     ap.add_argument("--rerank-in", type=int, default=RERANK_IN)
     ap.add_argument("--configs", nargs="*", help="labels to run (default: all three)")
+    ap.add_argument("--reranker", help="cross-encoder model id for the +rerank configs "
+                    "(default Qwen/Qwen3-Reranker-0.6B), e.g. Qwen/Qwen3-Reranker-4B")
     a = ap.parse_args(argv)
     if a.threads:
         import torch
@@ -309,7 +313,11 @@ def main(argv: list[str] | None = None) -> None:
     configs = [("keyword-only", "bm25", None), ("hybrid", "hybrid", None),
                ("hybrid+rerank", "hybrid", "qwen3-reranker-0.6b")]
     if a.configs:
-        configs = [c for c in configs + [("dense", "dense", None)] if c[0] in a.configs]
+        configs = [c for c in configs + [("dense", "dense", None),
+                                          ("dense+rerank", "dense", "qwen3-reranker-0.6b")]
+                   if c[0] in a.configs]
+    if a.reranker:
+        configs = [(label, mode, a.reranker if rr else None) for label, mode, rr in configs]
     if a.store == "postgres":
         log: list[dict] = []
         res = run(a.embedder, configs, a.months, a.device, store="postgres", dsn=a.dsn,
