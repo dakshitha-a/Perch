@@ -8,7 +8,7 @@ not rewritten, so a second run changes nothing (and does not bump the epoch).
 Opportunity vectors are reused from LanceDB. Before reuse the command checks a sample of
 them against the embedding cache entries made by Qwen/Qwen3-Embedding-0.6B (the Lance table
 does not record its embedder). Scholarship vectors have no Lance source: they are computed
-once on CPU from `perch.private.student.record_text`. Only counts and ids are printed.
+once on CPU from `perch.student.record_text`. Only counts and ids are printed.
 """
 
 from __future__ import annotations
@@ -187,7 +187,7 @@ def migrate_corpus(dsn: str, sqlite_path: Path, lance_path: Path, sample_path: P
                    cache_path: Path | None = None,
                    embedder_factory: Callable[[], object] | None = None) -> dict:
     """Copy the public corpus into Postgres and verify it. Returns a report dict."""
-    from perch.private.student import record_text
+    from perch.student import record_text
 
     report: dict = {"records": {}, "vectors": {}, "skipped": {}, "verify": {}}
     pool = make_pool(dsn, max_size=4)

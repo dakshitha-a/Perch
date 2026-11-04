@@ -20,11 +20,11 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from perch import awards as aw
-from perch import egress, precache
+from perch import precache
 from perch.brief import route_a
 from perch.cache import InputContext, PublicCache, cache_key, is_public_input
 from perch.config import env
-from perch.eligibility import Constraints, career_stage_restricted
+from perch.eligibility import Constraints, agency_text, career_stage_restricted
 from perch.embed import Embedder
 from perch.grounding import Grounder
 from perch.llm import Provider, get_provider, spec_for_role
@@ -52,7 +52,9 @@ from perch.sources import nih_reporter, nsf
 from perch.sources import openalex as oa
 from perch.store.base import Repository, VectorIndex
 from perch.store.sqlite import SQLiteRepository
-from perch.user.briefs import current_store
+from perch.student import STUDENT_STAGES, YOU
+from perch.user.briefs import current_store, using_store
+from perch.user.cv import sponsor_match
 from perch.validate import VALIDATOR_VERSION, Validated
 
 # Explanations come before the summary: they are what the Routes tab waits for (P2).
@@ -73,6 +75,7 @@ def brief_options(as_of: date | None = None, top: int = 10, explain: bool = True
     return {**out, **{k: v for k, v in (context or {}).items() if v}}
 
 
+SPONSOR_BONUS = 0.05  # added to the rerank score for a past sponsor; a default, not measured
 SAID_SHARE = 0.3  # the normal-mode direction thread's share of the weight; a default
 SAID_ID = "said:direction"
 ESI_SAID = ("You said you are an early-stage investigator, so this opportunity, limited by "
@@ -114,8 +117,7 @@ class Clients:
 
 
 class BriefService:
-    # Set by the worker (perch/cache.py). A class default, so subclasses that skip __init__
-    # (private sessions, which hold user text) get None and never touch the shared cache.
+    # Set by the worker (perch/cache.py); None means no shared cache.
     public_cache: PublicCache | None = None
 
     def __init__(self, db: str | Path, models: Models, clients: Clients,
@@ -133,7 +135,8 @@ class BriefService:
         self.rerank_cache = root / "cache/rerank.db"
         self.timings_log = root / "logs/brief_timings.jsonl"
         self._ctx: dict[str, dict] = {}  # per-run state (the profile), keyed by brief id
-        self.quiet_errors = False  # private sessions: exception type only, no traceback
+        # Exception type only, no traceback, for every brief that reads the user's own text.
+        self.quiet_errors = False
 
     def repo(self) -> SQLiteRepository:
         base = (self.repo_factory() if self.repo_factory is not None
@@ -143,18 +146,30 @@ class BriefService:
 
     # --- create and read ---
 
-    def create(self, author_id: str, *, as_of: date | None = None, top: int = 10,
+    def create(self, author_id: str | None, *, as_of: date | None = None, top: int = 10,
                explain: bool = True, min_amount: float | None = None,
                agencies: list[str] | None = None, context: dict | None = None,
-               brief_id: str | None = None) -> Brief:
-        aid = oa.parse_author_id(author_id)
-        if not aid:
-            raise ValueError(f"not an OpenAlex author id: {author_id!r}")
+               brief_id: str | None = None, audience: str = "researcher",
+               extra: dict | None = None) -> Brief:
+        """A queued brief. `audience` picks the stage list: a researcher brief needs an
+        OpenAlex author id; a student brief has none and reads the CV, interests and
+        achievements from the brief's store. `extra` adds options (a guest's sample persona)."""
         bid = brief_id or secrets.token_urlsafe(9)
-        b = Brief(id=bid, source="perch", source_url=f"perch://briefs/{bid}", fetched_at=now(),
-                  researcher_id=f"https://openalex.org/{aid}",
-                  stages=[Stage(name=n) for n in STAGES],
-                  options=brief_options(as_of, top, explain, min_amount, agencies, context))
+        if audience == "student":
+            b = Brief(id=bid, source="perch", source_url=f"perch://briefs/{bid}",
+                      fetched_at=now(), researcher_id=YOU,
+                      stages=[Stage(name=n) for n in STUDENT_STAGES],
+                      options={**brief_options(as_of, top, explain), "student": True,
+                               **(extra or {})})
+        else:
+            aid = oa.parse_author_id(author_id or "")
+            if not aid:
+                raise ValueError(f"not an OpenAlex author id: {author_id!r}")
+            b = Brief(id=bid, source="perch", source_url=f"perch://briefs/{bid}",
+                      fetched_at=now(), researcher_id=f"https://openalex.org/{aid}",
+                      stages=[Stage(name=n) for n in STAGES],
+                      options={**brief_options(as_of, top, explain, min_amount, agencies,
+                                               context), **(extra or {})})
         with self.repo() as r:
             r.upsert([b])
         return b
@@ -179,8 +194,7 @@ class BriefService:
     # --- hand-off (skill 3; on request, not a pipeline stage) ---
 
     def handoff(self, brief_id: str, office_key: str, lead_ids: list[str] | None = None,
-                spec: str | None = None, use_model: bool = True,
-                masker: egress.Masker | None = None) -> Draft | None:
+                spec: str | None = None, use_model: bool = True) -> Draft | None:
         """A draft to one office about the brief's kept leads on that office's route (or
         the given lead ids). None if the brief does not exist. Nothing is stored or sent."""
         office = OFFICES[office_key]
@@ -201,15 +215,16 @@ class BriefService:
             wids = list(dict.fromkeys(f"https://openalex.org/{c}" for x in chosen
                                       for c in x.cited_ids if c.startswith("W")))
             papers = [w for w in (r.get(Work, i) for i in wids) if w]
+        if res is None and b.researcher_id == YOU:  # no public profile: the user signs it
+            res = Researcher(id=YOU, source="user", source_url="perch://user",
+                             fetched_at=now(), display_name="")
         if res is None:
             return None
         provider = (self._audited("handoff", spec or self.models.handoff_spec)
                     if use_model and chosen else None)
-        private = None
-        if b.source == "private":
-            with self.repo() as r:
-                private = [w for w in self._works(r, b).values() if egress.is_private(w)]
-        return draft_handoff(office, res, items, papers, provider, masker, private)
+        store = current_store.get()
+        docs = store.user_docs() if store is not None else []
+        return draft_handoff(office, res, items, papers, provider, docs or None)
 
     # --- run ---
 
@@ -227,8 +242,8 @@ class BriefService:
             r.upsert([b])
 
     def cancelled(self, b: Brief) -> bool:
-        """True when the brief should stop before its next stage (a session's own rule, or the
-        job's lease lost or cancelled)."""
+        """True when the brief should stop before its next stage (the job's lease lost or
+        cancelled)."""
         store = current_store.get()
         return bool(store is not None and store.cancelled())
 
@@ -239,6 +254,10 @@ class BriefService:
         if b is None:
             return "missing"
         b.status = "running"
+        store = current_store.get()
+        # A brief that reads the user's own text never prints a traceback or an exception
+        # message: either could quote that text (ARCHITECTURE_V1 3.7).
+        quiet = self.quiet_errors or bool(store is not None and store.reads_user_data)
         names = [s.name for s in b.stages] or list(STAGES)  # a student brief has its own
         current = names[0]
         lock = threading.Lock()  # stage writes come from this thread and the background one
@@ -263,8 +282,7 @@ class BriefService:
             try:
                 for current in names:
                     if self.cancelled(b):
-                        raise Cancelled("Stopped: the session ended, or a newer brief "
-                                        "replaced this one.")
+                        raise Cancelled("Stopped: the brief was cancelled.")
                     stage(current, "running")
                     if current in BACKGROUND and current != names[-1]:
                         # copy_context: the side thread writes to the same brief store
@@ -284,10 +302,10 @@ class BriefService:
             b.status = "done"
         except Exception as e:  # recorded on the brief; the job thread must not die silently
             b.error = (str(e) if isinstance(e, Cancelled) else plain_error(e)
-                       if self.quiet_errors else f"{type(e).__name__}: {e}")
+                       if quiet else f"{type(e).__name__}: {e}")
             stage(current, "failed", b.error)
             b.status = "failed"
-            if not self.quiet_errors:
+            if not quiet:
                 traceback.print_exc()
         with self.repo() as r:
             r.upsert([b])
@@ -366,16 +384,23 @@ class BriefService:
 
     def _run_route_a(self, b: Brief) -> tuple[str, bool]:
         o = b.options
-        esi = o.get("career_stage") == "early_stage"
-        c = Constraints(as_of=date.fromisoformat(o["as_of"]), min_amount=o.get("min_amount"),
+        as_of = date.fromisoformat(o["as_of"])
+        store = current_store.get()
+        cv = None  # the user's own CV, when the brief reads one: career stage and past sponsors
+        if store is not None and (text := store.cv_text()):
+            from perch.user.cv import parse_cv
+
+            cv = parse_cv(text)
+        esi = o.get("career_stage") == "early_stage" or bool(cv and cv.esi_possible(as_of))
+        c = Constraints(as_of=as_of, min_amount=o.get("min_amount"),
                         agencies=o.get("agencies") or [],
                         exclude_keywords=o.get("exclude_keywords") or [], career_stage_ok=esi)
         with self.repo() as r:
             res = self._researcher(r, b)
             profile = self._ctx.get(b.id, {}).get("profile")
             brief = None
-            if profile is not None:  # a nightly pre-cache lets the first brief skip the rerank
-                stored = precache.lookup(self.public_cache, r, profile)
+            if profile is not None and cv is None:  # a nightly pre-cache lets the first brief
+                stored = precache.lookup(self.public_cache, r, profile)  # skip the rerank
                 if stored:
                     brief = precache.route_a_from_precache(stored, res, profile, r, c,
                                                            o.get("top", 10))
@@ -385,21 +410,33 @@ class BriefService:
                                 top=o.get("top", 10), timings_log=self.timings_log,
                                 profile=profile, index_new=self.index_new,
                                 rerank_in=self.rerank_in())
+            ranked = []
+            for x in brief.leads:
+                notes = []
+                if esi and career_stage_restricted(x.opportunity):
+                    notes.append(cv.esi_note() if cv else ESI_SAID)
+                bonus = 0.0
+                if cv and (k := sponsor_match(agency_text(x.opportunity), cv.sponsors)):
+                    notes.append(f"Your CV lists a past award from {k}, so this sponsor's "
+                                 "programme moved up.")
+                    bonus = SPONSOR_BONUS
+                ranked.append((x.rerank_score + bonus, x, notes))
+            ranked.sort(key=lambda t: -t[0])
+            # Match comes from the same adjusted score the order uses, so they agree.
             leads = [Lead(id=f"{b.id}:{i}", source=x.opportunity.source,
                           source_url=x.opportunity.source_url,
                           fetched_at=x.opportunity.fetched_at, brief_id=b.id, route="A",
                           record_id=x.opportunity.id, rank=i,
-                          rerank_score=round(x.rerank_score, 4),
-                          match_score=match_score(x.rerank_score),
-                          matched_thread=x.candidate.best_thread,
-                          notes=[ESI_SAID] if esi and career_stage_restricted(x.opportunity)
-                          else [])
-                     for i, x in enumerate(brief.leads, 1)]
+                          rerank_score=round(x.rerank_score, 4), match_score=match_score(adj),
+                          matched_thread=x.candidate.best_thread, notes=notes)
+                     for i, (adj, x, notes) in enumerate(ranked, 1)]
             r.upsert(leads)
         b.lead_ids = [x.id for x in leads]
         b.timings_ms = brief.timings_ms
+        kept_by_stage = sum(any("early-stage" in n for n in x.notes) for x in leads)
+        extra = f", {kept_by_stage} kept by the career-stage rule" if cv else ""
         return (f"{brief.retrieved} retrieved, {len(brief.rejected)} ineligible removed, "
-                f"{len(leads)} leads"), False
+                f"{len(leads)} leads{extra}"), False
 
     def _run_route_b(self, b: Brief) -> tuple[str, bool]:
         from perch import route_b as rb
@@ -423,8 +460,13 @@ class BriefService:
                                role)
 
     def _works(self, r: SQLiteRepository, b: Brief) -> dict[str, Work]:
-        """Records the model skills may cite as research (a private session adds its own)."""
-        return {w.id: w for w in r.works_by_author(b.researcher_id)}
+        """Records the model skills may cite as research: the author's public papers, and
+        the user's own documents when the brief reads them."""
+        out = {w.id: w for w in r.works_by_author(b.researcher_id)}
+        store = current_store.get()
+        if store is not None:
+            out.update({d.id: d for d in store.user_docs()})
+        return out
 
     def rerank_in(self) -> int:
         """Candidates sent to the reranker: the profile's count on CPU, else the S27 default."""
@@ -489,6 +531,7 @@ class BriefService:
                              VALIDATOR_VERSION)
 
         lock = threading.Lock()
+        store = current_store.get()  # the explanation callbacks run on pool threads
         todo: list[int] = []  # positions in `leads` that still need a model call
         done_cached = 0
         for i, (lead, o) in enumerate(zip(leads, opps, strict=True)):
@@ -518,7 +561,7 @@ class BriefService:
                          "prompt_version": fit_skill.PROMPT_VERSION})
             else:
                 upd = {"flagged": True}
-            with lock, self.repo() as r:
+            with using_store(store), lock, self.repo() as r:  # on a pool thread: no context
                 r.upsert([lead.model_copy(update=upd)])
 
         results = []
@@ -531,6 +574,114 @@ class BriefService:
         return (f"{len(results) - flagged + done_cached} explained ({done_cached} cached), "
                 f"{flagged} withheld, {unsupported} with an unsupported statement"), False
 
+    # --- student brief (moved from perch/private/session.py in S42) ---
+    #
+    # Inputs come from the brief's store: the signed-in user's own CV, interests and entries,
+    # or a guest's SYNTHETIC persona (rule 12). Nothing here writes them anywhere.
+
+    def _inputs(self):  # noqa: ANN202 - a perch.user.briefs.StudentInputs
+        store = current_store.get()
+        if store is None:
+            raise InputProblem("A student brief needs an account or a sample persona.")
+        try:
+            return store.student_inputs()
+        except ValueError as e:
+            raise InputProblem("Add your CV first.") from e
+
+    def _run_student_profile(self, b: Brief) -> tuple[str, bool]:
+        from perch.student import achievement_docs, parse_student_cv, student_profile
+
+        inp = self._inputs()
+        facts = parse_student_cv(inp.cv)
+        achieved = achievement_docs(inp.entries)
+        if not inp.interests and not achieved:
+            raise InputProblem("Add your interests or achievements too.")
+        p = student_profile(facts, inp.interests, achieved, self.models.get("embedder"),
+                            date.fromisoformat(b.options["as_of"]))
+        self._ctx.setdefault(b.id, {}).update(profile=p, facts=facts, achieved=achieved,
+                                              interests=inp.interests)
+        b.threads = [{"index": t.index, "label": t.label, "weight": 1.0,
+                      "work_ids": t.work_ids, "private": True} for t in p.threads]
+        b.work_ids = p.work_ids
+        return f"{facts.level or 'level not stated'}, {len(achieved)} achievements", False
+
+    def _student_route(self, b: Brief, route: str, records: list,
+                       nih: dict | None = None) -> tuple[list[Lead], int]:
+        from perch.student import choose, judge_for, rank, to_leads
+
+        ctx = self._ctx[b.id]
+        as_of = date.fromisoformat(b.options["as_of"])
+        nih = nih or {}
+        scored = rank(records, ctx["profile"], self.models.get("embedder"),
+                      self.models.get("reranker"),
+                      judge_for(ctx["facts"], as_of, {k: o for k, (_, o) in nih.items()}))
+        for x in scored:
+            x.opp = nih[x.record.id][1] if x.record.id in nih else None
+        chosen = choose(scored, b.options.get("top", 10))
+        leads = to_leads(b.id, route, chosen, ctx["facts"])
+        ok = sum(x.verdict.verdict != "not eligible" for x in chosen)
+        return leads, ok
+
+    def _run_fellowships(self, b: Brief) -> tuple[str, bool]:
+        from perch.schemas import Scholarship
+        from perch.student import nih_records
+
+        with self.repo() as r:
+            sdfa = [s for s in r.list(Scholarship) if not s.synthetic]
+            nih = nih_records(r)
+            leads, ok = self._student_route(b, "F", sdfa + [s for s, _ in nih.values()], nih)
+            r.upsert(leads)
+        b.lead_ids = [x.id for x in leads]
+        return (f"{len(sdfa)} Temple-listed and {len(nih)} NIH fellowships searched, "
+                f"{ok} you may apply for"), False
+
+    def _run_scholarships(self, b: Brief) -> tuple[str, bool]:
+        from perch.student import samples
+
+        pool = samples()  # SYNTHETIC records, a list of their own (rule 11); read-only
+        leads, ok = self._student_route(b, "S", pool)
+        with self.repo() as r:
+            r.upsert(leads)
+        b.lead_ids = [*b.lead_ids, *(x.id for x in leads)]
+        return f"{len(pool)} sample scholarships searched, {ok} you may apply for", False
+
+    def _run_student_explanations(self, b: Brief) -> tuple[str, bool]:
+        from perch.schemas import Scholarship
+        from perch.student import as_opportunity
+
+        if not b.options.get("explain"):
+            return "explanations off", True
+        ctx = self._ctx[b.id]
+        works = {d.id: d for d in ctx["achieved"]}
+        if ctx.get("interests"):
+            works[ctx["interests"].id] = ctx["interests"]
+        with self.repo() as r:
+            leads = [x for x in (r.get(Lead, i) for i in b.lead_ids)
+                     if x and x.verdict != "not eligible"]
+            opps = [r.get(Opportunity, x.record_id)
+                    or as_opportunity(r.get(Scholarship, x.record_id)) for x in leads]
+        lock = threading.Lock()
+        store = current_store.get()  # the explanation callbacks run on pool threads
+
+        def save(i: int, v: Validated[Fit]) -> None:
+            lead = leads[i]
+            if v.value:
+                f = v.value
+                upd = {"fit_score": f.fit, "inference": f.link_sentence or None,
+                       "explanation": f"{f.opportunity_sentence} {f.research_sentence}",
+                       "unsupported": f.unsupported, "cited_ids": f.cited_ids}
+            else:
+                upd = {"flagged": True}
+            with using_store(store), lock, self.repo() as r:  # on a pool thread: no context
+                r.upsert([lead.model_copy(update=upd)])
+
+        results = explain_leads(opps, ctx["profile"], works,
+                                self._audited("fit_explainer", self.models.fit_spec),
+                                grounder=self.models.get("grounder"), on_result=save,
+                                audience="student")
+        flagged = sum(v.flagged for v in results)
+        return f"{len(results) - flagged} explained, {flagged} withheld", False
+
 
 def said_text(options: dict) -> str:
     """The query text from the normal-mode direction and include keywords."""
@@ -540,6 +691,10 @@ def said_text(options: dict) -> str:
 
 def _temple(a: Award) -> bool:
     return "temple" in (a.institution or "").lower()
+
+
+class InputProblem(ValueError):
+    """A brief that cannot start for want of an input; the message is written by code."""
 
 
 class Cancelled(Exception):
@@ -553,8 +708,8 @@ def plain_error(e: Exception) -> str:
     if name in ("ConnectError", "ConnectTimeout", "ReadTimeout", "TimeoutException",
                 "RemoteProtocolError", "ReadError"):
         return f"A model server did not answer. Try again in a few minutes. ({name})"
-    if isinstance(e, PermissionError):
-        return f"A model was refused because it does not run on this server. ({name})"
+    if isinstance(e, InputProblem):
+        return str(e)  # written by code, never quotes the user's text
     return f"Something went wrong in this step. ({name})"
 
 

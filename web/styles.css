@@ -98,18 +98,11 @@ button, input, select, summary { font: inherit; color: inherit; }
 .section-title { font-size: 19px; font-weight: 650; letter-spacing: -.005em; }
 .mini { font-size: 14px; font-weight: 650; color: var(--ink-2); margin: 14px 0 6px; }
 
-/* ---------- app bar (S24): wordmark left; status chip, End session, Help, theme right ---------- */
+/* ---------- app bar (S24): wordmark left; Help and theme right ---------- */
 .bar { position: sticky; top: 0; z-index: 10; background: var(--bg); border-bottom: 1px solid var(--line); }
 .bar-in { max-width: 1180px; margin: 0 auto; padding: 10px clamp(16px, 4vw, 48px); display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
 .wordmark { font: 600 24px/1 var(--serif); color: var(--ink); text-decoration: none; padding: 8px 2px; border-radius: 6px; }
 .bar-tools { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
-.status-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line);
-  background: var(--surface); color: var(--ink-2); font: 500 14px var(--sans); cursor: pointer; }
-.status-chip:hover { border-color: var(--ink-3); }
-.status-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
-.status-chip:disabled { cursor: default; }
-body.cloud-on .status-chip { border-color: var(--ember); color: var(--ink); }
-body.cloud-on .status-chip .dot { background: var(--ember-fill); }
 .theme-word { font-size: 15px; }
 .banner { background: var(--ember-soft); color: var(--ink); font-size: 14px; }
 .banner p { max-width: 1180px; margin: 0 auto; padding: 10px 16px; }
@@ -199,9 +192,9 @@ details[open] > summary::before { transform: rotate(45deg); }
 .notice.warn { background: var(--ember-soft); color: var(--ink); }
 .notice.warn .icon { color: var(--ember); }
 .notice ul { margin: 6px 0 0; padding-left: 18px; }
-.session-ended { align-items: center; }
-.session-ended p { flex: 1; margin: 0; line-height: 1.5; }
-.session-ended .x { width: 44px; height: 44px; flex: none; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-size: 20px; cursor: pointer; }
+.notice-ended { align-items: center; }
+.notice-ended p { flex: 1; margin: 0; line-height: 1.5; }
+.notice-ended .x { width: 44px; height: 44px; flex: none; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-size: 20px; cursor: pointer; }
 .empty { display: flex; gap: 14px; align-items: center; padding: 16px 4px; list-style: none; }
 .empty .btn { margin-top: 12px; }
 .loading { display: flex; gap: 12px; align-items: center; padding: 24px 4px; color: var(--ink-2); }
@@ -865,50 +858,24 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 .point-line { margin: 0; line-height: 1.6; }
 .point-line b { font-weight: 650; }
 .point-line .cite, .points-missing .cite { max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; vertical-align: baseline; }
-.point-line .cite.private { font: inherit; font-size: .92em; padding: 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--moss-soft); color: var(--ink); cursor: default; max-width: 100%; }
-.point-line .cite.private .icon { flex: none; }
+.point-line .cite.own { font: inherit; font-size: .92em; padding: 2px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--moss-soft); color: var(--ink); cursor: default; max-width: 100%; }
+.point-line .cite.own .icon { flex: none; }
 .points-missing { display: grid; gap: 4px; margin: 8px 0; }
 .points-missing ul { margin: 0; padding-left: 1.4rem; }
 .points-missing li { line-height: 1.6; }
 .scout-points .btn.points-copy { min-height: 44px; }
 
-/* Private mode (S13) */
-.private { display: grid; gap: 14px; max-width: 46rem; }
-.private h1 { display: flex; align-items: center; gap: 6px; }
-.private-statement { display: flex; gap: 8px; align-items: flex-start; }
-.private-docs { display: grid; gap: 12px; padding-left: 1.4rem; }
-.private-docs .card { padding: 14px 16px; display: grid; gap: 6px; }
-.doc-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
-.doc-head h2.doc-title { margin: 0; font-size: 18px; }
-.doc-in { display: grid; gap: 6px; }
-.private textarea, .options textarea, .unmask textarea, .options select {
-  width: 100%; box-sizing: border-box; font: inherit; padding: 8px 10px;
-  border: 1px solid var(--line); border-radius: 6px; background: var(--leaf); color: inherit; }
-.private input[type=text] { width: 100%; box-sizing: border-box; }
-.doc-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.btn.file { cursor: pointer; }
 .tag.lock { display: inline-flex; align-items: center; gap: 4px; background: var(--moss-soft); color: var(--ink); }
 .tag.lock .icon { width: 14px; height: 14px; }
-.cite.private { display: inline-flex; align-items: center; gap: 4px; }
-.cite.private .icon { width: 13px; height: 13px; }
-.private-bar { padding: 14px 16px; display: grid; gap: 8px; margin: 16px 0; }
-.private-bar-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; }
-.mask-warn { color: var(--ink); border-left: 3px solid var(--line); padding-left: 8px; }
-.unmasked { white-space: pre-wrap; overflow-wrap: anywhere; }
+.cite.own { display: inline-flex; align-items: center; gap: 4px; }
+.cite.own .icon { width: 13px; height: 13px; }
 .lead-notes { list-style: none; padding: 0; margin: 8px 0; display: grid; gap: 4px; font-size: 0.92em; }
-.private-link { margin-top: 12px; }
-.private-link a { display: inline-flex; align-items: center; gap: 6px; }
-.thread.private .hint, .thread.said .hint { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.thread.said .hint { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 
-/* ----- S18: private mode as a state, student mode ----- */
-/* Cloud on adds an amber edge, because then text leaves the server (S23). */
-body.cloud-on { box-shadow: inset 0 0 0 4px var(--ember-fill); }
-body.cloud-on .bar { border-bottom-color: var(--ember-fill); }
 .tag.sample { background: var(--brick-soft); color: var(--brick); border: 1px dashed var(--brick); }
 .tag.amber { background: var(--ember-soft); color: var(--ember); }
 .card.lead.is-sample { border-style: dashed; border-color: var(--brick); }
 .sample-note { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
-.nudge { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--model); background: var(--model-soft); }
 .gaps ul, .lead .notes { margin: 4px 0 8px; padding-left: 20px; }
 .lead .notes li { color: var(--ink-2); }
 table.compare { border-collapse: collapse; width: 100%; font-size: 14px; }
@@ -1019,7 +986,6 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .box-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
 .box label.big, .box .big { font-size: 16px; font-weight: 600; }
 .box .note { font-size: 13px; color: var(--ink-2); }
-.box .local { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
 .box textarea, .box input[type="text"], .box input[type="number"], .box select { background: var(--bg); font-size: 15px; }
 .box textarea { padding: 10px 12px; line-height: 1.5; resize: vertical; min-height: 96px; font-family: var(--sans); }
 .box .file-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
@@ -1039,7 +1005,7 @@ body[data-screen="landing"] .foot .promises { display: grid; }
   border-radius: 14px; padding: 12px; display: grid; gap: 6px; box-shadow: 0 10px 30px rgba(0, 0, 0, .18); text-align: left; }
 .export-pop .btn { justify-content: flex-start; }
 .export-pop .hint { font-size: 13px; }
-.export-pop .private-bar { margin: 0; padding: 2px 4px; }
+.export-pop .export-bar { margin: 0; padding: 2px 4px; }
 .export-pop .export { padding-top: 0; flex-direction: column; align-items: stretch; }
 .export-pop .check { min-height: 40px; font-size: 14px; }
 .export-pop details summary { font-size: 14px; }
@@ -1169,20 +1135,6 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .threads .thread:nth-child(3n+3) .meter span { background: var(--ember-fill); }
 .key-papers { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 
-/* the Local / Cloud dialog */
-.dialog { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); padding: 0; width: min(520px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
-.dialog::backdrop { background: rgba(8, 14, 12, .6); }
-.dialog-in { padding: 22px; display: grid; gap: 14px; }
-.dialog h2 { font: 500 26px/1.2 var(--serif); }
-.dialog .opt { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 12px; border: 1px solid var(--line); cursor: pointer; }
-.dialog .opt input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent); flex: none; }
-.dialog .opt.on { border-color: var(--accent); }
-.dialog .opt.off { opacity: .65; cursor: not-allowed; }
-.dialog .opt b { display: block; font-size: 16px; }
-.dialog .opt span { font-size: 14px; color: var(--ink-2); line-height: 1.5; }
-.dialog .warn-box { background: var(--ember-soft); border-radius: 12px; padding: 12px 14px; font-size: 14px; line-height: 1.5; }
-.dialog .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.dialog ul { margin: 0; padding-left: 20px; color: var(--ink-2); font-size: 14px; display: grid; gap: 4px; }
 
 /* Ask Scout as a chat window (S27): one column fills the window under the sticky tabs, the
    conversation scrolls inside it, the question box sits on the bottom edge of the screen,
@@ -1217,7 +1169,6 @@ body[data-screen="landing"] .foot .promises { display: grid; }
   .cand { padding: 16px; }
   .cand .btn { width: 100%; }
   .bar-in { padding: 8px 12px; }
-  .status-chip { padding: 0 10px; font-size: 13px; }
   .bar-tools .btn.quiet { padding: 0 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .fade-in, .shimmer-card { animation: none; } }
@@ -1251,20 +1202,12 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .reason { font-size: 14px; color: var(--ink-2); line-height: 1.5; }
 .reason b { color: var(--ink); }
 .reason .notes { margin: 2px 0 0; }
-.dialog .warn-box.strong { background: var(--no-bg); display: grid; gap: 8px; }
-/* The second warning's list of documents that would leave (Q33). */
-.dialog .docs-leave { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
-.dialog .warn-box.strong p { margin: 0; }
-/* Model text that ran on Cloud carries the provider's name, as Scout's steps do. */
-.tag.model.cloud { box-shadow: inset 0 0 0 1px var(--ember); color: var(--ink); }
-/* Phone header (S24 walk): wordmark, Help and theme on one row; the chip and End session under it. */
+/* Phone header (S24 walk): wordmark, Help and theme on one row. */
 @media (max-width: 479px) {
   .bar-in { display: grid; grid-template-columns: 1fr auto auto; align-items: center; row-gap: 4px; }
   .bar-tools { display: contents; }
   #help { grid-column: 2; grid-row: 1; }
   #theme { grid-column: 3; grid-row: 1; }
-  .status-chip { grid-column: 1; grid-row: 2; justify-self: start; }
-  #end-session { grid-column: 2 / -1; grid-row: 2; justify-self: end; }
 }
 /* 44 px targets where the walk found smaller ones */
 .cite { min-height: 32px; display: inline-flex; align-items: center; }
@@ -1332,10 +1275,9 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
 .common-lines { padding: 10px 14px; border-radius: 10px; background: var(--chip); color: var(--ink-2); font-size: 14px; line-height: 1.5; }
 .common-lines .mini { margin: 0 0 2px; }
 .common-lines ul { margin: 0; padding-left: 18px; }
-/* At 320 px (400 % zoom) the four tabs fit on one row and the chip says only its first word (U22). */
+/* At 320 px (400 % zoom) the four tabs fit on one row (U22). */
 @media (max-width: 359px) {
   .tabs .tab { padding: 0 6px; font-size: 14px; flex: 1 1 auto; }
-  .chip-rest { display: none; }
 }
 /* Filter chips on Routes, from the leads' own agency and activity-code values (U25). */
 .filter-chips { display: flex; flex-wrap: wrap; gap: 6px; }

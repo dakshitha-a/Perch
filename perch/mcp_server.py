@@ -13,12 +13,10 @@ Budgets per connection: at most MAX_CALLS tool calls, of which MAX_MODEL_CALLS m
 call a model. Transport: stdio only, so the server runs on the machine of the process
 that starts it.
 
-`--private` runs every tool on a private session (perch.private): nothing is written
-to the store, caches or logs, and the server refuses to start unless every model is
-self-hosted on an allowed endpoint (perch.privacy). Private documents cannot be added
-through MCP yet; that stays in the web app.
+The server reads public records only: it has no account and cannot read a user's CV or
+entries, which stay in the web app.
 
-  uv run perch mcp [--author A5026494099] [--private]
+  uv run perch mcp [--author A5026494099]
 """
 
 from __future__ import annotations
@@ -113,8 +111,7 @@ def mcp_tools() -> list[types.Tool]:
             for t, _ in TOOLS.values()]
 
 
-def create_server(ctx: ScoutContext, budget: Budget | None = None,
-                  private: bool = False) -> Server:
+def create_server(ctx: ScoutContext, budget: Budget | None = None) -> Server:
     budget = budget or Budget()
 
     async def list_tools(_ctx: object, _params: object) -> types.ListToolsResult:
@@ -130,9 +127,7 @@ def create_server(ctx: ScoutContext, budget: Budget | None = None,
         return types.CallToolResult(content=[types.TextContent(type="text", text=text)],
                                     structured_content=json.loads(text), is_error=err)
 
-    note = (" This server runs in private mode: nothing is saved or logged, and only "
-            "self-hosted models are used." if private else "")
-    return Server("perch", version="0.1.0", instructions=INSTRUCTIONS + note,
+    return Server("perch", version="0.1.0", instructions=INSTRUCTIONS,
                   on_list_tools=list_tools, on_call_tool=call_tool)
 
 

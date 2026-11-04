@@ -14,7 +14,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
-from perch import datefmt, egress
+from perch import datefmt
 from perch.compare import award_size, lower_first
 from perch.llm import Message
 from perch.llm.audit import AuditedProvider
@@ -64,7 +64,7 @@ BANNED = re.compile(
 
 
 # Inline citations a model adds anyway, e.g. " [W123, PAR-26-121]", " [26-519]" or
-# " [private:proposal]".
+# " [user:proposal]".
 BRACKETED = re.compile(r"\s*\[([^\[\]]+)\]")
 
 
@@ -74,7 +74,7 @@ def plain_citations(text: str, records: dict[str, Record], listed: set[str]) -> 
     bracket that holds anything but citation keys stays as written."""
     def swap(m: re.Match) -> str:
         keys = [k.strip() for k in m.group(1).split(",")]
-        if not all(k in records or egress.is_private_id(k) for k in keys):
+        if not all(k in records or k.startswith("user:") for k in keys):
             return m.group(0)
         out = [rec.opportunity_number for k in keys if k not in listed
                and isinstance(rec := records.get(k), Opportunity)]
@@ -92,7 +92,6 @@ class Draft:
     flagged: bool = False  # the model paragraph was withheld after two failures
     errors: list[str] = field(default_factory=list)
     model: str | None = None
-    withheld: str | None = None  # why the model paragraph stayed in Perch (S8)
     opening_by: str = "code"  # F7: "model" when a model wrote the opening paragraph
 
 
@@ -184,50 +183,19 @@ def assemble(office: Office, researcher: Researcher, opening: str,
               else "These are the leads I would like to discuss:", "\n".join(lead_lines(items))]
     if papers:
         blocks += ["The papers they draw on:", "\n".join(paper_lines(papers))]
-    # F19: a session's documents are named, as the export's header names them.
+    # F19: the user's own documents are named, as the export's header names them.
     note = (f"Perch drafted this from {'your documents and ' if documents else ''}public "
             "records. Each date and amount above is copied from the linked record.")
     if any(x.route == "B" for x, _ in items):
         note += (" Industry leads are inferences from public signals, not verified interest. "
                  + RESEARCH_SECURITY)
     # A researcher with no public profile signs the email themselves (Q26).
-    name = "" if researcher.id.startswith("private:") else researcher.display_name
+    name = "" if researcher.id.startswith("user:") else researcher.display_name
     blocks += [note, f"Best regards,\n{name}"]
     return "\n\n".join(blocks)
 
 
 FALLBACK = "I would like to talk with your team about the funding leads listed below."
-# F7: a session's documents named in the first person, in a code-written opening.
-MY_DOCUMENTS = {"proposal": "my draft proposal", "direction": "my research direction",
-                "manuscript": "my unpublished work", "cv": "my CV",
-                "interests": "my interests note", "achievement": "my achievements",
-                "achievements": "my achievements"}
-DOCS_OPENING_NOTE = ("Written by Perch’s code from the lead’s title and the names of your "
-                     "documents. No model read your documents for this draft.")
-
-
-def _and(xs: list[str]) -> str:
-    return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
-
-
-def documents_opening(items: list[tuple[Lead, Record | None]], private: list[Work],
-                      papers: list[Work]) -> str:
-    """F7: the opening for a session that holds documents and no masking, by code with no
-    model call: the leads by title and the documents by kind. Nothing about their content."""
-    names = [rec.title if isinstance(rec, Opportunity) else rec.name
-             for _, rec in items if isinstance(rec, Opportunity | Organisation)]
-    # G22: the CV steers no search (it is read for eligibility only), so the lead was not
-    # matched "from my CV"
-    keys = [d.id.removeprefix("private:").split("-")[0].split("#")[0] for d in private]
-    kinds = list(dict.fromkeys(MY_DOCUMENTS.get(k, "my documents") for k in keys if k != "cv"))
-    sources = (["my published papers"] if papers else []) + kinds
-    what = (_and(names) if 0 < len(names) <= 2
-            else f"the {len(items)} leads listed below" if items else "the leads listed below")
-    head = f"I would like to talk with your team about {what}."
-    return head + (f" Perch matched {'it' if len(items) == 1 else 'them'} to my work from "
-                   f"{_and(sources)}." if sources else "")
-
-
 # F7: a citation that names no record, or a placeholder for one, is not a citation.
 EMPTY_CITE = re.compile(r"\[\s*\]|\bno (?:papers?|records?|documents?) (?:were |was )?"
                         r"(?:provided|given|available)\b", re.I)
@@ -235,20 +203,16 @@ EMPTY_CITE = re.compile(r"\[\s*\]|\bno (?:papers?|records?|documents?) (?:were |
 
 def draft_handoff(office: Office, researcher: Researcher,
                   items: list[tuple[Lead, Record | None]], papers: list[Work],
-                  provider: AuditedProvider | None, masker: egress.Masker | None = None,
-                  private: list[Work] | None = None) -> Draft:
+                  provider: AuditedProvider | None,
+                  user_docs: list[Work] | None = None) -> Draft:
     """items: the kept leads for this office with their opportunity or organisation.
-    `private`: a private session's documents, which the model may cite. They sit in the
-    prompt, so with documents the paragraph is private-derived whatever it cites: it is
-    withheld, and no model runs, unless masked (perch.egress, S8)."""
-    papers = egress.public_only(papers)[:MAX_PAPERS]
+    `user_docs`: the signed-in user's own documents, which the model may cite. They reach
+    the model only after the user's consent at sign-up (standing rule 5), with contact
+    details blanked first; the draft is the user's own and nothing is sent."""
+    papers = [w for w in papers if w.source != "user"][:MAX_PAPERS]
     lead_ids = [x.id for x, _ in items]
     subject = subject_for(items)
-    docs = bool(private)
-    if provider is not None and private and masker is None:
-        return Draft(office, subject, assemble(office, researcher, documents_opening(
-            items, private, papers), items, papers, docs), lead_ids,
-            withheld=egress.HANDOFF_WITHHELD)
+    docs = bool(user_docs)
     if provider is None:
         return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers,
                                                docs), lead_ids)
@@ -263,9 +227,9 @@ def draft_handoff(office: Office, researcher: Researcher,
             views.append(org_view(lead, rec if isinstance(rec, Organisation) else None))
     prompt = (f"Researcher: {researcher.display_name}\nOffice: {office.name}\n\nLeads:\n"
               + "\n".join(views) + "\n\nPapers:\n" + "\n".join(work_view(w) for w in papers))
-    for d in private or []:
+    for d in user_docs or []:
         records[d.id] = d
-        prompt += "\n\nPrivate document:\n" + work_view(d, abstract_chars=1500)
+        prompt += "\n\nYour document:\n" + work_view(d, abstract_chars=1500)
 
     def generate(feedback: list[str]) -> tuple[str, list[str]]:
         msg = prompt + ("\n\nYour previous answer was rejected: " + "; ".join(feedback)
@@ -288,7 +252,7 @@ def draft_handoff(office: Office, researcher: Researcher,
             errors.append(f"the paragraph says {m.group(0)!r}: cite only records you were given")
         for g in BRACKETED.findall(text):
             keys = [k.strip() for k in g.split(",")]
-            if not all(k in records or egress.is_private_id(k) for k in keys):
+            if not all(k in records or k.startswith("user:") for k in keys):
                 errors.append(f"the bracket [{g}] names no record you were given")
         if m := BANNED.search(text):
             errors.append(f"the paragraph says {m.group(0)!r}; describe fit only")
@@ -305,12 +269,6 @@ def draft_handoff(office: Office, researcher: Researcher,
                      model=provider.model)
     text, cited = v.value
     text = plain_citations(text, records, set(records))  # every record given is listed below
-    if egress.uses_private(cited) and masker is None:
-        return Draft(office, subject, assemble(office, researcher, FALLBACK, items, papers,
-                                               docs), lead_ids, cited_ids=cited,
-                     model=provider.model, flagged=True, errors=[egress.WITHHELD])
-    released = (egress.release_model(text, cited, masker, bool(private)) if private
-                else egress.release(text, cited, masker))
-    return Draft(office, subject, assemble(office, researcher, released or FALLBACK, items,
+    return Draft(office, subject, assemble(office, researcher, text or FALLBACK, items,
                                            papers, docs), lead_ids, cited_ids=cited,
-                 model=provider.model, opening_by="model" if released else "code")
+                 model=provider.model, opening_by="model" if text else "code")

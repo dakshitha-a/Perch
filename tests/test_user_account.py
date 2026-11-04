@@ -432,8 +432,8 @@ def test_the_brief_routes_use_the_account_store_when_the_app_has_account_service
     app.state.user_services = env.client.app.state.user_services
     app.dependency_overrides[deps.session_optional] = lambda request: env.session
     c = TestClient(app)
-    r = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28",
-                                "audience": "student"})
+    env.session.audience = "researcher"  # the side decides: a student brief has no author id
+    r = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28"})
     assert r.status_code == 202, r.text
     bid = r.json()["id"]
     assert uuid.UUID(bid) and r.json()["job_id"]

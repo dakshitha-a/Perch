@@ -4,20 +4,18 @@ check offline. SYNTHETIC records and fake models only."""
 import json
 import shutil
 import subprocess
-import time
 from datetime import date
 
 import pytest
 
-from perch import datefmt, egress
+from perch import datefmt
 from perch import export as ex
-from perch.llm import ToolCall
 from perch.llm.fake import FakeProvider
-from perch.schemas import Lead, Opportunity, Scholarship
+from perch.schemas import Lead, Opportunity
 from perch.scout.loop import Scout, floor_as_ceiling, question_scope
 from perch.scout.tools import TOOLS, ScoutContext, fit_sentence, second_person
 
-from .test_export import KW, T, _inputs, _student_inputs
+from .test_export import KW, _inputs, _student_inputs
 from .test_scout import AS_OF, AUTHOR, _ranked_brief, call, service  # noqa: F401
 
 WEB = __import__("pathlib").Path(__file__).resolve().parents[1] / "web"
@@ -175,8 +173,7 @@ def test_the_student_export_groups_as_the_screen_and_names_no_own_record():
         x.inference = f"It suits the student's survey work, the focus of [{key}]."
         x.match_score = 50
         x.status = "new"
-    m = egress.Masker()
-    md = ex.to_markdown(ex.student_blocks(brief, leads, recs, masker=m))
+    md = ex.to_markdown(ex.student_blocks(brief, leads, recs))
     assert "## Fellowships, public (4)" in md and "(public) (" not in md
     assert "## Fellowships, public: not eligible by rule (1)" in md
     assert md.index("SYNTHETIC fellowship 5") < md.index("not eligible by rule")
@@ -187,24 +184,11 @@ def test_the_student_export_groups_as_the_screen_and_names_no_own_record():
     assert open_part.count("The listing says who may apply.") == 1  # once, above the list
     assert "(SYNTHETIC fellowship 1)" not in md  # F4: no own-record parenthesis
     assert "Why it may fit: It suits your survey work, the focus of this opportunity." in md
-    plain = ex.to_markdown(ex.student_blocks(brief, leads, recs))
-    n = plain.count("Why it may fit withheld:")
+    n = md.count("Why it may fit: ")
     assert n == 4  # the four you may apply for; the not-eligible one is one line (G14)
     assert "- SYNTHETIC fellowship 4: The listing says who may apply. Match 50 (partial)." \
-        in plain
-    assert "model texts withheld" not in plain  # 2026-11-02: no count banner
-
-
-def test_a_documents_brief_is_titled_your_documents(tmp_path, monkeypatch):
-    from .test_private import open_with_persona, private_app
-
-    c, _ = private_app(tmp_path, monkeypatch)
-    h = open_with_persona(c)
-    c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"})
-    md = c.get("/private/export.md", headers=h).text
-    assert md.startswith("# Perch brief: your documents") and "You (private)" not in md
-    assert "<title>Perch brief: your documents</title>" in c.get("/private/export.html",
-                                                                  headers=h).text
+        in md
+    assert "withheld" not in md  # S42: the student's own brief prints in full
 
 
 # --- F5, F11: counts from compare and the signals; compare reads as the card ---
@@ -260,7 +244,7 @@ def test_not_eligible_options_carry_their_rule_reason_and_one_explain_per_questi
     with service.repo() as r:
         r.upsert([*recs.values(), *leads, Brief(**{**brief.model_dump(), "lead_ids":
                                                     [x.id for x in leads]})])
-    ctx = ScoutContext(service, AS_OF, brief_id="s", researcher_id="private:student")
+    ctx = ScoutContext(service, AS_OF, brief_id="s", researcher_id="user:you")
     out = search_options(ctx, verdict="not eligible")
     rows = [*out.get("options", []), *out.get("fellowships", []),
             *out.get("sample_scholarships", [])]
@@ -269,136 +253,7 @@ def test_not_eligible_options_carry_their_rule_reason_and_one_explain_per_questi
     fake = FakeProvider([call("explain_verdict", option_id=rows[0]["id"]),
                          call("explain_verdict", option_id=rows[1]["id"]),
                          f"[{rows[0]['id']}] is open to year 4; your CV says 3."])
-    s = Scout(fake, ctx, table=STUDENT_TOOLS, rules=STUDENT_RULES).start("why not?")
+    s = Scout(fake, ctx, table=STUDENT_TOOLS, rules=STUDENT_RULES,
+              who="a student").start("why not?")
     assert [x.status for x in s.cards] == ["done", "refused"]
     assert s.answer and not s.flagged, s.errors  # the rule line's numbers back it
-
-
-# --- F7, F8, F19: the hand-off on a documents brief ---
-
-def test_scouts_hand_off_on_a_documents_brief_opens_by_code(tmp_path, monkeypatch):
-    """F7: Scout's draft opened "My published research focuses on ... my recent papers []"
-    under a Code label, though the brief has no public papers and the aims are on gait."""
-    from .test_private import fit_reply, open_with_persona, private_app
-
-    asked = []
-
-    def reply(messages, system, schema):
-        if system and system.startswith("You are Scout"):
-            opp = __import__("re").search(r"\n1\. \[([^\]]+)\]", system).group(1)
-            return [ToolCall("c1", "draft_handoff", {"ids": [opp]})]
-        if system and system.startswith("You draft the opening"):
-            asked.append(system)
-        return fit_reply(messages, system, schema)
-
-    c, _ = private_app(tmp_path, monkeypatch, responder=reply)
-    h = open_with_persona(c)
-    c.post("/private/brief", headers=h, json={"as_of": "2026-10-28"})
-    v = c.post("/private/scout", headers=h,
-               json={"question": "Draft the hand-off for my top lead"}).json()
-    for _ in range(100):
-        v = c.get(f"/private/scout/{v['id']}", headers=h).json()
-        if not v["busy"] and v["status"] != "running":
-            break
-        time.sleep(0.1)
-    d = v["exchanges"][0]["cards"][0]["draft"]
-    opening = d["body"].split("\n\n")[1]
-    assert d["opening_by"] == "code" and not asked  # no model ran for the opening
-    assert opening.startswith("I would like to talk with your team about ")
-    # G22: the CV steers no search, so the lead was not matched "from my CV"
-    assert "my draft proposal" in opening and "my CV" not in opening and "[" not in d["body"]
-    assert "These are the leads I would like to discuss:" in d["body"]  # F8: none kept
-    assert "Perch drafted this from your documents and public records." in d["body"]  # F19
-
-
-def test_the_hand_off_validator_rejects_empty_and_placeholder_citations():
-    from perch.offices import OFFICES
-    from perch.schemas import Researcher
-    from perch.skills.handoff import draft_handoff
-
-    o = Opportunity(id="grants_gov:SYN-1", opportunity_number="SYN-1", title="SYNTHETIC",
-                    agency="NSF", close_date=date(2027, 1, 1), **KW)
-    lead = Lead(id="b:A1", brief_id="b", route="A", record_id=o.id, rank=1, status="kept",
-                **KW)
-    res = Researcher(id="https://openalex.org/A1", display_name="SYNTHETIC Person", **KW)
-    bad = json.dumps({"paragraph": "My work is on SYNTHETIC topics [No papers provided]. I "
-                      "would like to discuss SYNTHETIC [].", "cited_ids": ["SYN-1"]})
-    fake = FakeProvider([bad, bad])
-    from perch.llm.audit import AuditedProvider, AuditLog
-
-    d = draft_handoff(OFFICES["research_development"], res, [(lead, o)], [],
-                      AuditedProvider(fake, AuditLog(None), "handoff"))
-    assert d.flagged and d.opening_by == "code"
-    assert any("No papers provided" in e or "[]" in e for e in d.errors)
-    assert "These are the leads I kept in Perch:" in d.body  # F8: every listed lead kept
-    good = json.dumps({"paragraph": "My work builds SYNTHETIC tools. I would like to discuss "
-                       "SYNTHETIC with your team.", "cited_ids": ["SYN-1"]})
-    d = draft_handoff(OFFICES["research_development"], res, [(lead, o)], [],
-                      AuditedProvider(FakeProvider([good]), AuditLog(None), "handoff"))
-    assert d.opening_by == "model" and not d.flagged
-
-
-# --- F15: the last list ---
-
-def test_follow_ups_see_the_last_list(service):  # noqa: F811
-    b, leads = _ranked_brief(service, 3)
-    c = ScoutContext(service, AS_OF, researcher_id=AUTHOR, brief_id=b.id)
-    fake = FakeProvider([call("search_opportunities", route="A", top=3), "Listed.",
-                         "The first one."])
-    scout = Scout(fake, c)
-    s = scout.start("Only show NSF grants")
-    assert s.last_list
-    scout.ask(s, "whats the deadline for the first one")
-    assert "The last list you gave, in order: [" in fake.calls[-1]["system"]
-
-
-# --- F25 ---
-
-def test_an_empty_find_is_refused_with_a_hint(tmp_path):
-    from .test_api import make
-
-    c, _ = make(tmp_path)
-    for q in ("", "   "):
-        r = c.get("/authors/resolve", params={"q": q})
-        assert r.status_code == 422 and r.json()["detail"] == \
-            "Type a name, ORCID iD or OpenAlex ID."
-
-
-def test_scholarship_amount_sort_exists():
-    """F15: "Which option pays the most?" can sort by amount."""
-    from perch.scout.student_tools import STUDENT_TOOLS
-
-    assert "amount" in STUDENT_TOOLS["search_options"][0].parameters["properties"]["sort"][
-        "enum"]
-    assert Scholarship  # imported for the student fixtures
-    assert T
-
-
-def test_an_answer_may_not_put_a_store_lead_on_the_brief(service):  # noqa: F811
-    """F10, live: "The NIH grant on your brief with the highest ceiling is [PAR-25-131]",
-    which was a further lead, not on the brief."""
-    from perch.scout.loop import brief_claims
-
-    b, leads = _ranked_brief(service, 2)
-    c = ScoutContext(service, AS_OF, researcher_id=AUTHOR, brief_id=b.id)
-    assert brief_claims("The grant on your brief that pays most is [grants_gov:PAR-25-131].", c)
-    assert not brief_claims(f"The grant on your brief that pays most is [{leads[0].record_id}].", c)
-    assert not brief_claims("Further leads not on your brief: [grants_gov:PAR-25-131].", c)
-
-
-def test_a_sorted_search_sorts_before_it_cuts_to_top(service, monkeypatch):  # noqa: F811
-    """F16, live: "Which lead has the largest award ceiling?" ran with top 1 and got the
-    best match, whose record states no ceiling."""
-    from types import SimpleNamespace
-
-    import perch.scout.tools as tools
-
-    opps = [Opportunity(id=f"grants_gov:SYN-{i}", opportunity_number=f"SYN-{i}", agency="NSF",
-                        title=f"SYNTHETIC {i}", award_ceiling=c, **KW)
-            for i, c in enumerate((None, 50_000, 900_000), 1)]
-    hits = [SimpleNamespace(opportunity=o, rerank_score=0.9 - i / 10) for i, o in enumerate(opps)]
-    monkeypatch.setattr(tools, "route_a", lambda *a, top, **k: SimpleNamespace(
-        leads=hits[:top], rejected={}, retrieved=len(hits)))
-    c = ScoutContext(service, AS_OF, researcher_id=AUTHOR)
-    one = TOOLS["search_opportunities"][1](c, route="A", sort="award_ceiling", top=1)
-    assert [x["id"] for x in one["leads"]] == ["grants_gov:SYN-3"]

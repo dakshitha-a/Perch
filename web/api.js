@@ -8,6 +8,31 @@ class ApiError extends Error {
   }
 }
 
+// The server's {"detail": {"error": "<code>"}} answers, in plain words. Kept small.
+const ERROR_WORDS = {
+  auth_required: "Start a guest session to continue.",
+  account_required: "Sign in to use this: guests cannot draft hand-offs or use Scout.",
+  consent_required: "Accept the consent at sign-up first.",
+  rate_limited: "You have reached your limit for now. Try again later.",
+  quota_exceeded: "You have reached your limit for now. Try again later.",
+};
+
+function detailText(body, status) {
+  const d = body && body.detail;
+  if (typeof d === "string") return d;
+  if (d && typeof d === "object" && !Array.isArray(d)) {
+    return ERROR_WORDS[d.error] || `The server answered ${status}.`;
+  }
+  return `The server answered ${status}.`;
+}
+
+function failed(body, status) {
+  const err = new ApiError(detailText(body, status), status);
+  const d = body && body.detail;
+  err.code = d && typeof d === "object" ? d.error || null : null;
+  return err;
+}
+
 async function call(base, path, opts = {}) {
   let r;
   try {
@@ -16,30 +41,103 @@ async function call(base, path, opts = {}) {
     throw new ApiError("Perch's server did not answer. Check that `perch serve` is running.", 0);
   }
   const body = await r.json().catch(() => ({}));
-  if (!r.ok) throw new ApiError(typeof body.detail === "string" ? body.detail
-    : `The server answered ${r.status}.`, r.status);
+  if (!r.ok) throw failed(body, r.status);
   return body;
 }
 
+// The live API. The session is a cookie the server sets; the CSRF token it hands back is
+// kept in memory only and sent on every request that is not a GET. A visitor with no
+// session gets a guest session before the first brief, on the side (audience) they asked
+// for. `onExpired(message)` runs when the server no longer knows the session.
 export function liveApi(base = "") {
-  return {
-    mode: "live",
-    resolve: (q) => call(base, `/authors/resolve?q=${encodeURIComponent(q)}`),
-    create: (req) => call(base, "/briefs", { method: "POST", body: JSON.stringify(req) }),
-    brief: (id) => call(base, `/briefs/${encodeURIComponent(id)}`),
-    setLead: (id, leadId, action) => call(base,
-      `/briefs/${encodeURIComponent(id)}/leads/${encodeURIComponent(leadId)}/${action}`,
-      { method: "POST" }),
-    record: (id) => call(base, `/records/${encodeURIComponent(id)}`),
-    compare: (id) => call(base, `/briefs/${encodeURIComponent(id)}/compare`),
-    handoff: (id, body) => call(base, `/briefs/${encodeURIComponent(id)}/handoff`,
-      { method: "POST", body: JSON.stringify(body) }),
-    scoutStart: (id, body) => call(base, `/briefs/${encodeURIComponent(id)}/scout`,
-      { method: "POST", body: JSON.stringify(body) }),
-    scoutGet: (sid) => call(base, `/scout/${encodeURIComponent(sid)}`),
-    scoutAct: (sid, action, body) => call(base, `/scout/${encodeURIComponent(sid)}/${action}`,
-      { method: "POST", body: JSON.stringify(body) }),
+  let csrf = null, audience = null, guest = false;
+  let epoch = 0; // bumps when the session is lost, so calls that fail together report it once
+  let last = { id: null, etag: null, body: null }; // the last brief answer, for 304 (P3)
+  const api = { mode: "live", onExpired: null };
+
+  const adopt = (r) => { csrf = r.csrf || null; audience = r.audience || null; return r; };
+  const lost = (e, from) => {
+    if (e instanceof ApiError && e.status === 401 && from === epoch) {
+      epoch += 1;
+      csrf = null; audience = null; guest = false; last = { id: null, etag: null, body: null };
+      if (api.onExpired) api.onExpired("Your guest session ended, so Perch went back to the start. A guest session lasts an hour. Start again whenever you are ready.");
+    }
+    throw e;
   };
+  // The session for this side: the cookie's own if it has one. Only a new brief
+  // (`side` given) starts a guest session when there is none, or when the guest is on
+  // the other side. Other calls just pick up the cookie's CSRF token, or answer 401.
+  async function ensure(side) {
+    if (csrf && (!side || side === audience || !guest)) return;
+    if (!csrf) {
+      const now = await call(base, "/auth/session");
+      if (now.csrf) { adopt(now); guest = Boolean(now.guest); }
+      if (!side || (now.csrf && (now.audience === side || !now.guest))) return;
+    }
+    const made = adopt(await call(base, "/auth/guest", { method: "POST", body: JSON.stringify({ audience: side }) }));
+    guest = Boolean(made.guest);
+  }
+  const hdr = (method) => ({ "Content-Type": "application/json",
+    ...(method && method !== "GET" && csrf ? { "X-CSRF-Token": csrf } : {}) });
+  const p = async (path, opts = {}) => {
+    await ensure(null);
+    const from = epoch;
+    return call(base, path, { ...opts, headers: hdr(opts.method) }).catch((e) => lost(e, from));
+  };
+  const post = (path, body) => p(path, { method: "POST", ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+  const bid = (id) => `/briefs/${encodeURIComponent(id)}`;
+  Object.assign(api, {
+    resolve: (q) => call(base, `/authors/resolve?q=${encodeURIComponent(q)}`),
+    create: async (req, side = "researcher") => {
+      await ensure(side);
+      last = { id: null, etag: null, body: null };
+      const from = epoch;
+      return call(base, "/briefs", { method: "POST", headers: hdr("POST"), body: JSON.stringify(req) })
+        .catch((e) => lost(e, from));
+    },
+    // A poll sends the last ETag; 304 means nothing changed, so the last body is reused.
+    // Held in memory only; the server marks the answer no-store.
+    brief: async (id) => {
+      await ensure(null);
+      const from = epoch;
+      let r;
+      try {
+        r = await fetch(`${base}${bid(id)}`, { headers: { ...hdr("GET"),
+          ...(last.etag && last.id === id ? { "If-None-Match": last.etag } : {}) } });
+      } catch {
+        throw new ApiError("Perch's server did not answer. Check that `perch serve` is running.", 0);
+      }
+      if (r.status === 304 && last.body && last.id === id) return JSON.parse(last.body);
+      const text = await r.text();
+      let body = {};
+      try { body = JSON.parse(text); } catch { /* not JSON */ }
+      if (!r.ok) lost(failed(body, r.status), from);
+      last = { id, etag: r.headers.get("ETag"), body: text };
+      return body;
+    },
+    setLead: (id, leadId, action) => post(`${bid(id)}/leads/${encodeURIComponent(leadId)}/${action}`),
+    record: (id) => p(`/records/${encodeURIComponent(id)}`),
+    compare: (id) => p(`${bid(id)}/compare`),
+    handoff: (id, body) => post(`${bid(id)}/handoff`, body),
+    studentNote: (id, route) => p(`${bid(id)}/student/note?route=${encodeURIComponent(route)}`),
+    // The export as a Blob (a plain fetch with the cookie); the caller saves or opens it.
+    exportFile: async (id, kind, status = null) => {
+      await ensure(null);
+      const from = epoch;
+      let r;
+      try {
+        r = await fetch(`${base}${bid(id)}/export.${kind}${status ? `?status=${encodeURIComponent(status)}` : ""}`);
+      } catch {
+        throw new ApiError("Perch's server did not answer. Check that `perch serve` is running.", 0);
+      }
+      if (!r.ok) lost(failed(await r.json().catch(() => ({})), r.status), from);
+      return r.blob();
+    },
+    scoutStart: (id, body) => post(`${bid(id)}/scout`, body),
+    scoutGet: (sid) => p(`/scout/${encodeURIComponent(sid)}`),
+    scoutAct: (sid, action, body) => post(`/scout/${encodeURIComponent(sid)}/${action}`, body),
+  });
+  return api;
 }
 
 // Seconds each stage takes in replay. Explanations land one per EXPLAIN_STEP.
@@ -140,7 +238,7 @@ export function replayApi(data) {
     // A student preview (scripts/export_student_replay.py) holds the server's note for its
     // top option on each route, and the office names; other kept sets say so (review W9).
     studentOffices: data.offices || null,
-    studentNote: (route) => {
+    studentNote: (_id, route) => {
       const rec = (data.notes || {})[route];
       if (!rec) return Promise.reject(new ApiError("The note needs the live app.", 0));
       const kept = leadsIn().filter((l) => l.status === "kept" && l.route === route).map((l) => l.id).sort();
@@ -161,105 +259,4 @@ export function replayApi(data) {
     scoutAct: () => Promise.reject(new ApiError("This preview holds one recorded answer. Ask follow-ups in the live app.", 0)),
     briefId: final.brief.id,
   };
-}
-
-// The session id sits in this tab's sessionStorage (review W18, U2), so a reload finds the
-// brief the server still holds. Another tab does not share it, and closing the tab forgets
-// it. Beside it sit flags only (such as "the brief came from the SYNTHETIC sample"): never
-// text, a brief or a lead. Storage can be blocked; then nothing resumes, and that is all.
-const TAB_KEY = "perch.session";
-const TAB_FLAGS = "perch.flags";
-function tabStore() {
-  try { return typeof sessionStorage === "undefined" ? null : sessionStorage; } catch { return null; }
-}
-function tabGet(key) {
-  try { const s = tabStore(); return s ? s.getItem(key) : null; } catch { return null; }
-}
-function tabSet(key, value) {
-  try {
-    const s = tabStore();
-    if (!s) return;
-    if (value === null) s.removeItem(key); else s.setItem(key, value);
-  } catch { /* storage blocked: a reload starts over */ }
-}
-
-// A session (S13; every brief since S23): the same shape as liveApi, scoped to one session. The session
-// id travels in a header, never in a path or a query.
-export function privateApi(base = "") {
-  let token = tabGet(TAB_KEY);
-  const keep = (t) => { token = t; tabSet(TAB_KEY, t); if (!t) tabSet(TAB_FLAGS, null); };
-  const hdr = () => ({ "Content-Type": "application/json", "X-Perch-Private": token || "" });
-  // A 401 means the server no longer holds this session (30 minutes idle, or a restart).
-  // The token is dropped and `onExpired` runs once, so the app can go home and say so (S27).
-  let last = { token: null, etag: null, body: null }; // the last brief answer (P3)
-  const lost = (e) => {
-    if (e instanceof ApiError && e.status === 401 && token) {
-      keep(null);
-      if (api.onExpired) api.onExpired(e.message);
-    }
-    throw e;
-  };
-  const p = (path, opts = {}) => call(base, path, { ...opts, headers: hdr() }).catch(lost);
-  const post = (path, body = {}) => p(path, { method: "POST", body: JSON.stringify(body) });
-  const api = {
-    mode: "private",
-    onExpired: null,
-    get open() { return Boolean(token); },
-    info: () => call(base, "/private"),
-    sample: (name) => call(base, `/private/samples/${encodeURIComponent(name)}`),
-    start: async () => { const r = await call(base, "/private/session", { method: "POST" }); keep(r.token); return r; },
-    // A flag kept with the session id for this tab, e.g. flag("sample", true); flag("sample") reads it.
-    flag: (name, value) => {
-      let all = {};
-      try { all = JSON.parse(tabGet(TAB_FLAGS) || "{}") || {}; } catch { all = {}; }
-      if (value === undefined) return all[name];
-      if (!token) return value;
-      all[name] = value;
-      tabSet(TAB_FLAGS, JSON.stringify(all));
-      return value;
-    },
-    session: () => p("/private/session"),
-    addDocument: (body) => post("/private/documents", body),
-    // documents: the refs of the documents the second warning listed (Q33)
-    cloud: (on, confirm, documentsConfirm, documents = []) => post("/private/cloud", { on, confirm, documents_confirm: documentsConfirm || null, documents }),
-    removeDocument: (kind) => post(`/private/documents/${encodeURIComponent(kind)}/remove`),
-    create: (req) => post("/private/brief", req),
-    createStudent: (req) => post("/private/student/brief", req),
-    studentNote: (route) => p(`/private/student/note?route=${encodeURIComponent(route)}`),
-    end: async () => { try { await post("/private/end"); } finally { keep(null); last = { token: null, etag: null, body: null }; } },
-    // A poll sends the last ETag; 304 means nothing changed, so the last body is reused
-    // (P3). Held in memory only, like the token; the server marks the answer no-store.
-    brief: async () => {
-      const tok = token;
-      let r;
-      try {
-        r = await fetch(`${base}/private/brief`, { headers: { ...hdr(),
-          ...(last.etag && last.token === tok ? { "If-None-Match": last.etag } : {}) } });
-      } catch {
-        throw new ApiError("Perch's server did not answer. Check that `perch serve` is running.", 0);
-      }
-      if (r.status === 304 && last.body && last.token === tok) return JSON.parse(last.body);
-      const text = await r.text();
-      let body = {};
-      try { body = JSON.parse(text); } catch { /* not JSON */ }
-      if (!r.ok) lost(new ApiError(typeof body.detail === "string" ? body.detail : `The server answered ${r.status}.`, r.status));
-      last = { token: tok, etag: r.headers.get("ETag"), body: text };
-      return body;
-    },
-    setLead: (_id, leadId, action) => post(`/private/leads/${encodeURIComponent(leadId)}/${action}`),
-    record: (id) => p(`/private/records/${encodeURIComponent(id)}`),
-    // Downloads go through fetch with the header (exportFile), never a link.
-    exportFile: async (kind, mask) => {
-      const r = await fetch(`${base}/private/export.${kind}?mask=${mask ? "true" : "false"}`, { headers: hdr() });
-      if (!r.ok) lost(new ApiError(`The server answered ${r.status}.`, r.status));
-      return r.blob();
-    },
-    unmask: (text) => post("/private/unmask", { text }),
-    compare: () => p("/private/compare"),
-    handoff: (_id, body) => post("/private/handoff", body),
-    scoutStart: (_id, body) => post("/private/scout", body),
-    scoutGet: (sid) => p(`/private/scout/${encodeURIComponent(sid)}`),
-    scoutAct: (sid, action, body) => post(`/private/scout/${encodeURIComponent(sid)}/${action}`, body),
-  };
-  return api;
 }

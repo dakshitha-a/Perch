@@ -17,7 +17,7 @@ from perch.llm.contacts import blank_contacts
 from perch.schemas import Work, utcnow
 
 # Kinds of user document. The CV is parsed for eligibility and sponsor history only;
-# the other three become private research threads (shares in perch.threads).
+# the other three become query threads (shares in perch.threads).
 KINDS = {
     "cv": "Your CV",
     "proposal": "Draft proposal",

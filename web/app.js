@@ -1,50 +1,45 @@
 // Perch web app: Find -> Profile -> Routes, with the evidence panel (docs/design/UI.md).
 // Plain DOM, no build step. Every value from a record goes in through textContent.
 
-import { liveApi, privateApi, replayApi } from "./api.js";
+import { liveApi, replayApi } from "./api.js";
 import { add, evMark, fill, h, icon } from "./dom.js";
 import { renderHelp } from "./help.js";
 import { compareOffices, loadCompare, renderCompare } from "./compare.js";
 import { renderHandoff } from "./handoff.js";
-import { renderScout, resetScout } from "./scout.js";
+import { renderScout } from "./scout.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
-import { docsHeld, lockLabel, privateAvailable, privateBar, privateInfo, renderPrivate, resetPrivate, setMode } from "./private.js";
-import { createMode, crossesSide, looksPersonal } from "./mode.js";
-import { isStudent, keptWords, matchPill, resetStudent, usedSample, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
+import { isStudent, keptWords, matchPill, resetStudent, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
 
-const publicApi = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
-const privApi = privateApi(window.PERCH_API || "");
-let api = publicApi; // privApi while a session brief (#/brief/private) is on screen
-// Since S23 every brief runs in a session held in memory (private by default). The
-// header switch picks the models: Local (default) or Cloud, after a warning.
-const mode = createMode(privApi, { onChange: () => drawSwitch() });
-setMode(mode);
-privApi.onExpired = sessionExpired;
-const PRIVATE_ID = "private";
+const api = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
+// The server no longer knows the session (a guest session lasts an hour): go to the start
+// and say so on the landing page.
+api.onExpired = (message) => {
+  setTimeout(() => {
+    stopPolling();
+    S.notice = message;
+    announce(message);
+    go("#/");
+  }, 0);
+};
 const POLL_MS = 1500;
 const TABS = ["routes", "profile", "compare", "scout"]; // the order of the tabs (S24)
 const SOURCES = { openalex: "OpenAlex", grants_gov: "Grants.gov", nih_reporter: "NIH RePORTER",
-  nsf: "NSF Award Search", perch: "Perch", private: "Your private document (this session only)",
+  nsf: "NSF Award Search", perch: "Perch", user: "Your own document",
   temple_sdfa: "Temple Scholar Development and Fellowships Advising (public list)",
   synthetic: "SYNTHETIC sample corpus (invented, not a real scholarship)" };
 const KINDS = { opportunity: "Funding opportunity", work: "Paper", award: "Public award",
   researcher: "Researcher", organisation: "Organisation", lead: "Industry lead",
-  private: "Your private document", scholarship: "Scholarship or fellowship" };
+  user: "Your own document", scholarship: "Scholarship or fellowship" };
 const SIGNALS = { citing_works: "They cite your papers", sbir_sttr: "NIH SBIR/STTR awards",
   topic_works: "They publish in your topics" };
 
 const S = {
   find: { q: "", busy: false, error: null, candidates: null, searched: "", explain: true,
-    minAmount: "", direction: "", include: "", exclude: "", stage: "", nudge: null,
-    picked: null, cv: "", proposal: "", files: {}, sample: false, building: false },
+    minAmount: "", direction: "", include: "", exclude: "", stage: "",
+    picked: null, building: false },
   who: "r", // the landing's Researcher | Student control
-  notice: null, // a message for the landing, e.g. that the session ended (S27)
-  hasDocs: false, // the session holds documents: Cloud only after the second warning (Q33)
-  sampleBrief: false, // the brief on screen was steered by SYNTHETIC sample text
-  privateOn: false, // the server offers sessions
-  cloud: false, // Cloud on for this session
-  cloudDocs: false, // the user confirmed this session's documents for Cloud (Q33)
+  notice: null, // a message for the landing, e.g. that the guest session ended
   brief: null, // last GET /briefs payload
   briefId: null,
   tab: "routes",
@@ -52,15 +47,13 @@ const S = {
   route: "A", // Routes tab: "A" grants, "B" industry
   filter: null, // Routes, grants: {kind: "agency" | "code", value} from the leads' own values (U25)
   open: new Set(), // lead ids whose "Why it fits" is open
-  shut: new Set(), // with a CV or current research it starts open; ids the reader closed
+  shut: new Set(), // with the user's own documents it starts open; ids the reader closed
   stepsOpen: false,
   pollTimer: null,
   gen: 0, // bumps whenever the brief on screen changes; stale polls drop out
   failedPolls: 0,
   seen: { explained: 0, stagesDone: 0 },
   startedHere: false,
-  hasBrief: false, // the session holds a brief: leaving the page asks first (review W18)
-  sideChecked: false, // this arrival at a side's form passed the one-side check
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -82,7 +75,6 @@ function leaveBrief() {
   stopPolling();
   S.briefId = null;
   S.brief = null;
-  api = publicApi;
   closeEvidence();
 }
 
@@ -102,25 +94,12 @@ function route() {
     main().focus({ preventScroll: true });
     return;
   }
-  // One side per session: arriving at the other side's form asks to end it first.
-  if (SIDES[parts[0]] && privApi.open && !S.sideChecked) { sideGuard(SIDES[parts[0]]); return; }
-  S.sideChecked = false;
   S.lastHash = location.hash || "#/";
   if (location.hash && location.hash !== "#/") S.notice = null;
-  if (parts[0] === "private") {
-    leaveBrief();
-    screen("form");
-    renderPrivate(main(), { api: privApi, go, announce, mode, endSession,
-      // The chip says Local only once the session holds documents, on every path (U37).
-      onDocs: docsChanged });
-    return;
-  }
   if (parts[0] === "student") {
     leaveBrief();
     screen("form");
-    renderStudentStart(main(), { api: privApi, mode, go, announce, info: privateInfo() || {},
-      // The CV is a session document: the chip says Local only, as on Your documents (U37, Q7).
-      onDocs: docsChanged });
+    renderStudentStart(main(), { api, go, announce });
     return;
   }
   if (parts[0] === "find") {
@@ -132,9 +111,7 @@ function route() {
   }
   if (parts[0] === "brief" && parts[1]) {
     const id = decodeURIComponent(parts[1]);
-    if (id === PRIVATE_ID && !privApi.open) { goReplace("#/"); return; }
     screen("brief");
-    api = id === PRIVATE_ID ? privApi : publicApi;
     S.tab = TABS.includes(parts[2]) ? parts[2] : S.tab;
     if (id !== S.briefId) openBrief(id);
     else renderPanel();
@@ -188,85 +165,39 @@ function seg(label, value, options, pick) {
 function renderFind() {
   document.title = "Perch";
   const F = S.find;
-  const ok = mode.state.available;
-  // The paste offer stands only while the field holds text that looks personal (U17).
-  if (F.nudge && !looksPersonal(F.q)) F.nudge = null;
   const input = h("input", { id: "q", name: "q", type: "search", autocomplete: "off",
     enterkeyhint: "search", placeholder: matchMedia("(max-width: 419px)").matches ? "Name, ORCID or OpenAlex ID"
       : "Researcher name, ORCID iD or OpenAlex ID",
     "aria-describedby": "q-hint", "aria-invalid": F.empty ? "true" : null, value: F.q,
     oninput: (e) => { F.q = e.target.value; const was = F.empty; F.empty = false;
-      if (was || (F.nudge && !looksPersonal(F.q))) keepFocus(renderFind); },
-    onpaste: (e) => pasted(e, "q", "cv") });
+      if (was) keepFocus(renderFind); } });
   const researcher = h("form", { role: "search", onsubmit: (e) => { e.preventDefault(); search(); } },
     h("label", { for: "q", class: "sr-only", text: "Find a Temple researcher" }),
     h("div", { class: "searchbox" }, input,
-      h("button", { class: "btn primary", type: "submit", disabled: F.busy || Boolean(F.nudge),
+      h("button", { class: "btn primary", type: "submit", disabled: F.busy,
         "aria-busy": F.busy ? "true" : null }, h("span", { text: F.busy ? "Searching" : "Find" }))),
     h("div", { class: "hint-row" },
       // F25: an empty Find says what to type, in the hint the box points to.
       h("span", { id: "q-hint", class: F.empty ? "field-error" : null,
         text: F.empty ? "Type a name, ORCID iD or OpenAlex ID." : "Names search Temple authors; an ID finds anyone." }),
       h("details", { class: "more-opts" }, h("summary", { "data-key": "more-opts", text: "What else you can add" }),
-        h("p", { text: "After you pick the person, you can tell Perch where your research is going, keywords to search for or leave out, your CV and a draft proposal. All of it is optional and held in memory only." }),
-        ok ? h("p", {}, h("a", { href: "#/private", "data-key": "docs-link", text: "No public papers yet? Build a brief from your documents alone." })) : null)));
+        h("p", { text: "After you pick the person, you can tell Perch where your research is going, keywords to search for or leave out, a career stage and a smallest award size. All of it is optional." }))));
   const student = h("div", { class: "student-go" },
-    h("button", { class: "btn primary", type: "button", disabled: !ok, "aria-describedby": "aud-hint",
-      "data-key": "student", onclick: startStudent }, h("span", { text: "Start with your CV or résumé" })),
-    h("span", { class: "hint", id: "aud-hint", text: ok ? "Fellowships and sample scholarships, checked against it by rule."
-      : `Student mode is not available. ${mode.state.reason || "This server offers no sessions."}` }));
+    h("button", { class: "btn primary", type: "button", disabled: api.mode === "replay", "aria-describedby": "aud-hint",
+      "data-key": "student", onclick: () => go("#/student") }, h("span", { text: "Start as a student" })),
+    h("span", { class: "hint", id: "aud-hint", text: api.mode === "replay" ? "The preview has no server."
+      : "Fellowships and sample scholarships, checked by rule." }));
   fill(main(), h("div", { class: "landing" },
     heroArt(),
     h("h1", { text: "Find funding that fits." }),
     h("p", { class: "lede", text: "Perch reads public records and links every claim to its source." }),
-    S.notice ? h("div", { class: "notice warn session-ended", role: "status" }, icon("warn"),
+    S.notice ? h("div", { class: "notice warn notice-ended", role: "status" }, icon("warn"),
       h("p", { text: S.notice }),
       h("button", { class: "x", type: "button", "aria-label": "Dismiss", "data-key": "notice-close",
         onclick: () => { S.notice = null; keepFocus(renderFind); }, text: "×" })) : null,
     seg("Who is searching", S.who, [["r", "Researcher"], ["s", "Student"]], (k) => { S.who = k; keepFocus(renderFind); }),
     S.who === "s" ? student : researcher,
-    nudgeBox(),
     F.error ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: F.error })) : null));
-}
-
-async function startStudent() {
-  try {
-    await mode.enable(); // a CV goes to Cloud only after the second warning (Q33)
-    // A student brief replaces any researcher pick, so the browser's Back cannot return to
-    // a researcher's pick screen whose Build would replace the student's brief (S27).
-    Object.assign(S.find, { candidates: null, picked: null, searched: "", error: null, nudge: null });
-    go("#/student");
-  } catch (e) { S.find.error = e.message; renderFind(); }
-}
-
-// The paste nudge: a check in this browser only. Long or CV-like text pasted into a
-// search field gets an offer to add it as a document instead. Nothing is sent until the
-// person chooses; search is held back while the offer is open.
-function pasted(e, field, kind) {
-  const text = (e.clipboardData || window.clipboardData).getData("text");
-  if (!looksPersonal(text) || !mode.state.available) return;
-  S.find.nudge = { field, kind };
-  setTimeout(() => keepFocus(renderFind), 0);
-}
-
-function nudgeBox() {
-  const n = S.find.nudge;
-  if (!n) return null;
-  const F = S.find;
-  return h("div", { class: "notice nudge", role: "alert" }, icon("lock"),
-    h("div", {}, h("p", { text: "This looks like personal text, such as a CV. Add it as a document instead? Documents stay on local models unless you choose Cloud and confirm them. Nothing has been sent." }),
-      h("div", { class: "doc-actions" },
-        h("button", { class: "btn primary", type: "button", onclick: async () => {
-          const text = F.q;
-          try {
-            await mode.move(n.kind, text); // an unsent draft; adding it later asks before Cloud (Q33)
-            F.q = "";
-            F.nudge = null;
-            go("#/student");
-          } catch (err) { F.nudge = null; F.error = err.message; renderFind(); }
-        } }, icon("lock"), h("span", { text: "Add as a document" })),
-        h("button", { class: "btn", type: "button", onclick: () => { F.nudge = null; renderFind(); } },
-          h("span", { text: "Keep it here" })))));
 }
 
 function heroArt() {
@@ -437,39 +368,14 @@ function candidateCard(c, best) {
 
 function contextPanel(c) {
   const F = S.find;
-  const ok = mode.state.available;
-  const set = (k) => (e) => { F[k] = e.target.value; if (F.sample) { F.sample = false; F.sampleEdited = true; drawSampleStatus(); } };
-  const docBox = (kind, label, note) => {
-    const file = F.files[kind];
-    return h("div", { class: "box" },
-      h("div", { class: "box-head" }, h("label", { class: "big", for: `ctx-${kind}`, text: label }),
-        h("span", { class: "local", text: "Local by default" })),
-      h("p", { class: "note", id: `ctx-${kind}-note`, text: note }),
-      file ? h("p", { class: "added" }, icon("paper"), h("span", { text: `${file.name}, read on this server when you build` }),
-        h("button", { class: "btn quiet", type: "button", onclick: () => { delete F.files[kind]; renderPick(); } }, h("span", { text: "Remove" })))
-        : h("textarea", { id: `ctx-${kind}`, rows: 6, placeholder: "Paste text here", "aria-describedby": `ctx-${kind}-note`,
-          value: F[kind], oninput: set(kind), disabled: !ok }),
-      file ? null : h("div", { class: "file-row" },
-        h("label", { class: `btn${ok ? "" : " off"}` }, h("span", { text: "Or upload a file" }),
-          h("input", { type: "file", class: "sr-only", disabled: !ok, accept: ".txt,.md,.docx,.pdf",
-            onchange: (e) => pickFile(kind, e.target.files[0]) })),
-        h("span", { class: "hint", text: "Text, Markdown, Word or PDF" })));
-  };
+  const set = (k) => (e) => { F[k] = e.target.value; };
   // Folded under the one Build button (review W1); it opens by itself once it holds anything.
-  const filled = CTX_FIELDS.some((k) => F[k].trim()) || Object.keys(F.files).length > 0 || F.stage || F.minAmount;
+  const filled = ["direction", "include", "exclude"].some((k) => F[k].trim()) || F.stage || F.minAmount;
   return h("details", { class: "more-panel fade-in", open: F.moreOpen || Boolean(filled),
     ontoggle: (e) => { F.moreOpen = e.target.open; } },
     h("summary", { "data-key": "more-ctx" }, h("h2", { id: "more-h", text: "Tell Perch more (optional)" })),
     h("div", { class: "more-body" },
-    h("p", { class: "page-sub", text: "Everything here steers the search and is held in memory for this session only. Your CV and ongoing research stay on local models unless you choose Cloud and confirm them." }),
-    ok ? h("div", { class: "sample-row" },
-      h("span", { text: "See what helps most: a sample direction, keywords and draft aims. The sample has no CV, because this is a real researcher." }),
-      h("button", { class: "btn outline", type: "button", "data-key": "fill-sample", onclick: fillResearcherSample }, h("span", { text: "Fill with a sample" })),
-      h("button", { class: "btn ghost", type: "button", "data-key": "clear-ctx", onclick: () => {
-        CTX_FIELDS.forEach((k) => { F[k] = ""; }); F.files = {}; F.sample = false; F.sampleEdited = false; renderPick();
-        announce("Cleared.");
-      } }, h("span", { text: "Clear" }))) : null,
-    h("div", { id: "sample-status" }, sampleStatus()),
+    h("p", { class: "page-sub", text: "Everything here steers the search. Guest sessions ignore the direction and the keywords." }),
     h("div", { class: "box-grid" },
       h("div", { class: "box" },
         h("label", { class: "big", for: "ctx-direction", text: "Where your research is going" }),
@@ -481,8 +387,6 @@ function contextPanel(c) {
         h("input", { id: "ctx-exclude", type: "text", placeholder: "Comma-separated", value: F.exclude, oninput: set("exclude"),
           "aria-describedby": "exc-hint" }),
         h("p", { class: "note", id: "exc-hint", text: "Opportunities that mention one of these in the title or description are left out." })),
-      ok ? docBox("cv", "Your CV", "Checks career-stage rules and past sponsors, and gives Scout cover-letter points when you ask. It does not steer the search.") : null,
-      ok ? docBox("proposal", "Ongoing research or draft proposal", "Draft aims or a summary. This steers the search most.") : null,
       h("div", { class: "box" },
         h("label", { class: "big", for: "ctx-stage", text: "Career stage" }),
         h("select", { id: "ctx-stage", "aria-describedby": "stage-hint", onchange: (e) => { F.stage = e.target.value; } },
@@ -495,48 +399,7 @@ function contextPanel(c) {
         h("p", { class: "note", id: "min-hint", text: "Compared with the award ceiling in each record. Records that state no amount stay in." })))));
 }
 
-function sampleStatus() {
-  if (!S.find.sample) return null;
-  return h("p", { class: "sample-status", role: "status" }, h("span", { class: "sample-badge", text: "Sample data" }),
-    h("span", { text: "Invented text, labelled SYNTHETIC. Edit it or clear it before you run your own." }));
-}
-
-function drawSampleStatus() {
-  const box = $("#sample-status");
-  if (box) fill(box, sampleStatus());
-}
-
-async function fillResearcherSample() {
-  const F = S.find;
-  try {
-    const s = await privApi.sample("researcher");
-    Object.assign(F, { direction: s.direction, include: s.include_keywords, exclude: s.exclude_keywords,
-      proposal: s.proposal, cv: s.cv, files: {}, sample: true, sampleEdited: false });
-    keepFocus(renderPick);
-    announce("Filled with a SYNTHETIC sample.");
-  } catch (e) { F.error = `The sample could not be loaded: ${e.message}`; renderPick(); }
-}
-
-async function pickFile(kind, file) {
-  const F = S.find;
-  if (!file) return;
-  const max = (privateInfo() || {}).max_bytes || 5e6;
-  if (file.size > max) { F.error = `That file is larger than ${max / 1e6} MB.`; renderPick(); return; }
-  const data = await new Promise((ok, bad) => {
-    const r = new FileReader();
-    r.onload = () => ok(String(r.result).split(",", 2)[1] || "");
-    r.onerror = () => bad(new Error("The file could not be read."));
-    r.readAsDataURL(file);
-  });
-  F.files[kind] = { name: file.name, data };
-  F[kind] = "";
-  renderPick();
-  announce(`${file.name} will be read on this server when you build.`);
-}
-
-// Order matters (S24): open the session, send the documents, then start the brief. A
-// document the user has not confirmed for Cloud turns Cloud off on the server (Q33); the
-// same text sent again keeps its consent.
+// One build call: the api makes sure a session exists, then starts the brief.
 async function build(c) {
   const F = S.find;
   resetStudent(); // a researcher brief replaces any student one; Back finds an empty form (S27)
@@ -548,32 +411,15 @@ async function build(c) {
   if (F.stage) req.career_stage = F.stage;
   const min = parseFloat(F.minAmount);
   if (Number.isFinite(min) && min > 0) req.min_amount = min;
-  const docs = ["cv", "proposal"].map((kind) => (F.files[kind] ? { kind, filename: F.files[kind].name, data: F.files[kind].data }
-    : F[kind].trim() ? { kind, text: F[kind].trim() } : null)).filter(Boolean);
   F.building = true; F.error = null;
   keepFocus(renderPick);
   try {
-    if (api.mode === "replay") {
-      const r = await api.create(req);
-      S.startedHere = true;
-      S.tab = "routes";
-      go(`#/brief/${encodeURIComponent(r.id)}/routes`);
-      return;
-    }
-    await mode.enable(); // every brief is a session (S23); nothing is stored
-    const have = (await privApi.session()).documents.map((d) => d.kind);
-    for (const kind of ["cv", "proposal"]) if (have.includes(kind)) await privApi.removeDocument(kind);
-    for (const d of docs) await privApi.addDocument(d);
-    await docsChanged((await privApi.session()).documents.length);
-    S.sampleBrief = Boolean(F.sample);
-    const made = await privApi.create(req);
-    privApi.flag("sample", S.sampleBrief); // the Sample data banner survives a reload (W18)
-    S.warm = Boolean(made && made.warm);
+    const r = await api.create(req, "researcher");
     S.startedHere = true;
     S.tab = "routes";
-    S.briefId = null; // a new brief in the session: open it fresh
+    S.briefId = null; // a new brief: open it fresh
     F.building = false;
-    go(`#/brief/${PRIVATE_ID}/routes`);
+    go(`#/brief/${encodeURIComponent(r.id)}/routes`);
   } catch (e) {
     F.building = false;
     F.error = `The brief could not start: ${e.message}`;
@@ -581,220 +427,6 @@ async function build(c) {
     const err = main().querySelector(".notice.error");
     if (err) err.scrollIntoView({ block: "center" });
   }
-}
-
-// ----- the status chip and the Local / Cloud dialog (S23 behaviour, S24 design) -----
-
-const cloudInfo = () => (privateInfo() && privateInfo().cloud) || {};
-
-// The session's documents changed. A document the user has not confirmed for Cloud turns
-// Cloud off on the server until they do (Q33), so the chip follows the server and says why.
-async function docsChanged(n) {
-  S.hasDocs = n > 0;
-  if (S.cloud && privApi.open) {
-    try {
-      const sess = await privApi.session();
-      S.cloudDocs = Boolean(sess.cloud_documents);
-      if (!sess.cloud) {
-        S.cloud = false;
-        announce(`Cloud is off. A document you added has not been confirmed for ${cloudInfo().provider}, so it stays on local models. Open Local or Cloud at the top to confirm it.`);
-      }
-    } catch { /* a 401 is handled by onExpired */ }
-  }
-  drawSwitch();
-}
-
-function drawSwitch() {
-  const b = $("#status-chip");
-  if (!b) return;
-  if (!privApi.open) { S.cloud = false; S.hasDocs = false; S.cloudDocs = false; }
-  const c = cloudInfo();
-  // The second half folds away on a very narrow screen; the aria-label keeps it all (U22).
-  fill(b.querySelector(".chip-word"), h("span", { text: S.cloud ? `Cloud: ${c.provider}` : S.hasDocs ? "Local only" : "Local" }),
-    h("span", { class: "chip-rest", text: " · nothing stored" }));
-  const label = S.cloud ? `Privacy: nothing stored; Cloud on, text goes to ${c.provider}${S.cloudDocs ? ", with the documents you confirmed" : ""}. Change models`
-    : S.hasDocs ? "Privacy: nothing stored. Local only: this session holds documents, so every model that reads them runs on this server. Change models"
-      : "Privacy: nothing stored, local models. Change models";
-  b.setAttribute("aria-label", label);
-  b.title = S.hasDocs && !S.cloud ? "Local only: this session holds documents, so every model that reads them runs on this server unless you choose Cloud and confirm them." : "";
-  document.body.classList.toggle("cloud-on", S.cloud);
-  $("#end-session").hidden = !privApi.open;
-}
-
-// A real dialog (S24 gap list). resolve(true) on the primary action.
-function dialog(build) {
-  const d = $("#models-dialog");
-  return new Promise((resolve) => {
-    const done = (v) => { d.close(); resolve(v); };
-    fill(d, build(done));
-    d.onclose = () => resolve(false);
-    d.oncancel = () => resolve(false);
-    d.showModal();
-    const first = d.querySelector("[autofocus]") || d.querySelector("input, button");
-    if (first) first.focus();
-  });
-}
-
-async function openModels() {
-  const c = cloudInfo();
-  let consent = null; // the second warning, written by the server for this session's documents (Q33)
-  if (privApi.open) {
-    try {
-      const sess = await privApi.session();
-      S.hasDocs = sess.documents.length > 0;
-      consent = sess.cloud_consent || null;
-    } catch { S.hasDocs = false; }
-    drawSwitch(); // the chip follows what the session holds
-  }
-  const docsCloud = Boolean(S.hasDocs && c.documents && consent);
-  const blocked = !c.available ? "This server runs local models only."
-    : S.hasDocs && !c.documents ? "Off while this session holds documents: they stay on local models." : "";
-  let choice = S.cloud ? "cloud" : "local";
-  let understood = false;
-  const opener = $("#status-chip");
-  const asking = () => choice === "cloud" && !S.cloud && docsCloud; // the second warning shows
-  const ok = await dialog((done) => {
-    const box = h("div", { class: "dialog-in" });
-    const draw = (focusKey) => {
-      fill(box,
-        h("h2", { id: "models-title", text: "Which models write the text?" }),
-        h("p", { class: "hint", text: "Perch stores nothing about you either way. With Cloud on, the provider’s API terms apply to the text it receives. Search, ranking, the rules and Scout’s own model always run on this server. With Cloud on, the fit explanations, cover-letter points and drafts Scout asks for use the cloud model, marked Cloud on their step." }),
-        h("div", { role: "radiogroup", "aria-labelledby": "models-title", class: "dialog-opts" },
-          h("label", { class: `opt${choice === "local" ? " on" : ""}` },
-            h("input", { type: "radio", name: "models", value: "local", checked: choice === "local", autofocus: true,
-              "data-key": "models-local", onchange: () => { choice = "local"; understood = false; draw("models-local"); } }),
-            h("span", {}, h("b", { text: "Local models" }),
-              h("span", { text: "Models on this server write the summary, the fit explanations, hand-off openings and cover-letter points. Nothing leaves the server." }))),
-          h("label", { class: `opt${choice === "cloud" ? " on" : ""}${blocked ? " off" : ""}` },
-            h("input", { type: "radio", name: "models", value: "cloud", checked: choice === "cloud", disabled: Boolean(blocked),
-              "data-key": "models-cloud", onchange: () => { choice = "cloud"; draw("models-cloud"); } }),
-            h("span", {}, h("b", { text: c.provider ? `Cloud: ${c.provider}` : "Cloud" }),
-              h("span", { text: blocked || `${c.provider} writes those four texts instead. Faster, but your text leaves this server.` })))),
-        choice === "cloud" && !S.cloud ? h("p", { class: "warn-box", role: "note" }, h("b", { text: "Before you turn Cloud on: " }), h("span", { text: c.warning || "" })) : null,
-        asking() ? h("div", { class: "warn-box strong", role: "note", "aria-labelledby": "docs-warn-title", "data-key": "docs-warning" },
-          h("p", {}, h("b", { id: "docs-warn-title", text: `Second warning: your documents would go to ${consent.provider}.` })),
-          h("p", { text: consent.lead }),
-          h("ul", { class: "docs-leave" }, consent.items.map((x) => h("li", {},
-            h("b", { text: x.text }), h("span", { text: ` ${x.note}` })))),
-          consent.after.map((t) => h("p", { text: t })),
-          h("label", { class: "check" }, h("input", { type: "checkbox", checked: understood, "data-key": "docs-understood",
-            onchange: (e) => { understood = e.target.checked; draw("docs-understood"); } }),
-          h("span", { text: consent.check }))) : null,
-        h("div", { class: "row" },
-          h("button", { class: "btn", type: "button", "data-key": "models-cancel", onclick: () => done(false), text: "Cancel" }),
-          // With documents, the confirm is never the default: a plain button, off until the box is ticked.
-          h("button", { class: asking() ? "btn" : "btn primary", type: "button", "data-key": "models-ok", onclick: () => done(true),
-            disabled: asking() && !understood,
-            text: choice === "cloud" ? (S.cloud ? "Keep Cloud on" : asking() ? consent.confirm : "Turn Cloud on") : "Use local models" })));
-      // The redraw replaces the controls; focus goes back to the one the user just used.
-      const back = focusKey && box.querySelector(`[data-key="${focusKey}"]`);
-      if (back) back.focus();
-    };
-    draw();
-    return box;
-  });
-  if (opener) opener.focus();
-  if (!ok || (choice === "cloud") === S.cloud) return;
-  // Consent covers the documents the warning listed; the server refuses if they changed since.
-  const refs = choice === "cloud" && docsCloud ? consent.items.map((x) => x.ref) : null;
-  try { await setCloud(choice === "cloud", refs); } catch (e) { announce(e.message); showError(e.message); }
-}
-
-function showError(msg) {
-  dialog((done) => h("div", { class: "dialog-in", role: "alertdialog", "aria-labelledby": "err-title" },
-    h("h2", { id: "err-title", text: "That did not work" }), h("p", { text: msg }),
-    h("div", { class: "row" }, h("button", { class: "btn primary", type: "button", autofocus: true, onclick: () => done(true), text: "OK" }))));
-}
-
-// The form each side starts from (2026-11-02, Dakshitha): a session runs a researcher
-// brief or a student brief, never both. Your documents feeds a researcher brief.
-const SIDES = { find: "researcher", private: "researcher", student: "student" };
-const SIDE_WORDS = { researcher: ["a researcher", "researcher"], student: ["a student", "student"] };
-
-// The session holds the other side's brief: warn, and on OK end the session and open the
-// form fresh; otherwise go back to the brief. The warning is the end confirm.
-async function sideGuard(target) {
-  let sess = null;
-  try { sess = await privApi.session(); } catch { /* ended: nothing to cross */ }
-  const go_on = () => { S.sideChecked = true; route(); S.sideChecked = false; };
-  if (!crossesSide(sess, target)) { go_on(); return; }
-  const held = target === "student" ? "researcher" : "student";
-  const list = mode.discards(sess.documents || [], true);
-  const ok = await mode.disable(() => dialog((done) => h("div", { class: "dialog-in", role: "alertdialog", "aria-labelledby": "side-title", "aria-describedby": "side-why" },
-    h("h2", { id: "side-title", text: `Start fresh as ${SIDE_WORDS[target][0]}?` }),
-    h("p", { id: "side-why", text: `This session holds ${SIDE_WORDS[held][0]}’s brief. Perch runs one side at a time, so starting as ${SIDE_WORDS[target][0]} ends this session first. It discards:` }),
-    h("ul", {}, list.map((x) => h("li", { text: x }))),
-    h("div", { class: "row" },
-      h("button", { class: "btn", type: "button", autofocus: true, onclick: () => done(false), text: `Keep the ${SIDE_WORDS[held][1]} brief` }),
-      h("button", { class: "btn primary", type: "button", "data-key": "side-ok", onclick: () => done(true), text: "End session and start fresh" })))));
-  if (!ok) { go(`#/brief/${PRIVATE_ID}/routes`); return; }
-  sessionEnded(true); // a researcher just picked on Find stays picked
-  announce("Session ended. Everything in it was discarded.");
-  go_on();
-}
-
-// What the page held for a session the user ended.
-function sessionEnded(keepFind = false) {
-  resetScout(); resetPrivate(); resetStudent(); // what the modules held for the session
-  S.cloud = false; S.hasDocs = false; S.sampleBrief = false; S.hasBrief = false;
-  if (!keepFind) Object.assign(S.find, { picked: null, files: {}, direction: "", include: "", exclude: "", cv: "", proposal: "", sample: false });
-  drawSwitch();
-}
-
-// Ends the session from any screen, after a dialog that lists what goes.
-async function endSession() {
-  let docs = [], hasBrief = S.briefId === PRIVATE_ID;
-  // The session's own answer: it holds a brief even on Your documents or the student form.
-  try { const sess = await privApi.session(); docs = sess.documents; hasBrief = hasBrief || Boolean(sess.brief_id); } catch { /* already ended */ }
-  const list = mode.discards(docs, hasBrief);
-  const ok = await mode.disable(() => dialog((done) => h("div", { class: "dialog-in" },
-    h("h2", { id: "models-title", text: "End this session?" }),
-    h("p", { text: "It discards:" }),
-    h("ul", {}, (list.length ? list : ["Nothing yet"]).map((x) => h("li", { text: x }))),
-    h("div", { class: "row" },
-      h("button", { class: "btn", type: "button", autofocus: true, onclick: () => done(false), text: "Keep working" }),
-      h("button", { class: "btn primary", type: "button", "data-key": "end-ok", onclick: () => done(true), text: "End session" })))));
-  if (ok) { sessionEnded(); announce("Session ended. Everything in it was discarded."); go("#/"); }
-}
-
-// The server dropped the session: 30 minutes idle, or a restart. Clear what the page
-// held, go back to the start and say why, instead of leaving a page that cannot answer
-// (S27). It runs on the next tick, after the failed call's own error handling.
-function sessionExpired() {
-  setTimeout(() => {
-    resetSession();
-    const idle = (privateInfo() || {}).idle_minutes || 30;
-    S.notice = `Your session ended, so Perch went back to the start. A session ends after ${idle} minutes without use, or when the server restarts, and everything in it is discarded. Start again whenever you are ready.`;
-    announce("Your session ended. Perch went back to the start.");
-    go("#/");
-  }, 0);
-}
-
-function resetSession() {
-  stopPolling();
-  resetScout(); resetPrivate(); resetStudent();
-  mode.expired();
-  S.cloud = false; S.hasDocs = false; S.cloudDocs = false; S.sampleBrief = false; S.hasBrief = false;
-  Object.assign(S.find, { picked: null, files: {}, direction: "", include: "", exclude: "", cv: "",
-    proposal: "", sample: false, busy: false, building: false, error: null });
-  drawSwitch();
-}
-
-// Cloud on for this session; the dialog above is the warning that names the provider.
-async function setCloud(on, refs = null) {
-  const c = cloudInfo();
-  if (on) {
-    await mode.enable();
-    S.cloudDocs = Boolean((await privApi.cloud(true, c.provider, refs ? c.documents_phrase : null, refs || [])).documents);
-  } else {
-    S.cloudDocs = false;
-    if (privApi.open) await privApi.cloud(false);
-  }
-  S.cloud = on;
-  drawSwitch();
-  announce(on ? `Cloud on for this session. ${c.provider} writes the explanations for your next brief${S.cloudDocs ? ", and reads the documents you confirmed" : ""}.`
-    : "Local models on. Nothing more is sent to the cloud provider.");
-  return true;
 }
 
 // ---------- Brief ----------
@@ -829,7 +461,6 @@ async function poll() {
   }
   if (gen !== S.gen) return;
   S.failedPolls = 0;
-  if (api.mode === "private") S.hasBrief = true;
   const first = !S.brief;
   S.brief = data;
   if (first) renderBrief();
@@ -863,8 +494,7 @@ function renderBrief() {
   const asOf = f.formatDate(d.brief.options.as_of).replace(/ /g, "\u00a0");
   const meta = student ? `Fellowships and sample scholarships, checked against your CV by rule · as of ${asOf}`
     : [...(r.institutions || []), `Brief as of ${asOf}`].join(" · ");
-  // Back: a student returns to their documents, a researcher to the matches; the
-  // session stays open either way (S22, audit S2).
+  // Back: a student returns to the start screen, a researcher to the matches.
   const back = student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Back" }))
     : h("a", { class: "back", href: S.find.candidates ? "#/find" : "#/" }, icon("back"), h("span", { text: "Back" }));
   const tabs = h("div", { class: `tabs${student ? " student" : ""}`, role: "tablist", "aria-label": "Brief sections" },
@@ -875,11 +505,10 @@ function renderBrief() {
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page who", text: name }), h("p", { class: "brief-meta", text: meta })),
       exportMenu()),
-    api.mode === "private" && (student ? usedSample() || privApi.flag("studentSample") : S.sampleBrief || privApi.flag("sample"))
+    sampleSteered()
       ? h("p", { class: "notice sample-note", role: "note" },
       h("span", { class: "sample-badge", text: "Sample data" }),
-      h("span", { text: student ? " Built from an invented SYNTHETIC student. Nothing here is about you."
-        : " This brief was steered by invented SYNTHETIC text. Anything it cites from “your document” is from the sample, not from this researcher." })) : null,
+      h("span", { text: ` Built from an invented SYNTHETIC student. Nothing here is about you.` })) : null,
     h("div", { id: "progress" }),
     h("div", { class: "tabs-wrap" }, tabs),
     h("div", { class: "cols" },
@@ -894,16 +523,28 @@ function renderBrief() {
   renderPanel();
 }
 
-// The session holds documents: a CV or draft aims, Your documents, or a student's CV.
-function holdsDocs() {
-  return S.hasDocs || docsHeld() || isStudent(S.brief);
-}
-
-// The Export button: a menu with the three exports and the mask option. Only a session
-// brief has one: replay has nothing to download (review W12).
+// The Export button: a menu with the three exports. A saved preview has nothing to
+// download (review W12), so it has no menu.
 function exportMenu() {
-  if (api.mode !== "private") return null;
-  const pop = privateBar(api, go, holdsDocs());
+  if (!api.exportFile) return null;
+  const err = h("p", { class: "hint", role: "status" });
+  async function download(kind) {
+    try {
+      const blob = await api.exportFile(S.briefId, kind);
+      const url = URL.createObjectURL(blob);
+      const a = h("a", { href: url, download: `perch-brief.${kind}` });
+      if (kind === "html") { a.removeAttribute("download"); a.target = "_blank"; a.rel = "noopener"; }
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      err.textContent = "";
+    } catch (e) { err.textContent = e.message; }
+  }
+  const pop = h("section", { class: "export-bar" },
+    h("p", { class: "export" },
+      h("button", { class: "btn quiet", onclick: () => download("html") }, icon("paper"), h("span", { text: "Print or save as PDF" })),
+      h("button", { class: "btn quiet", onclick: () => download("md") }, icon("download"), h("span", { text: "Markdown" })),
+      h("button", { class: "btn quiet", onclick: () => download("json") }, icon("download"), h("span", { text: "Records as JSON" }))),
+    err);
   const det = h("details", { class: "export-menu" },
     h("summary", { "data-key": "export" }, icon("download"), h("span", { text: "Export" })),
     h("div", { class: "export-pop" }, pop));
@@ -979,8 +620,7 @@ function renderProgress() {
   } else if (b.status === "done") {
     state = "done";
     headline = "Brief ready";
-    detail = S.warm && api.mode === "private" ? `Built when the server started · ${stages.length} of ${stages.length} steps`
-      : `Built in ${f.elapsed(lastEnd - t0)} · ${stages.length} of ${stages.length} steps`;
+    detail = `Built in ${f.elapsed(lastEnd - t0)} · ${stages.length} of ${stages.length} steps`;
   } else if (b.status === "queued") {
     // Nothing has started: say it waits, not the first step's name (U19). The server
     // does not report a place in line, so none is shown.
@@ -1056,8 +696,8 @@ function stepDetail(s) {
 }
 
 async function rebuild() {
-  if (api.mode === "private") { go(isStudent(S.brief) ? "#/student" : S.find.picked ? "#/find" : "#/private"); return; }
   if (api.mode === "replay") replayBuild();
+  else go(isStudent(S.brief) ? "#/student" : S.find.picked ? "#/find" : "#/");
 }
 
 // ---------- panels ----------
@@ -1204,10 +844,8 @@ function renderStudentPanel(panel) {
   if (panel.dataset.sig === sig) return;
   panel.dataset.sig = sig;
   const ctx = { brief: d, route: S.route, papers: d.papers || {}, openEvidence, setLead, announce, api,
-    offices: (privateInfo() || {}).student_offices || api.studentOffices,
+    offices: api.studentOffices,
     briefId: S.briefId, setRoute: switchRoute,
-    // The provider's name when this brief ran on Cloud, for the model text's tag (Q33).
-    cloud: d.brief.options.models === "cloud" ? cloudInfo().provider || null : null,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) };
   if (S.tab === "profile") keepFocus(() => fill(panel, ...studentProfile(d, ctx)));
   else if (S.tab === "compare") studentCompare(panel, ctx);
@@ -1225,7 +863,7 @@ function drawCompare(focusKey) {
   renderCompare(panel, { keptCount: kept.length, openEvidence, redraw: drawCompare, handoff: true,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) });
   renderHandoff(panel.querySelector(".handoff-box"), { api, briefId: S.briefId, announce,
-    kept: leadsOf().filter((l) => l.status === "kept"), offices: compareOffices(), redraw: drawCompare, docs: holdsDocs() });
+    kept: leadsOf().filter((l) => l.status === "kept"), offices: compareOffices(), redraw: drawCompare });
   if (kept.length) loadCompare(api, S.briefId, kept, () => drawCompare());
   if (focusKey) panelFocus(focusKey);
 }
@@ -1277,7 +915,7 @@ function renderProfile(panel) {
 function keyPapersSection() {
   const d = S.brief;
   if (!isDone("profile")) return h("section", { class: "block" }, h("h2", { class: "section-title", text: "Key papers" }), skeleton(3));
-  const all = distinctPapers(Object.values(d.papers || {}).filter((w) => !w.private));
+  const all = distinctPapers(Object.values(d.papers || {}).filter((w) => !isOwnDoc(w)));
   if (!all.length) return null;
   const top = [...all].sort((a, b) => (b.cited_by_count || 0) - (a.cited_by_count || 0)
     || (b.publication_year || 0) - (a.publication_year || 0)).slice(0, 5);
@@ -1286,7 +924,7 @@ function keyPapersSection() {
     h("ul", { class: "papers" }, top.map(paperRow)));
 }
 
-// Normal-mode context (Q16): what the user typed on Find, shown as theirs, never as a fact.
+// Context (Q16): what the user typed on Find, shown as theirs, never as a fact.
 function youSaidSection() {
   const o = S.brief.brief.options;
   const rows = [
@@ -1340,7 +978,6 @@ function openAlexTopics() {
 }
 
 function horizonSection() {
-  if (String(S.brief.brief.researcher_id).startsWith("private:")) return null; // no public profile
   const d = S.brief, b = d.brief;
   const title = h("h2", { class: "section-title", text: "Award horizon" });
   if (!isDone("awards")) return h("section", { class: "block" }, title, skeleton(1));
@@ -1402,10 +1039,10 @@ function awardTimeline(awards, asOf) {
 // those the explanations cite (perch/api.py brief_view).
 function threadsNote() {
   const d = S.brief, b = d.brief;
-  const n = b.work_ids.filter((id) => !/^private:|^said:/.test(id)).length;
+  const n = b.work_ids.filter((id) => !/^user:|^said:/.test(id)).length;
   if (!n) return null;
   const all = (d.researcher || {}).works_count;
-  const shown = distinctPapers(Object.values(d.papers || {}).filter((w) => !w.private)).length;
+  const shown = distinctPapers(Object.values(d.papers || {}).filter((w) => !isOwnDoc(w))).length;
   return h("p", { class: "hint threads-note", text: [
     all != null ? `OpenAlex counts ${f.plural(all, "work")} for this researcher.` : null,
     `These threads group ${f.plural(n, "work")} on file by what they are about: research output, such as articles, preprints and chapters, dated on or before the brief date. Labels are the words that set each group apart.`,
@@ -1420,19 +1057,18 @@ function threadsSection() {
   return h("section", { class: "block" }, title,
     threadsNote() || h("p", { class: "hint", text: b.work_ids.length
       ? `${f.plural(b.work_ids.length, "paper")} grouped by what they are about. Labels are the words that set each group apart.`
-      : "No public papers: each private document is one thread. Labels are its most frequent words." }),
+      : "No public papers on file. Labels are the most frequent words." }),
     h("ol", { class: "threads" }, b.threads.map((t) => {
       const papers = distinctPapers((t.work_ids || []).map((id) => d.papers[id]).filter(Boolean)).slice(0, 5);
       const meter = h("span", { class: "meter", "aria-hidden": "true" },
         h("span", { style: `width:${Math.max(t.weight * 100, 2)}%` }));
-      if (t.private || t.said) {
-        return h("li", { class: `thread${t.private ? " private" : " said"}` },
+      if (t.said) {
+        return h("li", { class: "thread said" },
           h("div", { class: "thread-head" },
             h("h3", { text: t.label }),
             h("span", { class: "share", text: `${Math.round(t.weight * 100)}% of the search` })),
           meter,
-          h("p", { class: "hint", text: t.private ? "From your private document. Used as a search query only."
-            : "From what you said. Used as a search query, never as a fact." }),
+          h("p", { class: "hint", text: "From what you said. Used as a search query, never as a fact." }),
           h("ul", { class: "papers" }, papers.map(paperRow)));
       }
       return h("li", { class: "thread" },
@@ -1464,7 +1100,7 @@ function distinctPapers(works) {
 
 function paperRow(w) {
   return h("li", {}, h("button", { class: "paper", "data-key": `paper-${w.id}`, onclick: (e) => openEvidence(w.id, e.currentTarget) },
-    w.private ? lockLabel() : null,
+    isOwnDoc(w) ? ownLabel() : null,
     h("span", { class: "paper-title", text: w.title }),
     h("span", { class: "paper-meta", text: [w.publication_year, w.venue].filter(Boolean).join(", ") })));
 }
@@ -1813,7 +1449,7 @@ function leadCard(l) {
 
   let fit;
   if (band) {
-    fit = matchPill(l.match_score, band, docsOnly() ? "your documents" : undefined);  // G1
+    fit = matchPill(l.match_score, band);
   } else if (pending) {
     fit = h("span", { class: "fit pending" }, owl("work", "owl-xs"), h("span", { text: "Reading" }));
   }
@@ -1881,7 +1517,7 @@ function cardHead(tags, fit, actions) {
 function leadNotes(l) {
   if (!l.notes || !l.notes.length) return null;
   return h("ul", { class: "lead-notes" }, l.notes.map((n) => h("li", {},
-    /\(private\)/.test(n) ? lockLabel("Private") : h("span", { class: "tag", text: "Rule" }),
+    h("span", { class: "tag", text: "Rule" }),
     h("span", { text: ` ${n}` }))));
 }
 
@@ -1893,10 +1529,10 @@ function explanationBlock(l, parsed, o) {
   }
   // With the researcher's CV or current research in the brief, the reasons start open
   // (S27, Dakshitha), as they do for a student.
-  const own = Object.values(papers).some((w) => w.private);
+  const own = Object.values(papers).some(isOwnDoc);
   const open = own ? !S.shut.has(l.id) : S.open.has(l.id);
   const n = parsed.findings.length;
-  const docs = parsed.findings.filter((x) => (papers[x.paper] || {}).private || /^private:/.test(x.paper)).length;
+  const docs = parsed.findings.filter((x) => isOwnDoc(papers[x.paper]) || /^user:/.test(x.paper)).length;
   const why = h("details", { class: "why", open,
     ontoggle: (e) => {
       if (e.target.open) { S.open.add(l.id); S.shut.delete(l.id); } else { S.open.delete(l.id); S.shut.add(l.id); }
@@ -1922,21 +1558,23 @@ function explanationBlock(l, parsed, o) {
     h("p", { class: "what" }, renderSegs(parsed.opportunity, ownIds(o))), why);
 }
 
-// A brief built from the user's documents alone, with no public profile (G1).
-function docsOnly() {
-  return String(((S.brief || {}).brief || {}).researcher_id || "").startsWith("private:");
-}
-
+// The tag on model text: the model's reading, checked against the records it cites.
 function modelTag() {
   return h("p", { class: "provenance" }, modelWord(),
     h("span", { text: "Checked against the records it cites." }));
 }
 
-// The tag on model text: "Cloud: <provider>" when the brief ran on Cloud, as the chip and
-// Scout's steps say, or "Model text" for local models.
 function modelWord() {
-  const cloud = (((S.brief || {}).brief || {}).options || {}).models === "cloud" && cloudInfo().provider;
-  return cloud ? h("span", { class: "tag model cloud", text: `Cloud: ${cloud}` }) : h("span", { class: "tag model", text: "Model text" });
+  return h("span", { class: "tag model", text: "Model text" });
+}
+
+// A document the user supplied (id user:..., source "user"), not a public record.
+function isOwnDoc(w) {
+  return Boolean(w && (w.source === "user" || w.kind === "user"));
+}
+
+function ownLabel(text = "Your own document") {
+  return h("span", { class: "tag lock" }, icon("lock"), h("span", { text }));
 }
 
 function ownIds(o) {
@@ -1981,10 +1619,10 @@ function renderSegs(segs, skip = new Set()) {
 
 function paperRef(id, papers) {
   const w = papers[`https://openalex.org/${id}`] || papers[id];
-  return h("button", { class: `paper-ref${w && w.private ? " private" : ""}`, "data-key": `cite-${id}`,
+  return h("button", { class: `paper-ref${isOwnDoc(w) ? " own" : ""}`, "data-key": `cite-${id}`,
     onclick: (e) => openEvidence(id, e.currentTarget) },
-  w && w.private ? lockLabel(sampleSteered() ? "From the sample document, not this researcher’s" : undefined) : null,
-  w && w.private && sampleSteered() ? h("span", { class: "sample-badge", text: "Sample data" }) : null,
+  isOwnDoc(w) ? ownLabel(sampleSteered() ? "From the sample student’s document" : undefined) : null,
+  isOwnDoc(w) && sampleSteered() ? h("span", { class: "sample-badge", text: "Sample data" }) : null,
   h("span", { class: "paper-ref-title", text: w ? w.title : id }),
   w && w.publication_year ? h("span", { class: "paper-meta", text: [w.publication_year, w.venue].filter(Boolean).join(", ") }) : null);
 }
@@ -1992,9 +1630,9 @@ function paperRef(id, papers) {
 function cite(id, papers) {
   const w = papers[`https://openalex.org/${id}`] || papers[id];
   let label = id;
-  if (w && w.private) {
-    return h("button", { class: "cite private", "data-key": `cite-${id}`,
-      "aria-label": `Evidence: ${w.title}, from ${sampleSteered() ? "the SYNTHETIC sample document" : "your private document"}`,
+  if (isOwnDoc(w)) {
+    return h("button", { class: "cite own", "data-key": `cite-${id}`,
+      "aria-label": `Evidence: ${w.title}, from ${sampleSteered() ? "the SYNTHETIC sample student’s document" : "your own document"}`,
       onclick: (e) => openEvidence(id, e.currentTarget) }, icon("lock"), h("span", { text: w.title }),
     sampleSteered() ? h("span", { class: "sample-badge", text: "Sample data" }) : null);
   }
@@ -2007,9 +1645,10 @@ function cite(id, papers) {
     onclick: (e) => openEvidence(id, e.currentTarget) }, h("span", { text: label }));
 }
 
-// The brief on screen was steered by the SYNTHETIC sample: its "document" is invented.
+// The brief on screen was built from the SYNTHETIC sample student: its "documents" are
+// invented. The server says so in the brief's options.
 function sampleSteered() {
-  return api.mode === "private" && !isStudent(S.brief) && Boolean(S.sampleBrief || privApi.flag("sample"));
+  return Boolean(S.brief && S.brief.brief.options && S.brief.brief.options.sample);
 }
 
 // The card's rule for a far-off placeholder close date (U3, Q3): a deadline note and a
@@ -2234,9 +1873,9 @@ function recordView(r) {
     }
     if (r.eligibility_notes) out.push(h("h3", { class: "mini", text: "Eligibility notes" }), longText(r.eligibility_notes));
     if (r.description) out.push(h("h3", { class: "mini", text: "Description" }), longText(r.description));
-  } else if (r.kind === "private") {
+  } else if (r.kind === "user") {
     out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.title }),
-      h("p", {}, lockLabel("Held in this session's memory only")), longText(r.text || ""));
+      h("p", {}, ownLabel()), longText(r.text || ""));
   } else if (r.kind === "work") {
     out.push(h("h2", { class: "rec-title", id: "evidence-title", text: r.title }),
       h("dl", { class: "fields" }, field("Year", r.publication_year), field("Venue", r.venue),
@@ -2281,7 +1920,7 @@ function recordView(r) {
     h("p", {}, h("span", { class: "hint", text: "Source " }), h("b", { text: SOURCES[r.source] || r.source })),
     // F21: the Grants.gov attribution is the page footer's, on every screen; the panel no
     // longer prints it a second time.
-    h("p", { class: "hint", text: `${r.source === "private" ? "Added" : "Fetched"} ${fetched(r.fetched_at)}` })));
+    h("p", { class: "hint", text: `${r.source === "user" ? "Added" : "Fetched"} ${fetched(r.fetched_at)}` })));
   return out;
 }
 
@@ -2334,29 +1973,6 @@ function initTheme() {
 
 // ---------- start ----------
 
-// After a reload the tab still holds the session id (review W18): ask the server what the
-// session holds, so the chip, Cloud and the documents rule are right again. If the server
-// no longer has it, the 401 goes home with the notice (sessionExpired).
-async function resumeSession() {
-  try {
-    const sess = await privApi.session();
-    await mode.enable(); // the session is open: no new one is started
-    S.cloud = Boolean(sess.cloud);
-    S.cloudDocs = Boolean(sess.cloud_documents);
-    S.hasDocs = sess.documents.length > 0;
-    S.hasBrief = Boolean(sess.brief_id);
-    S.sampleBrief = Boolean(privApi.flag("sample"));
-  } catch { /* a 401 is handled by onExpired */ }
-}
-
-// Leaving or reloading the page while the session holds a brief asks first. A reload in
-// this tab resumes the brief; closing the tab cannot be told apart, so it asks too (W18).
-function confirmLeave(e) {
-  if (!privApi.open || !S.hasBrief) return;
-  e.preventDefault();
-  e.returnValue = "";
-}
-
 function init() {
   document.addEventListener("click", (e) => {
     const o = e.target.closest(".owl");
@@ -2405,27 +2021,11 @@ function init() {
   const root = document.documentElement;
   document.addEventListener("mousemove", (e) => root.classList.toggle("bar-near", e.clientX >= root.clientWidth - 8));
   root.addEventListener("mouseleave", () => root.classList.remove("bar-near"));
-  $("#status-chip").addEventListener("click", openModels);
-  $("#end-session").addEventListener("click", endSession);
-  // The first screen is drawn once, after GET /private says whether sessions are offered,
-  // so the Student door is not drawn off and then on again (review W17).
-  if (api.mode === "live") {
-    privateAvailable(privApi).then(async (on) => {
-      S.privateOn = on;
-      mode.setAvailable(on, on ? "" : "It needs every model to run on this server.");
-      if (on && privApi.open) await resumeSession();
-      drawSwitch();
-      route();
-    });
-  } else {
-    mode.setAvailable(false, "The preview has no server.");
-  }
   const setBar = () => document.documentElement.style.setProperty("--bar-h", `${$(".bar").offsetHeight}px`);
   setBar();
   window.addEventListener("resize", setBar);
   window.addEventListener("hashchange", route);
-  window.addEventListener("beforeunload", confirmLeave);
-  if (api.mode !== "live") route();
+  route();
 }
 
 init();

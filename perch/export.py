@@ -15,7 +15,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import date
 
-from perch import datefmt, egress
+from perch import datefmt
 from perch.compare import COLUMNS, Row, award_size, lower_first
 from perch.offices import RESEARCH_SECURITY, SUBMISSION_NOTE, SUBMISSION_URL, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
@@ -41,10 +41,8 @@ class Block:
     href: str | None = None
 
 
-DOCUMENTS_NOTE = ("This brief includes text drawn from your documents. The file stays on your "
-                  "computer after the session ends.")
-MASKED_NOTE = ("Phrases from your ongoing research are masked. Masking cannot hide what the "
-               "work is about.")
+DOCUMENTS_NOTE = ("This brief includes text drawn from your own documents. It is written for "
+                  "you: read it before you share the file.")
 EXCERPT_CHARS = 600
 
 
@@ -79,25 +77,23 @@ def _status_line(o: Opportunity) -> str | None:
 
 
 def _note_line(n: str) -> str:
-    return f"{'Private' if '(private)' in n else 'Rule'}: {n}"
+    return f"{'From your CV' if 'your cv' in n.lower() else 'Rule'}: {n}"
 
 
 def _money(o: Opportunity) -> str:
     return award_size(o) or "Not in the record"  # the card's words (Q2)
 
 
-# How a document is named in an export's model text, in place of its private id (Q10).
+# How a document is named in an export's model text, in place of its id (Q10).
 DOCUMENTS = {"proposal": "your draft proposal", "direction": "your research direction",
              "manuscript": "your unpublished work", "cv": "your CV",
              "interests": "your interests note", "achievement": "your achievements",
              "achievements": "your achievements"}
-WORK_ID = re.compile(r"\b(W\d{5,})\b|\b(private:[a-z]+)(?:-[a-z0-9]+)?(?:#\d+)?")
+WORK_ID = re.compile(r"\b(W\d{5,})\b|\b(user:[a-z]+)(?:-[a-z0-9]+)?(?:#\d+)?")
 GROUP = re.compile(r"\s?\[([^\[\]]+)\]")
-MASK_LABEL = re.compile(r"(?:EMAIL|ORCID|PHONE|AWARD|URL|PERSON|INSTITUTION|PRIVATE-PHRASE|"
-                        r"CV-VALUE)-\d+")  # the Masker's placeholders (perch.egress)
-PRIVATE_KEY = re.compile(r"(?:private:)?([a-z]+)(-[a-z0-9]+)?(?:#\d+)?")
+DOC_KEY = re.compile(r"(?:user:)?([a-z]+)(-[a-z0-9]+)?(?:#\d+)?")
 # "Cited work: W1 developed a tool [W1]": the bracket repeats the clause's subject (R9).
-REPEAT = re.compile(r"\b(?P<id>W\d{5,}|private:(?P<k>[a-z]+(?:-[a-z0-9]+)?))\b(?P<mid>[^\[\];]*?)"
+REPEAT = re.compile(r"\b(?P<id>W\d{5,}|user:(?P<k>[a-z]+(?:-[a-z0-9]+)?))\b(?P<mid>[^\[\];]*?)"
                     r"\s*\[(?:(?P=id)|(?P=k))\]")
 
 
@@ -146,9 +142,9 @@ def _paper(w: Work | None, inline: bool, said: set[str] | None = None) -> str:
 
 
 def _document(key: str) -> str | None:
-    m = PRIVATE_KEY.fullmatch(key)
+    m = DOC_KEY.fullmatch(key)
     if not m or m.group(1) not in DOCUMENTS:
-        return "your document" if key.startswith("private:") else None
+        return "your document" if key.startswith("user:") else None
     if m.group(1) == "achievement" and m.group(2):
         return "one of your achievements"
     return DOCUMENTS[m.group(1)]
@@ -170,11 +166,10 @@ def _cite(key: str, works: dict[str, Work], names: dict[str, str],
 def name_papers(text: str | None, works: dict[str, Work], names: dict[str, str] | None = None,
                 skip: set[str] = frozenset(), said: set[str] | None = None) -> str | None:
     """Model text with citations rendered as the screen renders them (Q10, R9): each
-    OpenAlex work by its title and year, each private id by its kind of document (never by
-    its title), a student option by its name, an opportunity by its number. A bracket
+    OpenAlex work by its title and year, each user document by its kind (never by its
+    title), a student option by its name, an opportunity by its number. A bracket
     group of keys reads as one parenthesis; a group that only repeats the clause's subject,
-    or cites the lead's own record (`skip`), goes, as on the card. Masked labels such as
-    [PRIVATE-PHRASE-1] stay."""
+    or cites the lead's own record (`skip`), goes, as on the card."""
     if not text:
         return text
     names = names or {}
@@ -183,8 +178,6 @@ def name_papers(text: str | None, works: dict[str, Work], names: dict[str, str] 
 
     def group(m: re.Match) -> str:
         keys = [k.strip() for k in re.split(r"[,;]", m.group(1)) if k.strip()]
-        if any(MASK_LABEL.fullmatch(k) for k in keys):
-            return m.group(0)
         before = m.string[:m.start()].rstrip()
         subject = not before or before.endswith((".", "!", "?", ":"))
         # The lead's own record goes, except as a sentence's subject, where it is named
@@ -209,10 +202,6 @@ def name_papers(text: str | None, works: dict[str, Work], names: dict[str, str] 
 
 
 def labelled(label: str, text: str | None) -> Block:
-    """A labelled model text, or one note when it is withheld (Q24): never
-    "Inference: Withheld: ...". """
-    if text == egress.WITHHELD:
-        return Block("note", f"{label} withheld: {egress.WITHHELD.removeprefix('Withheld: ')}")
     return Block("model", f"{label}: {text}")
 
 
@@ -232,42 +221,31 @@ def _work(w: Work) -> str:
 def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
            opps: dict[str, Opportunity], orgs: dict[str, Organisation],
            works: dict[str, Work], compare_rows: list[Row],
-           masker: egress.Masker | None = None, documents: bool = False) -> list[Block]:
-    """Private-derived text is withheld unless a masker is given (perch.egress).
-    `documents`: the session holds documents, so every model text counts as private."""
+           documents: bool = False) -> list[Block]:
+    """The researcher brief as blocks. `documents`: the brief read the user's own documents."""
     from perch.scout.tools import second_person  # lazy: perch.scout imports this module
 
     name = researcher.display_name if researcher else brief.researcher_id
-    if brief.researcher_id.startswith("private:"):  # F27: a brief from documents alone
-        name = "your documents"
     as_of = brief.options.get("as_of") or date.today().isoformat()
     built = ("Built by Perch from your documents and public records" if documents
              else "Built from public records by Perch")  # Q24
     out = [Block("h1", f"Perch brief: {name}"),
            Block("p", f"Brief as of {_day(as_of)}. {built}. Every date and amount is copied "
                       "from the linked record. A brief is a starting point, not advice.")]
-    out += _documents_notes(documents, masker)
-    docs_only = brief.researcher_id.startswith("private:")
-    if researcher and not docs_only:  # G16: a documents brief has no public record to link
+    out += _documents_notes(documents)
+    if researcher:
         out.append(Block("link", f"Researcher record ({researcher.source})",
                          href=researcher.id if researcher.id.startswith("https://")
                          else researcher.source_url))
 
-    if not docs_only or brief.summary or brief.topics:
-        out.append(Block("h2", "Research profile"))
+    out.append(Block("h2", "Research profile"))
     if brief.summary:
-        out.append(Block("model", egress.release_model(name_papers(brief.summary, works), [],
-                                                       masker, documents)))
+        out.append(Block("model", name_papers(brief.summary, works)))
     if brief.topics:
-        if documents and masker is None:
-            out.append(labelled("Topics", egress.WITHHELD))
-        else:
-            out.append(Block("list", items=[egress.release_model(t, [], masker, documents)
-                                            for t in brief.topics]))
-    if not docs_only:  # G16: no award search ran, and the screen hides the horizon
-        out.append(Block("p", "Public award horizon (end date of the last public award): "
-                         + (_day(brief.award_horizon) if brief.award_horizon
-                            else "no public award found")))
+        out.append(Block("list", items=list(brief.topics)))
+    out.append(Block("p", "Public award horizon (end date of the last public award): "
+                     + (_day(brief.award_horizon) if brief.award_horizon
+                        else "no public award found")))
 
     kept = [x for x in leads if x.status == "kept"]
     if compare_rows:
@@ -310,17 +288,14 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
         if x.explanation and not x.flagged:
             own = {o.id, o.opportunity_number}  # the card drops its own record's citation
             said: set[str] = set()  # G21: a paper's full title once per lead
-            out.append(Block("model", egress.release_model(
-                name_papers(x.explanation, works, skip=own, said=said), x.cited_ids, masker,
-                documents)))
+            out.append(Block("model", name_papers(x.explanation, works, skip=own, said=said)))
             if x.inference:  # spoken to the researcher, as Scout says it (F12)
-                out.append(labelled("Inference", egress.release_model(
-                    name_papers(second_person(x.inference), works, skip=own, said=said),
-                    x.cited_ids, masker, documents)))
+                out.append(labelled("Inference", name_papers(
+                    second_person(x.inference), works, skip=own, said=said)))
         elif x.flagged:
             out.append(Block("note", "The explanation was withheld: it failed the checks twice."))
-        cited = egress.public_only(works[f"https://openalex.org/{c}"] for c in x.cited_ids
-                                   if f"https://openalex.org/{c}" in works)
+        cited = [works[f"https://openalex.org/{c}"] for c in x.cited_ids
+                 if f"https://openalex.org/{c}" in works]
         if cited:
             out.append(Block("list", items=[f"Cites: {_work(w)}" for w in cited]))
         if desc := excerpt(o.description):
@@ -363,16 +338,23 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     return out
 
 
-def _documents_notes(documents: bool, masker: egress.Masker | None) -> list[Block]:
-    """The notes near the top of an export that holds documents: what it carries, and
-    that the ongoing research was masked when it was. A withholding export (no masker)
-    carries none: its model texts say they are withheld."""
-    if not (documents and masker is not None):
-        return []
-    notes = [Block("note", DOCUMENTS_NOTE)]
-    if getattr(masker, "active", False):
-        notes.append(Block("note", MASKED_NOTE))
-    return notes
+def brief_blocks(brief: Brief, leads: list[Lead], *, researcher: Researcher | None = None,
+                 opps: dict[str, Opportunity] | None = None,
+                 orgs: dict[str, Organisation] | None = None,
+                 works: dict[str, Work] | None = None, compare_rows: list[Row] | None = None,
+                 records: dict[str, object] | None = None, documents: bool = False
+                 ) -> list[Block]:
+    """One export for both sides: a student brief (records: its scholarships and listings) or
+    a researcher brief (its grants, companies and papers)."""
+    if brief.options.get("student"):
+        return student_blocks(brief, leads, records or {})
+    return blocks(brief, researcher, leads, opps or {}, orgs or {}, works or {},
+                  compare_rows or [], documents)
+
+
+def _documents_notes(documents: bool) -> list[Block]:
+    """The note near the top of an export of a brief that read the user's own documents."""
+    return [Block("note", DOCUMENTS_NOTE)] if documents else []
 
 
 SAMPLE_BANNER = ("SAMPLE DATA: the Scholarships section lists invented records from a "
@@ -397,20 +379,19 @@ def _source_name(rec: object) -> str:
     return host or "the listing"
 
 
-def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
-                   masker: egress.Masker | None = None, documents: bool = True) -> list[Block]:
+def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object]
+                   ) -> list[Block]:
     """A student brief (S18). Verdicts and gaps are code-written; the sample section
-    carries the banner. Text drawn from the student's documents is withheld unless
-    masked, as for every private export."""
+    carries the banner (rule 11). The brief is the student's own, built from their CV."""
     as_of = brief.options.get("as_of") or date.today().isoformat()
     shown = [x for x in leads if x.status != "dismissed"]
     gone = [x for x in leads if x.status == "dismissed"]
     kept = [x for x in leads if x.status == "kept"]
-    out = [Block("h1", "Perch student brief (private)"),
+    out = [Block("h1", "Perch student brief"),
            Block("p", f"Brief as of {_day(as_of)}. Eligibility is checked by rule from your CV; "
                       "\"may be eligible\" means Perch could not check everything. A brief is "
                       "a starting point, not advice.")]
-    out += _documents_notes(documents, masker)
+    out += _documents_notes(not brief.options.get("sample"))  # a sample persona is not yours
     if any(x.sample for x in shown):
         out.append(Block("note", SAMPLE_BANNER))
     names = {}  # a cited option reads as its name, as on the card (R9)
@@ -435,17 +416,16 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
         common = _common_lines(ok, records)
         if common:
             out.append(Block("p", "Unless an option says otherwise:"))
-            out.append(Block("list", items=[NO_FACTS_LINE if c == NO_FACTS else
-                                            egress.release_cv_line(c, masker) for c in common]))
+            out.append(Block("list", items=[NO_FACTS_LINE if c == NO_FACTS else c
+                                            for c in common]))
         for i, x in enumerate(ok, 1):
-            out += _student_option(i, x, records.get(x.record_id), office, names, common,
-                                   masker, documents)
+            out += _student_option(i, x, records.get(x.record_id), office, names, common)
         if no:  # G14: one line each, so a student can print what matters
             out.append(Block("h2", f"{title}: not eligible by rule ({len(no)})"))
             out.append(Block("p", "One line each: the option, the rule it does not meet, and "
                                   "its Match."))
-            out.append(Block("list", items=[_not_eligible_line(x, records.get(x.record_id),
-                                                               masker) for x in no]))
+            out.append(Block("list", items=[_not_eligible_line(x, records.get(x.record_id))
+                                            for x in no]))
     out.append(Block("h2", "About this export"))
     out.append(Block("p", f"{len(kept)} kept, {len(shown)} shown"
                      + (f", {len(gone)} dismissed" if gone else "") + ". Text marked Model was "
@@ -454,23 +434,10 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object],
     return out
 
 
-def bare_findings_out(text: str) -> str:
-    """G21: masked, a finding can be only "one of your achievements [PRIVATE-PHRASE-1]",
-    the same on every option. Such findings go, and the "Cited work:" tail with them when
-    none is left."""
-    head, sep, tail = text.partition(" Cited work: ")
-    if not sep:
-        return text
-    names = {"one of your achievements", *(d.lower() for d in DOCUMENTS.values())}
-    keep = [f for f in tail.rstrip(".").split("; ") if re.sub(r"\W+", " ", re.sub(
-        r"\[(?:" + MASK_LABEL.pattern + r")\]", " ", f)).strip().lower() not in names]
-    return head + (sep + "; ".join(keep) + "." if keep else "")
-
-
-def _not_eligible_line(x: Lead, rec: object, masker: egress.Masker | None) -> str:
+def _not_eligible_line(x: Lead, rec: object) -> str:
     name = getattr(rec, "name", None) or getattr(rec, "title", None) or x.record_id
     head = (f"{name}{' [SAMPLE]' if x.sample else ''}{', kept' if x.status == 'kept' else ''}")
-    rule = " ".join(egress.release_cv_line(v, masker) for v in x.verdict_lines)
+    rule = " ".join(x.verdict_lines)
     m = match_text(x.match_score)
     return f"{head}: {rule}" + (f" {m}." if m else "")
 
@@ -508,18 +475,16 @@ def you(text: str) -> str:
 
 
 def _student_option(i: int, x: Lead, rec: object, office: object, names: dict[str, str],
-                    common: list[str], masker: egress.Masker | None,
-                    documents: bool) -> list[Block]:
+                    common: list[str]) -> list[Block]:
     name = getattr(rec, "name", None) or getattr(rec, "title", x.record_id)
     mark = ", kept" if x.status == "kept" else ""  # G21: "(Parent F31), kept"
     badge = " [SAMPLE]" if x.sample else ""
     out = [Block("h3", f"{i}. {name}{badge}{mark}")]
     # The verdict, its rule lines and the gaps are written by code from the rules and the
-    # record: they stay; only model text is withheld (Q12). A value a rule read from the CV
-    # is dropped, or masked on opt-in (Q42).
+    # record. The brief is the student's own, so a value a rule read from their CV stays.
     lines = [] if len(x.verdict_lines) == 1 and x.verdict_lines[0] in common \
         else x.verdict_lines
-    items = [f"Verdict: {x.verdict}", *(egress.release_cv_line(v, masker) for v in lines)]
+    items = [f"Verdict: {x.verdict}", *lines]
     if m := match_text(x.match_score):
         items.insert(0, m)
     if isinstance(rec, Opportunity):
@@ -539,21 +504,17 @@ def _student_option(i: int, x: Lead, rec: object, office: object, names: dict[st
         label = "Announcement" if datefmt.expires_only(rec) else "Deadline"  # G17, F20
         items.append(f"{label}: {datefmt.closes(rec) or 'Not in the record'}")
     if x.gaps:  # G21: one line, as the card writes it ("a transcript; an essay")
-        items.append("Still needed: " + "; ".join(
-            lower_first(egress.release_cv_line(g, masker)) for g in x.gaps))
+        items.append("Still needed: " + "; ".join(lower_first(g) for g in x.gaps))
     items.append(f"Office: {office.name}")  # type: ignore[attr-defined]
     out.append(Block("list", items=[i for i in items if i]))
     own = {x.record_id, x.record_id.rsplit(":", 1)[-1]}  # F4: no own-record parenthesis
     if x.flagged:  # G15: as the card and the researcher export say
         out.append(Block("note", "The explanation was withheld: it failed the checks twice."))
     if x.explanation and not x.flagged:
-        out.append(Block("model", bare_findings_out(egress.release_model(
-            name_papers(x.explanation, {}, names, skip=own), x.cited_ids, masker, documents))))
+        out.append(Block("model", name_papers(x.explanation, {}, names, skip=own)))
         if x.inference:  # F4: the fit sentence under the card's label, worded as the card
             label = "How it relates" if band(x.match_score) == "weak" else "Why it may fit"
-            out.append(labelled(label, egress.release_model(
-                name_papers(you(x.inference), {}, names, skip=own), x.cited_ids, masker,
-                documents)))
+            out.append(labelled(label, name_papers(you(x.inference), {}, names, skip=own)))
     if desc := excerpt(getattr(rec, "description", None) or getattr(rec, "purpose", None)):
         out.append(Block("p", f"From the record: {desc}"))
     url = getattr(rec, "source_url", None)

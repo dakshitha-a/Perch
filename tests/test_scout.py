@@ -7,8 +7,6 @@ import pytest
 
 from perch.llm import ToolCall
 from perch.llm.fake import FakeProvider
-from perch.llm.ollama import OllamaProvider
-from perch.privacy import PrivateSettings
 from perch.scout.log import ScoutLog, replay
 from perch.scout.loop import Scout, ScoutBudget, cited, scrub, stated_numbers
 from perch.scout.tools import TOOLS, ScoutContext, check_arguments
@@ -260,22 +258,6 @@ def test_argument_check():
     assert check_arguments(t, {"route": "A", "top": "5", "x": 1}) == [
         "unknown argument 'x'", "'top' must be integer"]
     assert check_arguments(t, "route=A") == ["arguments must be an object"]
-
-
-def test_private_sessions_are_local_only_and_keep_no_scout_log(service, tmp_path):
-    private = PrivateSettings(enabled=True, endpoints=("127.0.0.1",), tls_at="server",
-                              public_url=None)
-    api = FakeProvider()
-    api.name = "anthropic"
-    with pytest.raises(PermissionError, match="hosted API"):
-        Scout(api, ctx(service), private=private)
-    remote = OllamaProvider("m", base_url="http://gpu.example.org:11434")
-    with pytest.raises(PermissionError, match="not an allowed endpoint"):
-        Scout(remote, ctx(service), private=private)
-    log = ScoutLog(tmp_path / "private.jsonl")
-    s = Scout(FakeProvider([call("get_record", id=OPP), f"Closes 2026-11-17 [{OPP}]."]),
-              ctx(service), log=log, private=private).start("When?")
-    assert s.private and s.status == "done" and not (tmp_path / "private.jsonl").exists()
 
 
 def test_bench_scoring_rules():
@@ -954,18 +936,17 @@ def points_reply(messages, system, schema):
                        "cited_ids": [target, *both]})
 
 
-def _points_ctx(service, docs=None, responder=points_reply):
+def _points_ctx(service, responder=points_reply):
     from perch.llm.audit import AuditLog, CountedProvider
 
     c = ctx(service)
     c.handoff = CountedProvider(FakeProvider(responder=responder), AuditLog(None), "handoff")
-    if docs:
-        service.private_records = lambda: {d.id: d for d in docs}
     return c
 
 
 def test_cover_points_for_a_researcher_from_papers_and_awards_then_with_documents(service):
-    from perch.private.inputs import make_doc
+    from perch.user.briefs import using_store
+    from perch.user.inputs import make_doc
 
     c = _points_ctx(service)
     out = TOOLS["cover_points"][1](c, record_id="PAR-25-268")
@@ -979,18 +960,21 @@ def test_cover_points_for_a_researcher_from_papers_and_awards_then_with_document
     assert out["note"].endswith("Adding a CV under Tell Perch more gives points from it too.")
     sent = c.handoff.inner.calls[0]["messages"][0].content
     assert "[W" in sent and "award" in sent.lower()  # papers and the public awards shown
-    # with a CV and a proposal in the session: the CV is cited, its text is not shown
+    # with a CV and a proposal the user stored: the CV is cited, its text is not shown
+    from tests.memory_store import MemoryStore
+
     canary = "PERCH-CANARY-TEST-COVER"
-    docs = [make_doc("cv", f"SYNTHETIC CV {canary}\n\n## Education\n- PhD, SYNTHETIC "
-                     f"University, 2021\n\n## Contact\n- 215-555-0100"),
-            make_doc("proposal", "SYNTHETIC draft aims on insole sensors.")]
-    c = _points_ctx(service, docs)
-    out = TOOLS["cover_points"][1](c, record_id=OPP)
-    assert out["points"][0]["you_ids"] == ["private:cv"]
-    assert out["points"][1]["you_ids"] == ["private:cv", "private:proposal"]
-    assert out["sources"]["private:cv"] == "Your CV"
-    assert out["sources"]["private:proposal"] == "Draft proposal"
-    assert "private:cv" in c.seen and canary not in json.dumps(out)
+    store = MemoryStore(cv=f"SYNTHETIC CV {canary}\n\n## Education\n- PhD, SYNTHETIC "
+                           f"University, 2021\n\n## Contact\n- 215-555-0100",
+                        docs=[make_doc("proposal", "SYNTHETIC draft aims on insole sensors.")])
+    c = _points_ctx(service)
+    with using_store(store):
+        out = TOOLS["cover_points"][1](c, record_id=OPP)
+    assert out["points"][0]["you_ids"] == ["user:cv"]
+    assert out["points"][1]["you_ids"] == ["user:cv", "user:proposal"]
+    assert out["sources"]["user:cv"] == "Your CV"
+    assert out["sources"]["user:proposal"] == "Draft proposal"
+    assert "user:cv" in c.seen and canary not in json.dumps(out)
     assert out["note"] == ("Points for you to put in your own words. Each cites the record it "
                            "comes from. Perch never sends anything.")
     sent = c.handoff.inner.calls[0]["messages"][0].content

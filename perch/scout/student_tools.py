@@ -308,13 +308,24 @@ def explain_verdict(ctx: ScoutContext, option_id: str) -> dict:
             "note": "The verdict comes from rule code; the asks are copied from the record."}
 
 
+def _inputs(ctx: ScoutContext):  # noqa: ANN202, ARG001 - a perch.user.briefs.StudentInputs
+    """The student's CV, interests and entries, from the brief store the caller set."""
+    from perch.user.briefs import current_store
+
+    store = current_store.get()
+    try:
+        if store is None:
+            raise LookupError("no store")
+        return store.student_inputs()
+    except (LookupError, ValueError):
+        raise ToolError("no CV, interests or achievements for this brief") from None
+
+
 def read_cv(ctx: ScoutContext) -> dict:
     from perch.student import parse_student_cv
 
-    doc = getattr(getattr(ctx.service, "session", None), "docs", {}).get("cv")
-    if doc is None:
-        raise ToolError("no CV in this session")
-    return {"fields": dict(parse_student_cv(doc.abstract or "").summary()),
+    inp = _inputs(ctx)
+    return {"fields": dict(parse_student_cv(inp.cv).summary()),
             "note": "Fields the rules read from the CV. The CV text itself is not shown."}
 
 
@@ -393,21 +404,19 @@ def cover_points(ctx: ScoutContext, record_id: str) -> dict:
     """Skill 4 for one option (S33): the CV, interests and achievements are the applicant
     records; the option's rule lines and gaps go in as code-written context. A sample
     option is allowed and the result stays marked sample."""
-    from perch.private.student import achievement_docs, as_opportunity
     from perch.skills.cover import cover_points as points_for
+    from perch.student import achievement_docs, as_opportunity
+    from perch.user.inputs import make_doc
 
     x = _find(ctx, record_id)
     rec = _record(ctx, x)
     if rec is None:
         raise ToolError(f"no record for option {record_id}")
     o = rec if isinstance(rec, Opportunity) else as_opportunity(rec)
-    docs = getattr(getattr(ctx.service, "session", None), "docs", {})
-    cv = docs.get("cv")
-    others = [d for d in (docs.get("interests"),) if d]
-    if ach := docs.get("achievements"):
-        others += achievement_docs(ach.abstract or "", ach.fetched_at)
-    if cv is None and not others:
-        raise ToolError("no CV, interests or achievements in this session")
+    inp = _inputs(ctx)
+    cv = make_doc("cv", inp.cv)
+    others = [inp.interests] if inp.interests else []
+    others += achievement_docs(inp.entries)
     s = ctx.service
     provider = ctx.handoff or s._audited("handoff", s.models.handoff_spec)
     lines = [*x.verdict_lines, *x.gaps]

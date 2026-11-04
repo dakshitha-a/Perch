@@ -383,12 +383,13 @@ def test_request_bodies_over_the_limit_answer_413(tmp_path, monkeypatch):
     monkeypatch.setattr(api, "MAX_BODY", 1000)
     c, _ = make(tmp_path)
     big = b'{"question": "' + b"x" * 2000 + b'"}'
-    r = c.post("/private/session", content=big, headers={"content-type": "application/json"})
+    r = c.post("/briefs/b1/scout", content=big, headers={"content-type": "application/json"})
     assert r.status_code == 413
     chunks = (big[i:i + 300] for i in range(0, len(big), 300))
-    assert c.post("/private/session", content=chunks).status_code == 413
-    small = (x for x in [b"{}"])
-    assert c.post("/private/end", content=small).status_code == 200  # chunked, under the limit
+    assert c.post("/briefs/b1/scout", content=chunks).status_code == 413
+    small = (x for x in [b'{"question": "hi"}'])
+    ok = c.post("/briefs/b1/scout", content=small, headers={"content-type": "application/json"})
+    assert ok.status_code == 404  # chunked and under the limit: it reaches the route
     assert c.get("/health").status_code == 200
 
 
@@ -438,24 +439,21 @@ def test_a_route_b_failure_beside_still_fails_the_brief(tmp_path, monkeypatch):
 
 
 def test_request_models_are_defined_once():
-    """Review W15: the session routes reuse the stored-brief API's request models."""
+    """Review W15: the brief API's request models are defined once, in request_models."""
     from perch import api, request_models
-    from perch.private import routes
 
     assert issubclass(api.BriefRequest, request_models.BriefOptions)
-    assert issubclass(routes.PrivateBriefRequest, request_models.BriefOptions)
-    assert issubclass(routes.PrivateHandoffRequest, request_models.HandoffRequest)
-    assert api.ScoutRequest is request_models.ScoutRequest and not hasattr(routes, "ScoutReq")
-    src = "".join(Path(m.__file__).read_text() for m in (api, routes, request_models))
+    assert api.ScoutRequest is request_models.ScoutRequest
+    src = "".join(Path(m.__file__).read_text() for m in (api, request_models))
     assert src.count("def context(self)") == 1
-    assert routes.PrivateBriefRequest(author_id=None).author_id is None
+    assert api.BriefRequest(author_id=None).author_id is None  # a student brief has none
     assert api.BriefRequest(author_id="A1").context()["include_keywords"] == []
 
 
 def test_route_b_sends_up_to_the_cap_of_records_per_signal_and_counts_the_rest():
     from datetime import UTC, date, datetime
 
-    from perch.api import SIGNAL_RECORDS, route_b_json
+    from perch.api import SIGNAL_RECORDS, lead_json
     from perch.schemas import Lead, Signal, Work
 
     t = datetime(2026, 10, 29, tzinfo=UTC)
@@ -473,7 +471,7 @@ def test_route_b_sends_up_to_the_cap_of_records_per_signal_and_counts_the_rest()
     lead = Lead(id="b:B1", source="openalex", source_url="u", fetched_at=t, brief_id="b", route="B",
                 record_id="https://openalex.org/I1", rank=1, inferred=True, inference="x",
                 cited_ids=[], signals=[Signal(kind="citing_works", record_ids=ids, count=len(ids))])
-    item = route_b_json(lead, Repo())["signal_items"][0]  # type: ignore[arg-type]
+    item = lead_json(lead, Repo())["signal_items"][0]  # type: ignore[arg-type]
     assert len(item["records"]) == SIGNAL_RECORDS and item["more"] == 5
 
 

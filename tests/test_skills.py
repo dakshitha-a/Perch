@@ -172,9 +172,9 @@ def test_sentence_count_ignores_abbreviations():
     assert sentences("Funds DNA. Also RNA.") == 2
 
 
-def test_handoff_opening_carries_no_citation_keys_and_a_private_researcher_signs_it():
-    """Q23: "[26-519]" and "[private:proposal]" stayed in the email's opening, since the
-    old pattern wanted a leading letter. Q26: "Best regards, You (private)"."""
+def test_handoff_opening_carries_no_citation_keys_and_a_researcher_without_a_profile_signs_it():
+    """Q23: "[26-519]" and "[user:proposal]" stayed in the email's opening, since the
+    old pattern wanted a leading letter. Q26: "Best regards, You"."""
     from perch.offices import OFFICES
     from perch.schemas import Researcher
     from perch.skills.handoff import draft_handoff, plain_citations
@@ -187,13 +187,13 @@ def test_handoff_opening_carries_no_citation_keys_and_a_private_researcher_signs
     opening = d.body.split("\n\n")[1]
     assert "[" not in opening and "communication. I would" in opening
     recs = {"26-519": items[0][1], "W1": papers[0]}
-    assert plain_citations("Chemistry [26-519] and more [private:proposal, W1].", recs,
+    assert plain_citations("Chemistry [26-519] and more [user:proposal, W1].", recs,
                            {"W1"}) == "Chemistry (PAR-1) and more."
     assert plain_citations("A note [sic].", recs, set()) == "A note [sic]."
-    you = Researcher(id="private:you", display_name="You (private)", source="private",
-                     source_url="private://session", fetched_at=T)
+    you = Researcher(id="user:you", display_name="You", source="user",
+                     source_url="perch://user", fetched_at=T)
     d = draft_handoff(OFFICES["research_development"], you, items, papers, None)
-    assert d.body.endswith("Best regards,\n") and "(private)" not in d.body
+    assert d.body.endswith("Best regards,\n") and "You" not in d.body.splitlines()[-1]
 
 
 # --- skill 4, cover points (S33; SYNTHETIC text only) ---
@@ -218,8 +218,8 @@ lab.vale""" + "@" + """example.invalid, 215-555-0100, https://example.invalid/va
 
 
 def _cover_inputs():
-    from perch.private.inputs import make_doc
     from perch.schemas import Award
+    from perch.user.inputs import make_doc
 
     cv = make_doc("cv", CV_TEXT)
     proposal = make_doc("proposal", "SYNTHETIC draft aims: a shoe-worn sensor that records "
@@ -242,15 +242,15 @@ def cover_reply(points=None, missing=None, cited=None):
          "reaction force at home.", "you_ids": ["proposal"]},
         {"asks": "It asks applicants to describe prior sensor work.", "asks_ids": ["PAR-1"],
          "you": "You hold a SYNTHETIC seed grant on insole force sensing.",
-         "you_ids": ["private:cv"]},
+         "you_ids": ["user:cv"]},
         {"asks": "It supports early-career investigators.", "asks_ids": ["PAR-1"],
-         "you": "You are an Assistant Professor since 2023 [private:cv].",
-         "you_ids": ["private:cv", "nih:1"]}]
+         "you": "You are an Assistant Professor since 2023 [user:cv].",
+         "you_ids": ["user:cv", "nih:1"]}]
     return json.dumps({"reasoning": "r", "points": points,
                        "missing": missing if missing is not None else
                        ["The announcement asks for a mentoring plan; nothing you added "
                         "shows one."],
-                       "cited_ids": cited or ["PAR-1", "private:cv", "proposal", "nih:1"]})
+                       "cited_ids": cited or ["PAR-1", "user:cv", "proposal", "nih:1"]})
 
 
 def test_cover_points_pass_cite_the_target_and_applicant_records_and_show_no_contacts():
@@ -262,11 +262,11 @@ def test_cover_points_pass_cite_the_target_and_applicant_records_and_show_no_con
     assert not v.flagged and v.attempts == 1, v.errors
     pts = v.value.points
     assert [x.asks_ids for x in pts] == [["PAR-1"]] * 3
-    assert pts[0].you_ids == ["private:proposal"]  # the dropped prefix is put back
+    assert pts[0].you_ids == ["user:proposal"]  # the dropped prefix is put back
     assert pts[2].you == "You are an Assistant Professor since 2023."  # inline ids go
     assert v.value.missing == ["The announcement asks for a mentoring plan; nothing you added "
                                "shows one."]
-    assert set(records) == {"PAR-1", "private:cv", "private:proposal", "W1", "W2", "W3",
+    assert set(records) == {"PAR-1", "user:cv", "user:proposal", "W1", "W2", "W3",
                             "nih:1"}
     sent = p.inner.calls[0]
     text = sent["system"] + sent["messages"][0].content
@@ -290,9 +290,9 @@ def test_cover_points_regenerate_on_a_bad_id_or_an_invented_number_then_withhold
     # a point whose asks cites a paper, a you that judges odds, an invented amount: twice
     odds = cover_reply(points=[
         {"asks": "It supports wearable sensing.", "asks_ids": ["W1"],
-         "you": "You are a strong candidate with good odds.", "you_ids": ["private:cv"]},
+         "you": "You are a strong candidate with good odds.", "you_ids": ["user:cv"]},
         {"asks": "It pays $900,000.", "asks_ids": ["PAR-1"], "you": "You built sensors.",
-         "you_ids": ["private:cv"]},
+         "you_ids": ["user:cv"]},
         {"asks": "It asks for prior sensor work.", "asks_ids": ["PAR-1"],
          "you": "You should apply.", "you_ids": []}])
     p, log = audited([odds, odds])
@@ -360,8 +360,8 @@ def test_a_fragment_or_a_missing_item_about_a_gap_in_the_record_is_sent_back_by_
 
 def test_cover_points_grounder_flags_without_withholding_and_the_prompt_fits_the_model():
     from perch.grounding import FakeGrounder
-    from perch.private.inputs import make_doc
     from perch.skills.cover import PROMPT_CHARS, cover_points
+    from perch.user.inputs import make_doc
 
     opp, cv, docs, papers, awards = _cover_inputs()
     pts = json.loads(cover_reply())["points"]
@@ -375,9 +375,9 @@ def test_cover_points_grounder_flags_without_withholding_and_the_prompt_fits_the
     big_cv = make_doc("cv", CV_TEXT + "\n## Publications\n" + "- SYNTHETIC paper line\n" * 400)
     big_docs = [make_doc(k, f"SYNTHETIC {k} text. " * 400)
                 for k in ("proposal", "direction", "manuscript", "interests")]
-    from perch.private.student import achievement_docs
-    big_docs += achievement_docs("\n".join(f"{i}. SYNTHETIC achievement {i} " + "words " * 200
-                                           for i in range(1, 6)))
+    from perch.student import achievement_docs
+    big_docs += achievement_docs([f"SYNTHETIC achievement {i} " + "words " * 200
+                                  for i in range(1, 6)])
     long_papers = [w.model_copy(update={"abstract": "SYNTHETIC abstract words. " * 200})
                    for w in papers] * 3
     p, _ = audited([cover_reply(), cover_reply()])
@@ -386,4 +386,4 @@ def test_cover_points_grounder_flags_without_withholding_and_the_prompt_fits_the
     sent = p.inner.calls[0]
     assert len(sent["system"]) + len(sent["messages"][0].content) < PROMPT_CHARS
     assert "Rule check, written by code:\n- Open to year 4" in sent["messages"][0].content
-    assert "private:cv" in records and len([k for k in records if k.startswith("W")]) <= 6
+    assert "user:cv" in records and len([k for k in records if k.startswith("W")]) <= 6

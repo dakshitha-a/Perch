@@ -127,87 +127,6 @@ console.log(JSON.stringify({ repeats, seen: seen.size, total: POKES.length,
     assert out["low"] == "spin" and out["high"] == "blink"
 
 
-@pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
-def test_one_side_per_session():
-    """2026-11-02: a session holding one side's brief crosses only into the other side's
-    form; no brief, or the same side, never asks."""
-    script = """
-import { crossesSide, heldSide } from './web/mode.js';
-const R = { brief_id: 'b1', brief_student: false }, St = { brief_id: 'b2', brief_student: true };
-console.log(JSON.stringify([heldSide(R), heldSide(St), heldSide({ brief_id: null }), heldSide(null),
-  crossesSide(R, 'student'), crossesSide(St, 'researcher'), crossesSide(R, 'researcher'),
-  crossesSide(St, 'student'), crossesSide({ brief_id: null, brief_student: false }, 'student')]));
-"""
-    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
-                       text=True, cwd=ROOT, timeout=30)
-    assert r.returncode == 0, r.stderr
-    assert json.loads(r.stdout) == ["researcher", "student", None, None,
-                                    True, True, False, False, False]
-
-
-@pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
-def test_private_session_starts_before_personal_text_is_sent():
-    """S18: the header switch, the Student path and the paste nudge all open a private
-    session before any personal text leaves the browser; a content guess never switches
-    the mode, and turning it off ends the session only after a confirm."""
-    script = """
-import { createMode, looksPersonal } from './web/mode.js';
-const calls = [];
-const api = { open: false,
-  start: async () => { calls.push('start'); api.open = true; },
-  end: async () => { calls.push('end'); api.open = false; },
-  addDocument: async (b) => {
-    calls.push('add:' + b.kind + ':' + (api.open ? 'open' : 'CLOSED')); } };
-(async () => {
-const m = createMode(api);
-m.setAvailable(true);
-// Student path and personal fields: send() opens the session first.
-await m.send({ kind: 'cv', text: 'SYNTHETIC CV' });
-// The paste nudge: moving text opens the session and sends nothing.
-api.open = false;
-await m.move('cv', 'SYNTHETIC CV pasted');
-const afterMove = calls.slice();
-// The header switch: off ends only after a confirm; a refusal keeps it on.
-const kept = await m.disable(async () => false);
-const ended = await m.disable(async () => true);
-// Unavailable: nothing starts.
-const n = createMode({ open: false, start: async () => calls.push('BAD') });
-n.setAvailable(false, 'no self-hosted models');
-let refused = false;
-try { await n.send({ kind: 'cv', text: 'x' }); } catch (e) { refused = true; }
-console.log(JSON.stringify({ calls, afterMove, kept, ended, refused, drafts: m.state.drafts,
-  cv: looksPersonal('Education\\nB.S. Biology\\nGPA: 3.4\\nReferences'),
-  name: looksPersonal('Jane Smith'), orcid: looksPersonal('0000-0002-1825-0097') }));
-})().catch((e) => { console.error(e); process.exit(1); });
-"""
-    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
-                       text=True, cwd=ROOT, timeout=30)
-    assert r.returncode == 0, r.stderr
-    out = json.loads(r.stdout)
-    assert out["calls"][:2] == ["start", "add:cv:open"]
-    assert out["afterMove"] == ["start", "add:cv:open", "start"]  # moved text is not sent
-    assert out["kept"] is False and out["ended"] is True and out["calls"][-1] == "end"
-    assert out["refused"] and "BAD" not in out["calls"]
-    assert out["drafts"] == {}
-    assert out["cv"] and not out["name"] and not out["orcid"]
-
-
-def test_personal_fields_exist_only_inside_private_mode():
-    """The landing has no personal-text field; the pick screen's CV and draft boxes reach
-    the server only as session documents, after the session opens (S24)."""
-    app = (WEB_DIR / "app.js").read_text()
-    find = app[app.index("function renderFind()"):app.index("function pasted(")]
-    fields = re.findall(r'h\("(?:textarea|input)", \{[^}]*\}', find)
-    assert fields
-    personal = r"\b(cv|interests|achievements|proposal)\b"
-    assert not [x for x in fields if re.search(personal, x, re.I)]
-    build = app[app.index("async function build(c)"):app.index("// ----- the status chip")]
-    assert build.index("await mode.enable()") < build.index("privApi.addDocument") \
-        < build.index("privApi.create(req)")
-    student = (WEB_DIR / "student.js").read_text()
-    assert "if (!api.open)" in student  # the form shows only with a session open
-
-
 def test_draft_review_checklist_quotes_the_record():
     """S24 task 7: the checklist is the record's own sentences, chosen by code."""
     from bench.draft_review.items import asks
@@ -218,46 +137,6 @@ def test_draft_review_checklist_quotes_the_record():
     got = asks(text)
     assert got and all(g in text for g in got)
     assert not any("Section IV" in g for g in got)
-
-
-@pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
-def test_a_lost_session_is_detected_once_and_the_mode_turns_off():
-    """S27: when the server no longer holds the session (idle timeout or restart), every
-    session call answers 401. The client drops the token and calls onExpired once, even
-    when several calls fail together, and the mode goes off without asking the server."""
-    script = """
-import { privateApi } from './web/api.js';
-import { createMode } from './web/mode.js';
-let status = 201;
-globalThis.fetch = async (url) => ({ ok: status < 400, status,
-  json: async () => status === 201 ? { token: 'SYNTHETIC-token' }
-    : { detail: 'No private session. It may have ended or timed out.' } });
-(async () => {
-const api = privateApi('');
-let fired = 0, message = '';
-api.onExpired = (m) => { fired += 1; message = m; };
-await api.start();
-const openBefore = api.open;
-status = 401;
-const results = await Promise.allSettled([api.brief(), api.session(), api.compare()]);
-const openAfter = api.open;
-status = 201;
-const m = createMode(api);
-m.setAvailable(true);
-await m.move('cv', 'SYNTHETIC draft');
-m.expired();
-console.log(JSON.stringify({ openBefore, openAfter, fired, message,
-  rejected: results.every((r) => r.status === 'rejected'), on: m.state.on,
-  drafts: m.state.drafts }));
-})().catch((e) => { console.error(e); process.exit(1); });
-"""
-    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
-                       text=True, cwd=ROOT, timeout=30)
-    assert r.returncode == 0, r.stderr
-    out = json.loads(r.stdout)
-    assert out["openBefore"] is True and out["openAfter"] is False
-    assert out["fired"] == 1 and "timed out" in out["message"]
-    assert out["rejected"] and out["on"] is False and out["drafts"] == {}
 
 
 def test_the_app_loads_nothing_from_another_host(tmp_path):
@@ -324,51 +203,7 @@ def test_no_front_end_path_that_nothing_reaches():
     app = (WEB_DIR / "app.js").read_text()
     api = (WEB_DIR / "api.js").read_text()
     assert "keptUrl" not in api and "exportUrl" not in api + app
-    assert 'if (api.mode !== "private") return null;' in app  # the export menu
-
-
-@pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
-def test_the_session_id_lives_in_the_tab_only():
-    """Review W18 and U2: the session id sits in this tab's sessionStorage, so a reload
-    finds the brief again. A new client in the same tab resumes it; ending the session, or
-    the server losing it, clears it. Without sessionStorage the client still works."""
-    script = """
-import { privateApi } from './web/api.js';
-const store = new Map();
-globalThis.sessionStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null),
-  setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
-let status = 201;
-globalThis.fetch = async () => ({ ok: status < 400, status,
-  json: async () => status === 201 ? { token: 'SYNTHETIC-token' } : { detail: 'gone' } });
-(async () => {
-const a = privateApi('');
-await a.start();
-a.flag('sample', true);
-const saved = [...store.keys()].sort();
-const b = privateApi('');            // the same tab after a reload
-const resumed = b.open && b.flag('sample') === true;
-status = 401;
-await b.session().catch(() => {});
-const afterLost = { open: b.open, keys: [...store.keys()] };
-status = 201;
-const c = privateApi('');
-await c.start();
-await c.end();
-const afterEnd = [...store.keys()];
-delete globalThis.sessionStorage;    // storage blocked: still works, nothing resumes
-const d = privateApi('');
-await d.start();
-console.log(JSON.stringify({ saved, resumed, afterLost, afterEnd, blocked: d.open,
-  fresh: privateApi('').open }));
-})().catch((e) => { console.error(e); process.exit(1); });
-"""
-    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
-                       text=True, cwd=ROOT, timeout=30)
-    assert r.returncode == 0, r.stderr
-    out = json.loads(r.stdout)
-    assert out["saved"] == ["perch.flags", "perch.session"] and out["resumed"]
-    assert out["afterLost"] == {"open": False, "keys": []}
-    assert out["afterEnd"] == [] and out["blocked"] and not out["fresh"]
+    assert "if (!api.exportFile) return null;" in app  # the export menu: a preview has none
 
 
 def test_the_research_security_line_is_one_fixed_line():
@@ -405,8 +240,8 @@ console.log(JSON.stringify(CASES.map((t) => secondPerson(t))));
 
 def test_cover_points_reach_the_app_and_no_page_promises_that_no_model_reads_the_cv():
     """S33: the Scout card renders cover_points with a Copy button and both audiences get
-    the example question and the rail line; the start screen, the CV box, the Cloud dialog
-    and Help say when a model reads the CV, and no page still promises that none does."""
+    the example question and the rail line; Scout and Help say when a model reads the CV,
+    and no page still promises that none does."""
     web = {n: (WEB_DIR / n).read_text() for n in ("scout.js", "app.js", "student.js", "help.js")}
     scout = web["scout.js"]
     for s in ("function pointsBlock(", "What could my cover letter for the top lead say?",
@@ -419,19 +254,13 @@ def test_cover_points_reach_the_app_and_no_page_promises_that_no_model_reads_the
               "details blanked.",
               "A model reads your documents only when you ask for cover-letter points, with "
               "contact details blanked.",
-              "class: \"cite private\"", "Sample data"):
+              "class: \"cite own\"", "Sample data"):
         assert s in scout, s
     assert "The points below are the step’s result." in scout  # the code-written answer line
     css = (WEB_DIR / "styles.css").read_text()
     assert ".scout-points {" in css
     assert "overflow-wrap: anywhere" in css.split(".scout-points {")[1][:200]
     assert ".scout-points .btn.points-copy { min-height: 44px; }" in css
-    assert ("A model on this server reads it only when you ask Scout for cover-letter points, "
-            "with contact details blanked, unless you choose Cloud and confirm."
-            ) in web["student.js"]
-    assert "and gives Scout cover-letter points when you ask" in web["app.js"]
-    assert "the fit explanations, cover-letter points and drafts Scout asks for" in web["app.js"]
-    assert "writes those four texts instead" in web["app.js"]
     help_ = web["help.js"]
     assert "cover-letter points" in help_  # Help stays short; the detail is in SPEC
     # The withdrawn promise (Q43) is gone from every page and from the redesign source. The
@@ -510,3 +339,109 @@ def test_tag_chip_wraps_instead_of_widening_the_page() -> None:
     css = (Path(__file__).resolve().parent.parent / "web" / "styles.css").read_text()
     rule = next(x for x in css.split("\n.") if x.startswith("tag {")).split("}", 1)[0]
     assert "nowrap" not in rule and "max-width: 100%" in rule
+
+
+def test_the_find_form_has_no_personal_text_field_and_build_starts_one_brief_call():
+    """The landing has no personal-text field and the pick screen's boxes are the plain option
+    fields (direction, keywords, career stage, smallest award); no CV or proposal box and no
+    upload exist in the web app. Build is one call: api.create(req, "researcher")."""
+    app = (WEB_DIR / "app.js").read_text()
+    find = app[app.index("function renderFind()"):app.index("function heroArt()")]
+    ctx = app[app.index("function contextPanel("):app.index("// One build call")]
+    for part in (find, ctx):
+        fields = re.findall(r'h\("(?:textarea|input)", \{[^}]*\}', part)
+        assert not [x for x in fields if re.search(r"\b(cv|interests|achievements|proposal)\b",
+                                                  x, re.I)]
+        assert 'type: "file"' not in part
+    build = app[app.index("async function build(c)"):app.index("// ---------- Brief ----------")]
+    assert 'api.create(req, "researcher")' in build
+    student = (WEB_DIR / "student.js").read_text()
+    start = student[student.index("export function renderStudentStart("):
+                    student.index("// ----- profile -----")]
+    assert 'api.create({}, "student")' in start and "Try the sample student" in start
+    assert not re.findall(r'h\("(?:textarea|input)"', start)
+
+
+def test_no_private_mode_code_is_left_in_the_web_app():
+    """Private mode is removed (S42): the files, the routes and the words are gone."""
+    assert not (WEB_DIR / "mode.js").exists() and not (WEB_DIR / "private.js").exists()
+    words = re.compile(r"private|mask|X-Perch|sessionStorage|status-chip|end-session|"
+                       r"\bCloud\b", re.I)
+    for f in WEB_DIR.glob("*.js"):
+        text = f.read_text()
+        hits = [m.group(0) for m in words.finditer(text)]
+        # Scout's step tags still name a Cloud provider when the server reports one.
+        allowed = {"scout.js": {"Cloud", "cloud"}}.get(f.name, set())
+        assert not [h for h in hits if h not in allowed], (f.name, hits)
+    assert "status-chip" not in (WEB_DIR / "index.html").read_text()
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="Node not installed")
+def test_the_live_api_session_csrf_etag_and_a_lost_session():
+    """The live client: a guest session is made on the side asked for before the first brief,
+    the CSRF token goes on every non-GET and stays in memory, a poll sends the last ETag and
+    a 304 reuses the last body, an object error reads as a plain sentence, and a lost
+    session (401 on several calls at once) reports once."""
+    script = """
+import { liveApi } from './web/api.js';
+const calls = [];
+let session = false, lost = false;
+const ETAG = '"v1"';
+globalThis.fetch = async (url, o = {}) => {
+  const method = o.method || 'GET', h = o.headers || {};
+  calls.push({ url, method, csrf: h['X-CSRF-Token'] || null, inm: h['If-None-Match'] || null });
+  const res = (status, body, headers = {}) => ({ ok: status < 400, status,
+    headers: { get: (k) => headers[k] || null }, json: async () => body,
+    text: async () => JSON.stringify(body) });
+  if (url === '/auth/session') return res(200, session
+    ? { signed_in: false, guest: true, audience: 'student', csrf: 'SYN-CSRF' }
+    : { signed_in: false });
+  if (url === '/auth/guest') { session = true; return res(200, { guest: true,
+    audience: JSON.parse(o.body).audience, csrf: 'SYN-CSRF' }); }
+  if (lost) return res(401, { detail: { error: 'auth_required' } });
+  if (url === '/briefs') return res(202, { id: 'b1' });
+  if (url === '/briefs/b1') return h['If-None-Match'] === ETAG ? res(304, {}, { ETag: ETAG })
+    : res(200, { brief: { id: 'b1' } }, { ETag: ETAG });
+  if (url === '/briefs/b1/handoff') return res(403, { detail: { error: 'account_required' } });
+  if (url === '/briefs/b1/compare') return res(200, { rows: [] });
+  return res(404, { detail: 'no such route' });
+};
+(async () => {
+const api = liveApi('');
+let fired = [];
+api.onExpired = (m) => fired.push(m);
+const made = await api.create({}, 'student');
+const first = await api.brief('b1');
+const second = await api.brief('b1');
+await api.setLead('b1', 'l1', 'keep').catch(() => {});
+const denied = await api.handoff('b1', { office: 'x' }).catch((e) => e);
+lost = true;
+const results = await Promise.allSettled([api.brief('b1'), api.compare('b1')]);
+console.log(JSON.stringify({ calls, made, first, second, fired,
+  denied: [denied.status, denied.message],
+  rejected: results.every((r) => r.status === 'rejected') }));
+})().catch((e) => { console.error(e); process.exit(1); });
+"""
+    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
+                       text=True, cwd=ROOT, timeout=30)
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    calls = out["calls"]
+    assert [c["url"] for c in calls[:3]] == ["/auth/session", "/auth/guest", "/briefs"]
+    assert calls[2]["csrf"] == "SYN-CSRF" and out["made"] == {"id": "b1"}
+    polls = [c for c in calls if c["url"] == "/briefs/b1" and c["method"] == "GET"]
+    assert polls[0]["inm"] is None and polls[1]["inm"] == '"v1"'  # the second poll sends the ETag
+    assert out["second"] == out["first"]  # 304: the last body
+    lead = next(c for c in calls if c["url"].endswith("/leads/l1/keep"))
+    assert lead["method"] == "POST" and lead["csrf"] == "SYN-CSRF"
+    assert all(c["csrf"] is None for c in calls if c["method"] == "GET")
+    assert out["denied"][0] == 403 and out["denied"][1].startswith("Sign in")
+    assert len(out["fired"]) == 1 and "guest session ended" in out["fired"][0]
+    assert out["rejected"]
+
+
+def test_the_session_and_csrf_token_stay_out_of_browser_storage():
+    """The CSRF token lives in memory only; the session is the server's cookie."""
+    api = (WEB_DIR / "api.js").read_text()
+    for banned in ("sessionStorage", "localStorage", "document.cookie"):
+        assert banned not in api

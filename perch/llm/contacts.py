@@ -1,5 +1,5 @@
 """Contact blanking: emails, phones, ORCIDs and links are replaced before any model sees text
-(standing rule 5). Moved from perch/egress.py in S41; egress re-exports it until Phase 6."""
+(standing rule 5). Called wherever a user's text is parsed and before it reaches a prompt."""
 
 from __future__ import annotations
 

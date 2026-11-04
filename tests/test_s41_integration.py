@@ -117,7 +117,8 @@ def test_brief_job_fails_as_consent_required_when_consent_is_missing_or_withdraw
     monkeypatch.setenv("PERCH_REDIS_URL", REDIS_URL)
     monkeypatch.setenv("PERCH_CONSENT_PROVIDER_NAME", "SYNTHETIC Provider")
     _, svc = make(tmp_path)
-    doc = docs.add(env.ud, env.uid, "student", "proposal", text="SYNTHETIC proposal text.")
+    env.session.audience = "researcher"  # a researcher brief reads the author and the proposal
+    doc = docs.add(env.ud, env.uid, "researcher", "proposal", text="SYNTHETIC proposal text.")
     env.session.consent_version = 1  # the session says yes; the job asks the database
 
     def run(key: str):

@@ -456,27 +456,8 @@ def cmd_mcp(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     data = Path(args.db).parent
     service = BriefService(args.db, default_models(args.models == "fake", data, args.llm),
                            Clients(openalex=default_client), Path(args.overrides))
-    audit = None
-    if args.private:
-        from perch.llm.audit import AuditLog
-        from perch.privacy import PrivateSettings, harden_process
-        from perch.private.session import PrivateSessions
-
-        settings = PrivateSettings.from_env()
-        problems = settings.problems() if settings.enabled else ["PERCH_PRIVATE_MODE is not 1"]
-        if problems:
-            print("perch mcp --private: private mode cannot start:\n  " + "\n  ".join(problems),
-                  file=sys.stderr)
-            return 2
-        harden_process()
-        try:
-            service = PrivateSessions(service, settings).open().service
-        except PermissionError as e:
-            print(f"perch mcp --private: {e}", file=sys.stderr)
-            return 2
-        audit = AuditLog(None)
-    ctx = make_context(service, args.author, audit=audit)
-    serve_stdio(create_server(ctx, private=args.private))
+    ctx = make_context(service, args.author)
+    serve_stdio(create_server(ctx))
     return 0
 
 
@@ -490,12 +471,8 @@ def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     data = Path(args.db).parent
     service = BriefService(args.db, default_models(args.models == "fake", data, args.llm),
                            Clients(openalex=default_client), Path(args.overrides))
-    from perch.privacy import PrivateSettings, harden_process
+    from perch.hardening import harden_process
 
-    private = PrivateSettings.from_env()
-    if private.enabled and (problems := private.problems()):
-        print("perch serve: private mode cannot start:\n  " + "\n  ".join(problems))
-        return 2
     harden_process()
     # Warning level: no access log, so no request paths or addresses are written.
     from perch.scout.log import ScoutLog
@@ -619,8 +596,6 @@ def build_parser() -> argparse.ArgumentParser:
     sc.add_argument("--models", choices=["local", "fake"], default="local")
     m = sub.add_parser("mcp", help="run Perch's tools as an MCP server on stdio")
     m.add_argument("--author", help="OpenAlex author id the tools default to")
-    m.add_argument("--private", action="store_true",
-                   help="private session: no writes or logs; self-hosted models only")
     m.add_argument("--models", choices=["local", "fake"], default="local")
     m.add_argument("--llm", default=None, help="provider spec for the model-backed tools")
     sub.add_parser("samples", help="load the SYNTHETIC sample scholarships into their own "

@@ -127,9 +127,9 @@ def explain_one(o: Opportunity, system: str, paper_records: dict[str, Record],
                           cache_system=True)
         d = parse_json(r.text)
         def known(i: str) -> str:
-            # Models often drop the "private:" prefix of a session record's id.
+            # Models often drop the "user:" prefix of a user document's id.
             i = i.strip("[] ")
-            return f"private:{i}" if i not in records and f"private:{i}" in records else i
+            return f"user:{i}" if i not in records and f"user:{i}" in records else i
 
         try:
             findings = [(known(x["paper_id"]), x["finding"].strip())
