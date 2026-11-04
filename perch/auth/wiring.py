@@ -2,7 +2,8 @@
 
 `install_auth(app, service)` is the one call from perch/api.py. It includes the router, and at
 startup builds the Redis client, the SessionStore, the Postgres pool, the OIDC provider, the
-OpenAlex link store, and registers the shred hooks (perch/shredhooks.py). Each part is built
+OpenAlex link store, the account services (UserServices) and the shred hooks
+(perch/shredhooks.py). Each part is built
 only when its setting is present, so an app without PERCH_REDIS_URL or PERCH_DATABASE_URL
 (the unit tests, the fallback demo) starts as before with nobody signed in.
 """
@@ -18,7 +19,7 @@ import httpx
 from fastapi import FastAPI
 
 from perch import shredhooks
-from perch.auth.openalex_link import CryptoLinkStore
+from perch.auth.openalex_link import UserDataLinkStore
 from perch.auth.routes import router
 from perch.auth.session import SessionStore
 from perch.config import env
@@ -54,8 +55,20 @@ def build_state(app: FastAPI, service: Any = None) -> None:  # noqa: ANN401
     r = state.sessions.r if state.sessions is not None else None
     if state.pool is None and env("PERCH_DATABASE_URL"):
         state.pool = make_pool()
+    keys_ready = bool(env("PERCH_KEYS_DATABASE_URL") and env("PERCH_MASTER_KEY"))
     if state.pool is not None and getattr(state, "openalex_links", None) is None:
-        state.openalex_links = CryptoLinkStore(state.pool)
+        from perch.user.data import UserData
+
+        state.openalex_links = UserDataLinkStore(UserData(state.pool))
+    if (state.pool is not None and r is not None and keys_ready
+            and getattr(state, "user_services", None) is None):
+        from perch.jobs import PostgresRunner
+        from perch.user.data import UserData
+        from perch.user.routes import UserServices
+
+        runner = PostgresRunner(pool=state.pool)
+        state.user_services = UserServices(pool=state.pool, ud=UserData(state.pool),
+                                           runner=runner, redis=r)
     if getattr(state, "author_lookup", None) is None:
         state.author_lookup = _author_lookup(service)
     if (getattr(state, "auth_provider", None) is None and r is not None
@@ -118,5 +131,17 @@ def readiness(app: FastAPI) -> dict[str, Any]:
             out["redis"] = "ok" if store.r.ping() else "down"
         except Exception:  # noqa: BLE001
             out["redis"] = "down"
+    if not (env("PERCH_KEYS_DATABASE_URL") and env("PERCH_MASTER_KEY")):
+        out["keys"] = "not_configured"
+    else:
+        try:
+            from uuid import uuid4
+
+            from perch import crypto
+
+            crypto._repo().is_tombstoned(uuid4())  # one cheap read of the keys database
+            out["keys"] = "ok"
+        except Exception:  # noqa: BLE001
+            out["keys"] = "down"
     out["ready"] = "down" not in out.values()
     return out

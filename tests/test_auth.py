@@ -409,9 +409,10 @@ def acct(r, pg_clean, monkeypatch: pytest.MonkeyPatch):
         if aid not in known:
             raise LookupError(aid)
 
-    from perch.auth.openalex_link import CryptoLinkStore
+    from perch.auth.openalex_link import UserDataLinkStore
+    from perch.user.data import UserData
 
-    app = make_app(r, pool=pool, provider=prov, lookup=lookup, links=CryptoLinkStore(pool))
+    app = make_app(r, pool=pool, provider=prov, lookup=lookup, links=UserDataLinkStore(UserData(pool)))
     yield app, pg_clean
     pool.close()
     crypto.configure()
