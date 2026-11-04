@@ -46,7 +46,8 @@ NOT_PERSON = {
     Education Pharmacy Dentistry Nursing Studies Research Graduate Undergraduate Honors
     Student Students Faculty Alumni Campus Library Hall Building Street Avenue City County
     State States United America American Americas National International Global World
-    Port River Ward Biosciences Bioscience
+    Port River Ward Biosciences Bioscience Township Borough County Counties Parish Region
+    District Valley Heights Park Square Village
     Philadelphia Pennsylvania Japan Rome Ambler Tokyo Italy Europe European Africa Asia Latin
     January February March April May June July August September October November December
     Monday Tuesday Wednesday Thursday Friday Saturday Sunday Spring Summer Fall Winter

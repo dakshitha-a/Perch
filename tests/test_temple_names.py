@@ -21,6 +21,8 @@ def test_title_donor_and_other_award_titles_stay() -> None:
 
 def test_ordinary_phrases_places_and_dates_stay() -> None:
     for t in ("The Due Date is March 15.", "Open to Hospitality Management majors.",
-              "Students in Port Richmond may apply.", "Doctoral students in Cellular Biosciences.",
+              "Students in Port Richmond may apply.",
+              "Open to residents of Quarrow Township, PA.",
+              "Doctoral students in Cellular Biosciences.",
               "All PhD students qualify.", "Join MyAmeriCorps first."):
         assert scrub_text(t, TITLE) == t, t
