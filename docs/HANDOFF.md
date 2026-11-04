@@ -1,6 +1,6 @@
 # HANDOFF.md — state for the next context window
 
-Written at the close of S40 and S41 (2026-11-04, about 10:45 EST), updated at 11:50 EST before a context compact. Dakshitha asked for the sessions to run back to back in one orchestrating context ("carry on till everything is finished, all phases"), so this file is updated at each close.
+Rewritten 2026-11-04 at about 14:15 EST, during S45's last fix round. Dakshitha asked for the sessions to run back to back in one orchestrating context ("carry on till everything is finished, all phases"), so this file is rewritten at each close.
 
 ## Read this first
 
@@ -8,72 +8,49 @@ Written at the close of S40 and S41 (2026-11-04, about 10:45 EST), updated at 11
 - **The plan.** `docs/REBUILD_PLAN.md`. Its "Revision on 4 Nov 2026" section overrides the text below it.
 - **The fallback.** The hybrid demo is frozen at d6f6210 (tag `v0.1-demo-fallback`). The local notes list the machine paths.
 - **The gate.** Thursday 5 Nov at 6:00 pm. The student path must work end to end on the new stack, or the fallback is submitted on 6 Nov.
-- **Compute rules.** Heavy jobs run only through `scripts/run_limited.sh`: 16 cores for CPU jobs, or `PERCH_LIMIT_GPU=3` for one GPU with 4 cores. Never GPUs 0, 6 or 7, and never ports 8090, 8093, 8097 or 8098.
+- **Compute rules.** Heavy jobs run only through `scripts/run_limited.sh`: 16 cores for CPU jobs, or `PERCH_LIMIT_GPU=3` for one GPU with 4 cores. One GPU job at a time; a busy lock exits 75. Never GPUs 0, 6 or 7, and never ports 8090, 8093, 8097 or 8098.
 - **Background work.** Every background shell, agent or monitor is checked at least every 30 minutes. A cron check-in runs at :13 and :43 while anything runs.
 - **Credentials.** Agents' worktrees have no `.env`, and copying it is blocked. Real-provider and live runs happen in the main checkout. `.env.e2e`, which is gitignored, holds the e2e database, Redis, key-store and peppers settings.
-- **Test exit codes.** Never pipe `make test` through `tail` before `&&`, because the pipe hides a failure. One commit slipped through that way in S40.
+- **Test exit codes.** Never pipe `make test` through `tail` before checking the exit code.
+- **Role passwords.** The Postgres test fixtures reset role passwords across the cluster. Before a live run, reset the e2e roles from `.env.e2e` (a small script that runs `ALTER ROLE` through `docker exec perch-test-pg psql -U postgres` without printing them). The walk server sets its own with `scripts/walk_server.py --setup`.
+- **Model output caps.** Sonnet 5.5 and Haiku 5.5 think by default, and the thinking counts toward `max_tokens`. Any new model call needs a cap with room for it (Scout 6,000; fit, hand-off, summary 3,000; cover points 4,000).
 
 ## Where the rebuild stands
 
-- **S34 to S39 done.** These cover Phases 0 to 4a.
-  - **Profile.** `cloud-gpu` is the default, with the models on one GPU and the text on Anthropic. Ranking is dense-only, with 100 candidates reranked.
-  - **Results.** `docs/RESULTS.md`, in the S38 section.
-- **S40 done (Phase 4b).**
-  - **Dataset.** Temple awards dataset v2 is in `data/temple/dataset/` and loaded into `perch_dev`. It has 310 records, 17 of them Temple-funded.
-  - **Names.** People's names outside award titles are removed at build, by `perch/temple_names.py`.
-  - **Hand-check.** The v1 hand-check error rate was 7.4%. v2's rate is measured in S46.
-  - **Feed importers.** `perch/feeds/`.
-  - **Raw extraction files.** They are gitignored because they still hold names.
-- **S41 done (Phase 5).**
-  - **Sign-in.** OIDC with the dev Keycloak. The container is `perch-dev-keycloak` on 127.0.0.1:8180. It was started with `docker run`, not Compose; restart it with the command in the local notes.
-  - **User data.** CV, entries and briefs are encrypted per user in `user_data`. Guest briefs live in Redis.
-  - **Deletion.** Delete-my-data, the purge job, quotas and idempotent submits are built.
-  - **Live check.** `scripts/e2e_account.py` passes 29 of 29 steps. Run it from the main checkout with `.env` and `.env.e2e`.
-- **Spend.** The ledger is about $4.00. The `.env` cap is $32.60.
-- **Tests.**
-  - **Main suite.** `make test`: 603 passed.
-  - **Database suites.** test-pg 48, test-keys 60, test-redis 88, test-user 43.
-  - **Role passwords.** The Postgres test fixtures reset role passwords across the whole cluster. After `make test-pg` or `make test-user`, the e2e roles need their passwords from `.env.e2e` set again.
-
-## Running at this point (2026-11-04, about 11:50 EST)
-
-- **S42 done (Phase 6).** Private mode removed; leak check FAIL-then-PASS (`bench/results/s42_leak/`).
-- **S43 (Phase 7), not yet closed.**
-  - **Built and merged.** Backend: the browse routes, the Temple filter and unstated scope (migration 0009). Frontend: the student-first screens.
-  - **Walks.** The guest walk had 28 states and the real sign-in walk 16, all with 0 errors and 0 axe violations. Reports are in `bench/results/s43_walk/`.
-  - **Review.** The fresh-context Opus review is in `docs/design/S43_REVIEW.md`: 7 must-fix, 19 should-fix and 9 nice-to-have.
-  - **Fix agent running.** A Sonnet agent in a worktree is fixing M1 to M7 and the main should-fix items. When it reports:
-    1. Merge it.
-    2. Rerun the sign-in walk from the main checkout.
-    3. Resume the reviewer, or a fresh Opus agent, to re-check the must-fix items.
-    4. Close S43.
-- **Sign-in walk command.** Run it from the main checkout:
-  - **Start the app.** Reset the e2e role passwords from `.env.e2e`, then start the app on 8190 with `.env` and `.env.e2e` loaded and `PERCH_LLM_DEFAULT=fake:fake-1 perch serve --port 8190 --models fake`.
-  - **Run the walk.** `uv run --with playwright python scripts/ux_walk.py --base http://127.0.0.1:8190 --out build/s43_walk_signin --only landing --login-helper scripts/e2e_oidc_login.py`.
-  - **Stop the app.** Use an anchored pattern, `pkill -f "[p]erch serve --host 127.0.0.1 --port 8190"`.
-- **S44 done (Phase 8a).** Scout has buttons answered by code, open questions as worker jobs with six read-only tools, the Haiku scope gate, a code-written refusal and distress links verified live.
+- **S34 to S42 and S44 done.** Phases 0 to 6 and 8a. `docs/RESULTS.md` has the S38, S40 and S45 sections.
+- **S43 done (Phase 7).** Student-first screens, browse with the Temple filter and school tags, account page with withdraw and delete, Help rewritten. The Opus review's 7 must-fix items are closed. Walks: guest 60 states in light and dark, real sign-in 16 states, all 0 errors and 0 axe. The only small targets are two inline links, which WCAG 2.5.8 exempts. Should-fix leftovers are listed in `docs/sessions/S43.md` for S46.
 - **S45 (Phase 8b), not yet closed.**
-  - **Built and merged.** Cover points on the account path, both distress links for everyone, cancel, the busy escape, and the open-question bench (`bench/scout_open.py`).
-  - **First real run.** It cost $1.55 and is in `bench/results/scout_open_s45/`.
-    - **Guardrails.** Out of scope: 24 of 24 refused, against 4 of 9 for the old Scout. Distress: 5 of 5, against 0 of 2.
-    - **In-scope grounding.** It over-withholds: only 4 of 33 answers pass Layer 1, and 7 come out empty.
-  - **Diagnosis agent running.** An Opus agent in a worktree is finding the over-strict rules, with each removed sentence labelled by its reason. When it reports:
-    1. Merge it.
-    2. Rerun the in-scope set on the real model with the command it gives, capped at about $1.20.
-    3. Run the fresh-context Opus injection and scope-gate review, Phase 8 task 9.
-    4. Fix the must-fix items and close S45.
-- **Spend.** About $5.60 of the $100 cap; the `.env` cap is $32.60.
-- **Tests at the last merge.** `make test` 601 passed; test-user 77.
+  - **Bench.** Five real runs, table in `docs/RESULTS.md`. Out of scope 24 of 24, distress 5 of 5. In-scope Layer 1 pass swings with the drafts: 23, 12, then 16 of 33 on the final rules (s45f). About one in four cited sentences carries a MiniCheck mark (37 of 141 in s45f). Usefulness is not graded yet: a person fills `grades.csv`.
+  - **Security review.** M1 (CSRF on nine write routes) fixed and re-checked. Two re-checks found the word-list rules leaking. Round 3, an Opus agent in a worktree, replaces them with shape rules and makes distress screening independent of the budget (DECISIONS 2026-11-04).
+  - **When round 3 reports:**
+    1. Merge it and run all suites.
+    2. Replay the s45f drafts through the final rules with the agent's numbers, and add a RESULTS row "s45f drafts, final rules".
+    3. Rerun the out-of-scope and distress sets on the real gate: `PERCH_LIMIT_GPU=3 scripts/run_limited.sh uv run --extra ml --extra anthropic python -m bench.scout_open --no-old --only-set out --max-usd 0.10 --tag s45g`, then the same with `--only-set distress`. About $0.02. Also confirm that the five research questions about suicide are answered, not refused.
+    4. One fresh Opus re-check scoped to R1, R2, S1 and S5. If it finds no must-fix, close S45. Should-fix items go to S46's list. No fifth cycle.
+- **S46 started early (Phase 9).**
+  - **Dataset v3.** The v2 hand-check by a fresh reviewer: 16.6% of 217 rows wrong or missing (v1 7.4%), mostly Temple-funded misses. Fixes for the deadline conflict, per-award amounts and explicit Temple funding wording were applied, and v3 was rebuilt from the same reads without model calls. 310 records, 27 Temple-funded. Loaded into `perch_dev`. v3's error rate is not yet re-measured.
+  - **Search filter.** Vector search now uses the same "listed on a Temple page" rule as browse.
+- **Spend.** The ledger is about $8.40 of the $100 cap; the `.env` cap is $32.60.
+- **Tests at the last merge.** `make test` 724 passed.
+
+## What is left after S45
+
+- **S46 (Phase 9), the QA cycle.** Two tester-then-fixer rounds: `make test`, the full walk with axe, the bench, the rehearsal script, the leakage check. Also: S43's should-fix leftovers; confirm on the real model that student brief explanations are not all withheld (the walk's fake model withholds every one); the student brief cost; the docs sweep for retired private-mode links; v3 hand-check; a person grading `grades.csv`.
+- **S47 (Phase 10).** The CUDA worker image with the Compose worker on `cloud-gpu`; the measured concurrent GPU load test; per-call spend reserve and settle; backup retention set to 35 days, to match the consent text; the runbook.
+- **S48 (Phase 11).** A fresh-context security review; the `rekey` and `tombstones` purge actions; the docs, the demo rebuild, `make package` and the tag `v1.0-deploy`.
 
 ## Worth knowing
 
+- **Walks.** `scripts/walk_server.py --setup`, then `PERCH_LIMIT_GPU=3 scripts/run_limited.sh uv run --extra ml python scripts/walk_server.py` (127.0.0.1:8191), then `uv run --no-project --with playwright --with httpx python scripts/ux_walk.py --out build/<name>`. Stop the server with `pkill -f "[w]alk_server.py"` and its worker with `pkill -f "[p]erch.cli --db /tmp/perch-walk"`. The phone researcher compare click timed out once and passed on a rerun.
+- **Sign-in walk.** From the main checkout with `.env` and `.env.e2e` loaded: `PERCH_LLM_DEFAULT=fake:fake-1 uv run perch serve --host 127.0.0.1 --port 8190 --models fake`, then `ux_walk.py --base http://127.0.0.1:8190 --only landing --login-helper scripts/e2e_oidc_login.py`. Keycloak is `perch-dev-keycloak` on 127.0.0.1:8180.
 - **Scout hang, cause unknown.** It happened once, in S38. Model slots now time out after 300 s and Anthropic requests after 120 s. If it recurs, run `uv tool run py-spy dump --pid <pid>` before killing the process.
-- **Draft copy.** The S43 design's consent, landing and footer wording is marked DRAFT for Dakshitha and is not adopted. The consent text stays as built, so nobody has to consent again.
-- **Cache holds names.** The cleaned page cache, `data/cache/temple_pages/`, is gitignored and still holds donors' and students' names from public pages. Only the dataset is scrubbed.
+- **Draft copy.** The S43 design's consent, landing and footer wording is marked DRAFT for Dakshitha and is not adopted.
+- **Cache holds names.** The page cache and the raw extraction files are gitignored and still hold names from public pages. Only the dataset is scrubbed. Hand-check sheets are committed without the page-sentence column.
 - **Untracked bench output.** Nine `bench/results/scout_s32*` folders are not this rebuild's and stay uncommitted.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 
 - **Q45 (Dakshitha):** Fox School scholarships. The Fox page is in the dataset. Recommendation: close it.
 - **Q47 (not blocking):** pg_search's AGPL licence matters only if keyword ranking returns.
+- **Q48 (not blocking):** a crisis message always gets the care message, even with the budget spent. Recommendation: keep.
 - **Draft copy (not blocking):** read the DRAFT consent and landing wording in `docs/design/S43_DESIGN.md` when convenient.
