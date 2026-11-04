@@ -31,7 +31,8 @@ test-user:
 	PERCH_TEST_DATABASE_URL=$${PERCH_TEST_DATABASE_URL:-postgresql://postgres:perchtest@127.0.0.1:55432/postgres} \
 	PERCH_TEST_KEYS_DATABASE_URL=$(PERCH_TEST_KEYS_DATABASE_URL) \
 	PERCH_TEST_REDIS_URL=$(PERCH_TEST_REDIS_URL) \
-		$(UV) run pytest tests/test_user_data_pg.py tests/test_user_briefs.py tests/test_user_account.py tests/test_s41_integration.py -p no:cacheprovider
+		$(UV) run pytest tests/test_user_data_pg.py tests/test_user_briefs.py tests/test_user_account.py tests/test_s41_integration.py \
+		tests/test_student_account.py tests/test_student_routes.py tests/test_leak_check.py -p no:cacheprovider
 
 # The demo (S9, deploy-2gpu, hybrid): models as systemd user units on two GPUs, the app
 # in Docker on 127.0.0.1:8090. One command: `make demo`. GPUs default to 6 and 7.
