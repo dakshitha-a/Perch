@@ -479,7 +479,10 @@ def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
 
     app = create_app(service, InProcessRunner(), scout_runner=InProcessRunner(workers=2),
                      scout_log=ScoutLog(data / "logs/scout.jsonl"))
+    from perch.logs import uvicorn_log_config
+
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level,
+                log_config=uvicorn_log_config(args.log_level),
                 **SERVE_OPTIONS)
     return 0
 
@@ -616,6 +619,8 @@ def build_parser() -> argparse.ArgumentParser:
     wk.add_argument("--concurrency", type=int, default=None, help="job threads; default "
                     "PERCH_WORKER_CONCURRENCY or 16")
     wk.add_argument("--kinds", default=None, help="comma list; default PERCH_WORKER_KINDS or all")
+    wk.add_argument("--check", action="store_true", help="health check: exit 0 if this worker's "
+                    "heartbeat row is under 90 seconds old, else 1; starts nothing")
     pc = sub.add_parser("precache", help="enqueue the nightly researcher pre-cache jobs")
     pc.add_argument("--limit", type=int, default=None, help="only the first N researchers")
     pc.add_argument("--dry-run", action="store_true", help="count, enqueue nothing")
@@ -636,12 +641,36 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def worker_check(max_age_s: int = 90) -> int:
+    """Compose health check: this container's worker wrote a heartbeat row recently. The
+    worker id is `<hostname>-<pid>`, and the hostname is unique per container."""
+    import socket
+
+    import psycopg
+
+    dsn = env("PERCH_DATABASE_DIRECT_URL") or env("PERCH_DATABASE_URL")
+    if not dsn:
+        return 1
+    try:
+        with psycopg.connect(dsn, connect_timeout=5) as c:
+            row = c.execute(
+                "SELECT count(*) FROM worker_heartbeat WHERE worker LIKE %s "
+                "AND at > now() - make_interval(secs => %s)",
+                (socket.gethostname() + "-%", max_age_s)).fetchone()
+    except Exception:  # noqa: BLE001
+        return 1
+    return 0 if row and row[0] > 0 else 1
+
+
 def cmd_worker(args: argparse.Namespace) -> int:
     import logging
     import os
     import signal
     import socket
     import threading
+
+    if args.check:
+        return worker_check()
 
     from perch.jobs import PostgresRunner, set_brief_service
     from perch.redisx import get_client
@@ -675,7 +704,9 @@ def cmd_worker(args: argparse.Namespace) -> int:
         return svc
 
     set_brief_service(brief_service)
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    from perch.logs import configure as configure_logs
+
+    configure_logs(logging.INFO)
     kinds = [k for k in (args.kinds or env("PERCH_WORKER_KINDS", "") or "").split(",") if k]
     import perch.scout.job  # noqa: F401 - registers the `scout_turn` handler (S44)
     import perch.user.delete  # noqa: F401 - registers the `purge` handler (S41 part B)

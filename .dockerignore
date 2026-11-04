@@ -6,3 +6,4 @@
 !perch/
 !web/
 **/__pycache__
+!deploy/compose/migrate.py

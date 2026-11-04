@@ -1,0 +1,11 @@
+# CPU fallback for the worker (no GPU on the host). Add to the v1 stack:
+#   docker compose -f deploy/compose/docker-compose.v1.yml -f deploy/compose/docker-compose.cpu.yml --env-file .env up -d --build
+# Builds the `worker` target (CPU torch wheel) and drops the GPU reservation.
+services:
+  worker:
+    build:
+      target: worker
+    image: perch-v1-worker:cpu
+    environment:
+      PERCH_PROFILE: cloud-cpu
+    deploy: !reset null

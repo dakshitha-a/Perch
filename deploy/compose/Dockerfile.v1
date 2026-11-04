@@ -1,12 +1,24 @@
-# Perch v1 images: web and worker. CPU only, no CUDA. Build from the repo root:
+# Perch v1 images: web, worker (CPU fallback) and worker-gpu (CUDA). Build from the repo root:
 #   docker build -f deploy/compose/Dockerfile.v1 --target web .
+#   docker build -f deploy/compose/Dockerfile.v1 --target worker-gpu -t perch-v1-worker:gpu .
 # `web` never loads a model, so it skips the ml extra. `worker` adds the ml extra and swaps
-# the CUDA torch wheel in uv.lock for the CPU wheel of the same version.
+# the CUDA torch wheel in uv.lock for the CPU wheel of the same version. `worker-gpu` keeps
+# the locked cu126 wheel (the host driver must support CUDA 12.6 or newer).
 FROM python:3.12-slim@sha256:aa943ce411423c7582288f18707ff66eddcbaeb510502d747a72aeb34f30d159 AS base
 COPY --from=ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0 /uv /usr/local/bin/uv
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv UV_LINK_MODE=copy UV_COMPILE_BYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY pyproject.toml uv.lock README.md LICENSE ./
+
+# Placed first so the legacy builder (no BuildKit here) stops after it for this target.
+FROM base AS worker-gpu
+# uv.lock pins torch 2.14.1+cu126 from the pytorch-cu126 index with hashes; nothing is swapped.
+RUN uv sync --frozen --no-dev --extra anthropic --extra ml --no-install-project
+COPY perch ./perch
+RUN uv pip install --python /opt/venv/bin/python --no-deps .
+RUN useradd --system --uid 10001 --create-home perch
+USER perch
+CMD ["/opt/venv/bin/perch", "worker"]
 
 FROM base AS web
 RUN uv sync --frozen --no-dev --extra anthropic --no-install-project
