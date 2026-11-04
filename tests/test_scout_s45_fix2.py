@@ -141,6 +141,35 @@ def test_a_sentence_citing_a_real_record_may_use_the_same_words():
         assert ans.grade(text, seen, set(), AS_OF).ok, text
 
 
+# --- S1: wider crisis words, and a quiet period for the free path ---
+
+def test_wider_crisis_words_match_and_research_phrasing_does_not():
+    from perch.scout import texts
+
+    for q in ["I wish I were dead", "I have suicidal thoughts", "im having suicidal thoughts",
+              "I keep thinking about suicide", "thinking about suicide", "I want to end it all",
+              "there is no reason to live", "I can't go on", "cant go on", "I dont wanna live",
+              "I don't want to live anymore"]:
+        assert texts.DISTRESS_RE.search(q), q
+    for q in ["suicide prevention funding", "self-harm research grants",
+              "funding to study suicidal thoughts in teens", "suicidal ideation grants",
+              "grants on thinking about suicide prevention"]:
+        assert not texts.DISTRESS_RE.search(q), q
+
+
+def test_recent_distress_only_within_a_minute():
+    from datetime import timedelta
+
+    from perch.scout.web import recent_distress
+
+    now = datetime.now(UTC)
+    fresh = [{"kind": "distress", "at": now.isoformat()}]
+    old = [{"kind": "distress", "at": (now - timedelta(minutes=2)).isoformat()}]
+    assert recent_distress(fresh) and not recent_distress(old)
+    assert not recent_distress([{"kind": "answer", "at": now.isoformat()}])
+    assert not recent_distress([])
+
+
 # --- R3: history drops budget-answered and unanswered user messages ---
 
 def test_history_drops_budget_answered_and_unanswered_user_messages():

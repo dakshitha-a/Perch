@@ -110,7 +110,8 @@ def history_of(messages: list[dict[str, Any]]) -> list[Message]:
     """The last few text exchanges, as plain messages. Tool results are not kept, so a CV
     part read in an earlier turn is read again if it is needed (and blanked again). A question
     that was refused, answered with the distress or budget text, or never answered is dropped
-    (with its reply), so a message that was not screened never reaches a model through the history (S45 S2)."""
+    (with its reply), so a message that was not screened never reaches a model through the
+    history (S45 S2, R3)."""
     drop: set[int] = set()
     for i, m in enumerate(messages):
         if m.get("role") == "assistant" and m.get("kind") in ("refusal", "distress", "budget"):

@@ -181,6 +181,8 @@ def ask(sv: UserServices, service: BriefService, uid: UUID, sid: UUID, *,
     if texts.DISTRESS_RE.search(q):
         # Free and first: before the rate limit, the budget and any model. The reply is code-
         # written text with Temple's own services, so a user out of budget still gets it (S45 S1).
+        if recent_distress(doc.messages):
+            return  # the care text is already the last reply; no new rows (S45 S1)
         um = user_message(question=q)
         reply = message("assistant", "distress", texts.distress_message(audience),
                         gate="keyword", reply_to=um["id"])
@@ -202,6 +204,23 @@ def ask(sv: UserServices, service: BriefService, uid: UUID, sid: UUID, *,
     job = sv.runner.submit("scout_turn", {"session_id": str(sid), "message_id": um["id"]}, uid,
                            key, audience=audience)  # type: ignore[arg-type]
     session.set_job(sv.ud, uid, sid, um["id"], str(job))
+
+
+DISTRESS_QUIET_SECONDS = 60
+
+
+def recent_distress(messages: list[dict[str, Any]]) -> bool:
+    """Was the last message a distress reply written under a minute ago? The free distress path
+    skips the write then, so repeated crisis text cannot fill the session with rows."""
+    if not messages or messages[-1].get("kind") != "distress":
+        return False
+    try:
+        at = datetime.fromisoformat(str(messages[-1].get("at")))
+    except ValueError:
+        return False
+    if at.tzinfo is None:
+        at = at.replace(tzinfo=UTC)
+    return (datetime.now(UTC) - at).total_seconds() < DISTRESS_QUIET_SECONDS
 
 
 def stop(sv: UserServices, uid: UUID, sid: UUID) -> None:
