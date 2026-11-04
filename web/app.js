@@ -9,16 +9,23 @@ import { renderHandoff } from "./handoff.js";
 import { renderScout } from "./scout.js";
 import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
+import { renderAccount, renderMyPerch, renderWelcome } from "./account.js";
+import { renderList, renderSamples } from "./browse.js";
 import { isStudent, keptWords, matchPill, resetStudent, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
 
 const api = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
 // The server no longer knows the session (a guest session lasts an hour): go to the start
-// and say so on the landing page.
-api.onExpired = (message) => {
+// and say so on the landing page, with the two ways on.
+api.onExpired = (wasGuest) => {
   setTimeout(() => {
     stopPolling();
-    S.notice = message;
-    announce(message);
+    S.session = { signed_in: false };
+    S.notice = wasGuest ? "Your guest session has ended. Nothing was saved."
+      : "You were signed out. Sign in again to carry on.";
+    S.noticeEnded = true;
+    drawWho();
+    drawBanner();
+    announce(S.notice);
     go("#/");
   }, 0);
 };
@@ -38,8 +45,11 @@ const S = {
   find: { q: "", busy: false, error: null, candidates: null, searched: "", explain: true,
     minAmount: "", direction: "", include: "", exclude: "", stage: "",
     picked: null, building: false },
-  who: "r", // the landing's Researcher | Student control
+  who: "s", // the landing's Student | Researcher control; Student comes first (S43)
+  session: { signed_in: false }, // the last GET /auth/session answer; the page never guesses
+  flash: null, // a message for the banner slot, e.g. "Your data was deleted."
   notice: null, // a message for the landing, e.g. that the guest session ended
+  noticeEnded: false, // the notice is the "session ended" one, with Start again and Sign in
   brief: null, // last GET /briefs payload
   briefId: null,
   tab: "routes",
@@ -80,7 +90,7 @@ function leaveBrief() {
 
 function route() {
   if (location.hash && !location.hash.startsWith("#/")) return; // in-page anchors, e.g. the skip link
-  const parts = location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
+  const parts = location.hash.split("?")[0].replace(/^#\/?/, "").split("/").filter(Boolean);
   const onHelp = parts[0] === "help";
   if (onHelp) $("#help").setAttribute("aria-current", "page");
   else $("#help").removeAttribute("aria-current");
@@ -95,11 +105,56 @@ function route() {
     return;
   }
   S.lastHash = location.hash || "#/";
-  if (location.hash && location.hash !== "#/") S.notice = null;
+  if (location.hash && location.hash !== "#/") { S.notice = null; S.noticeEnded = false; }
+  if (!location.hash || location.hash === "#/") drawBanner();
+  else if (S.flash && S.flashFor !== location.hash) { S.flash = null; drawBanner(); }
+  const sess = S.session;
+  // A new account, or one whose consent text changed, finishes the welcome screen first.
+  if (sess.signed_in && (sess.needs_welcome || (sess.consent && sess.consent.required))
+      && parts[0] !== "welcome") {
+    leaveBrief();
+    goReplace(`#/welcome${returnQuery()}`);
+    return;
+  }
+  const rt = { api, go, goReplace, announce, session: () => S.session, refresh: refreshSession,
+    signIn: signInHref, flash, openEvidence: (rec, opener) => openRecord(rec, opener), closeEvidence };
+  if (parts[0] === "welcome") {
+    leaveBrief();
+    screen("form");
+    renderWelcome(main(), rt, new URLSearchParams(location.hash.split("?")[1] || "").get("return_to"));
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (parts[0] === "account") {
+    leaveBrief();
+    screen("form");
+    renderAccount(main(), rt);
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (parts[0] === "me") {
+    leaveBrief();
+    screen("form");
+    renderMyPerch(main(), rt);
+    window.scrollTo(0, 0);
+    return;
+  }
+  if (parts[0] === "awards" || parts[0] === "funding") {
+    leaveBrief();
+    screen("list");
+    renderList(main(), { ...rt, audience: parts[0] === "awards" ? "student" : "researcher" });
+    return;
+  }
+  if (parts[0] === "samples") {
+    leaveBrief();
+    screen("list");
+    renderSamples(main(), { ...rt, audience: parts[1] === "researcher" ? "researcher" : "student" });
+    return;
+  }
   if (parts[0] === "student") {
     leaveBrief();
     screen("form");
-    renderStudentStart(main(), { api, go, announce });
+    renderStudentStart(main(), { api, go, announce, session: S.session, signIn: signInHref, refresh: refreshSession });
     return;
   }
   if (parts[0] === "find") {
@@ -122,6 +177,12 @@ function route() {
   renderFind();
 }
 
+// "?return_to=..." for the welcome screen: where the visitor was headed.
+function returnQuery() {
+  const here = location.hash && !location.hash.startsWith("#/welcome") ? `/${location.hash}` : "";
+  return here && here !== "/#/" ? `?return_to=${encodeURIComponent(here)}` : "";
+}
+
 function go(hash) {
   if (location.hash === hash) route();
   else location.hash = hash;
@@ -132,6 +193,123 @@ function go(hash) {
 function goReplace(hash) {
   if (location.hash === hash) route();
   else location.replace(hash);
+}
+
+// ---------- header, banner, session (S43) ----------
+
+async function refreshSession() {
+  if (!api.session) return S.session;
+  try { S.session = await api.session(); } catch { S.session = { signed_in: false }; }
+  drawWho();
+  drawBanner();
+  return S.session;
+}
+
+// The sign-in link: the identity provider's own page, then back to where the visitor was.
+function signInHref(hash = location.hash || "#/") {
+  return `/auth/login?return_to=${encodeURIComponent(`/${hash}`)}`;
+}
+
+function flash(text, forHash) {
+  S.flash = text;
+  S.flashFor = forHash || location.hash || "#/";
+  drawBanner();
+  announce(text);
+}
+
+// The banner slot: a guest session says so on every screen; a one-time message shows on the
+// screen it was meant for. It is the chip colour, not amber: amber means sample data.
+function drawBanner() {
+  if (api.mode === "replay") return;
+  const b = $("#banner");
+  const sess = S.session;
+  const lines = [];
+  if (sess.guest) {
+    lines.push(h("p", { class: "banner-line", "data-key": "guest-banner" }, icon("help"),
+      h("span", { text: sess.notice || "Nothing is saved in a guest session. It ends in an hour." }),
+      h("a", { href: signInHref(), text: "Sign in" })));
+  }
+  if (S.flash) {
+    lines.push(h("p", { class: "banner-line", role: "status", "data-key": "flash-banner" }, icon("help"),
+      h("span", { text: S.flash }),
+      h("button", { class: "x", type: "button", "aria-label": "Dismiss",
+        onclick: () => { S.flash = null; drawBanner(); }, text: "×" })));
+  }
+  b.hidden = !lines.length;
+  b.classList.add("neutral");
+  fill(b, ...lines);
+}
+
+const firstWord = (name) => {
+  const w = String(name || "").trim().split(/\s+/)[0] || "Account";
+  return w.length > 10 ? `${w.slice(0, 9)}…` : w;
+};
+
+function drawWho() {
+  const who = $("#acct-slot");
+  if (api.mode === "replay") return;
+  const sess = S.session;
+  document.body.classList.toggle("signed-in", Boolean(sess.signed_in));
+  if (!sess.signed_in) {
+    fill(who,
+      sess.guest ? h("span", { class: "chip guest-chip", text: "Guest" }) : null,
+      h("a", { class: "btn quiet", id: "sign-in", href: signInHref(), text: "Sign in" }));
+    return;
+  }
+  const roles = sess.roles || [];
+  const both = roles.includes("student") && roles.includes("researcher");
+  const other = sess.audience === "student" ? "researcher" : "student";
+  const close = (refocus) => {
+    $("#acct-menu").hidden = true;
+    $("#acct-btn").setAttribute("aria-expanded", "false");
+    if (refocus) $("#acct-btn").focus();
+  };
+  const item = (el) => h("li", {}, el);
+  const menu = h("ul", { id: "acct-menu", class: "acct-menu", hidden: true },
+    item(h("a", { href: "#/me", onclick: () => close(false), text: "My Perch" })),
+    item(h("a", { href: "#/account", onclick: () => close(false), text: "Account and data" })),
+    both ? item(h("button", { type: "button", "data-key": "switch-side", onclick: async () => {
+      try {
+        await api.setAudience(other);
+        await refreshSession();
+        close(false);
+        S.who = other === "student" ? "s" : "r";
+        announce(`Switched to the ${other} side.`);
+        go("#/");
+        route();
+      } catch (e) { announce(e.message); }
+    }, text: `Switch to the ${other} side` })) : null,
+    item(h("button", { type: "button", id: "menu-theme", onclick: () => $("#theme").click(), text: "Theme" })),
+    item(h("button", { type: "button", "data-key": "sign-out", onclick: async () => {
+      try {
+        const out = await api.logout();
+        S.session = { signed_in: false };
+        drawWho();
+        drawBanner();
+        if (out && out.end_session_url) { location.assign(out.end_session_url); return; }
+        go("#/");
+        route();
+      } catch (e) { announce(e.message); }
+    }, text: "Sign out" })));
+  const btn = h("button", { id: "acct-btn", class: "btn quiet acct-btn", type: "button", "aria-expanded": "false",
+    "aria-controls": "acct-menu", "aria-label": `Account: ${sess.display_name || "signed in"}`,
+    onclick: () => {
+      const open = menu.hidden;
+      menu.hidden = !open;
+      btn.setAttribute("aria-expanded", String(open));
+      if (open) menu.querySelector("a, button").focus();
+    } }, icon("person"), h("span", { class: "acct-name", text: firstWord(sess.display_name) }));
+  const wrap = h("div", { class: "acct",
+    onkeydown: (e) => { if (e.key === "Escape" && !menu.hidden) { e.stopPropagation(); close(true); } },
+    onfocusout: (e) => { if (!menu.hidden && !wrap.contains(e.relatedTarget)) close(false); } }, btn, menu);
+  fill(who, wrap);
+  syncThemeItem();
+}
+
+// The theme button also lives in the account menu, where a phone has room for it.
+function syncThemeItem() {
+  const item = $("#menu-theme");
+  if (item) item.textContent = `Theme: ${$("#theme .theme-word").textContent}`;
 }
 
 // ---------- Landing (S24): Scout on the branch, the headline, Researcher | Student ----------
@@ -182,22 +360,61 @@ function renderFind() {
         text: F.empty ? "Type a name, ORCID iD or OpenAlex ID." : "Names search Temple authors; an ID finds anyone." }),
       h("details", { class: "more-opts" }, h("summary", { "data-key": "more-opts", text: "What else you can add" }),
         h("p", { text: "After you pick the person, you can tell Perch where your research is going, keywords to search for or leave out, a career stage and a smallest award size. All of it is optional." }))));
+  const sess = S.session;
+  const replay = api.mode === "replay";
+  // DRAFT copy (S43): the landing buttons and the guest line, for Dakshitha to review.
+  const fitButton = sess.signed_in
+    ? h("button", { class: "btn", type: "button", "data-key": "fit", onclick: () => go("#/student") },
+      h("span", { text: "Check my fit with my CV" }))
+    : sess.guest
+      ? h("button", { class: "btn", type: "button", "data-key": "fit", onclick: () => go("#/student") },
+        h("span", { text: "Try a sample student" }))
+      : h("a", { class: "btn", "data-key": "fit", href: signInHref("#/student") },
+        h("span", { text: "Check my fit with my CV" }));
+  const guestLine = !sess.signed_in && !sess.guest && !replay
+    ? h("p", { class: "guest-line hint" }, h("span", { text: "No account? " }),
+      h("button", { class: "linkish", type: "button", "data-key": "guest-start", disabled: S.guestBusy,
+        onclick: startGuest }, h("span", { text: "Try it as a guest" })),
+      h("span", { text: ". Nothing is saved." })) : null;
   const student = h("div", { class: "student-go" },
-    h("button", { class: "btn primary", type: "button", disabled: api.mode === "replay", "aria-describedby": "aud-hint",
-      "data-key": "student", onclick: () => go("#/student") }, h("span", { text: "Start as a student" })),
-    h("span", { class: "hint", id: "aud-hint", text: api.mode === "replay" ? "The preview has no server."
-      : "Fellowships and sample scholarships, checked by rule." }));
+    h("a", { class: "btn primary", "data-key": "browse-awards", href: replay ? null : "#/awards",
+      "aria-disabled": replay ? "true" : null }, h("span", { text: "Browse Temple awards" })),
+    replay ? h("span", { class: "hint", text: "The preview has no server." }) : fitButton,
+    guestLine);
+  const browseFunding = replay ? null : h("a", { class: "quiet-link", "data-key": "browse-funding", href: "#/funding" },
+    h("span", { text: "Browse funding" }));
   fill(main(), h("div", { class: "landing" },
     heroArt(),
     h("h1", { text: "Find funding that fits." }),
-    h("p", { class: "lede", text: "Perch reads public records and links every claim to its source." }),
-    S.notice ? h("div", { class: "notice warn notice-ended", role: "status" }, icon("warn"),
+    // DRAFT copy (S43): the sub-line, for Dakshitha to review.
+    h("p", { class: "lede", text: "Temple scholarships and research funding, every claim linked to its record." }),
+    S.notice ? h("div", { class: `notice ${S.noticeEnded ? "info" : "warn"} notice-ended`, role: "status" }, icon("warn"),
       h("p", { text: S.notice }),
+      S.noticeEnded ? h("button", { class: "btn", type: "button", "data-key": "start-again", onclick: startGuest },
+        h("span", { text: "Start again" })) : null,
+      S.noticeEnded ? h("a", { class: "btn", href: signInHref(), text: "Sign in" }) : null,
       h("button", { class: "x", type: "button", "aria-label": "Dismiss", "data-key": "notice-close",
-        onclick: () => { S.notice = null; keepFocus(renderFind); }, text: "×" })) : null,
-    seg("Who is searching", S.who, [["r", "Researcher"], ["s", "Student"]], (k) => { S.who = k; keepFocus(renderFind); }),
-    S.who === "s" ? student : researcher,
+        onclick: () => { S.notice = null; S.noticeEnded = false; keepFocus(renderFind); }, text: "×" })) : null,
+    seg("Who is searching", S.who, [["s", "Student"], ["r", "Researcher"]], (k) => { S.who = k; keepFocus(renderFind); }),
+    S.who === "s" ? student : [researcher, browseFunding, guestLine],
     F.error ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: F.error })) : null));
+}
+
+// "Try it as a guest": a session of one hour on the side the visitor chose.
+async function startGuest() {
+  if (S.guestBusy) return;
+  S.guestBusy = true;
+  try {
+    await api.startGuest(S.who === "s" ? "student" : "researcher");
+    S.notice = null;
+    S.noticeEnded = false;
+    await refreshSession();
+    announce("Guest session started. Nothing is saved in it.");
+  } catch (e) {
+    S.find.error = e.message;
+  }
+  S.guestBusy = false;
+  keepFocus(renderFind);
 }
 
 function heroArt() {
@@ -375,7 +592,7 @@ function contextPanel(c) {
     ontoggle: (e) => { F.moreOpen = e.target.open; } },
     h("summary", { "data-key": "more-ctx" }, h("h2", { id: "more-h", text: "Tell Perch more (optional)" })),
     h("div", { class: "more-body" },
-    h("p", { class: "page-sub", text: "Everything here steers the search. Guest sessions ignore the direction and the keywords." }),
+    h("p", { class: "page-sub", text: "Everything here steers the search. All of it is optional." }),
     h("div", { class: "box-grid" },
       h("div", { class: "box" },
         h("label", { class: "big", for: "ctx-direction", text: "Where your research is going" }),
@@ -1956,6 +2173,7 @@ function applyTheme(t) {
   const word = { system: "Auto", light: "Light", dark: "Dark" }[t];
   b.setAttribute("aria-label", `Theme: ${word}`);
   b.querySelector(".theme-word").textContent = word;
+  syncThemeItem();
 }
 
 function initTheme() {
@@ -2025,7 +2243,17 @@ function init() {
   setBar();
   window.addEventListener("resize", setBar);
   window.addEventListener("hashchange", route);
-  route();
+  if (api.mode === "replay") {
+    S.who = window.PERCH_REPLAY.student ? "s" : "r";
+    route();
+    return;
+  }
+  // The server says who is here before the first screen is drawn. A signed-in visitor
+  // lands on the side they used last; a signed-out one always lands on Student.
+  refreshSession().then((sess) => {
+    if (sess.signed_in && sess.audience) S.who = sess.audience === "researcher" ? "r" : "s";
+    route();
+  });
 }
 
 init();

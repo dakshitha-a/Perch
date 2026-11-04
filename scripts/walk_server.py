@@ -67,7 +67,8 @@ def environment() -> None:
         PERCH_KEYS_DATABASE_URL=_dsn(KEYS_DB, "perch_keys"), PERCH_REDIS_URL=REDIS,
         PERCH_PEPPER=secrets.token_hex(32), PERCH_PEPPER_GUEST=secrets.token_hex(32),
         PERCH_AUDIT_KEY=secrets.token_hex(32),
-        PERCH_MASTER_KEY=base64.b64encode(secrets.token_bytes(32)).decode(), PERCH_MASTER_KEY_ID="walk",
+        PERCH_MASTER_KEY=base64.b64encode(secrets.token_bytes(32)).decode(),
+        PERCH_MASTER_KEY_ID="walk",
         PERCH_CONSENT_PROVIDER_NAME="SYNTHETIC Provider", PERCH_CONSENT_VERSION="1",
         PERCH_BRIEFS_PER_HOUR="1000", PERCH_PROFILE=os.environ.get("PERCH_PROFILE", "cloud-gpu"))
     for k in ("PERCH_ENV", "ANTHROPIC_API_KEY", "PERCH_MODEL_SERVER"):
@@ -111,7 +112,8 @@ def serve() -> None:
         if server.started:
             break
         time.sleep(0.1)
-    print(f"walk server on http://127.0.0.1:{PORT} (worker log {scratch / 'worker.log'})", flush=True)
+    print(f"walk server on http://127.0.0.1:{PORT} (worker log {scratch / 'worker.log'})",
+          flush=True)
     try:
         while True:
             time.sleep(1)
