@@ -23,21 +23,22 @@ Written at the close of S38 and S39 (2026-11-04, 09:03 EST). Dakshitha asked for
   - **Where the numbers are.** `docs/RESULTS.md`, in the S38 section.
 - **S39 done (Phase 4a).** `perch fetch temple-pages` reads 142 Temple pages into a gitignored cache. `perch extract temple-pages` proposes records on Haiku and keeps only quoted values. The pilot is in `data/temple/pilot_s39.jsonl`.
 - **Spend.** The ledger is $3.55. The `.env` cap is $32.60.
-- **Tests.** 558 passed and 77 skipped on `rebuild/v1`. test-pg 47.
+- **Tests.** 559 passed and 77 skipped on `rebuild/v1`; test-pg 47, test-keys 60, test-redis 21.
 
 ## Next: S40, Phase 4b
 
 - **Running at the close.** A Sonnet agent is building dedupe, the versioned dataset, the feed importers, the hand-check tool and a generated SOURCES table. It works in a worktree, with the fake model only. When it reports, merge it.
 - **Then run in the main checkout:**
-  - the full extraction, with about $1 to $2 on Haiku;
+  - the full extraction on Haiku: the pilot rate was $0.025 for 20 pages, so about $0.20 for 142, with the cap at $1;
+  - a staff-name check on every quoted sentence before `git add`: a Haiku agent lists any sentence that names a person outside an award title, and those quotes are removed or cut;
   - building the dataset;
   - loading it into `perch_dev`;
   - writing the 10% hand-check sheet.
-- **The hand-check.** It needs a reviewer. Perch-dev fills it against the cached pages, and Dakshitha may spot-check.
+- **The hand-check.** It needs a reviewer with fresh context: an Opus agent with no S39 or S40 context fills the sheet from the cached pages, then `--score` gives the error rate. Neither the builder nor the orchestrator fills it. Dakshitha may spot-check.
 
 ## Worth knowing
 
-- **Scout hang, cause unknown.** A Scout bench run hung for about 7 hours on a lock (futex wait, 0% CPU) after one Sonnet call. A rerun under a stall watch passed. If it recurs, take a `uv tool run py-spy dump --pid <pid>` before killing it. Model slots (`perch/compute.py`, one slot) are a suspect if a slotted model is ever called while another holds the slot.
+- **Scout hang, cause unknown.** A Scout bench run hung for about 7 hours on a lock (futex wait, 0% CPU) after one Sonnet call. A rerun under a stall watch passed. Since S38's close, a model-slot wait raises `SlotTimeout` after 300 s and an Anthropic request times out after 120 s, so a repeat fails loudly. If it recurs, take a `uv tool run py-spy dump --pid <pid>` before killing it.
 - **Student brief cost.** Not measured. The v1 student path arrives in Phases 5 and 6. Measure it in S46.
 - **CUDA worker image.** Not built. The Compose worker still says `cloud-cpu` until Phase 10 task 1b.
 - **Loose ends from S37.**

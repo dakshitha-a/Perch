@@ -75,10 +75,27 @@ def reset_slots() -> None:
         _sem = None
 
 
+class SlotTimeout(RuntimeError):
+    """No model slot came free in time: a holder is hung, or the slots are too few."""
+
+
+def slot_timeout() -> float:
+    return float(env("PERCH_MODEL_SLOT_TIMEOUT") or 300)
+
+
 @contextmanager
 def model_slot() -> Iterator[None]:
-    with _semaphore():
+    """One model call at a time per slot. A wait past PERCH_MODEL_SLOT_TIMEOUT seconds (300)
+    raises SlotTimeout, so a hung holder fails the waiting job loudly instead of silently
+    stalling every worker thread (S38: a Scout run sat on a lock for about 7 hours)."""
+    sem = _semaphore()
+    if not sem.acquire(timeout=slot_timeout()):
+        raise SlotTimeout(f"no model slot free after {slot_timeout():.0f} s "
+                          f"({model_slots()} slot(s)); a holder may be hung")
+    try:
         yield
+    finally:
+        sem.release()
 
 
 class SlottedEmbedder(Embedder):

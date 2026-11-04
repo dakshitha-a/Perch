@@ -376,3 +376,32 @@ def test_author_profile_is_cached_for_a_week_and_matches_a_fresh_build(pg_clean,
                              "WHERE namespace = 'author'").fetchone()[0]
     finally:
         pool.close()
+
+
+def test_model_slot_times_out_instead_of_hanging(monkeypatch):
+    import threading
+
+    from perch import compute
+    monkeypatch.setenv("PERCH_MODEL_SLOTS", "1")
+    monkeypatch.setenv("PERCH_MODEL_SLOT_TIMEOUT", "0.2")
+    compute.reset_slots()
+    held, release = threading.Event(), threading.Event()
+
+    def holder():
+        with compute.model_slot():
+            held.set()
+            release.wait(5)
+
+    t = threading.Thread(target=holder)
+    t.start()
+    held.wait(5)
+    try:
+        with pytest.raises(compute.SlotTimeout):
+            with compute.model_slot():
+                pass
+    finally:
+        release.set()
+        t.join()
+    with compute.model_slot():  # free again once the holder returns
+        pass
+    compute.reset_slots()

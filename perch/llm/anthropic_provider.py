@@ -18,6 +18,7 @@ import json
 import time
 from collections.abc import Callable
 
+from perch.config import env
 from perch.llm.base import (
     ChatResult,
     JsonSchema,
@@ -61,7 +62,12 @@ class AnthropicProvider(Provider):
         if client is None:
             import anthropic  # vendor SDK, imported only inside perch/llm
 
-            client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+            # An explicit request timeout and retry count (S38): a stuck call fails instead
+            # of holding a worker thread for hours.
+            timeout = float(env("PERCH_ANTHROPIC_TIMEOUT") or 120)
+            kw = {"timeout": timeout, "max_retries": 2}
+            client = (anthropic.Anthropic(api_key=api_key, **kw) if api_key
+                      else anthropic.Anthropic(**kw))
             # The API supports a JSON Schema subset (no minimum/maximum, minItems only 0 or 1;
             # live 400 on 2026-10-28). The SDK's transform_schema moves unsupported
             # constraints into descriptions; Perch's validator still checks them.
