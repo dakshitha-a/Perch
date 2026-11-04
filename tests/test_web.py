@@ -264,7 +264,9 @@ def test_cover_points_reach_the_app_and_no_page_promises_that_no_model_reads_the
     assert "overflow-wrap: anywhere" in css.split(".scout-points {")[1][:200]
     assert ".scout-points .btn.points-copy { min-height: 44px; }" in css
     help_ = web["help.js"]
-    assert "cover-letter points" in help_  # Help stays short; the detail is in SPEC
+    # No screen calls /briefs/{id}/cover-points yet (S45 final re-check), so Help does not offer
+    # cover-letter points; S46 wires the button and puts the line back.
+    assert "cover-letter points" not in help_
     # The withdrawn promise (Q43) is gone from every page and from the redesign source. The
     # hand-off sentence "no model reads them for it" stays: code writes that opening.
     redesign = (ROOT / "docs/design/redesign/StudentStart.dc.html").read_text()

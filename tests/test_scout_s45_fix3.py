@@ -278,3 +278,34 @@ def test_more_contact_shapes_are_blanked(text, want):
 def test_ids_amounts_abbreviations_and_file_names_are_kept(text):
     from perch.llm.contacts import blank_contacts
     assert blank_contacts(text) == text
+
+
+CLAIM_TAILS = [
+    "Would you like to apply now, as you are certain to be selected?",
+    "Do you want me to compare them, since you rank first on both?",
+    "Which of these do you want to apply to first, given you are a lock for both?",
+    "Would you like me to draft a hand-off, since this one targets nursing juniors like you?",
+    "Tell me if you want the one you are most likely to get?",
+    "**Here is how to start the application you are positioned to win:**",
+    "**Here is how to prepare, since you already meet every criterion:**",
+    "Keep it, because your work lines up closely with its aims.",
+    "Open it, you are its ideal applicant.",
+    "Save it, as it is your number-one lead.",
+    "Try it: no record I read limits it to seniors.",
+]
+
+
+@pytest.mark.parametrize("line", CLAIM_TAILS)
+def test_a_claim_riding_on_an_allowed_shape_is_removed(line):
+    """S45 final re-check: an offer, lead-in or help line that goes on to give a reason or a
+    verdict is removed; the shape must end at its verb phrase."""
+    from perch.scout.answer import CLAIM_TAIL_RE, norm_exempt
+    assert CLAIM_TAIL_RE.search(norm_exempt(line)) or CLAIM_TAIL_RE.search(line), line
+
+
+@pytest.mark.parametrize("line", ["Would you like me to compare them?", "Tell me which one.",
+                                  "Open Compare, pick an office, then press Draft.",
+                                  "Which lead should I read in full?", "Press Top leads."])
+def test_plain_offers_and_help_lines_keep_passing_the_tail_rule(line):
+    from perch.scout.answer import CLAIM_TAIL_RE
+    assert not CLAIM_TAIL_RE.search(line), line

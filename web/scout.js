@@ -82,7 +82,7 @@ export function renderScout(panel, ctx) {
   if (!ctx.done) {
     fill(panel, h("div", { class: "empty" }, owl("look", "owl-md"), h("div", {},
       h("p", { class: "lede", text: "Scout can help once the brief has finished." }),
-      h("p", { class: "hint", text: "Then ask follow-up questions, such as “only R21s” or “under $200k”." }))));
+      h("p", { class: "hint", text: "Then ask about your leads in plain words, such as “what does my top lead ask for?”." }))));
     return;
   }
   // Polls redraw only when something changed, so the reader's scroll is left alone.

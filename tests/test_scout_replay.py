@@ -262,3 +262,16 @@ def test_the_prompt_states_the_exact_citation_format():
     assert "[grants_gov:23-500]" in s and "square brackets" in s and "[user:brief]" in s
     assert "never put an id at the start" in s and texts.GENERAL_LABEL in s
     assert "HOW PERCH WORKS" in s and "Perch sends nothing" in s
+
+
+@pytest.mark.parametrize("line", [
+    "Would you like me to compare them, since you rank first on both?",
+    "Open it, you are its ideal applicant.",
+    "Keep it, because your work lines up closely with its aims.",
+    "**Here is how to prepare, since you already meet every criterion:**",
+])
+def test_a_claim_riding_on_an_allowed_shape_fails_the_grade(line, seen):
+    """S45 final re-check: the shape rule ends at the verb phrase; a reason or verdict after it
+    is a claim and needs a citation."""
+    g = ans.grade("Your brief has no leads yet [user:brief].\n" + line, seen, NAMES, AS_OF)
+    assert not g.ok, line

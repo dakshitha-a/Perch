@@ -97,6 +97,16 @@ STOPWORDS = frozenset(
 WORD_RE = re.compile(r"[a-z0-9]+")
 
 
+# A claim riding on an allowed shape (S45 final re-check): an offer, a how-to lead-in or a help
+# line that goes on to give a reason or a verdict ("..., since you rank first", "Open it, you
+# are its ideal applicant"). The shape must end at its verb phrase.
+CLAIM_TAIL_RE = re.compile(
+    r"[,;:]\s*(?:you|your|it(?:'s|’s| is)|this(?:'s|’s| is)|that(?:'s|’s| is)|no record|they)\b"
+    r"|\b(?:since|because|given)\b|\bas (?:you|it|this|your)\b"
+    r"|\byou(?:'re|’re|'d be|’d be|'ll|’ll| are| were| will| would be| meet| qualify| rank"
+    r"| fit| match)\b|\b(?:likely|certain|ideal|lock|number[- ]one|first on)\b", re.I)
+
+
 def norm_exempt(text: str) -> str:
     """A sentence as the allow-list reads it: citations, markdown, a list marker and closing
     punctuation removed; lower case; curly quotes straight; "doesn't" written "does not"."""
@@ -180,7 +190,7 @@ REASONS = (
     "uncited_link", "sample_mix", "placeholder_only",
     "general_cite", "general_number", "general_date", "general_month", "general_link",
     "general_eligibility_word", "general_award_code", "general_named_award", "uncited_fit_word",
-    "heading_not_structural", "question_not_offer", "absent_not_template")
+    "heading_not_structural", "question_not_offer", "absent_not_template", "help_with_claim")
 
 
 @dataclass
@@ -529,7 +539,7 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
         s.kind = "heading"
         if STRUCTURAL_RE.fullmatch(n):
             return  # a fixed section name: nothing in it to check
-        if LEADIN_RE.fullmatch(n) and not OFFER_FIT_RE.search(n):
+        if LEADIN_RE.fullmatch(n) and not OFFER_FIT_RE.search(n) and not CLAIM_TAIL_RE.search(n):
             pass  # a how-to lead-in: its tail gets the content checks below
         elif not _label_words_in(n, block):
             s.fail("heading_not_structural", "a heading with no citation must be a section name "
@@ -538,13 +548,17 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
             return
     elif s.text.rstrip("*_ ").endswith("?"):
         s.kind = "question"
-        if not OFFER_RE.match(n) or OFFER_FIT_RE.search(n):
+        if not OFFER_RE.match(n) or OFFER_FIT_RE.search(n) or CLAIM_TAIL_RE.search(n):
             s.fail("question_not_offer", "a question with no citation must be an offer that "
                    "starts 'Would you like', 'Do you want', 'Shall I', 'Should I', 'Want me to', "
                    "'Which' or 'Tell me', and may not say how well anything fits", n[:60])
             return
     elif HELP_RE.search(body):
         s.kind = "help"
+        if CLAIM_TAIL_RE.search(body):
+            s.fail("help_with_claim", "a help line with no citation must stop at the action; "
+                   "a reason or verdict about a record needs its citation", n[:60])
+            return
     elif ABSENT_TEMPLATE_RE.fullmatch(n):
         s.kind = "absent"
         return  # a fixed template: nothing in it to check
