@@ -11,7 +11,6 @@ and the brief failed and keeps the error text.
 from __future__ import annotations
 
 import contextvars
-import logging
 import secrets
 import threading
 import traceback
@@ -593,7 +592,6 @@ class BriefService:
         from perch.student import achievement_docs, parse_student_cv, student_profile
 
         inp = self._inputs()
-        logging.getLogger("perch.service").debug("cv text: %s", inp.cv)  # PLANTED LEAK
         facts = parse_student_cv(inp.cv)
         achieved = achievement_docs(inp.entries)
         if not inp.interests and not achieved:
