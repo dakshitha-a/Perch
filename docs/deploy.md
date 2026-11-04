@@ -174,7 +174,7 @@ Every number is copied from `bench/results/s47_load/report.md` (S47, 4 Nov 2026,
 - **MiniCheck batching:** 1.07 times faster; not worth a change.
 - **One web process:** about 62 requests a second (62.3 and 64.6 in two runs) at 1,000 simulated users. Browse p95 was 59 to 62 s with 97 of 20,184 requests timing out.
 - **Four web processes:** 156.0 requests a second, 4 errors of 48,255, browse p95 15.1 to 15.5 s. Each process used 6 database connections in that run.
-- **The web target is not met at 1,000 users.** Browse p95 under 300 ms held at 250 users on one process (132 to 190 ms, 58 requests a second). To serve 1,000 users, run more web processes and re-measure; how many are enough is `UNVERIFIED`.
+- **The target is 250 concurrent users (Dakshitha, 4 Nov), and one web process meets it.** The 1,000-user target was dropped because it was not met. Browse p95 under 300 ms held at 250 users on one process (132 to 190 ms, 58 requests a second). To serve 1,000 users, run more web processes and re-measure; how many are enough is `UNVERIFIED`.
 - **Caveat:** the node is shared and the runs were at nice 19, so waits are not purely our code.
 - **Queue:** the worker drained 38 to 40 briefs a minute at concurrency 24, with 0 failed.
 - **Fix needed before trusting the first table:** the report found that the worker built a new `BriefService` per job and failed at four or more concurrent briefs. The commit after the report made it one per process (`cmd_worker` in `perch/cli.py`). The "one service per worker" column is the one that applies; a re-run of the as-shipped numbers on the fixed worker: `UNVERIFIED`.
