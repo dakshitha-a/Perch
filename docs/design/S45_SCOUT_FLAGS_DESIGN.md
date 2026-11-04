@@ -1,0 +1,10 @@
+# S45 design: showing Scout's checks in the answer
+
+Design pass, 2026-11-04, for security review item S4 and S7 (docs/design/S45_SECURITY_REVIEW.md).
+
+- **General advice.** A second block under the cited answer, inside `.scout-answer`. Heading "General advice, not from records" with an "Uncited" tag. Plain surface and solid line border, reusing the by-code style. Line under it: "General guidance from the model. It cites no record and states no date or amount. Check details with the sponsor." Hidden when `general` is null.
+- **Unsupported sentences.** Each `unsupported` string found as an exact substring is wrapped in `<mark class="unsupported">` with a dotted underline, a visible "?" (aria-hidden) and screen-reader text "(not confirmed by the cited record)". If a string does not match, the notice lists it instead.
+- **Notices.** Unsupported, not flagged: "Scout could not confirm {n} sentence(s) against the cited records. They are underlined above. Open the record before relying on them." Flagged with a body: shown above the text, "This answer did not pass the citation check twice. {withheld} sentence(s) were removed. What remains is shown, but check each claim against its record." Flagged and all withheld: the existing withheld wording only, no model tag. Reason codes are never shown.
+- **The "checked" line.** Unchanged when nothing is flagged. With unsupported sentences: "Written by a model. Some sentences could not be confirmed; they are marked." Flagged: "Written by a model. It failed the citation check; sentences were removed."
+- **Help text.** "I stop after a fixed number of tool steps for one question." Student: "A model reads your CV when you ask for cover-letter points, and when it opens a CV part to answer a question. Contact details are blanked first." Researcher: "A model reads your documents and entries when you ask for cover-letter points, or when it opens them to answer a question, with contact details blanked."
+- **Forks for Dakshitha.** A: inline marks with a list fallback (recommended) or a list only. B: keep unsupported sentences visible and marked (recommended) or remove them.
