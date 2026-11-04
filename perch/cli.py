@@ -26,6 +26,7 @@ from perch.profile import MAX_AUTHORS, key_papers
 from perch.schemas import Award, Opportunity, Researcher
 from perch.sources import grants_gov, nih_reporter, nsf
 from perch.sources import openalex as oa
+from perch.store.base import Repository
 from perch.store.sqlite import SQLiteRepository
 
 DEFAULT_DB = "data/perch.db"
@@ -176,6 +177,34 @@ def fetch_temple_pages(args: argparse.Namespace) -> int:
     rep = tp.read_pages(rows, Path(args.cache_dir), limit=args.limit, refresh=args.refresh)
     print("\n".join(rep.lines()))
     return 0
+
+
+def cmd_temple(args: argparse.Namespace) -> int:
+    """Build the versioned Temple awards dataset, or load one into a store."""
+    from perch import temple_dataset as td
+
+    try:
+        if args.temple_command == "build-dataset":
+            path, man, rep = td.build_dataset(Path(args.input), Path(args.out_dir),
+                                              version=args.version)
+            print("\n".join(rep.lines()))
+            print(f"Wrote {path} (version {man['version']}, {man['records']} records, "
+                  f"sha256 {man['sha256'][:12]}...).")
+            return 0
+        dsn = args.dsn
+        if dsn:
+            from perch.store.postgres import PostgresRepository
+
+            repo: Repository = PostgresRepository(dsn, role="worker")
+        else:
+            repo = SQLiteRepository(args.db)
+        with repo:
+            n = td.load_dataset(Path(args.file), repo)
+        print(f"Loaded {n} records from {args.file} into {'Postgres' if dsn else args.db}.")
+        return 0
+    except (td.DatasetError, OSError) as e:
+        print(f"temple {args.temple_command} stopped: {e}", file=sys.stderr)
+        return 1
 
 
 def cmd_extract(args: argparse.Namespace) -> int:
@@ -543,6 +572,16 @@ def build_parser() -> argparse.ArgumentParser:
                     help="pages to extract, spread across owners")
     ex.add_argument("--budget", type=float, default=1.0,
                     help="stop when this many USD have been spent in the run")
+    tp = sub.add_parser("temple", help="the versioned Temple awards dataset")
+    tsub = tp.add_subparsers(dest="temple_command", required=True)
+    bd = tsub.add_parser("build-dataset", help="dedupe an extraction file into the next "
+                         "temple_awards_v<N>.jsonl with a manifest")
+    bd.add_argument("--input", default="data/temple/extracted.jsonl")
+    bd.add_argument("--out-dir", default="data/temple/dataset")
+    bd.add_argument("--version", type=int, default=None, help="default: the next free number")
+    ld = tsub.add_parser("load-dataset", help="load a dataset file into the store (idempotent)")
+    ld.add_argument("file")
+    ld.add_argument("--dsn", default=None, help="load into this Postgres URL instead of --db")
     pr = sub.add_parser("profile", help="key papers, awards and the public award horizon")
     pr.add_argument("author_id", help="OpenAlex author id")
     pr.add_argument("--papers", type=int, default=10, help="key papers to show (default 10)")
@@ -782,6 +821,8 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
         return cmd_keys(args)
     if args.command == "extract":
         return cmd_extract(args)
+    if args.command == "temple":
+        return cmd_temple(args)
     if args.command == "reconcile-shreds":
         return cmd_reconcile_shreds(args)
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory

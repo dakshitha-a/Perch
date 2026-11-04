@@ -332,3 +332,31 @@ def test_perch_web_can_log_only_its_own_shred(pg_clean):
         c.execute("INSERT INTO shred_log (user_id) VALUES (%s)", (b,))
         ids = {r[0] for r in c.execute("SELECT user_id FROM shred_log")}
     assert ids == {a, b}
+
+
+# --- Temple dataset load (Phase 4 task 5) ---
+
+def test_temple_dataset_loads_into_postgres_idempotently(pg_clean, tmp_path):
+    import json
+
+    from perch import temple_dataset as td
+    from tests.test_temple_dedupe import sch
+
+    recs = [sch("temple_pages:a", "SYNTHETIC Quill Award", "CST", "https://x.example/cst",
+                amount=2500),
+            sch("temple_pages:b", "SYNTHETIC Quill Award", "CEHD", "https://x.example/cehd"),
+            sch("temple_pages:c", "SYNTHETIC Harbor Prize", "SDFA", "https://x.example/sdfa")]
+    ex = tmp_path / "e.jsonl"
+    ex.write_text("".join(td.row_json(r) + "\n" for r in recs))
+    path, man, _ = td.build_dataset(ex, tmp_path / "ds", commit="c")
+    assert man["records"] == 2
+    with PostgresRepository(pg_clean.worker, role="worker") as repo:
+        assert td.load_dataset(path, repo) == 2
+        assert td.load_dataset(path, repo) == 2
+        got = repo.list(Scholarship)
+    assert {r.id for r in got} == {json.loads(x)["id"] for x in path.read_text().splitlines()}
+    quill = next(r for r in got if r.name == "SYNTHETIC Quill Award")
+    assert quill.scope == "temple_wide" and len(quill.seen_on) == 2
+    with connect(pg_clean.admin) as c:
+        (n,) = c.execute("SELECT count(*) FROM records WHERE source = 'temple_pages'").fetchone()
+    assert n == 2
