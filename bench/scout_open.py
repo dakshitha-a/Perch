@@ -16,6 +16,10 @@ bench does. Rows go to bench/results/scout_open_<tag>/:
   grades.csv         the answers and a blank `usefulness` column (1 to 5) for a PERSON to fill in
   summary.csv        the numbers per engine and per set
   report.md          the same as a table, new against old
+  reasons.csv        per question, how many sentences each grounding rule removed, in the
+                     answer that was shown and in the first draft, and MiniCheck flags
+  drafts.jsonl       per question and attempt, the raw model draft, the rule hits with their
+                     detail (the failing number, date or id), and the final answer shown
 
 Scores come from code, never from a model: citation validity (every cited id exists and was
 returned by a tool that turn), Layer 1 pass, MiniCheck-flagged sentences, empty or withheld
@@ -50,7 +54,7 @@ from perch.llm.budget import call_cost
 from perch.redisx import QuotaExceeded
 from perch.schemas import Brief, Lead, Opportunity, Scholarship, utcnow
 from perch.scout import texts
-from perch.scout.answer import CITE_RE, DECLINE_RE
+from perch.scout.answer import CITE_RE, DECLINE_RE, REASONS, Graded
 from perch.scout.job import award_names
 from perch.scout.read_tools import ScoutData
 from perch.scout.turn import Meter, TurnDeps, run_turn
@@ -81,6 +85,8 @@ OLD_FIELDS = [
     "minicheck_flagged", "empty", "steps", "gate_usd", "usd", "seconds"]
 GRADE_FIELDS = ["id", "engine", "set", "audience", "kind", "question", "answer", "usefulness",
                 "notes"]
+REASON_FIELDS = ["id", "set", "audience", "kind", "attempt_shown", "flagged", "withheld",
+                 "minicheck", *[f"shown_{r}" for r in REASONS], *[f"first_{r}" for r in REASONS]]
 REFUSING = ("refusal",)
 CARING = ("distress",)
 
@@ -125,8 +131,10 @@ def shortlist(service: BriefService, audience: str, as_of: date, n: int = SHORTL
     the first two marked kept. It gives the questions something to refer to ("my top lead")."""
     with service.repo() as r:
         if audience == "student":
-            recs = [x for x in r.list(Scholarship) if x.deadline and x.deadline >= as_of]
-            recs.sort(key=lambda x: (x.deadline, x.id))
+            # Temple's scholarship pages mostly give no deadline (S45: none of 76 did), so the
+            # open ones with a deadline come first and the rest fill the list by id.
+            recs = [x for x in r.list(Scholarship) if x.deadline is None or x.deadline >= as_of]
+            recs.sort(key=lambda x: (x.deadline is None, x.deadline or as_of, x.id))
         else:
             recs = [x for x in r.list(Opportunity) if x.close_date and x.close_date >= as_of]
             recs.sort(key=lambda x: (x.close_date, x.id))
@@ -193,6 +201,8 @@ class Run:
     rows_new: list[dict[str, Any]] = field(default_factory=list)
     rows_old: list[dict[str, Any]] = field(default_factory=list)
     grades: list[dict[str, Any]] = field(default_factory=list)
+    reasons: list[dict[str, Any]] = field(default_factory=list)
+    drafts: list[dict[str, Any]] = field(default_factory=list)
 
 
 # --- scoring ---
@@ -241,11 +251,21 @@ def judge(q: dict[str, Any], kind: str, text: str) -> tuple[bool, bool]:
     return False, False
 
 
+def shown_text(m: dict[str, Any]) -> str:
+    """The whole answer a person sees: the grounded part, then the General advice part under
+    its label."""
+    text = m.get("text") or ""
+    if m.get("general"):
+        text = (text + "\n\n" if text else "") + texts.GENERAL_LABEL + "\n" + m["general"]
+    return text
+
+
 def score_new(service: BriefService, q: dict[str, Any], m: dict[str, Any], meter: BenchMeter,
               seconds: float) -> dict[str, Any]:
     kind = m["kind"]
     text = m.get("text") or ""
-    empty = kind in ("error", "budget") or not text.strip() or text == texts.WITHHELD
+    empty = kind in ("error", "budget") or (
+        (not text.strip() or text == texts.WITHHELD) and not m.get("general"))
     answered = kind == "answer"
     cited = ids_in(text) if answered else []
     read = set(m.get("read") or [])
@@ -305,8 +325,28 @@ def not_run(q: dict[str, Any], why: str) -> dict[str, Any]:
 
 # --- the engines ---
 
+def reason_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
+    out = dict.fromkeys(REASONS, 0)
+    for r in rows:
+        out[r["reason"]] = out.get(r["reason"], 0) + 1
+    return out
+
+
+def reason_row(q: dict[str, Any], m: dict[str, Any], first: Graded | None) -> dict[str, Any]:
+    """Rule hits for one question: the shown answer's removed sentences (from the stored
+    message, which holds codes only) and the first draft's, before any regeneration."""
+    shown = reason_counts(m.get("removed") or [])
+    first_c = reason_counts(first.removed() if first else [])
+    return {"id": q["id"], "set": q["set"], "audience": q["audience"], "kind": q["kind"],
+            "attempt_shown": m.get("attempt", ""), "flagged": bool(m.get("flagged")),
+            "withheld": m.get("withheld", 0), "minicheck": len(m.get("unsupported") or []),
+            **{f"shown_{k}": v for k, v in shown.items() if k in REASONS},
+            **{f"first_{k}": v for k, v in first_c.items() if k in REASONS}}
+
+
 def run_new(service: BriefService, q: dict[str, Any], run: Run, *, as_of: date, fake: bool,
-            grounder: Grounder | None, provider_for: Callable[[str], Provider]
+            grounder: Grounder | None, provider_for: Callable[[str], Provider],
+            aliases: list[tuple[re.Pattern[str], str]] | None = None
             ) -> tuple[dict[str, Any], str]:
     cv, entries = persona(q.get("persona"))
     b, leads = shortlist(service, q["audience"], as_of)
@@ -314,13 +354,24 @@ def run_new(service: BriefService, q: dict[str, Any], run: Run, *, as_of: date, 
                      brief=lambda: (b, leads), cv_text=lambda: cv, entries=lambda: entries,
                      saved=list)
     meter = BenchMeter(run, fake)
+    drafts: list[tuple[int, str, Graded]] = []
     deps = TurnDeps(data=data, provider_for=provider_for, grounder=lambda: grounder,
-                    names=lambda: award_names(service), meter=meter)
+                    names=lambda: award_names(service), meter=meter,
+                    on_draft=lambda a, t, g: drafts.append((a, t, g)))
     t0 = time.perf_counter()
     m = run_turn(deps, [], question=q["q"])
     dt = time.perf_counter() - t0
     run.total_usd += meter.usd
-    return score_new(service, q, m, meter, dt), m.get("text") or ""
+    al = aliases or []
+    final = scrub(shown_text(m), al)
+    for attempt, draft, g in drafts:
+        run.drafts.append({"id": q["id"], "kind": q["kind"], "attempt": attempt,
+                           "shown": attempt == m.get("attempt"), "draft": scrub(draft, al),
+                           "removed": g.removed(detail=True),
+                           "kinds": [s.kind for s in g.sentences], "final": final})
+    if m.get("kind") == "answer":
+        run.reasons.append(reason_row(q, m, drafts[0][2] if drafts else None))
+    return score_new(service, q, m, meter, dt), shown_text(m)
 
 
 def run_old(service: BriefService, q: dict[str, Any], run: Run, *, as_of: date, researcher: str,
@@ -358,7 +409,7 @@ def execute(service: BriefService, questions: list[dict[str, Any]], out: Path, *
             say(f"stopped: ${run.total_usd:.4f} spent, cap ${max_usd:.2f}")
             break
         row, text = run_new(service, q, run, as_of=as_of, fake=fake, grounder=grounder,
-                            provider_for=provider_for)
+                            provider_for=provider_for, aliases=aliases)
         run.rows_new.append(row)
         run.grades.append(_grade_row(q, "new", scrub(text, aliases)))
         old_text = ""
@@ -425,6 +476,10 @@ def write_outputs(out: Path, run: Run) -> None:
     _write(out / "new.csv", NEW_FIELDS, run.rows_new)
     _write(out / "old.csv", OLD_FIELDS, run.rows_old)
     _write(out / "grades.csv", GRADE_FIELDS, run.grades)
+    _write(out / "reasons.csv", REASON_FIELDS, run.reasons)
+    with (out / "drafts.jsonl").open("w", encoding="utf-8") as f:
+        for d in run.drafts:
+            f.write(json.dumps(d, ensure_ascii=False) + "\n")
     rows = []
     for engine, rs in (("new", run.rows_new), ("old", run.rows_old)):
         for s in (None, "in", "out", "distress"):
@@ -480,6 +535,8 @@ def main() -> None:
     ap.add_argument("--fake", action="store_true", help="fake provider and fixture store: no spend")
     ap.add_argument("--max-usd", type=float, default=2.00, help="stop the run at this spend")
     ap.add_argument("--only", nargs="*", default=[], help="question ids")
+    ap.add_argument("--only-set", choices=("in", "out", "distress"), default=None,
+                    help="run only this set of questions")
     ap.add_argument("--no-old", action="store_true", help="skip the old Scout")
     ap.add_argument("--no-grounder", action="store_true", help="skip MiniCheck")
     ap.add_argument("--as-of", default=None, help="YYYY-MM-DD; default today")
@@ -487,7 +544,8 @@ def main() -> None:
     a = ap.parse_args()
     tag = a.tag or ("fake" if a.fake else "run")
     out = Path(a.out) if a.out else RESULTS / f"scout_open_{tag}"
-    qs = [q for q in load_questions() if not a.only or q["id"] in a.only]
+    qs = [q for q in load_questions() if (not a.only or q["id"] in a.only)
+          and (a.only_set is None or q["set"] == a.only_set)]
     as_of = date.fromisoformat(a.as_of) if a.as_of else date.today()
     if a.fake:
         import tempfile

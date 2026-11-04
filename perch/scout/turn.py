@@ -83,6 +83,9 @@ class TurnDeps:
     meter: Meter = Meter()  # noqa: RUF009 - stateless
     handoff: Callable[[], dict[str, Any] | None] | None = None
     cancelled: Callable[[], bool] = lambda: False  # the job's ctx.cancelled
+    # The bench's view of each graded draft: (attempt, raw model text, graded). Never set in
+    # the app, so a draft's text is not kept anywhere but the bench's own results folder.
+    on_draft: Callable[[int, str, ans.Graded], None] | None = None
 
 
 def now_iso() -> str:
@@ -171,6 +174,7 @@ def open_answer(deps: TurnDeps, history: list[Message], question: str) -> dict[s
     messages = [*history, Message("user", question)]
     names = deps.names()
     graded: ans.Graded | None = None
+    shown = 0
     text = ""
     for attempt in (1, 2):
         text = _converse(deps, tools, messages, system)
@@ -185,8 +189,10 @@ def open_answer(deps: TurnDeps, history: list[Message], question: str) -> dict[s
             # The system prompt's own scope line: shown as the code-written refusal.
             return message("assistant", "refusal", texts.REFUSAL, gate="model_declined")
         this = ans.grade(text, tools.seen, names, deps.data.as_of, deps.grounder())
+        if deps.on_draft is not None:
+            deps.on_draft(attempt, text, this)
         if graded is None or len(this.errors) < len(graded.errors):
-            graded = this  # the second answer replaces the first only if it is better
+            graded, shown = this, attempt  # the second replaces the first only if better
         if this.ok:
             break
         if attempt == 1:
@@ -195,13 +201,13 @@ def open_answer(deps: TurnDeps, history: list[Message], question: str) -> dict[s
         return message("assistant", "error", texts.ERROR)
     flagged = not graded.ok
     body, general = ans.render(graded, drop_failed=flagged)
-    removed = (sum(bool(s.errors) for s in graded.sentences)
-               + (1 if flagged and graded.general and graded.general_errors else 0))
     if not body and not general:
         body = texts.WITHHELD
     ids = graded.cited_ids
+    # Why each sentence was removed, by rule code and position only: no sentence text.
     return message("assistant", "answer", body, general=general, flagged=flagged,
-                   withheld=removed if flagged else 0,
+                   withheld=graded.n_removed if flagged else 0,
+                   removed=graded.removed() if flagged else [], attempt=shown,
                    unsupported=graded.unsupported if not flagged else [],
                    records=ids, sources=_sources(ids, tools),
                    read=sorted(tools.seen), steps=tools.used)

@@ -181,6 +181,11 @@ class ReadTools:
         self.seen[rec.id] = rec
         return rec
 
+    def _empty(self, id_: str, title: str, note: str) -> dict[str, Any]:
+        """An empty result still has an id, so "you have nothing saved yet" can cite it."""
+        self._see(user_doc(id_, title, note))
+        return {"id": id_, "note": note}
+
     def _get(self, rid: str) -> Record | None:
         rid = rid.strip().strip("[]")
         with self.data.repo() as r:
@@ -262,7 +267,8 @@ class ReadTools:
     def read_brief(self) -> dict[str, Any]:
         got = self.data.brief()
         if got is None:
-            return {"brief": None, "note": "The user has no finished brief yet."}
+            return {"brief": None, **self._empty("user:brief", "Brief",
+                                                  "The user has no finished brief yet.")}
         b, leads = got
         rows: list[dict[str, Any]] = []
         for x in sorted((x for x in leads if x.status != "dismissed" and x.route != "B"),
@@ -282,6 +288,8 @@ class ReadTools:
         sample = [r for r in rows if r.get("sample")]
         out: dict[str, Any] = {"leads": public,
                                "note": "Leads are in the brief's own order, the strongest first."}
+        if not rows:
+            out |= self._empty("user:brief", "Brief", "The user's brief has no leads.")
         if sample:
             out["sample_leads"] = sample
             out["sample_note"] = ("sample_leads are invented records for a demonstration. Never "
@@ -292,7 +300,7 @@ class ReadTools:
     def read_cv_part(self, part: str | None = None) -> dict[str, Any]:
         text = self.data.cv_text()
         if not text:
-            return {"cv": None, "note": "The user has not added a CV."}
+            return {"cv": None, **self._empty("user:cv", "CV", "The user has not added a CV.")}
         secs = {slug(k): v for k, v in sections(blank_contacts(text)).items() if v}
         if not part:
             return {"parts": [{"part": k, "lines": len(v)} for k, v in secs.items()],
@@ -310,7 +318,8 @@ class ReadTools:
             body = _trim(blank_contacts(text), ENTRY_CHARS) or ""
             doc = self._see(user_doc(f"user:entry:{i}", label or f"Entry {i}", body))
             rows.append({"id": doc.id, "label": label, "text": body})
-        return {"entries": rows} if rows else {"entries": [], "note": "No entries yet."}
+        return {"entries": rows} if rows else {
+            "entries": [], **self._empty("user:entries", "Entries", "No entries yet.")}
 
     def read_saved(self) -> dict[str, Any]:
         rows = []
@@ -323,4 +332,5 @@ class ReadTools:
                                           blank_contacts(s.note)))
                 row |= {"note_id": note.id, "note": _trim(note.abstract, ENTRY_CHARS)}
             rows.append(row)
-        return {"saved": rows} if rows else {"saved": [], "note": "Nothing saved yet."}
+        return {"saved": rows} if rows else {
+            "saved": [], **self._empty("user:saved", "Saved", "Nothing saved yet.")}
