@@ -51,7 +51,7 @@ Perch-dev updates this file at the end of every session (and at any stop mid-ses
 | S44 | Rebuild Phase 8a: Scout as an open, grounded assistant | done | 2026-11-04 10:48 EST (first commit) | 2026-11-04 11:10 EST | see git log | Phase 8 tasks 1 to 7. Buttons answered by code; open questions as worker jobs with six read-only tools; grounding per sentence with Layer 1 and MiniCheck; Haiku scope gate (6 tokens) with code-written refusal and distress care; distress links verified live; daily budget in the view. Fake provider only, $0. Tests 592 passed, test-user 69. Bench and injection review in S45. |
 | S45 | Rebuild Phase 8b: Scout open-question bench, injection review | done | 2026-11-04 11:20 EST | 2026-11-04 14:56 EST | see git log | Phase 8 done. Bench (63 questions, real model, against the old Scout): out of scope 24 of 24 (old 4 of 9), distress 5 of 5 (old 0 of 2), in scope final 10 of 33 pass Layer 1, 0 empty, MiniCheck 4 flags; seven runs $5.94 total. Opus security review: CSRF on nine write routes fixed; four re-checks; word lists replaced by shape rules; distress screening never budget-gated. Output caps raised for default thinking. Tests 896. Q49 open. |
 | S46 | Rebuild Phase 9: QA cycle | in progress | 2026-11-04 14:57 EST | | | Dataset v3 done early. |
-| S47 | Rebuild Phase 10: load test and operations | todo | | | | |
+| S47 | Rebuild Phase 10: load test and operations | in progress | 2026-11-04 17:13 EST | | | |
 | S48 | Rebuild Phase 11: security review, docs, release | todo | | | | |
 
 ## Milestone readiness
