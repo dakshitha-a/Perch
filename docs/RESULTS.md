@@ -146,11 +146,13 @@ Real model (Sonnet 5.5 answers, Haiku 5.5 gate), 63 questions written by Perch-d
 | s45b | grounding rules fixed (citation placement, abbreviations, help and headings) | 23 of 33 / 10 / 0 | 96 | not run | not run | $0.91 | `bench/results/scout_open_s45b/` |
 | s45c | security fixes, rounds 1 and 2 | 12 of 33 / 21 / 0 | 14 | 24 of 24 | 5 of 5 | $1.04 | `bench/results/scout_open_s45c/` |
 | s45f | over-strict removals fixed; output cap raised | 16 of 33 / 17 / 0 | 37 | not rerun | not rerun | $0.93 | `bench/results/scout_open_s45f/` |
+| s45g | shape rules; distress never budget-gated (before the claim-tail rule) | 10 of 33 / 23 / 0 | 4 | 24 of 24 | 5 of 5 | $1.09 | `bench/results/scout_open_s45g/` |
 
 - **Wrongly blocked:** 1 in-scope question in every run, by the gate.
 - **Run-to-run variance is large.** Replaying the s45c drafts through the old and new rules removed 170 and 158 sentences; the drop from s45b to s45c was mostly different drafts, not the rules. Most removals are sentences the model wrote without a citation.
 - **MiniCheck's 96 flags in s45b** were mostly the evidence it was given: eligibility text missing (22), rank and kept claims (14), "the record gives no deadline" claims (18), re-split sentences (4). 17 were genuine over-reach. Rank, kept and absence claims are now checked by code.
 - **Cut answers:** four s45c retries stopped mid-word because Sonnet 5.5's default thinking counts toward the output cap; caps raised (DECISIONS, 2026-11-04).
+- **The stricter rules cost answers.** On s45g, 23 of 33 in-scope answers failed twice and were shown with sentences removed; none was empty. Most removals are sentences the model wrote without a citation. Tuning the prompt and adding templates for process sentences is S46 work (Q49).
 - **The old Scout's higher Layer 1 rate is not a like-for-like comparison:** it answered a fixed tool set with no grounding contract per sentence.
 
 ## Limits

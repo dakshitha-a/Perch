@@ -19,23 +19,16 @@ Rewritten 2026-11-04 at about 14:15 EST, during S45's last fix round. Dakshitha 
 
 - **S34 to S42 and S44 done.** Phases 0 to 6 and 8a. `docs/RESULTS.md` has the S38, S40 and S45 sections.
 - **S43 done (Phase 7).** Student-first screens, browse with the Temple filter and school tags, account page with withdraw and delete, Help rewritten. The Opus review's 7 must-fix items are closed. Walks: guest 60 states in light and dark, real sign-in 16 states, all 0 errors and 0 axe. The only small targets are two inline links, which WCAG 2.5.8 exempts. Should-fix leftovers are listed in `docs/sessions/S43.md` for S46.
-- **S45 (Phase 8b), not yet closed.**
-  - **Bench.** Five real runs, table in `docs/RESULTS.md`. Out of scope 24 of 24, distress 5 of 5. In-scope Layer 1 pass swings with the drafts: 23, 12, then 16 of 33 on the final rules (s45f). About one in four cited sentences carries a MiniCheck mark (37 of 141 in s45f). Usefulness is not graded yet: a person fills `grades.csv`.
-  - **Security review.** M1 (CSRF on nine write routes) fixed and re-checked. Two re-checks found the word-list rules leaking. Round 3, an Opus agent in a worktree, replaces them with shape rules and makes distress screening independent of the budget (DECISIONS 2026-11-04).
-  - **When round 3 reports:**
-    1. Merge it and run all suites.
-    2. Replay the s45f drafts through the final rules with the agent's numbers, and add a RESULTS row "s45f drafts, final rules".
-    3. Rerun the out-of-scope and distress sets on the real gate: `PERCH_LIMIT_GPU=3 scripts/run_limited.sh uv run --extra ml --extra anthropic python -m bench.scout_open --no-old --only-set out --max-usd 0.10 --tag s45g`, then the same with `--only-set distress`. About $0.02. Also confirm that the five research questions about suicide are answered, not refused.
-    4. One fresh Opus re-check scoped to R1, R2, S1 and S5. If it finds no must-fix, close S45. Should-fix items go to S46's list. No fifth cycle.
+- **S45 done (Phase 8b).** Bench table in `docs/RESULTS.md`. Final run s45g: out of scope 24 of 24, distress 5 of 5, in scope 10 of 33 pass Layer 1, 23 shown with sentences removed, 0 empty. The security review's must-fix items are closed after four re-checks; the should-fix list for S46 is at the end of `docs/design/S45_SECURITY_REVIEW.md`. Exempt sentences now follow fixed shapes, and distress screening runs even when the budget is spent. Q49 asks about strictness against usefulness.
 - **S46 started early (Phase 9).**
   - **Dataset v3.** The v2 hand-check by a fresh reviewer: 16.6% of 217 rows wrong or missing (v1 7.4%), mostly Temple-funded misses. Fixes for the deadline conflict, per-award amounts and explicit Temple funding wording were applied, and v3 was rebuilt from the same reads without model calls. 310 records, 27 Temple-funded. Loaded into `perch_dev`. v3's error rate is not yet re-measured.
   - **Search filter.** Vector search now uses the same "listed on a Temple page" rule as browse.
-- **Spend.** The ledger is about $8.83 of the $100 cap; the `.env` cap is $32.60.
-- **Tests at the last merge.** `make test` 724 passed.
+- **Spend.** The ledger is about $9.92 of the $100 cap; the `.env` cap is $32.60.
+- **Tests at the last merge.** `make test` 896 passed.
 
 ## What is left after S45
 
-- **S46 (Phase 9), the QA cycle.** Two tester-then-fixer rounds: `make test`, the full walk with axe, the bench, the rehearsal script, the leakage check. Also: S43's should-fix leftovers; confirm on the real model that student brief explanations are not all withheld (the walk's fake model withholds every one); the student brief cost; the docs sweep for retired private-mode links; v3 hand-check; a person grading `grades.csv`.
+- **S46 (Phase 9), the QA cycle.** First: wire a cover-points button to `/briefs/{id}/cover-points` (the route works, no screen calls it; standing rule 5's fourth job), then Q49's prompt tuning measured offline. Two tester-then-fixer rounds: `make test`, the full walk with axe, the bench, the rehearsal script, the leakage check. Also: S43's should-fix leftovers; confirm on the real model that student brief explanations are not all withheld (the walk's fake model withholds every one); the student brief cost; the docs sweep for retired private-mode links; v3 hand-check; a person grading `grades.csv`.
 - **S47 (Phase 10).** The CUDA worker image with the Compose worker on `cloud-gpu`; the measured concurrent GPU load test; per-call spend reserve and settle; backup retention set to 35 days, to match the consent text; the runbook.
 - **S48 (Phase 11).** A fresh-context security review; the `rekey` and `tombstones` purge actions; the docs, the demo rebuild, `make package` and the tag `v1.0-deploy`.
 
@@ -52,5 +45,6 @@ Rewritten 2026-11-04 at about 14:15 EST, during S45's last fix round. Dakshitha 
 
 - **Q45 (Dakshitha):** Fox School scholarships. The Fox page is in the dataset. Recommendation: close it.
 - **Q47 (not blocking):** pg_search's AGPL licence matters only if keyword ranking returns.
+- **Q49 (not blocking):** Scout's strict grounding withholds sentences in most answers. Recommendation: keep for the demo, tune in S46.
 - **Q48 (not blocking):** a crisis message always gets the care message, even with the budget spent. Recommendation: keep.
 - **Draft copy (not blocking):** read the DRAFT consent and landing wording in `docs/design/S43_DESIGN.md` when convenient.
