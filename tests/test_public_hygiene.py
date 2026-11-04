@@ -53,7 +53,14 @@ def test_researcher_names_stay_out_of_shareable_docs():
                  ROOT / "bridge/QUESTIONS.md", *(p for p in ROOT.glob("web/**/*") if p.is_file()
                                                  and p.suffix in {".html", ".js", ".css"})]
     # Whole words: a short last name can sit inside an ordinary word ("from").
-    words = {p.name: set(re.findall(r"[a-z]+", fold(p.read_text("utf-8")))) for p in shareable}
+    def body(p):
+        text = p.read_text("utf-8")
+        # The generated table of Temple pages (scripts/gen_temple_sources.py) holds page URLs
+        # whose slugs are award titles, which may name people (CLAUDE.md exception).
+        return re.sub(r"<!-- BEGIN temple-pages-table.*?<!-- END temple-pages-table -->", "",
+                      text, flags=re.S)
+
+    words = {p.name: set(re.findall(r"[a-z]+", fold(body(p)))) for p in shareable}
     # Two-letter names ("li") are also HTML tags, so markup files skip them.
     hits = [(name, n) for name, w in words.items() for n in last_names if n in w
             and (len(n) > 2 or name.endswith(".md"))]

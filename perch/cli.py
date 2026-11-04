@@ -26,6 +26,7 @@ from perch.profile import MAX_AUTHORS, key_papers
 from perch.schemas import Award, Opportunity, Researcher
 from perch.sources import grants_gov, nih_reporter, nsf
 from perch.sources import openalex as oa
+from perch.store.base import Repository
 from perch.store.sqlite import SQLiteRepository
 
 DEFAULT_DB = "data/perch.db"
@@ -178,6 +179,34 @@ def fetch_temple_pages(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_temple(args: argparse.Namespace) -> int:
+    """Build the versioned Temple awards dataset, or load one into a store."""
+    from perch import temple_dataset as td
+
+    try:
+        if args.temple_command == "build-dataset":
+            path, man, rep = td.build_dataset(Path(args.input), Path(args.out_dir),
+                                              version=args.version)
+            print("\n".join(rep.lines()))
+            print(f"Wrote {path} (version {man['version']}, {man['records']} records, "
+                  f"sha256 {man['sha256'][:12]}...).")
+            return 0
+        dsn = args.dsn
+        if dsn:
+            from perch.store.postgres import PostgresRepository
+
+            repo: Repository = PostgresRepository(dsn, role="worker")
+        else:
+            repo = SQLiteRepository(args.db)
+        with repo:
+            n = td.load_dataset(Path(args.file), repo)
+        print(f"Loaded {n} records from {args.file} into {'Postgres' if dsn else args.db}.")
+        return 0
+    except (td.DatasetError, OSError) as e:
+        print(f"temple {args.temple_command} stopped: {e}", file=sys.stderr)
+        return 1
+
+
 def cmd_extract(args: argparse.Namespace) -> int:
     """Propose award records from the cached Temple pages with the `extract` model role;
     code keeps a value only when it is in a quoted sentence of the page."""
@@ -185,8 +214,9 @@ def cmd_extract(args: argparse.Namespace) -> int:
 
     from perch import temple_extract as te
 
-    return te.run_pilot(Path(args.cache_dir), Path(args.out), pilot=args.pilot,
-                        budget_usd=args.budget)
+    out = args.out or ("data/temple/extracted.jsonl" if args.all else "data/temple/pilot_s39.jsonl")
+    return te.run_extract(Path(args.cache_dir), Path(out), pilot=args.pilot, run_all=args.all,
+                          budget_usd=args.budget, restart=args.restart)
 
 
 def fetch_fellowship_details(args: argparse.Namespace) -> int:
@@ -533,11 +563,25 @@ def build_parser() -> argparse.ArgumentParser:
     ex = sub.add_parser("extract", help="propose award records from cached pages")
     ex.add_argument("source", choices=["temple-pages"])
     ex.add_argument("--cache-dir", default="data/cache/temple_pages")
-    ex.add_argument("--out", default="data/temple/pilot_s39.jsonl")
+    ex.add_argument("--out", default=None,
+                    help="default data/temple/pilot_s39.jsonl, or extracted.jsonl with --all")
+    ex.add_argument("--all", action="store_true",
+                    help="every cached page; appends to --out and skips pages already done")
+    ex.add_argument("--restart", action="store_true", help="with --all: discard earlier output")
     ex.add_argument("--pilot", type=int, default=20,
                     help="pages to extract, spread across owners")
     ex.add_argument("--budget", type=float, default=1.0,
                     help="stop when this many USD have been spent in the run")
+    tp = sub.add_parser("temple", help="the versioned Temple awards dataset")
+    tsub = tp.add_subparsers(dest="temple_command", required=True)
+    bd = tsub.add_parser("build-dataset", help="dedupe an extraction file into the next "
+                         "temple_awards_v<N>.jsonl with a manifest")
+    bd.add_argument("--input", default="data/temple/extracted.jsonl")
+    bd.add_argument("--out-dir", default="data/temple/dataset")
+    bd.add_argument("--version", type=int, default=None, help="default: the next free number")
+    ld = tsub.add_parser("load-dataset", help="load a dataset file into the store (idempotent)")
+    ld.add_argument("file")
+    ld.add_argument("--dsn", default=None, help="load into this Postgres URL instead of --db")
     pr = sub.add_parser("profile", help="key papers, awards and the public award horizon")
     pr.add_argument("author_id", help="OpenAlex author id")
     pr.add_argument("--papers", type=int, default=10, help="key papers to show (default 10)")
@@ -777,6 +821,8 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
         return cmd_keys(args)
     if args.command == "extract":
         return cmd_extract(args)
+    if args.command == "temple":
+        return cmd_temple(args)
     if args.command == "reconcile-shreds":
         return cmd_reconcile_shreds(args)
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory

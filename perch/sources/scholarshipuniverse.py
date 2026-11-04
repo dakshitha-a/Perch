@@ -19,6 +19,8 @@ replace it silently.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from perch.schemas import Scholarship
 
 SOURCE = "scholarshipuniverse"
@@ -29,3 +31,15 @@ INFO_URL = ("https://sfs.temple.edu/financial-aid-types/scholarships/"
 def to_scholarship(row: dict) -> Scholarship:
     """Map one feed row to a Scholarship. Needs a real export first (Q26)."""
     raise NotImplementedError("ScholarshipUniverse field names are UNVERIFIED; see Q26")
+
+
+class ScholarshipUniverseImporter:
+    """The feed seam's Importer (perch.feeds) for this source. It holds no data of its own:
+    `read()` maps each row it was given through `to_scholarship`, which still raises
+    NotImplementedError until a real export is seen (Q26). Nothing here is invented."""
+
+    def __init__(self, rows: Iterable[dict] = ()) -> None:
+        self.rows = list(rows)
+
+    def read(self) -> list[Scholarship]:
+        return [to_scholarship(r) for r in self.rows]

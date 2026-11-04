@@ -98,6 +98,16 @@ Scope = Literal["temple_wide", "school", "external"]
 AudienceLevel = Literal["undergraduate", "graduate", "faculty", "postdoc", "mixed"]
 
 
+class PageSighting(BaseModel):
+    """One page a merged Temple award appeared on (Phase 4 task 4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    source_url: str
+    fetched_at: datetime
+    page_owner: str | None = None
+
+
 class TemplePageFields(BaseModel):
     """Optional Phase 4 fields shared by Opportunity and Scholarship (ARCHITECTURE_V1 D-14).
 
@@ -117,6 +127,11 @@ class TemplePageFields(BaseModel):
     audience_level: AudienceLevel | None = None
     apply_url: str | None = Field(default=None, description="Link copied from a page sentence")
     field_quotes: dict[str, str] = Field(default_factory=dict)
+    seen_on: list[PageSighting] = Field(
+        default_factory=list, description="Every page the award appeared on, after dedupe")
+    field_sources: dict[str, str] = Field(
+        default_factory=dict, description="Merged records: field name to the page it came from, "
+        "when that is not source_url")
 
 
 class Opportunity(Record, TemplePageFields):

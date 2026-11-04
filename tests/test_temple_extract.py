@@ -203,3 +203,57 @@ def test_extraction_on_a_real_page_fixture():
     (r,) = recs  # "Alumni Grant Fund" is not on the page
     assert str(r.deadline) == "2020-12-01" and r.amount_max is None
     assert r.schools == ["Kornberg School of Dentistry"] and r.source == "temple_pages"
+
+
+def _cache(tmp_path, n):
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    lines = []
+    for i in range(n):
+        u = f"https://sample.example/p{i}"
+        (cache / f"p{i}.html").write_text(PAGE)
+        lines.append(json.dumps({**META, "url": u, "final_url": u, "file": f"p{i}.html"}))
+    (cache / "manifest.jsonl").write_text("\n".join(lines) + "\n")
+    return cache
+
+
+def _one_award_provider():
+    reply = json.dumps({"awards": [award("The Harbor Prize")]})
+    return FakeProvider(responder=lambda m, s, sc: reply)
+
+
+def test_extract_all_is_resumable_and_skips_done_pages(tmp_path):
+    cache, out = _cache(tmp_path, 3), tmp_path / "out.jsonl"
+    p = _one_award_provider()
+    assert te.run_extract(cache, out, run_all=True, provider=p, budget_usd=1.0) == 0
+    assert len(p.calls) == 3
+    rows = [json.loads(x) for x in out.read_text().splitlines()]
+    assert {r["source_url"] for r in rows} == {f"https://sample.example/p{i}" for i in range(3)}
+    p2 = _one_award_provider()
+    te.run_extract(cache, out, run_all=True, provider=p2)
+    assert p2.calls == [] and len(out.read_text().splitlines()) == 3
+
+
+def test_extract_all_continues_after_a_stop_and_restart_starts_over(tmp_path):
+    cache, out = _cache(tmp_path, 3), tmp_path / "out.jsonl"
+    first = te.load_cached(cache)[0]
+    recs, _, _ = te.extract_page(_one_award_provider(), *first)
+    out.write_text("".join(json.dumps({"kind": r.kind, **r.model_dump(mode="json")}) + "\n"
+                           for r in recs))
+    te.done_path(out).write_text(json.dumps({"url": first[0]["url"], "records": 1}) + "\n")
+    p3 = _one_award_provider()
+    te.run_extract(cache, out, run_all=True, provider=p3)
+    assert len(p3.calls) == 2 and len(out.read_text().splitlines()) == 3
+    p4 = _one_award_provider()
+    te.run_extract(cache, out, run_all=True, provider=p4, restart=True)
+    assert len(p4.calls) == 3 and len(out.read_text().splitlines()) == 3
+
+
+def test_extract_all_budget_stops_between_pages(tmp_path, capsys, monkeypatch):
+    cache, out = _cache(tmp_path, 3), tmp_path / "out.jsonl"
+    p = _one_award_provider()
+    monkeypatch.setattr(te, "cost_usd", lambda res: 0.6)
+    te.run_extract(cache, out, run_all=True, provider=p, budget_usd=1.0)
+    assert len(p.calls) == 2
+    text = capsys.readouterr().out
+    assert "budget" in text.lower() and "dropped" in text.lower()
