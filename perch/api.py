@@ -170,6 +170,28 @@ def user_record(request: Request, sess: object | None, record_id: str) -> dict |
             "source": "user", "source_url": None, "fetched_at": doc.fetched_at.isoformat()}
 
 
+def user_records(b: Brief) -> dict[str, dict]:
+    """The user's own documents the brief cites (a proposal, the interests note, each
+    achievement), as the evidence panel opens them. Read through the brief's store, so a
+    guest's SYNTHETIC persona and a signed-in user's rows both work; none without a store."""
+    from perch.student import achievement_docs
+    from perch.user.briefs import current_store
+
+    store = current_store.get()
+    if store is None:
+        return {}
+    docs = list(store.user_docs())
+    if b.options.get("student"):
+        try:
+            inp = store.student_inputs()
+        except (LookupError, ValueError):
+            return {}
+        docs = ([inp.interests] if inp.interests else []) + achievement_docs(inp.entries)
+    return {d.id: {"kind": "user", "id": d.id, "title": d.title, "text": d.abstract,
+                   "source": "user", "source_url": None,
+                   "fetched_at": d.fetched_at.isoformat()} for d in docs}
+
+
 class WebFiles(StaticFiles):
     """The web app's files, revalidated on every load (S27). Without a Cache-Control
     header, browsers kept old scripts after a release, so visitors saw the previous app."""
@@ -622,10 +644,22 @@ def create_app(service: BriefService, runner: ClosureRunner,
                    "record_id": (s.end_record or s.records[0]).id,
                    "matched_by_initial": s.matched_by_initial}
                   for s in aw.summarise(linked, res, ov) if s.key in set(b.award_ids)]
-        return {"brief": b.model_dump(mode="json"),
+        view = {"brief": b.model_dump(mode="json"),
                 "researcher": record_json(res) if res else None, "awards": awards,
                 "papers": papers,
                 "leads": out, "notice": grants_gov.ATTRIBUTION}
+        view["papers"].update(user_records(b))
+        if b.options.get("student"):  # what the CV parse read, for the Profile screen
+            from perch.student import parse_student_cv
+            from perch.user.briefs import current_store
+
+            store = current_store.get()
+            if store is not None:
+                try:
+                    view["student"] = parse_student_cv(store.student_inputs().cv).summary()
+                except (LookupError, ValueError):
+                    pass
+        return view
 
     def set_status(brief_id: str, lead_id: str, status: str) -> dict:
         lead = service.set_lead_status(brief_id, lead_id, status)

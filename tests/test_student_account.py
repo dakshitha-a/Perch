@@ -44,5 +44,8 @@ def test_each_persona_gets_leads_on_both_tabs(env, tmp_path, monkeypatch, name):
     s = ok(by["S"])[0]
     assert s["explanation"] and "user:achievement-a" in s["cited_ids"]
     assert all(isinstance(g, str) for x in by["S"] for g in x["gaps"])
+    assert "user:achievement-a" in got["papers"]  # the evidence panel can open it
+    assert got["papers"]["user:achievement-a"]["source"] == "user"
+    assert got["student"] and got["student"][0][0] == "Level of study"  # the Profile's CV rows
     assert canaries(name)  # the persona carries its canary tokens (rule 12)
 
