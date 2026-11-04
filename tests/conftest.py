@@ -75,6 +75,9 @@ def pg_clean(pgdb: PgDb) -> PgDb:
         c.execute("TRUNCATE records, record_vectors, users, consents, user_data, jobs, "
                   "job_events, audit_log, spend_ledger, public_cache, shred_log, ingest_runs, "
                   "worker_heartbeat CASCADE")
+        # Roles are cluster-wide and tests/test_jobs_pg.py sets other passwords on them.
+        for role in ("perch_owner", "perch_web", "perch_worker"):
+            c.execute(f"ALTER ROLE {role} PASSWORD '{ROLE_PW}'")
     return pgdb
 
 

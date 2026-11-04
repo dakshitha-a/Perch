@@ -265,7 +265,16 @@ def test_delete_my_data_follows_the_order_and_leaves_nothing(env, pg_clean, tmp_
 def test_delete_needs_the_confirm_word(env):
     assert env.client.post("/me/delete", json={"confirm": "yes"}).status_code == 422
     assert env.client.post("/me/delete", json={}).status_code == 422
-    assert env.keys.latest(env.uid) is None or env.uid not in env.keys.tombstones
+    assert env.uid not in env.keys.tombstones  # nothing was shredded
+
+
+def test_the_worker_command_imports_the_purge_handler():
+    import inspect
+
+    from perch import cli
+
+    assert "perch.user.delete" in inspect.getsource(cli.cmd_worker)
+    assert "purge" in jobs.registered_kinds()  # registered once perch.user.delete is imported
 
 
 @pytest.mark.skipif(not KEYS_URL, reason="PERCH_TEST_KEYS_DATABASE_URL is not set")
@@ -408,6 +417,41 @@ def test_submit_rate_is_per_user(env, pg_clean, rds, web_pool, monkeypatch):
         quota.admit(rds, web_pool, env.uid)
     assert e.value.retry_after >= 1
     quota.admit(rds, web_pool, other)  # another account has its own window
+
+
+def test_the_brief_routes_use_the_account_store_when_the_app_has_account_services(
+        env, pg_clean, tmp_path, monkeypatch):
+    """POST /briefs and GET /briefs/{id} in perch/api.py, gated on app.state.user_services."""
+    from perch.api import create_app
+    from perch.jobs import InlineRunner
+
+    monkeypatch.setenv("PERCH_REDIS_URL", REDIS_URL)
+    _, svc = make(tmp_path)
+    app = create_app(svc, InlineRunner(), stored_briefs=True, web_dir=None)
+    app.state.user_services = env.client.app.state.user_services
+    app.dependency_overrides[deps.session_optional] = lambda request: env.session
+    c = TestClient(app)
+    r = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28",
+                                "audience": "student"})
+    assert r.status_code == 202, r.text
+    bid = r.json()["id"]
+    assert uuid.UUID(bid) and r.json()["job_id"]
+    assert sql(pg_clean, "SELECT count(*), min(kind) FROM user_data WHERE user_id = %s",
+               env.uid) == [(1, "brief")]
+    assert c.get(f"/briefs/{bid}").json()["brief"]["status"] == "queued"
+    jobs.set_brief_service(lambda: svc)
+    try:
+        run_worker(pg_clean, ["brief"], lambda: c.get(f"/briefs/{bid}").json()["brief"]["status"]
+                   == "done")
+    finally:
+        jobs._brief_service = None
+    got = c.get(f"/briefs/{bid}").json()
+    assert got["brief"]["status"] == "done" and got["leads"]
+    with svc.repo() as repo:  # nothing in the public store
+        assert repo.get(__import__("perch.schemas", fromlist=["Brief"]).Brief, bid) is None
+    # another account cannot read it
+    env.session.user_id = new_user(pg_clean)
+    assert c.get(f"/briefs/{bid}").status_code == 404
 
 
 def test_usage_route_copies_the_counter(env, rds):

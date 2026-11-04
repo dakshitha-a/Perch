@@ -95,6 +95,27 @@ def draft_json(d: Draft) -> dict:
 class BriefRequest(BriefOptions):
     author_id: str = Field(description="OpenAlex author id, e.g. A5023080104")
     agencies: list[str] = Field(default_factory=list)
+    audience: Literal["researcher", "student"] | None = None  # v1: the session's side decides
+
+
+async def account_session(request: Request) -> object | None:
+    """The v1 session when the app has account services (app.state.user_services), else None,
+    so the fallback path is unchanged (S41 part B)."""
+    if getattr(request.app.state, "user_services", None) is None:
+        return None
+    import inspect
+
+    from perch.auth import deps
+
+    # Called by hand, not as a sub-dependency, so the fallback app never touches sessions;
+    # an `app.dependency_overrides` entry (tests) is still honoured.
+    fn = request.app.dependency_overrides.get(deps.session_optional, deps.session_optional)
+    sess = fn(request)
+    if inspect.isawaitable(sess):
+        sess = await sess
+    if sess is None:
+        raise HTTPException(401, {"error": "auth_required"})
+    return sess
 
 
 class WebFiles(StaticFiles):
@@ -429,9 +450,27 @@ def create_app(service: BriefService, runner: ClosureRunner,
     limiter = RateLimiter(int(env("PERCH_BRIEFS_PER_HOUR") or 10))
 
     @app.post("/briefs", status_code=202, dependencies=STORED)
-    def create_brief(req: BriefRequest, request: Request) -> dict:
+    def create_brief(req: BriefRequest, request: Request,
+                     sess: object | None = Depends(account_session)) -> dict:
         if not oa.parse_author_id(req.author_id):
             raise HTTPException(422, f"not an OpenAlex author id: {req.author_id!r}")
+        if sess is not None:  # v1: the brief lives in user_data (or Redis for a guest)
+            from perch.redisx import QuotaExceeded
+            from perch.user.briefs import submit_brief
+            from perch.user.quota import RateLimited
+
+            sv = request.app.state.user_services
+            try:
+                bid, job = submit_brief(service, sv.runner, sv.ud, sv.redis, sess, req.author_id,
+                                        as_of=req.as_of, top=req.top, explain=req.explain,
+                                        min_amount=req.min_amount, agencies=req.agencies,
+                                        context=req.context())
+            except RateLimited as e:
+                raise HTTPException(429, {"error": "rate_limited"},
+                                    headers={"Retry-After": str(e.retry_after)}) from None
+            except QuotaExceeded:
+                raise HTTPException(429, {"error": "quota_exceeded"}) from None
+            return {"id": bid, "job_id": str(job), "status": "queued", "poll": f"/briefs/{bid}"}
         wait = limiter.take(client_key(request))
         if wait:
             raise HTTPException(429, f"Limit of {limiter.per_hour} new briefs an hour reached. "
@@ -450,11 +489,21 @@ def create_app(service: BriefService, runner: ClosureRunner,
         return got
 
     @app.get("/briefs/{brief_id}", dependencies=STORED)
-    def get_brief(brief_id: str) -> dict:
+    def get_brief(brief_id: str, request: Request,
+                  sess: object | None = Depends(account_session)) -> dict:
+        if sess is not None:
+            from perch.user.briefs import load_brief
+
+            sv = request.app.state.user_services
+            sb = load_brief(sv.ud, sv.redis, sess, brief_id)
+            if sb is None:
+                raise HTTPException(404, {"error": "not_found"})
+            return brief_view(brief_id, loaded=(sb.brief, sb.leads))
         return brief_view(brief_id)
 
-    def brief_view(brief_id: str, svc: BriefService = service) -> dict:
-        b, leads = load(brief_id, svc)
+    def brief_view(brief_id: str, svc: BriefService = service,
+                   loaded: tuple[Brief, list[Lead]] | None = None) -> dict:
+        b, leads = loaded or load(brief_id, svc)
         with svc.repo() as r:
             res = r.get(Researcher, b.researcher_id)
             opps = {x.record_id: r.get(Opportunity, x.record_id) for x in leads

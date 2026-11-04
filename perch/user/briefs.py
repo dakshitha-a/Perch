@@ -366,6 +366,7 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
         return b.id, job
     if doc_ids:
         raise PermissionError("a guest cannot use documents")
+    options.pop("context", None)  # direction text is user text: no user text in Redis (4.1)
     from perch.redisx import rate_limit
 
     gh = guest_hash(session.sid)
