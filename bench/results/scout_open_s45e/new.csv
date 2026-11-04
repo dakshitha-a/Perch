@@ -1,0 +1,5 @@
+id,set,audience,kind,answer_kind,gate,expected,correct,wrongly_blocked,n_cites,cites_valid,layer1_pass,flagged,withheld,minicheck_flagged,empty,steps,gate_usd,usd,seconds
+i09,in,researcher,filter,answer,in_scope,in_scope,True,False,16,True,False,True,21,0,False,read_brief search_records search_records,2.8e-05,0.049399,26.91
+i21,in,student,cv_feedback,answer,in_scope,in_scope,True,False,10,True,False,True,3,0,False,read_brief read_cv_part read_entries read_record read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part,2.9e-05,0.049709,24.56
+i22,in,researcher,cv_feedback,answer,in_scope,in_scope,True,False,6,True,False,True,2,0,False,read_brief read_cv_part read_entries read_record read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part,2.8e-05,0.056318,29.54
+i32,in,student,search,answer,in_scope,in_scope,True,False,5,True,True,False,0,1,False,search_records search_records read_record read_record read_record read_record,2.8e-05,0.050812,24.54

@@ -1,0 +1,87 @@
+id,engine,set,audience,kind,question,answer,usefulness,notes
+i09,new,in,researcher,filter,Show me only U01 and R01 grants.,"**R01**
+- It closes 7 Jan 2027, and the amount is up to $500,000 [grants_gov:PAR-25-079].
+- It closes 7 Jan 2028, and the amount is up to $499,000 [grants_gov:PAR-25-338].
+- It closes 7 Jan 2028, and the amount is up to $499,000 [grants_gov:PAR-25-337].
+- It closes 7 Jan 2027, and the amount is not stated [grants_gov:PAR-25-310].
+- It closes 3 Dec 2027, and the amount is not stated [grants_gov:RFA-DA-26-055].
+- It closes 7 Sep 2027, and the amount is not stated [grants_gov:PAR-25-112].
+- It closes 5 Mar 2029, and the amount is up to $250,000 [grants_gov:PAR-26-040].
+- It closes 7 Jan 2028, and the amount is not stated [grants_gov:PAR-24-273].
+**U01**
+- It closes 5 Nov 2027, and the amount is up to $1,500,000 [grants_gov:PAR-25-297].
+- The close date and amount are not in the record [grants_gov:RFA-AG-28-009].
+- It closes 10 Nov 2026, and the amount is not stated [grants_gov:RFA-NS-26-001].
+- The close date and amount are not in the record [grants_gov:RFA-NS-28-009].
+- The close date and amount are not in the record [grants_gov:RFA-HG-28-003].
+- It closes 7 Sep 2027, and the amount is not stated [grants_gov:PAR-24-325].
+- It closes 4 Oct 2027, and the amount is not stated [grants_gov:RFA-NS-27-015].
+- It closes 15 Jun 2027, and the amount is not stated [grants_gov:RFA-MH-26-140].",,
+i09,old,in,researcher,filter,Show me only U01 and R01 grants.,(old engine skipped),,
+i21,new,in,student,cv_feedback,"Where is my CV weak for my top lead, and where is it strong?","**Top lead:** AAMC Summer Undergraduate Research Programs [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**What the record asks for**
+- It lists the level of study as bachelor's [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It is listed for first-year undergraduates, sophomores, or juniors [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Its page note says the focus is medical research [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It states no deadline or amount, and it lists no application requirements [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**Where your CV is weak**
+- Your CV shows a PhD candidate in Neuroscience [user:cv:education], and the record is for bachelor's-level study [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Your CV does not show the undergraduate class year the record names [user:cv:education].
+- Your research is on sleep spindles and memory in a rodent model [user:cv:research]. Your CV does not show how that connects to medical research, which is the record's stated focus [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- The record lists no application requirements, so I can't check your CV against any [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**Where your CV is strong**
+- You have a publication on sleep spindles and recall [user:cv:publications], and your entries note it as first-author [user:entry:1].
+- You have a poster and a talk on spindle timing and closed-loop stimulation [user:cv:posters-and-talks].
+- You list a teaching award [user:cv:honours].
+- You list outreach organising [user:cv:activities], which your entries describe as a brain outreach week for local school students [user:entry:3].
+- You built a closed-loop system that plays a sound cue at the start of a spindle [user:entry:2].
+Tell me if you want me to compare this lead with your second-ranked lead.
+
+General advice:
+- Perch does not confirm personal eligibility, so check the sponsor's page yourself.
+- If the level of study doesn't match yours, ask the Temple office that handles awards before you spend time on the application.",,
+i21,old,in,student,cv_feedback,"Where is my CV weak for my top lead, and where is it strong?",(old engine skipped),,
+i22,new,in,researcher,cv_feedback,"How well does my CV match my top lead, and what is missing?","**Top lead:** SBE Postdoctoral Research Fellowships (SPRF) from the U.S. National Science Foundation is first in your brief [grants_gov:23-500].
+**What the record asks for**
+- The research and training plan must address important scientific questions within the scope of the SBE directorate [grants_gov:23-500].
+- You apply as an individual, and you must name one sponsoring scientist and a host institution [grants_gov:23-500].
+- It must be obtained within a set window before the deadline, or within a set window after it [grants_gov:23-500].
+- The applicant must be a U.S. citizen, national or legally admitted permanent resident [grants_gov:23-500].
+**What your CV shows**
+- You hold a PhD in Biomedical Engineering from 2021 [user:cv:education].
+- You were a postdoctoral fellow from 2021 to 2023 [user:cv:appointments].
+- You have been an assistant professor from 2023 to present [user:cv:appointments].
+- Your funding and work centre on shoe-worn force sensing and gait monitoring [user:cv:funding].
+- You have a prior foundation fellowship [user:cv:funding].
+**What is missing or unclear**
+- Your CV does not link your gait work to an SBE science question [user:cv:funding].
+- Your degree field is Biomedical Engineering, so it is unclear whether it counts as an SBE science under the record [user:cv:education, grants_gov:23-500].
+- The record describes a fellowship for early-career postdoctoral researchers, and your CV lists a current faculty appointment [grants_gov:23-500, user:cv:appointments].
+- The record's eligibility text is cut off in what I read [grants_gov:23-500].
+- The CV parts I read do not state citizenship or residency status [user:cv:overview, user:cv:education].
+- Your CV names no sponsoring scientist or host institution for this fellowship [user:cv:appointments].
+- You have no typed entries that could add context [user:entries].
+Perch does not confirm personal eligibility. Read the full solicitation before you decide.
+Tell me if you want me to compare this with your second lead.",,
+i22,old,in,researcher,cv_feedback,"How well does my CV match my top lead, and what is missing?",(old engine skipped),,
+i32,new,in,student,search,Find fellowships for a graduate student in environmental science.,"**Temple fellowship pages (for individual students)**
+- NSF Graduate Research Fellowship Program lists graduate study and the field STEM [temple_sdfa:nsf-graduate-research-fellowship-program].
+- Its record gives no deadline or amount [temple_sdfa:nsf-graduate-research-fellowship-program].
+- National Defense Science and Engineering Graduate Fellowship lists graduate study and the field STEM [temple_sdfa:national-defense-science-and-engineering-graduate-fellowship].
+- Its record gives no deadline or amount [temple_sdfa:national-defense-science-and-engineering-graduate-fellowship].
+- The Graduate School's Fellowship page also appeared in search, with no deadline or amount stated [temple_sdfa:the-graduate-school-s-fellowship-page].
+**Federal records (these fund institutions)**
+- EPSCoR Graduate Fellowship Program closes 1 Jun 2027 and lists $477,000 to $3,180,000 [grants_gov:24-588].
+- It is for applicants who earned a GRFP Honorable Mention, and awards go to institutions in EPSCoR jurisdictions [grants_gov:24-588].
+- Proposals may only be submitted by institutions of higher education [grants_gov:24-588].
+- Genesis Mission Graduate Fellowship Pilot closes 12 Jan 2027 [grants_gov:DE-FOA-0003673].
+- Its lead applicant must be a U.S. institution of higher education or a domestic doctoral-granting institution [grants_gov:DE-FOA-0003673].
+None of the records I read names environmental science. The Temple records list the field as STEM [temple_sdfa:nsf-graduate-research-fellowship-program, temple_sdfa:national-defense-science-and-engineering-graduate-fellowship].
+Tell me which record to read in full, or ask me to check your CV against one.
+
+General advice:
+- Save your CV in Perch so it can find awards that fit your field.
+- Check each record's own page for deadline and eligibility. Perch does not confirm personal eligibility.
+- Keep the leads worth a closer look and dismiss the rest. Then use Compare to put your kept leads side by side.
+- Ask the relevant Temple office early about fellowships that need an institutional nomination or letter.",,
+i32,old,in,student,search,Find fellowships for a graduate student in environmental science.,(old engine skipped),,

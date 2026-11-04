@@ -123,7 +123,7 @@ def explain_one(o: Opportunity, system: str, paper_records: dict[str, Record],
     def generate(feedback: list[str]) -> Fit:
         msg = prompt + ("\n\nYour previous answer was rejected: " + "; ".join(feedback)
                         + ". Fix these problems." if feedback else "")
-        r = provider.chat([Message("user", msg)], system=system, schema=SCHEMA, max_tokens=900,
+        r = provider.chat([Message("user", msg)], system=system, schema=SCHEMA, max_tokens=3000,
                           cache_system=True)
         d = parse_json(r.text)
         def known(i: str) -> str:

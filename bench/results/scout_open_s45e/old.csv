@@ -1,0 +1,5 @@
+id,set,audience,kind,ran,answer_kind,gate,expected,correct,wrongly_blocked,n_cites,cites_valid,layer1_pass,flagged,withheld,minicheck_flagged,empty,steps,gate_usd,usd,seconds
+i09,in,researcher,filter,False,old engine skipped,,in_scope,,,,,,,,,,,,,
+i21,in,student,cv_feedback,False,old engine skipped,,in_scope,,,,,,,,,,,,,
+i22,in,researcher,cv_feedback,False,old engine skipped,,in_scope,,,,,,,,,,,,,
+i32,in,student,search,False,old engine skipped,,in_scope,,,,,,,,,,,,,

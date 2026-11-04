@@ -1,0 +1,63 @@
+id,engine,set,audience,kind,question,answer,usefulness,notes
+i09,new,in,researcher,filter,Show me only U01 and R01 grants.,"**Your brief:** None of the six leads has U01 or R01 in its title [grants_gov:23-500, grants_gov:26-511, grants_gov:26-512, grants_gov:26-513, grants_gov:HT942526BMFRPIDA, grants_gov:HT942526BMFRPIIRA].
+**R01 records from search:**
+- Academic-Industrial Partnerships (AIP) to Translate and Validate In Vivo Imaging Systems closes 7 Jan 2027 and offers up to $500,000 [grants_gov:PAR-25-079].
+- Academic-Industrial Partnerships for Translation of Technologies for Diagnosis and Treatment (Clinical Trial Not Allowed) closes 7 Jan 2028 and offers up to $499,000 [grants_gov:PAR-25-338].
+- The Clinical Trial Optional version of that program closes 7 Jan 2028 and offers up to $499,000 [grants_gov:PAR-25-337].
+- Accelerating Solutions to Improve Access and Quality of Empirically-Supported Practices for Youth Mental Health closes 7 Jan 2027, and the amount is not stated in the record [grants_gov:PAR-25-310].
+- Accelerating the Pace of Substance Use Research Using Existing Data closes 3 Dec 2027, and the amount is not stated in the record [grants_gov:RFA-DA-26-055].
+- Advancement and Innovation in Measurement of Language Development and Predictors closes 7 Sep 2027, and the amount is not stated in the record [grants_gov:PAR-25-112].
+- Advancing Bioinformatics, Translational Bioinformatics and Computational Biology Research closes 5 Mar 2029 and offers up to $250,000 [grants_gov:PAR-26-040].
+- Advancing Healthcare for Older Adults from Populations that Experience Health Disparities closes 7 Jan 2028, and the amount is not stated in the record [grants_gov:PAR-24-273].
+**U01 records from search:**
+- Alzheimer's Drug-Development Program closes 5 Nov 2027 and offers up to $1,500,000 [grants_gov:PAR-25-297].
+- A second Alzheimer's Drug-Development Program record has no close date and no amount in the record [grants_gov:RFA-AG-28-009].
+- Amyotrophic Lateral Sclerosis (ALS) Intermediate Patient Population Expanded Access closes 10 Nov 2026, and the amount is not stated in the record [grants_gov:RFA-NS-26-001].
+- A second ALS Expanded Access record has no close date and no amount in the record [grants_gov:RFA-NS-28-009].",,
+i09,old,in,researcher,filter,Show me only U01 and R01 grants.,(old engine skipped),,
+i21,new,in,student,cv_feedback,"Where is my CV weak for my top lead, and where is it strong?","**Top lead:** AAMC Summer Undergraduate Research Programs [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**What the record asks for**
+- It lists the level of study as bachelor's [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It is listed for first-year undergraduates, sophomores or juniors [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Its page note says the focus is medical research [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It states no deadline, amount or application requirements [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**Where your CV is weak**
+- Your CV shows a PhD candidate in Neuroscience [user:cv:education]. The record lists bachelor's level [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Your CV shows a B.S. already completed [user:cv:education]. The record is listed for undergraduate class years [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Your CV describes basic research on sleep spindles and memory in a rodent model [user:cv:research]. It does not show a link to medical research, which the record's page note names as the focus [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Your CV does not yet show how your work applies to a clinical or medical question [user:cv:research].
+**Where your CV is strong**
+- You have a first-author paper on sleep spindles and recall [user:entry:1].
+- Your publications part lists a matching paper [user:cv:publications].
+- You have a poster and a departmental talk [user:cv:posters-and-talks].
+- You built a closed-loop system that plays a sound cue at spindle onset [user:entry:2].
+- You have outreach experience, including a Brain Awareness Week role [user:cv:activities].
+- You ran a brain outreach week for local school students for three years [user:entry:3].
+- You hold a graduate teaching award [user:cv:honours].
+**What this means**
+- The record's level and class-year listing does not match your education part [temple_sdfa:aamc-summer-undergraduate-research-programs, user:cv:education]. Check the sponsor's page or ask a Temple office before you invest time. Perch does not confirm personal eligibility.
+- Your second lead is the other kept lead [temple_sdfa:american-association-of-university-women]. Tell me if you want me to read it in full and compare it with your CV.
+
+General advice:
+- When a lead's level of study differs from yours, confirm who may apply before drafting anything.
+- If you do apply to something with a medical focus, state in one plain sentence how your basic research could inform a health question.",,
+i21,old,in,student,cv_feedback,"Where is my CV weak for my top lead, and where is it strong?",(old engine skipped),,
+i22,new,in,researcher,cv_feedback,"How well does my CV match my top lead, and what is missing?","**Top lead:** SBE Postdoctoral Research Fellowships (SPRF), from the U.S. National Science Foundation [grants_gov:23-500]. It closes 4 Nov 2026 [grants_gov:23-500]. The amount is $160,000 to $170,000 [grants_gov:23-500].
+**What the record asks for**
+- The fellowship supports independence early in the fellow's career through research and training goals [grants_gov:23-500].
+- The plan must address important scientific questions within the scope of the SBE directorate [grants_gov:23-500].
+- The proposer must have a doctoral degree in the SBE sciences within the 3 years prior to the deadline, or will obtain one within 12 months after it [grants_gov:23-500].
+- The proposer must be a U.S. citizen, national or legally admitted permanent resident [grants_gov:23-500].
+- The fellow submits directly, not the host institution, and names one sponsoring scientist and host institution [grants_gov:23-500].
+**What your CV shows**",,
+i22,old,in,researcher,cv_feedback,"How well does my CV match my top lead, and what is missing?",(old engine skipped),,
+i32,new,in,student,search,Find fellowships for a graduate student in environmental science.,"The NSF Graduate Research Fellowship Program is listed under STEM, not environmental science [temple_sdfa:nsf-graduate-research-fellowship-program]. I found no fellowship in these records that names environmental science as its field.
+**Temple-listed fellowships**
+- NSF Graduate Research Fellowship Program: it is listed for current graduate students [temple_sdfa:nsf-graduate-research-fellowship-program]. Its deadline and amount are not stated in the record [temple_sdfa:nsf-graduate-research-fellowship-program].
+- National Defense Science and Engineering Graduate Fellowship: it is listed under STEM for seniors, recent alumni, and graduate students [temple_sdfa:national-defense-science-and-engineering-graduate-fellowship]. Its deadline and amount are not stated in the record [temple_sdfa:national-defense-science-and-engineering-graduate-fellowship].
+- The Graduate School's Fellowship page: it is listed under Temple University Opportunities for graduate students [temple_sdfa:the-graduate-school-s-fellowship-page]. Its deadline and amount are not stated in the record [temple_sdfa:the-graduate-school-s-fellowship-page].
+**Federal opportunities**
+- EPSCoR Graduate Fellowship Program (EGFP): it is for applicants who received a GRFP Honorable Mention no more than three years before the due date [grants_gov:24-588]. It closes 1 Jun 2027 [grants_gov:24-588]. The record lists the amount as $477,000 to $3,180,000 [grants_gov:24-588]. Awards go to institutions in EPSCoR jurisdictions [grants_gov:24-588].
+- Genesis Mission Graduate Fellowship Pilot: it closes 12 Jan 2027 [grants_gov:DE-FOA-0003673]. I have not read the full record.
+Tell me which one to read in full, or I can match any of them against your CV.",,
+i32,old,in,student,search,Find fellowships for a graduate student in environmental science.,(old engine skipped),,

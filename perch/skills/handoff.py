@@ -234,7 +234,7 @@ def draft_handoff(office: Office, researcher: Researcher,
     def generate(feedback: list[str]) -> tuple[str, list[str]]:
         msg = prompt + ("\n\nYour previous answer was rejected: " + "; ".join(feedback)
                         + ". Fix these problems." if feedback else "")
-        r = provider.chat([Message("user", msg)], system=SYSTEM, schema=SCHEMA, max_tokens=700)
+        r = provider.chat([Message("user", msg)], system=SYSTEM, schema=SCHEMA, max_tokens=3000)
         d = parse_json(r.text)
         return str(d["paragraph"]).strip(), [str(c).strip("[] ") for c in d["cited_ids"]]
 

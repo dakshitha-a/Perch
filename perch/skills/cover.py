@@ -277,7 +277,7 @@ def cover_points(o: Opportunity, cv: Work | None, docs: list[Work], papers: list
         msg = prompt + ("\n\nYour previous answer was rejected: " + "; ".join(feedback)
                         + ". Fix these problems." if feedback else "")
         r = provider.chat([Message("user", msg)], system=system, schema=SCHEMA,
-                          max_tokens=1400, cache_system=True)
+                          max_tokens=4000, cache_system=True)
         d = parse_json(r.text)
         try:
             points = [Point(strip_ids(str(p["asks"])), [known(i) for i in p["asks_ids"]],

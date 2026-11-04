@@ -60,7 +60,7 @@ def summarise_profile(profile: Profile, works: dict[str, Work], provider: Audite
     def generate(feedback: list[str]) -> Summary:
         msg = prompt + ("\n\nYour previous answer was rejected: " + "; ".join(feedback)
                         + ". Fix these problems." if feedback else "")
-        r = provider.chat([Message("user", msg)], system=SYSTEM, schema=SCHEMA, max_tokens=800)
+        r = provider.chat([Message("user", msg)], system=SYSTEM, schema=SCHEMA, max_tokens=3000)
         d = parse_json(r.text)
         return Summary([(t["label"], list(t["work_ids"])) for t in d["topics"]],
                        d["summary"], list(d["cited_ids"]))

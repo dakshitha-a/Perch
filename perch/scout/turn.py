@@ -17,6 +17,7 @@ Order of work for a question:
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -33,7 +34,10 @@ from perch.scout import buttons, gate, texts
 from perch.scout.read_tools import ReadTools, ScoutData, ToolError, facts
 
 MAX_STEPS = 6  # model calls that may ask for tools in one question
-MAX_ANSWER_TOKENS = 1500
+log_ = logging.getLogger(__name__)
+# Sonnet 5.5 thinks by default and its thinking counts toward max_tokens, so 1500 cut
+# answers mid-word (S45: stop_reason max_tokens at about 1,000 characters of text).
+MAX_ANSWER_TOKENS = 6000
 TOOL_JSON_CHARS = 12000
 MAX_TOOL_CALLS_PER_STEP = 4  # calls beyond this in one step are answered with an error
 MAX_TOOL_CHARS_PER_TURN = 40_000  # tool-result text that may reach the model in one question
@@ -160,6 +164,10 @@ def _converse(deps: TurnDeps, tools: ReadTools, messages: list[Message], system:
     for _ in range(MAX_STEPS):
         res = provider.chat(messages, system=system, tools=defs, max_tokens=MAX_ANSWER_TOKENS,
                             cache_system=True)
+        if res.stop_reason not in (None, "end_turn", "tool_use"):
+            # Lengths and reasons only, never text: the bench reads this to find cut answers.
+            log_.warning("scout answer stop_reason=%s chars=%d calls=%d", res.stop_reason,
+                         len(res.text), len(res.tool_calls))
         if not res.tool_calls:
             return res.text.strip()
         messages.append(Message("assistant", res.text, tool_calls=res.tool_calls))
