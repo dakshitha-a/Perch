@@ -1,0 +1,43 @@
+{
+  "built_at": "2026-11-04T18:09:01+00:00",
+  "by_kind": {
+    "opportunity": 26,
+    "scholarship": 284
+  },
+  "by_school": {
+    "Beasley School of Law": 9,
+    "Boyer College": 11,
+    "CEHD": 22,
+    "CPH": 3,
+    "CST": 28,
+    "College of Engineering": 3,
+    "Fox School of Business": 25,
+    "Klein College": 11,
+    "Kornberg School of Dentistry": 4,
+    "LKSOM": 7,
+    "Liberal Arts": 25,
+    "STHM": 15,
+    "School of Pharmacy": 3,
+    "TFMA": 21,
+    "Tyler School of Art and Architecture": 4
+  },
+  "by_scope": {
+    "school": 167,
+    "temple_wide": 113,
+    "unstated": 30
+  },
+  "code_commit": "1aad47a365155836f35220b93d6c4afceec1a396",
+  "conflicting_pairs": 7,
+  "extraction_model": "claude-haiku-5-5",
+  "file": "temple_awards_v3.jsonl",
+  "input_pages": 142,
+  "input_records": 598,
+  "merged_groups": 238,
+  "records": 310,
+  "refined": {
+    "amount": 6,
+    "temple_funded": 16
+  },
+  "sha256": "5c70fbc565ea3b8159c7dec570813476644f4a0184031ba527c2dfb710cb02b3",
+  "version": 3
+}
