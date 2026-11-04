@@ -18,6 +18,8 @@ Flows, each at every width:
   briefs    a guest brief for a public author id and for the SYNTHETIC sample persona, keep and compare
   retry     the list error state: /filters fails once, Retry brings the list and the filter bar back
   header    the guest header stays on one row on a phone; a focused control is not under it
+  scoutmarks  Ask Scout with a stubbed, SYNTHETIC answer in four states (clean; two unsupported sentences and
+            General advice; flagged with a body; withheld in full): the marks, notices and checked line
   signinfail  /auth/login and /auth/callback land on the app with a message, never on JSON
   mocked    welcome, account page, withdraw consent, delete dialog and My Perch against a stubbed signed-in session
             (the stubs are in this file; no sign-in service is needed, and the walk says so)
@@ -49,7 +51,7 @@ VIEWS = {1280: {"width": 1280, "height": 860}, 360: {"width": 360, "height": 780
 OLD_COPY = ("Nothing about you is stored", "Local · nothing stored")
 PLANTS = ["guest_banner", "no_sample_public", "badge_on_samples", "tag_row_360", "tag_row_contained",
           "counts_from_server", "focus_order", "delete_keyboard", "delete_guard", "old_copy",
-          "no_dead_modules", "header_height", "scroll_padding", "retry_filters", "small_target"]
+          "no_dead_modules", "header_height", "scroll_padding", "retry_filters", "small_target", "mark_sr_text"]
 PROBE = """() => {
   const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
     return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; };
@@ -658,9 +660,127 @@ async def flow_signinfail(w: Walk, browser: Browser, base: str, tag: str, view: 
         await page.context.close()
 
 
+# ---------- Scout's answer marks (S45) ----------
+
+WITHHELD = ("Scout's answer did not pass the citation check twice, so the parts that failed are not shown. "
+            "The records Scout read are listed below the answer.")
+CHECKED_OK = "Written by a model; checked against the records it cites."
+CHECKED_MARKED = "Written by a model. Some sentences could not be confirmed; they are marked."
+CHECKED_FLAGGED = "Written by a model. It failed the citation check; sentences were removed."
+SENT_IN = "SYNTHETIC sample claim that the sample award covers travel costs."
+SENT_OUT = "SYNTHETIC sample claim that was cut from the text and cannot be found in it."
+GENERAL = "SYNTHETIC general tip: ask the sample office what a good next step looks like."
+
+
+def scout_states(a: str, b: str) -> dict[str, dict]:
+    """Four SYNTHETIC answer messages in the shape perch/scout/turn.py stores (a and b are record ids)."""
+    base = {"role": "assistant", "kind": "answer", "flagged": False, "withheld": 0, "withheld_all": False,
+            "unsupported": [], "general": None, "records": [a, b]}
+    return {
+        "clean": {**base, "text": f"SYNTHETIC sample answer. The first sample option fits the sample field [{a}]. "
+                                  f"A second sample option accepts the same class years [{b}]."},
+        "unsupported": {**base, "text": f"SYNTHETIC sample answer. The first sample option fits the sample field [{a}]. {SENT_IN} "
+                                        f"The second sample option is open to the same class years [{b}].",
+                        "unsupported": [SENT_IN, SENT_OUT], "general": GENERAL},
+        "flagged": {**base, "text": f"SYNTHETIC sample answer. The first sample option fits the sample field [{a}].",
+                    "flagged": True, "withheld": 2},
+        "withheld_all": {**base, "text": WITHHELD, "flagged": True, "withheld": 3, "withheld_all": True, "records": []},
+    }
+
+
+def scout_session(sid: str, brief: str, question: str, msg: dict | None) -> dict:
+    ex = {"id": "m1", "question": question, "kind": "question", "intent": None, "status": "running", "answer": None,
+          "answer_by": None, "flagged": False, "errors": [], "cards": [], "message": None, "job_id": None}
+    if msg:
+        ex |= {"status": "done", "answer": msg["text"], "answer_by": "model", "flagged": msg["flagged"], "message": msg}
+    return {"id": sid, "brief_id": brief, "audience": "student", "status": "done", "busy": False, "error": None,
+            "model": "fake:fake-1", "policy": "cloud", "tokens": 0, "usd": 0.0, "exchanges": [ex] if msg else [],
+            "messages": [], "buttons": [], "usage": {}, "scope": "", "examples": []}
+
+
+MARKS = """() => {
+  const scope = document.querySelector('.scout-x');
+  const note = [...scope.querySelectorAll('.notice.warn')].map(n => n.innerText.replace(/\\s+/g, ' ').trim());
+  const marks = [...scope.querySelectorAll('mark.unsupported')].map(m => {
+    const q = m.querySelector('.unsupported-q'); const sr = m.querySelector('.sr-only'); const cs = getComputedStyle(m);
+    return { text: m.textContent, sr: sr ? sr.textContent.trim() : '', glyph: q ? q.textContent : '', glyphHidden: q ? q.getAttribute('aria-hidden') : null,
+      line: cs.textDecorationLine, style: cs.textDecorationStyle };
+  });
+  const prov = scope.querySelector('.scout-answer .provenance');
+  const gen = scope.querySelector('.scout-general');
+  return { notes: note, marks, listItems: [...scope.querySelectorAll('.notice.warn li')].map(l => l.textContent),
+    checked: prov ? prov.innerText.replace(/\\s+/g, ' ').trim() : null, modelTag: Boolean(scope.querySelector('.scout-answer .tag.model')),
+    general: gen ? gen.querySelector('b').textContent : null, generalTag: gen ? gen.querySelector('.tag').textContent : null,
+    generalHint: gen ? gen.querySelector('.hint').textContent : null,
+    answerBox: Boolean(scope.querySelector('.scout-answer')), cites: scope.querySelectorAll('.cite').length };
+}"""
+
+
+async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
+    """S45: Scout's answer marks, with the answer stubbed (a SYNTHETIC message in the stored shape)."""
+    page = await new_page(browser, w, tag, view, base)
+    await page.goto(base + "/")
+    await page.click("[data-key=guest-start]")
+    await page.wait_for_selector("[data-key=guest-banner]")
+    await page.click("[data-key=seg-s]")
+    await page.click("[data-key=fit]")
+    await page.click("[data-key=st-build]", timeout=8000)
+    status = await build_wait(page)
+    w.check("scoutmarks_brief_built", status == "done", f"status {status}")
+    bid = await page.evaluate("decodeURIComponent(location.hash.split('/')[2])")
+    got = await page.evaluate("(id) => fetch('/briefs/' + id).then(r => r.json())", bid)
+    ids = [x.get("record_id") or x["record"]["id"] for x in got["leads"]][:2]
+    states = scout_states(*ids)
+    cur: dict = {"msg": None, "q": "SYNTHETIC question about the sample options"}
+
+    async def stub(route: Route) -> None:
+        if route.request.method not in ("GET", "POST"):
+            return await route.continue_()
+        body = scout_session("11111111-1111-1111-1111-111111111111", bid, cur["q"], cur["msg"])
+        await route.fulfill(json=body)
+    await page.route(re.compile(r".*/(briefs/[^/?]+/scout|scout/[^/?]+(/[a-z]+)?)(\?.*)?$"), stub)
+    res: dict[str, dict] = {}
+    for name, msg in states.items():
+        cur["msg"] = None
+        await page.goto(base + f"/#/brief/{bid}/scout")
+        await page.reload()
+        await page.wait_for_selector("#scout-q")
+        cur["msg"] = msg
+        await page.fill("#scout-q", cur["q"])
+        await page.click(".scout-ask button[type=submit]")
+        await page.wait_for_selector(".scout-x .notice.warn, .scout-x .scout-answer")
+        if w.plant == "mark_sr_text" and name == "unsupported":
+            await page.evaluate("document.querySelectorAll('mark.unsupported .sr-only').forEach((e) => e.remove())")
+        await w.snap(page, tag, f"scout-{name}")
+        res[name] = await page.evaluate(MARKS)
+    c, u, f, a = res["clean"], res["unsupported"], res["flagged"], res["withheld_all"]
+    w.check("scout_clean_nothing_flagged", not c["marks"] and not c["notes"] and not c["general"] and c["cites"] == 2
+            and c["checked"].endswith(CHECKED_OK), f"cites {c['cites']}, notes {c['notes']}, checked {c['checked']!r}")
+    m = u["marks"][0] if len(u["marks"]) == 1 else {}
+    w.check("scout_mark_screen_reader_text", bool(m) and m["sr"] == "(not confirmed by the cited record)", f"{u['marks']}")
+    w.check("scout_mark_not_colour_only", bool(m) and m["glyph"] == "?" and m["glyphHidden"] == "true"
+            and "underline" in m["line"] and m["style"] == "dotted", f"glyph {m.get('glyph')!r}, underline {m.get('line')} {m.get('style')}")
+    w.check("scout_mark_only_matched_sentence", len(u["marks"]) == 1 and SENT_IN in m["text"], f"{len(u['marks'])} mark")
+    n2 = u["notes"][0] if u["notes"] else ""
+    w.check("scout_notice_unsupported", n2.startswith("Scout could not confirm 2 sentences against the cited records. They are listed here.")
+            and n2.rstrip().endswith(SENT_OUT) and u["listItems"] == [SENT_OUT],
+            f"{n2[:120]!r}; list {u['listItems']}")
+    w.check("scout_checked_marked", u["checked"].endswith(CHECKED_MARKED), repr(u["checked"]))
+    w.check("scout_general_only_in_unsupported", u["general"] == "General advice, not from records" and u["generalTag"] == "Uncited"
+            and u["generalHint"].startswith("General guidance from the model. It cites no record")
+            and not (c["general"] or f["general"] or a["general"]), f"{u['general']!r}")
+    nf = f["notes"][0] if f["notes"] else ""
+    w.check("scout_notice_flagged", nf == "This answer did not pass the citation check twice. 2 sentences were removed. "
+            "What remains is shown, but check each claim against its record." and f["checked"].endswith(CHECKED_FLAGGED)
+            and not f["marks"] and f["answerBox"], f"{nf[:100]!r}; checked {f['checked']!r}")
+    w.check("scout_withheld_all", a["notes"] == [WITHHELD] and not a["answerBox"] and not a["modelTag"] and not a["marks"],
+            f"notes {a['notes']}, model tag {a['modelTag']}")
+    await page.context.close()
+
+
 FLOWS = {"landing": flow_landing, "awards": flow_awards, "funding": flow_funding, "samples": flow_samples,
          "briefs": flow_briefs, "mocked": flow_mocked, "retry": flow_retry, "header": flow_header,
-         "signinfail": flow_signinfail}
+         "signinfail": flow_signinfail, "scoutmarks": flow_scoutmarks}
 
 
 async def main(a: argparse.Namespace) -> int:
