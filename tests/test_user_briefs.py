@@ -206,3 +206,65 @@ def test_signed_in_brief_job_runs_by_id_end_to_end(pg_clean, ud, tmp_path, web_p
     # the jobs row holds ids only
     (payload,) = rows(pg_clean, "SELECT payload::text FROM jobs WHERE id = %s", jid)[0]
     assert payload == f'{{"brief_id": "{b.id}"}}'
+
+
+@needs_pg
+@needs_redis
+def test_submit_and_load_for_a_user_and_for_a_guest(pg_clean, ud, tmp_path, web_pool, keys,
+                                                    monkeypatch):
+    """The two calls api.py makes. A guest's brief runs on a worker and is read from Redis."""
+    import threading
+    import time
+
+    import redis as redis_lib
+
+    from perch import jobs
+    from perch.auth.session import Session
+    from perch.jobs import PostgresRunner, Timing
+    from perch.user.briefs import guest_hash, load_brief, submit_brief
+
+    monkeypatch.setenv("PERCH_REDIS_URL", REDIS_URL)  # the worker finds Redis here
+    r = redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    r.flushdb()
+    uid = new_user(pg_clean)
+    _, svc = make(tmp_path)
+    fast = Timing(lease_s=60, heartbeat_s=0.2, reaper_s=0.3, poll_s=0.05, drain_s=10)
+    web = PostgresRunner(pool=web_pool, timing=fast)
+
+    def sess(user, sid):
+        return Session(sid=sid, user_id=user, guest=user is None, roles=frozenset(),
+                       audience="researcher", csrf="c", display_name=None, created=time.time(),
+                       abs_exp=time.time() + 3600)
+
+    user_s, guest_s = sess(uid, "u-1"), sess(None, "g-1")
+    ub, ujob = submit_brief(svc, web, ud, r, user_s, "A5026494099", as_of=AS_OF)
+    gb, gjob = submit_brief(svc, web, ud, r, guest_s, "A5026494099", as_of=AS_OF)
+    assert load_brief(ud, r, user_s, ub).brief.status == "queued"
+    assert load_brief(ud, r, guest_s, gb).brief.status == "queued"
+    assert load_brief(ud, r, guest_s, ub) is None and load_brief(ud, r, user_s, gb) is None
+    jobs.set_brief_service(lambda: svc)
+    w = PostgresRunner(pg_clean.worker, timing=fast, pool_size=4)
+    stop = threading.Event()
+    t = threading.Thread(target=w.run_forever, args=("w-sl", ["brief"], 2, stop))
+    t.start()
+    try:
+        end = time.monotonic() + 60
+        while time.monotonic() < end and not (
+                rows(pg_clean, "SELECT count(*) FROM jobs WHERE state = 'succeeded'") == [(2,)]):
+            time.sleep(0.1)
+    finally:
+        stop.set()
+        t.join()
+        jobs._brief_service = None
+        w.close()
+    assert load_brief(ud, r, user_s, ub).brief.status == "done"
+    g = load_brief(ud, r, guest_s, gb)
+    assert g.brief.status == "done" and g.leads
+    assert rows(pg_clean, "SELECT result_ref FROM jobs WHERE id = %s", gjob) \
+        == [(f"redis:perch:gres:{gjob}",)]
+    assert rows(pg_clean, "SELECT count(*) FROM user_data") == [(1,)]  # the user's only
+    assert guest_hash("g-1") in "".join(r.keys("perch:gsess:*"))
+    with pytest.raises(PermissionError):
+        submit_brief(svc, web, ud, r, guest_s, "A5026494099", doc_ids=[uuid.uuid4()])
+    r.flushdb()
+    r.close()

@@ -33,7 +33,8 @@ from perch.user.data import NotFound, UserData
 from perch.user.models import Audience, StoredBrief, UserDoc
 
 if TYPE_CHECKING:
-    from perch.jobs import JobContext
+    from perch.auth.session import Session
+    from perch.jobs import JobContext, JobRunner
     from perch.service import BriefService
 
 GRES_TTL_S = 3600
@@ -335,3 +336,60 @@ def read_user_brief(ud: UserData, user_id: UUID, brief_id: str) -> StoredBrief |
         return ud.get(user_id, row, StoredBrief)
     except NotFound:
         return None
+
+
+# --- the two calls the web layer makes (api.py): submit a brief, read a brief ---
+
+def guest_hash(sid: str) -> str:
+    """sha256(PERCH_PEPPER_GUEST + sid), hex: the value of jobs.guest_sid_hash and of the
+    guest quota key, so the worker finds the same counter."""
+    from perch.redisx import hash_subject
+
+    return hash_subject(sid)
+
+
+def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Redis,
+                 session: Session, author_id: str, *, idempotency_key: str | None = None,
+                 doc_ids: Sequence[UUID] = (), **options: object) -> tuple[str, UUID]:
+    """Create the brief where it lives and enqueue the job with ids only. Returns
+    (brief_id, job_id). A signed-in user is held to the per-account rate and daily budget
+    (perch/user/quota.py); a guest to the guest rate window. Raises quota.RateLimited or
+    redisx.QuotaExceeded before anything is stored."""
+    from perch.user import quota
+
+    if session.user_id is not None:
+        quota.admit(r, ud.pool, session.user_id)
+        b = create_user_brief(svc, ud, session.user_id, session.audience, author_id,
+                              doc_ids=doc_ids, **options)
+        job = runner.submit("brief", {"brief_id": b.id}, session.user_id,
+                            idempotency_key or f"brief:{b.id}", audience=session.audience)
+        return b.id, job
+    if doc_ids:
+        raise PermissionError("a guest cannot use documents")
+    from perch.redisx import rate_limit
+
+    gh = guest_hash(session.sid)
+    ok, retry = rate_limit(r, "guest_job", gh)
+    if not ok:
+        raise quota.RateLimited("guest_job", retry)
+    b = create_guest_brief(svc, r, gh, author_id, **options)
+    job = runner.submit("brief", {"brief_id": b.id}, None, idempotency_key or f"brief:{b.id}",
+                        audience=session.audience, guest_sid_hash=bytes.fromhex(gh))
+    ttl = int(env("PERCH_GUEST_TTL_S", str(GUEST_TTL_DEFAULT_S)) or GUEST_TTL_DEFAULT_S)
+    r.set(f"perch:gsess:{gh}:job:{b.id}", str(job), ex=ttl)  # brief id -> job id, for the read
+    return b.id, job
+
+
+def load_brief(ud: UserData, r: redis.Redis, session: Session, brief_id: str
+               ) -> StoredBrief | None:
+    """The brief for this session, or None (also for a brief that belongs to someone else)."""
+    if session.user_id is not None:
+        return read_user_brief(ud, session.user_id, brief_id)
+    gh = guest_hash(session.sid)
+    job = r.get(f"perch:gsess:{gh}:job:{brief_id}")
+    if job:
+        got = read_guest_result(r, job)
+        if got is not None:
+            return got
+    raw = r.get(f"perch:gsess:{gh}:brief:{brief_id}")
+    return StoredBrief.model_validate_json(raw) if raw else None
