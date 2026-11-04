@@ -9,7 +9,7 @@ scope and school, the sha256 of the file, the extraction model id and the code c
 
 Every row carries source="temple_pages", source_url and fetched_at (rule 4). Rows that are
 synthetic, or whose id starts with "sample:", are refused (rule 11): the dataset is public
-records only.
+records only. Names of people outside an award's title are removed (perch.temple_names).
 
 `load_dataset` reads a dataset file into a Repository through `upsert`, which is idempotent
 by (kind, id). When the manifest sits beside the file, its sha256 must match.
@@ -29,6 +29,7 @@ from perch.schemas import Opportunity, Scholarship
 from perch.store.base import Repository
 from perch.temple_dedupe import DedupeReport, dedupe
 from perch.temple_extract import SOURCE, read_done
+from perch.temple_names import scrub_record
 
 DATASET_DIR = Path("data/temple/dataset")
 Rec = Scholarship | Opportunity
@@ -98,6 +99,8 @@ def build_dataset(extracted: Path, out_dir: Path = DATASET_DIR, *, version: int 
     if not recs:
         raise DatasetError(f"no records in {extracted}")
     merged, rep = dedupe(recs)
+    # People's names outside award titles are removed from the evidence text (temple_names).
+    merged = [scrub_record(r) for r in merged]
     out_dir.mkdir(parents=True, exist_ok=True)
     version = version or next_version(out_dir)
     path = dataset_path(out_dir, version)
