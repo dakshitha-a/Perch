@@ -374,7 +374,8 @@ async def flow_briefs(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.wait_for_selector("#panel .btn.keep")
     kept = await keep_two(page)
     await page.evaluate("location.hash = location.hash.replace(/\\/[a-z]+$/, '/compare')")
-    await page.wait_for_timeout(1500)
+    await page.wait_for_selector("#panel table, #panel .compare, [data-key=handoff-signin], [data-key=note-signin]", timeout=20_000)
+    await page.wait_for_timeout(1000)
     await w.snap(page, tag, "brief-researcher-compare")
     w.check("guest_keep_compare_researcher", kept > 0 and await page.locator("#panel table, #panel .compare").count() > 0, f"{kept} kept")
     w.check("guest_researcher_draft_is_signin",
@@ -407,7 +408,8 @@ async def flow_briefs(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.wait_for_selector("#panel .btn.keep")
     kept = await keep_two(page)
     await page.evaluate("location.hash = location.hash.replace(/\\/[a-z]+$/, '/compare')")
-    await page.wait_for_timeout(1500)
+    await page.wait_for_selector("#panel table, #panel .compare, [data-key=handoff-signin], [data-key=note-signin]", timeout=20_000)
+    await page.wait_for_timeout(1000)
     await w.snap(page, tag, "brief-student-compare")
     w.check("guest_keep_compare_student", kept > 0 and await page.locator("#panel table, #panel .compare").count() > 0, f"{kept} kept")
     w.check("guest_student_note_is_signin",
@@ -587,12 +589,14 @@ async def flow_retry(w: Walk, browser: Browser, base: str, tag: str, view: dict)
         calls = {"n": 0}
         n_err = len(w.errors)
 
-        async def flaky(route: Route, calls: dict = calls) -> None:
-            calls["n"] += 1
-            if calls["n"] == 1 or w.plant == "retry_filters":
-                return await route.abort()
-            await route.continue_()
-        await page.route(re.compile(r".*/filters\?.*"), flaky)
+        def flake(calls: dict):  # noqa: ANN202 - a handler of one argument, bound to this page's counter
+            async def flaky(route: Route) -> None:
+                calls["n"] += 1
+                if calls["n"] == 1 or w.plant == "retry_filters":
+                    return await route.abort()
+                await route.continue_()
+            return flaky
+        await page.route(re.compile(r".*/filters\?.*"), flake(calls))
         await page.goto(base + "/" + hash_)
         await page.wait_for_selector("[data-key=retry]")
         await w.snap(page, tag, f"{aud}-list-error")
