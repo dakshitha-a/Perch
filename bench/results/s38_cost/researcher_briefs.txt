@@ -1,0 +1,5 @@
+REAL researcher=https://openalex.org/A5026494099 state=succeeded leads=10 seconds=25.0 calls=11 models=claude-haiku-5-5,claude-sonnet-5-5 input_tokens=8486 output_tokens=5874 cache_read_tokens=25947 cache_write_tokens=2883 usd=0.0766
+REAL researcher=https://openalex.org/A5034175589 state=succeeded leads=10 seconds=50.3 calls=13 models=claude-haiku-5-5,claude-sonnet-5-5 input_tokens=13340 output_tokens=7320 cache_read_tokens=36230 cache_write_tokens=3623 usd=0.0868
+REAL researcher=https://openalex.org/A5039097941 state=succeeded leads=10 seconds=42.2 calls=12 models=claude-haiku-5-5,claude-sonnet-5-5 input_tokens=13262 output_tokens=7108 cache_read_tokens=26505 cache_write_tokens=2945 usd=0.0807
+REAL researcher=https://openalex.org/A5052363442 state=succeeded leads=10 seconds=37.7 calls=13 models=claude-haiku-5-5,claude-sonnet-5-5 input_tokens=17317 output_tokens=7869 cache_read_tokens=43570 cache_write_tokens=4357 usd=0.0957
+REAL researcher=https://openalex.org/A5057472361 state=succeeded leads=10 seconds=34.5 calls=12 models=claude-haiku-5-5,claude-sonnet-5-5 input_tokens=10096 output_tokens=7209 cache_read_tokens=25209 cache_write_tokens=2801 usd=0.0768
