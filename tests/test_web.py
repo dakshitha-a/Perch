@@ -356,10 +356,12 @@ def test_the_find_form_has_no_personal_text_field_and_build_starts_one_brief_cal
     build = app[app.index("async function build(c)"):app.index("// ---------- Brief ----------")]
     assert 'api.create(req, "researcher")' in build
     student = (WEB_DIR / "student.js").read_text()
-    start = student[student.index("export function renderStudentStart("):
+    start = student[student.index("export async function renderStudentStart("):
                     student.index("// ----- profile -----")]
-    assert 'api.create({}, "student")' in start and "Try the sample student" in start
-    assert not re.findall(r'h\("(?:textarea|input)"', start)
+    # A visitor without an account gets the SYNTHETIC sample student; a signed-in student
+    # saves a CV (stored encrypted by the server) and builds from the stored documents.
+    assert 'api.create({}, "student")' in start and "Try a sample student" in start
+    assert "api.addDoc(" in start and "doc_ids: docs.map" in start
 
 
 def test_no_private_mode_code_is_left_in_the_web_app():
@@ -436,7 +438,7 @@ console.log(JSON.stringify({ calls, made, first, second, fired,
     assert lead["method"] == "POST" and lead["csrf"] == "SYN-CSRF"
     assert all(c["csrf"] is None for c in calls if c["method"] == "GET")
     assert out["denied"][0] == 403 and out["denied"][1].startswith("Sign in")
-    assert len(out["fired"]) == 1 and "guest session ended" in out["fired"][0]
+    assert out["fired"] == [True]  # onExpired(wasGuest): once, for a guest
     assert out["rejected"]
 
 

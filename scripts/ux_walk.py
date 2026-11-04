@@ -377,7 +377,7 @@ async def stub_signed_in(page: Page, state: dict) -> None:
                 "needs_welcome": not (state["roles"] and state["consented"])}
 
     async def handle(route: Route) -> None:
-        url, method = route.request.url, route.request.method
+        url = route.request.url
         if "/auth/session" in url:
             return await route.fulfill(json=session())
         if "/me/roles" in url:

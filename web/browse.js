@@ -36,7 +36,10 @@ const firstQuote = (r) => {
 };
 
 function amountText(r) {
-  if (r.kind === "opportunity") return f.awardSize({ award_floor: r.award_floor, award_ceiling: r.award_ceiling }) || NOT_STATED;
+  if (r.kind === "opportunity") {
+    if (r.award_floor != null && r.award_floor === r.award_ceiling) return f.money(r.award_ceiling);
+    return f.awardSize({ award_floor: r.award_floor, award_ceiling: r.award_ceiling }) || NOT_STATED;
+  }
   if (r.amount_min != null && r.amount_max != null && r.amount_min !== r.amount_max) return `${f.money(r.amount_min)} to ${f.money(r.amount_max)}`;
   if (r.amount_max != null) return r.amount_min == null ? `Up to ${f.money(r.amount_max)}` : f.money(r.amount_max);
   return NOT_STATED;
@@ -69,21 +72,22 @@ export function recordCard(r, { openEvidence }) {
   return h("li", { class: `card lead award${r.sample ? " is-sample" : ""}`, "data-id": r.id, "data-sample": r.sample ? "true" : null },
     h("div", { class: "lead-head" }, h("span", { class: "tags" },
       r.sample ? h("span", { class: "tag sample", text: "Sample data" }) : null,
-      ...(r.schools || []).map((s) => h("span", { class: "tag moss", text: s })),
+      ...[...new Set(r.schools || [])].map((s) => h("span", { class: "tag moss", text: s })),
       opp && r.agency ? h("span", { class: "tag", text: f.agencyShort(r.agency, r.parent_agency) }) : null,
       ...(r.levels ? [r.levels] : []).flat().map((v) => h("span", { class: "tag", text: levelWord(v) })),
       scope && !opp ? h("span", { class: "tag", text: scope }) : null,
       r.temple_funded === true ? h("span", { class: "tag ember", text: "Temple-funded" }) : null)),
     h("h3", { class: "lead-title" }, h("button", { class: "title-btn", id: tid, type: "button",
       onclick: (e) => openEvidence(r, e.currentTarget) }, h("span", { text: name || r.id }), evMark())),
-    r.sponsor || opp ? h("p", { class: "opp-num", text: opp ? (r.opportunity_number || "") : r.sponsor }) : null,
+    // A Temple page has no opportunity number; its record id is not one, so it is not shown.
+    r.sponsor || (opp && r.source === "grants_gov") ? h("p", { class: "opp-num", text: opp ? (r.opportunity_number || "") : r.sponsor }) : null,
     quote ? h("blockquote", { class: "quote", text: `“${quote}”` }) : null,
     h("dl", { class: "facts" },
       h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, h("span", { class: amount === NOT_STATED ? "missing" : null, text: amount === NOT_STATED ? "Not stated" : amount }))),
       h("div", { class: "fact" }, h("dt", { text: opp ? "Closes" : "Deadline" }), h("dd", {}, h("span", { class: due === NOT_STATED ? "missing" : null, text: due === NOT_STATED ? "Not stated" : due })))),
     h("div", { class: "acts" },
       h("span", { class: "src-line", text: `Source: ${SOURCE_WORDS[r.source] || r.source}` }),
-      r.source_url ? h("a", { class: "btn", href: f.safeUrl(r.source_url), target: "_blank", rel: "noopener", "aria-describedby": tid },
+      f.safeUrl(r.source_url) ? h("a", { class: "btn", href: f.safeUrl(r.source_url), target: "_blank", rel: "noopener", "aria-describedby": tid },
         icon("external"), h("span", { text: "Open at source" })) : null));
 }
 
