@@ -277,3 +277,37 @@ def test_the_researcher_handoff_button_is_code_written_from_the_kept_lead(
     assert m["draft"]["body"] and lead["record_id"] in m["records"]
     assert script.gate_calls == 0 and script.scout_calls == 0  # no model at all
     assert "Nothing is sent" in m["text"]
+
+
+def test_scout_and_brief_writes_need_the_csrf_token(stack, monkeypatch):
+    """S45 M1: POST/DELETE on the Scout, cover-points, hand-off and brief routes run the CSRF
+    check. Without the token the answer is 403; with Origin and token the route runs."""
+    env, c, svc, bid, script = stack
+
+    class Store:
+        def csrf_ok(self, s, token):
+            return token == s.csrf
+
+    async def session(request):
+        return env.session
+
+    del c.app.dependency_overrides[deps.require_csrf]
+    monkeypatch.setattr(deps, "require_session", session)
+    monkeypatch.setenv("PERCH_PUBLIC_URL", "http://testserver")
+    c.app.state.sessions = Store()
+    good = {"Origin": "http://testserver", "X-CSRF-Token": env.session.csrf}
+    sid = c.post(f"/briefs/{bid}/scout", json={"intent": "top_leads"}, headers=good).json()["id"]
+    calls = [("POST", f"/briefs/{bid}/scout", {"intent": "top_leads"}),
+             ("POST", f"/scout/{sid}/ask", {"intent": "deadlines"}),
+             ("POST", f"/scout/{sid}/stop", None),
+             ("DELETE", f"/scout/{sid}", None),
+             ("POST", f"/briefs/{bid}/cover-points", {"record_id": "grants_gov:x"}),
+             ("POST", f"/briefs/{bid}/handoff", {"office": "research_development"}),
+             ("POST", "/briefs", {"as_of": "2026-10-28"})]
+    for method, path, body in calls:
+        for h in ({}, {"Origin": "http://testserver"},
+                  {"Origin": "http://testserver", "X-CSRF-Token": "wrong"}):
+            r = c.request(method, path, json=body, headers=h)
+            assert r.status_code == 403, (method, path, h, r.status_code)
+    assert c.get(f"/scout/{sid}").status_code == 200  # a GET is not checked
+    assert c.delete(f"/scout/{sid}", headers=good).status_code in (200, 204)
