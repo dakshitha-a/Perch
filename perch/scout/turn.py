@@ -342,6 +342,8 @@ def run_turn(deps: TurnDeps, history: list[dict[str, Any]], *, question: str | N
             g = free_screen(deps, q)
             if g is None or g.label != "distress":
                 raise
+            return message("assistant", "distress", texts.distress_message(deps.data.audience),
+                           gate="free_gate")  # unmetered, so counted apart from charged screens
         if g.label == "out_of_scope":
             return message("assistant", "refusal", texts.REFUSAL, gate=g.label)
         if g.label == "distress":

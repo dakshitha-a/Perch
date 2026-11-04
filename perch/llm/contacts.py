@@ -14,7 +14,7 @@ BARE_DIGITS = re.compile(r"(?<![\w$.,])(?:\+?1)?\d{10}(?![\w]|[.,]\d)")
 # kept; "U.S.", "e.g." and "Ph.D." never match because each part is one or two letters that are
 # not on this list.
 TLDS = (r"(?:com|org|edu|net|gov|io|us|uk|ca|info|dev|app|ai|me|co|ly|xyz|site|online|tech|"
-        r"page|eu|de|fr|au|biz|so|gg|sh)")
+        r"page|eu|de|fr|au|biz)")
 SAFE_TOKENS = frozenset({"u.s", "u.k", "e.g", "i.e", "ph.d", "m.d", "b.a", "b.s", "m.s", "m.a"})
 # A phone after its label in any grouping ("mobile: 215 204 12 34", "phone no. 2152041234").
 LABELLED_PHONE = re.compile(
@@ -36,7 +36,7 @@ PATTERNS = [
     # A bare domain with a common ending ("lab.example.org/me"). "U.S." and decimals do not
     # match: the ending must be a whole word from the list.
     ("URL", re.compile(r"(?<![\w@.-])[a-z0-9][\w-]*(?:\.[\w-]+)*\." + TLDS
-                       + r"\b(?![.-]?\w)(?:/\S*)?", re.I)),
+                       + r"\b(?!\.\w)(?:/\S*)?", re.I)),
     # Any short domain written with a path ("x.ai/jdoe", "bit.ly/abc", "t.me/jdoe").
     ("URL", re.compile(r"(?<![\w@.-])[a-z0-9][\w-]*(?:\.[\w-]+)*\.[a-z]{2,6}/[\w~%.+-]+", re.I)),
     ("ORCID", re.compile(r"\b\d{4}-\d{4}-\d{4}-\d{3}[\dX]\b")),

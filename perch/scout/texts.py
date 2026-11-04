@@ -231,7 +231,8 @@ contain. A sentence that says a record has no information on something still cit
 record. Only these need no id: a heading that names a section, such as "What the record \
 asks for", "What your CV shows", "What it does not show yet" or "Next steps", or that copies \
 the title of a record cited under it; a question that offers help and starts "Would you \
-like", "Do you want", "Shall I", "Should I", "Want me to", "Which" or "Tell me"; an offer \
+like", "Do you want", "Shall I", "Should I", "Want me to", "Which", "Tell me if" or "Tell \
+me which"; an offer \
 such as "Tell me which one to read in full."; and "I found no record on that." Anything \
 else, including a heading or question that says who may apply or how well the user fits, \
 cites a record or is left out.

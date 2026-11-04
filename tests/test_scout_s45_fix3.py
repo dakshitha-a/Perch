@@ -234,6 +234,7 @@ def test_out_of_budget_a_miss_still_reaches_the_gate_and_gets_the_care_text(q):
     d, g = _deps("distress")
     m = run_turn(d, [], question=q)
     assert m["kind"] == "distress" and m["text"] == texts.DISTRESS and g.calls == 1
+    assert m["gate"] == "free_gate"
 
 
 def test_out_of_budget_any_other_label_or_a_spent_cap_gets_the_budget_text():
@@ -271,7 +272,7 @@ def test_more_contact_shapes_are_blanked(text, want):
 @pytest.mark.parametrize("text", [
     "Grant number 2152041234", "Award No. 1234567890", "Project ID: 1234567890",
     "U.S. citizens, GPA 3.5, $2,000, 2027-01-15", "e.g. a poster; i.e. one page",
-    "a Ph.D. in physics", "attach report.pdf and data.csv",
+    "a Ph.D. in physics", "attach report.pdf and data.csv", "wrote deploy.sh and libfoo.so",
     "It is open to juniors [temple_sdfa:x].", "It closes 4 Nov 2026 [grants_gov:PAR-25-268].",
     "meet at 5 and look at the data"])
 def test_ids_amounts_abbreviations_and_file_names_are_kept(text):
