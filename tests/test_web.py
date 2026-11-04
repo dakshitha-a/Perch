@@ -245,17 +245,19 @@ def test_cover_points_reach_the_app_and_no_page_promises_that_no_model_reads_the
     web = {n: (WEB_DIR / n).read_text() for n in ("scout.js", "app.js", "student.js", "help.js")}
     scout = web["scout.js"]
     for s in ("function pointsBlock(", "What could my cover letter for the top lead say?",
-              "What should my application for my top option highlight?",
-              "Points for a cover letter, for one lead, from your CV, documents and papers",
-              "Points for a cover letter, for one option, from your CV, interests and "
-              "achievements", "Copy the points",
+              "What should my application for my top option highlight?", "Copy the points",
               "Perch never sends this, and it never enters an export or a hand-off draft.",
-              "A model reads your CV when you ask for cover-letter points, and when it opens a "
-              "CV part to answer a question. Contact details are blanked first.",
-              "A model reads your documents and entries when you ask for cover-letter points, "
-              "or when it opens them to answer a question, with contact details blanked.",
+              # S45 fix round 3: the rail and limits name only what Scout v2's tools do
+              "A model reads a part of your CV, your entries or your saved list when it opens "
+              "them to answer a question. Contact details are blanked first.",
+              "A model reads your CV, documents, entries or saved list when it opens them to "
+              "answer a question, with contact details blanked.",
+              "Search Perch’s public records by words",
               "class: \"cite own\"", "Sample data"):
         assert s in scout, s
+    for s in ("Search with filters", "activity code", "verdict, deadline, amount",
+              "reached its limit for this conversation"):
+        assert s not in scout, s
     assert "The points below are the step’s result." in scout  # the code-written answer line
     css = (WEB_DIR / "styles.css").read_text()
     assert ".scout-points {" in css

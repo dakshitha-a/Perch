@@ -155,7 +155,7 @@ function researcher() {
     ["Confirm and build", "Check the institution and the papers, press This is the one, then Build brief. The owl rides the branch as each step finishes.", figBuild()],
     ["Read the routes and decide", "Grants and Industry are separate lists. Keep the leads worth a closer look and dismiss the rest. Kept leads gather in Your shortlist.", figRoutes()],
     ["Compare and hand off", "Compare puts your kept leads side by side. Pick an office and Perch drafts an email for you to edit and send. Drafting needs an account.", figHandoff(false)],
-    ["Ask Scout", "Ask in plain words, such as “what does my top lead ask for that my CV does not show yet?”. Scout reads your brief, the records and your CV, and cites each claim. Its buttons, such as Deadlines, are answered by code. Scout needs an account.", figScout()],
+    ["Ask Scout", "Ask in plain words, such as “what does my top lead ask for that my CV does not show yet?”. Scout reads your brief, the records and your CV, and cites each claim. You can also ask for cover-letter points for a lead. Its buttons, such as Deadlines, are answered by code. Scout needs an account.", figScout()],
   ]);
 }
 
