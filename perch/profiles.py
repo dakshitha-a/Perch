@@ -28,6 +28,11 @@ class ModelProfile:
     # Rerank candidates per brief. The plan's shrink rule lowers it if CPU rerank is slow.
     rerank_in: int = 100  # the S27 default (perch.brief.RERANK_IN) for the GPU profiles
     device: str | None = None  # "cpu": models run on CPU inside model slots (perch/compute.py)
+    # Retrieval mode for briefs (perch.retrieve.MODES). v1 ranks on dense only (Dakshitha,
+    # 2026-11-04): tsvector sparse lowered recall@200 from 0.500 to 0.417 and found almost
+    # nothing alone (bench/results/s38_backtest). The keyword index stays for the
+    # keyword-only baseline and exact lookups. The fallback GPU profiles keep hybrid (BM25).
+    retrieval: str = "hybrid"
 
     def spec_for(self, role: str) -> str:
         return self.roles.get(role, self.chat)
@@ -71,6 +76,7 @@ _CLOUD_CPU = ModelProfile(
     # largest count measured under 10 s at the median (9.4 s, p95 10.6 s). The S27 back-test
     # gain came at 100, so the Phase 3 re-measure must price this.
     rerank_in=14,
+    retrieval="dense",
     roles={"gate": _HAIKU, "profile_summary": _HAIKU, "fit_explainer": _SONNET,
            "handoff": _SONNET, "cover_points": _SONNET, "scout": _SONNET},
 )

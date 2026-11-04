@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from perch import profiles
 from perch.brief import RETRIEVE_K, RouteABrief
 from perch.cache import InputContext, PublicCache, cache_key, is_public_input, profile_hash
 from perch.eligibility import Constraints, split
@@ -97,7 +98,7 @@ def compute(repo: Repository, index: VectorIndex, reranker: Reranker,
             profile: Profile, as_of: date, rerank_in: int) -> dict[str, Any]:
     """The deterministic stages for one profile; returns the JSON value to store."""
     t0 = time.perf_counter()
-    r = retrieve(profile, index, k=RETRIEVE_K)
+    r = retrieve(profile, index, k=RETRIEVE_K, mode=profiles.current().retrieval)
     opps = {o.id: o for o in (repo.get(Opportunity, x.record_id) for x in r.candidates) if o}
     eligible, rejected = split([opps[x.record_id] for x in r.candidates if x.record_id in opps],
                                Constraints(as_of=as_of))

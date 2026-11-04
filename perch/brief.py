@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from perch import profiles
 from perch.eligibility import Constraints, split
 from perch.embed import Embedder
 from perch.profile import Profile, Thread, build_threads
@@ -62,7 +63,7 @@ def route_a(researcher: Researcher, repo: Repository, index: VectorIndex, embedd
     if index_new:
         index_opportunities(repo, index, embedder)
     s = lap("index", s)
-    r = retrieve(profile, index, k=RETRIEVE_K)
+    r = retrieve(profile, index, k=RETRIEVE_K, mode=profiles.current().retrieval)
     t.update({f"retrieve_{k}": v for k, v in r.timings_ms.items()})
     s = lap("retrieve", s)
     opps = {o.id: o for o in (repo.get(Opportunity, x.record_id) for x in r.candidates) if o}
