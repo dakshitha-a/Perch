@@ -690,7 +690,8 @@ Redis holds no durable truth. A flush loses sessions and caches and nothing else
 | `perch:epoch` | string | none | Copy of the ingest epoch, which is kept in Postgres in `ingest_runs.epoch` and read back if this key is missing. |
 | `perch:mt:<key>` | string | 86400 | Hot copy of a `public_cache` row. |
 | `perch:gres:<job_id>` | string | 3600 | Guest job result, JSON of public-derived content. |
-| `perch:gsess:<sid>:*` | strings | `PERCH_GUEST_TTL_S` | Guest brief state. Guests have no Scout. |
+| `perch:gsess:<gsid_hash>:brief:<brief_id>` | string | `PERCH_GUEST_TTL_S` | A guest brief before the job writes its result, JSON of public-derived content. `gsid_hash` is as in `perch:q:gs`. |
+| `perch:gsess:<gsid_hash>:job:<brief_id>` | string | `PERCH_GUEST_TTL_S` | The job id of that guest brief, so the read finds `perch:gres:<job_id>`. Guests have no Scout. |
 | `perch:shred` | pub/sub channel | none | Message `<user_id>`. Every process evicts that user's cached data key. |
 | `perch:lastseen:<uid>` | string | 86400 | Throttle: `users.last_active_at` is written at most once a day. |
 
@@ -987,6 +988,7 @@ class AuthProvider(ABC):
 class Session:
     sid: str; user_id: UUID | None; guest: bool; roles: frozenset[str]
     audience: Audience; csrf: str; display_name: str | None; created: float; abs_exp: float
+    consent_version: int = 0  # accepted consent version; 0 when none or withdrawn
 
 class SessionStore:
     async def create_user(self, user_id: UUID, roles, identity: Identity) -> Session: ...

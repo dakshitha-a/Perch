@@ -395,6 +395,18 @@ class PostgresRunner(JobRunner):
             raise RetryableError("handler_error")
         return found[0]
 
+    def find_live(self, kind: str, idempotency_key: str, user_id: UUID | None, *,
+                  guest_sid_hash: bytes | None = None) -> tuple[UUID, dict[str, Any]] | None:
+        """The queued, running or succeeded job of this owner with this key, as
+        (job_id, payload), or None. The web layer asks before it creates anything (3.4)."""
+        where, params = _scope(user_id, guest_sid_hash)
+        with _tx(self.pool, user_id, guest_sid_hash) as c:
+            row = c.execute(
+                "SELECT id, payload FROM jobs WHERE kind = %s AND idempotency_key = %s AND "
+                + where + " AND state IN ('queued','running','succeeded') "
+                "ORDER BY created_at DESC LIMIT 1", [kind, idempotency_key, *params]).fetchone()
+        return (row[0], dict(row[1])) if row else None
+
     def status(self, job_id: UUID, user_id: UUID | None, *, guest_sid_hash: bytes | None = None
                ) -> JobStatus | None:
         where, params = _scope(user_id, guest_sid_hash)
@@ -642,6 +654,14 @@ def brief_handler(ctx: JobContext) -> str | None:
     else:
         if not store.load():
             raise PermanentError("permanent")
+        if getattr(store, "needs_consent", False):  # reads the user's text: consent must stand
+            from perch.auth.accounts import consent_version_of
+            from perch.config import env
+
+            with ctx.user_tx() as c:
+                have = consent_version_of(c, ctx.user_id)
+            if have < int(env("PERCH_CONSENT_VERSION", "1") or 1):
+                raise PermanentError("consent_required")
         ctx.save_partial(store.result_ref)  # the page reads partial text from the same row
         with using_store(store):
             status = _brief_service().run(brief_id)

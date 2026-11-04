@@ -82,7 +82,8 @@ def env(pg_clean, web_pool, rds):
     runner = PostgresRunner(pool=web_pool, timing=FAST)
     sess = Session(sid="s-" + uuid.uuid4().hex, user_id=uid, guest=False,
                    roles=frozenset({"student", "researcher"}), audience="student", csrf="c",
-                   display_name=None, created=time.time(), abs_exp=time.time() + 3600)
+                   display_name=None, created=time.time(), abs_exp=time.time() + 3600,
+                   consent_version=1)
     app = FastAPI()
     app.include_router(router)
     app.state.user_services = UserServices(pool=web_pool, ud=ud, runner=runner, redis=rds)

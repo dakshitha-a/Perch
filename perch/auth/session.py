@@ -99,6 +99,11 @@ class SessionStore:
         if self.r.exists(f"{rx.PREFIX}:sess:{sid}"):
             self.r.hset(f"{rx.PREFIX}:sess:{sid}", "consent", str(version))
 
+    async def set_consent_all(self, user_id: UUID, version: int) -> None:
+        """Every live session of the user, so a withdrawal in one browser binds the others."""
+        for sid in self.r.smembers(f"{rx.PREFIX}:usess:{user_id}"):
+            await self.set_consent(sid, version)
+
     async def destroy(self, sid: str) -> None:
         if sid:
             rx.destroy_session(self.r, sid)

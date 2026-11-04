@@ -8,14 +8,18 @@ app runs without Redis, in which case nobody is signed in).
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 
 from perch.auth import audit, settings
 from perch.auth.session import Session
 from perch.config import env
 
+log = logging.getLogger("perch.auth")
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
@@ -27,7 +31,23 @@ async def session_optional(request: Request) -> Session | None:
     sid = request.cookies.get(settings.session_cookie_name())
     s = await store.get(sid) if store is not None and sid else None
     request.state.perch_session = s
+    if s is not None and s.user_id is not None:
+        await _touch_last_active(request, s.user_id)
     return s
+
+
+async def _touch_last_active(request: Request, user_id: UUID) -> None:
+    """users.last_active_at, at most once a day per user (section 7.5): the Redis key
+    perch:lastseen:<uid> is the throttle, so the common request costs one EXISTS."""
+    sv = getattr(request.app.state, "user_services", None)
+    if sv is None or sv.redis.exists(f"perch:lastseen:{user_id}"):
+        return
+    from perch.user.delete import touch_last_active
+
+    try:
+        await run_in_threadpool(touch_last_active, sv.pool, sv.redis, user_id)
+    except Exception as e:  # noqa: BLE001 - never fail a request over the activity stamp
+        log.warning("last_active not written err=%s", type(e).__name__)
 
 
 async def require_session(request: Request) -> Session:  # 401 when none
