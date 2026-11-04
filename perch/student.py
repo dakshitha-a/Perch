@@ -461,4 +461,10 @@ def nih_records(repo: object) -> dict[str, tuple[Scholarship, Opportunity]]:
 def samples() -> list[Scholarship]:
     """The SYNTHETIC sample scholarships (rule 11): a list of their own, never mixed with
     public records in any count."""
-    return sample_records()
+    from perch.scholarships import ensure_samples
+
+    try:
+        return sample_records()
+    except RuntimeError:  # a worker host that has not loaded the store yet: build it from the file
+        ensure_samples()
+        return sample_records()

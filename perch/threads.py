@@ -52,7 +52,7 @@ def chunks(text: str) -> list[str]:
 
 
 def kind_of(doc: Work) -> str:
-    """"private:proposal" -> "proposal"; the normal-mode "said:direction" -> "direction"."""
+    """"user:proposal" -> "proposal"; the normal-mode "said:direction" -> "direction"."""
     return doc.id.split(":", 1)[1]
 
 

@@ -1,5 +1,7 @@
 # Private by default, Local or Cloud
 
+> **Retired in S42.** Private mode does not exist on `rebuild/v1`: there are no in-memory sessions, masks or Local or Cloud choice. A signed-in user's CV and entries are stored encrypted under that user's key and read by the user's own briefs (`docs/ARCHITECTURE_V1.md`). This page describes the fallback build at the tag `v0.1-demo-fallback`.
+
 [Back to the README](../README.md)
 
 Perch has no user accounts, so since S23 it keeps nothing about the people who use it. Every brief runs in a session held in the server's memory. Models run on the server unless a user turns Cloud on. Your own documents (a CV, a draft proposal, unpublished work) stay on local models unless you choose Cloud and confirm which documents leave. Design and limits: `docs/design/PRIVATE_MODE.md`.

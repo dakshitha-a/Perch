@@ -103,8 +103,8 @@ def rerank(cands: list[Candidate], opps: dict[str, Opportunity], profile: Profil
            cacheable: Callable[[Thread], bool] = lambda t: True
            ) -> tuple[list[Ranked], int]:
     """Top `top` by rerank score (ties broken by retrieval order). Returns (ranked, cache hits).
-    Only threads that pass `cacheable` are read from or written to the cache (a private
-    session caches its public threads only)."""
+    Only threads that pass `cacheable` are read from or written to the cache (a brief
+    that reads user text caches its public threads only)."""
     threads = {t.index: t for t in profile.threads}
     keys = {i: thread_key(t) for i, t in threads.items() if cache and cacheable(t)}
     scores: dict[str, float] = {}

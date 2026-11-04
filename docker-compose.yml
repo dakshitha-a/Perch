@@ -26,29 +26,11 @@ services:
       OLLAMA_BASE_URL: http://127.0.0.1:11437
       PERCH_CLEF_URL: http://127.0.0.1:8094
       PERCH_CLEF_FLASH_URL: http://127.0.0.1:8095
-      # Every brief is a session held in memory (S23). Every model above is on loopback,
-      # and Tailscale Funnel decrypts on this node, so TLS ends on the server.
-      PERCH_PRIVATE_MODE: "1"
-      PERCH_TLS_AT: server
-      PERCH_PRIVATE_OPERATOR: Dakshitha, Temple University
-      # Cloud by choice (S23). The key comes from .env; the adapter's $100 cap and this
-      # daily cap both apply.
-      PERCH_CLOUD: anthropic:claude-sonnet-5-5
-      PERCH_CLOUD_BRIEFS_PER_DAY: "30"
-      # Documents on Cloud by the user's informed choice (standing rule 1 as amended, Q33):
-      # only after a second warning that names the provider and lists the documents.
-      PERCH_CLOUD_DOCUMENTS: "1"
       # Demo Day caps (Q35, S29 decision): a room on one wifi NAT shares an address, so the
-      # per-address caps are high; the daily Cloud cap and the dollar cap still bound the cost.
+      # per-address caps are high; the dollar cap still bounds the cost.
       PERCH_BRIEFS_PER_HOUR: "100"
-      PERCH_SESSIONS_PER_HOUR: "200"
-      PERCH_SESSIONS_PER_ADDRESS: "200"
       PERCH_HANDOFF_PER_HOUR: "300"
       PERCH_SCOUT_PER_HOUR: "300"
-      PERCH_DOCUMENTS_PER_HOUR: "300"
-      # Warm demo briefs (S24, Q31): built at start and held in memory, never on disk.
-      # PI-5, PI-4 and PI-2, the demo researchers.
-      PERCH_WARM_AUTHORS: A5034175589,A5026494099,A5057472361
     volumes:
       - ./data:/app/data
     restart: unless-stopped

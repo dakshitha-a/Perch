@@ -330,6 +330,39 @@ class UserBriefStore(BriefStore):
                              entries=[e.text for _, e in reversed(entries)])
 
 
+class MemoryBriefStore(BriefStore):
+    """Holds the brief in memory and the user's inputs as given: for tests and the student
+    bench, which run the pipeline in one process without accounts. Nothing is written."""
+
+    reads_user_data = True
+
+    def __init__(self, brief_id: str = "mem", *, cv: str | None = None,
+                 docs: list[Work] | None = None, student: StudentInputs | None = None) -> None:
+        super().__init__(brief_id)
+        self.cv, self.docs, self.student = cv, docs or [], student
+
+    @property
+    def result_ref(self) -> str:
+        return "memory"
+
+    def load(self) -> bool:
+        return True
+
+    def _write(self, sb: StoredBrief) -> None:
+        pass
+
+    def user_docs(self) -> list[Work]:
+        return list(self.docs)
+
+    def cv_text(self) -> str | None:
+        return self.cv
+
+    def student_inputs(self) -> StudentInputs:
+        if self.student is None:
+            raise ValueError("no student inputs")
+        return self.student
+
+
 # --- guest: Redis, public inputs only ---
 
 class GuestBriefStore(BriefStore):

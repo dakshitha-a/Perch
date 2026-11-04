@@ -1,22 +1,25 @@
 """Planted-case scoring for student mode (S19). SYNTHETIC data only: this tests the
 mechanism, not real-world accuracy.
 
-For each student persona (data/synthetic/persona-*), the script drives the running app
-over HTTP exactly as a browser does: it opens a private session, adds the CV, interests
-and achievements, builds a student brief, reads the leads and the exports, and ends the
-session. It then compares the app's verdicts and gap lists for the planted records
-(sample:sch-0001 to 0024) with the hand-written answer keys, and checks for leakage.
+For each student persona (data/synthetic/persona-*), the script runs the student brief in
+this process, as the worker does (S42: the HTTP private-session path is gone): the persona's
+CV, interests and achievements are the brief store's inputs (perch.user.briefs.MemoryBriefStore,
+nothing is written), the pipeline runs on the demo store's models and records, and the leads
+and the exports are read back. It then compares the app's verdicts and gap lists for the
+planted records (sample:sch-0001 to 0024) with the hand-written answer keys, and checks for
+leakage.
 
-    uv run python bench/student_mode.py [--base http://127.0.0.1:8090] [--data data/demo]
+    uv run python bench/student_mode.py [--data data/demo]
 
 Metrics (positive = "eligible" or "may be eligible", i.e. the student may apply):
 - retrieved: planted records that reached the brief at all (retrieval, not rules).
 - precision and recall of the positive class over retrieved planted records, against
   the key; and the exact verdict match rate.
 - gap-list exact match over retrieved records the key marks positive.
-- leakage: a sample record reachable outside student mode; a sample record in a public
-  brief; a persona canary in an export, a file under the data directory, or the app's
-  container log; an export with sample leads but no sample banner.
+- leakage: a persona canary in an export or in a file under the data directory; an
+  export with sample leads but no sample banner. (The checks that went through the HTTP app,
+  a sample record reachable in the public API and in a public brief, are in the tests:
+  tests/test_student_routes.py.)
 """
 
 from __future__ import annotations
@@ -24,12 +27,9 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import subprocess
 import sys
 import time
 from pathlib import Path
-
-import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
 SYN = ROOT / "data/synthetic"
@@ -45,26 +45,53 @@ def canaries(name: str) -> list[str]:
                    for m in re.findall(r"PERCH-CANARY-[A-Z0-9-]+", f.read_text())})
 
 
-def run_persona(c: httpx.Client, name: str, as_of: str) -> dict:
-    tok = c.post("/private/session").raise_for_status().json()["token"]
-    h = {"X-Perch-Private": tok}
-    try:
-        for kind, f in FILES.items():
-            c.post("/private/documents", headers=h,
-                   json={"kind": kind, "text": (SYN / name / f).read_text()}).raise_for_status()
+def persona_inputs(name: str):  # noqa: ANN201 - perch.user.briefs.StudentInputs
+    from perch.student import achievements
+    from perch.user.briefs import StudentInputs
+    from perch.user.inputs import make_doc
+
+    d = SYN / name
+    return StudentInputs(cv=(d / "cv.md").read_text(),
+                         interests=make_doc("interests", (d / "interests.md").read_text()),
+                         entries=achievements((d / "achievements.md").read_text()))
+
+
+def make_service(data: Path):  # noqa: ANN201 - a perch.service.BriefService
+    from perch import awards as aw
+    from perch.service import BriefService, Clients, default_models
+    from perch.sources import openalex as oa
+
+    return BriefService(data / "perch.db", default_models(False, data),
+                        Clients(openalex=lambda: oa.OpenAlexClient()), aw.OVERRIDES)
+
+
+def run_persona(svc, name: str, as_of: str) -> dict:  # noqa: ANN001
+    """One persona's student brief, run in process. Returns the leads as the API shows them,
+    the exports and the seconds the brief took."""
+    from datetime import date
+
+    from perch import export as ex
+    from perch.schemas import Opportunity, Scholarship
+    from perch.user.briefs import MemoryBriefStore, using_store
+
+    store = MemoryBriefStore("bench", student=persona_inputs(name))
+    with using_store(store):
         t0 = time.time()
-        c.post("/private/student/brief", headers=h, json={"as_of": as_of}).raise_for_status()
-        while True:
-            got = c.get("/private/brief", headers=h).raise_for_status().json()
-            if got["brief"]["status"] in ("done", "failed"):
-                break
-            time.sleep(3)
+        b = svc.create(None, audience="student", as_of=date.fromisoformat(as_of),
+                       brief_id="bench")
+        status = svc.run(b.id)
         took = time.time() - t0
-        exports = {ext: c.get(f"/private/export.{ext}", headers=h).text
-                   for ext in ("md", "json", "html")}
-    finally:
-        c.post("/private/end", headers=h)
-    return {"brief": got, "exports": exports, "seconds": round(took)}
+        brief, leads = store.view() or (b, [])
+        with svc.repo() as r:
+            recs = {x.record_id: r.get(Scholarship, x.record_id) or r.get(Opportunity, x.record_id)
+                    for x in leads}
+    blocks = ex.brief_blocks(brief, leads, records=recs)
+    exports = {"md": ex.to_markdown(blocks), "html": ex.to_html(blocks, "Perch student brief"),
+               "json": json.dumps([x.model_dump(mode="json") for x in leads])}
+    view = {"brief": {**brief.model_dump(mode="json"), "status": status},
+            "leads": [x.model_dump(mode="json") for x in leads]}
+    return {"brief": view,
+            "exports": exports, "seconds": round(took)}
 
 
 def score(name: str, got: dict) -> dict:
@@ -95,20 +122,8 @@ def metrics(rows: list[dict]) -> dict:
             "gaps_exact": sum(x["gaps"] == x["key_gaps"] for x in pos), "gaps_cases": len(pos)}
 
 
-def leakage(c: httpx.Client, runs: dict, data: Path, container: str | None) -> dict:
+def leakage(runs: dict, data: Path) -> dict:
     out = {}
-    out["sample_record_public_api"] = c.get("/records/sample:sch-0001").status_code != 404
-    # Public briefs: the watched researchers' latest, as the What changed screen lists them.
-    w = c.get("/watch")
-    ids = (sorted(set(re.findall(r'"brief_id":\s*"([^"]+)"', w.text)))
-           if w.status_code == 200 else [])
-    hits = 0
-    for bid in ids[:20]:
-        g = c.get(f"/briefs/{bid}")
-        if g.status_code == 200 and ("sample:sch-" in g.text or '"sample":true' in g.text):
-            hits += 1
-    out["public_briefs_checked"] = len(ids)
-    out["sample_in_public_brief"] = hits
     tokens = [t for n in runs for t in canaries(n)]
     out["persona_canary_in_export"] = sorted({t for n, r in runs.items()
                                               for e in r["exports"].values()
@@ -125,9 +140,6 @@ def leakage(c: httpx.Client, runs: dict, data: Path, container: str | None) -> d
         except OSError:
             continue
     out["persona_canary_in_data_files"] = files
-    if container:
-        log = subprocess.run(["docker", "logs", container], capture_output=True, text=True)
-        out["persona_canary_in_app_log"] = [t for t in tokens if t in log.stdout + log.stderr]
     return out
 
 
@@ -136,8 +148,8 @@ def write_md(m_all: dict, per: dict, rows: list[dict], leak: dict, runs: dict) -
     lines = ["# Student mode: planted-case scoring (SYNTHETIC)", "",
              "**Everything scored here is invented.** The scholarship corpus and the three "
              "student personas are SYNTHETIC (data/synthetic/README.md). These numbers test "
-             "whether the mechanism (CV parse, rules, gap list, retrieval and the privacy "
-             "path) does what it was written to do on cases planted for it. They say nothing "
+             "whether the mechanism (CV parse, rules, gap list and retrieval) "
+             "does what it was written to do on cases planted for it. They say nothing "
              "about accuracy on real scholarships or real students, and they are not a "
              "result about Temple.", "",
              "The answer keys were written by hand from the rules in data/synthetic/README.md "
@@ -182,20 +194,18 @@ def write_md(m_all: dict, per: dict, rows: list[dict], leak: dict, runs: dict) -
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--base", default="http://127.0.0.1:8090")
     ap.add_argument("--data", type=Path, default=ROOT / "data/demo")
-    ap.add_argument("--container", default="perch-dev-perch-1")
     ap.add_argument("--as-of", default="2026-11-06")
     a = ap.parse_args()
     runs, rows, per = {}, [], {}
-    with httpx.Client(base_url=a.base, timeout=60) as c:
-        for n in PERSONAS:
-            runs[n] = run_persona(c, n, a.as_of)
-            s = score(n, runs[n])
-            rows += s["rows"]
-            per[n] = metrics(s["rows"])
-            print(n, s["status"], per[n], file=sys.stderr)
-        leak = leakage(c, runs, a.data, a.container)
+    svc = make_service(a.data)
+    for n in PERSONAS:
+        runs[n] = run_persona(svc, n, a.as_of)
+        s = score(n, runs[n])
+        rows += s["rows"]
+        per[n] = metrics(s["rows"])
+        print(n, s["status"], per[n], file=sys.stderr)
+    leak = leakage(runs, a.data)
     m_all = metrics(rows)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "STUDENT_MODE.md").write_text(write_md(m_all, per, rows, leak, runs))

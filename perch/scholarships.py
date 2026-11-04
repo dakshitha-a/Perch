@@ -44,8 +44,8 @@ def load_samples(repo: Repository, path: Path = SAMPLE_JSONL) -> int:
 
 
 def ensure_samples() -> int:
-    """Create or refresh the sample store from the committed file. Called at app start
-    and by `perch samples`, never from inside a private session."""
+    """Create or refresh the sample store from the committed file. Called at app start,
+    by `perch samples` and by the student stages on a host that has no store yet."""
     want = read_samples()
     with SQLiteRepository(sample_db()) as repo:
         have = {s.id: s for s in repo.list(Scholarship, include_samples=True)}

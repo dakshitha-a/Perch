@@ -189,7 +189,8 @@ def user_records(b: Brief) -> dict[str, dict]:
         docs = ([inp.interests] if inp.interests else []) + achievement_docs(inp.entries)
     return {d.id: {"kind": "user", "id": d.id, "title": d.title, "text": d.abstract,
                    "source": "user", "source_url": None,
-                   "fetched_at": d.fetched_at.isoformat()} for d in docs}
+                   # the brief's own time: the same on every poll, so the ETag holds (P3)
+                   "fetched_at": b.fetched_at.isoformat()} for d in docs}
 
 
 class WebFiles(StaticFiles):

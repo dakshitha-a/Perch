@@ -1,5 +1,7 @@
 # Private mode — design
 
+> **Retired in S42.** Private mode does not exist on `rebuild/v1`: there are no in-memory sessions, masks or Local or Cloud choice. A signed-in user's CV and entries are stored encrypted under that user's key and read by the user's own briefs (`docs/ARCHITECTURE_V1.md`). This page describes the fallback build at the tag `v0.1-demo-fallback`.
+
 Asked for by Dakshitha on 2026-10-29 (S8). Extends SPEC §4. Built in S13, with
 pieces in S9, S10, S12, S14 (MCP) S18 (student mode) and S20 (QA) (see PLAN.md). Synthetic test persona:
 `data/synthetic/persona-1/`.

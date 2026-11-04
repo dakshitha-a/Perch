@@ -47,7 +47,7 @@ def route_a(researcher: Researcher, repo: Repository, index: VectorIndex, embedd
             cacheable: Callable[[Thread], bool] = lambda t: True,
             rerank_in: int = RERANK_IN) -> RouteABrief:
     """`profile` replaces the threads built from the stored works (added threads);
-    `index_new=False` skips indexing, so a private session writes nothing."""
+    `index_new=False` skips indexing, so a brief that reads user text writes nothing public."""
     c = constraints or Constraints(as_of=date.today())
     t: dict[str, float] = {}
 
