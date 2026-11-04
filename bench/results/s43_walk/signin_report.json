@@ -1,0 +1,223 @@
+{
+ "checks": [
+  {
+   "name": "old_copy_gone",
+   "ok": true,
+   "detail": "landing"
+  },
+  {
+   "name": "landing_student_first",
+   "ok": true,
+   "detail": "Student chosen, Browse Temple awards present"
+  },
+  {
+   "name": "guest_banner",
+   "ok": true,
+   "detail": "on every guest screen, with the server's notice"
+  },
+  {
+   "name": "old_copy_gone_guest",
+   "ok": true,
+   "detail": "guest"
+  },
+  {
+   "name": "signin_flow",
+   "ok": true,
+   "detail": "welcome, account, My Perch and delete ran"
+  },
+  {
+   "name": "old_copy_gone",
+   "ok": true,
+   "detail": "landing"
+  },
+  {
+   "name": "landing_student_first",
+   "ok": true,
+   "detail": "Student chosen, Browse Temple awards present"
+  },
+  {
+   "name": "guest_banner",
+   "ok": true,
+   "detail": "on every guest screen, with the server's notice"
+  },
+  {
+   "name": "old_copy_gone_guest",
+   "ok": true,
+   "detail": "guest"
+  },
+  {
+   "name": "signin_flow",
+   "ok": true,
+   "detail": "welcome, account, My Perch and delete ran"
+  },
+  {
+   "name": "no_dead_modules",
+   "ok": true,
+   "detail": "requests: []"
+  }
+ ],
+ "errors": [],
+ "states": [
+  {
+   "tag": "w1280",
+   "name": "landing",
+   "shot": "w1280-landing.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "landing-guest",
+   "shot": "w1280-landing-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "welcome",
+   "shot": "w1280-welcome.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Welcome \u2014 Perch",
+   "hash": "#/welcome",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "signed-in-landing",
+   "shot": "w1280-signed-in-landing.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "student-start",
+   "shot": "w1280-student-start.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Check my fit \u2014 Perch",
+   "hash": "#/student",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "my-perch",
+   "shot": "w1280-my-perch.png",
+   "small": [],
+   "overflow": 0,
+   "title": "My Perch \u2014 Perch",
+   "hash": "#/me",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "account",
+   "shot": "w1280-account.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "after-delete",
+   "shot": "w1280-after-delete.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "landing",
+   "shot": "w360-landing.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "landing-guest",
+   "shot": "w360-landing-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "welcome",
+   "shot": "w360-welcome.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Welcome \u2014 Perch",
+   "hash": "#/welcome",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "signed-in-landing",
+   "shot": "w360-signed-in-landing.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "student-start",
+   "shot": "w360-student-start.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Check my fit \u2014 Perch",
+   "hash": "#/student",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "my-perch",
+   "shot": "w360-my-perch.png",
+   "small": [],
+   "overflow": 0,
+   "title": "My Perch \u2014 Perch",
+   "hash": "#/me",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "account",
+   "shot": "w360-account.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "after-delete",
+   "shot": "w360-after-delete.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  }
+ ],
+ "plant": null
+}

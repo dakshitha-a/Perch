@@ -1,0 +1,528 @@
+{
+ "checks": [
+  {
+   "name": "old_copy_gone",
+   "ok": true,
+   "detail": "landing"
+  },
+  {
+   "name": "landing_student_first",
+   "ok": true,
+   "detail": "Student chosen, Browse Temple awards present"
+  },
+  {
+   "name": "guest_banner",
+   "ok": true,
+   "detail": "on every guest screen, with the server's notice"
+  },
+  {
+   "name": "old_copy_gone_guest",
+   "ok": true,
+   "detail": "guest"
+  },
+  {
+   "name": "awards_toggle_rule",
+   "ok": true,
+   "detail": "total 360, temple_total 360: toggle hidden and the title says Temple awards"
+  },
+  {
+   "name": "tag_row_chips_44",
+   "ok": true,
+   "detail": "17 chips, shortest 44 px, page overflow 0"
+  },
+  {
+   "name": "counts_from_server",
+   "ok": true,
+   "detail": "15 chips; differ: []"
+  },
+  {
+   "name": "no_sample_in_awards",
+   "ok": true,
+   "detail": "cards with a sample id or badge: []"
+  },
+  {
+   "name": "school_two_groups",
+   "ok": true,
+   "detail": "['CST (25)', 'Open across Temple (207)']"
+  },
+  {
+   "name": "show_more",
+   "ok": true,
+   "detail": "25 cards, then more"
+  },
+  {
+   "name": "clear_filters",
+   "ok": true,
+   "detail": "cards return"
+  },
+  {
+   "name": "funding_toggle_off",
+   "ok": true,
+   "detail": "off by default"
+  },
+  {
+   "name": "focus_order_lists",
+   "ok": true,
+   "detail": "toggle > search > level > tag > card"
+  },
+  {
+   "name": "no_sample_in_funding",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "badge_on_every_sample",
+   "ok": true,
+   "detail": "50 of 50 cards badged"
+  },
+  {
+   "name": "samples_note",
+   "ok": true,
+   "detail": "sample note present"
+  },
+  {
+   "name": "signed_in_new_goes_to_welcome",
+   "ok": true,
+   "detail": "http://127.0.0.1:8191/#/welcome"
+  },
+  {
+   "name": "welcome_continue_guarded",
+   "ok": true,
+   "detail": "disabled before both steps"
+  },
+  {
+   "name": "welcome_continue_enabled",
+   "ok": true,
+   "detail": "enabled after both steps"
+  },
+  {
+   "name": "delete_takes_focus",
+   "ok": true,
+   "detail": "del-word|true"
+  },
+  {
+   "name": "delete_guard",
+   "ok": true,
+   "detail": "empty disabled True, 'delet' disabled True, 'delete' enabled True"
+  },
+  {
+   "name": "delete_escape_returns_focus",
+   "ok": true,
+   "detail": "focus on del-open"
+  },
+  {
+   "name": "delete_sends_confirm_and_ends",
+   "ok": true,
+   "detail": "Your data was deleted.\n\u00d7"
+  },
+  {
+   "name": "old_copy_gone",
+   "ok": true,
+   "detail": "landing"
+  },
+  {
+   "name": "landing_student_first",
+   "ok": true,
+   "detail": "Student chosen, Browse Temple awards present"
+  },
+  {
+   "name": "guest_banner",
+   "ok": true,
+   "detail": "on every guest screen, with the server's notice"
+  },
+  {
+   "name": "old_copy_gone_guest",
+   "ok": true,
+   "detail": "guest"
+  },
+  {
+   "name": "awards_toggle_rule",
+   "ok": true,
+   "detail": "total 360, temple_total 360: toggle hidden and the title says Temple awards"
+  },
+  {
+   "name": "tag_row_chips_44",
+   "ok": true,
+   "detail": "17 chips, shortest 44 px, page overflow 0"
+  },
+  {
+   "name": "tag_row_contained",
+   "ok": true,
+   "detail": "row scroll 2563 > client 328, page overflow 0"
+  },
+  {
+   "name": "counts_from_server",
+   "ok": true,
+   "detail": "15 chips; differ: []"
+  },
+  {
+   "name": "no_sample_in_awards",
+   "ok": true,
+   "detail": "cards with a sample id or badge: []"
+  },
+  {
+   "name": "school_two_groups",
+   "ok": true,
+   "detail": "['CST (25)', 'Open across Temple (207)']"
+  },
+  {
+   "name": "show_more",
+   "ok": true,
+   "detail": "25 cards, then more"
+  },
+  {
+   "name": "clear_filters",
+   "ok": true,
+   "detail": "cards return"
+  },
+  {
+   "name": "funding_toggle_off",
+   "ok": true,
+   "detail": "off by default"
+  },
+  {
+   "name": "focus_order_lists",
+   "ok": true,
+   "detail": "toggle > search > level > tag > card"
+  },
+  {
+   "name": "no_sample_in_funding",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "badge_on_every_sample",
+   "ok": true,
+   "detail": "50 of 50 cards badged"
+  },
+  {
+   "name": "samples_note",
+   "ok": true,
+   "detail": "sample note present"
+  },
+  {
+   "name": "signed_in_new_goes_to_welcome",
+   "ok": true,
+   "detail": "http://127.0.0.1:8191/#/welcome"
+  },
+  {
+   "name": "welcome_continue_guarded",
+   "ok": true,
+   "detail": "disabled before both steps"
+  },
+  {
+   "name": "welcome_continue_enabled",
+   "ok": true,
+   "detail": "enabled after both steps"
+  },
+  {
+   "name": "delete_takes_focus",
+   "ok": true,
+   "detail": "del-word|true"
+  },
+  {
+   "name": "delete_guard",
+   "ok": true,
+   "detail": "empty disabled True, 'delet' disabled True, 'delete' enabled True"
+  },
+  {
+   "name": "delete_escape_returns_focus",
+   "ok": true,
+   "detail": "focus on del-open"
+  },
+  {
+   "name": "delete_sends_confirm_and_ends",
+   "ok": true,
+   "detail": "Your data was deleted.\n\u00d7"
+  },
+  {
+   "name": "no_dead_modules",
+   "ok": true,
+   "detail": "requests: []"
+  }
+ ],
+ "errors": [],
+ "states": [
+  {
+   "tag": "w1280",
+   "name": "landing",
+   "shot": "w1280-landing.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "landing-guest",
+   "shot": "w1280-landing-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "awards",
+   "shot": "w1280-awards.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "awards-school",
+   "shot": "w1280-awards-school.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "awards-empty",
+   "shot": "w1280-awards-empty.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "funding",
+   "shot": "w1280-funding.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Research funding \u2014 Perch",
+   "hash": "#/funding",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "funding-temple",
+   "shot": "w1280-funding-temple.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Research funding \u2014 Perch",
+   "hash": "#/funding",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "samples",
+   "shot": "w1280-samples.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Sample records \u2014 Perch",
+   "hash": "#/samples/student",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "welcome",
+   "shot": "w1280-welcome.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Welcome \u2014 Perch",
+   "hash": "#/welcome",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "after-welcome",
+   "shot": "w1280-after-welcome.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "my-perch",
+   "shot": "w1280-my-perch.png",
+   "small": [],
+   "overflow": 0,
+   "title": "My Perch \u2014 Perch",
+   "hash": "#/me",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "account",
+   "shot": "w1280-account.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "delete-dialog",
+   "shot": "w1280-delete-dialog.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "after-delete",
+   "shot": "w1280-after-delete.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "landing",
+   "shot": "w360-landing.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "landing-guest",
+   "shot": "w360-landing-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "awards",
+   "shot": "w360-awards.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "awards-school",
+   "shot": "w360-awards-school.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "awards-empty",
+   "shot": "w360-awards-empty.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "funding",
+   "shot": "w360-funding.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Research funding \u2014 Perch",
+   "hash": "#/funding",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "funding-temple",
+   "shot": "w360-funding-temple.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Research funding \u2014 Perch",
+   "hash": "#/funding",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "samples",
+   "shot": "w360-samples.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Sample records \u2014 Perch",
+   "hash": "#/samples/student",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "welcome",
+   "shot": "w360-welcome.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Welcome \u2014 Perch",
+   "hash": "#/welcome",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "after-welcome",
+   "shot": "w360-after-welcome.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "my-perch",
+   "shot": "w360-my-perch.png",
+   "small": [],
+   "overflow": 0,
+   "title": "My Perch \u2014 Perch",
+   "hash": "#/me",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "account",
+   "shot": "w360-account.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "delete-dialog",
+   "shot": "w360-delete-dialog.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "after-delete",
+   "shot": "w360-after-delete.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  }
+ ],
+ "plant": null
+}
