@@ -38,3 +38,7 @@ class BriefOptions(BaseModel):
                 "include_keywords": clean(self.include_keywords),
                 "exclude_keywords": clean(self.exclude_keywords),
                 "career_stage": self.career_stage}
+
+
+class CoverPointsRequest(BaseModel):
+    record_id: str = Field(min_length=1, max_length=200)

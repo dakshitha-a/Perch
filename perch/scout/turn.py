@@ -41,6 +41,11 @@ MAX_QUESTION_CHARS = 1000
 ESTIMATE_MICRO = {"gate": 100, "scout": 30_000}  # reserved before a call, settled after
 
 
+class TurnCancelled(Exception):
+    """The owner stopped the job (or its lease ended) while Scout was working: stop at the
+    next step, write nothing."""
+
+
 class Meter:
     """Charges model calls to the account's daily budget. The base class charges nothing."""
 
@@ -53,14 +58,17 @@ class Metered(Provider):
     """A provider whose every call goes through the meter, so the gate and the answer steps
     are charged and can be refused by the budget (QuotaExceeded)."""
 
-    def __init__(self, inner: Provider, meter: Meter, role: str) -> None:
-        self.inner, self.meter, self.role = inner, meter, role
+    def __init__(self, inner: Provider, meter: Meter, role: str,
+                 cancelled: Callable[[], bool] = lambda: False) -> None:
+        self.inner, self.meter, self.role, self.cancelled = inner, meter, role, cancelled
         self.name, self.model, self.capabilities = inner.name, inner.model, inner.capabilities
 
     def chat(self, messages: list[Message], *, system: str | None = None,
              tools: list[Tool] | None = None, schema: JsonSchema | None = None,
              max_tokens: int = 2048, logprobs: int = 0, cache_system: bool = False
              ) -> ChatResult:
+        if self.cancelled():  # checked before every model call, so a stop lands between steps
+            raise TurnCancelled
         return self.meter.call(self.role, self.inner, messages, system=system, tools=tools,
                                schema=schema, max_tokens=max_tokens, logprobs=logprobs,
                                cache_system=cache_system)
@@ -74,6 +82,7 @@ class TurnDeps:
     names: Callable[[], set[str]] = set
     meter: Meter = Meter()  # noqa: RUF009 - stateless
     handoff: Callable[[], dict[str, Any] | None] | None = None
+    cancelled: Callable[[], bool] = lambda: False  # the job's ctx.cancelled
 
 
 def now_iso() -> str:
@@ -113,7 +122,7 @@ def history_of(messages: list[dict[str, Any]]) -> list[Message]:
 
 def _converse(deps: TurnDeps, tools: ReadTools, messages: list[Message], system: str
               ) -> str:
-    provider = Metered(deps.provider_for("scout"), deps.meter, "scout")
+    provider = Metered(deps.provider_for("scout"), deps.meter, "scout", deps.cancelled)
     defs = tools.definitions()
     for _ in range(MAX_STEPS):
         res = provider.chat(messages, system=system, tools=defs, max_tokens=MAX_ANSWER_TOKENS,
@@ -123,6 +132,8 @@ def _converse(deps: TurnDeps, tools: ReadTools, messages: list[Message], system:
         messages.append(Message("assistant", res.text, tool_calls=res.tool_calls))
         results = []
         for c in res.tool_calls:
+            if deps.cancelled():
+                raise TurnCancelled
             try:
                 body = json.dumps(tools.run(c.name, c.arguments), default=str)
                 if len(body) > TOOL_JSON_CHARS:  # always valid JSON, never a cut one
@@ -216,7 +227,7 @@ def run_turn(deps: TurnDeps, history: list[dict[str, Any]], *, question: str | N
     if not q:
         return message("assistant", "error", texts.ERROR)
     try:
-        g = gate.classify(Metered(deps.provider_for("gate"), deps.meter, "gate"), q)
+        g = gate.classify(Metered(deps.provider_for("gate"), deps.meter, "gate", deps.cancelled), q)
         if g.label == "out_of_scope":
             return message("assistant", "refusal", texts.REFUSAL, gate=g.label)
         if g.label == "distress":

@@ -62,9 +62,19 @@ class HandoffDraft(_M):
 
 
 class CoverPointSet(_M):
+    """The cover points for one record of one brief (S45), stored encrypted. `points` are
+    {asks, asks_ids, you, you_ids}; every id is a record id the model was given."""
+
     brief_id: str
     record_id: str
     points: list[dict[str, Any]] = Field(default_factory=list)
+    missing: list[str] = Field(default_factory=list)
+    unsupported: list[str] = Field(default_factory=list)  # layer 2 flags: shown flagged
+    sources: dict[str, str] = Field(default_factory=dict)  # id -> title
+    title: str = ""
+    sample: bool = False
+    status: Literal["done", "withheld"] = "done"  # withheld: failed the check twice
+    created_at: datetime = Field(default_factory=utcnow)
 
 
 class ScoutSessionDoc(_M):

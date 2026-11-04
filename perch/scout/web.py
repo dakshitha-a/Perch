@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
     from perch.user.routes import UserServices
 
 LIVE = {"queued", "running"}
+STALE_S = 120  # a question with no job, or whose job is unknown, stops counting as busy after this
 
 
 def usage_view(sv: UserServices, uid: UUID) -> dict[str, Any]:
@@ -53,6 +55,26 @@ def _job_state(sv: UserServices, uid: UUID, mid: dict[str, Any] | None) -> str |
     return st.state.value if st else None
 
 
+def _age_s(m: dict[str, Any]) -> float:
+    try:
+        return (datetime.now(UTC) - datetime.fromisoformat(m["at"])).total_seconds()
+    except (KeyError, ValueError):
+        return float("inf")
+
+
+def is_busy(sv: UserServices, uid: UUID, pend: dict[str, Any] | None) -> bool:
+    """Scout is busy while the last question's job is queued or running. A question that has
+    no job yet is busy only for a short time (the job is submitted a moment later); after
+    STALE_S with no job, or with a job the queue no longer knows, it is not busy, so the
+    session cannot be stuck."""
+    if pend is None:
+        return False
+    state = _job_state(sv, uid, pend)
+    if state in LIVE:
+        return True
+    return state is None and _age_s(pend) < STALE_S
+
+
 def view(sv: UserServices, uid: UUID, sid: UUID, doc: ScoutSessionDoc,
          audience: str) -> dict[str, Any]:
     """The session as JSON. `exchanges` keeps the shape the old Scout view had, so the existing
@@ -60,7 +82,7 @@ def view(sv: UserServices, uid: UUID, sid: UUID, doc: ScoutSessionDoc,
     ex = session.exchanges(doc)
     pend = session.pending(doc)
     state = _job_state(sv, uid, pend)
-    busy = pend is not None and (state is None or state in LIVE)
+    busy = is_busy(sv, uid, pend)
     error = None
     if pend is not None and not busy:
         stopped = state == JobState.CANCELLED.value
@@ -140,7 +162,7 @@ def ask(sv: UserServices, service: BriefService, uid: UUID, sid: UUID, *,
         raise HTTPException(404, {"error": "not_found"})
     doc, _, audience = got
     pend = session.pending(doc)
-    if pend is not None and (_job_state(sv, uid, pend) in LIVE | {None}):
+    if is_busy(sv, uid, pend):
         raise HTTPException(409, "Scout is still working on the last question.")
     if intent:
         if intent not in btn.INTENTS:
@@ -181,6 +203,55 @@ def stop(sv: UserServices, uid: UUID, sid: UUID) -> None:
     pend = session.pending(got[0])
     if pend is not None and pend.get("job_id"):
         sv.runner.cancel(UUID(pend["job_id"]), uid)
+
+
+def cover_submit(sv: UserServices, uid: UUID, audience: str, brief_id: str, record_id: str
+                 ) -> dict[str, Any]:
+    """Queue a `cover_points` job: ids only in the payload, one live job per brief and record."""
+    from perch.jobs import PayloadError
+    from perch.user.quota import RateLimited
+
+    try:
+        quota.admit(sv.redis, sv.pool, uid, "submit_job")
+    except RateLimited as e:
+        raise HTTPException(429, {"error": "rate_limited"},
+                            headers={"Retry-After": str(e.retry_after)}) from None
+    except QuotaExceeded:
+        raise HTTPException(429, {"error": "quota_exceeded", "message": texts.BUDGET,
+                                  "usage": usage_view(sv, uid)}) from None
+    key = hashlib.sha256(f"cover|{uid}|{brief_id}|{record_id}".encode()).hexdigest()
+    try:
+        job = sv.runner.submit("cover_points", {"brief_id": brief_id, "record_id": record_id},
+                               uid, key, audience=audience)  # type: ignore[arg-type]
+    except PayloadError:
+        raise HTTPException(422, "That record id cannot be used.") from None
+    return {"job_id": str(job), "status": "queued",
+            "poll": f"/briefs/{brief_id}/cover-points?record_id={record_id}&job_id={job}"}
+
+
+COVER_NOTE = ("Points to put in your own words. Each pairs one thing the record asks for with "
+              "one thing from your CV or entries. Check every point before you use it.")
+
+
+def cover_get(sv: UserServices, uid: UUID, audience: str, brief_id: str, record_id: str,
+              job_id: str | None) -> dict[str, Any]:
+    """{"result": the stored set or null, "job": {"id", "state"} or null}."""
+    from perch.user.models import CoverPointSet
+
+    found = None
+    for _, x in sv.ud.list(uid, "cover_points", audience, CoverPointSet, limit=100):  # type: ignore[arg-type]
+        if x.brief_id == brief_id and x.record_id == record_id:
+            found = x.model_dump(mode="json")
+            found["note"] = COVER_NOTE
+            break
+    job = None
+    if job_id:
+        try:
+            st = sv.runner.status(UUID(job_id), uid)
+        except ValueError:
+            st = None
+        job = {"id": job_id, "state": st.state.value} if st else None
+    return {"result": found, "job": job}
 
 
 def sessions_for(sv: UserServices, uid: UUID, audience: str, brief_id: str) -> list[UUID]:
