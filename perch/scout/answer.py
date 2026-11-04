@@ -38,9 +38,9 @@ from datetime import date
 from typing import Any
 
 from perch import validate
-from perch.grounding import Grounder
-from perch.schemas import Record
-from perch.scout.read_tools import facts
+from perch.grounding import THRESHOLD, Grounder
+from perch.schemas import Opportunity, Record, Scholarship
+from perch.scout.read_tools import NOT_STATED, ReadTools, facts
 from perch.scout.texts import GENERAL_LABEL
 
 CITE_RE = re.compile(r"\[([^\[\]]+)\]")
@@ -92,6 +92,16 @@ ELIGIBILITY = re.compile(
     r"green card|visa status|required to be|open only to|only open to|restricted to|"
     r"applicants must|(?:not\s+|in)eligible|eligible for|qualif(?:y|ies|ied)|"
     r"meets? the requirements?)\b", re.I)
+# Wider words for a sentence with no real record behind it (uncited, a heading, a question, a
+# "nothing found" sentence, or one citing only an empty-result id): any word that states or
+# implies who may apply or how well the user fits. Not used on a sentence citing a real record,
+# which may say "It is open to juniors [id]" (S45 fix round 2).
+FIT_WORDS = re.compile(
+    r"\b(?:eligib\w*|requires?|required|may apply|can apply|could apply|open to|welcomed?|"
+    r"(?:strong|good|great|best|perfect|natural|poor|weak) (?:fit|match|candidate)|"
+    r"you(?:['’]ll| will| would)(?: likely| probably)? (?:win|get it|be selected|be awarded)|"
+    r"(?:likely|likelihood|chance|chances) (?:to |of )?(?:win|winning|success)|"
+    r"qualif\w*|(?:stops?|prevents?|blocks?|bars?) you from applying|from applying)\b", re.I)
 AWARD_PHRASE = re.compile(
     r"\b((?:[A-Z][\w'’&.-]*\s+){1,4})(?:Fellowship|Scholarship|Award|Grant|Prize|Program)s?\b")
 AWARD_WORD = re.compile(r"\b(?:scholarships?|fellowships?|awards?|grants?|prizes?|programs?|"
@@ -110,7 +120,7 @@ REASONS = (
     "layer1_link", "layer1_action_word", "layer1_other", "uncited_number_or_date",
     "uncited_link", "sample_mix", "placeholder_only",
     "general_cite", "general_number", "general_date", "general_month", "general_link",
-    "general_eligibility_word", "general_award_code", "general_named_award")
+    "general_eligibility_word", "general_award_code", "general_named_award", "uncited_fit_word")
 
 
 @dataclass
@@ -234,7 +244,8 @@ def strip_cites(text: str) -> str:
     def keep(m: re.Match) -> str:
         return " " if cites_in(m.group(0)) else m.group(0)
 
-    return re.sub(r"\s+", " ", CITE_RE.sub(keep, text)).strip()
+    out = re.sub(r"\s+", " ", CITE_RE.sub(keep, text)).strip()
+    return re.sub(r" ([.,;:!?])(?=\s|$)", r"\1", out)
 
 
 def normalise_cites(text: str, seen: dict[str, Record]) -> str:
@@ -283,7 +294,104 @@ def document_for(rec: Record, as_of: date) -> str:
     """What MiniCheck reads for one record: the card's own fields, then the record's text."""
     f = facts(rec, as_of)
     head = "\n".join(f"{k}: {v}" for k, v in f.items() if v not in (None, "", []))
-    return head + "\n" + validate.evidence(rec).text
+    extra = ""
+    if isinstance(rec, Scholarship):
+        # MiniCheck's passage only; validate.evidence() is unchanged, so no new number or date
+        # counts as supported by layer 1 (S45 fix round 2).
+        if rec.eligibility.notes:
+            extra += "\nEligibility: " + rec.eligibility.notes
+        if rec.application_requirements and rec.application_requirements.items():
+            extra += "\nApplication requirements: " + ", ".join(
+                rec.application_requirements.items()) + "."
+    return head + "\n" + validate.evidence(rec).text + extra
+
+
+# --- claims MiniCheck cannot score, checked by code against what the tools returned ---
+
+ORDINALS = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5}
+RANK_NUM_RE = re.compile(
+    r"\b(?:ranked|ranks|rank)\s*(?:number\s*|no\.?\s*|#)?(\d{1,2})\b|#(\d{1,2})\b", re.I)
+RANK_WORD_RE = re.compile(
+    r"\b(?:(top)[- ]?(?:ranked|lead|rank|pick|choice)|(?:your|the)\s+"
+    r"(first|second|third|fourth|fifth)\s+(?:lead|pick|choice|result|match)|"
+    r"ranked\s+(first|second|third|fourth|fifth)|(first|second|third|fourth|fifth)[- ]ranked)\b",
+    re.I)
+KEPT_RE = re.compile(r"\b(kept|shortlist(?:ed)?)\b", re.I)
+SAVED_RE = re.compile(r"\bsaved\b", re.I)
+NEG_RE = re.compile(r"\b(?:not|never|nothing|none|no)\b|n['’]t\b", re.I)
+ABSENCE_RE = re.compile(
+    r"\b(?:gives?|lists?|states?|has|have|provides?|shows?|includes?|mentions?|specif(?:y|ies)|"
+    r"says?|holds?|carries|contains?)\s+no\s+(?:\w+\s+){0,2}?(deadline|close date|amount|"
+    r"award size|requirements?)\b|"
+    r"\b(?:does\s+not|doesn['’]t|do\s+not|don['’]t)\s+(?:give|list|state|say|mention|specify|"
+    r"show|provide|include)\s+(?:a|an|any|the)?\s*(?:\w+\s+){0,2}?(deadline|close date|amount|"
+    r"award size|requirements?)\b|"
+    r"\bno\s+(?:\w+\s+){0,2}?(deadline|close date|amount|award size|requirements?)\s+"
+    r"(?:is|are|was|were)\s+(?:given|listed|stated|shown|in the record)\b", re.I)
+
+
+def _absent_fact(rec: Record, what: str, as_of: date) -> bool | None:
+    """Does this record lack the deadline, amount or requirements? None when it cannot say."""
+    what = what.lower()
+    if what in ("deadline", "close date"):
+        if isinstance(rec, Opportunity):
+            return not rec.close_date and not rec.close_date_note
+        if isinstance(rec, Scholarship):
+            return rec.deadline is None
+        return None
+    if what in ("amount", "award size"):
+        if isinstance(rec, Opportunity | Scholarship):
+            return facts(rec, as_of).get("amount") == NOT_STATED
+        return None
+    if isinstance(rec, Scholarship):
+        return not (rec.application_requirements and rec.application_requirements.items())
+    return None
+
+
+def code_check(text: str, ids: list[str], seen: dict[str, Record], tools: ReadTools | None,
+               as_of: date) -> bool | None:
+    """True or False when the claim is one of the shapes below and the tools gave the answer,
+    None when MiniCheck must decide. Shapes: a lead's rank or kept status, checked against the
+    rows read_brief and read_saved returned; "the record gives no deadline, amount or
+    requirements", checked against the record's fields. Every cited record must agree."""
+    body = strip_cites(text)
+    verdicts: list[bool] = []
+    if m := ABSENCE_RE.search(body):
+        what = next(g for g in m.groups() if g)
+        for i in ids:
+            v = _absent_fact(seen[i], what, as_of)
+            if v is None:
+                return None
+            verdicts.append(v)
+        return all(verdicts) if verdicts else None
+    if tools is None:
+        return None
+    rows = [i for i in ids if not i.startswith("user:")]
+    if not rows:
+        return None
+    ordered = sorted(tools.ranks, key=lambda k: tools.ranks[k])
+    claim = None
+    if tools.brief_read and (m := RANK_WORD_RE.search(body)):
+        top, *words = m.groups()
+        claim = ("pos", 1 if top else ORDINALS[next(w for w in words if w).lower()])
+    elif tools.brief_read and (m := RANK_NUM_RE.search(body)):
+        claim = ("rank", int(m.group(1) or m.group(2)))
+    if claim:
+        for i in rows:
+            if i not in tools.ranks:
+                return None
+            verdicts.append(ordered.index(i) + 1 == claim[1] if claim[0] == "pos"
+                            else tools.ranks[i] == claim[1])
+        return all(verdicts)
+    k, sv = KEPT_RE.search(body), SAVED_RE.search(body)
+    if k and tools.brief_read:
+        pool, at = tools.kept, k.start()
+    elif sv and tools.saved_read:
+        pool, at = tools.saved, sv.start()
+    else:
+        return None
+    neg = bool(NEG_RE.search(body[max(0, at - 25):at]))
+    return all((i in pool) != neg for i in rows)
 
 
 def _token(message: str) -> str:
@@ -340,10 +448,13 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
                 s.fail(_layer1_code(e), e, _token(e))
         # An empty-result placeholder ("user:saved", "user:brief") holds only "nothing found",
         # so alone it can back only a sentence that says so (S45 S4).
-        if ids and all(i in PLACEHOLDER_IDS for i in ids) and not (
-                len(body.split()) <= ABSENT_WORDS and ABSENT_RE.search(body)):
-            s.fail("placeholder_only", "an empty-result id such as [user:saved] supports only a "
-                   "sentence that says nothing was found; do not cite it for a claim", ids[0])
+        if ids and all(i in PLACEHOLDER_IDS for i in ids):
+            if not (len(body.split()) <= ABSENT_WORDS and ABSENT_RE.search(body)):
+                s.fail("placeholder_only", "an empty-result id such as [user:saved] supports "
+                       "only a sentence that says nothing was found; do not cite it for a claim",
+                       ids[0])
+            else:  # a "nothing found" sentence may not smuggle in an eligibility or fit claim
+                _no_record_claims(s, body, names, seen, cited=True)
         return
     # No citation: allowed only for a sentence that states no record fact.
     if heading:
@@ -360,14 +471,24 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
     # An uncited sentence of any exempt kind passes the same content checks as General
     # advice, so a heading, a question or a "nothing found" sentence cannot carry an award's
     # name or an eligibility rule (S45 S3).
-    for code, msg, d in general_reasons(body, names or set(), seen):
-        s.fail(code, f"a {s.kind} sentence with no citation {msg}", d)
+    _no_record_claims(s, body, names, seen, cited=False)
     if s.kind == "help":
         return
     if validate.find_numbers(body) or validate.find_dates(body):
         s.fail("uncited_number_or_date", "a number or date with no cited record")
     if validate.URL_RE.search(body):
         s.fail("uncited_link", "a link with no cited record")
+
+
+def _no_record_claims(s: Sentence, body: str, names: set[str] | None,
+                      seen: dict[str, Record], *, cited: bool) -> None:
+    """The General-advice content checks plus FIT_WORDS, for a sentence no real record backs."""
+    how = "citing only an empty-result id" if cited else "with no citation"
+    for code, msg, d in general_reasons(body, names or set(), seen, cited=cited):
+        s.fail(code, f"a {s.kind} sentence {how} {msg}", d)
+    if m := FIT_WORDS.search(body):
+        s.fail("uncited_fit_word", f"a {s.kind} sentence {how} may not say who may apply or how "
+               f"well the user fits ({m.group(0)!r}); cite the record or leave it out", m.group(0))
 
 
 def mixed_blocks(g: Graded, seen: dict[str, Record]) -> None:
@@ -407,11 +528,13 @@ def _named(text: str, start: int, end: int) -> bool:
     return bool(caps) and not opens
 
 
-def general_reasons(text: str, names: set[str], seen: dict[str, Record]
+def general_reasons(text: str, names: set[str], seen: dict[str, Record], *, cited: bool = False
                     ) -> list[tuple[str, str, str]]:
-    """(REASONS code, message, detail) for every rule a General advice sentence breaks."""
+    """(REASONS code, message, detail) for every rule a General advice sentence breaks. With
+    `cited`, the sentence is allowed its citation (an empty-result id) and only the rest is
+    checked."""
     out: list[tuple[str, str, str]] = []
-    if cites_in(text):
+    if cites_in(text) and not cited:
         out.append(("general_cite", "may not cite", ""))
     if validate.URL_RE.search(text):
         out.append(("general_link", "may not give a link", ""))
@@ -485,7 +608,7 @@ def name_index(records: list[Record]) -> set[str]:
 
 
 def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
-          grounder: Grounder | None = None) -> Graded:
+          grounder: Grounder | None = None, tools: ReadTools | None = None) -> Graded:
     """Parse and check one answer. Layer 2 runs only when layer 1 and the citation rules pass
     for the sentence, so MiniCheck is not spent on a sentence that will be regenerated."""
     grounded, general = split_general(normalise_cites(text, seen))
@@ -498,14 +621,17 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
         for code, msg, d in general_reasons(s.text, names, seen):
             s.fail(code, "General advice " + msg, d)
     mixed_blocks(g, seen)
-    if grounder is not None and g.ok:
+    if g.ok:
         for s in g.sentences:
             if not s.cites:
                 continue
-            doc = "\n\n".join(document_for(seen[c], as_of) for c in s.cites)
-            c = grounder.check(doc, strip_cites(s.text))
-            if c:
-                s.support, s.supported = c[0].support, all(x.supported for x in c)
+            v = code_check(s.text, s.cites, seen, tools, as_of)
+            if v is not None:  # exact, so MiniCheck is not asked
+                s.support, s.supported = (1.0 if v else 0.0), v
+            elif grounder is not None:
+                doc = "\n\n".join(document_for(seen[c], as_of) for c in s.cites)
+                p = grounder.support(doc, [strip_cites(s.text)])[0]  # whole claim, not re-split
+                s.support, s.supported = p, p > THRESHOLD
     return g
 
 

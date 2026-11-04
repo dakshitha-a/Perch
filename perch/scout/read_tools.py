@@ -124,6 +124,13 @@ class ReadTools:
         self.data = data
         self.seen: dict[str, Record] = {}
         self.used: list[str] = []  # tool names called, in order, for the step list
+        # What read_brief and read_saved returned, so the answer check can test a claim about a
+        # lead's rank or kept status against it (S45 fix round 2).
+        self.ranks: dict[str, int] = {}  # record id -> rank, as read
+        self.kept: set[str] = set()  # leads the brief marks kept
+        self.saved: set[str] = set()  # ids the user saved
+        self.brief_read = False
+        self.saved_read = False
 
     # --- definitions ---
 
@@ -270,6 +277,7 @@ class ReadTools:
             return {"brief": None, **self._empty("user:brief", "Brief",
                                                   "The user has no finished brief yet.")}
         b, leads = got
+        self.brief_read = True
         rows: list[dict[str, Any]] = []
         for x in sorted((x for x in leads if x.status != "dismissed" and x.route != "B"),
                         key=lambda x: x.rank or 0)[:MAX_LEADS]:
@@ -278,6 +286,10 @@ class ReadTools:
                 continue
             row = facts(self._see(rec), self.data.as_of)
             row |= {"rank": x.rank, "kept": x.status == "kept"}
+            if x.rank is not None:
+                self.ranks[rec.id] = x.rank
+            if x.status == "kept":
+                self.kept.add(rec.id)
             if x.verdict:
                 row["verdict"] = x.verdict
             if x.gaps:
@@ -323,9 +335,12 @@ class ReadTools:
             "entries": [], **self._empty("user:entries", "Entries", "No entries yet.")}
 
     def read_saved(self) -> dict[str, Any]:
+        self.saved_read = True
         rows = []
         for i, s in enumerate(self.data.saved()[:MAX_ROWS], 1):
             rec = self._get(s.record_id)
+            if rec:
+                self.saved.add(rec.id)
             row: dict[str, Any] = (facts(self._see(rec), self.data.as_of) if rec
                                    else {"id": s.record_id, "title": None})
             if s.note:

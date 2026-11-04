@@ -38,7 +38,18 @@ DISTRESS_RE = re.compile(
     r"(?:want|wanna|going|planning)\s+to\s+(?:die|commit\s+suicide)|wanna\s+die|"
     r"(?:hurt|harm|cut)(?:ting)?\s+myself|self[- ]harm(?:ing)?\s+(?:myself|again)|"
     r"(?:i\s*am|i['’]m|im|feel(?:ing)?|so)\s+suicidal|"
-    r"(?:do\s*n['’]?t|do\s+not)\s+want\s+to\s+(?:live|be\s+alive|exist)|better\s+off\s+dead)\b",
+    r"(?:do\s*n['’]?t|do\s+not)\s+(?:want\s+to|wanna)\s+(?:live|be\s+alive|exist)|"
+    r"better\s+off\s+dead|"
+    # S45 round 2: first-person forms only, so "suicidal thoughts" in a research question
+    # ("funding to study suicidal thoughts") does not match.
+    r"i\s+wish\s+(?:i\s+(?:was|were)|i['’]d\s+(?:be|been))\s+dead|"
+    r"(?:i|i['’]ve|ive|im|i['’]m|been|keep|keeps)\s+(?:\w+\s+)?(?:having|had|got|have|thinking\s+"
+    r"(?:about|of))\s+(?:suicide|suicidal\s+(?:thoughts|ideas|feelings)|killing\s+myself|"
+    r"ending\s+(?:it|my\s+life))|"
+    r"(?:thinking|thought)\s+(?:about|of)\s+suicide\b(?!\s+(?:prevention|research|rates?|"
+    r"intervention|awareness|among|in\s+\w+\s+(?:students|veterans|youth)))|"
+    r"suicidal\s+thoughts\s+(?:again|today|tonight|all\s+the\s+time)|"
+    r"end\s+it\s+all|no\s+reason\s+to\s+(?:live|go\s+on|be\s+alive)|can['’]?t\s+go\s+on)\b",
     re.I)
 
 EXAMPLES = (
@@ -70,10 +81,9 @@ def distress_message(audience: str) -> str:  # noqa: ARG001 - kept so callers ne
     return DISTRESS
 
 
-WITHHELD = ("Scout's answer did not pass the citation check twice, so the parts that failed are "
-            "not shown. The records Scout read are listed below the answer.")
+WITHHELD = "Scout's answer did not pass the citation check twice, so none of it is shown."
 ERROR = "Scout could not finish this question. Try again."
-BUDGET = ("You have used today's Scout budget. It resets at the time shown. The buttons still "
+BUDGET = ("You have used today's Scout budget. It resets each day. The buttons still "
           "work, because they cost nothing.")
 
 # --- the Scout system prompt ---
