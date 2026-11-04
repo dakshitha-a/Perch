@@ -7,6 +7,7 @@ are stored alongside so they can be queried without parsing JSON.
 from __future__ import annotations
 
 import base64
+import json
 import sqlite3
 from collections.abc import Iterable, Sequence
 from datetime import date
@@ -77,12 +78,21 @@ class SQLiteRepository(Repository):
                     and (closes_after is None
                          or (c.deadline is not None and c.deadline >= closes_after)))
 
-        hits = [r for r in self.list(cls) if keep(r)]
-        after = base64.urlsafe_b64decode(cursor.encode()).decode() if cursor else None
-        page = [r for r in hits if after is None or r.id > after]
+        # Name order, case-folded, then the id, as in the Postgres store (S43 S6).
+        def key(r: R) -> tuple[str, str]:
+            return (str(getattr(r, "name", None) or getattr(r, "title", None) or "").lower(), r.id)
+
+        hits = sorted((r for r in self.list(cls) if keep(r)), key=key)
+        after = None
+        if cursor:
+            after = tuple(json.loads(base64.urlsafe_b64decode(cursor.encode()).decode()))
+            if len(after) != 2 or not all(isinstance(x, str) for x in after):
+                raise ValueError("bad cursor")
+        page = [r for r in hits if after is None or key(r) > after]
         more = len(page) > limit
         page = page[:limit]
-        nxt = base64.urlsafe_b64encode(page[-1].id.encode()).decode() if more else None
+        nxt = (base64.urlsafe_b64encode(json.dumps(list(key(page[-1]))).encode()).decode()
+               if more else None)
         return Page(items=page, next_cursor=nxt, total=len(hits))
 
     def epoch(self) -> int:

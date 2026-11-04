@@ -12,6 +12,7 @@ before the database does. Nothing here logs a query, a parameter or an exception
 from __future__ import annotations
 
 import base64
+import json
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from datetime import date
@@ -24,6 +25,9 @@ from perch.schemas import RECORD_TYPES, Record, Work
 from perch.store.base import Facets, Page, R, Repository, VectorIndex, sorted_counts
 from perch.store.denorm import STORED_KINDS, TEMPLE_SOURCES, TEXT_SQL, columns
 from perch.store.pg import EMBED_DIM, make_pool
+
+# The browse order: the record's name or title, case-folded, then the id (S43 S6).
+NAME_SQL = "(lower(COALESCE(data->>'name', data->>'title', '')) COLLATE \"C\")"
 
 INDEX_KINDS = {"opportunities": "opportunity", "scholarships": "scholarship"}
 _COLS = ("kind, id, source, source_url, fetched_at, data, scope, schools, temple_funded, "
@@ -136,16 +140,22 @@ class PostgresRepository(Repository):
         base = " AND ".join(where)
         page_where, page_args = base, list(args)
         if cursor:
-            page_where += ' AND id COLLATE "C" > %s'
-            page_args.append(base64.urlsafe_b64decode(cursor.encode()).decode())
+            # Name order, case-folded, with the id as the tie-break; the cursor holds both.
+            after = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
+            if not (isinstance(after, list) and len(after) == 2 and all(isinstance(x, str) for x in after)):
+                raise ValueError("bad cursor")
+            page_where += f' AND ({NAME_SQL}, id COLLATE "C") > (%s, %s)'
+            page_args.extend(after)
         with self.pool.connection() as conn:
             total = conn.execute(f"SELECT count(*) FROM records WHERE {base}", args).fetchone()[0]
             rows = conn.execute(
-                f'SELECT id, data FROM records WHERE {page_where} ORDER BY id COLLATE "C" LIMIT %s',
+                f'SELECT id, data, {NAME_SQL} FROM records WHERE {page_where} '
+                f'ORDER BY {NAME_SQL}, id COLLATE "C" LIMIT %s',
                 [*page_args, limit + 1]).fetchall()
         more = len(rows) > limit
         rows = rows[:limit]
-        nxt = base64.urlsafe_b64encode(rows[-1][0].encode()).decode() if more else None
+        nxt = (base64.urlsafe_b64encode(json.dumps([rows[-1][2], rows[-1][0]]).encode()).decode()
+               if more else None)
         return Page(items=[cls.model_validate(r[1]) for r in rows], next_cursor=nxt, total=total)
 
     def facets(self, cls: type[R]) -> Facets:
