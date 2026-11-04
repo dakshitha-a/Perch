@@ -22,6 +22,8 @@ Dakshitha delegated every product and design decision to Perch-dev on 2026-10-31
 
 47. **Keyword search and pg_search's licence (raised and decided 2026-11-04, S38; not blocking).** The back-test showed Postgres `tsvector` keyword search found almost nothing and lowered hybrid recall. Dakshitha decided to drop keyword search from v1 ranking; it stays for the keyword-only baseline, exact lookups and Scout's search tools. If keyword ranking ever returns, the strongest option is pg_search (ParadeDB), which now supports Postgres 16 and installs as a package, but it is AGPL-3.0 and pre-1.0. Whether Temple accepts an AGPL database extension is UNVERIFIED. Options and sources: `docs/v1/SPARSE_OPTIONS.md`. Nothing to answer now.
 
+48. **Scout's crisis-word check (raised 2026-11-04, S45; not blocking).** Before any budget or model check, a free keyword check sends a crisis message straight to the care message with the counselling links, so a user out of budget still gets them. The list is narrow and first-person only, such as "kill myself", "end my life", "want to die" and "better off dead". Bare "suicide" or "self-harm" do not match, so a researcher asking about suicide-prevention funding is not shown the care message. A miss still reaches the gate's own distress label. Recommendation: keep it narrow. Say if you want it wider.
+
 ## Answered
 
 33. **Standing-rule change to apply (raised 2026-10-30; narrowed in S24).** Standing rules are yours to edit; Perch-dev never edits them. Your answer to Q30 needs this change in `CLAUDE.md`:
