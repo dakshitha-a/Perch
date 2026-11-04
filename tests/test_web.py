@@ -264,9 +264,12 @@ def test_cover_points_reach_the_app_and_no_page_promises_that_no_model_reads_the
     assert "overflow-wrap: anywhere" in css.split(".scout-points {")[1][:200]
     assert ".scout-points .btn.points-copy { min-height: 44px; }" in css
     help_ = web["help.js"]
-    # No screen calls /briefs/{id}/cover-points yet (S45 final re-check), so Help does not offer
-    # cover-letter points; S46 wires the button and puts the line back.
-    assert "cover-letter points" not in help_
+    # S46: the button calls /briefs/{id}/cover-points, so Help says what it does (and only that).
+    assert (
+        "On a lead card, Cover-letter points asks a model to pair what the record asks for with "
+        "what your CV, entries and papers show, each line cited. It needs an account, it is "
+        "model text to put in your own words, and it is never sent or added to an export."
+    ) in help_
     # The withdrawn promise (Q43) is gone from every page and from the redesign source. The
     # hand-off sentence "no model reads them for it" stays: code writes that opening.
     redesign = (ROOT / "docs/design/redesign/StudentStart.dc.html").read_text()
@@ -465,3 +468,30 @@ def test_scout_shows_the_checks_in_the_answer():
     assert "eight model calls" not in scout
     css = (WEB_DIR / "styles.css").read_text()
     assert "mark.unsupported" in css and ".scout-general" in css
+
+
+def test_cover_points_button_is_wired_on_every_lead_card():
+    """S46: a button on every lead card (not eligible included), none on a dismissed card; a guest
+    gets the sign-in link; the module holds the busy state and polls; the errors are the design's.
+    """
+    cover = (WEB_DIR / "cover.js").read_text()
+    for s in ("Cover-letter points", "Points again", "Sign in to get cover-letter points",
+              "A model writes these from your CV and papers. You put them in your own words.",
+              "A model is reading the record and your CV. This takes up to two minutes…",
+              "The points are ready below.", "The points could not be made. Try again.",
+              "Cover points start once the brief has finished.", "Too many requests. Try again in ",
+              'role: "status"', 'role: "alert"', '"aria-busy"', "`cover-${recordId}`",
+              "const POLL_MS = 2000;", "const POLL_MAX_MS = 150000;", "pointsBlock(asPoints(",
+              'focus === "result"', "api.coverGet(briefId, recordId, null)", "e.serverMessage"):
+        assert s in cover, s
+    assert "export function pointsBlock(" in (WEB_DIR / "scout.js").read_text()
+    api = (WEB_DIR / "api.js").read_text()
+    assert "cover-points`, { record_id: recordId }" in api and "err.retryAfter" in api
+    assert api.index("coverStart:") < api.index("studentNote:")
+    student = (WEB_DIR / "student.js").read_text()
+    assert 'l.status === "dismissed" ? null : coverBlock(ctx, ctx.briefId, l.record_id)' in student
+    app = (WEB_DIR / "app.js").read_text()
+    assert 'l.status === "dismissed" ? null : coverBlock({ api, announce, openEvidence' in app
+    assert "verdict !== \"not eligible\"" not in student.split("coverBlock(ctx")[1][:80]
+    mods = (ROOT / "scripts/build_ui_preview.py").read_text()
+    assert mods.index('"scout.js"') < mods.index('"cover.js"') < mods.index('"student.js"')

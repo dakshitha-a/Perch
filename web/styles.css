@@ -1464,3 +1464,10 @@ html:has(body[data-screen="brief"]) { scroll-padding-top: calc(var(--bar-h, 56px
 .pcard.done .owl-sm { width: 44px; height: 44px; }
 .scout-try .chip { min-height: 44px; }
 .scout-limits summary { min-height: 44px; display: flex; align-items: center; }
+
+/* S46: cover-letter points under a lead card */
+.cover { margin-top: 10px; display: grid; gap: 8px; min-width: 0; max-width: 100%; }
+.cover .actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.cover .hint, .cover .notice { margin: 0; }
+.cover > .btn { justify-self: start; }
+.cover .scout-points summary { min-height: 44px; }

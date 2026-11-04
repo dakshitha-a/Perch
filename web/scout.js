@@ -275,7 +275,7 @@ function draftBlock(d, ctx) {
 // Cover-letter points from cover_points (S33): what the record asks, what the person's
 // own records show, each sentence cited. Shown in full to copy; never sent, never exported.
 const POINTS_HINT = "Perch never sends this, and it never enters an export or a hand-off draft.";
-function pointsBlock(p, ctx) {
+export function pointsBlock(p, ctx) {
   const title = p.for.title || p.for.id;
   const cite = (id) => pointCite(id, p, ctx);
   const text = pointsText(p);

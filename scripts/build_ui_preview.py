@@ -21,9 +21,10 @@ WEB = Path(__file__).resolve().parent.parent / "web"
 # In dependency order. format.js keeps its alias (app.js imports it as `f`); compare.js
 # also imports formatDate from it by name, which bundle() pulls out of `f`.
 MODULES = {"format.js": "f", "dom.js": None, "api.js": None, "owl.js": None,
+           "scout.js": None, "cover.js": None,  # cover.js reads pointsBlock from scout.js
            "handoff.js": None, "browse.js": None, "account.js": None,
            "student.js": None, "help.js": None,
-           "compare.js": None, "scout.js": None}
+           "compare.js": None}
 EXPORT = re.compile(r"^export (?:async )?(?:function|const|class) (\w+)", re.M)
 IMPORT = re.compile(r"^import .*?;\n", re.M)
 
