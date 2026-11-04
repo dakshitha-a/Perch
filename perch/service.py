@@ -112,6 +112,10 @@ class Clients:
 
 
 class BriefService:
+    # Set by the worker (perch/cache.py). A class default, so subclasses that skip __init__
+    # (private sessions, which hold user text) get None and never touch the shared cache.
+    public_cache: PublicCache | None = None
+
     def __init__(self, db: str | Path, models: Models, clients: Clients,
                  overrides: Path = aw.OVERRIDES,
                  repo_factory: Callable[[], Repository] | None = None,
@@ -128,7 +132,6 @@ class BriefService:
         self.timings_log = root / "logs/brief_timings.jsonl"
         self._ctx: dict[str, dict] = {}  # per-run state (the profile), keyed by brief id
         self.quiet_errors = False  # private sessions: exception type only, no traceback
-        self.public_cache: PublicCache | None = None  # set by the worker (perch/cache.py)
 
     def repo(self) -> SQLiteRepository:
         if self.repo_factory is not None:

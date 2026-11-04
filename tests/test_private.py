@@ -120,6 +120,7 @@ def test_inputs_parse_from_bytes():
 # --- through the API: canary, isolation, refusal, masking ---
 
 def private_env(monkeypatch):
+    monkeypatch.setenv("PERCH_PROFILE", "dev")  # local chat model
     monkeypatch.setenv("PERCH_PRIVATE_MODE", "1")
     monkeypatch.setenv("PERCH_TLS_AT", "server")
     monkeypatch.setenv("PERCH_PRIVATE_OPERATOR", "Test operator")
