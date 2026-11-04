@@ -128,7 +128,7 @@ def works_for(repo: SQLiteRepository, author_id: str, client: OpenAlexClient) ->
 def rank_one(r: dict[str, str], works: list[Work], opps: dict[str, Opportunity],
              index: VectorIndex, embedder: Embedder, reranker: Reranker | None,
              cache: RerankCache | None, mode: str, months: int, config: str,
-             extra: list[Work] | None = None) -> Row:
+             extra: list[Work] | None = None, rerank_in: int = RERANK_IN) -> Row:
     """`extra`: documents added as threads the way private mode adds them (S13 task 8)."""
     t0 = time.perf_counter()
     start = date.fromisoformat(r["award_start"])
@@ -145,8 +145,8 @@ def rank_one(r: dict[str, str], works: list[Work], opps: dict[str, Opportunity],
     ret = retrieve(profile, PoolIndex(index, eligible, len(opps)), k=RETRIEVE_K, mode=mode)
     cands = ret.candidates
     if reranker is not None:
-        head, _ = rerank(cands[:RERANK_IN], opps, profile, reranker, cache, top=RERANK_IN)
-        order = [x.opportunity.id for x in head] + [x.record_id for x in cands[RERANK_IN:]]
+        head, _ = rerank(cands[:rerank_in], opps, profile, reranker, cache, top=rerank_in)
+        order = [x.opportunity.id for x in head] + [x.record_id for x in cands[rerank_in:]]
     else:
         order = [x.record_id for x in cands]
     rank = order.index(truth) + 1 if truth in order else None
@@ -178,11 +178,35 @@ def make_reranker(key: str, device: str | None) -> Reranker:
     return make(DEFAULT_MODEL if key == "qwen3-reranker-0.6b" else f"systemone:{key}", device)
 
 
+class TimedReranker(Reranker):
+    """Wraps a reranker and adds up the seconds spent scoring (S38 CPU latency)."""
+
+    def __init__(self, inner: Reranker) -> None:
+        self.inner, self.name, self.seconds, self.pairs = inner, inner.name, 0.0, 0
+
+    def score(self, query: str, docs: list[str]) -> list[float]:
+        t = time.perf_counter()
+        out = self.inner.score(query, docs)
+        self.seconds += time.perf_counter() - t
+        self.pairs += len(docs)
+        return out
+
+
 def run(embedder_name: str, configs: list[tuple[str, str, str | None]],
         months: int = WINDOW_MONTHS, device: str | None = None, rows_path: Path = PIS,
-        strata: tuple[str, ...] = ("targeted", "parent")) -> dict[str, list[Row]]:
-    """configs: (label, retrieval mode, reranker key or None). Returns rows per label."""
+        strata: tuple[str, ...] = ("targeted", "parent"), store: str = "sqlite",
+        dsn: str | None = None, rerank_cache: Path = Path("data/bench/cache/rerank.db"),
+        rerank_log: list[dict] | None = None, rerank_in: int = RERANK_IN
+        ) -> dict[str, list[Row]]:
+    """configs: (label, retrieval mode, reranker key or None). Returns rows per label.
+    store "postgres" (S38) reads records and vectors from the shipped v1 path: PostgresRepository
+    and PgVectorIndex (pgvector HNSW dense, tsvector sparse) at `dsn`. The default store is
+    unchanged. `rerank_log` collects per-row reranker seconds, pairs scored and cache hits."""
     load_dotenv()
+    if store == "postgres":
+        return _run_postgres(embedder_name, configs, months, device, rows_path, strata,
+                             dsn or env("PERCH_DATABASE_URL"), rerank_cache, rerank_log,
+                             rerank_in)
     rows = [r for r in load_rows(rows_path) if r["stratum"] in strata]
     embedder = get_embedder(embedder_name, cache=Path("data/cache/embeddings.db"), device=device)
     rerankers = {k: make_reranker(k, device) for k in {rr for _, _, rr in configs if rr}}
@@ -208,6 +232,51 @@ def run(embedder_name: str, configs: list[tuple[str, str, str | None]],
     return out
 
 
+def _run_postgres(embedder_name: str, configs: list[tuple[str, str, str | None]], months: int,
+                  device: str | None, rows_path: Path, strata: tuple[str, ...], dsn: str | None,
+                  rerank_cache: Path, rerank_log: list[dict] | None,
+                  rerank_in: int = RERANK_IN) -> dict[str, list[Row]]:
+    from perch.store.postgres import PgVectorIndex, PostgresRepository
+
+    if not dsn:
+        raise SystemExit("--store postgres needs --dsn or PERCH_DATABASE_URL")
+    rows = [r for r in load_rows(rows_path) if r["stratum"] in strata]
+    embedder = get_embedder(embedder_name, cache=Path("data/cache/embeddings.db"), device=device)
+    rerankers = {k: TimedReranker(make_reranker(k, device))
+                 for k in {rr for _, _, rr in configs if rr}}
+    cache = RerankCache(rerank_cache)
+    repo = PostgresRepository(dsn, role="worker")
+    index = PgVectorIndex(dsn, "opportunities", embedder.name)
+    try:
+        opps = {o.id: o for o in repo.list(Opportunity)}
+        cov = coverage(rows, {o.opportunity_number for o in opps.values()}, months)
+        ready = [r for r in rows if cov[r["alias"] + r["stratum"]] >= 1.0]
+        print(f"{len(ready)} of {len(rows)} rows have a complete window "
+              f"({len(opps)} announcements in Postgres)", flush=True)
+        if index.ids() != set(opps):
+            raise SystemExit("the Postgres vector index does not cover every announcement")
+        out: dict[str, list[Row]] = {label: [] for label, _, _ in configs}
+        for r in ready:
+            works = repo.works_by_author(f"https://openalex.org/{r['openalex_id']}")
+            if not works:
+                raise SystemExit(f"no works in Postgres for {r['alias']}")
+            for label, mode, rr in configs:
+                tr = rerankers[rr] if rr else None
+                s0, p0 = (tr.seconds, tr.pairs) if tr else (0.0, 0)
+                row = rank_one(r, works, opps, index, embedder, tr, cache, mode, months, label,
+                               rerank_in=rerank_in)
+                out[label].append(row)
+                if rerank_log is not None and tr:
+                    rerank_log.append({"alias": r["alias"], "stratum": r["stratum"],
+                                       "config": label, "rerank_seconds": round(tr.seconds - s0, 2),
+                                       "pairs_scored": tr.pairs - p0, "row_seconds": row.seconds})
+                print(r["alias"], r["stratum"], label, row.rank, row.seconds, flush=True)
+    finally:
+        index.close()
+        repo.close()
+    return out
+
+
 def write(results: dict[str, list[Row]], name: str) -> Path:
     RESULTS.mkdir(parents=True, exist_ok=True)
     path = RESULTS / f"backtest_{name}.csv"
@@ -224,11 +293,41 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--embedder", default="Qwen/Qwen3-Embedding-0.6B")
     ap.add_argument("--device")
     ap.add_argument("--months", type=int, default=WINDOW_MONTHS)
+    ap.add_argument("--store", choices=("sqlite", "postgres"), default="sqlite")
+    ap.add_argument("--dsn", help="Postgres URL for --store postgres")
+    ap.add_argument("--threads", type=int, help="torch CPU threads")
+    ap.add_argument("--out", type=Path, help="write CSV, JSON and latency here (postgres runs)")
+    ap.add_argument("--rerank-cache", type=Path, default=Path("data/bench/cache/rerank.db"))
+    ap.add_argument("--strata", nargs="*", default=["targeted", "parent"])
+    ap.add_argument("--rerank-in", type=int, default=RERANK_IN)
+    ap.add_argument("--configs", nargs="*", help="labels to run (default: all three)")
     a = ap.parse_args(argv)
+    if a.threads:
+        import torch
+
+        torch.set_num_threads(a.threads)
     configs = [("keyword-only", "bm25", None), ("hybrid", "hybrid", None),
                ("hybrid+rerank", "hybrid", "qwen3-reranker-0.6b")]
-    res = run(a.embedder, configs, a.months, a.device)
-    print(write(res, slug(a.embedder)), datetime.now(UTC).isoformat())
+    if a.configs:
+        configs = [c for c in configs + [("dense", "dense", None)] if c[0] in a.configs]
+    if a.store == "postgres":
+        log: list[dict] = []
+        res = run(a.embedder, configs, a.months, a.device, store="postgres", dsn=a.dsn,
+                  rerank_cache=a.rerank_cache, rerank_log=log, rerank_in=a.rerank_in,
+                  strata=tuple(a.strata))
+        out = a.out or Path("bench/results/s38_backtest")
+        out.mkdir(parents=True, exist_ok=True)
+        tag = "_".join(label.replace("+", "_") for label in res) + f"_in{a.rerank_in}"
+        if len(a.strata) != 2:
+            tag += "_" + "_".join(a.strata)
+        with (out / f"backtest_postgres_{tag}.csv").open("w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, list(Row.__dataclass_fields__))
+            w.writeheader()
+            w.writerows(asdict(x) for v in res.values() for x in v)
+        (out / f"rerank_latency_{tag}.json").write_text(json.dumps(log, indent=1), "utf-8")
+    else:
+        res = run(a.embedder, configs, a.months, a.device)
+        print(write(res, slug(a.embedder)), datetime.now(UTC).isoformat())
     for label, rows in res.items():
         for stratum in ("targeted", "parent"):
             print(label, stratum, summarise([x for x in rows if x.stratum == stratum]))

@@ -1,0 +1,386 @@
+[
+ {
+  "alias": "PI-6",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 53.61,
+  "pairs_scored": 86,
+  "row_seconds": 55.22
+ },
+ {
+  "alias": "PI-7",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 49.82,
+  "pairs_scored": 86,
+  "row_seconds": 51.28
+ },
+ {
+  "alias": "PI-8",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 52.45,
+  "pairs_scored": 86,
+  "row_seconds": 54.39
+ },
+ {
+  "alias": "PI-1",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 0.0,
+  "pairs_scored": 0,
+  "row_seconds": 0.06
+ },
+ {
+  "alias": "PI-9",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 50.85,
+  "pairs_scored": 86,
+  "row_seconds": 54.75
+ },
+ {
+  "alias": "PI-10",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 49.34,
+  "pairs_scored": 86,
+  "row_seconds": 51.12
+ },
+ {
+  "alias": "PI-2",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 44.63,
+  "pairs_scored": 86,
+  "row_seconds": 45.75
+ },
+ {
+  "alias": "PI-11",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 52.17,
+  "pairs_scored": 86,
+  "row_seconds": 54.31
+ },
+ {
+  "alias": "PI-12",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 53.75,
+  "pairs_scored": 86,
+  "row_seconds": 55.38
+ },
+ {
+  "alias": "PI-13",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 49.5,
+  "pairs_scored": 86,
+  "row_seconds": 50.54
+ },
+ {
+  "alias": "PI-14",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 51.2,
+  "pairs_scored": 86,
+  "row_seconds": 53.37
+ },
+ {
+  "alias": "PI-15",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 51.22,
+  "pairs_scored": 86,
+  "row_seconds": 52.93
+ },
+ {
+  "alias": "PI-16",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 46.11,
+  "pairs_scored": 86,
+  "row_seconds": 47.54
+ },
+ {
+  "alias": "PI-17",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 0.0,
+  "pairs_scored": 0,
+  "row_seconds": 0.06
+ },
+ {
+  "alias": "PI-18",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 44.91,
+  "pairs_scored": 86,
+  "row_seconds": 45.9
+ },
+ {
+  "alias": "PI-19",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 44.76,
+  "pairs_scored": 86,
+  "row_seconds": 45.75
+ },
+ {
+  "alias": "PI-20",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 49.42,
+  "pairs_scored": 86,
+  "row_seconds": 50.94
+ },
+ {
+  "alias": "PI-21",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 48.59,
+  "pairs_scored": 86,
+  "row_seconds": 51.4
+ },
+ {
+  "alias": "PI-22",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 47.81,
+  "pairs_scored": 86,
+  "row_seconds": 50.55
+ },
+ {
+  "alias": "PI-23",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 33.38,
+  "pairs_scored": 86,
+  "row_seconds": 33.73
+ },
+ {
+  "alias": "PI-24",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 44.18,
+  "pairs_scored": 86,
+  "row_seconds": 46.35
+ },
+ {
+  "alias": "PI-25",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 0.0,
+  "pairs_scored": 0,
+  "row_seconds": 0.07
+ },
+ {
+  "alias": "PI-26",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 52.12,
+  "pairs_scored": 86,
+  "row_seconds": 55.52
+ },
+ {
+  "alias": "PI-27",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 51.76,
+  "pairs_scored": 86,
+  "row_seconds": 53.71
+ },
+ {
+  "alias": "PI-28",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 37.31,
+  "pairs_scored": 86,
+  "row_seconds": 37.79
+ },
+ {
+  "alias": "PI-29",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 34.6,
+  "pairs_scored": 86,
+  "row_seconds": 35.04
+ },
+ {
+  "alias": "PI-30",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 34.17,
+  "pairs_scored": 86,
+  "row_seconds": 34.6
+ },
+ {
+  "alias": "PI-31",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 44.27,
+  "pairs_scored": 86,
+  "row_seconds": 45.29
+ },
+ {
+  "alias": "PI-32",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 45.72,
+  "pairs_scored": 86,
+  "row_seconds": 47.25
+ },
+ {
+  "alias": "PI-33",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 39.96,
+  "pairs_scored": 86,
+  "row_seconds": 41.85
+ },
+ {
+  "alias": "PI-34",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 46.45,
+  "pairs_scored": 86,
+  "row_seconds": 47.76
+ },
+ {
+  "alias": "PI-35",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 37.33,
+  "pairs_scored": 86,
+  "row_seconds": 37.98
+ },
+ {
+  "alias": "PI-36",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 0.0,
+  "pairs_scored": 0,
+  "row_seconds": 0.06
+ },
+ {
+  "alias": "PI-37",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 39.9,
+  "pairs_scored": 86,
+  "row_seconds": 40.32
+ },
+ {
+  "alias": "PI-38",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 47.68,
+  "pairs_scored": 86,
+  "row_seconds": 48.44
+ },
+ {
+  "alias": "PI-39",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 0.0,
+  "pairs_scored": 0,
+  "row_seconds": 0.06
+ },
+ {
+  "alias": "PI-40",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 0.0,
+  "pairs_scored": 0,
+  "row_seconds": 0.05
+ },
+ {
+  "alias": "PI-41",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 46.43,
+  "pairs_scored": 86,
+  "row_seconds": 47.28
+ },
+ {
+  "alias": "PI-42",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 44.33,
+  "pairs_scored": 86,
+  "row_seconds": 45.57
+ },
+ {
+  "alias": "PI-43",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 47.1,
+  "pairs_scored": 86,
+  "row_seconds": 49.87
+ },
+ {
+  "alias": "PI-44",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 43.59,
+  "pairs_scored": 86,
+  "row_seconds": 44.32
+ },
+ {
+  "alias": "PI-45",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 51.33,
+  "pairs_scored": 86,
+  "row_seconds": 54.19
+ },
+ {
+  "alias": "PI-46",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 46.06,
+  "pairs_scored": 86,
+  "row_seconds": 47.54
+ },
+ {
+  "alias": "PI-47",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 43.44,
+  "pairs_scored": 86,
+  "row_seconds": 45.02
+ },
+ {
+  "alias": "PI-48",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 47.29,
+  "pairs_scored": 86,
+  "row_seconds": 50.82
+ },
+ {
+  "alias": "PI-49",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 38.44,
+  "pairs_scored": 86,
+  "row_seconds": 39.4
+ },
+ {
+  "alias": "PI-50",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 41.82,
+  "pairs_scored": 86,
+  "row_seconds": 44.05
+ },
+ {
+  "alias": "PI-51",
+  "stratum": "targeted",
+  "config": "hybrid+rerank",
+  "rerank_seconds": 37.36,
+  "pairs_scored": 86,
+  "row_seconds": 37.92
+ }
+]
