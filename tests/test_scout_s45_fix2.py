@@ -139,3 +139,20 @@ def test_a_sentence_citing_a_real_record_may_use_the_same_words():
                  "You have nothing saved yet [user:saved].",
                  "I found no records for that.", "Which one should I read in full?"]:
         assert ans.grade(text, seen, set(), AS_OF).ok, text
+
+
+# --- R3: history drops budget-answered and unanswered user messages ---
+
+def test_history_drops_budget_answered_and_unanswered_user_messages():
+    from perch.scout import texts
+    from perch.scout.turn import history_of
+
+    msgs = [
+        {"id": "1", "role": "user", "kind": "question", "text": "inject one"},
+        {"id": "2", "role": "assistant", "kind": "budget", "text": texts.BUDGET},
+        {"id": "3", "role": "user", "kind": "question", "text": "cancelled before the gate"},
+        {"id": "4", "role": "user", "kind": "question", "text": "Which lead is strongest?"},
+        {"id": "5", "role": "assistant", "kind": "answer", "text": "The first one."},
+        {"id": "6", "role": "user", "kind": "question", "text": "still pending"}]
+    assert [(m.role, m.content) for m in history_of(msgs)] == [
+        ("user", "Which lead is strongest?"), ("assistant", "The first one.")]

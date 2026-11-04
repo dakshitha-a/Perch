@@ -109,17 +109,22 @@ def user_message(question: str | None = None, intent: str | None = None) -> dict
 def history_of(messages: list[dict[str, Any]]) -> list[Message]:
     """The last few text exchanges, as plain messages. Tool results are not kept, so a CV
     part read in an earlier turn is read again if it is needed (and blanked again). A question
-    that was refused or answered with the distress text is dropped with its reply, so a refused
-    message never reaches a model through the history (S45 S2)."""
+    that was refused, answered with the distress or budget text, or never answered is dropped
+    (with its reply), so a message that was not screened never reaches a model through the history (S45 S2)."""
     drop: set[int] = set()
     for i, m in enumerate(messages):
-        if m.get("role") == "assistant" and m.get("kind") in ("refusal", "distress"):
+        if m.get("role") == "assistant" and m.get("kind") in ("refusal", "distress", "budget"):
             drop.add(i)
             j = i - 1
             while j >= 0 and messages[j].get("role") != "user":
                 j -= 1
             if j >= 0:
                 drop.add(j)
+        # A user message nothing answers (cancelled before the gate, or still pending) was
+        # never screened, so it is not replayed either (S45 R3).
+        if m.get("role") == "user" and (i + 1 == len(messages)
+                                        or messages[i + 1].get("role") == "user"):
+            drop.add(i)
     out: list[Message] = []
     for m in [m for i, m in enumerate(messages)
               if i not in drop and m.get("text") and m.get("kind") != "error"
