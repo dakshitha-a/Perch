@@ -110,8 +110,10 @@ function route() {
   else if (S.flash && S.flashFor !== location.hash) { S.flash = null; drawBanner(); }
   const sess = S.session;
   // A new account, or one whose consent text changed, finishes the welcome screen first.
+  // The public lists and the account page need no agreement, so they stay open (S43 S12, M6).
+  const OPEN = ["welcome", "account", "awards", "funding", "samples"];
   if (sess.signed_in && (sess.needs_welcome || (sess.consent && sess.consent.required))
-      && parts[0] !== "welcome") {
+      && !OPEN.includes(parts[0])) {
     leaveBrief();
     goReplace(`#/welcome${returnQuery()}`);
     return;
@@ -1090,7 +1092,7 @@ function renderStudentPanel(panel) {
   if (panel.dataset.sig === sig) return;
   panel.dataset.sig = sig;
   const ctx = { brief: d, route: S.route, papers: d.papers || {}, openEvidence, setLead, announce, api,
-    offices: api.studentOffices,
+    offices: api.studentOffices, guest: Boolean(S.session.guest), signIn: signInHref(),
     briefId: S.briefId, setRoute: switchRoute,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) };
   if (S.tab === "profile") keepFocus(() => fill(panel, ...studentProfile(d, ctx)));
@@ -1109,7 +1111,8 @@ function drawCompare(focusKey) {
   renderCompare(panel, { keptCount: kept.length, openEvidence, redraw: drawCompare, handoff: true,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) });
   renderHandoff(panel.querySelector(".handoff-box"), { api, briefId: S.briefId, announce,
-    kept: leadsOf().filter((l) => l.status === "kept"), offices: compareOffices(), redraw: drawCompare });
+    kept: leadsOf().filter((l) => l.status === "kept"), offices: compareOffices(), redraw: drawCompare,
+    guest: Boolean(S.session.guest), signIn: signInHref() });
   if (kept.length) loadCompare(api, S.briefId, kept, () => drawCompare());
   if (focusKey) panelFocus(focusKey);
 }

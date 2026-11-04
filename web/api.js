@@ -20,15 +20,20 @@ const ERROR_WORDS = {
   audience_not_held: "That side is not on your account.",
   rate_limited: "You have reached your limit for now. Try again later.",
   quota_exceeded: "You have reached your limit for now. Try again later.",
+  // DRAFT copy (S43 S13): the key is already destroyed when this one comes back.
+  delete_incomplete: "Your key is destroyed, so your data can no longer be read. Clean-up did not finish. Press Delete again to finish it.",
 };
+// DRAFT copy (S43 S17): plain words for a student, not for the person running the server.
+const UNREACHABLE = "Perch could not be reached. Check your connection and try again.";
+const UNKNOWN = "Something went wrong on Perch's side. Try again in a minute.";
 
 function detailText(body, status) {
   const d = body && body.detail;
   if (typeof d === "string") return d;
   if (d && typeof d === "object" && !Array.isArray(d)) {
-    return ERROR_WORDS[d.error] || `The server answered ${status}.`;
+    return ERROR_WORDS[d.error] || UNKNOWN;
   }
-  return `The server answered ${status}.`;
+  return UNKNOWN;
 }
 
 function failed(body, status) {
@@ -53,7 +58,7 @@ async function call(base, path, opts = {}) {
   try {
     r = await fetch(base + path, { headers: { "Content-Type": "application/json" }, ...opts });
   } catch {
-    throw new ApiError("Perch's server did not answer. Check that `perch serve` is running.", 0);
+    throw new ApiError(UNREACHABLE, 0);
   }
   const body = await r.json().catch(() => ({}));
   if (!r.ok) throw failed(body, r.status);
@@ -121,7 +126,7 @@ export function liveApi(base = "") {
         r = await fetch(`${base}${bid(id)}`, { headers: { ...hdr("GET"),
           ...(last.etag && last.id === id ? { "If-None-Match": last.etag } : {}) } });
       } catch {
-        throw new ApiError("Perch's server did not answer. Check that `perch serve` is running.", 0);
+        throw new ApiError(UNREACHABLE, 0);
       }
       if (r.status === 304 && last.body && last.id === id) return JSON.parse(last.body);
       const text = await r.text();
@@ -144,7 +149,7 @@ export function liveApi(base = "") {
       try {
         r = await fetch(`${base}${bid(id)}/export.${kind}${status ? `?status=${encodeURIComponent(status)}` : ""}`);
       } catch {
-        throw new ApiError("Perch's server did not answer. Check that `perch serve` is running.", 0);
+        throw new ApiError(UNREACHABLE, 0);
       }
       if (!r.ok) lost(failed(await r.json().catch(() => ({})), r.status), from);
       return r.blob();
@@ -177,6 +182,7 @@ export function liveApi(base = "") {
     setRoles: (roles) => post("/me/roles", { roles }),
     setAudience: (side) => post("/me/audience", { audience: side }),
     consent: (version) => post("/me/consent", { version }),
+    withdrawConsent: () => post("/me/consent/withdraw", {}),
     linkOpenAlex: (authorId) => p("/me/openalex", { method: "PUT", body: JSON.stringify({ author_id: authorId }) }),
     docs: (side = null) => p(`/me/docs${query({ audience: side })}`),
     addDoc: (body, side = null) => post(`/me/docs${query({ audience: side })}`, body),

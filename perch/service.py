@@ -638,7 +638,7 @@ class BriefService:
     def _run_scholarships(self, b: Brief) -> tuple[str, bool]:
         from perch.student import samples
 
-        if not b.options.get("persona"):
+        if not _has_sample_route(b):
             # A signed-in student's brief holds public records only; the SYNTHETIC samples
             # live on their own screen (fork F6, S43 M4). Only a guest's sample persona has this route.
             return "sample scholarships are on their own screen", True
@@ -685,6 +685,11 @@ class BriefService:
                                 audience="student")
         flagged = sum(v.flagged for v in results)
         return f"{len(results) - flagged} explained, {flagged} withheld", False
+
+
+def _has_sample_route(b: Brief) -> bool:
+    """Only a guest's SYNTHETIC sample persona has the sample route (S43 M4)."""
+    return bool(b.options.get("persona"))
 
 
 def said_text(options: dict) -> str:

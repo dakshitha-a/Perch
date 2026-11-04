@@ -73,8 +73,8 @@ def _side(s: Session, audience: str | None) -> Literal["researcher", "student"]:
 
 
 def _consented(s: Session) -> None:
-    """Reading or writing the CV, entries or documents needs the current consent (7.5).
-    Deleting does not: a user who withdrew can still remove what is stored."""
+    """Writing the CV, entries or documents, or building from them, needs the current consent
+    (7.5). Listing and deleting do not: a user who withdrew can still see and remove what is stored."""
     deps.require_consent(s)
 
 
@@ -89,7 +89,8 @@ def _limit(sv: UserServices, uid: UUID, scope: str) -> None:
 @router.get("/me/docs")
 def list_docs(audience: str | None = None, s: Session = Depends(deps.require_user),
               sv: UserServices = Depends(services)) -> list[dict]:
-    _consented(s)
+    # Listing what is stored (names and kinds, never text) needs no consent, so a user who
+    # withdrew can still see what Perch holds before deleting it (S43 M6).
     return docs.listing(sv.ud, _uid(s), _side(s, audience))
 
 

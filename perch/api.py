@@ -836,6 +836,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
         function as Scout's draft_note, so there is one source."""
         from perch.scout.student_tools import facts_of, record_of, write_note
 
+        signed_in(sess)  # a note to an office needs an account, on both sides (decided 2026-11-04)
         with scope(request, sess, brief_id):
             b, leads = load(brief_id)
             if not b.options.get("student"):

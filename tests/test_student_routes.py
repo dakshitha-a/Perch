@@ -55,6 +55,8 @@ def test_a_guest_student_brief_reads_the_sample_persona_and_stores_nothing(
     assert c.post(f"/briefs/{got['_id']}/scout", json={"question": "hi"}).status_code == 403
     r = c.post(f"/briefs/{got['_id']}/handoff", json={"office": "research_development"})
     assert r.status_code == 403
+    # a note to an office needs an account too (decided 2026-11-04)
+    assert c.get(f"/briefs/{got['_id']}/student/note?route=F").status_code == 403
     md = c.get(f"/briefs/{got['_id']}/export.md").text
     assert "SAMPLE DATA" in md and "your own documents" not in md
 
@@ -111,6 +113,19 @@ def test_the_compare_note_is_written_once_on_the_server(env, tmp_path, monkeypat
     assert n["office"] == OFFICES["S"][0] and n["sample"] and n["to"] == ""
     assert n["body"].startswith("SAMPLE DATA") and "(SAMPLE record, not real)" in n["body"]
     assert n["subject"] == "Advice on scholarships: 1 on my list"
+
+
+def test_a_signed_in_student_brief_has_no_sample_route(env, tmp_path, monkeypatch):  # noqa: F811
+    """S43 M4: the SYNTHETIC samples live on their own screen, so a real account's brief
+    holds public leads only and its sample stage is skipped."""
+    consent(env, monkeypatch)
+    add_persona(env, "persona-ug")
+    c, svc = account_app(env, tmp_path, monkeypatch, samples=False)
+    got = run_brief(env, svc, c)
+    assert got["brief"]["status"] == "done"
+    assert {x["route"] for x in got["leads"]} == {"F"} and not any(x["sample"] for x in got["leads"])
+    stage = next(s for s in got["brief"]["stages"] if s["name"] == "scholarships")
+    assert stage["status"] == "skipped"
 
 
 def test_a_brief_poll_answers_304_while_nothing_changed(env, tmp_path, monkeypatch):  # noqa: F811

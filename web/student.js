@@ -421,7 +421,7 @@ export function studentCompare(panel, ctx) {
   if (NOTE.keptSig !== keptSig) { NOTE.edits = {}; NOTE.subjects = {}; NOTE.got = {}; NOTE.keptSig = keptSig; }
   // The note is written by the server, by the same code as Scout's draft_note (review W9).
   const route = NOTE.office;
-  if (!NOTE.got[route]) {
+  if (!ctx.guest && !NOTE.got[route]) {
     NOTE.got[route] = { wait: true };
     const ask = api && api.studentNote ? api.studentNote(ctx.briefId, route) : Promise.reject(new Error("The note needs the live app."));
     ask.then((n) => { NOTE.got[route] = { note: n }; }, (e) => { NOTE.got[route] = { error: e.message }; })
@@ -455,8 +455,11 @@ export function studentCompare(panel, ctx) {
           h("span", {}, h("b", { text: officeName(r) }), h("br"),
             h("span", { class: "hint", text: r === "F" ? "For the kept fellowships" : "For the kept sample scholarships" }))))),
       // Code writes the note at once, so it shows without a Draft press (review W8).
-      h("p", { class: "hint", text: "Code writes this note; no model. Perch never sends it." }),
-      got.note ? note(route, got.note, announce)
+      // DRAFT copy (decided 2026-11-04): a note to an office needs an account, so a guest gets a link.
+      ctx.guest ? h("p", {}, h("a", { class: "btn primary", href: ctx.signIn, "data-key": "note-signin", text: "Sign in to draft a note to the office" }))
+        : h("p", { class: "hint", text: "Code writes this note; no model. Perch never sends it." }),
+      ctx.guest ? null
+      : got.note ? note(route, got.note, announce)
         : got.error ? h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The note could not be written: ${got.error}` }))
           : h("p", { class: "hint st-note-wait", role: "status", text: "Writing the note…" })),
     // Public fellowships and SYNTHETIC samples never share a table (U10, standing rule 11).
