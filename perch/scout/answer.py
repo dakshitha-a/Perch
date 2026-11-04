@@ -38,8 +38,7 @@ from datetime import date
 from typing import Any
 
 from perch import validate
-from perch.grounding import Grounder
-from perch.grounding import THRESHOLD
+from perch.grounding import THRESHOLD, Grounder
 from perch.schemas import Opportunity, Record, Scholarship
 from perch.scout.read_tools import NOT_STATED, ReadTools, facts
 from perch.scout.texts import GENERAL_LABEL
