@@ -104,7 +104,7 @@ def test_finding_must_name_a_given_and_cited_paper():
     p, log = audited([fit_reply(GOOD, finding_id="W9"), fit_reply(GOOD, finding_id="W2")])
     (v,) = explain_leads([OPP], PROFILE, WORKS, p)
     assert v.flagged
-    assert any("W9" in e for e in log.events[1]["errors"])
+    assert log.events[1]["error_codes"] and log.events[1]["error_count"] >= 1
 
 
 # --- skill 3, hand-off drafter (SYNTHETIC records) ---
@@ -387,3 +387,42 @@ def test_cover_points_grounder_flags_without_withholding_and_the_prompt_fits_the
     assert len(sent["system"]) + len(sent["messages"][0].content) < PROMPT_CHARS
     assert "Rule check, written by code:\n- Open to year 4" in sent["messages"][0].content
     assert "user:cv" in records and len([k for k in records if k.startswith("W")]) <= 6
+
+
+# --- M1: the audit log holds error codes, never quoted text ---
+
+CVTOK = "SYNTHETIC-CV-ZEBRAQUILL"
+
+
+def test_audit_validation_logs_codes_not_quoted_text(tmp_path):
+    path = tmp_path / "model_calls.jsonl"
+    log = AuditLog(path)
+    errs = [f"point 1 asks ({CVTOK!r}) is a fragment: write one full sentence",
+            f"point 2 you says '{CVTOK}', a gap in the record: missing lists what",
+            f"date '{CVTOK}' is not a real date", f"unsupported: {CVTOK} was funded",
+            f"something new about {CVTOK}"]
+    log.validation("c1", "cover", False, errs, 1)
+    text = path.read_text() + json.dumps(list(log.events))
+    assert CVTOK not in text
+    ev = log.events[0]
+    assert ev["error_count"] == 5 and "errors" not in ev
+    assert ev["error_codes"] == {"date_invalid": 1, "fragment": 1, "missing_form": 1,
+                                 "other": 1, "unsupported": 1}
+
+
+def test_failing_model_output_with_cv_token_is_not_logged(tmp_path):
+    path = tmp_path / "log.jsonl"
+    log = AuditLog(path)
+    bad = fit_reply(f"PAR-1 funds {CVTOK} grants 4242. studied living kidney donor communication.")
+    p = AuditedProvider(FakeProvider([bad, bad]), log, "x")
+    (v,) = explain_leads([OPP], PROFILE, WORKS, p)
+    assert v.flagged
+    assert CVTOK not in path.read_text() + json.dumps(list(log.events))
+
+
+def test_audit_events_are_bounded():
+    from perch.llm import audit
+    log = AuditLog(None)
+    for i in range(audit.MAX_EVENTS + 10):
+        log.write({"kind": "x", "i": i})
+    assert len(log.events) == audit.MAX_EVENTS and log.events[0]["i"] == 10

@@ -570,3 +570,13 @@ def test_openalex_link_is_validated_and_stored_encrypted(acct) -> None:
         rows(db, "SELECT id FROM users")[0][0]) == "A5000000001"
     assert c.get("/auth/session").json()["openalex_linked"] is True
     assert c.put("/me/openalex", json={"author_id": "A5000000001"}).status_code == 403  # csrf
+
+
+def test_rate_limited_audit_is_one_row_per_subject_window(r, monkeypatch) -> None:
+    from perch.auth import audit
+    rows = []
+    monkeypatch.setattr(audit, "record", lambda req, event, **kw: rows.append((event, kw)))
+    c = TestClient(make_app(r, pool=object(), provider=FakeProvider()))
+    for _ in range(12):
+        c.get("/auth/callback?code=c&state=s", follow_redirects=False)
+    assert rows == [("rate_limited", {"scope": "login_callback"})]
