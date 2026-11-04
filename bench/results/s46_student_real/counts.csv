@@ -1,0 +1,4 @@
+persona,status,leads,eligible_leads,explained_attempted,shown,withheld,minicheck_unsupported,mc_opp_sentence,mc_finding,attempts_total,model_calls,input_tokens,output_tokens,cache_read_tokens,cache_write_tokens,usd,seconds,first_reasons,all_reasons
+persona-ug,done,87,20,20,20,0,16,11,16,20,20,2549,10396,26260,0,0.1143,41,{},{}
+persona-masters,done,107,20,20,20,0,20,7,20,20,20,2456,9621,25800,0,0.1063,29,{},{}
+persona-phd,done,76,20,20,19,1,9,7,4,22,22,2753,10870,28314,0,0.1199,32,"{""opp_sentence_not_one"": 1}","{""opp_sentence_not_one"": 1}"
