@@ -167,7 +167,7 @@ function student() {
     ["Narrow the list", "Pick a school tag to see that school’s awards first, then the awards open across Temple. The search box and the level menu narrow it further.", figTags()],
     ["Check my fit", "Sign in, save your CV and press Find awards that fit. With no account, press Try a sample student: it is an invented SYNTHETIC student, labelled as sample data.", figDocs()],
     ["Read the verdicts", "Each option shows a rule check: Eligible, May be eligible or Not eligible. Still needed lists what the record asks for and your CV does not show.", figVerdicts()],
-    ["Compare and send the note", "Keep options, then Compare them and pick the Temple office. Code writes a short note for you to copy or open in your mail app. A guest can keep and compare too.", figHandoff(true)],
+    ["Compare and send the note", "Keep options, then Compare them and pick the Temple office. Code writes a short note for you to copy or open in your mail app. A guest can keep and compare; the note needs an account.", figHandoff(true)],
   ]);
 }
 

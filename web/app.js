@@ -1130,7 +1130,8 @@ function drawScout() {
   const panel = $("#panel");
   if (!panel || S.tab !== "scout" || !S.brief) return;
   renderScout(panel, { api, briefId: S.briefId, done: S.brief.brief.status === "done", student: isStudent(S.brief),
-    openEvidence, announce, rerender: drawScout, label: recordLabel });
+    openEvidence, announce, rerender: drawScout, label: recordLabel,
+    signedIn: Boolean(S.session && S.session.signed_in), signIn: signInHref() });
 }
 
 // How Scout names a record of this brief (U8): a grant by its opportunity number; a

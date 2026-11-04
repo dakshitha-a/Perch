@@ -744,6 +744,22 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
         body = scout_session("11111111-1111-1111-1111-111111111111", bid, cur["q"], cur["msg"])
         await route.fulfill(json=body)
     await page.route(re.compile(r".*/(briefs/[^/?]+/scout|scout/[^/?]+(/[a-z]+)?)(\?.*)?$"), stub)
+    # S46: a guest gets the sign-in prompt, not a question box that cannot send.
+    await page.goto(base + f"/#/brief/{bid}/scout")
+    await page.wait_for_selector("[data-key=scout-signin], #scout-q")
+    w.check("scout_guest_sees_signin", await page.locator("[data-key=scout-signin]").count() == 1
+            and await page.locator("#scout-q").count() == 0, "guest Scout panel")
+    await w.snap(page, tag, "scout-guest")
+    # Then the UI is told it is signed in (the brief stays the guest's), so the answer states show.
+    signed = {"signed_in": True, "guest": False, "roles": ["student"], "audience": "student",
+              "csrf": "walk-csrf", "display_name": "Sam Example Walker", "expires_at": 9999999999,
+              "consent": {"required": False, "current_version": 1, "accepted_version": 1,
+                          "provider_name": "SYNTHETIC Provider", "text": CONSENT},
+              "needs_welcome": False}
+
+    async def session_stub(route: Route) -> None:
+        await route.fulfill(json=signed)
+    await page.route("**/auth/session", session_stub)
     res: dict[str, dict] = {}
     for name, msg in states.items():
         cur["msg"] = None

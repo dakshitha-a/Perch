@@ -79,6 +79,15 @@ export function renderScout(panel, ctx) {
       h("p", { class: "hint", text: "This preview plays back a saved brief, so there is no one to ask." }))));
     return;
   }
+  if (ctx.signedIn === false) {
+    // Every Scout route needs an account (perch/api.py signed_in), so a guest gets the reason
+    // and the way in, not a question box that cannot send (S46 QA round 2).
+    fill(panel, h("div", { class: "empty" }, owl("look", "owl-md"), h("div", {},
+      h("p", { class: "lede", text: "Ask Scout needs an account." }),
+      h("p", { class: "hint", text: "Scout reads your brief, the records and your CV to answer, so it works once you sign in." }),
+      h("p", {}, h("a", { class: "btn primary", href: ctx.signIn, "data-key": "scout-signin", text: "Sign in to ask Scout" })))));
+    return;
+  }
   if (!ctx.done) {
     fill(panel, h("div", { class: "empty" }, owl("look", "owl-md"), h("div", {},
       h("p", { class: "lede", text: "Scout can help once the brief has finished." }),

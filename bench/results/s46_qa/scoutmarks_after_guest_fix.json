@@ -1,0 +1,238 @@
+{
+ "checks": [
+  {
+   "name": "scoutmarks_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "scout_guest_sees_signin",
+   "ok": true,
+   "detail": "guest Scout panel"
+  },
+  {
+   "name": "scout_clean_nothing_flagged",
+   "ok": true,
+   "detail": "cites 2, notes [], checked 'Model text Written by a model; checked against the records it cites.'"
+  },
+  {
+   "name": "scout_mark_screen_reader_text",
+   "ok": true,
+   "detail": "[{'text': 'SYNTHETIC sample claim that the sample award covers travel costs.? (not confirmed by the cited record)', 'sr': '(not confirmed by the cited record)', 'glyph': '?', 'glyphHidden': 'true', 'line': 'underline', 'style': 'dotted'}]"
+  },
+  {
+   "name": "scout_mark_not_colour_only",
+   "ok": true,
+   "detail": "glyph '?', underline underline dotted"
+  },
+  {
+   "name": "scout_mark_only_matched_sentence",
+   "ok": true,
+   "detail": "1 mark"
+  },
+  {
+   "name": "scout_notice_unsupported",
+   "ok": true,
+   "detail": "'Scout could not confirm 2 sentences against the cited records. 1 underlined above, 1 listed here. Open the record before'; list ['SYNTHETIC sample claim that was cut from the text and cannot be found in it.']"
+  },
+  {
+   "name": "scout_checked_marked",
+   "ok": true,
+   "detail": "'Model text Written by a model. Some sentences could not be confirmed; they are marked.'"
+  },
+  {
+   "name": "scout_general_only_in_unsupported",
+   "ok": true,
+   "detail": "'General advice, not from records'"
+  },
+  {
+   "name": "scout_notice_flagged",
+   "ok": true,
+   "detail": "'This answer did not pass the citation check twice. 2 sentences were removed. What remains is shown, '; checked 'Model text Written by a model. It failed the citation check; sentences were removed.'"
+  },
+  {
+   "name": "scout_withheld_all",
+   "ok": true,
+   "detail": "notes [\"Scout's answer did not pass the citation check twice, so none of it is shown. Records Scout read: Evidence Evidence\"], cites 2, model tag False"
+  },
+  {
+   "name": "scoutmarks_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "scout_guest_sees_signin",
+   "ok": true,
+   "detail": "guest Scout panel"
+  },
+  {
+   "name": "scout_clean_nothing_flagged",
+   "ok": true,
+   "detail": "cites 2, notes [], checked 'Model text Written by a model; checked against the records it cites.'"
+  },
+  {
+   "name": "scout_mark_screen_reader_text",
+   "ok": true,
+   "detail": "[{'text': 'SYNTHETIC sample claim that the sample award covers travel costs.? (not confirmed by the cited record)', 'sr': '(not confirmed by the cited record)', 'glyph': '?', 'glyphHidden': 'true', 'line': 'underline', 'style': 'dotted'}]"
+  },
+  {
+   "name": "scout_mark_not_colour_only",
+   "ok": true,
+   "detail": "glyph '?', underline underline dotted"
+  },
+  {
+   "name": "scout_mark_only_matched_sentence",
+   "ok": true,
+   "detail": "1 mark"
+  },
+  {
+   "name": "scout_notice_unsupported",
+   "ok": true,
+   "detail": "'Scout could not confirm 2 sentences against the cited records. 1 underlined above, 1 listed here. Open the record before'; list ['SYNTHETIC sample claim that was cut from the text and cannot be found in it.']"
+  },
+  {
+   "name": "scout_checked_marked",
+   "ok": true,
+   "detail": "'Model text Written by a model. Some sentences could not be confirmed; they are marked.'"
+  },
+  {
+   "name": "scout_general_only_in_unsupported",
+   "ok": true,
+   "detail": "'General advice, not from records'"
+  },
+  {
+   "name": "scout_notice_flagged",
+   "ok": true,
+   "detail": "'This answer did not pass the citation check twice. 2 sentences were removed. What remains is shown, '; checked 'Model text Written by a model. It failed the citation check; sentences were removed.'"
+  },
+  {
+   "name": "scout_withheld_all",
+   "ok": true,
+   "detail": "notes [\"Scout's answer did not pass the citation check twice, so none of it is shown. Records Scout read: Evidence Evidence\"], cites 2, model tag False"
+  },
+  {
+   "name": "no_dead_modules",
+   "ok": true,
+   "detail": "requests: []"
+  },
+  {
+   "name": "targets_44_every_state",
+   "ok": true,
+   "detail": "0 targets under 44 px: []"
+  },
+  {
+   "name": "no_sideways_scroll",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "axe_clean_every_state",
+   "ok": true,
+   "detail": "[]"
+  }
+ ],
+ "errors": [],
+ "states": [
+  {
+   "tag": "w1280",
+   "name": "scout-guest",
+   "shot": "w1280-scout-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/ZiDijYivuqFc/scout",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "scout-clean",
+   "shot": "w1280-scout-clean.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/ZiDijYivuqFc/scout",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "scout-unsupported",
+   "shot": "w1280-scout-unsupported.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/ZiDijYivuqFc/scout",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "scout-flagged",
+   "shot": "w1280-scout-flagged.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/ZiDijYivuqFc/scout",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "scout-withheld_all",
+   "shot": "w1280-scout-withheld_all.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/ZiDijYivuqFc/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "scout-guest",
+   "shot": "w360-scout-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/hhItJuKMW3ud/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "scout-clean",
+   "shot": "w360-scout-clean.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/hhItJuKMW3ud/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "scout-unsupported",
+   "shot": "w360-scout-unsupported.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/hhItJuKMW3ud/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "scout-flagged",
+   "shot": "w360-scout-flagged.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/hhItJuKMW3ud/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "scout-withheld_all",
+   "shot": "w360-scout-withheld_all.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/hhItJuKMW3ud/scout",
+   "axe": []
+  }
+ ],
+ "plant": null
+}
