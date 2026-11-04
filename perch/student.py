@@ -370,6 +370,8 @@ def as_opportunity(s: Scholarship) -> Opportunity:
                        fetched_at=s.fetched_at, opportunity_number=short_id(s.id),
                        title=s.name, agency=s.sponsor or "", close_date=s.deadline,
                        award_ceiling=s.amount_max, award_floor=s.amount_min,
+                       deadline_quote=s.deadline_quote, amount_quote=s.amount_quote,
+                       details_url=s.details_url, details_fetched_at=s.details_fetched_at,
                        description=record_text(s))
 
 
