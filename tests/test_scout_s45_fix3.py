@@ -247,3 +247,33 @@ def test_out_of_budget_any_other_label_or_a_spent_cap_gets_the_budget_text():
     d, g = _deps("distress", free=False)  # the day's free screens are used up
     assert run_turn(d, [], question="life isnt worth living")["kind"] == "budget"
     assert g.calls == 0
+
+
+# --- S5: more contact shapes, and what must stay ---
+
+@pytest.mark.parametrize("text,want", [
+    ("phone no. 2152041234", "phone no. [contact removed]"),
+    ("cell #2152041234", "cell #[contact removed]"),
+    ("phone number 2152041234", "phone number [contact removed]"),
+    ("mobile: 215 204 12 34", "mobile: [contact removed]"),
+    ("jdoe at temple.edu", "[contact removed]"),
+    ("write to jdoe @ temple . edu today", "write to [contact removed] today"),
+    ("jdoe at temple dot edu", "[contact removed]"),
+    ("jdoe (at) temple.edu", "[contact removed]"),
+    ("lab site: jdoelab.ai", "lab site: [contact removed]"),
+    ("see jdoe.me for more", "see [contact removed] for more"),
+])
+def test_more_contact_shapes_are_blanked(text, want):
+    from perch.llm.contacts import blank_contacts
+    assert blank_contacts(text) == want
+
+
+@pytest.mark.parametrize("text", [
+    "Grant number 2152041234", "Award No. 1234567890", "Project ID: 1234567890",
+    "U.S. citizens, GPA 3.5, $2,000, 2027-01-15", "e.g. a poster; i.e. one page",
+    "a Ph.D. in physics", "attach report.pdf and data.csv",
+    "It is open to juniors [temple_sdfa:x].", "It closes 4 Nov 2026 [grants_gov:PAR-25-268].",
+    "meet at 5 and look at the data"])
+def test_ids_amounts_abbreviations_and_file_names_are_kept(text):
+    from perch.llm.contacts import blank_contacts
+    assert blank_contacts(text) == text
