@@ -1,0 +1,29 @@
+PASS     health ready, including the keys database  ({'status': 'ok', 'postgres': 'ok', 'redis': 'ok', 'keys': 'ok', 'ready': True})
+PASS     signed in
+PASS     the session names a user
+PASS     role set to student  (HTTP 200)
+PASS     uploading before consent is refused  (HTTP 403)
+PASS     consent accepted  (HTTP 200)
+PASS     SYNTHETIC CV uploaded  (HTTP 200)
+PASS     one user_data row for the CV  (1)
+PASS     the CV text is not readable in the stored blob
+PASS     the user has a wrapped key in perch_keys
+PASS     POST /briefs accepted  (HTTP 202 {"id":"…","job_id":"…","status":"queued","poll":"/)
+PASS     the same request again returns the same brief
+PASS     the brief finishes on the worker  (status done)
+PASS     the brief has leads  (15 leads)
+PASS     signed out  (HTTP 200)
+PASS     the old session no longer works
+PASS     the session key is gone from Redis after logout
+PASS     signed in again
+PASS     a new session id was issued
+PASS     the brief is listed after signing in again
+PASS     the brief reads back
+PASS     POST /me/delete returns 202  (HTTP 202)
+PASS     the session is gone
+PASS     the old cookie reads nothing
+PASS     no session key remains in Redis
+PASS     zero user_data rows for the user  (0 left)
+PASS     the users row is gone  (0 left)
+PASS     no key rows remain in perch_keys
+PASS     exactly one tombstone in perch_keys

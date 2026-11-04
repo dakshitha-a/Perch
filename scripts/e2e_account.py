@@ -239,6 +239,9 @@ def main() -> None:
     r = c.post("/me/roles", headers=hd, json={"roles": ["student"]})
     need(r.status_code == 200 and r.json()["roles"] == ["student"], "role set to student",
          f"HTTP {r.status_code}")
+    # A returning test user may hold consent from an earlier run; withdraw it so the check
+    # below always starts from a user without consent.
+    c.post("/me/consent/withdraw", headers=hd)
     r = c.post("/me/docs", headers=hd, json={"kind": "cv", "text": "x"})
     need(r.status_code == 403 and r.json().get("detail") == "consent_required",
          "uploading before consent is refused", f"HTTP {r.status_code}")
