@@ -50,6 +50,15 @@ Then open http://127.0.0.1:8100 in a browser. To lint and run every test, with n
 make test
 ```
 
+The tests that need Postgres or Redis are skipped by `make test`. Each has its own target, which defaults to the local test containers (Postgres on 127.0.0.1:55432, Redis DB 15 on 127.0.0.1:56379):
+
+```bash
+make test-pg      # Postgres store, jobs, migrations
+make test-keys    # key store and encryption
+make test-redis   # sessions, quotas, sign-in
+make test-user    # encrypted user data, briefs, delete-my-data, consent, idempotency
+```
+
 With real models, a brief needs Ollama for the chat model and a GPU for the embedder and reranker:
 
 ```bash
