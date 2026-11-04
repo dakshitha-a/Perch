@@ -13,6 +13,7 @@ from perch.skills import GROUND_RULES, parse_json, sentences, short_work_id, wor
 from perch.validate import Check, Validated, check, generate_validated
 
 SKILL = "profile_summary"
+PROMPT_VERSION = "summary-1"  # bump with SYSTEM or SCHEMA; keys cached text (tests/test_cache.py)
 SCHEMA = {
     "type": "object",
     "properties": {

@@ -43,7 +43,8 @@ def route_a(researcher: Researcher, repo: Repository, index: VectorIndex, embedd
             cache: RerankCache | None = None, top: int = 10,
             timings_log: Path | None = TIMINGS_LOG, profile: Profile | None = None,
             index_new: bool = True,
-            cacheable: Callable[[Thread], bool] = lambda t: True) -> RouteABrief:
+            cacheable: Callable[[Thread], bool] = lambda t: True,
+            rerank_in: int = RERANK_IN) -> RouteABrief:
     """`profile` replaces the threads built from the stored works (added threads);
     `index_new=False` skips indexing, so a private session writes nothing."""
     c = constraints or Constraints(as_of=date.today())
@@ -67,7 +68,7 @@ def route_a(researcher: Researcher, repo: Repository, index: VectorIndex, embedd
     opps = {o.id: o for o in (repo.get(Opportunity, x.record_id) for x in r.candidates) if o}
     eligible, rejected = split([opps[x.record_id] for x in r.candidates if x.record_id in opps], c)
     ok = {o.id for o in eligible}
-    pool = [x for x in r.candidates if x.record_id in ok][:RERANK_IN]
+    pool = [x for x in r.candidates if x.record_id in ok][:rerank_in]
     s = lap("eligibility", s)
     leads, hits = rerank(pool, opps, profile, reranker, cache, top=top, cacheable=cacheable)
     lap("rerank", s)

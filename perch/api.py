@@ -333,7 +333,9 @@ def dependencies() -> dict[str, str]:
     from perch.profiles import current
 
     p, out = current(), {}
-    out["ollama"] = (env("OLLAMA_BASE_URL") or "http://127.0.0.1:11434") + "/api/tags"
+    specs = [p.chat, *p.roles.values()]
+    if any(x.startswith("ollama:") for x in specs):  # cloud-cpu has no local model server
+        out["ollama"] = (env("OLLAMA_BASE_URL") or "http://127.0.0.1:11434") + "/api/tags"
     for key in (p.grounder, p.reranker):
         if key.startswith("systemone:"):
             name = key.split(":", 1)[1]

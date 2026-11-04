@@ -20,6 +20,8 @@ from datetime import date, datetime
 
 from perch.schemas import Record
 
+VALIDATOR_VERSION = "1"  # bump when a check gets stricter; it keys cached model text
+
 MONTHS = ("january february march april may june july august september october november "
           "december").split()
 MONTH_RE = r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?"

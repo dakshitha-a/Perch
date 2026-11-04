@@ -1,7 +1,8 @@
 """Model choice per deployment profile (SPEC section 11), from the S8 bench.
 
-`PERCH_PROFILE` selects one of: dev (the 8-GPU development layout), deploy-2gpu,
-deploy-1gpu. Each winner is the best measured performer for its job in
+`PERCH_PROFILE` selects one of: cloud-cpu (the default, v1: cloud models, CPU
+embedder, reranker and MiniCheck), and the GPU layouts kept for the fallback build: dev,
+deploy-2gpu, deploy-1gpu. Each winner is the best measured performer for its job in
 bench/results/RESULTS.md, or the incumbent where the bench cannot separate them;
 the runner-up is the commented line below it, so a switch is one line.
 Environment variables (PERCH_LLM_<ROLE>) still override.
@@ -9,7 +10,8 @@ Environment variables (PERCH_LLM_<ROLE>) still override.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 
 from perch.config import env
 
@@ -20,6 +22,15 @@ class ModelProfile:
     grounder: str  # validator layer 2: "minicheck", "systemone:clef-flash", "systemone:clef"
     embedder: str
     reranker: str
+    # Provider spec per role where it differs from `chat` (D-12: gate and cover_points are
+    # roles; decide is gone). Empty for the GPU profiles, which use `chat` for every role.
+    roles: Mapping[str, str] = field(default_factory=dict)
+    # Rerank candidates per brief. The plan's shrink rule lowers it if CPU rerank is slow.
+    rerank_in: int = 100  # the S27 default (perch.brief.RERANK_IN) for the GPU profiles
+    device: str | None = None  # "cpu": models run on CPU inside model slots (perch/compute.py)
+
+    def spec_for(self, role: str) -> str:
+        return self.roles.get(role, self.chat)
 
 
 # Chat: gemma4:26b-a4b passed both validator layers on 28 of 30 leads, the same as
@@ -44,7 +55,28 @@ _TWO_GPU = ModelProfile(
     # reranker="systemone:clef-flash",
 )
 
+# v1 default (docs/v1/PROVIDER_AND_SSO.md, recommended model per job): Haiku 5.5 for the
+# scope gate and the profile summary, Sonnet 5.5 for fit, hand-off, cover points and Scout.
+# Embedder, reranker and MiniCheck run on CPU in the worker (perch/compute.py limits how
+# many jobs hold one at once). No GPU, no Clef.
+_HAIKU, _SONNET = "anthropic:claude-haiku-5-5", "anthropic:claude-sonnet-5-5"
+_CLOUD_CPU = ModelProfile(
+    chat=_SONNET,
+    grounder="minicheck",
+    embedder="Qwen/Qwen3-Embedding-0.6B",
+    reranker="Qwen/Qwen3-Reranker-0.6B",
+    device="cpu",
+    # Shrink rule (REBUILD_PLAN Phase 3 task 2): rerank of 50 took 33 to 41 s at the median
+    # on 16 shared cores (bench/results/s38_cpu), over the 10 s limit. 14 candidates is the
+    # largest count measured under 10 s at the median (9.4 s, p95 10.6 s). The S27 back-test
+    # gain came at 100, so the Phase 3 re-measure must price this.
+    rerank_in=14,
+    roles={"gate": _HAIKU, "profile_summary": _HAIKU, "fit_explainer": _SONNET,
+           "handoff": _SONNET, "cover_points": _SONNET, "scout": _SONNET},
+)
+
 PROFILES: dict[str, ModelProfile] = {
+    "cloud-cpu": _CLOUD_CPU,
     "dev": _TWO_GPU,
     "deploy-2gpu": _TWO_GPU,
     # One 32 GB card, peak under 28 GB. No chat model passed every S8 gate:
@@ -63,7 +95,7 @@ PROFILES: dict[str, ModelProfile] = {
         # reranker="systemone:clef-flash",
     ),
 }
-DEFAULT_PROFILE = "dev"
+DEFAULT_PROFILE = "cloud-cpu"
 
 
 def current() -> ModelProfile:

@@ -51,7 +51,10 @@ class CrossEncoderReranker(Reranker):
         import torch
         from sentence_transformers import CrossEncoder  # optional dependency
 
+        from perch.embed import cpu_model_kwargs
+
         self.model = CrossEncoder(model, device=device, max_length=max_length,
+                                  model_kwargs=cpu_model_kwargs(device),
                                   prompts={"fit": INSTRUCTION}, default_prompt_name="fit")
         self.name = model
         self.batch_size = batch_size

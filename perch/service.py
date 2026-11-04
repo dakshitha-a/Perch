@@ -19,8 +19,9 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from perch import awards as aw
-from perch import egress
+from perch import egress, precache
 from perch.brief import route_a
+from perch.cache import InputContext, PublicCache, cache_key, is_public_input
 from perch.config import env
 from perch.eligibility import Constraints, career_stage_restricted
 from perch.embed import Embedder
@@ -41,6 +42,8 @@ from perch.schemas import (
     Work,
 )
 from perch.score import match_score
+from perch.skills import fit as fit_skill
+from perch.skills import summary as summary_skill
 from perch.skills.fit import Fit, explain_leads
 from perch.skills.handoff import Draft, draft_handoff
 from perch.skills.summary import summarise_profile
@@ -48,7 +51,7 @@ from perch.sources import nih_reporter, nsf
 from perch.sources import openalex as oa
 from perch.store.base import Repository, VectorIndex
 from perch.store.sqlite import SQLiteRepository
-from perch.validate import Validated
+from perch.validate import VALIDATOR_VERSION, Validated
 
 # Explanations come before the summary: they are what the Routes tab waits for (P2).
 STAGES = ("researcher", "works", "awards", "profile", "route_a", "route_b", "explanations",
@@ -109,6 +112,10 @@ class Clients:
 
 
 class BriefService:
+    # Set by the worker (perch/cache.py). A class default, so subclasses that skip __init__
+    # (private sessions, which hold user text) get None and never touch the shared cache.
+    public_cache: PublicCache | None = None
+
     def __init__(self, db: str | Path, models: Models, clients: Clients,
                  overrides: Path = aw.OVERRIDES,
                  repo_factory: Callable[[], Repository] | None = None,
@@ -325,12 +332,10 @@ class BriefService:
         return f"{len(summaries)} public awards; horizon {horizon}", skipped
 
     def _run_profile(self, b: Brief) -> tuple[str, bool]:
-        from perch.profile import build_threads
-
-        with self.repo() as r:
-            works = r.works_by_author(b.researcher_id)
         as_of = date.fromisoformat(b.options["as_of"])
-        p = build_threads(b.researcher_id, works, self.models.get("embedder"), as_of)
+        with self.repo() as r:  # the author's public threads: 7-day shared cache when present
+            p = precache.author_profile(self.public_cache, r, self.models.get("embedder"),
+                                        b.researcher_id, as_of)
         said = said_text(b.options)
         if said:  # normal-mode context: a query thread, never a citable record
             from perch.private.threads import add_threads
@@ -353,11 +358,19 @@ class BriefService:
                         exclude_keywords=o.get("exclude_keywords") or [], career_stage_ok=esi)
         with self.repo() as r:
             res = self._researcher(r, b)
-            brief = route_a(res, r, self.models.get("index"), self.models.get("embedder"),
-                            self.models.get("reranker"), c, RerankCache(self.rerank_cache),
-                            top=o.get("top", 10), timings_log=self.timings_log,
-                            profile=self._ctx.get(b.id, {}).get("profile"),
-                            index_new=self.index_new)
+            profile = self._ctx.get(b.id, {}).get("profile")
+            brief = None
+            if profile is not None:  # a nightly pre-cache lets the first brief skip the rerank
+                stored = precache.lookup(self.public_cache, r, profile)
+                if stored:
+                    brief = precache.route_a_from_precache(stored, res, profile, r, c,
+                                                           o.get("top", 10))
+            if brief is None:
+                brief = route_a(res, r, self.models.get("index"), self.models.get("embedder"),
+                                self.models.get("reranker"), c, RerankCache(self.rerank_cache),
+                                top=o.get("top", 10), timings_log=self.timings_log,
+                                profile=profile, index_new=self.index_new,
+                                rerank_in=self.rerank_in())
             leads = [Lead(id=f"{b.id}:{i}", source=x.opportunity.source,
                           source_url=x.opportunity.source_url,
                           fetched_at=x.opportunity.fetched_at, brief_id=b.id, route="A",
@@ -399,16 +412,45 @@ class BriefService:
         """Records the model skills may cite as research (a private session adds its own)."""
         return {w.id: w for w in r.works_by_author(b.researcher_id)}
 
+    def rerank_in(self) -> int:
+        """Candidates sent to the reranker: the profile's count on CPU, else the S27 default."""
+        from perch.brief import RERANK_IN
+        from perch.profiles import current
+
+        p = current()
+        return p.rerank_in if p.device == "cpu" else RERANK_IN
+
+    def _text_cache(self, b: Brief) -> bool:
+        """True when this brief's model text depends on public inputs only (section 5)."""
+        p = self._ctx.get(b.id, {}).get("profile")
+        return bool(self.public_cache is not None and p is not None
+                    and precache.profile_is_public(p)
+                    and is_public_input(InputContext(direction_text=bool(said_text(b.options)))))
+
     def _run_summary(self, b: Brief) -> tuple[str, bool]:
         if not b.options.get("explain"):
             return "explanations off", True
+        profile = self._ctx[b.id]["profile"]
+        spec = self.models.summary_spec or spec_for_role("profile_summary")
+        key = cache_key("profile_summary", precache.public_profile_hash(profile),
+                        summary_skill.PROMPT_VERSION, spec.partition(":")[2] or spec,
+                        VALIDATOR_VERSION)
+        use = self._text_cache(b)
+        if use and (hit := self.public_cache.get("profile_summary", key)):  # type: ignore[union-attr]
+            b.topics, b.summary = hit["topics"], hit["summary"]
+            return "validated (cached)", False
         with self.repo() as r:
             works = self._works(r, b)
-        v = summarise_profile(self._ctx[b.id]["profile"], works,
+        v = summarise_profile(profile, works,
                               self._audited("profile_summary", self.models.summary_spec))
         if v.value:
             b.topics = [t for t, _ in v.value.topics]
             b.summary = v.value.summary
+            if use:
+                self.public_cache.put(  # type: ignore[union-attr]
+                    "profile_summary", key, {"topics": b.topics, "summary": b.summary},
+                    {"profile_hash": precache.public_profile_hash(profile),
+                     "prompt_version": summary_skill.PROMPT_VERSION})
             return "validated", False
         return "withheld: failed validation twice", False
 
@@ -419,27 +461,58 @@ class BriefService:
             works = self._works(r, b)
             leads = [x for x in (r.get(Lead, i) for i in b.lead_ids) if x and x.route == "A"]
             opps = [r.get(Opportunity, x.record_id) for x in leads]
-        lock = threading.Lock()
+        profile = self._ctx[b.id]["profile"]
+        spec = self.models.fit_spec or spec_for_role("fit_explainer")
+        phash = precache.public_profile_hash(profile)
+        use = self._text_cache(b)
 
-        def save(i: int, v: Validated[Fit]) -> None:
+        def fit_key(o: Opportunity) -> str:
+            return cache_key("fit", o.id, o.fetched_at.isoformat(), phash,
+                             fit_skill.PROMPT_VERSION, spec.partition(":")[2] or spec,
+                             VALIDATOR_VERSION)
+
+        lock = threading.Lock()
+        todo: list[int] = []  # positions in `leads` that still need a model call
+        done_cached = 0
+        for i, (lead, o) in enumerate(zip(leads, opps, strict=True)):
+            if o is None:
+                continue
+            hit = self.public_cache.get("fit", fit_key(o)) if use else None  # type: ignore[union-attr]
+            if hit:
+                with lock, self.repo() as r:
+                    r.upsert([lead.model_copy(update=hit)])
+                done_cached += 1
+            else:
+                todo.append(i)
+
+        def save(j: int, v: Validated[Fit]) -> None:
+            i = todo[j]
             lead = leads[i]
             if v.value:
                 f = v.value
                 upd = {"fit_score": f.fit, "inference": f.link_sentence or None,
                        "explanation": f"{f.opportunity_sentence} {f.research_sentence}",
                        "unsupported": f.unsupported, "cited_ids": f.cited_ids}
+                o = opps[i]
+                if use and o and not f.unsupported:  # only validated, fully grounded text
+                    self.public_cache.put(  # type: ignore[union-attr]
+                        "fit", fit_key(o), upd,
+                        {"record_id": o.id, "profile_hash": phash,
+                         "prompt_version": fit_skill.PROMPT_VERSION})
             else:
                 upd = {"flagged": True}
             with lock, self.repo() as r:
                 r.upsert([lead.model_copy(update=upd)])
 
-        results = explain_leads([o for o in opps if o], self._ctx[b.id]["profile"], works,
-                                self._audited("fit_explainer", self.models.fit_spec),
-                                grounder=self.models.get("grounder"), on_result=save)
+        results = []
+        if todo:
+            results = explain_leads([opps[i] for i in todo], profile, works,  # type: ignore[misc]
+                                    self._audited("fit_explainer", self.models.fit_spec),
+                                    grounder=self.models.get("grounder"), on_result=save)
         flagged = sum(v.flagged for v in results)
         unsupported = sum(bool(v.value and v.value.unsupported) for v in results)
-        return (f"{len(results) - flagged} explained, {flagged} withheld, {unsupported} with an "
-                "unsupported statement"), False
+        return (f"{len(results) - flagged + done_cached} explained ({done_cached} cached), "
+                f"{flagged} withheld, {unsupported} with an unsupported statement"), False
 
 
 def said_text(options: dict) -> str:
@@ -496,6 +569,27 @@ def default_models(fake: bool = False, data_dir: Path = Path("data"),
                               else RemoteReranker(server, p.reranker)),
             index=lambda: LanceIndex(data_dir / "lance"),
             grounder=lambda: make_grounder(p.grounder, fallback=lambda: RemoteGrounder(server)),
+            summary_spec=llm, fit_spec=llm, handoff_spec=llm)
+    if p.device == "cpu":
+        from perch.compute import (
+            SlottedEmbedder,
+            SlottedGrounder,
+            SlottedReranker,
+            configure_torch,
+        )
+
+        def cpu[T](build: Callable[[], T]) -> T:  # torch threads are set before the first model
+            configure_torch()
+            return build()
+
+        # Each CPU model runs inside a model slot (perch/compute.py: PERCH_MODEL_SLOTS).
+        return Models(
+            embedder=lambda: SlottedEmbedder(cpu(
+                lambda: get_embedder(p.embedder, cache=emb_cache, device="cpu"))),
+            reranker=lambda: SlottedReranker(cpu(
+                lambda: make_reranker(p.reranker, device="cpu"))),
+            index=lambda: LanceIndex(data_dir / "lance"),
+            grounder=lambda: SlottedGrounder(cpu(lambda: make_grounder(p.grounder))),
             summary_spec=llm, fit_spec=llm, handoff_spec=llm)
     return Models(embedder=lambda: get_embedder(p.embedder, cache=emb_cache),
                   reranker=lambda: make_reranker(p.reranker),

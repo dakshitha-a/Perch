@@ -88,6 +88,8 @@ class AnthropicProvider(Provider):
             kw["tools"] = [{"name": t.name, "description": t.description,
                             "input_schema": self.transform(t.parameters), "strict": t.strict}
                            for t in tools]
+            if cache_system:  # the tool list is a fixed prefix too: mark its last entry
+                kw["tools"][-1]["cache_control"] = {"type": "ephemeral"}
         output_config: dict = {}
         if schema:
             output_config["format"] = {"type": "json_schema", "schema": self.transform(schema)}
