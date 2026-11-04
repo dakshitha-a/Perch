@@ -131,8 +131,8 @@ function welcome(ctx) {
         h("button", { class: "chip", type: "button", onclick: () => { T.draft = q; send(ctx); } }, q)))) : null,
       h("details", { class: "scout-limits" }, h("summary", { text: "What I will not do" }),
         h("p", { text: ctx.student
-          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record. A model reads your CV only when you ask for cover-letter points, with contact details blanked. Sample scholarships stay marked as samples. A conversation has a budget; when it is spent, start a new one."
-          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record. A model reads your documents only when you ask for cover-letter points, with contact details blanked. A conversation has a budget; when it is spent, start a new one." }))));
+          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after a fixed number of tool steps for one question, cannot browse the web, send anything or change a record. A model reads your CV when you ask for cover-letter points, and when it opens a CV part to answer a question. Contact details are blanked first. Sample scholarships stay marked as samples. A conversation has a budget; when it is spent, start a new one."
+          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after a fixed number of tool steps for one question, cannot browse the web, send anything or change a record. A model reads your documents and entries when you ask for cover-letter points, or when it opens them to answer a question, with contact details blanked. A conversation has a budget; when it is spent, start a new one." }))));
 }
 
 // The chat fills the window below the sticky tabs, so the question box sits on the bottom
@@ -345,11 +345,32 @@ function answer(x, ctx, thinking) {
         h("span", { text: `Written by Perch’s code. ${below}` })),
       h("p", { text: x.answer }));
   }
-  // Model prose says so in words, not by its tint alone (U7).
-  if (x.answer) return h("div", { class: "scout-answer" },
-    h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
-      h("span", { text: "Written by a model; checked against the records it cites." })),
-    ...withCites(x.answer, ctx));
+  // Model prose says so in words, not by its tint alone (U7). What the checks found is shown
+  // with it (S45): sentences Scout could not confirm are marked, sentences it removed are
+  // counted, and the General advice part sits apart, labelled as uncited.
+  if (x.answer) {
+    const m = x.message || {};
+    if (m.flagged && m.withheld_all) return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: x.answer }));
+    const marked = markUnsupported(x.answer, m.unsupported || []);
+    const n = (m.unsupported || []).length;
+    const checked = m.flagged ? "Written by a model. It failed the citation check; sentences were removed."
+      : n ? "Written by a model. Some sentences could not be confirmed; they are marked."
+        : "Written by a model; checked against the records it cites.";
+    const plural = (k) => `${k} sentence${k === 1 ? "" : "s"}`;
+    return h("div", { class: "scout-answer-wrap" },
+      m.flagged ? h("p", { class: "notice warn" }, icon("warn"), h("span", {
+        text: `This answer did not pass the citation check twice. ${plural(m.withheld || 0)} ${m.withheld === 1 ? "was" : "were"} removed. What remains is shown, but check each claim against its record.` })) : null,
+      h("div", { class: "scout-answer" },
+        h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }), h("span", { text: checked })),
+        ...withCites(marked.text, ctx),
+        m.general ? h("div", { class: "scout-general" },
+          h("p", { class: "provenance" }, h("b", { text: "General advice, not from records" }), h("span", { class: "tag", text: "Uncited" })),
+          ...withCites(m.general, ctx),
+          h("p", { class: "hint", text: "General guidance from the model. It cites no record and states no date or amount. Check details with the sponsor." })) : null),
+      n && !m.flagged ? h("div", { class: "notice warn" }, icon("warn"), h("div", {},
+        h("p", { text: `Scout could not confirm ${plural(n)} against the cited records. ${marked.missed.length ? "They are listed here." : "They are underlined above."} Open the record before relying on them.` }),
+        marked.missed.length ? h("ul", {}, marked.missed.map((u) => h("li", { text: u.replace(/\*\*/g, "") }))) : null)) : null);
+  }
   if (x.flagged) return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "Scout’s answer was withheld: it did not pass the citation check twice. The steps below show what it found." }));
   // T4: the conversation's token or cost budget is spent. A new conversation keeps the
   // brief and starts Scout's history afresh.
@@ -411,6 +432,39 @@ function withCites(text, ctx) {
   return out;
 }
 
+// Wrap each unsupported sentence found in the text in sentinels, so inline() can turn it into a
+// <mark>. A sentence that is not found as written goes to `missed` and is listed instead.
+const MARK_ON = "\u0001", MARK_OFF = "\u0002";
+function markUnsupported(text, sentences) {
+  let t = String(text);
+  const missed = [];
+  for (const u of sentences) {
+    const i = u ? t.indexOf(u) : -1;
+    if (i < 0) { missed.push(u); continue; }
+    t = `${t.slice(0, i)}${MARK_ON}${u}${MARK_OFF}${t.slice(i + u.length)}`;
+  }
+  return { text: t, missed };
+}
+
+function applyMarks(parts) {
+  const out = [];
+  let cur = null;
+  const put = (v) => (cur ? cur.push(v) : out.push(v));
+  for (const p of parts) {
+    if (typeof p !== "string") { put(p); continue; }
+    for (const seg of p.split(/([\u0001\u0002])/)) {
+      if (seg === MARK_ON) cur = [];
+      else if (seg === MARK_OFF) {
+        if (cur) out.push(h("mark", { class: "unsupported" }, ...cur, h("span", { class: "unsupported-q", "aria-hidden": "true", text: "?" }),
+          h("span", { class: "sr-only", text: " (not confirmed by the cited record)" })));
+        cur = null;
+      } else if (seg) put(seg);
+    }
+  }
+  if (cur) out.push(...cur);
+  return out;
+}
+
 function inline(text, ctx) {
   const out = [];
   let last = 0;
@@ -420,7 +474,7 @@ function inline(text, ctx) {
     last = m.index + m[0].length;
   }
   out.push(text.slice(last));
-  return out;
+  return text.includes(MARK_ON) || text.includes(MARK_OFF) ? applyMarks(out) : out;
 }
 
 // A citation reads as the brief shows the record: an opportunity number, an option's

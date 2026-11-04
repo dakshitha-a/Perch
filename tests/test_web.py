@@ -250,10 +250,10 @@ def test_cover_points_reach_the_app_and_no_page_promises_that_no_model_reads_the
               "Points for a cover letter, for one option, from your CV, interests and "
               "achievements", "Copy the points",
               "Perch never sends this, and it never enters an export or a hand-off draft.",
-              "A model reads your CV only when you ask for cover-letter points, with contact "
-              "details blanked.",
-              "A model reads your documents only when you ask for cover-letter points, with "
-              "contact details blanked.",
+              "A model reads your CV when you ask for cover-letter points, and when it opens a "
+              "CV part to answer a question. Contact details are blanked first.",
+              "A model reads your documents and entries when you ask for cover-letter points, "
+              "or when it opens them to answer a question, with contact details blanked.",
               "class: \"cite own\"", "Sample data"):
         assert s in scout, s
     assert "The points below are the step’s result." in scout  # the code-written answer line
@@ -447,3 +447,17 @@ def test_the_session_and_csrf_token_stay_out_of_browser_storage():
     api = (WEB_DIR / "api.js").read_text()
     for banned in ("sessionStorage", "localStorage", "document.cookie"):
         assert banned not in api
+
+
+def test_scout_shows_the_checks_in_the_answer():
+    """S45 S4/S7: marks for unsupported sentences, the flagged notice, the General advice block,
+    and no stale call count."""
+    scout = (WEB_DIR / "scout.js").read_text()
+    for s in ("mark\", { class: \"unsupported\"", "(not confirmed by the cited record)",
+              "General advice, not from records", "Uncited",
+              "This answer did not pass the citation check twice.",
+              "Scout could not confirm", "I stop after a fixed number of tool steps"):
+        assert s in scout, s
+    assert "eight model calls" not in scout
+    css = (WEB_DIR / "styles.css").read_text()
+    assert "mark.unsupported" in css and ".scout-general" in css
