@@ -14,7 +14,7 @@ from pathlib import Path
 from psycopg_pool import ConnectionPool
 
 from perch.schemas import Record, Work
-from perch.store.base import Page, R, Repository
+from perch.store.base import Facets, Page, R, Repository
 from perch.store.denorm import STORED_KINDS
 from perch.store.postgres import PostgresRepository
 from perch.store.sqlite import SQLiteRepository
@@ -48,10 +48,15 @@ class HybridRepository(Repository):
     def browse(self, cls: type[R], *, temple_only: bool = False, schools: Sequence[str] = (),
                audience_level: Sequence[str] = (), q: str | None = None,
                closes_after: date | None = None, limit: int = 50,
-               cursor: str | None = None) -> Page[R]:
+               cursor: str | None = None, scopes: Sequence[str] = (),
+               exclude_schools: Sequence[str] = ()) -> Page[R]:
         return self.pg.browse(cls, temple_only=temple_only, schools=schools,
                               audience_level=audience_level, q=q, closes_after=closes_after,
-                              limit=limit, cursor=cursor)
+                              limit=limit, cursor=cursor, scopes=scopes,
+                              exclude_schools=exclude_schools)
+
+    def facets(self, cls: type[R]) -> Facets:
+        return self.pg.facets(cls)
 
     def epoch(self) -> int:
         return self.pg.epoch()

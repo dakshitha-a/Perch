@@ -14,14 +14,13 @@ Nothing here logs a cookie, a token, a code, an address or the OpenAlex id.
 from __future__ import annotations
 
 import hashlib
-import html
 from typing import Literal
 from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 
 from perch import redisx as rx
@@ -183,7 +182,8 @@ async def session_info(request: Request) -> Response:
         need = settings.consent_version()
         out["consent"] = {"required": s.consent_version < need, "current_version": need,
                           "accepted_version": s.consent_version,
-                          "provider_name": settings.consent_provider_name()}
+                          "provider_name": settings.consent_provider_name(),
+                          "text": consent_text()}  # the welcome screen shows it as built
         out["needs_welcome"] = _needs_welcome(s.roles, s.consent_version)
         pool = getattr(request.app.state, "pool", None)
         if pool is not None and s.user_id is not None:
@@ -311,24 +311,12 @@ async def put_openalex(request: Request, body: OpenAlexIn,
     return _json({"linked": True, "author_id": author_id})
 
 
-# --- placeholder welcome page (S43 designs the real one) ---
+# --- welcome: the screen is the app's, at #/welcome (S43) ---
 
 @router.get("/welcome")
-async def welcome(request: Request, return_to: str | None = None) -> Response:
-    s = await session_optional(request)
-    if s is None:
-        return RedirectResponse("/auth/login?return_to=/welcome", status_code=302)
-    if s.guest:
-        return RedirectResponse("/", status_code=302)
-    page = (
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-        "<title>Welcome</title></head><body><main>"
-        "<p><strong>PLACEHOLDER PAGE.</strong> The real welcome screen is designed later. "
-        "This page only shows what a new account must accept.</p>"
-        "<h1>Welcome to Perch</h1>"
-        f"<p>Pick a side with POST /me/roles, then accept with POST /me/consent.</p>"
-        f"<h2>Consent, version {settings.consent_version()}</h2>"
-        f"<p>{html.escape(consent_text())}</p>"
-        f"<p>After this, continue to <a href=\"{html.escape(safe_return_to(return_to))}\">"
-        "where you were going</a>.</p></main></body></html>")
-    return HTMLResponse(page, headers=NO_STORE)
+async def welcome(return_to: str | None = None) -> Response:
+    """The sign-in callback sends a new account here. The app owns the screen, so this only
+    redirects to it and carries a safe return_to along in the hash."""
+    target = safe_return_to(return_to)
+    dest = "/#/welcome" + (f"?return_to={quote(target, safe='/')}" if target != "/" else "")
+    return RedirectResponse(dest, status_code=302, headers=NO_STORE)

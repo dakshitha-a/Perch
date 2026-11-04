@@ -441,8 +441,12 @@ def test_first_sign_in_creates_the_user_and_goes_to_welcome(acct) -> None:
     assert x["me"]["signed_in"] is True and x["me"]["needs_welcome"] is True
     assert x["me"]["roles"] == [] and x["me"]["consent"]["required"] is True
     assert len(rows(db, "SELECT id FROM users")) == 1
-    page = c.get("/welcome")
-    assert page.status_code == 200 and "PLACEHOLDER" in page.text and "SYNTHETIC Provider" in page.text
+    page = c.get("/welcome?return_to=/briefs", follow_redirects=False)
+    assert page.status_code == 302 and page.headers["location"] == "/#/welcome?return_to=/briefs"
+    assert c.get("/welcome", follow_redirects=False).headers["location"] == "/#/welcome"
+    bad = c.get("/welcome?return_to=//evil.example", follow_redirects=False)
+    assert bad.headers["location"] == "/#/welcome"  # an open redirect is never carried
+    assert "SYNTHETIC Provider" in x["me"]["consent"]["text"]
 
 
 def test_sign_in_issues_a_new_sid_and_drops_the_old_one(acct, r) -> None:

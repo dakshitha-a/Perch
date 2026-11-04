@@ -12,6 +12,9 @@ from datetime import date
 
 from perch.schemas import Record
 
+# "Temple only" means listed on a Temple page (S43 fork F1): the record's own source decides.
+TEMPLE_SOURCES = ("temple_pages", "temple_sdfa")
+
 STORED_KINDS = ("researcher", "work", "award", "opportunity", "organisation", "scholarship")
 
 
@@ -35,12 +38,13 @@ def _audience(r: Record, kind: str) -> list[str]:
 
 
 def columns(r: Record) -> Columns:
-    scope = getattr(r, "scope", None) or "external"
     schools = sorted({s for s in (getattr(r, "schools", None) or []) if s})
+    # A Temple-page record with no stated scope stays inside Temple as "unstated" (fork F2);
+    # any other record without one is external. Schools are kept whatever the scope.
+    fallback = "unstated" if r.source in TEMPLE_SOURCES else "external"
+    scope = getattr(r, "scope", None) or fallback
     if scope == "school" and not schools:
-        scope = "external"  # the CHECK forbids school with an empty list
-    if scope != "school":
-        schools = []
+        scope = fallback  # a school scope with no school named is not a stated scope
     kind = r.kind
     return Columns(
         scope=scope,

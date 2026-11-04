@@ -12,6 +12,7 @@ before the database does. Nothing here logs a query, a parameter or an exception
 from __future__ import annotations
 
 import base64
+from collections import Counter
 from collections.abc import Iterable, Sequence
 from datetime import date
 
@@ -20,8 +21,8 @@ from psycopg_pool import ConnectionPool
 
 from perch.embed import DEFAULT_MODEL
 from perch.schemas import RECORD_TYPES, Record, Work
-from perch.store.base import Page, R, Repository, VectorIndex
-from perch.store.denorm import STORED_KINDS, TEXT_SQL, columns
+from perch.store.base import Facets, Page, R, Repository, VectorIndex, sorted_counts
+from perch.store.denorm import STORED_KINDS, TEMPLE_SOURCES, TEXT_SQL, columns
 from perch.store.pg import EMBED_DIM, make_pool
 
 INDEX_KINDS = {"opportunities": "opportunity", "scholarships": "scholarship"}
@@ -107,14 +108,22 @@ class PostgresRepository(Repository):
     def browse(self, cls: type[R], *, temple_only: bool = False, schools: Sequence[str] = (),
                audience_level: Sequence[str] = (), q: str | None = None,
                closes_after: date | None = None, limit: int = 50,
-               cursor: str | None = None) -> Page[R]:
+               cursor: str | None = None, scopes: Sequence[str] = (),
+               exclude_schools: Sequence[str] = ()) -> Page[R]:
         where = ["kind = %s", "NOT sample"]
         args: list = [cls.kind]
         if temple_only:
-            where.append("temple_funded")
+            where.append("source = ANY(%s)")
+            args.append(list(TEMPLE_SOURCES))
+        if scopes:
+            where.append("scope = ANY(%s)")
+            args.append(list(scopes))
         if schools:
             where.append("schools && %s")
             args.append(list(schools))
+        if exclude_schools:
+            where.append("NOT (schools && %s)")
+            args.append(list(exclude_schools))
         if audience_level:
             where.append("audience_level && %s")
             args.append(list(audience_level))
@@ -138,6 +147,21 @@ class PostgresRepository(Repository):
         rows = rows[:limit]
         nxt = base64.urlsafe_b64encode(rows[-1][0].encode()).decode() if more else None
         return Page(items=[cls.model_validate(r[1]) for r in rows], next_cursor=nxt, total=total)
+
+    def facets(self, cls: type[R]) -> Facets:
+        with self.pool.connection() as conn:
+            schools = conn.execute(
+                "SELECT s, count(*) FROM records, unnest(schools) s WHERE kind = %s AND NOT sample "
+                "GROUP BY s", (cls.kind,)).fetchall()
+            levels = conn.execute(
+                "SELECT DISTINCT l FROM records, unnest(audience_level) l WHERE kind = %s "
+                "AND NOT sample", (cls.kind,)).fetchall()
+            total, temple = conn.execute(
+                "SELECT count(*), count(*) FILTER (WHERE source = ANY(%s)) FROM records "
+                "WHERE kind = %s AND NOT sample", (list(TEMPLE_SOURCES), cls.kind)).fetchone()
+        return Facets(schools=sorted_counts(Counter({s: int(n) for s, n in schools})),
+                      levels=sorted(x[0] for x in levels), total=int(total),
+                      temple_total=int(temple))
 
     def epoch(self) -> int:
         with self.pool.connection() as conn:
