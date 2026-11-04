@@ -119,7 +119,7 @@ Every number is copied from the file named in its row. The back-test is NIH only
 | Grounding proxy set, 40 pairs, MiniCheck on CPU | AUC 0.922, false-flag rate 0.0, miss rate 0.1, 0.362 s per claim. | `bench/results/s38_grounding/grounders_cpu.csv` |
 | Grounding proxy set, 40 pairs, MiniCheck on GPU 3 (fp32) | AUC 0.922, false-flag rate 0.0, miss rate 0.1, 0.017 s per claim. Same AUC as CPU. | `bench/results/s38_grounding/grounders_cuda.csv` |
 | Cost per brief, researcher and student side, real provider | NOT YET MEASURED. The run needs the Anthropic key, which the worktree could not read. | none |
-| Scout bench on `cloud-gpu` | NOT YET MEASURED, same reason. Last recorded Sonnet row: 20/20 completed, 14/14 tasks, 6/6 restraint, 0/27 wrong calls, 103,516 tokens, $0.4074, median 8.1 s. | `bench/results/scout_summary.csv` |
+| Scout bench on `cloud-gpu`, Sonnet 5.5 (2026-11-04) | 30/30 completed, 22/22 tasks, 8/8 restraint, 0/34 wrong calls, 0 flagged, 85,494 tokens, $0.4175, median 8.05 s. The task set has grown since the last recorded Sonnet row (20 cases: 20/20, 14/14 tasks, 6/6 restraint, 0/27 wrong calls, $0.4074, median 8.1 s), so the two rows are not the same set. | `bench/results/scout_s38_cloudgpu/scout_anthropic-claude-sonnet-5-5.csv`, `bench/results/scout_summary.csv` |
 
 The grounding set is a proxy built from saved explanations, not human labels. It has 40 pairs, so one pair moves the miss rate by 0.025.
 
