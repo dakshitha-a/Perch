@@ -13,14 +13,18 @@ from an old ranking.
 
 from __future__ import annotations
 
+import hashlib
 import time
 from datetime import date
 from typing import TYPE_CHECKING, Any
 
-from perch.brief import RERANK_IN, RETRIEVE_K, RouteABrief
+import numpy as np
+
+from perch.brief import RETRIEVE_K, RouteABrief
 from perch.cache import InputContext, PublicCache, cache_key, is_public_input, profile_hash
 from perch.eligibility import Constraints, split
-from perch.profile import Profile, build_threads
+from perch.embed import Embedder
+from perch.profile import Profile, Thread, build_threads, research_works
 from perch.rerank import Ranked, Reranker, rerank
 from perch.retrieve import Candidate, retrieve
 from perch.schemas import Opportunity, Researcher
@@ -48,8 +52,49 @@ def profile_is_public(p: Profile) -> bool:
     return is_public_input(InputContext(direction_text=bool(p.salt)))
 
 
+def author_key(researcher: Researcher | None, author_id: str, work_ids: list[str],
+               as_of: date, embedder: str) -> str:
+    """Key of the cached public profile (threads) of one author. Parts: author id, the date
+    the author record was fetched from OpenAlex, the as-of date, a hash of the work ids and the
+    embedder name, so a new fetch, a new paper or a new embedder never reads an old profile."""
+    fetched = researcher.fetched_at.date().isoformat() if researcher else "unknown"
+    wh = hashlib.sha256("|".join(sorted(work_ids)).encode()).hexdigest()[:16]
+    return cache_key("author", author_id, fetched, as_of.isoformat(), wh, embedder)
+
+
+def profile_to_json(p: Profile) -> dict[str, Any]:
+    return {"work_ids": p.work_ids, "threads": [
+        {"index": t.index, "vector": [float(x) for x in t.vector],
+         "work_ids": t.work_ids, "weight": t.weight, "label": t.label, "titles": t.titles,
+         "topics": t.topics} for t in p.threads]}
+
+
+def profile_from_json(author_id: str, as_of: date, embedder: str, v: dict) -> Profile:
+    return Profile(author_id, as_of, embedder, [
+        Thread(t["index"], np.array(t["vector"], dtype=np.float64), t["work_ids"], t["weight"],
+               t["label"], t["titles"], t["topics"]) for t in v["threads"]], v["work_ids"])
+
+
+def author_profile(cache: PublicCache | None, repo: Repository, embedder: Embedder,
+                   author_id: str, as_of: date) -> Profile:
+    """The author's public profile, from the 7-day `author` cache when present. Public input
+    only: it is built from stored public works, never from added text."""
+    works = repo.works_by_author(author_id)
+    if cache is None:
+        return build_threads(author_id, works, embedder, as_of)
+    ids = [w.id for w in research_works(works)]
+    key = author_key(repo.get(Researcher, author_id), author_id, ids, as_of, embedder.name)
+    hit = cache.get("author", key)
+    if hit:
+        return profile_from_json(author_id, as_of, embedder.name, hit)
+    p = build_threads(author_id, works, embedder, as_of)
+    cache.put("author", key, profile_to_json(p),
+              {"author_id": author_id, "as_of": as_of.isoformat(), "embedder": embedder.name})
+    return p
+
+
 def compute(repo: Repository, index: VectorIndex, reranker: Reranker,
-            profile: Profile, as_of: date, rerank_in: int = RERANK_IN) -> dict[str, Any]:
+            profile: Profile, as_of: date, rerank_in: int) -> dict[str, Any]:
     """The deterministic stages for one profile; returns the JSON value to store."""
     t0 = time.perf_counter()
     r = retrieve(profile, index, k=RETRIEVE_K)
@@ -74,13 +119,12 @@ def precache_author(service: BriefService, author_id: str, as_of: date | None = 
         raise RuntimeError("no public cache configured")
     as_of = as_of or date.today()
     with service.repo() as repo:
-        works = repo.works_by_author(author_id)
-        if not works:
+        if not repo.works_by_author(author_id):
             return {"author_id": author_id, "stored": False, "reason": "no works"}
-        profile = build_threads(author_id, works, service.models.get("embedder"), as_of)
+        profile = author_profile(cache, repo, service.models.get("embedder"), author_id, as_of)
         epoch = repo.epoch()
         value = compute(repo, service.models.get("index"),
-                        service.models.get("reranker"), profile, as_of)
+                        service.models.get("reranker"), profile, as_of, service.rerank_in())
     key = precache_key(profile, epoch)
     cache.put("precache", key, value,
               {"author_id": author_id, "profile_hash": public_profile_hash(profile),

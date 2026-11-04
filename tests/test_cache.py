@@ -235,7 +235,10 @@ def test_precache_stores_ids_and_scores_only_and_serves_a_brief(pg_clean, tmp_pa
         assert report["stored"] and report["ranked"] == 3
         with pool.connection() as conn:
             ns, value, meta = conn.execute(
-                "SELECT namespace, value, meta FROM public_cache").fetchone()
+                "SELECT namespace, value, meta FROM public_cache WHERE namespace = 'precache'"
+            ).fetchone()
+            assert conn.execute("SELECT count(*) FROM public_cache WHERE namespace = 'author'"
+                                ).fetchone()[0] == 1
         assert ns == "precache"
         assert set(value) == {"as_of", "retrieved", "rejected", "ranked", "seconds"}
         assert set(value["ranked"][0]) == {"record_id", "score", "best_thread", "rerank_score"}
@@ -336,6 +339,37 @@ def test_model_text_is_cached_on_public_input_only(pg_clean, tmp_path):
         assert [x.explanation for x in leads2] == [x.explanation for x in leads1]
         with pool.connection() as c:
             kinds = {r[0] for r in c.execute("SELECT namespace FROM public_cache").fetchall()}
-        assert kinds <= {"profile_summary", "fit"}
+        assert kinds <= {"profile_summary", "fit", "author"}
+    finally:
+        pool.close()
+
+
+def test_author_profile_is_cached_for_a_week_and_matches_a_fresh_build(pg_clean, tmp_path):
+    import numpy as np
+
+    from perch import precache
+    from perch.profile import build_threads
+    from perch.store.pg import make_pool
+
+    pool = make_pool(pg_clean.worker)
+    try:
+        svc = _service(tmp_path, pool)
+        e = svc.models.get("embedder")
+        calls = []
+        real = e.embed_queries
+        e.embed_queries = lambda texts: (calls.append(len(texts)), real(texts))[1]  # type: ignore
+        today = date.today()
+        with svc.repo() as repo:
+            first = precache.author_profile(svc.public_cache, repo, e, AUTHOR, today)
+            n = len(calls)
+            second = precache.author_profile(svc.public_cache, repo, e, AUTHOR, today)
+            fresh = build_threads(AUTHOR, repo.works_by_author(AUTHOR), e, today)
+        assert n >= 1 and len(calls) == n + 1  # only the uncached `fresh` build embedded
+        assert second.work_ids == first.work_ids == fresh.work_ids
+        assert [t.work_ids for t in second.threads] == [t.work_ids for t in fresh.threads]
+        assert np.array_equal(second.threads[0].vector, first.threads[0].vector)
+        with pool.connection() as c:
+            assert c.execute("SELECT expires_at > now() + interval '6 days' FROM public_cache "
+                             "WHERE namespace = 'author'").fetchone()[0]
     finally:
         pool.close()

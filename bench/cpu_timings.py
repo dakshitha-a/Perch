@@ -52,6 +52,9 @@ def main() -> int:
     ap.add_argument("--run", type=int, required=True)
     ap.add_argument("--shrink-sweep", action="store_true",
                     help="also time rerank at 10, 20, 30, 40 candidates")
+    ap.add_argument("--sizes", type=int, nargs="+", default=None,
+                    help="rerank candidate counts to time instead of 50 and 100 (the fine "
+                    "sweep for the shrink rule); embed and MiniCheck are skipped")
     args = ap.parse_args()
     threads = configure_torch()
     load_before = os.getloadavg()[0]
@@ -107,7 +110,7 @@ def main() -> int:
     # rerank
     first = next(iter(pools.values()))
     rerank(first[2][:4], first[1], first[0], rr, None, top=4)  # warm-up
-    sizes = [50, 100] + ([10, 20, 30, 40] if args.shrink_sweep else [])
+    sizes = args.sizes or [50, 100] + ([10, 20, 30, 40] if args.shrink_sweep else [])
     for n in sizes:
         for rid, (profile, opps, cands) in pools.items():
             pool_n = cands[:n]

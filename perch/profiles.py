@@ -26,7 +26,7 @@ class ModelProfile:
     # roles; decide is gone). Empty for the GPU profiles, which use `chat` for every role.
     roles: Mapping[str, str] = field(default_factory=dict)
     # Rerank candidates per brief. The plan's shrink rule lowers it if CPU rerank is slow.
-    rerank_in: int = 50
+    rerank_in: int = 100  # the S27 default (perch.brief.RERANK_IN) for the GPU profiles
     device: str | None = None  # "cpu": models run on CPU inside model slots (perch/compute.py)
 
     def spec_for(self, role: str) -> str:
@@ -66,6 +66,11 @@ _CLOUD_CPU = ModelProfile(
     embedder="Qwen/Qwen3-Embedding-0.6B",
     reranker="Qwen/Qwen3-Reranker-0.6B",
     device="cpu",
+    # Shrink rule (REBUILD_PLAN Phase 3 task 2): rerank of 50 took 33 to 41 s at the median
+    # on 16 shared cores (bench/results/s38_cpu), over the 10 s limit. 14 candidates is the
+    # largest count measured under 10 s at the median (9.4 s, p95 10.6 s). The S27 back-test
+    # gain came at 100, so the Phase 3 re-measure must price this.
+    rerank_in=14,
     roles={"gate": _HAIKU, "profile_summary": _HAIKU, "fit_explainer": _SONNET,
            "handoff": _SONNET, "cover_points": _SONNET, "scout": _SONNET},
 )

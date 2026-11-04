@@ -332,12 +332,10 @@ class BriefService:
         return f"{len(summaries)} public awards; horizon {horizon}", skipped
 
     def _run_profile(self, b: Brief) -> tuple[str, bool]:
-        from perch.profile import build_threads
-
-        with self.repo() as r:
-            works = r.works_by_author(b.researcher_id)
         as_of = date.fromisoformat(b.options["as_of"])
-        p = build_threads(b.researcher_id, works, self.models.get("embedder"), as_of)
+        with self.repo() as r:  # the author's public threads: 7-day shared cache when present
+            p = precache.author_profile(self.public_cache, r, self.models.get("embedder"),
+                                        b.researcher_id, as_of)
         said = said_text(b.options)
         if said:  # normal-mode context: a query thread, never a citable record
             from perch.private.threads import add_threads
@@ -371,7 +369,8 @@ class BriefService:
                 brief = route_a(res, r, self.models.get("index"), self.models.get("embedder"),
                                 self.models.get("reranker"), c, RerankCache(self.rerank_cache),
                                 top=o.get("top", 10), timings_log=self.timings_log,
-                                profile=profile, index_new=self.index_new)
+                                profile=profile, index_new=self.index_new,
+                                rerank_in=self.rerank_in())
             leads = [Lead(id=f"{b.id}:{i}", source=x.opportunity.source,
                           source_url=x.opportunity.source_url,
                           fetched_at=x.opportunity.fetched_at, brief_id=b.id, route="A",
@@ -412,6 +411,14 @@ class BriefService:
     def _works(self, r: SQLiteRepository, b: Brief) -> dict[str, Work]:
         """Records the model skills may cite as research (a private session adds its own)."""
         return {w.id: w for w in r.works_by_author(b.researcher_id)}
+
+    def rerank_in(self) -> int:
+        """Candidates sent to the reranker: the profile's count on CPU, else the S27 default."""
+        from perch.brief import RERANK_IN
+        from perch.profiles import current
+
+        p = current()
+        return p.rerank_in if p.device == "cpu" else RERANK_IN
 
     def _text_cache(self, b: Brief) -> bool:
         """True when this brief's model text depends on public inputs only (section 5)."""

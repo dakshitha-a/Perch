@@ -27,6 +27,19 @@ QUERY_PROMPTS = {"Qwen/Qwen3-Embedding-0.6B": QWEN_PROMPT, "Qwen/Qwen3-Embedding
 SPECTER2 = "allenai/specter2_base"
 
 
+def cpu_model_kwargs(device: str | None) -> dict:
+    """Weights dtype for CPU runs. The checkpoints are bf16 and sentence-transformers keeps
+    that dtype; a CPU without native bf16 (AVX512-BF16 or AMX, which this lab node lacks)
+    emulates it very slowly, so CPU runs load float32 unless PERCH_CPU_DTYPE says otherwise."""
+    if device != "cpu":
+        return {}
+    import torch
+
+    from perch.config import env
+
+    return {"dtype": getattr(torch, env("PERCH_CPU_DTYPE") or "float32")}
+
+
 def normalise(m: np.ndarray) -> np.ndarray:
     norms = np.linalg.norm(m, axis=1, keepdims=True)
     return m / np.where(norms == 0, 1, norms)
@@ -74,7 +87,8 @@ class SentenceTransformerEmbedder(Embedder):
                  batch_size: int = 32, max_length: int = 1024) -> None:
         from sentence_transformers import SentenceTransformer  # optional dependency
 
-        self.model = SentenceTransformer(model, device=device)
+        self.model = SentenceTransformer(model, device=device,
+                                         model_kwargs=cpu_model_kwargs(device))
         self.model.max_seq_length = max_length
         self.name = model
         dim = getattr(self.model, "get_embedding_dimension", None) or \
