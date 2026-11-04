@@ -33,7 +33,7 @@ test-user:
 	PERCH_TEST_REDIS_URL=$(PERCH_TEST_REDIS_URL) \
 		$(UV) run pytest tests/test_user_data_pg.py tests/test_user_briefs.py tests/test_user_account.py tests/test_s41_integration.py \
 		tests/test_student_account.py tests/test_student_routes.py tests/test_leak_check.py \
-		tests/test_scout_v2_account.py -p no:cacheprovider
+		tests/test_scout_v2_account.py tests/test_scout_s45_account.py -p no:cacheprovider
 
 # The demo (S9, deploy-2gpu, hybrid): models as systemd user units on two GPUs, the app
 # in Docker on 127.0.0.1:8090. One command: `make demo`. GPUs default to 6 and 7.

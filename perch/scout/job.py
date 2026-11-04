@@ -32,7 +32,7 @@ from perch.schemas import Lead, Opportunity, Record, Scholarship
 from perch.scout import session
 from perch.scout.answer import name_index
 from perch.scout.read_tools import SavedRef, ScoutData
-from perch.scout.turn import ESTIMATE_MICRO, Meter, TurnDeps, run_turn
+from perch.scout.turn import ESTIMATE_MICRO, Meter, TurnCancelled, TurnDeps, run_turn
 from perch.store import pg
 from perch.user import quota
 from perch.user.briefs import read_user_brief
@@ -142,10 +142,12 @@ def providers(service: BriefService) -> Callable[[str], Provider]:
 
 
 def turn_deps(service: BriefService, data: ScoutData, meter: Meter,
-              handoff: Callable[[], dict[str, Any] | None] | None = None) -> TurnDeps:
+              handoff: Callable[[], dict[str, Any] | None] | None = None,
+              cancelled: Callable[[], bool] = lambda: False) -> TurnDeps:
     return TurnDeps(data=data, provider_for=providers(service),
                     grounder=lambda: service.models.get("grounder"),
-                    names=lambda: award_names(service), meter=meter, handoff=handoff)
+                    names=lambda: award_names(service), meter=meter, handoff=handoff,
+                    cancelled=cancelled)
 
 
 # --- the handler ---
@@ -186,8 +188,12 @@ def scout_turn_handler(ctx: JobContext) -> str | None:
     data = account_data(ud, uid, audience, service, doc.brief_id)
     meter = RedisMeter(_redis(), ctx.pool, uid, ctx.job_id)
     ctx.stage("scout", "running")
-    reply = run_turn(turn_deps(service, data, meter), doc.messages[:ix],
-                     question=doc.messages[ix]["text"])
+    try:
+        reply = run_turn(turn_deps(service, data, meter, cancelled=ctx.cancelled),
+                         doc.messages[:ix], question=doc.messages[ix]["text"])
+    except TurnCancelled:  # stopped between steps: write no answer; the view shows "stopped"
+        ctx.stage("scout", "cancelled")
+        return ref
     reply["reply_to"] = mid
     reply["at"] = datetime.now(UTC).isoformat()
     with ctx.user_tx() as c:  # lease-fenced: a stale attempt cannot write the answer

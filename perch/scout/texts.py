@@ -44,16 +44,17 @@ COUNSELLING_URL = "https://counseling.temple.edu/"
 EAP_URL = ("https://careers.temple.edu/hr-resources/our-functional-areas/benefits-administration/"
            "additional-benefit-options/employee")
 
-DISTRESS_STUDENT = ("That sounds hard, and Scout is not the right place for it. Temple students "
-                    f"can use Tuttleman Counseling Services: {COUNSELLING_URL} . If you are in "
-                    "immediate danger, call 911.")
-DISTRESS_STAFF = ("That sounds hard, and Scout is not the right place for it. Temple faculty and "
-                  f"staff can use the Employee Assistance Program: {EAP_URL} . If you are in "
-                  "immediate danger, call 911.")
+DISTRESS = ("That sounds hard, and Scout is not the right place for it. Temple students can use "
+            f"Tuttleman Counseling Services: {COUNSELLING_URL} . Temple faculty and staff can use "
+            f"the Employee Assistance Program: {EAP_URL} . If you are in immediate danger, "
+            "call 911.")
+DISTRESS_STUDENT = DISTRESS_STAFF = DISTRESS  # one message for everyone (S45)
 
 
-def distress_message(audience: str) -> str:
-    return DISTRESS_STUDENT if audience == "student" else DISTRESS_STAFF
+def distress_message(audience: str) -> str:  # noqa: ARG001 - kept so callers need not change
+    """Both verified links for every audience: a doctoral student may be on the researcher
+    side, and a staff member on the student side."""
+    return DISTRESS
 
 
 WITHHELD = ("Scout's answer did not pass the citation check twice, so the parts that failed are "

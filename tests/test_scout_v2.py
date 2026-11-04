@@ -144,16 +144,14 @@ def test_out_of_scope_gets_the_code_written_refusal_and_no_large_model_call(serv
     assert all(e in m["text"] for e in texts.EXAMPLES)  # example questions Scout can answer
 
 
-@pytest.mark.parametrize("audience,url", [("student", texts.COUNSELLING_URL),
-                                          ("researcher", texts.EAP_URL)])
-def test_distress_gets_the_fixed_message_for_the_right_service(service, audience, url):
+@pytest.mark.parametrize("audience", ["student", "researcher"])
+def test_distress_shows_both_verified_links_to_every_audience(service, audience):
     p = smart(["unused"])
     d = deps(service, p, data=data_for(service, audience=audience))
     m = run_turn(d, [], question="I feel sad and hopeless about everything")
     assert m["kind"] == "distress" and m["text"] == texts.distress_message(audience)
-    assert url in m["text"] and p.n("scout") == 0
-    other = texts.EAP_URL if audience == "student" else texts.COUNSELLING_URL
-    assert other not in m["text"]
+    assert texts.COUNSELLING_URL in m["text"] and texts.EAP_URL in m["text"]
+    assert "911" in m["text"] and p.n("scout") == 0
 
 
 def test_distress_links_are_the_ones_recorded_in_sources():

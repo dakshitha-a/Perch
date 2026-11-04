@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
@@ -36,6 +37,7 @@ if TYPE_CHECKING:
     from perch.user.routes import UserServices
 
 LIVE = {"queued", "running"}
+STALE_S = 120  # a question with no job, or whose job is unknown, stops counting as busy after this
 
 
 def usage_view(sv: UserServices, uid: UUID) -> dict[str, Any]:
@@ -53,6 +55,26 @@ def _job_state(sv: UserServices, uid: UUID, mid: dict[str, Any] | None) -> str |
     return st.state.value if st else None
 
 
+def _age_s(m: dict[str, Any]) -> float:
+    try:
+        return (datetime.now(UTC) - datetime.fromisoformat(m["at"])).total_seconds()
+    except (KeyError, ValueError):
+        return float("inf")
+
+
+def is_busy(sv: UserServices, uid: UUID, pend: dict[str, Any] | None) -> bool:
+    """Scout is busy while the last question's job is queued or running. A question that has
+    no job yet is busy only for a short time (the job is submitted a moment later); after
+    STALE_S with no job, or with a job the queue no longer knows, it is not busy, so the
+    session cannot be stuck."""
+    if pend is None:
+        return False
+    state = _job_state(sv, uid, pend)
+    if state in LIVE:
+        return True
+    return state is None and _age_s(pend) < STALE_S
+
+
 def view(sv: UserServices, uid: UUID, sid: UUID, doc: ScoutSessionDoc,
          audience: str) -> dict[str, Any]:
     """The session as JSON. `exchanges` keeps the shape the old Scout view had, so the existing
@@ -60,7 +82,7 @@ def view(sv: UserServices, uid: UUID, sid: UUID, doc: ScoutSessionDoc,
     ex = session.exchanges(doc)
     pend = session.pending(doc)
     state = _job_state(sv, uid, pend)
-    busy = pend is not None and (state is None or state in LIVE)
+    busy = is_busy(sv, uid, pend)
     error = None
     if pend is not None and not busy:
         stopped = state == JobState.CANCELLED.value
@@ -140,7 +162,7 @@ def ask(sv: UserServices, service: BriefService, uid: UUID, sid: UUID, *,
         raise HTTPException(404, {"error": "not_found"})
     doc, _, audience = got
     pend = session.pending(doc)
-    if pend is not None and (_job_state(sv, uid, pend) in LIVE | {None}):
+    if is_busy(sv, uid, pend):
         raise HTTPException(409, "Scout is still working on the last question.")
     if intent:
         if intent not in btn.INTENTS:
