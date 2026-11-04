@@ -1,7 +1,6 @@
-// Student mode (S18): the start form, the profile read from the CV, the two tabs
+// Student mode (S18): the start screen, the profile read from the CV, the two tabs
 // (Fellowships, public; Scholarships, sample), a compare table and a code-written
-// hand-off. Student mode exists only inside private mode: a student's input is always
-// personal. Every verdict, gap, date and amount is written by the server's rule code or
+// hand-off. Every verdict, gap, date and amount is written by the server's rule code or
 // copied from the record; nothing here is a model's claim.
 
 import { evMark, fill, h, icon, labelCells } from "./dom.js";
@@ -20,20 +19,13 @@ export function verdictChip(v) {
   const [cls, mark, word] = VERDICTS[v] || ["", "", v];
   return h("span", { class: `verdict ${cls}` }, h("span", { class: "mk", "aria-hidden": "true", text: mark }), h("span", { text: word }));
 }
-const HINTS = {
-  cv: "Read by rule only: level, year, major, GPA, enrollment, expected graduation and referees. It is never sent to a model.",
-  interests: "A few sentences on what you want to study or work on. This steers the search.",
-  achievements: "Up to five, one per line or numbered. Explanations may cite them.",
-};
-const D = { drafts: {}, files: {}, busy: false, error: null, errorAt: null, sample: false, missing: false, replacing: new Set() };
+const D = { busy: false, error: null };
 const NOT_STATED = "Not stated in the record";
 const SHUT = new Set(); // cards whose "More on why it may fit" was closed; it starts open (S27, Dakshitha)
 
-// The brief on screen was built from the SYNTHETIC sample (for its banner).
-export function usedSample() { return Boolean(D.lastSample); }
-// Forget what this module held for a session that has ended (S27).
+// Forget what this module held for the brief that was on screen (S27).
 export function resetStudent() {
-  Object.assign(D, { drafts: {}, files: {}, busy: false, error: null, errorAt: null, sample: false, lastSample: false, missing: false, replacing: new Set() });
+  Object.assign(D, { busy: false, error: null });
   SORT.by = "order";
   Object.assign(NOTE, { office: null, edits: {}, subjects: {}, got: {}, keptSig: "" });
 }
@@ -49,152 +41,44 @@ export function isStudent(brief) {
   return Boolean(brief && brief.brief && brief.brief.options && brief.brief.options.student);
 }
 
-// ----- start: CV, interests, achievements -----
+// ----- start -----
 
-export async function renderStudentStart(root, { api, mode, go, announce, info, onDocs }) {
-  document.title = "Tell Perch about you — Perch";
-  const draw = () => renderStudentStart(root, { api, mode, go, announce, info, onDocs });
-  if (!mode.state.available) {
-    fill(root, h("div", { class: "screen" }, h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
-      h("h1", { class: "page", text: "Student mode" }),
-      h("p", { class: "notice", text: `Student mode is not available on this server. ${mode.state.reason}` })));
-    return;
-  }
-  if (!api.open) await mode.enable(); // a CV is personal: the session opens before any text is typed in
-  for (const [k, v] of Object.entries(mode.state.drafts)) if (v && !D.drafts[k]) { D.drafts[k] = v; delete mode.state.drafts[k]; }
-  const sess = await api.session();
-  const docs = sess.documents;
-  if (onDocs) onDocs(docs.length); // the chip follows what the session holds (Q7)
-  // The session holds one brief. Its Back link shows only when that brief is a student
-  // brief; after a researcher run it would open the researcher's routes instead.
-  const hasBrief = Boolean(sess.brief_id && sess.brief_student);
-  const have = new Set(docs.map((d) => d.kind));
-  const kinds = info.student_kinds || { cv: "Your CV or résumé", interests: "Your interests", achievements: "Your achievements" };
-  const text = (k) => (D.drafts[k] || "").trim();
-  // Checked when Build is pressed, not when the form is drawn: typing does not redraw.
-  const ready = () => (text("cv") || D.files.cv || have.has("cv"))
-    && (text("interests") || text("achievements") || have.has("interests") || have.has("achievements"));
-  const set = (k) => (e) => { D.drafts[k] = e.target.value; if (D.sample) { D.sample = false; drawSample(); } };
-  const noCv = () => !(text("cv") || D.files.cv || have.has("cv"));
-  const noSide = () => !(text("interests") || text("achievements") || have.has("interests") || have.has("achievements"));
-  const missingText = () => noCv() && noSide() ? "Add your CV and either your interests or your achievements."
-    : noCv() ? "Add your CV." : "Add your interests or your achievements.";
-  const invalid = (kind) => D.missing && (kind === "cv" ? noCv() : noSide());
-
+// The start screen. A visitor without an account gets the built-in SYNTHETIC sample
+// student; using a CV of their own needs an account.
+export function renderStudentStart(root, { api, go, announce }) {
+  document.title = "Start as a student — Perch";
+  const draw = () => renderStudentStart(root, { api, go, announce });
   async function build() {
     D.busy = true; D.error = null; draw();
     try {
-      for (const kind of Object.keys(kinds)) {
-        const body = D.files[kind] ? { kind, filename: D.files[kind].name, data: D.files[kind].data }
-          : text(kind) ? { kind, text: text(kind) } : null;
-        if (!body) continue;
-        if (have.has(kind)) await api.removeDocument(kind);
-        await mode.send(body);
-      }
-      D.drafts = {}; D.files = {}; D.replacing = new Set();
-      if (onDocs) onDocs((await api.session()).documents.length);
-      D.lastSample = D.sample;
-      await api.createStudent({});
-      api.flag("studentSample", D.lastSample); // the Sample data banner survives a reload (W18)
+      const r = await api.create({}, "student");
       D.busy = false;
-      go("#/brief/private/routes");
+      go(`#/brief/${encodeURIComponent(r.id)}/routes`);
     } catch (e) {
-      // The error sits by the button that was pressed, which takes focus (R4, as U4).
-      D.error = e.message; D.errorAt = "go"; D.busy = false; await draw();
+      D.error = e.message; D.busy = false; draw();
       const b = root.querySelector('[data-key="st-build"]'); if (b) b.focus();
+      announce(e.message);
     }
   }
-  async function fillSample() {
-    try {
-      const x = await api.sample("student");
-      D.drafts = { cv: x.cv, interests: x.interests, achievements: x.achievements };
-      D.files = {}; D.sample = true;
-      draw(); announce("Filled with a SYNTHETIC sample.");
-    } catch (e) { D.error = `The sample could not be loaded: ${e.message}`; D.errorAt = null; draw(); }
-  }
-  async function pick(kind, file) {
-    if (!file) return;
-    if (file.size > info.max_bytes) { D.error = `${file.name} is larger than ${info.max_bytes / 1e6} MB: choose a smaller file.`; D.errorAt = "go"; draw(); return; }
-    if (D.errorAt === "go") D.error = null;
-    const data = await new Promise((ok, bad) => {
-      const r = new FileReader();
-      r.onload = () => ok(String(r.result).split(",", 2)[1] || "");
-      r.onerror = () => bad(new Error("The file could not be read."));
-      r.readAsDataURL(file);
-    });
-    D.files[kind] = { name: file.name, data };
-    draw();
-  }
-  const drawSample = () => { const b = document.getElementById("st-sample"); if (b) fill(b, sampleLine()); };
-  const sampleLine = () => (D.sample ? h("p", { class: "sample-status", role: "status" }, h("span", { class: "sample-badge", text: SAMPLE }),
-    h("span", { text: "An invented student, labelled SYNTHETIC. Edit it or clear it before you run your own." })) : null);
-  const box = (kind, label, note, rows, need) => {
-    const d = docs.find((x) => x.kind === kind);
-    const file = D.files[kind];
-    const held = Boolean(d && !text(kind) && !file && !D.replacing.has(kind));
-    return h("section", { class: "box" },
-      h("div", { class: "box-head" }, h("label", { class: "big", for: `st-${kind}`, text: label }),
-        need ? h("span", { class: "local", text: "Needed" }) : null),
-      h("p", { class: "note", id: `st-${kind}-note`, text: note }),
-      held ? h("p", { class: "added" }, icon("lock"),
-        h("span", { text: `Added, ${d.chars.toLocaleString("en-US")} characters, in this session's memory` }),
-        // The paste box stays hidden while a document is held; Replace opens it (U21).
-        h("button", { class: "btn quiet", type: "button", "data-key": `st-replace-${kind}`, onclick: () => {
-          D.replacing.add(kind); draw(); const t = document.getElementById(`st-${kind}`); if (t) t.focus();
-        } }, h("span", { text: "Replace" })),
-        h("button", { class: "btn quiet", type: "button", onclick: async () => { await api.removeDocument(kind); D.replacing.delete(kind); draw(); } }, h("span", { text: "Remove" }))) : null,
-      held ? null : file ? h("p", { class: "added" }, icon("paper"), h("span", { text: `${file.name}, read on this server when you start` }),
-        h("button", { class: "btn quiet", type: "button", onclick: () => { delete D.files[kind]; draw(); } }, h("span", { text: "Remove" })))
-        : h("textarea", { id: `st-${kind}`, rows, placeholder: kind === "achievements" ? "One per line" : kind === "interests" ? "For example, the field you want to work in" : "Paste text here",
-          "aria-describedby": invalid(kind) ? `st-${kind}-note st-missing` : `st-${kind}-note`,
-          "aria-invalid": invalid(kind) ? "true" : null, value: D.drafts[kind] || "", oninput: set(kind) }),
-      kind === "cv" && !file && !held ? h("div", { class: "file-row" },
-        h("label", { class: "btn" }, h("span", { text: "Or upload a file" }),
-          h("input", { type: "file", class: "sr-only", accept: (info.formats || []).join(","), onchange: (e) => pick(kind, e.target.files[0]) })),
-        h("span", { class: "hint", text: "Text, Markdown, Word or PDF" })) : null);
-  };
   fill(root, h("div", { class: "screen student-start" },
     h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
-    h("div", {}, h("h1", { class: "page", text: "Tell Perch about you." }),
-      h("p", { class: "page-sub", text: "Code reads your CV by rule on this server. A model on this server reads it only when you ask Scout for cover-letter points, with contact details blanked, unless you choose Cloud and confirm. It is held in memory for this session and never saved." })),
-    hasBrief ? h("p", {}, h("a", { class: "btn", href: "#/brief/private/routes" }, h("span", { text: "Back to your options" }))) : null,
+    h("div", {}, h("h1", { class: "page", text: "Find fellowships and scholarships." }),
+      h("p", { class: "page-sub", text: "Perch checks each option against a student's CV by rule and shows what is still needed. To see how that works, try the sample student." })),
     h("div", { class: "sample-row" },
-      h("span", { text: "Not sure what to paste? See a sample laid out the way that matches best: clear headings for education, honors, research, activities and references." }),
-      h("button", { class: "btn outline", type: "button", "data-key": "st-fill", onclick: fillSample }, h("span", { text: "Fill with a sample" })),
-      h("button", { class: "btn ghost", type: "button", "data-key": "st-clear", onclick: () => { D.drafts = {}; D.files = {}; D.sample = false; draw(); announce("Cleared."); } },
-        h("span", { text: "Clear" }))),
-    h("div", { id: "st-sample" }, sampleLine()),
-    D.error && D.errorAt !== "go" ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null,
-    h("div", { class: "st-cols" },
-      h("div", { class: "st-cv" }, box("cv", kinds.cv, "Level, year, major, GPA, enrollment, graduation date and referees are read from it.", 12, true)),
-      h("div", { class: "st-side" },
-        box("interests", "What you are interested in", "A few sentences. This steers the search.", 4),
-        box("achievements", kinds.achievements || "Your achievements", "Up to five, one per line. Explanations may cite them.", 4))),
-    h("div", { class: "go-row" },
-      h("button", { class: "btn primary big", type: "button", "data-key": "st-build", disabled: D.busy, onclick: () => {
-        // The error sits by the button that was pressed, and marks the boxes it names (U4).
-        if (!ready()) {
-          D.missing = true; draw();
-          const b = root.querySelector('[data-key="st-build"]'); if (b) b.focus();
-          return;
-        }
-        D.missing = false;
-        build();
-      } }, h("span", { text: D.busy ? "Starting" : "Find fellowships and scholarships" })),
-      D.missing ? h("p", { class: "notice error go-error", id: "st-missing", role: "alert" }, icon("warn"),
-        h("span", { text: missingText() }))
-        : D.error && D.errorAt === "go" ? h("p", { class: "notice error go-error", id: "st-error", role: "alert" }, icon("warn"), h("span", { text: D.error }))
-          : h("span", { class: "hint", text: "Needs your CV and either your interests or your achievements." }))));
+      h("span", { text: "The sample is an invented student, labelled SYNTHETIC. Nothing in it is about you, and its scholarships are invented too. Using your own CV needs an account." }),
+      h("button", { class: "btn primary", type: "button", "data-key": "st-build", disabled: D.busy, onclick: build },
+        h("span", { text: D.busy ? "Starting" : "Try the sample student" }))),
+    D.error ? h("p", { class: "notice error go-error", id: "st-error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null));
 }
 
 // ----- profile -----
 
 export function studentProfile(d, { openEvidence }) {
   const rows = d.student || [];
-  const mine = Object.entries(d.papers || {}).filter(([id, w]) => w.private);
+  const mine = Object.entries(d.papers || {}).filter(([id, w]) => w.source === "user" || w.kind === "user");
   const interests = mine.filter(([id]) => /interests/.test(id));
   const achievements = mine.filter(([id]) => /achievement-/.test(id)); // one row per achievement
-  // Your own words, from this session's memory; exports include them, hand-offs withhold or mask them.
+  // The documents the options cite: the interests note and the achievements.
   const ref = ([id, w]) => h("li", { class: "fade-in" }, h("button", { class: "paper", type: "button", onclick: (e) => openEvidence(id, e.currentTarget) },
     h("span", { class: "paper-title", text: w.title }),
     w.text ? h("span", { class: "paper-meta", text: w.text.replace(/^#.*$/gm, "").replace(/\s+/g, " ").trim().slice(0, 220) }) : null));
@@ -203,13 +87,13 @@ export function studentProfile(d, { openEvidence }) {
       h("h2", { class: "section-title", text: "What the rules read from your CV" }),
       rows.length ? h("dl", { class: "fields" }, rows.map(([k, v]) => h("div", { class: "field" }, h("dt", { text: k }), h("dd", { text: v }))))
         : h("div", { class: "skeleton" }, h("span", { style: "width:80%" }), h("span", { style: "width:60%" })),
-      h("p", { class: "hint", text: "Read by code, not by a model. If something is wrong, fix your CV and run it again." }))),
+      h("p", { class: "hint", text: "Read by code, not by a model." }))),
     h("div", { class: "right" }, h("section", { class: "pblock" },
       h("h2", { class: "section-title", text: "What steers the search" }),
-      interests.length ? h("ul", { class: "papers" }, interests.map(ref)) : h("p", { class: "hint", text: "No interests note in this session." }),
+      interests.length ? h("ul", { class: "papers" }, interests.map(ref)) : h("p", { class: "hint", text: "No interests note." }),
       h("h3", { class: "mini", text: "Your achievements" }),
       achievements.length ? h("ul", { class: "papers" }, achievements.map(ref)) : h("p", { class: "hint", text: "None added." }),
-      h("p", { class: "hint", text: "Explanations may cite these. They stay in this session’s memory." }))),
+      h("p", { class: "hint", text: "Explanations may cite these." }))),
     h("p", { class: "notice", style: "flex: 1 1 100%" }, icon("lock"), h("span", { text: "Perch never asks about residency, citizenship or other personal criteria. When a listing has one, it is quoted on the card for you to judge." })))];
 }
 
@@ -233,11 +117,8 @@ function sortSwitch(redraw) {
         onclick: () => { SORT.by = k; redraw(); const b = document.querySelector(`#panel [data-key="sort-${k}"]`); if (b) b.focus(); } }, label))));
 }
 
-let CLOUD = null; // the Cloud provider's name when the brief on screen ran on Cloud (Q33)
-
 export function studentRoutes(panel, ctx) {
   const { brief, route, setRoute, openEvidence, setLead } = ctx;
-  CLOUD = ctx.cloud || null;
   const leads = brief.leads.filter((l) => l.route === route);
   const done = (name) => {
     const s = brief.brief.stages.find((x) => x.name === name);
@@ -361,7 +242,7 @@ function fitReason(l) {
   // F2: the card's own record, cited where a noun stands, reads "this opportunity".
   const own = new Set([l.record_id, String(l.record_id || "").split(":").pop()]);
   const [about, work] = f.ownInPlace(String(l.explanation || ""), own).split(/\s*Cited work:\s*/);
-  const items = (work || "").split(/;\s*/).map((x) => plainExplanation(x.replace(/^\s*(?:private:)?(?:achievement-[a-e]|interests)\s*/, ""))
+  const items = (work || "").split(/;\s*/).map((x) => plainExplanation(x.replace(/^\s*(?:user:)?(?:achievement-[a-e]|interests)\s*/, ""))
     .replace(/\.$/, "")).filter(Boolean);
   const reason = l.inference ? plainExplanation(you(f.ownInPlace(l.inference, own))) : null;
   // In the weak band the model's sentence may say it does not fit, so the label does not
@@ -371,7 +252,7 @@ function fitReason(l) {
   const label = weak ? "How it relates" : "Why it may fit";
   return h("div", { class: "fit-reason" },
     reason ? h("p", { class: "fit-why" }, h("b", { text: `${label}: ` }), h("span", { text: reason }),
-      h("span", { class: `tag model${CLOUD ? " cloud" : ""}`, text: CLOUD ? `Cloud: ${CLOUD}` : "Model text" })) : null,
+      h("span", { class: "tag model", text: "Model text" })) : null,
     h("details", { class: "why explain", open: !SHUT.has(l.id),
       ontoggle: (e) => { if (e.target.open) SHUT.delete(l.id); else SHUT.add(l.id); } },
     h("summary", { "data-key": `why-${l.id}` }, h("span", { text: reason ? `More on ${label.toLowerCase()}` : label })),
@@ -387,11 +268,11 @@ function you(text) {
     .replace(/\b([Tt])he student\b/g, (_, t) => (t === "T" ? "You" : "you"));
 }
 
-// Citation brackets go; a session record's id reads as "your achievement A".
+// Citation brackets go; a document's id reads as "your achievement A".
 function plainExplanation(text) {
   return String(text || "").replace(/\s*\[[^\]]*\]/g, "")
-    .replace(/\b(?:private:)?achievement-([a-e])\b/g, (_, c) => `your achievement ${c.toUpperCase()}`)
-    .replace(/\b(?:private:)?interests\b/g, "your interests note")
+    .replace(/\b(?:user:)?achievement-([a-e])\b/g, (_, c) => `your achievement ${c.toUpperCase()}`)
+    .replace(/\b(?:user:)?interests\b/g, "your interests note")
     .replace(/\bCited work:/, "Your work:").trim()
     .replace(/^./, (c) => c.toUpperCase());
 }
@@ -429,12 +310,12 @@ export function studentCompare(panel, ctx) {
   const route = NOTE.office;
   if (!NOTE.got[route]) {
     NOTE.got[route] = { wait: true };
-    const ask = api && api.studentNote ? api.studentNote(route) : Promise.reject(new Error("The note needs the live app."));
+    const ask = api && api.studentNote ? api.studentNote(ctx.briefId, route) : Promise.reject(new Error("The note needs the live app."));
     ask.then((n) => { NOTE.got[route] = { note: n }; }, (e) => { NOTE.got[route] = { error: e.message }; })
       .then(() => { if (NOTE.keptSig === keptSig && panel.querySelector(".st-note-wait")) draw(); });
   }
   const got = NOTE.got[route];
-  const officeName = (r) => (offices[r] || {}).name || "The Temple office for this route";
+  const officeName = (r) => (offices[r] || {}).name || ((NOTE.got[r] || {}).note || {}).office || "The Temple office for this route";
   const row = (l) => {
     const r = l.record || {};
     const sch = r.kind === "scholarship";
@@ -475,7 +356,7 @@ export function studentCompare(panel, ctx) {
     h("p", { class: "hint", text: "Each cell is copied from its record or checked against your CV by rule. “Not stated in the record” means the listing leaves it blank." }));
 }
 
-// The note as the server wrote it (GET /private/student/note), editable here.
+// The note as the server wrote it (GET /briefs/{id}/student/note), editable here.
 function note(route, n, announce) {
   const subjectNow = () => NOTE.subjects[route] ?? n.subject;
   // The subject is editable, as in the researcher's note; the mail link and the copy use the edit.

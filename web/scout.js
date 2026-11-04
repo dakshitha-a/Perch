@@ -59,7 +59,7 @@ const START_OVER = /^\W*(?:(?:ok(?:ay)?|so|hey|um|please|pls|plz|can|could|would
 // Scout runs every step as soon as the model asks for it and shows each one (S27, S28).
 const T = { briefId: null, data: null, error: null, timer: null, draft: "", sending: false, stopping: false, openSteps: new Set(), seen: 0, stick: true, top: 0 };
 
-// Stop polling and forget the conversation when the session has ended (S27).
+// Stop polling and forget the conversation.
 export function resetScout() {
   clearTimeout(T.timer);
   Object.assign(T, { briefId: null, data: null, error: null, timer: null, draft: "", sending: false, stopping: false, openSteps: new Set(), seen: 0, stick: true, top: 0 });
@@ -131,8 +131,8 @@ function welcome(ctx) {
         h("button", { class: "chip", type: "button", onclick: () => { T.draft = q; send(ctx); } }, q)))) : null,
       h("details", { class: "scout-limits" }, h("summary", { text: "What I will not do" }),
         h("p", { text: ctx.student
-          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record, and run on a local model, because your CV is in this session. A model reads your CV only when you ask for cover-letter points, with contact details blanked. Sample scholarships stay marked as samples. A conversation has a budget; when it is spent, start a new one. The conversation ends with the session."
-          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record, and run on a local model. A model reads your documents only when you ask for cover-letter points, with contact details blanked. A conversation has a budget; when it is spent, start a new one. The conversation ends with the session." }))));
+          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record. A model reads your CV only when you ask for cover-letter points, with contact details blanked. Sample scholarships stay marked as samples. A conversation has a budget; when it is spent, start a new one."
+          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after eight model calls for one question, cannot browse the web, send anything or change a record. A model reads your documents only when you ask for cover-letter points, with contact details blanked. A conversation has a budget; when it is spent, start a new one." }))));
 }
 
 // The chat fills the window below the sticky tabs, so the question box sits on the bottom
@@ -231,8 +231,8 @@ function card(c, ctx) {
       ...c.records.slice(0, 8).map((id) => citeBtn(id, ctx))) : null);
 }
 
-// Where a step ran (S28): code, a local model, or a named Cloud provider, matching the
-// header chip. Recordings made before S28 carry no "where" and show no tag.
+// Where a step ran (S28): code, a local model, or a named Cloud provider, as the
+// card shows it. Recordings made before S28 carry no "where" and show no tag.
 const CLOUD_NAMES = { anthropic: "Anthropic" };
 // The planner's model string reads "provider:model"; only a named Cloud provider is Cloud (U32).
 function modelWhere(model) {
@@ -313,14 +313,14 @@ function pointsText(p) {
 }
 
 // A citation chip for a point, labelled by the source's title (the id is the tooltip).
-// A session document ("private:cv") shows a lock and opens nothing; a public record opens
+// The user's own document ("user:interests") shows a lock and opens nothing; a public record opens
 // in the evidence panel, as the answer's citations do.
 function pointCite(id, p, ctx) {
   const full = (p.sources || {})[id] || id;
   const short = full.length > 56 ? `${full.slice(0, 54).replace(/\s+\S*$/, "")}…` : full;
-  if (id.startsWith("private:")) {
-    return h("span", { class: "cite private", title: id }, icon("lock"), h("span", { text: short }),
-      h("span", { class: "sr-only", text: `, from ${full}, held in this session` }));
+  if (id.startsWith("user:")) {
+    return h("span", { class: "cite own", title: id }, icon("lock"), h("span", { text: short }),
+      h("span", { class: "sr-only", text: `, from ${full}, your own document` }));
   }
   const sample = (id === p.for.id && p.for.sample) || Boolean(ctx.label && (ctx.label(id) || {}).sample);
   return h("button", { class: `cite${sample ? " sample" : ""}`, type: "button", title: id,

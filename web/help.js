@@ -4,8 +4,8 @@
 // keyframes only, and the reduced-motion block in styles.css stops them on their final state.
 // One inline SVG shows the demo path as built, in two layouts (a grid on wide screens, a
 // column on phones); the layout not shown is display:none, so only one reaches a screen
-// reader, with a text list beside it. The technical detail lives in docs/SPEC.md and
-// docs/design/PRIVATE_MODE.md, not here. Every claim below describes code in this repo.
+// reader, with a text list beside it. The technical detail lives in docs/SPEC.md, not here.
+// Every claim below describes code in this repo.
 
 import { h, icon } from "./dom.js";
 import { owl } from "./owl.js";
@@ -85,13 +85,13 @@ function figWho() {
     h("div", { class: "seg" },
       h("span", { class: "seg-b seg-off", text: "Researcher" }),
       h("span", { class: "seg-b seg-on", text: "Student" })),
-    h("span", { class: "pic-btn big in2" }, h("span", { text: "Start with your CV or résumé" })));
+    h("span", { class: "pic-btn big in2" }, h("span", { text: "Start as a student" })));
 }
 
 function figDocs() {
-  const box = (label, g) => h("div", { class: "pic-card box" }, h("b", { text: label }), ph(90, g), ph(60, g));
-  return fig(box("Your CV or résumé", "grow1"), box("Your interests", "grow2"), box("Your achievements", "grow3"),
-    h("span", { class: "pic-btn in4" }, h("span", { text: "Find fellowships and scholarships" })));
+  return fig(
+    card(h("b", { text: "Sample student" }), ph(90), ph(60)),
+    h("span", { class: "pic-btn in4" }, h("span", { text: "Try the sample student" })));
 }
 
 function figVerdicts() {
@@ -146,17 +146,17 @@ function researcher() {
     ["Find the researcher", "Type a name, an ORCID iD or an OpenAlex ID, then press Find. Names are searched among Temple authors.", figFind()],
     ["Confirm and build", "Check the institution and the papers, press This is the one, then Build brief. The owl rides the branch as each step finishes.", figBuild()],
     ["Read the routes and decide", "Grants and Industry are separate lists. Keep the leads worth a closer look and dismiss the rest. Kept leads gather in Your shortlist.", figRoutes()],
-    ["Compare and hand off", "Compare puts your kept leads side by side. Pick an office and Perch drafts an email for you to edit and send.", figHandoff(false)],
-    ["Ask Scout", "Ask in plain words, such as “only R21s that close by March”. You can also ask for cover-letter points for a lead.", figScout()],
+    ["Compare and hand off", "Compare puts your kept leads side by side. Pick an office and Perch drafts an email for you to edit and send. Drafting needs an account.", figHandoff(false)],
+    ["Ask Scout", "Ask in plain words, such as “only R21s that close by March”. You can also ask for cover-letter points for a lead. Scout needs an account.", figScout()],
   ]);
 }
 
 function student() {
   return steps("h-student", "If you are a student", [
-    ["Choose Student", "On the first screen choose Student, then press Start with your CV or résumé.", figWho()],
-    ["Add your CV and more", "Paste or upload your CV. Add your interests or up to five achievements, then press Find fellowships and scholarships.", figDocs()],
+    ["Choose Student", "On the first screen choose Student, then press Start as a student.", figWho()],
+    ["Try the sample student", "Press Try the sample student. It is an invented SYNTHETIC student, labelled as sample data, because a CV of your own needs an account.", figDocs()],
     ["Read the verdicts", "Each option shows a rule check: Eligible, May be eligible or Not eligible. Still needed lists what the record asks for and your CV does not show.", figVerdicts()],
-    ["Compare and send the note", "Compare your kept options and pick the Temple office. Code writes a short note for you to copy or open in your mail app.", figHandoff(true)],
+    ["Compare and send the note", "Compare your kept options and pick the Temple office. Code writes a short note for you to copy or open in your mail app. A guest can do this too.", figHandoff(true)],
   ]);
 }
 
@@ -179,32 +179,27 @@ function s(tag, attrs = {}, ...kids) {
   return el;
 }
 
-const ARCH_LABEL = "How Perch works, in order. Public sources are fetched by code into a store. Local models search and rank. A chat model explains and summarises. Code and a grounding model check the writing. You get your brief, then keep, compare, ask Scout and send the hand-off draft yourself.";
+const ARCH_LABEL = "How Perch works, in order. Public sources are fetched by code into a store. Models search and rank. A chat model explains and summarises. Code and a grounding model check the writing. You get your brief, then keep, compare, ask Scout and send the hand-off draft yourself.";
 // kind: record, code, model, brief or you; the lines are what the node says under its title.
 const NODES = [
   ["record", "Public sources", ["OpenAlex, NIH RePORTER,", "NSF, Grants.gov,", "Temple fellowship list"]],
   ["code", "Fetch", ["Plain code. Every record", "keeps its source, link", "and fetch date"]],
-  ["code", "Store", ["Public records and the", "search index. Nothing", "about you is kept."]],
-  ["model", "Search and rank", ["Local models find and", "order the matches.", "Match is set by code."]],
+  ["code", "Store", ["Public records and the", "search index."]],
+  ["model", "Search and rank", ["Embedding and ranking", "models find and order", "the matches."]],
   ["model", "Explain", ["A chat model writes the", "profile summary and", "why each lead fits."]],
   ["code", "Check", ["Code checks each cited", "record, then a model", "checks each statement."]],
   ["brief", "Your brief", ["Routes, Compare and", "Ask Scout, every claim", "linked to its record."]],
   ["you", "You", ["Keep, compare, ask", "Scout, and send the", "hand-off draft."]],
 ];
-const LANE = [
-  ["Your documents", ["stay in this session’s memory", "and are gone when it ends."]],
-  ["Local or Cloud", ["Summary, fit, hand-off and cover-letter", "writing runs Local unless you choose Cloud."]],
-];
 const SR_LIST = [
   "Public sources: OpenAlex, NIH RePORTER, NSF, Grants.gov and the Temple fellowship list.",
   "Fetch: plain code; every record keeps its source, link and fetch date.",
-  "Store: public records and the search index; nothing about you is kept.",
-  "Search and rank: local models find and order matches; Match is set by code.",
+  "Store: public records and the search index.",
+  "Search and rank: embedding and ranking models find and order matches.",
   "Explain: a chat model writes the profile summary and why each lead fits.",
   "Check: code checks each cited record, then a grounding model checks each statement.",
   "Your brief: Routes, Compare and Ask Scout, every claim linked to its record.",
   "You: keep, compare, ask Scout and send the hand-off draft yourself.",
-  "Your documents stay in the session’s memory. The four writing jobs run Local unless you choose Cloud.",
 ];
 
 function archSvg(vertical) {
@@ -247,16 +242,7 @@ function archSvg(vertical) {
     else pts = `${x2 + NW + 12},${y + NH / 2 - 6} ${x2 + NW + 1},${y + NH / 2} ${x2 + NW + 12},${y + NH / 2 + 6}`;
     kids.push(s("polygon", { points: pts, class: "arch-head" }));
   });
-  // the side lane: boxes drawn after the nodes
-  const top = vertical ? 8 * NH + 7 * GAP + 18 : 2 * NH + RG + 30;
-  const lw = vertical ? W : 392, lh = vertical ? 68 : 72;
-  LANE.forEach(([t, lines], i) => {
-    const x = vertical ? 0 : i * (lw + 16), y = vertical ? top + i * (lh + 12) : top;
-    kids.push(s("g", { class: "arch-lane" }, s("rect", { x, y, width: lw, height: lh, rx: 12 }),
-      s("text", { x: x + 14, y: y + 24, class: "arch-t" }, t),
-      lines.map((l, j) => s("text", { x: x + 14, y: y + 44 + j * 16, class: "arch-s" }, l))));
-  });
-  const H = vertical ? top + 2 * lh + 12 : top + lh;
+  const H = vertical ? 8 * NH + 7 * GAP : 2 * NH + RG;
   return s("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": ARCH_LABEL, class: `arch ${vertical ? "arch-v" : "arch-w"}` }, kids);
 }
 
@@ -275,9 +261,7 @@ function architecture() {
 
 function privacy() {
   const items = [
-    ["lock", "Nothing about you is stored.", " Your session lives in the server’s memory. It ends when you press End session, after 30 idle minutes or when the server restarts."],
-    ["person", "Local is the default.", " Cloud is your choice, after a warning that names the provider and lists the documents that would leave."],
-    ["download", "Exports hold your full brief.", " When the session holds ongoing research, a box can mask it first. Hand-off drafts have their own box to mask private text."],
+    ["person", "A guest session saves nothing.", " It ends after an hour. Hand-offs and Scout need an account."],
     ["mail", "Perch sends nothing.", " Hand-offs are drafts. You send them."],
   ];
   return h("section", { class: "help-block", "aria-labelledby": "h-privacy" },

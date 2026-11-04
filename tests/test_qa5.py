@@ -49,7 +49,7 @@ console.log(JSON.stringify([
         {"paper": "user:proposal", "text": "proposed insole sensing"},
         {"paper": "user:manuscript", "text": "recorded plantar force"}]
     app = (WEB / "app.js").read_text()
-    assert "From your documents" in app and '"your documents"' in app
+    assert "From your documents" in app  # the docs-only match pill wording went with private mode
 
 
 # --- G2, G12, G19: the largest award, what pays most, the top three ---
