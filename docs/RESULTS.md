@@ -123,6 +123,17 @@ Every number is copied from the file named in its row. The back-test is NIH only
 
 The grounding set is a proxy built from saved explanations, not human labels. It has 40 pairs, so one pair moves the miss rate by 0.025.
 
+## S40 Temple awards dataset (v1 rebuild, Phase 4)
+
+| Measure | Value | Source |
+|---|---|---|
+| Pages read | 142 of 461 inventoried pages (316 had no HTTP 200 in the inventory, 3 need sign-in) | `docs/SOURCES.md` Temple award pages table |
+| Extraction | Two runs on Haiku 5.5, $0.220 and $0.214. Run 1: 309 records kept of 311 proposed. Run 2, with the widened Temple-funded rule: 289 of 291 | `data/temple/dataset/temple_awards_v2.manifest.json` |
+| Quote check, run 2 | Amounts kept 60 of 89; dated deadlines 21 of 21; yearless deadlines kept as text only 33; eligibility lines 401 of 410; links 131 of 131; Temple-funded 17 of 189 | extraction log, summarised here |
+| Dataset v2 | 310 records after dedupe of both runs (598 in, 238 merged groups, 7 pairs kept apart, 8 same-page reads with the disputed field set to not stated); 17 Temple-funded | `data/temple/dataset/temple_awards_v2.manifest.json` |
+| Names | People's names outside award titles removed at build: 12 spots in v2. Independent read-only checks: 15 people found in v1 before the scrub, 0 after; v2 0, with no contacts | `perch/temple_names.py`, DECISIONS 2026-11-04 |
+| Hand-check of v1, fresh-context reviewer | 29 records, 203 field rows: 188 correct, 4 wrong, 11 missing; error rate 7.4% (95% interval 4.5% to 11.8%, rows not independent). 10 of the 15 were Temple-funded left empty; without that field 5 of 174 rows (2.9%). The Temple-funded rule was widened for v2; v2's error rate is not yet measured (S46) | `bench/results/s40_handcheck/sheet.csv` |
+
 ## Limits
 
 - **One funder, small sample.** The back-test is NIH only, with 48 targeted and 78 parent awards. It was tuned on the same 48 rows, and parent announcements are nearly unrecovered (2 of 78). There is no NSF back-test, and 12 of 14 embedder setups could not be told from the default (`bench/results/SUMMARY.md`).
