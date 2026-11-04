@@ -132,10 +132,23 @@ _URL = re.compile(r"https?://[^\s)\]]+")
 _GPA = re.compile(r"(\d\.\d{1,2})\s*(?:cumulative\s+)?GPA"
                   r"|GPA\s+(?:of\s+)?(?:at\s+least\s+)?(\d\.\d{1,2})",
                   re.I)
+# temple_funded: a quoted sentence on a Temple page says Temple, or a named Temple unit,
+# offers, awards, gives, provides, funds, sponsors or administers the award. S40's
+# hand-check found the first rule, Temple by name only, missed 10 of 29 records ("Temple will
+# offer", "The College of ... awards", "awarded by the Office of ..."). A unit is a school,
+# college, office, department, centre, institute, division, program or the Provost named as
+# the subject or the agent; on a Temple page that unit is Temple's.
+_UNIT = (r"(?:Temple(?:\s+University)?|(?:the\s+)?(?:[A-Z][\w&'-]*\s+){0,6}?"
+         r"(?:College|School|Office|Department|Division|Center|Centre|Institute|Program|Honors|Provost|Global\s+"
+         r"Opportunities)(?:\s+(?:of|for)\s+(?:the\s+)?(?:(?:[A-Z][\w,'-]*|and|&)\s*){1,8})?"
+         r"(?:\s*\([A-Z]{2,8}\))?)")
+_VERB = r"(?:offers?|awards?|gives?|provides?|funds?|sponsors?|administers?)"
 _TEMPLE_OFFERS = re.compile(
-    r"\bTemple(?:\s+University)?(?:'s)?\s+(?:offers|awards|provides|funds|sponsors|administers)\b"
-    r"|\b(?:offered|awarded|funded|sponsored|provided|administered|supported)\s+by\s+"
-    r"(?:the\s+)?(?:[\w&'-]+\s+){0,6}?Temple\b", re.I)
+    rf"\b{_UNIT}(?:'s)?\s+(?:(?:will|also|annually|each\s+year)\s+)*{_VERB}\b"
+    rf"|\b(?:offered|awarded|given|funded|sponsored|provided|administered|supported)\s+by\s+"
+    rf"(?:the\s+)?(?:[\w&'-]+\s+){{0,6}}?(?:Temple|College|School|Office|Department|Division"
+    rf"|Center|Centre|Institute|Program|Provost)\b"
+    rf"|\b(?:Each|Every)\s+year,?\s+{_UNIT}\s+{_VERB}\b")
 _LEVEL_WORDS = {
     "undergraduate": re.compile(r"\bundergraduate", re.I),
     "graduate": re.compile(r"(?<!under)\bgraduate\b", re.I),

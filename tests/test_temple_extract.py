@@ -257,3 +257,19 @@ def test_extract_all_budget_stops_between_pages(tmp_path, capsys, monkeypatch):
     assert len(p.calls) == 2
     text = capsys.readouterr().out
     assert "budget" in text.lower() and "dropped" in text.lower()
+
+
+def test_temple_funded_sentence_forms_from_the_s40_handcheck() -> None:
+    from perch.temple_extract import _TEMPLE_OFFERS
+    yes = ["Temple will offer 10 Exchange Awards.",
+           "The College of Quill and Vane Studies offers awards.",
+           "Each year the School of Lute, Reed & Drum Arts gives two awards.",
+           "It is awarded by the Office of Undergraduate Admissions.",
+           "Funding is provided by the Office of the Provost.",
+           "Global Opportunities (GO) administers the grant.",
+           "The Fox School offers scholarships."]
+    no = ["Students may apply to an outside program.", "Applicants must attend Temple.",
+          "The Zarnow Science Foundation awards grants.",
+          "Students who receive awards must report them."]
+    assert all(_TEMPLE_OFFERS.search(t) for t in yes)
+    assert not any(_TEMPLE_OFFERS.search(t) for t in no)

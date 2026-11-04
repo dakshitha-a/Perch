@@ -280,7 +280,7 @@ def test_no_secrets_in_logs_or_errors(repo, caplog):
     wrapped = repo.keys[(uid, 1)].wrapped
     errors: list[str] = []
     for fn in (
-        lambda: crypto.decrypt_field(uid, blob[:-1] + b"\x00", aad),
+        lambda: crypto.decrypt_field(uid, blob[:-1] + bytes([blob[-1] ^ 1]), aad),
         lambda: crypto.decrypt_field(uid, blob, aad_for(uid)),
         lambda: crypto.decrypt_field(uid, blob[:5], aad),
     ):
