@@ -1,5 +1,7 @@
 # Running Perch
 
+> **v1 and the fallback.** `uv run perch serve --models fake` runs the app on SQLite with no accounts. The v1 stack (Postgres with pgvector, Redis, Keycloak for development, the web app and the worker) runs with `make v1-up` from `deploy/compose/docker-compose.v1.yml`; its worker is on the `cloud-cpu` profile today. Parts of this page, such as the sample store and private mode, describe the fallback build at the tag `v0.1-demo-fallback`.
+
 [Back to the README](../README.md)
 
 ## Setup
@@ -23,14 +25,14 @@ uv run perch fetch opportunities --agencies HHS-NIH11 --limit 40   # open NIH op
 uv run perch fetch opportunities --opp-num PA-20-185                # one, in any status
 ```
 
-Student mode (inside private mode) reads two more stores. Load them once:
+Student mode reads two more stores. Load them once:
 
 ```sh
 uv run perch fetch temple      # Temple SDFA's public fellowship list into the public store
 uv run perch samples           # the SYNTHETIC sample scholarships into their own store
 ```
 
-The sample store is `data/sample.db` (`PERCH_SAMPLE_DB`). The app also loads it on start when private mode is on.
+The sample store is `data/sample.db` (`PERCH_SAMPLE_DB`). This is the fallback build's way of loading it. In v1 the Temple awards dataset is loaded into Postgres with `perch temple load-dataset` (see below), and the SYNTHETIC samples are a separate screen.
 
 Route A leads use local models (Qwen3-Embedding-0.6B and Qwen3-Reranker-0.6B) from the optional `ml` extra:
 
@@ -47,7 +49,7 @@ Route B lists up to five companies with at least two kinds of public signal: the
 uv run perch brief A5026494099 --route B
 ```
 
-`perch brief` on the command line stores its brief in your store: it is an operator tool. The web app and its API keep nothing about visitors; see [Privacy](private-mode.md). The weekly watch (S16) is shelved in `perch/shelved/monitor/`.
+`perch brief` on the command line stores its brief in your store: it is an operator tool. In the fallback build the web app kept nothing about visitors (see [the retired private-mode page](private-mode.md)). In v1, signed-in users' CVs, entries and briefs are stored encrypted per user and guests' briefs live in Redis for one hour; see the README and [ARCHITECTURE_V1.md](ARCHITECTURE_V1.md). The weekly watch (S16) is shelved in `perch/shelved/monitor/`.
 
 Award links are matched by name. Fix a wrong or missed match in `data/overrides/award_links.csv`.
 

@@ -69,6 +69,8 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 
 ## 4. Private context: CV and unpublished directions
 
+> **Retired on `rebuild/v1` (S42, 4 Nov 2026).** Dakshitha's decision of 3 Nov 2026 (DECISIONS.md) replaced private mode with accounts: a signed-in user's CV and entries are stored encrypted under that user's key, and a guest's brief lives in Redis for one hour. Private sessions, the Local and Cloud switch, masks and the second warning are gone. Unpublished research is not accepted. The text below is kept as history of the fallback build at the tag `v0.1-demo-fallback`.
+
 **Private by default** (S23, 2026-10-29, Dakshitha). With no user accounts, every brief is a session held in memory: no stored briefs, no reuse, no browser history, no per-user logs. Public records fetched for a brief stay cached. Models are local by default; a Local / Cloud switch sends the four model skills to a named cloud provider after a warning the user confirms; a session that holds documents gets a second warning that lists which documents would leave, and nothing leaves until the user confirms it (rule 1 as amended 2026-11-01; the deployer may also disable this with `PERCH_CLOUD_DOCUMENTS`). Monitoring is shelved until a user system exists (`perch/shelved/monitor/`). User guide: `docs/private-mode.md`.
 
 **Private mode** (expanded 2026-10-29 at Dakshitha's request; full design in `docs/design/PRIVATE_MODE.md`; since S23 the documents part of every session). A researcher adds a current CV, a research summary, an unfinished proposal or unpublished work, and the routes are tailored to it.
