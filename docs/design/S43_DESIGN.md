@@ -8,7 +8,7 @@ The gate means three things work live:
 
 - **Guest or sign-in:** a visitor can sign in, or start a guest session, or just browse.
 - **Temple awards:** the awards list shows Temple awards with the Temple-only toggle and the school tags.
-- **A brief on the cloud model:** a researcher brief from an OpenAlex id, and a student brief from a stored CV, both build on the cloud profile.
+- **A brief on the cloud model:** a researcher brief from an OpenAlex id builds on the cloud profile. A student brief from a stored CV is also gate if S42 lands its account route by Thursday morning. If S42 slips, the researcher brief alone meets the gate.
 
 ---
 
@@ -224,7 +224,8 @@ phone at 360 px
 - **Level filter:** a select with "Any level", "Undergraduate", "Graduate", "Faculty", and "Several levels" for `mixed`. Records with no level appear only under "Any level".
 - **The tag row on a phone:** one line that scrolls sideways inside itself, with a fade at the right edge. The page itself never scrolls sideways.
 - **The researcher side:** the toggle defaults to off, because most research funding is external. The tags apply only when the toggle is on.
-- **The student side:** the toggle defaults to on. If `GET /filters` shows no scholarship outside Temple, the toggle is hidden and the page title reads "Temple awards".
+- **The student side:** the toggle defaults to on. The contract's `FilterView` holds only schools and levels, so it cannot tell the page whether any scholarship is outside Temple.
+- **Decided for the gate:** `GET /filters` also returns `total` and `temple_total`. If they are equal, the student toggle is hidden and the page title reads "Temple awards". This is a small addition to the contract, listed in section 10.
 
 ### 3.3 The award card [gate]
 
@@ -232,10 +233,10 @@ Field coverage drives the card. Out of 285 records, 48 state a maximum amount, 1
 
 ```
 +------------------------------------------------+
-| [CST]  Undergraduate  ·  Open to one school     |
-| Abraham and Ruth Clearfield Scholarship  (serif)|
-| "...awarded to full-time undergraduate students |
-|  majoring in chemistry..."   <- quoted sentence |
+| [CST]  Undergraduate  ·  Open to one school    |
+| [Award name from the record]  (serif)     |
+| "...awarded to full-time undergraduate         |
+|  students majoring in..."   <- quoted sentence  |
 | Amount: not stated · Deadline: not stated       |
 | [Save]  [Evidence]  [Open at source ->]         |
 +------------------------------------------------+
@@ -362,7 +363,7 @@ Each check is run once against a planted fault and must fail, then run against t
 | Focus order on lists | Tab order is toggle, search, level, tags, first card | Swap the toggle and search in the DOM |
 | Delete is keyboard-reachable | The dialog opens, takes focus, and Escape returns focus to the button | Open the dialog without moving focus |
 | Delete guard | Delete stays disabled until the field holds `delete` | Enable the button on open |
-| Old copy gone | The words "Nothing about you is stored" and "Local" do not appear on any state | Restore the old footer on one state |
+| Old copy gone | The strings "Nothing about you is stored" and "Local · nothing stored" do not appear on any state | Restore the old footer on one state |
 | No dead modules | No request for `mode.js` or `private.js` | Add the old import back |
 
 ### 7.3 Checklist changes
@@ -384,7 +385,9 @@ Each fork has the recommendation first.
 
 - **Recommended, A: listed on a Temple page.** The filter keeps records whose source is `temple_pages`. That gives 285 records. It matches what a student expects.
 - **B: Temple-funded, as stated on the page.** The filter keeps records with `temple_funded` true. That gives 4 records today. It is stricter, but the list is nearly empty.
-- **Cost of A:** a backend change to the `temple_only` WHERE clause in `postgres.py` and `sqlite.py`, plus a test, about 30 minutes. The "Temple-funded" badge stays as a separate fact on the card.
+- **Cost of A:** the `records` table already has a `source` column, so browse can filter on `source = 'temple_pages'`. That is a change to the `temple_only` WHERE clause in `postgres.py` and `sqlite.py`, plus a test, about 30 minutes. The "Temple-funded" badge stays as a separate fact on the card.
+- **A cleaner version of A, if F2 is built first:** once unstated Temple records stop being stored as `external`, Temple only becomes `scope <> 'external'`. Then F1 and F2 are one fix.
+- **The vector table differs:** `record_vectors` has `temple_funded` and `schools` but no `source` or `scope`. So the Temple filter inside a brief, which is a later item, needs one more column there.
 
 ### F2. Where do the 30 records with unstated scope go?
 
@@ -453,7 +456,7 @@ Each fork has the recommendation first.
 
 1. **Backend, F1:** fix the `temple_only` filter.
 2. **Backend, F2:** keep unstated Temple records inside Temple.
-3. **Backend:** `GET /awards`, `GET /opportunities`, `GET /filters` and `GET /samples` as thin wrappers over `browse`.
+3. **Backend:** `GET /awards`, `GET /opportunities`, `GET /filters` and `GET /samples` as thin wrappers over `browse`. `GET /filters` also returns `total` and `temple_total`.
 4. **Backend:** the `/welcome` server route redirects to `/#/welcome`.
 5. **Header:** the account chip or Sign in; the Local chip and End session removed.
 6. **Landing:** Student first, the two student buttons, the researcher search, and the guest line.
@@ -463,7 +466,7 @@ Each fork has the recommendation first.
 10. **Funding list:** the same component on opportunities.
 11. **Samples screen:** its own list, badged.
 12. **Researcher brief:** on the account path, with Find, Profile, Routes, keep for signed-in users, and export.
-13. **Student brief:** stored CV, built on the cloud model; the guest sample persona.
+13. **Student brief:** stored CV, built on the cloud model; the guest sample persona. This is gate only if S42 lands the account route by Thursday morning. If it does not, the researcher brief alone meets the gate.
 14. **Account page:** documents and delete-my-data with the dialog.
 15. **My Perch, Briefs tab only:** so a returning user sees past briefs.
 16. **Copy:** the footer, the meta description and the sub-line.
