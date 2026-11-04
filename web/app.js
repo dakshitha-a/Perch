@@ -1131,7 +1131,9 @@ function drawScout() {
   if (!panel || S.tab !== "scout" || !S.brief) return;
   renderScout(panel, { api, briefId: S.briefId, done: S.brief.brief.status === "done", student: isStudent(S.brief),
     openEvidence, announce, rerender: drawScout, label: recordLabel,
-    signedIn: Boolean(S.session && S.session.signed_in), signIn: signInHref() });
+    // Only a guest is turned away: a server without accounts still runs the open Scout path
+    // and has no guest sessions (S46 re-check).
+    signedIn: !(S.session && S.session.guest), signIn: signInHref() });
 }
 
 // How Scout names a record of this brief (U8): a grant by its opportunity number; a
