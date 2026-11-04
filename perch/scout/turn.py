@@ -26,6 +26,7 @@ from typing import Any
 from perch.grounding import Grounder
 from perch.llm import ChatResult, Message, Provider, ToolResult
 from perch.llm.base import JsonSchema, Tool
+from perch.llm.contacts import blank_contacts
 from perch.redisx import QuotaExceeded
 from perch.scout import answer as ans
 from perch.scout import buttons, gate, texts
@@ -98,10 +99,11 @@ def history_of(messages: list[dict[str, Any]]) -> list[Message]:
     for m in [m for m in messages if m.get("text") and m.get("kind") != "error"
               ][-HISTORY_MESSAGES:]:
         role = "assistant" if m["role"] == "assistant" else "user"
+        text = blank_contacts(m["text"][:HISTORY_CHARS])  # a question is stored as typed
         if out and out[-1].role == role:
-            out[-1] = Message(role, out[-1].content + "\n" + m["text"][:HISTORY_CHARS])
+            out[-1] = Message(role, out[-1].content + "\n" + text)
         else:
-            out.append(Message(role, m["text"][:HISTORY_CHARS]))
+            out.append(Message(role, text))
     while out and out[0].role != "user":
         out.pop(0)
     return out
@@ -208,7 +210,9 @@ def run_turn(deps: TurnDeps, history: list[dict[str, Any]], *, question: str | N
                            flagged=False, unsupported=[], empty=True)
         return message("assistant", "intent", body.pop("text"), **{
             k: v for k, v in body.items() if k not in ("kind",)})
-    q = (question or "").strip()[:MAX_QUESTION_CHARS]
+    # The stored message keeps the question as typed (encrypted); the models see it with
+    # emails, phone numbers, ORCIDs and links blanked (standing rule 5).
+    q = blank_contacts((question or "").strip()[:MAX_QUESTION_CHARS])
     if not q:
         return message("assistant", "error", texts.ERROR)
     try:

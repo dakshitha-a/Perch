@@ -414,7 +414,8 @@ def test_guest_data_has_no_user_tools(service):
 def test_contact_details_are_blanked_before_any_model_sees_them(service):
     p = smart([call("read_cv_part", part="contact"), call("read_entries"), call("read_saved"),
                call("read_cv_part"), f"The record states no award ceiling [{OPP}]."])
-    run_turn(deps(service, p), [], question="What do you know about me?")
+    run_turn(deps(service, p), [], question=f"What do you know about me? Write to {EMAIL} or "
+             f"call {PHONE}.")
     seen_text = json.dumps([[(m.content, [r.content for r in m.tool_results])
                              for m in c["messages"]] for c in p.calls])
     assert EMAIL not in seen_text and PHONE not in seen_text

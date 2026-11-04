@@ -257,3 +257,23 @@ def test_student_buttons_keep_samples_apart_from_public_fellowships(stack):
         assert mark and "[sample:" in after and "[sample:" not in before, text
         cited = [ln for ln in after.splitlines() if "[" in ln]
         assert cited and all("[sample:" in ln for ln in cited), text
+
+
+def test_the_researcher_handoff_button_is_code_written_from_the_kept_lead(
+        env, tmp_path, monkeypatch):
+    consent(env, monkeypatch)
+    env.session.audience = "researcher"
+    script = Script()
+    c, svc = account_app(env, tmp_path, monkeypatch, responder=script)
+    got = run_brief(env, svc, c, {"author_id": "A5026494099", "explain": False})
+    bid = got["_id"]
+    assert got["brief"]["status"] == "done", got["brief"]["error"]
+    lead = got["leads"][0]
+    assert c.post(f"/briefs/{bid}/leads/{lead['id']}/keep").status_code == 200
+    v = turn(env, c, None, bid, {"intent": "handoff"})
+    m = v["messages"][-1]
+    assert m["kind"] == "intent" and not m.get("empty"), m
+    assert m["draft"]["office"]["name"] == "Research Development"
+    assert m["draft"]["body"] and lead["record_id"] in m["records"]
+    assert script.gate_calls == 0 and script.scout_calls == 0  # no model at all
+    assert "Nothing is sent" in m["text"]
