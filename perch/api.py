@@ -67,7 +67,12 @@ from perch import export as ex
 from perch.auth.wiring import install_auth, readiness
 from perch.config import env
 from perch.jobs import ClosureRunner
-from perch.request_models import BriefOptions, HandoffRequest, ScoutRequest
+from perch.request_models import (
+    BriefOptions,
+    CoverPointsRequest,
+    HandoffRequest,
+    ScoutRequest,
+)
 from perch.schemas import (
     USER_KINDS,
     Award,
@@ -995,6 +1000,41 @@ def create_app(service: BriefService, runner: ClosureRunner,
         if sess is None or not sweb.delete(accounts(request), sess.user_id, scout_ids(sid)):
             raise HTTPException(404, {"error": "not_found"})
         return {"ok": True}
+
+    # --- cover points on the account path (S45) ---
+
+    @app.post("/briefs/{brief_id}/cover-points", status_code=202, dependencies=STORED)
+    def cover_points_start(brief_id: str, req: CoverPointsRequest, request: Request,
+                           sess: object | None = Depends(account_session)) -> dict:
+        """Queue the cover points for one lead of the signed-in user's brief. Ids only go in
+        the job; the CV and entries are read from the user's encrypted rows by the worker."""
+        from perch.scout import web as sweb
+
+        if sess is None or sess.user_id is None:
+            raise HTTPException(403, {"error": "account_required"})
+        signed_in(sess)
+        sv = accounts(request)
+        with scope(request, sess, brief_id):
+            b, leads = load(brief_id)
+            if b.status != "done":
+                raise HTTPException(409, "Cover points start once the brief has finished.")
+            if not any(x.record_id == req.record_id for x in leads):
+                raise HTTPException(404, {"error": "not_found"})
+        return sweb.cover_submit(sv, sess.user_id, sweb.audience_of(b), brief_id, req.record_id)
+
+    @app.get("/briefs/{brief_id}/cover-points", dependencies=STORED)
+    def cover_points_get(brief_id: str, record_id: str, request: Request,
+                         job_id: str | None = None,
+                         sess: object | None = Depends(account_session)) -> dict:
+        """The stored points for one record, or null while the job runs (pass `job_id` for its
+        state)."""
+        from perch.scout import web as sweb
+
+        if sess is None or sess.user_id is None:
+            raise HTTPException(403, {"error": "account_required"})
+        signed_in(sess)
+        return sweb.cover_get(accounts(request), sess.user_id, sess.audience, brief_id,
+                              record_id, job_id)
 
     from perch.scholarships import ensure_samples
 

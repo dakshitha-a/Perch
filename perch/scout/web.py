@@ -205,6 +205,51 @@ def stop(sv: UserServices, uid: UUID, sid: UUID) -> None:
         sv.runner.cancel(UUID(pend["job_id"]), uid)
 
 
+def cover_submit(sv: UserServices, uid: UUID, audience: str, brief_id: str, record_id: str
+                 ) -> dict[str, Any]:
+    """Queue a `cover_points` job: ids only in the payload, one live job per brief and record."""
+    from perch.jobs import PayloadError
+    from perch.user.quota import RateLimited
+
+    try:
+        quota.admit(sv.redis, sv.pool, uid, "submit_job")
+    except RateLimited as e:
+        raise HTTPException(429, {"error": "rate_limited"},
+                            headers={"Retry-After": str(e.retry_after)}) from None
+    except QuotaExceeded:
+        raise HTTPException(429, {"error": "quota_exceeded", "message": texts.BUDGET,
+                                  "usage": usage_view(sv, uid)}) from None
+    key = hashlib.sha256(f"cover|{uid}|{brief_id}|{record_id}".encode()).hexdigest()
+    try:
+        job = sv.runner.submit("cover_points", {"brief_id": brief_id, "record_id": record_id},
+                               uid, key, audience=audience)  # type: ignore[arg-type]
+    except PayloadError:
+        raise HTTPException(422, "That record id cannot be used.") from None
+    return {"job_id": str(job), "status": "queued",
+            "poll": f"/briefs/{brief_id}/cover-points?record_id={record_id}&job_id={job}"}
+
+
+def cover_get(sv: UserServices, uid: UUID, audience: str, brief_id: str, record_id: str,
+              job_id: str | None) -> dict[str, Any]:
+    """{"result": the stored set or null, "job": {"id", "state"} or null}."""
+    from perch.user.models import CoverPointSet
+
+    found = None
+    for _, x in sv.ud.list(uid, "cover_points", audience, CoverPointSet, limit=100):  # type: ignore[arg-type]
+        if x.brief_id == brief_id and x.record_id == record_id:
+            found = x.model_dump(mode="json")
+            found["note"] = "Points to put in your own words. Check every point before you use it."
+            break
+    job = None
+    if job_id:
+        try:
+            st = sv.runner.status(UUID(job_id), uid)
+        except ValueError:
+            st = None
+        job = {"id": job_id, "state": st.state.value} if st else None
+    return {"result": found, "job": job}
+
+
 def sessions_for(sv: UserServices, uid: UUID, audience: str, brief_id: str) -> list[UUID]:
     rows = sv.ud.list(uid, "scout_session", audience, ScoutSessionDoc, limit=50)
     return [i for i, d in rows if d.brief_id == brief_id]

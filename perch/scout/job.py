@@ -37,7 +37,7 @@ from perch.store import pg
 from perch.user import quota
 from perch.user.briefs import read_user_brief
 from perch.user.data import UserData
-from perch.user.models import CvDoc, EntryDoc, SavedItem, UserDoc
+from perch.user.models import CoverPointSet, CvDoc, EntryDoc, SavedItem, UserDoc
 
 if TYPE_CHECKING:
     from perch.service import BriefService
@@ -200,3 +200,101 @@ def scout_turn_handler(ctx: JobContext) -> str | None:
         session.append(ud, uid, sid, [reply], conn=c)
     ctx.stage("scout", "done", reply["kind"])
     return ref
+
+
+# --- the cover_points job (S45) ---
+
+COVER_NOTE = ("Points to put in your own words. Each pairs one thing the record asks for with "
+              "one thing from your CV or entries. Check every point before you use it.")
+
+
+def _cover_target(service: BriefService, record_id: str) -> tuple[Opportunity, Record]:
+    """(the record as an Opportunity the skill reads, the record itself)."""
+    from perch.student import as_opportunity
+
+    with service.repo() as r:
+        rec = r.get_any(record_id)
+    if isinstance(rec, Opportunity):
+        return rec, rec
+    if isinstance(rec, Scholarship):
+        return as_opportunity(rec), rec
+    raise PermanentError("invalid_input")
+
+
+@register("cover_points", max_attempts=3, timeout_s=120, priority=1)
+def cover_points_handler(ctx: JobContext) -> str | None:
+    """Cover points for one lead of the user's brief. The payload holds ids only. The CV and
+    entries are read from the user's encrypted rows with contact details blanked; the points
+    pass the citation validator (regenerated once, then flagged) and are stored as an
+    encrypted `cover_points` row. Nothing goes to `public_cache`."""
+    if ctx.user_id is None or jobs._brief_service is None:  # noqa: SLF001
+        raise PermanentError("no_handler")
+    brief_id, record_id = str(ctx.payload["brief_id"]), str(ctx.payload["record_id"])
+    uid, service = ctx.user_id, jobs._brief_service()  # noqa: SLF001
+    ud = UserData(ctx.pool)
+    from perch.auth.accounts import consent_version_of
+    from perch.config import env
+    from perch.schemas import Work
+    from perch.skills.cover import cover_points
+    from perch.student import achievement_docs
+    from perch.user.inputs import InputError, make_doc
+
+    with ctx.user_tx() as c:
+        if consent_version_of(c, uid) < int(env("PERCH_CONSENT_VERSION", "1") or 1):
+            raise PermanentError("consent_required")
+    sb = read_user_brief(ud, uid, brief_id)
+    lead = next((x for x in sb.leads if x.record_id == record_id), None) if sb else None
+    if sb is None or lead is None:
+        raise PermanentError("invalid_input")
+    audience = "student" if sb.brief.options.get("student") else "researcher"
+    o, rec = _cover_target(service, record_id)
+    data = account_data(ud, uid, audience, service, brief_id)
+    try:
+        cv_text = data.cv_text()
+        cv = make_doc("cv", cv_text) if cv_text else None  # blanks contact details again
+    except InputError:
+        cv = None
+    others = achievement_docs([t for _, t in data.entries() if t][:5])
+    wids = [c for c in lead.cited_ids if c.startswith("W")][:6]
+    with service.repo() as r:
+        papers = [w for w in (r.get(Work, f"https://openalex.org/{c}") for c in wids) if w]
+    meter = RedisMeter(_redis(), ctx.pool, uid, ctx.job_id)
+    from perch.scout.turn import Metered
+
+    provider = AuditedProvider(
+        Metered(service.models.provider(spec_for_role("cover_points")), meter, "cover_points",
+                ctx.cancelled), service.audit, "cover_points")
+    ctx.stage("cover_points", "running")
+    try:
+        v, records = cover_points(o, cv, others, papers, [], provider,
+                                  grounder=service.models.get("grounder"),
+                                  context=[*lead.verdict_lines, *lead.gaps], audience=audience)
+    except redisx.QuotaExceeded:
+        raise PermanentError("budget_exceeded") from None
+    except TurnCancelled:
+        return None
+    ids = {k: (rec.id if k == o.opportunity_number else r.id) for k, r in records.items()}
+    title = getattr(rec, "title", None) or getattr(rec, "name", None) or rec.id
+    out = CoverPointSet(brief_id=brief_id, record_id=record_id, title=title,
+                        sample=bool(rec.source == "synthetic"),
+                        status="done" if v.value else "withheld")
+    if v.value:
+        p = v.value
+        out.points = [{"asks": x.asks, "asks_ids": [ids.get(i, i) for i in x.asks_ids],
+                       "you": x.you, "you_ids": [ids.get(i, i) for i in x.you_ids]}
+                      for x in p.points]
+        out.missing, out.unsupported = list(p.missing), list(p.unsupported)
+        for k in p.used_ids():
+            if k in records:
+                rr = records[k]
+                out.sources[ids[k]] = (getattr(rr, "title", None) or getattr(rr, "name", None)
+                                       or rr.id)
+    out.sources.setdefault(record_id, title)
+    with ctx.user_tx() as c:  # lease-fenced; one stored set per brief and record
+        for rid, old in ud.list(uid, "cover_points", audience, CoverPointSet,  # type: ignore[arg-type]
+                                limit=100, conn=c):
+            if old.brief_id == brief_id and old.record_id == record_id:
+                ud.delete(uid, rid, kinds=("cover_points",), conn=c)
+        row = ud.put(uid, "cover_points", audience, out, conn=c)  # type: ignore[arg-type]
+    ctx.stage("cover_points", "done", out.status)
+    return f"user_data:{row}"
