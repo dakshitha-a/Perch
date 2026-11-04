@@ -1,0 +1,2 @@
+grounder,pairs,false_flag_rate,miss_rate,auc,s_per_claim,lat_median_s,lat_p95_s,cpu_count,torch_threads,cuda_visible_devices,cuda_available
+"MiniCheck-RoBERTa-Large (cuda, S38)",40,0.0,0.1,0.922,0.017,0.012,0.015,255,4,3,True

@@ -71,8 +71,9 @@ def grounders() -> list[tuple[str, Grounder]]:
     ]
 
 
-def cpu_minicheck(out_dir: str) -> None:
-    """S38: MiniCheck arm only, forced CPU, per-pair latency. Writes to out_dir only."""
+def cpu_minicheck(out_dir: str, device: str = "cpu") -> None:
+    """S38: MiniCheck arm only, per-pair latency (CPU, or cuda with --gpu-minicheck).
+    Writes to out_dir only."""
     import json
     import statistics
     from pathlib import Path
@@ -80,7 +81,7 @@ def cpu_minicheck(out_dir: str) -> None:
     import torch
 
     data = pairs()
-    g = grounders_minicheck()
+    g = grounders_minicheck(device)
     lat, scores = [], []
     for doc, claim, _ in data:
         t = time.perf_counter()
@@ -89,7 +90,7 @@ def cpu_minicheck(out_dir: str) -> None:
     pos = [s for s, (_, _, y) in zip(scores, data, strict=True) if y]
     neg = [s for s, (_, _, y) in zip(scores, data, strict=True) if not y]
     q = sorted(lat)
-    res = {"grounder": "MiniCheck-RoBERTa-Large (CPU, S38)", "pairs": len(data),
+    res = {"grounder": f"MiniCheck-RoBERTa-Large ({device}, S38)", "pairs": len(data),
            "false_flag_rate": round(sum(s <= THRESHOLD for s in pos) / len(pos), 3),
            "miss_rate": round(sum(s > THRESHOLD for s in neg) / len(neg), 3),
            "auc": round(auc(pos, neg), 3), "s_per_claim": round(sum(lat) / len(lat), 3),
@@ -100,18 +101,18 @@ def cpu_minicheck(out_dir: str) -> None:
            "cuda_available": torch.cuda.is_available()}
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    with (out / "grounders_cpu.csv").open("w", newline="", encoding="utf-8") as f:
+    with (out / f"grounders_{device}.csv").open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, list(res))
         w.writeheader()
         w.writerow(res)
-    (out / "grounders_cpu.json").write_text(json.dumps(res, indent=1))
+    (out / f"grounders_{device}.json").write_text(json.dumps(res, indent=1))
     print(res)
 
 
-def grounders_minicheck() -> Grounder:
+def grounders_minicheck(device: str = "cpu") -> Grounder:
     from perch.grounding import MiniCheckGrounder
 
-    return MiniCheckGrounder(device="cpu")
+    return MiniCheckGrounder(device=device)
 
 
 def main() -> None:
@@ -119,6 +120,9 @@ def main() -> None:
 
     if "--cpu-minicheck" in sys.argv:
         cpu_minicheck(sys.argv[sys.argv.index("--cpu-minicheck") + 1])
+        return
+    if "--gpu-minicheck" in sys.argv:
+        cpu_minicheck(sys.argv[sys.argv.index("--gpu-minicheck") + 1], "cuda")
         return
     data = pairs()
     rows = []

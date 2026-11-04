@@ -102,6 +102,27 @@ The agent that built Perch judged 14 leads for 3 researchers against the records
 - **Checks:** tests rose from 265 to 398. The full browser walk reached 217 states with 0 errors and 0 axe accessibility violations. The privacy canary was clean every round.
 - **Live walk on the public URL after the rebuild (S32, 1 Nov 2026):** on the final build 219 states, 0 errors, 0 sideways scroll, 2 axe target-size hits from one card title scrolled under the sticky tab bar on the phone (`docs/sessions/S32.md`); an earlier live walk had one error, a two-part Scout question's NSF half withheld by the citation check, the designed fallback. Rehearsal on the demo 45 of 45; demo questions 5 to 6 s each.
 
+## S38 rebuild: CPU, GPU, back-test, grounding (v1, `cloud-gpu` profile)
+
+Every number is copied from the file named in its row. The back-test is NIH only, with the papers-before-award-start cut-off, and the keyword-only baseline is on every row. These rows measure speed and compare setups. A setup that scores the same as another is not a gain.
+
+| What | Result | File |
+|---|---|---|
+| CPU timings, 16 cores, fp32, shared node | Query embed 270 to 316 ms; rerank of 14 candidates 9,386 ms; rerank of 50 32,472 to 41,027 ms; rerank of 100 58,192 to 65,379 ms; MiniCheck 619 to 635 ms per sentence. The `cloud-cpu` profile therefore reranks 14. | `bench/results/s38_cpu/README.md` |
+| GPU timings, GPU 3, 0.6B reranker | Query embed 27.4 ms; rerank of 14 candidates 147 ms; of 50 468 ms; of 100 787 ms; MiniCheck 31.6 ms per sentence. The 4B reranker takes 3,710 ms for 100. | `bench/results/s38_gpu/README.md` |
+| CPU brief with the fake model, cold vs pre-cached | 82.6 s cold; 2.2 s after the pre-cache job. Model text time is not in these numbers. | `bench/results/s38_cpu/README.md` |
+| CPU back-test, targeted, hybrid | hit@10 0.062 at rerank 14 and 0.229 at rerank 100. Keyword-only (tsvector) 0.000. | `bench/results/s38_backtest/README.md` |
+| GPU back-test, targeted, 48 awards, hit@10 / MRR | Keyword-only 0.000 / 0.002. Dense + 0.6B 0.250 / 0.142. Hybrid + 0.6B 0.229 / 0.125. Dense + 4B 0.250 / 0.132. Hybrid + 4B 0.229 / 0.125. | `bench/results/s38_backtest_gpu/README.md` |
+| GPU back-test, parent, 78 awards, hit@10 / MRR | Keyword-only 0.000 / 0.000. Dense + 0.6B 0.051 / 0.032. Hybrid + 0.6B 0.013 / 0.004. Dense + 4B 0.051 / 0.025. Hybrid + 4B 0.000 / 0.001. | same |
+| 4B against 0.6B reranker | No measurable difference: every paired 95 percent interval on the MRR difference spans zero. The 4B costs about 4.5 times the rerank time. The 0.6B is kept. | same, `paired_bootstrap.txt` |
+| Dense against hybrid | Dense is at least as good on every metric, by one to four awards. Recall@200 is 0.500 dense and 0.417 hybrid. | same |
+| Grounding proxy set, 40 pairs, MiniCheck on CPU | AUC 0.922, false-flag rate 0.0, miss rate 0.1, 0.362 s per claim. | `bench/results/s38_grounding/grounders_cpu.csv` |
+| Grounding proxy set, 40 pairs, MiniCheck on GPU 3 (fp32) | AUC 0.922, false-flag rate 0.0, miss rate 0.1, 0.017 s per claim. Same AUC as CPU. | `bench/results/s38_grounding/grounders_cuda.csv` |
+| Cost per brief, researcher and student side, real provider | NOT YET MEASURED. The run needs the Anthropic key, which the worktree could not read. | none |
+| Scout bench on `cloud-gpu` | NOT YET MEASURED, same reason. Last recorded Sonnet row: 20/20 completed, 14/14 tasks, 6/6 restraint, 0/27 wrong calls, 103,516 tokens, $0.4074, median 8.1 s. | `bench/results/scout_summary.csv` |
+
+The grounding set is a proxy built from saved explanations, not human labels. It has 40 pairs, so one pair moves the miss rate by 0.025.
+
 ## Limits
 
 - **One funder, small sample.** The back-test is NIH only, with 48 targeted and 78 parent awards. It was tuned on the same 48 rows, and parent announcements are nearly unrecovered (2 of 78). There is no NSF back-test, and 12 of 14 embedder setups could not be told from the default (`bench/results/SUMMARY.md`).

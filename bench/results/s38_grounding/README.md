@@ -24,3 +24,10 @@ difference is library or thread nondeterminism, not a device change.
 
 Files: grounders_cpu.csv, grounders_cpu.json.
 Code: the --cpu-minicheck flag in bench/grounders.py; default behaviour is unchanged.
+
+## GPU run
+
+    PERCH_LIMIT_GPU=3 scripts/run_limited.sh uv run --extra ml python -m bench.grounders --gpu-minicheck bench/results/s38_grounding
+
+Same 40 pairs, same model, fp32, GPU 3 (RTX 5000 Ada). AUC 0.922, false_flag_rate 0.0, miss_rate 0.1,
+0.017 s per claim (median 0.012 s, p95 0.015 s). The AUC equals the CPU run. Files: grounders_cuda.csv, grounders_cuda.json.
