@@ -662,8 +662,7 @@ async def flow_signinfail(w: Walk, browser: Browser, base: str, tag: str, view: 
 
 # ---------- Scout's answer marks (S45) ----------
 
-WITHHELD = ("Scout's answer did not pass the citation check twice, so the parts that failed are not shown. "
-            "The records Scout read are listed below the answer.")
+WITHHELD = "Scout's answer did not pass the citation check twice, so none of it is shown."
 CHECKED_OK = "Written by a model; checked against the records it cites."
 CHECKED_MARKED = "Written by a model. Some sentences could not be confirmed; they are marked."
 CHECKED_FLAGGED = "Written by a model. It failed the citation check; sentences were removed."
@@ -684,7 +683,8 @@ def scout_states(a: str, b: str) -> dict[str, dict]:
                         "unsupported": [SENT_IN, SENT_OUT], "general": GENERAL},
         "flagged": {**base, "text": f"SYNTHETIC sample answer. The first sample option fits the sample field [{a}].",
                     "flagged": True, "withheld": 2},
-        "withheld_all": {**base, "text": WITHHELD, "flagged": True, "withheld": 3, "withheld_all": True, "records": []},
+        "withheld_all": {**base, "text": WITHHELD, "flagged": True, "withheld": 3, "withheld_all": True, "records": [],
+                         "read": [a, b, "user:brief"]},
     }
 
 
@@ -762,7 +762,7 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
             and "underline" in m["line"] and m["style"] == "dotted", f"glyph {m.get('glyph')!r}, underline {m.get('line')} {m.get('style')}")
     w.check("scout_mark_only_matched_sentence", len(u["marks"]) == 1 and SENT_IN in m["text"], f"{len(u['marks'])} mark")
     n2 = u["notes"][0] if u["notes"] else ""
-    w.check("scout_notice_unsupported", n2.startswith("Scout could not confirm 2 sentences against the cited records. They are listed here.")
+    w.check("scout_notice_unsupported", n2.startswith("Scout could not confirm 2 sentences against the cited records. 1 underlined above, 1 listed here.")
             and n2.rstrip().endswith(SENT_OUT) and u["listItems"] == [SENT_OUT],
             f"{n2[:120]!r}; list {u['listItems']}")
     w.check("scout_checked_marked", u["checked"].endswith(CHECKED_MARKED), repr(u["checked"]))
@@ -773,8 +773,10 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
     w.check("scout_notice_flagged", nf == "This answer did not pass the citation check twice. 2 sentences were removed. "
             "What remains is shown, but check each claim against its record." and f["checked"].endswith(CHECKED_FLAGGED)
             and not f["marks"] and f["answerBox"], f"{nf[:100]!r}; checked {f['checked']!r}")
-    w.check("scout_withheld_all", a["notes"] == [WITHHELD] and not a["answerBox"] and not a["modelTag"] and not a["marks"],
-            f"notes {a['notes']}, model tag {a['modelTag']}")
+    w.check("scout_withheld_all", len(a["notes"]) == 1 and a["notes"][0].startswith(WITHHELD)
+            and "Records Scout read:" in a["notes"][0] and a["cites"] == 2
+            and "user:" not in a["notes"][0] and not a["answerBox"] and not a["modelTag"] and not a["marks"],
+            f"notes {a['notes']}, cites {a['cites']}, model tag {a['modelTag']}")
     await page.context.close()
 
 

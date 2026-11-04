@@ -131,8 +131,8 @@ function welcome(ctx) {
         h("button", { class: "chip", type: "button", onclick: () => { T.draft = q; send(ctx); } }, q)))) : null,
       h("details", { class: "scout-limits" }, h("summary", { text: "What I will not do" }),
         h("p", { text: ctx.student
-          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after a fixed number of tool steps for one question, cannot browse the web, send anything or change a record. A model reads your CV when you ask for cover-letter points, and when it opens a CV part to answer a question. Contact details are blanked first. Sample scholarships stay marked as samples. A conversation has a budget; when it is spent, start a new one."
-          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after a fixed number of tool steps for one question, cannot browse the web, send anything or change a record. A model reads your documents and entries when you ask for cover-letter points, or when it opens them to answer a question, with contact details blanked. A conversation has a budget; when it is spent, start a new one." }))));
+          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after a fixed number of tool steps for one question, cannot browse the web, send anything or change a record. A model reads your CV when you ask for cover-letter points, and when it opens a CV part to answer a question. Contact details are blanked first. Sample scholarships stay marked as samples. Scout has a daily budget; when it is spent, it resets each day."
+          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after a fixed number of tool steps for one question, cannot browse the web, send anything or change a record. A model reads your documents and entries when you ask for cover-letter points, or when it opens them to answer a question, with contact details blanked. Scout has a daily budget; when it is spent, it resets each day." }))));
 }
 
 // The chat fills the window below the sticky tabs, so the question box sits on the bottom
@@ -350,7 +350,14 @@ function answer(x, ctx, thinking) {
   // counted, and the General advice part sits apart, labelled as uncited.
   if (x.answer) {
     const m = x.message || {};
-    if (m.flagged && m.withheld_all) return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: x.answer }));
+    if (m.flagged && m.withheld_all) {
+      // The records Scout opened, so the notice is not left without them: public records only, as chips.
+      const read = (m.read || []).filter((id) => !id.startsWith("user:")).slice(0, 8);
+      return h("div", { class: "notice warn" }, icon("warn"), h("div", {},
+        h("p", { text: x.answer }),
+        read.length ? h("p", { class: "scout-records" }, h("span", { class: "hint", text: "Records Scout read: " }),
+          ...read.map((id) => citeBtn(id, ctx))) : null));
+    }
     const marked = markUnsupported(x.answer, m.unsupported || []);
     const n = (m.unsupported || []).length;
     const checked = m.flagged ? "Written by a model. It failed the citation check; sentences were removed."
@@ -368,7 +375,7 @@ function answer(x, ctx, thinking) {
           ...withCites(m.general, ctx),
           h("p", { class: "hint", text: "General guidance from the model. It cites no record and states no date or amount. Check details with the sponsor." })) : null),
       n && !m.flagged ? h("div", { class: "notice warn" }, icon("warn"), h("div", {},
-        h("p", { text: `Scout could not confirm ${plural(n)} against the cited records. ${marked.missed.length ? "They are listed here." : "They are underlined above."} Open the record before relying on them.` }),
+        h("p", { text: `Scout could not confirm ${plural(n)} against the cited records. ${noticeWhere(n, marked.missed.length)} Open the record before relying on them.` }),
         marked.missed.length ? h("ul", {}, marked.missed.map((u) => h("li", { text: u.replace(/\*\*/g, "") }))) : null)) : null);
   }
   if (x.flagged) return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "Scout’s answer was withheld: it did not pass the citation check twice. The steps below show what it found." }));
@@ -430,6 +437,13 @@ function withCites(text, ctx) {
     out.push(...inline(line, ctx));
   }
   return out;
+}
+
+// Where the unconfirmed sentences are, said exactly: some may be underlined and some listed.
+function noticeWhere(n, listed) {
+  if (!listed) return n === 1 ? "It is underlined above." : "They are underlined above.";
+  if (listed >= n) return n === 1 ? "It is listed here." : "They are listed here.";
+  return `${n - listed} underlined above, ${listed} listed here.`;
 }
 
 // Wrap each unsupported sentence found in the text in sentinels, so inline() can turn it into a

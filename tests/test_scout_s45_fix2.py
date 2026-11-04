@@ -1,3 +1,4 @@
+# ruff: noqa: F811
 """S45 fix round 2 (offline, no model, no network): the code checks that replace MiniCheck for
 rank, kept and absence claims, and MiniCheck's scholarship passage. SYNTHETIC text only."""
 
@@ -9,6 +10,8 @@ from perch.grounding import FakeGrounder
 from perch.schemas import Scholarship, ScholarshipEligibility, ScholarshipRequirements
 from perch.scout import answer as ans
 from perch.scout.read_tools import ReadTools, ScoutData
+
+from .test_scout_v2 import service  # noqa: F401
 
 AS_OF = date(2026, 10, 28)
 T = datetime(2026, 10, 1, tzinfo=UTC)
@@ -209,3 +212,31 @@ def test_history_drops_budget_answered_and_unanswered_user_messages():
         {"id": "6", "role": "user", "kind": "question", "text": "still pending"}]
     assert [(m.role, m.content) for m in history_of(msgs)] == [
         ("user", "Which lead is strongest?"), ("assistant", "The first one.")]
+
+
+# --- the 40,000 character cap is hard ---
+
+def test_the_result_that_would_cross_the_cap_is_cut_to_fit(service, monkeypatch):
+    import json
+
+    from perch.llm.fake import FakeProvider
+    from perch.scout import turn
+
+    from .test_scout_s45_security import OPP
+    from .test_scout_v2 import call, deps
+
+    monkeypatch.setattr(turn, "MAX_TOOL_CHARS_PER_TURN", 600)
+    sent: list = []
+
+    def responder(messages, system, schema):
+        if messages[-1].tool_results:
+            sent.extend(messages[-1].tool_results)
+        if len(sent) < 3:
+            return call("read_record", id=OPP)
+        return "Nothing more."
+
+    turn.open_answer(deps(service, FakeProvider(responder=responder)), [], "q")
+    ok = [t for t in sent if not t.is_error]
+    assert sum(len(t.content) for t in ok) <= 600
+    assert json.loads(ok[0].content)["truncated"] is True
+    assert any(t.is_error and "limit" in t.content for t in sent)

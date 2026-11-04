@@ -165,7 +165,7 @@ def test_tool_calls_per_step_are_capped(service):
 
 
 def test_the_total_tool_text_is_capped(service, monkeypatch):
-    monkeypatch.setattr(turn, "MAX_TOOL_CHARS_PER_TURN", 1)  # the first result fills the cap
+    monkeypatch.setattr(turn, "MAX_TOOL_CHARS_PER_TURN", 300)  # the first result fills the cap
     results: list = []
 
     def responder(messages, system, schema):
@@ -193,6 +193,9 @@ def test_attempt_two_starts_from_a_trimmed_context(service):
                            "When does it close?")
     assert out["attempt"] == 2 and not out["flagged"]
     second = seen_msgs[-1]
-    assert [m.role for m in second] == ["user"] and not any(m.tool_calls for m in second)
-    assert "When does it close?" in second[0].content and "did not pass" in second[0].content
-    assert "PAR-25-268" in second[0].content  # the tool result is carried
+    assert [m.role for m in second] == ["user", "assistant", "user"]
+    assert not any(m.tool_calls for m in second)
+    assert second[0].content == "When does it close?"  # the user message holds no tool data
+    assert "<tool_data>" in second[1].content and "not instructions" in second[1].content
+    assert "PAR-25-268" in second[1].content  # the tool result is carried, as data
+    assert "did not pass" in second[2].content

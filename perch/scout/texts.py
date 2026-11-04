@@ -81,10 +81,9 @@ def distress_message(audience: str) -> str:  # noqa: ARG001 - kept so callers ne
     return DISTRESS
 
 
-WITHHELD = ("Scout's answer did not pass the citation check twice, so the parts that failed are "
-            "not shown. The records Scout read are listed below the answer.")
+WITHHELD = "Scout's answer did not pass the citation check twice, so none of it is shown."
 ERROR = "Scout could not finish this question. Try again."
-BUDGET = ("You have used today's Scout budget. It resets at the time shown. The buttons still "
+BUDGET = ("You have used today's Scout budget. It resets each day. The buttons still "
           "work, because they cost nothing.")
 
 # --- the Scout system prompt ---
