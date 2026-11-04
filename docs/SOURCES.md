@@ -532,3 +532,15 @@ Parsing rules (all in code, no model reads the page):
 | https://www.temple.edu/temple-research/grants-funding | OVPR | fetched 2026-11-04 |
 
 <!-- END temple-pages-table -->
+
+## Scout distress message links (S44, checked 2026-11-04)
+
+Scout answers a question that reads as personal distress with a fixed message that points to Temple's own services. Each link below was fetched live on 2026-11-04 and returned HTTP 200, and the page names the service. No phone number is shipped, because the pages are the source of truth and they change.
+
+| For | URL | HTTP | Page title | Page names the service |
+|---|---|---|---|---|
+| Students | https://counseling.temple.edu/ | 200 | Tuttleman Counseling Services | Yes, "Tuttleman Counseling Services" |
+| Faculty and staff | https://careers.temple.edu/hr-resources/our-functional-areas/benefits-administration/additional-benefit-options/employee | 200 | Employee Assistance Program \| Human Resources \| Temple University | Yes, "Employee Assistance Program"; the page says the program runs through TELUS Health for full-time faculty and staff |
+
+- **Not shipped:** the longer URL ending in `employee-assistance-program` returns 404, so it is not used.
+- **Recheck:** the vendor name for the program differs between Temple pages, so the message says only "Employee Assistance Program" and links the page.
