@@ -61,13 +61,19 @@ ABSENT_RE = re.compile(
     r"didn't)\b.*\b(?:record|records|result|results|match|matches|found|find|information|help|"
     r"answer|read|access|leads?|brief|saved|entries|entry|cv|items?|ids?)\b", re.I)
 # An offer or an instruction about using Perch or Scout: help text, not a record fact.
+HELP_VERBS = (r"(?:read|list|compare|search|show|check|open|look|tell|help|draft|find|answer|"
+              r"keep|dismiss|restore|save|browse|build|press|click|pick|choose|ask|use|start|"
+              r"add|upload|go|sign|type)")
+# An offer or an instruction about using Perch or Scout: help text, not a record fact. An offer
+# must name an action ("I can compare it with your CV"), so "I can see this record fits you"
+# and "You can expect a strong fit" are not help and still need a citation.
 HELP_RE = re.compile(
     r"^[\W_]*(?:(?:please\s+)?(?:ask|tell me|let me know|check|open|read|try|use|pick|choose|"
     r"click|press|tap|select|keep|save|dismiss|restore|compare|start|go to|look at|look for|"
     r"see|type|sign in|build|say|reply|send me|share|add|upload|paste|search|browse)\b|"
-    r"(?:i|scout)\s+(?:can|could|will|would|searched)\b|"
-    r"i(?:'|’)ll\b|you can\b|you could\b|if you\b|would you like\b|do you want\b|"
-    r"want me to\b|here is\b|here are\b)", re.I)
+    r"(?:(?:i|scout|you)\s+(?:can|could|will|would)|i(?:'|’)ll)"
+    r"(?:\s+(?:then|also|now|first|next|still|just))?\s+" + HELP_VERBS + r"\b|"
+    r"i\s+searched\b|would you like\b|do you want\b|want me to\b)", re.I)
 DECLINE_RE = re.compile(r"\b(?:can(?:not|'t)|unable to|not able to|only (?:help|answer))\b.{0,80}"
                         r"\b(?:help|answer|assist|with that|funding|scholarship)", re.I)
 CONTACT_RE = re.compile(r"^\[contact removed\]$", re.I)
@@ -83,9 +89,11 @@ MONTH_NAMES = re.compile(r"\b(?:january|february|march|april|june|july|august|se
 ELIGIBILITY = re.compile(
     r"\b(?:citizen\w*|gpa|grade point|residen(?:t|ts|cy|cies)\b|permanent resident\w*|"
     r"green card|visa status|required to be|open only to|only open to|restricted to|"
-    r"applicants must|(?:not|in)eligible)\b", re.I)
+    r"applicants must|(?:not\s+|in)eligible)\b", re.I)
 AWARD_PHRASE = re.compile(
     r"\b((?:[A-Z][\w'’&.-]*\s+){1,4})(?:Fellowship|Scholarship|Award|Grant|Prize|Program)s?\b")
+AWARD_WORD = re.compile(r"\b(?:scholarships?|fellowships?|awards?|grants?|prizes?|programs?|"
+                        r"scholars|fellows)\b")
 GENERIC_NAME_WORDS = {"research", "grant", "grants", "fellowship", "fellowships", "scholarship",
                       "scholarships", "award", "awards", "funding", "program", "programs",
                       "application", "applications", "opportunity", "opportunities"}
@@ -373,9 +381,10 @@ def mixed_blocks(g: Graded, seen: dict[str, Record]) -> None:
 
 
 def _named(text: str, start: int, end: int) -> bool:
-    """A title found in the text names the award only when it is written as a name: a capital
-    after its first letter, or a capital first letter that does not open a sentence. "applied
-    mathematics" in plain prose is a field; "Applied Mathematics" mid-sentence is a title."""
+    """For a title with no award word in it: it names the award only when it is written as a
+    name, with a capital after its first letter, or a capital first letter that does not open a
+    sentence. "applied mathematics" in plain prose is a field; "Applied Mathematics"
+    mid-sentence is a title. A title with an award word is matched in any case."""
     span = text[start:end]
     caps = [i for i, ch in enumerate(span) if ch.isupper()]
     if any(i > 0 for i in caps):
@@ -412,8 +421,9 @@ def general_reasons(text: str, names: set[str], seen: dict[str, Record]
     for n in sorted(names | {title_key(r) for r in seen.values()}):
         if not n:
             continue
+        typed = bool(AWARD_WORD.search(n))  # "gilman scholarship" is a name in any case
         for m in re.finditer(rf"(?<!\w){re.escape(n)}(?!\w)", low):
-            if _named(text, m.start(), m.end()):
+            if typed or _named(text, m.start(), m.end()):
                 hit.append(n)
                 break
     if hit:
