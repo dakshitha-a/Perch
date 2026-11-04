@@ -124,6 +124,8 @@ async def login(request: Request, return_to: str | None = None) -> Response:
 
 @router.get("/auth/callback")
 async def callback(request: Request) -> Response:
+    if getattr(request.app.state, "auth_provider", None) is None:
+        return RedirectResponse("/#/?signin=unavailable", status_code=302, headers=NO_STORE)
     binder = request.cookies.get(settings.oidc_cookie_name())
     _limit(request, "login_callback", hashlib.sha256((binder or "none").encode()).hexdigest())
     store, pool = _store(request), _pool(request)

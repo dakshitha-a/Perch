@@ -369,6 +369,12 @@ def test_login_without_a_provider_redirects_to_the_app(r) -> None:
     assert resp.status_code == 302 and resp.headers["location"] == "/#/?signin=unavailable"
 
 
+def test_callback_without_a_provider_redirects_to_the_app(r) -> None:
+    c = TestClient(make_app(r))
+    resp = c.get("/auth/callback?code=c&state=s", follow_redirects=False)
+    assert resp.status_code == 302 and resp.headers["location"] == "/#/?signin=unavailable"
+
+
 def test_callback_is_limited_per_binder(r) -> None:
     c = TestClient(make_app(r, pool=object(), provider=FakeProvider()))
     codes = [c.get("/auth/callback?code=c&state=s", follow_redirects=False).status_code
