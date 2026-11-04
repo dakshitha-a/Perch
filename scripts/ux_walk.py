@@ -60,8 +60,8 @@ PROBE = """() => {
     if (!vis(el) || el.closest('[hidden]') || el.closest('dialog:not([open])')) continue;
     if (el.type === 'file') continue;
     // a checkbox is pressed through its label, so the label is the target (S43 M5)
-    const box = el.type === 'checkbox' && el.closest('label') ? el.closest('label') : el;
-    if (el.type === 'checkbox' && !vis(box)) continue;
+    const box = (el.type === 'checkbox' || el.type === 'radio') && el.closest('label') ? el.closest('label') : el;
+    if ((el.type === 'checkbox' || el.type === 'radio') && !vis(box)) continue;
     const r = box.getBoundingClientRect();
     // exempt: a link or the guest link inside a sentence, and a card title button (a text link, 25 px
     // tall, which meets WCAG 2.2's 24 px minimum); both are counted in `under24` only if smaller
@@ -339,7 +339,7 @@ async def export_open(w: Walk, page: Page, tag: str, name: str) -> None:
     await page.click("details.export-menu > summary")
     await page.wait_for_selector(".export-pop")
     if w.plant == "small_target":
-        await page.evaluate("document.querySelectorAll('.export-pop .check').forEach((c) => { c.style.minHeight = '30px'; c.style.height = '30px'; })")
+        await page.evaluate("document.querySelectorAll('.export-pop .check, .export-pop .btn, .filter-chip, .route-btn').forEach((c) => { c.style.minHeight = '30px'; c.style.height = '30px'; })")
     await w.snap(page, tag, name, full=False)
     await page.keyboard.press("Escape")
     if await page.locator("details.export-menu[open]").count():
@@ -516,8 +516,8 @@ async def flow_mocked(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.click("#del-open")
     await page.fill("#del-word", "delete")
     await page.click("#del-go")
-    await page.wait_for_selector("#del-dialog-err, .del-dialog .notice.error:not([hidden])")
-    msg = await page.locator(".del-dialog .notice.error").inner_text()
+    await page.wait_for_selector(".del-dialog:has(#del-word) .notice.error:not([hidden])")
+    msg = await page.locator(".del-dialog:has(#del-word) .notice.error").inner_text()
     w.check("delete_failure_words", "Press Delete again" in msg and "500" not in msg, msg)
     await w.snap(page, tag, "delete-failed", full=False)
     await page.keyboard.press("Escape")

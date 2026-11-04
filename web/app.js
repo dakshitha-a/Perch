@@ -144,18 +144,21 @@ function route() {
   if (parts[0] === "awards" || parts[0] === "funding") {
     leaveBrief();
     screen("list");
+    window.scrollTo(0, 0);
     renderList(main(), { ...rt, audience: parts[0] === "awards" ? "student" : "researcher" });
     return;
   }
   if (parts[0] === "samples") {
     leaveBrief();
     screen("list");
+    window.scrollTo(0, 0);
     renderSamples(main(), { ...rt, audience: parts[1] === "researcher" ? "researcher" : "student" });
     return;
   }
   if (parts[0] === "student") {
     leaveBrief();
     screen("form");
+    window.scrollTo(0, 0);
     renderStudentStart(main(), { api, go, announce, session: S.session, signIn: signInHref, refresh: refreshSession });
     return;
   }
@@ -176,6 +179,7 @@ function route() {
   }
   leaveBrief();
   screen("landing");
+  window.scrollTo(0, 0);
   renderFind();
 }
 
@@ -2274,6 +2278,8 @@ function init() {
   const setBar = () => document.documentElement.style.setProperty("--bar-h", `${$(".bar").offsetHeight}px`);
   setBar();
   window.addEventListener("resize", setBar);
+  // The header's height changes when the guest chip or the account chip appears (S43 S3).
+  if (window.ResizeObserver) new ResizeObserver(setBar).observe($(".bar"));
   window.addEventListener("hashchange", route);
   if (api.mode === "replay") {
     S.who = window.PERCH_REPLAY.student ? "s" : "r";

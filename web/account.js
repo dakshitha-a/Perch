@@ -74,7 +74,8 @@ export function renderWelcome(root, ctx, returnTo) {
       h("section", { class: "box", "aria-labelledby": "w2" },
         h("h2", { class: "section-title", id: "w2", text: "2. How Perch uses your CV" }),
         h("div", { class: "consent-text", tabindex: "0", role: "region", "aria-label": "Consent text" },
-          h("p", { text: c.text || "" })),
+          // One paragraph per sentence, so it reads in steps; the words are the server's, unchanged.
+          ...String(c.text || "").split(/(?<=[.!?])\s+/).filter(Boolean).map((t) => h("p", { text: t }))),
         h("p", { class: "hint", text: `Consent text, version ${c.current_version ?? ""}.` }),
         h("label", { class: "check-row" },
           h("input", { type: "checkbox", "data-key": "agree", checked: state.agreed,

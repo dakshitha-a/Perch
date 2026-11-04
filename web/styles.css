@@ -1204,10 +1204,11 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .reason .notes { margin: 2px 0 0; }
 /* Phone header (S24 walk): wordmark, Help and theme on one row. */
 @media (max-width: 479px) {
-  .bar-in { display: grid; grid-template-columns: 1fr auto auto; align-items: center; row-gap: 4px; }
+  .bar-in { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; row-gap: 4px; }
   .bar-tools { display: contents; }
-  #help { grid-column: 2; grid-row: 1; }
-  #theme { grid-column: 3; grid-row: 1; }
+  #acct-slot { grid-column: 2; grid-row: 1; }
+  #help { grid-column: 3; grid-row: 1; }
+  #theme { grid-column: 4; grid-row: 1; }
 }
 /* 44 px targets where the walk found smaller ones */
 .cite { min-height: 32px; display: inline-flex; align-items: center; }
@@ -1434,5 +1435,25 @@ body.signed-in #theme { display: none; }
 .seg button { min-height: 44px; }
 .my-perch .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 
-.bar-tools, .acct-slot { flex-wrap: nowrap; }
-@media (max-width: 479px) { .bar-in { flex-wrap: nowrap; } .chip.guest-chip { padding: 2px 8px; } }
+@media (max-width: 479px) { .chip.guest-chip { padding: 2px 8px; } }
+
+/* ---------- S43 fix pass ---------- */
+/* A focused control is never hidden under the sticky header, or under the brief's tab bar (WCAG 2.4.11). */
+html { scroll-padding-top: calc(var(--bar-h, 56px) + 8px); }
+html:has(body[data-screen="brief"]) { scroll-padding-top: calc(var(--bar-h, 56px) + 76px); }
+/* 44 px targets on the brief screens (M5): export menu rows, Routes filter chips, the Scout owl, citations. */
+.export-pop .check { min-height: 44px; }
+.filter-chip { min-height: 44px; }
+.owl-sm { width: 44px; height: 44px; }
+.cite { min-height: 44px; }
+.tag.closed { width: fit-content; justify-self: start; margin: 4px 0 0; background: var(--sunk); color: var(--ink-2); border: 1px solid var(--line); }
+.consent-text { max-height: none; }
+.consent-text p + p { margin-top: 8px; }
+.welcome-out { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.welcome-out a, .linklike { display: inline-flex; align-items: center; min-height: 44px; }
+.linklike { background: none; border: 0; padding: 0 4px; color: inherit; text-decoration: underline; font: inherit; cursor: pointer; }
+.route-btn { min-height: 44px; }
+.filter-chip { min-width: 44px; }
+.pcard.done .owl-sm { width: 44px; height: 44px; }
+.scout-try .chip { min-height: 44px; }
+.scout-limits summary { min-height: 44px; display: flex; align-items: center; }
