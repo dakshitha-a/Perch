@@ -72,6 +72,12 @@ def _side(s: Session, audience: str | None) -> Literal["researcher", "student"]:
     return a  # type: ignore[return-value]
 
 
+def _consented(s: Session) -> None:
+    """Reading or writing the CV, entries or documents needs the current consent (7.5).
+    Deleting does not: a user who withdrew can still remove what is stored."""
+    deps.require_consent(s)
+
+
 def _limit(sv: UserServices, uid: UUID, scope: str) -> None:
     ok, retry = redisx.rate_limit(sv.redis, scope, f"u:{uid}")
     if not ok:
@@ -83,12 +89,14 @@ def _limit(sv: UserServices, uid: UUID, scope: str) -> None:
 @router.get("/me/docs")
 def list_docs(audience: str | None = None, s: Session = Depends(deps.require_user),
               sv: UserServices = Depends(services)) -> list[dict]:
+    _consented(s)
     return docs.listing(sv.ud, _uid(s), _side(s, audience))
 
 
 @router.post("/me/docs", dependencies=[Depends(deps.require_csrf)])
 def add_doc(req: DocAdd, audience: str | None = None, s: Session = Depends(deps.require_user),
             sv: UserServices = Depends(services)) -> dict:
+    _consented(s)
     uid, side = _uid(s), _side(s, audience)
     _limit(sv, uid, "upload")
     try:

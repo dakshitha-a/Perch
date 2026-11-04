@@ -15,6 +15,7 @@ the public repository underneath. Nothing user-derived reaches `public_cache`: a
 from __future__ import annotations
 
 import threading
+import time
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
@@ -220,6 +221,13 @@ class UserBriefStore(BriefStore):
     def cancelled(self) -> bool:
         return bool(self.ctx is not None and self.ctx.cancelled())
 
+    @property
+    def needs_consent(self) -> bool:
+        """True when this brief hands the user's own text to a model: documents or a typed
+        direction. The job checks the consent row before it reads either (section 7.5)."""
+        o = self.brief.options if self.brief is not None else {}
+        return bool(self._doc_ids or (o.get("direction") or "").strip())
+
     def user_docs(self) -> list[Work]:
         """The documents of kind proposal, direction and manuscript this brief reads, as Works
         for `add_threads`. A CV or entry row in the ids is skipped here: those feed the
@@ -348,21 +356,56 @@ def guest_hash(sid: str) -> str:
     return hash_subject(sid)
 
 
+def compute_idempotency_key(owner: str, audience: str, author_id: str, doc_ids: Sequence[UUID],
+                    options: dict, *, today: date | None = None) -> str:
+    """Section 3.4: sha256 over the owner (user id, or the guest session hash), the side, the
+    author id, the sorted document ids, a hash of the direction text, the other request
+    options, and the UTC date. Ids and hashes only; the next day's brief is a new job."""
+    import hashlib
+    import json
+    from datetime import UTC
+
+    ctx = dict(options.get("context") or {})
+    direction = hashlib.sha256((ctx.pop("direction", "") or "").encode()).hexdigest()
+    ctx.pop("user_data", None)
+    rest = {k: v for k, v in options.items() if k != "context"}
+    canon = json.dumps({"owner": owner, "audience": audience, "author": author_id,
+                        "docs": sorted(str(i) for i in doc_ids), "direction": direction,
+                        "options": rest, "context": ctx,
+                        "date": (today or datetime.now(UTC).date()).isoformat()},
+                       sort_keys=True, separators=(",", ":"), default=str)
+    return hashlib.sha256(canon.encode()).hexdigest()
+
+
 def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Redis,
                  session: Session, author_id: str, *, idempotency_key: str | None = None,
                  doc_ids: Sequence[UUID] = (), **options: object) -> tuple[str, UUID]:
     """Create the brief where it lives and enqueue the job with ids only. Returns
     (brief_id, job_id). A signed-in user is held to the per-account rate and daily budget
     (perch/user/quota.py); a guest to the guest rate window. Raises quota.RateLimited or
-    redisx.QuotaExceeded before anything is stored."""
+    redisx.QuotaExceeded before anything is stored.
+
+    The same request by the same owner on the same UTC day returns the existing brief and job
+    and creates nothing (section 3.4). Raises HTTPException 403 `consent_required` when a
+    signed-in request reads documents or a direction text without the current consent."""
     from perch.user import quota
 
     if session.user_id is not None:
+        from perch.auth.deps import require_consent
+
+        ctx_opt = options.get("context") or {}
+        if doc_ids or (isinstance(ctx_opt, dict) and (ctx_opt.get("direction") or "").strip()):
+            require_consent(session)
+        key = idempotency_key or compute_idempotency_key(
+            str(session.user_id), session.audience, author_id, doc_ids, options)
+        found = _existing(runner, key, session.user_id, None)
+        if found is not None:
+            return found
         quota.admit(r, ud.pool, session.user_id)
         b = create_user_brief(svc, ud, session.user_id, session.audience, author_id,
                               doc_ids=doc_ids, **options)
-        job = runner.submit("brief", {"brief_id": b.id}, session.user_id,
-                            idempotency_key or f"brief:{b.id}", audience=session.audience)
+        job = runner.submit("brief", {"brief_id": b.id}, session.user_id, key,
+                            audience=session.audience)
         return b.id, job
     if doc_ids:
         raise PermissionError("a guest cannot use documents")
@@ -370,15 +413,31 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     from perch.redisx import rate_limit
 
     gh = guest_hash(session.sid)
+    ttl = int(env("PERCH_GUEST_TTL_S", str(GUEST_TTL_DEFAULT_S)) or GUEST_TTL_DEFAULT_S)
+    # The guest's brief lives in Redis for one TTL, so the key also carries the TTL window:
+    # a key never outlives the state it points at.
+    key = idempotency_key or compute_idempotency_key(
+        gh, session.audience, author_id, (), {**options, "window": int(time.time() // ttl)})
+    found = _existing(runner, key, None, bytes.fromhex(gh))
+    if found is not None:
+        return found
     ok, retry = rate_limit(r, "guest_job", gh)
     if not ok:
         raise quota.RateLimited("guest_job", retry)
     b = create_guest_brief(svc, r, gh, author_id, **options)
-    job = runner.submit("brief", {"brief_id": b.id}, None, idempotency_key or f"brief:{b.id}",
+    job = runner.submit("brief", {"brief_id": b.id}, None, key,
                         audience=session.audience, guest_sid_hash=bytes.fromhex(gh))
-    ttl = int(env("PERCH_GUEST_TTL_S", str(GUEST_TTL_DEFAULT_S)) or GUEST_TTL_DEFAULT_S)
     r.set(f"perch:gsess:{gh}:job:{b.id}", str(job), ex=ttl)  # brief id -> job id, for the read
     return b.id, job
+
+
+def _existing(runner: JobRunner, key: str, user_id: UUID | None, guest: bytes | None
+              ) -> tuple[str, UUID] | None:
+    find = getattr(runner, "find_live", None)
+    if find is None:
+        return None
+    got = find("brief", key, user_id, guest_sid_hash=guest)
+    return (got[1]["brief_id"], got[0]) if got else None
 
 
 def load_brief(ud: UserData, r: redis.Redis, session: Session, brief_id: str

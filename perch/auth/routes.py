@@ -245,6 +245,7 @@ async def consent(request: Request, body: ConsentIn | None = None,
     await run_in_threadpool(accounts.add_consent, _pool(request), s.user_id, need,
                             settings.consent_provider_name())
     await _store(request).set_consent(s.sid, need)
+    await _store(request).set_consent_all(s.user_id, need)
     return _json({"consent_version": need})
 
 
@@ -254,6 +255,7 @@ async def consent_withdraw(request: Request, s: Session = USER) -> Response:
     _limit(request, "api_write", str(s.user_id))
     await run_in_threadpool(accounts.withdraw_consent, _pool(request), s.user_id)
     await _store(request).set_consent(s.sid, 0)
+    await _store(request).set_consent_all(s.user_id, 0)
     return _json({"consent_version": 0})
 
 

@@ -41,6 +41,7 @@ from collections import defaultdict, deque
 from collections.abc import Callable
 from pathlib import Path
 from typing import Literal
+from uuid import UUID
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -97,6 +98,7 @@ class BriefRequest(BriefOptions):
     author_id: str = Field(description="OpenAlex author id, e.g. A5023080104")
     agencies: list[str] = Field(default_factory=list)
     audience: Literal["researcher", "student"] | None = None  # v1: the session's side decides
+    doc_ids: list[UUID] = Field(default_factory=list, max_length=20)  # signed in: user_data rows
 
 
 async def account_session(request: Request) -> object | None:
@@ -468,8 +470,18 @@ def create_app(service: BriefService, runner: ClosureRunner,
             from perch.user.quota import RateLimited
 
             sv = request.app.state.user_services
+            if req.doc_ids:
+                if sess.user_id is None:
+                    raise HTTPException(403, {"error": "account_required"})
+                from perch.auth.deps import require_consent
+                from perch.user.docs import owns_all
+
+                require_consent(sess)  # before any row is looked at
+                if not owns_all(sv.ud, sess.user_id, req.doc_ids):
+                    raise HTTPException(422, "Some documents are not yours or no longer exist.")
             try:
                 bid, job = submit_brief(service, sv.runner, sv.ud, sv.redis, sess, req.author_id,
+                                        doc_ids=req.doc_ids,
                                         as_of=req.as_of, top=req.top, explain=req.explain,
                                         min_amount=req.min_amount, agencies=req.agencies,
                                         context=req.context())

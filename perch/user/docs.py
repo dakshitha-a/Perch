@@ -107,3 +107,15 @@ def listing(ud: UserData, user_id: UUID, audience: Audience) -> list[dict]:
 def remove(ud: UserData, user_id: UUID, row_id: UUID) -> bool:
     """Delete one CV, document or entry. Another kind of row (a brief) is not removed here."""
     return ud.delete(user_id, row_id, kinds=("cv", "doc", "entry"))
+
+
+def owns_all(ud: UserData, user_id: UUID, ids: list[UUID]) -> bool:
+    """True when every id is a CV, document or entry row of this user (rows only, no text)."""
+    if not ids:
+        return True
+    from perch.store import pg
+
+    with pg.user_tx(ud.pool, user_id) as c:
+        n = c.execute("SELECT count(*) FROM user_data WHERE user_id = %s AND id = ANY(%s) "
+                      "AND kind IN ('cv','doc','entry')", (user_id, list(ids))).fetchone()[0]
+    return n == len(set(ids))
