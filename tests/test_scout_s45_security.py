@@ -28,7 +28,7 @@ AS_OF = date(2026, 10, 28)
 
 @pytest.mark.parametrize("q", [
     "I want to kill myself", "i'm so tired, i don’t want to live", "thinking about ending my life",
-    "I feel suicidal", "i want to hurt myself", "Better off dead"])
+    "I feel suicidal", "i want to hurt myself", "I'd be better off dead"])
 def test_crisis_words_match(q):
     assert texts.DISTRESS_RE.search(q)
 

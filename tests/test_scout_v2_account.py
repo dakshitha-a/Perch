@@ -168,6 +168,29 @@ def test_an_exhausted_budget_stops_questions_but_not_buttons(stack, monkeypatch)
     assert b.status_code == 202  # buttons cost nothing
 
 
+def test_out_of_budget_the_gate_still_screens_for_distress_once_and_capped(stack, monkeypatch):
+    # S45 S1 fix round 3: no crisis keyword, budget spent; the gate runs unmetered and its
+    # distress label gets the care text. Other labels, and a spent daily cap, get the budget.
+    env, c, svc, bid, script = stack
+    monkeypatch.setenv("PERCH_DAILY_BUDGET_USD", "0.000002")
+    for _ in range(2):
+        scopes = quota.reserve_call(env.r, env.uid, 1)
+        quota.settle_call(env.r, scopes, 1, 0, gate=True)
+    spent = quota.usage(env.r, env.pool, env.uid).spent_usd
+    r = c.post(f"/briefs/{bid}/scout", json={"question": "I feel sad and hopeless about it all"})
+    assert r.status_code == 202, r.text
+    v = r.json()
+    assert v["messages"][-1]["kind"] == "distress" and v["messages"][-1]["text"] == texts.DISTRESS
+    assert script.gate_calls == 1 and script.scout_calls == 0
+    assert quota.usage(env.r, env.pool, env.uid).spent_usd == spent  # not charged
+    r = c.post(f"/scout/{v['id']}/ask", json={"question": "Which lead is strongest?"})
+    assert r.status_code == 429 and script.gate_calls == 2
+    for _ in range(quota.FREE_GATE_PER_DAY):
+        quota.free_gate(env.r, env.uid)
+    r = c.post(f"/scout/{v['id']}/ask", json={"question": "I feel hopeless"})
+    assert r.status_code == 429 and script.gate_calls == 2  # cap spent: no model call
+
+
 def test_no_user_text_reaches_jobs_events_ledger_audit_or_logs(stack, caplog):
     env, c, svc, bid, script = stack
     cv_canary = canaries("persona-ug")[0]

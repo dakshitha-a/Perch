@@ -12,6 +12,7 @@ Guests have no Scout: the caller checks the session is a user's before anything 
 from __future__ import annotations
 
 import hashlib
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -21,12 +22,20 @@ from fastapi import HTTPException
 
 from perch.jobs import TERMINAL, JobState
 from perch.llm import Provider, spec_for_role
+from perch.llm.contacts import blank_contacts
 from perch.redisx import QuotaExceeded
 from perch.scout import buttons as btn
-from perch.scout import session, texts
-from perch.scout.job import account_data
+from perch.scout import gate, session, texts
+from perch.scout.job import account_data, providers
 from perch.scout.read_tools import ScoutData
-from perch.scout.turn import Meter, TurnDeps, message, run_turn, user_message
+from perch.scout.turn import (
+    MAX_QUESTION_CHARS,
+    Meter,
+    TurnDeps,
+    message,
+    run_turn,
+    user_message,
+)
 from perch.user import quota
 from perch.user.data import NotFound
 from perch.user.models import ScoutSessionDoc
@@ -36,6 +45,7 @@ if TYPE_CHECKING:
     from perch.service import BriefService
     from perch.user.routes import UserServices
 
+log = logging.getLogger("perch.scout")
 LIVE = {"queued", "running"}
 STALE_S = 120  # a question with no job, or whose job is unknown, stops counting as busy after this
 
@@ -196,6 +206,15 @@ def ask(sv: UserServices, service: BriefService, uid: UUID, sid: UUID, *,
         raise HTTPException(429, {"error": "rate_limited"},
                             headers={"Retry-After": str(e.retry_after)}) from None
     except QuotaExceeded:
+        # Distress screening is never budget-gated: the gate runs once, unmetered and capped
+        # per day, so a crisis message the keyword fast path missed still gets the care text.
+        if free_distress(sv, service, uid, q):
+            if not recent_distress(doc.messages):
+                um = user_message(question=q)
+                session.append(sv.ud, uid, sid, [um, message(
+                    "assistant", "distress", texts.distress_message(audience),
+                    gate="free_gate", reply_to=um["id"])])
+            return
         raise HTTPException(429, {"error": "quota_exceeded", "message": texts.BUDGET,
                                   "usage": usage_view(sv, uid)}) from None
     um = user_message(question=q)
@@ -207,6 +226,19 @@ def ask(sv: UserServices, service: BriefService, uid: UUID, sid: UUID, *,
 
 
 DISTRESS_QUIET_SECONDS = 60
+
+
+def free_distress(sv: UserServices, service: BriefService, uid: UUID, q: str) -> bool:
+    """Out of budget: does the gate, run once and not charged, label this question distress?
+    False when the day's free screens are used up or the call fails (S45 S1, fix round 3)."""
+    if not quota.free_gate(sv.redis, uid):
+        return False
+    try:
+        g = gate.classify(providers(service)("gate"), blank_contacts(q[:MAX_QUESTION_CHARS]))
+    except Exception as e:  # noqa: BLE001 - the budget text is the fallback
+        log.warning("scout free gate failed: %s", type(e).__name__)  # no text: rule 5
+        return False
+    return g.label == "distress"
 
 
 def recent_distress(messages: list[dict[str, Any]]) -> bool:

@@ -158,3 +158,92 @@ def test_nothing_found_templates_pass(text):
     "I found no record on that, so you can apply.", "Nothing rules you out."])
 def test_nothing_found_with_a_tail_fails(text):
     assert removed(text) in (["absent_not_template"], ["no_citation"]), text
+
+
+# --- S1: the keyword fast path is first-person only; the gate is never budget-gated ---
+
+FIRST_PERSON = [
+    "i dont want to be here anymore", "i want to end it", "I can't do this anymore",
+    "nobody would miss me if i was gone", "i want to unalive myself", "i'm suicidial",
+    "i want to kil myself", "kill my self", "honestly i just want to die", "i wanna kill myself",
+    "im thinking about suicide", "i feel like ending it", "i am going to end my life",
+    "Honestly I'm suicidal", "i've been having suicidal thoughts", "i want to disappear forever",
+    "i keep thinking about killing myself", "I wish I was dead", "i'm going to hurt myself",
+    "i cant go on", "i hate my life and want out", "i want to commit suicide",
+    "i feel hopeless and want to die", "i dont want to live anymore",
+    "Funding is fine. I want to kill myself."]
+# No first-person subject, so the gate decides them.
+TO_THE_GATE = ["life isnt worth living", "thinking of suicide tbh"]
+RESEARCH = [
+    "Who funds research on adolescents thinking about suicide?",
+    "Who funds research on adolescents thinking about suicide after job loss?",
+    "studies of patients who can't go on with treatment",
+    "funding for research on why people end it all in fiction",
+    "grant for a study of better off dead rhetoric", "funding to study suicidal thoughts in teens",
+    "grants on thinking about suicide prevention", "suicide prevention research fellowships",
+    "NIH grants for self-harm research", "fellowship on suicidal ideation among veterans",
+    "I study people having suicidal thoughts", "My grant is about why people want to die"]
+
+
+@pytest.mark.parametrize("q", FIRST_PERSON)
+def test_first_person_crisis_text_matches_the_fast_path(q):
+    from perch.scout import texts
+    assert texts.DISTRESS_RE.search(q), q
+
+
+@pytest.mark.parametrize("q", TO_THE_GATE + RESEARCH)
+def test_research_questions_and_no_subject_text_do_not_match(q):
+    from perch.scout import texts
+    assert not texts.DISTRESS_RE.search(q), q
+
+
+class _Gate:
+    """A fake gate model: one fixed label, and a count of calls."""
+
+    name, model, capabilities = "fake", "fake-gate", frozenset()
+
+    def __init__(self, label: str) -> None:
+        self.label, self.calls = label, 0
+
+    def chat(self, messages, **kw):
+        from perch.llm.base import ChatResult, Usage
+        self.calls += 1
+        return ChatResult(text=self.label, usage=Usage(), model="fake-gate", provider="fake")
+
+
+def _deps(label: str, free: bool = True):
+    from perch.redisx import QuotaExceeded
+    from perch.scout.read_tools import ScoutData
+    from perch.scout.turn import Meter, TurnDeps
+
+    class Broke(Meter):
+        def call(self, role, provider, messages, **kw):
+            raise QuotaExceeded("user")
+
+    g = _Gate(label)
+    data = ScoutData(repo=lambda: None, audience="student")  # type: ignore[arg-type]
+    return TurnDeps(data=data, provider_for=lambda role: g, meter=Broke(),
+                    free_gate=lambda: free), g
+
+
+@pytest.mark.parametrize("q", TO_THE_GATE + ["I want to kill myself, not apply for grants"])
+def test_out_of_budget_a_miss_still_reaches_the_gate_and_gets_the_care_text(q):
+    from perch.scout import texts
+    from perch.scout.turn import run_turn
+
+    d, g = _deps("distress")
+    m = run_turn(d, [], question=q)
+    assert m["kind"] == "distress" and m["text"] == texts.DISTRESS and g.calls == 1
+
+
+def test_out_of_budget_any_other_label_or_a_spent_cap_gets_the_budget_text():
+    from perch.scout import texts
+    from perch.scout.turn import run_turn
+
+    for label in ("in_scope", "out_of_scope"):
+        d, g = _deps(label)
+        m = run_turn(d, [], question="Which lead closes first?")
+        assert m["kind"] == "budget" and m["text"] == texts.BUDGET and g.calls == 1
+    d, g = _deps("distress", free=False)  # the day's free screens are used up
+    assert run_turn(d, [], question="life isnt worth living")["kind"] == "budget"
+    assert g.calls == 0

@@ -30,27 +30,47 @@ GATE_SYSTEM = (
 
 # --- code-written replies ---
 
-# A free check run before the budget and the gate (S45 S1). Deliberately narrow: first-person
-# phrases only, so "suicide prevention funding" is not caught but "I want to kill myself" is.
-# A miss still falls to the gate, which has its own distress label.
+# A free check run before the budget and the gate (S45 S1). A high-precision fast path, not
+# the screen: it matches only a crisis phrase with a first-person subject a few words before it
+# (or a phrase that holds its own, such as "myself" or "my life"), in a sentence with no
+# research or funding noun, so "Who funds research on adolescents thinking about suicide?" is
+# not caught. Anything it misses goes to the gate, which has its own distress label and runs
+# even when the budget is spent (perch/scout/turn.py, web.py; S45 fix round 3).
+_SENT = r"[^.?!\n]"
+_RESEARCH = (r"\b(?:fund\w*|grants?|research\w*|stud(?:y|ies|ying|ied)|programs?|prevention|"
+             r"patients?|adolescents?|people|fiction|rhetoric|literature|data|teens?|veterans?|"
+             r"youth|ideation|fellowships?|scholarships?)\b")
+_FP = r"(?:i|i['’]?m|i['’]?ve|i['’]d|i\s+am|me|my|myself)"
+_SELF = r"(?:my\s?self|myslef)"
+_WANT = (r"(?:want|wanna|going|gonna|planning|plan|ready|wish|wishing|trying|need|about|"
+         r"deserve)(?:\s+to)?\s+(?:just\s+)?")
+_PHRASE = (
+    rf"{_WANT}(?:die|end\s+(?:it(?:\s+all)?|my\s+(?:own\s+)?life|everything)|"
+    rf"kil+\s+{_SELF}|unalive\s+{_SELF}|commit\s+suicide|disappear\s+forever|"
+    rf"(?:hurt|harm|cut)\s+{_SELF}|be\s+dead|be\s+gone|not\s+(?:be\s+here|exist|wake\s+up))|"
+    r"suicid\w*|"
+    r"(?:do\s*n['’]?t|do\s+not)\s+(?:want(?:\s+to)?|wanna)\s+(?:live|be\s+(?:alive|here)|exist|"
+    r"wake\s+up)|"
+    r"can['’]?t\s+(?:go\s+on|do\s+this\s+any\s?more|take\s+(?:it|this)\s+any\s?more)|cannot\s+go\s+on|"
+    r"(?:feel(?:ing)?\s+like|thinking\s+(?:about|of)|thought\s+(?:about|of))\s+(?:ending\s+"
+    r"(?:it(?:\s+all)?|my\s+life)|killing\s+myself|dying)|"
+    r"(?:be|am|are)\s+better\s+off\s+(?:dead|without\s+me)|"
+    r"(?:have|has|got)\s+no\s+reason\s+to\s+(?:live|go\s+on|be\s+alive)"
+)
+# Phrases that carry their own first person ("myself", "my life", "me").
+_OWN = (
+    rf"\b(?:kil+(?:ing)?|unaliv(?:e|ing)|hurt(?:ing)?|harm(?:ing)?|cut(?:ting)?)\s+{_SELF}\b|"
+    r"\b(?:end(?:ing)?|take|taking)\s+my\s+(?:own\s+)?life\b|"
+    r"\bi\s+wish\s+(?:i\s+(?:was|were)|i['’]d\s+(?:be|been))\s+dead\b|"
+    r"\bmy\s+life\s+(?:is\s*n['’]?t|is\s+not)\s+worth\s+(?:living|it)\b|"
+    r"\b(?:nobody|no\s+one|noone)\s+would\s+(?:miss|care\s+about|notice)\s+(?:me|if\s+i)\b|"
+    r"\bhate\s+my\s+life\s+and\s+want\s+(?:out|to\s+die|it\s+to\s+end)\b|"
+    r"\bself[- ]harm(?:ing)?\s+(?:myself|again)\b"
+)
 DISTRESS_RE = re.compile(
-    r"\b(?:kill(?:ing)?\s+myself|end(?:ing)?\s+my\s+(?:own\s+)?life|take\s+my\s+own\s+life|"
-    r"(?:want|wanna|going|planning)\s+to\s+(?:die|commit\s+suicide)|wanna\s+die|"
-    r"(?:hurt|harm|cut)(?:ting)?\s+myself|self[- ]harm(?:ing)?\s+(?:myself|again)|"
-    r"(?:i\s*am|i['’]m|im|feel(?:ing)?|so)\s+suicidal|"
-    r"(?:do\s*n['’]?t|do\s+not)\s+(?:want\s+to|wanna)\s+(?:live|be\s+alive|exist)|"
-    r"better\s+off\s+dead|"
-    # S45 round 2: first-person forms only, so "suicidal thoughts" in a research question
-    # ("funding to study suicidal thoughts") does not match.
-    r"i\s+wish\s+(?:i\s+(?:was|were)|i['’]d\s+(?:be|been))\s+dead|"
-    r"(?:i|i['’]ve|ive|im|i['’]m|been|keep|keeps)\s+(?:\w+\s+)?(?:having|had|got|have|thinking\s+"
-    r"(?:about|of))\s+(?:suicide|suicidal\s+(?:thoughts|ideas|feelings)|killing\s+myself|"
-    r"ending\s+(?:it|my\s+life))|"
-    r"(?:thinking|thought)\s+(?:about|of)\s+suicide\b(?!\s+(?:prevention|research|rates?|"
-    r"intervention|awareness|among|in\s+\w+\s+(?:students|veterans|youth)))|"
-    r"suicidal\s+thoughts\s+(?:again|today|tonight|all\s+the\s+time)|"
-    r"end\s+it\s+all|no\s+reason\s+to\s+(?:live|go\s+on|be\s+alive)|can['’]?t\s+go\s+on)\b",
-    re.I)
+    # from the start of a sentence with no research noun in it, to a crisis phrase
+    rf"(?:^|(?<=[.?!\n]))(?!{_SENT}*?{_RESEARCH}){_SENT}*?"
+    rf"(?:\b{_FP}\b(?:[\s,]+[\w'’-]+){{0,5}}?[\s,]+(?:{_PHRASE})|{_OWN})", re.I)
 
 EXAMPLES = (
     "Which of my leads closes soonest?",

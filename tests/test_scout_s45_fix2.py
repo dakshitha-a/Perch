@@ -150,10 +150,13 @@ def test_wider_crisis_words_match_and_research_phrasing_does_not():
     from perch.scout import texts
 
     for q in ["I wish I were dead", "I have suicidal thoughts", "im having suicidal thoughts",
-              "I keep thinking about suicide", "thinking about suicide", "I want to end it all",
-              "there is no reason to live", "I can't go on", "cant go on", "I dont wanna live",
+              "I keep thinking about suicide", "I want to end it all",
+              "I have no reason to live", "I can't go on", "i cant go on", "I dont wanna live",
               "I don't want to live anymore"]:
         assert texts.DISTRESS_RE.search(q), q
+    # No first-person subject: the fast path leaves these to the gate (S45 fix round 3)
+    for q in ["thinking about suicide", "there is no reason to live", "cant go on"]:
+        assert not texts.DISTRESS_RE.search(q), q
     for q in ["suicide prevention funding", "self-harm research grants",
               "funding to study suicidal thoughts in teens", "suicidal ideation grants",
               "grants on thinking about suicide prevention"]:

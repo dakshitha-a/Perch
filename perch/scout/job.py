@@ -12,6 +12,7 @@ micro dollar, so repeated out-of-scope questions run out).
 
 from __future__ import annotations
 
+import functools
 import logging
 import threading
 import time
@@ -146,11 +147,12 @@ def providers(service: BriefService) -> Callable[[str], Provider]:
 
 def turn_deps(service: BriefService, data: ScoutData, meter: Meter,
               handoff: Callable[[], dict[str, Any] | None] | None = None,
-              cancelled: Callable[[], bool] = lambda: False) -> TurnDeps:
+              cancelled: Callable[[], bool] = lambda: False,
+              free_gate: Callable[[], bool] = lambda: True) -> TurnDeps:
     return TurnDeps(data=data, provider_for=providers(service),
                     grounder=lambda: service.models.get("grounder"),
                     names=lambda: award_names(service), meter=meter, handoff=handoff,
-                    cancelled=cancelled)
+                    cancelled=cancelled, free_gate=free_gate)
 
 
 # --- the handler ---
@@ -192,7 +194,8 @@ def scout_turn_handler(ctx: JobContext) -> str | None:
     meter = RedisMeter(_redis(), ctx.pool, uid, ctx.job_id)
     ctx.stage("scout", "running")
     try:
-        reply = run_turn(turn_deps(service, data, meter, cancelled=ctx.cancelled),
+        free = functools.partial(quota.free_gate, meter.r, uid)  # S45 S1
+        reply = run_turn(turn_deps(service, data, meter, cancelled=ctx.cancelled, free_gate=free),
                          doc.messages[:ix], question=doc.messages[ix]["text"])
     except TurnCancelled:  # stopped between steps: write no answer; the view shows "stopped"
         ctx.stage("scout", "cancelled")
