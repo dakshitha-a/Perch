@@ -14,7 +14,7 @@ from pathlib import Path
 
 from perch.schemas import RECORD_TYPES, Record, Work
 from perch.store.base import Page, R, Repository
-from perch.store.denorm import columns, matches_text
+from perch.store.denorm import TEMPLE_SOURCES, columns, matches_text
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS records (
@@ -67,7 +67,7 @@ class SQLiteRepository(Repository):
                cursor: str | None = None) -> Page[R]:
         def keep(r: R) -> bool:
             c = columns(r)
-            return ((not temple_only or c.temple_funded)
+            return ((not temple_only or r.source in TEMPLE_SOURCES)
                     and (not schools or bool(set(schools) & set(c.schools)))
                     and (not audience_level or bool(set(audience_level) & set(c.audience_level)))
                     and (not q or matches_text(r, q))

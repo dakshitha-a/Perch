@@ -360,3 +360,47 @@ def test_temple_dataset_loads_into_postgres_idempotently(pg_clean, tmp_path):
     with connect(pg_clean.admin) as c:
         (n,) = c.execute("SELECT count(*) FROM records WHERE source = 'temple_pages'").fetchone()
     assert n == 2
+
+
+def test_migration_0009_rederives_scope_and_schools_for_stored_rows(tmp_path):
+    """Rows stored before 0009 have scope external and no schools; 0009 re-derives both."""
+    import json
+    import shutil
+
+    from perch.db.migrate import MIGRATIONS_DIR, migrate
+    from tests.conftest import PG_URL, _with
+
+    old = tmp_path / "old"
+    old.mkdir()
+    for f in MIGRATIONS_DIR.glob("*.sql"):
+        if not f.name.startswith("0009_"):
+            shutil.copy(f, old / f.name)
+    name = f"perch_test_a_{uuid.uuid4().hex[:10]}"
+    with connect(PG_URL) as c:
+        c.execute(f'CREATE DATABASE "{name}"')
+    admin = _with(PG_URL, dbname=name)
+    try:
+        assert not any(v.startswith("0009") for v in migrate(admin, old))
+        rows = [("temple_pages:a", {"scope": None, "schools": ["CST"]}),
+                ("temple_pages:b", {"scope": None, "schools": []}),
+                ("temple_pages:c", {"scope": "temple_wide", "schools": ["Fox", "CST"]}),
+                ("temple_pages:d", {"scope": "school", "schools": []})]
+        with connect(admin) as c:
+            for rid, d in rows:
+                c.execute("INSERT INTO records (kind, id, source, source_url, fetched_at, data)"
+                          " VALUES ('scholarship', %s, 'temple_pages', 'x://y', now(), %s)",
+                          (rid, json.dumps(d)))
+            c.execute("INSERT INTO records (kind, id, source, source_url, fetched_at, data) VALUES"
+                      " ('opportunity', 'O1', 'grants_gov', 'x://y', now(), '{}')")
+        assert migrate(admin) == ["0009_scope_unstated"]
+        with connect(admin) as c:
+            got = {r[0]: (r[1], r[2]) for r in c.execute(
+                "SELECT id, scope, schools FROM records")}
+            with pytest.raises(errors.CheckViolation):
+                c.execute("UPDATE records SET scope = 'school' WHERE id = 'temple_pages:b'")
+    finally:
+        with connect(PG_URL) as c:
+            c.execute(f'DROP DATABASE IF EXISTS "{name}" WITH (FORCE)')
+    assert got == {"temple_pages:a": ("unstated", ["CST"]), "temple_pages:b": ("unstated", []),
+                   "temple_pages:c": ("temple_wide", ["CST", "Fox"]),
+                   "temple_pages:d": ("unstated", []), "O1": ("external", [])}

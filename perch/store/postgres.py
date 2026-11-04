@@ -21,7 +21,7 @@ from psycopg_pool import ConnectionPool
 from perch.embed import DEFAULT_MODEL
 from perch.schemas import RECORD_TYPES, Record, Work
 from perch.store.base import Page, R, Repository, VectorIndex
-from perch.store.denorm import STORED_KINDS, TEXT_SQL, columns
+from perch.store.denorm import STORED_KINDS, TEMPLE_SOURCES, TEXT_SQL, columns
 from perch.store.pg import EMBED_DIM, make_pool
 
 INDEX_KINDS = {"opportunities": "opportunity", "scholarships": "scholarship"}
@@ -111,7 +111,8 @@ class PostgresRepository(Repository):
         where = ["kind = %s", "NOT sample"]
         args: list = [cls.kind]
         if temple_only:
-            where.append("temple_funded")
+            where.append("source = ANY(%s)")
+            args.append(list(TEMPLE_SOURCES))
         if schools:
             where.append("schools && %s")
             args.append(list(schools))

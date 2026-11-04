@@ -97,3 +97,54 @@ def test_epoch_bumps(repo):
     assert repo.bump_epoch() == 1
     assert repo.bump_epoch() == 2
     assert repo.epoch() == 2
+
+
+# --- Temple filters (S43 forks F1 and F2) ---
+
+def temple_trio():
+    """A school scholarship, one with no stated scope, one listed as university-wide. SYNTHETIC."""
+    from tests.test_temple_dedupe import sch
+
+    one = sch("temple_pages:a", "SYNTHETIC Quill Award", "CST", "https://x.example/cst")
+    none = sch("temple_pages:b", "SYNTHETIC Harbor Prize", "SDFA", "https://x.example/sdfa")
+    wide = none.model_copy(update={"id": "temple_pages:c", "name": "SYNTHETIC Wide Prize",
+                                   "scope": "temple_wide"})
+    return one, none, wide
+
+
+def test_temple_only_means_listed_on_a_temple_page_not_temple_funded(repo):
+    one, none, wide = temple_trio()
+    assert one.temple_funded is None  # nothing says Temple pays: the filter must not need it
+    repo.upsert([one, none, wide, opp("O1", "SYNTHETIC grant"), sample_sch(1)])
+    got = repo.browse(Scholarship, temple_only=True)
+    assert [r.id for r in got.items] == ["temple_pages:a", "temple_pages:b", "temple_pages:c"]
+    assert got.total == 3
+    assert repo.browse(Opportunity, temple_only=True).items == []
+    assert [o.id for o in repo.browse(Opportunity).items] == ["O1"]
+
+
+def test_temple_sdfa_source_counts_as_a_temple_page(repo):
+    one, *_ = temple_trio()
+    repo.upsert([one.model_copy(update={"id": "temple:sdfa-1", "source": "temple_sdfa"})])
+    assert [r.id for r in repo.browse(Scholarship, temple_only=True).items] == ["temple:sdfa-1"]
+
+
+def test_unstated_scope_stays_inside_temple_and_schools_are_kept(repo):
+    from perch.store.denorm import columns
+
+    one, none, wide = temple_trio()
+    assert columns(one).scope == "school" and columns(one).schools == ["CST"]
+    assert columns(none).scope == "unstated"  # SDFA is not a school page: no scope, no school
+    assert columns(wide).scope == "temple_wide"
+    # a school named on a record with another scope is kept, not cleared
+    both = wide.model_copy(update={"schools": ["Fox School of Business", "CST"]})
+    assert columns(both).scope == "temple_wide"
+    assert columns(both).schools == ["CST", "Fox School of Business"]
+    # a school scope with no school named is not a stated scope
+    assert columns(one.model_copy(update={"schools": []})).scope == "unstated"
+    # outside Temple, a missing scope is external
+    assert columns(opp("O1", "x")).scope == "external"
+    repo.upsert([one, none, both])
+    assert [r.id for r in repo.browse(Scholarship, schools=["CST"]).items] == [
+        "temple_pages:a", "temple_pages:c"]
+    assert repo.browse(Scholarship, temple_only=True).total == 3
