@@ -30,7 +30,7 @@ Rewritten 2026-11-04 at about 14:15 EST, during S45's last fix round. Dakshitha 
 - **S46 started early (Phase 9).**
   - **Dataset v3.** The v2 hand-check by a fresh reviewer: 16.6% of 217 rows wrong or missing (v1 7.4%), mostly Temple-funded misses. Fixes for the deadline conflict, per-award amounts and explicit Temple funding wording were applied, and v3 was rebuilt from the same reads without model calls. 310 records, 27 Temple-funded. Loaded into `perch_dev`. v3's error rate is not yet re-measured.
   - **Search filter.** Vector search now uses the same "listed on a Temple page" rule as browse.
-- **Spend.** The ledger is about $8.40 of the $100 cap; the `.env` cap is $32.60.
+- **Spend.** The ledger is about $8.83 of the $100 cap; the `.env` cap is $32.60.
 - **Tests at the last merge.** `make test` 724 passed.
 
 ## What is left after S45
