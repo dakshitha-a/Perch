@@ -316,6 +316,7 @@ class ReadTools:
         rows = []
         for i, (label, text) in enumerate(self.data.entries()[:MAX_ROWS], 1):
             body = _trim(blank_contacts(text), ENTRY_CHARS) or ""
+            label = blank_contacts(label) if label else label  # S45 S5
             doc = self._see(user_doc(f"user:entry:{i}", label or f"Entry {i}", body))
             rows.append({"id": doc.id, "label": label, "text": body})
         return {"entries": rows} if rows else {

@@ -167,7 +167,7 @@ def cv_view(doc: Work, chars: int = CV_CHARS) -> str:
             head = f"{k[:1].upper()}{k[1:]}:\n" if k else ""
             parts.append(head + "\n".join(f"- {x}" for x in lines))
     body = "\n".join(parts) if parts else text
-    return f"[{short_work_id(doc)}] {doc.title}\n{body[:chars]}"
+    return f"[{short_work_id(doc)}] {blank_contacts(doc.title or '')}\n{body[:chars]}"
 
 
 def award_view(a: Award) -> str:
