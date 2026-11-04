@@ -702,6 +702,7 @@ def cmd_worker(args: argparse.Namespace) -> int:
     set_brief_service(brief_service)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     kinds = [k for k in (args.kinds or env("PERCH_WORKER_KINDS", "") or "").split(",") if k]
+    import perch.user.delete  # noqa: F401 - registers the `purge` handler (S41 part B)
     from perch import shredhooks
 
     stop_sub = shredhooks.install(runner.pool, get_client() if env("PERCH_REDIS_URL") else None,

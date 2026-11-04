@@ -33,7 +33,6 @@ from perch.datefmt import day
 from perch.grounding import THRESHOLD, Grounder
 from perch.llm import Message
 from perch.llm.audit import AuditedProvider
-from perch.private.cv import sections
 from perch.schemas import Award, Opportunity, Record, Work
 from perch.skills import (
     GROUND_RULES,
@@ -43,6 +42,7 @@ from perch.skills import (
     short_work_id,
     work_view,
 )
+from perch.user.cv import sections
 from perch.validate import Check, Validated, check, generate_validated
 
 SKILL = "cover_points"

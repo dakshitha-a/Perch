@@ -75,4 +75,46 @@ def pg_clean(pgdb: PgDb) -> PgDb:
         c.execute("TRUNCATE records, record_vectors, users, consents, user_data, jobs, "
                   "job_events, audit_log, spend_ledger, public_cache, shred_log, ingest_runs, "
                   "worker_heartbeat CASCADE")
+        # Roles are cluster-wide and tests/test_jobs_pg.py sets other passwords on them.
+        for role in ("perch_owner", "perch_web", "perch_worker"):
+            c.execute(f"ALTER ROLE {role} PASSWORD '{ROLE_PW}'")
     return pgdb
+
+
+# --- user-data fixtures (S41 part B) ---
+
+@pytest.fixture
+def keys():
+    from perch import crypto
+    from perch.keystore import EnvKeyStore, InMemoryKeyRepository
+    from tests.user_helpers import make_env
+
+    r = InMemoryKeyRepository()
+    crypto.configure(repo=r, keystore=EnvKeyStore(make_env()))
+    yield r
+    crypto.configure()
+
+
+@pytest.fixture
+def web_pool(pg_clean: PgDb):
+    from perch.store import pg
+
+    p = pg.make_pool(pg_clean.web, 4)
+    yield p
+    p.close()
+
+
+@pytest.fixture
+def worker_pool(pg_clean: PgDb):
+    from perch.store import pg
+
+    p = pg.make_pool(pg_clean.worker, 4)
+    yield p
+    p.close()
+
+
+@pytest.fixture
+def ud(web_pool, keys):
+    from perch.user.data import UserData
+
+    return UserData(web_pool)

@@ -298,10 +298,10 @@ def test_brief_handler_runs_by_id_and_worker_row_is_written(clean):
             seen["id"] = brief_id
 
     jobs.set_brief_service(Svc)
-    uid = user(clean)
-    web = mk(clean["web"])
-    jid = web.submit("brief", {"brief_id": "b9"}, uid, "k")
     w = mk(clean["worker"])
+    # An ownerless job takes the SQLite path. A signed-in job writes a user_data row instead
+    # (tests/test_user_briefs.py::test_signed_in_brief_job_runs_by_id_end_to_end).
+    jid = w.submit("brief", {"brief_id": "b9"}, None, "k")
     stop, t = start(w, ["brief"], 2, "wk1")
     try:
         st = w.wait(jid, 20)

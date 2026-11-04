@@ -100,7 +100,7 @@ def student_profile(facts: StudentFacts, interests: PrivateDoc | None,
         text = f"{facts.major}. {text}"
     vec = normalise(embedder.embed_queries([text]).mean(0, keepdims=True))[0]
     ids = [d.id for d in ([interests] if interests else []) + achieved]
-    from perch.private.threads import label
+    from perch.threads import label
 
     return Profile("private:you", as_of, getattr(embedder, "name", "embedder"),
                    [Thread(0, vec, ids, 1.0, label(text), [text[:600]])], ids)
