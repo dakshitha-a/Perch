@@ -122,7 +122,9 @@ def _converse(deps: TurnDeps, tools: ReadTools, messages: list[Message], system:
         results = []
         for c in res.tool_calls:
             try:
-                body = json.dumps(tools.run(c.name, c.arguments), default=str)[:TOOL_JSON_CHARS]
+                body = json.dumps(tools.run(c.name, c.arguments), default=str)
+                if len(body) > TOOL_JSON_CHARS:  # always valid JSON, never a cut one
+                    body = json.dumps({"truncated": True, "text": body[:TOOL_JSON_CHARS // 2]})
                 results.append(ToolResult(c.id, c.name, body))
             except ToolError as e:
                 results.append(ToolResult(c.id, c.name, json.dumps({"error": str(e)}),

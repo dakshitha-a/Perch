@@ -43,7 +43,9 @@ USER_TOOLS = ("read_cv_part", "read_entries", "read_saved")
 MAX_RESULTS = 8
 TEXT_CHARS = 1500
 CV_PART_CHARS = 3000
-ENTRY_CHARS = 1200
+ENTRY_CHARS = 600
+MAX_LEADS = 12
+MAX_ROWS = 10
 NOT_STATED = "not stated in the record"
 STOP = {"the", "and", "for", "with", "that", "this", "what", "which", "are", "any", "from",
         "about", "can", "does", "have", "how", "who", "when", "where", "find", "show", "give"}
@@ -264,7 +266,7 @@ class ReadTools:
         b, leads = got
         rows: list[dict[str, Any]] = []
         for x in sorted((x for x in leads if x.status != "dismissed" and x.route != "B"),
-                        key=lambda x: x.rank or 0):
+                        key=lambda x: x.rank or 0)[:MAX_LEADS]:
             rec = self._get(x.record_id)
             if rec is None:
                 continue
@@ -273,7 +275,7 @@ class ReadTools:
             if x.verdict:
                 row["verdict"] = x.verdict
             if x.gaps:
-                row["gaps"] = x.gaps[:6]
+                row["gaps"] = x.gaps[:4]
             rows.append(row)
         return {"leads": rows,
                 "note": "Leads are in the brief's own order, the strongest first."}
@@ -295,7 +297,7 @@ class ReadTools:
 
     def read_entries(self) -> dict[str, Any]:
         rows = []
-        for i, (label, text) in enumerate(self.data.entries()[:20], 1):
+        for i, (label, text) in enumerate(self.data.entries()[:MAX_ROWS], 1):
             body = _trim(blank_contacts(text), ENTRY_CHARS) or ""
             doc = self._see(user_doc(f"user:entry:{i}", label or f"Entry {i}", body))
             rows.append({"id": doc.id, "label": label, "text": body})
@@ -303,7 +305,7 @@ class ReadTools:
 
     def read_saved(self) -> dict[str, Any]:
         rows = []
-        for i, s in enumerate(self.data.saved()[:20], 1):
+        for i, s in enumerate(self.data.saved()[:MAX_ROWS], 1):
             rec = self._get(s.record_id)
             row: dict[str, Any] = (facts(self._see(rec), self.data.as_of) if rec
                                    else {"id": s.record_id, "title": None})
