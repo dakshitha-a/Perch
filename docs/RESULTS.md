@@ -155,6 +155,16 @@ Real model (Sonnet 5.5 answers, Haiku 5.5 gate), 63 questions written by Perch-d
 - **The stricter rules cost answers.** On s45g, 23 of 33 in-scope answers failed twice and were shown with sentences removed; none was empty. Most removals are sentences the model wrote without a citation. Tuning the prompt and adding templates for process sentences is S46 work (Q49).
 - **The old Scout's higher Layer 1 rate is not a like-for-like comparison:** it answered a fixed tool set with no grounding contract per sentence.
 
+## S47 load tests (v1 rebuild, Phase 10)
+
+Measured on this shared node with the `cloud-gpu` profile on one RTX 5000 Ada (32 GB), the e2e Postgres and Redis, and the fake provider sleeping for latencies drawn from 51 real Sonnet fit calls (median 4.88 s). No cloud spend. Full tables: `bench/results/s47_load/report.md`.
+
+- **A worker bug found and fixed.** `perch worker` built a new brief service, and so reloaded the GPU models, for every job; at 4 or more briefs in flight every brief failed. It now builds one per process. After the fix, the shipped worker ran 8 briefs in flight with 0 errors and a 5.7 GB GPU peak (`bench/results/s47_load/after_fix/`).
+- **Briefs on one GPU** (one service per worker): 2.1 a minute at 1 in flight; 28.5 at 16 (p95 41 s); 37.1 at 24 (p95 49 s); 41.2 at 48 (p95 80 s), the card's saturation. The computed target of 33 a minute is met at 24 in flight. GPU work is 1.4 to 1.8 s a brief; the rest is model wait. Batching MiniCheck was 1.07 times faster, not worth a change.
+- **HTTP at 1,000 simulated users** (300 s, browse for everyone, 500 signed-in accounts, 200 briefs offered): **target not met.** One web process served about 62 requests a second with browse p50 about 11 s; four processes served 156 a second with browse p50 77 to 167 ms and p95 about 15 s, 4 errors in 48,255 requests. Browse p95 under 300 ms held at 250 users on one process. The node is shared and the runs were at the lowest priority, so waits are not purely Perch's.
+- **Queue:** the worker drained 38 to 40 briefs a minute with 0 failures; the queue peaked at 52 to 68 with 24 running.
+- **Provider tier:** the offered peak implies about 474,000 output tokens a minute, above the 400,000 start tier noted in the S38 section. Higher tiers' limits are UNVERIFIED.
+
 ## Limits
 
 - **One funder, small sample.** The back-test is NIH only, with 48 targeted and 78 parent awards. It was tuned on the same 48 rows, and parent announcements are nearly unrecovered (2 of 78). There is no NSF back-test, and 12 of 14 embedder setups could not be told from the default (`bench/results/SUMMARY.md`).
