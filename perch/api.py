@@ -557,7 +557,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
 
     @app.post("/briefs", status_code=202, dependencies=STORED)
     def create_brief(req: BriefRequest, request: Request,
-                     sess: object | None = Depends(account_session)) -> dict:
+                     sess: object | None = Depends(account_session_csrf)) -> dict:
         student = sess is not None and sess.audience == "student"
         if not student and not oa.parse_author_id(req.author_id or ""):
             raise HTTPException(422, f"not an OpenAlex author id: {req.author_id!r}")
@@ -809,7 +809,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
 
     @app.post("/briefs/{brief_id}/handoff", dependencies=STORED)
     def handoff(brief_id: str, req: HandoffRequest, request: Request,
-                sess: object | None = Depends(account_session)) -> dict:
+                sess: object | None = Depends(account_session_csrf)) -> dict:
         signed_in(sess)
         with scope(request, sess, brief_id):
             b, _ = load(brief_id)
@@ -920,7 +920,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
 
     @app.post("/briefs/{brief_id}/scout", status_code=202, dependencies=STORED)
     def scout_start(brief_id: str, req: ScoutRequest, request: Request,
-                    sess: object | None = Depends(account_session)) -> dict:
+                    sess: object | None = Depends(account_session_csrf)) -> dict:
         signed_in(sess)
         with scope(request, sess, brief_id):
             b, _ = load(brief_id)
@@ -960,7 +960,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
     @app.post("/scout/{sid}/{action}", status_code=202, dependencies=STORED)
     def scout_act(sid: str, action: Literal["ask", "stop", "button"],
                   req: ScoutRequest, request: Request,
-                  sess: object | None = Depends(account_session)) -> dict:
+                  sess: object | None = Depends(account_session_csrf)) -> dict:
         if sess is not None:
             from perch.scout import session as ssn
             from perch.scout import web as sweb
@@ -994,7 +994,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
 
     @app.delete("/scout/{sid}", dependencies=STORED)
     def scout_delete(sid: str, request: Request,
-                     sess: object | None = Depends(account_session)) -> dict:
+                     sess: object | None = Depends(account_session_csrf)) -> dict:
         from perch.scout import web as sweb
 
         signed_in(sess)
@@ -1006,7 +1006,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
 
     @app.post("/briefs/{brief_id}/cover-points", status_code=202, dependencies=STORED)
     def cover_points_start(brief_id: str, req: CoverPointsRequest, request: Request,
-                           sess: object | None = Depends(account_session)) -> dict:
+                           sess: object | None = Depends(account_session_csrf)) -> dict:
         """Queue the cover points for one lead of the signed-in user's brief. Ids only go in
         the job; the CV and entries are read from the user's encrypted rows by the worker."""
         from perch.scout import web as sweb

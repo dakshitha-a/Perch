@@ -11,8 +11,18 @@ PATTERNS = [
     ("EMAIL", re.compile(r"\b[\w.+-]+@[\w-]+(?:\.[\w-]+)+\b")),
     ("ORCID", re.compile(r"\b\d{4}-\d{4}-\d{4}-\d{3}[\dX]\b")),
     ("PHONE", re.compile(r"(?<!\w)(?:\+?1[ .-]?)?\(?\d{3}\)?[ .-]\d{3}[ .-]\d{4}\b")),
+    # No separators (ten digits, not part of a longer number or an amount) and international
+    # numbers with a plus sign ("+44 20 7946 0958", "+49 (0)30 123456"). S45 S5.
+    ("PHONE", re.compile(r"(?<![\w$.,])(?:\+?1)?\d{10}(?![\w]|[.,]\d)")),
+    ("PHONE", re.compile(r"(?<![\w+])\+\d{1,3}[ .-]?(?:\(\d{1,4}\)[ .-]?)?\d{1,4}"
+                         r"(?:[ .-]?\d{2,4}){1,4}(?!\d)")),
     ("AWARD", re.compile(r"\b\d?[A-Z]\d{2}[A-Z]{2}\d{6}(?:-\d{2}[A-Z\d]*)?\b")),  # NIH
     ("URL", re.compile(r"https?://\S+")),
+    ("URL", re.compile(r"(?<![\w@.-])www\.[\w-]+(?:\.[\w-]+)+(?:/\S*)?", re.I)),
+    # A bare domain with a common ending ("lab.example.org/me"). "U.S." and decimals do not
+    # match: the ending must be a whole word from the list.
+    ("URL", re.compile(r"(?<![\w@.-])[a-z0-9][\w-]*(?:\.[\w-]+)*\.(?:com|org|edu|net|gov|io|"
+                       r"us|uk|ca|info|dev|app)\b(?:/\S*)?", re.I)),
 ]
 
 

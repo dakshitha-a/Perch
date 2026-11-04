@@ -28,6 +28,7 @@ from perch.jobs import JobContext, PermanentError, register
 from perch.llm import ChatResult, Message, Provider, spec_for_role
 from perch.llm.audit import AuditedProvider
 from perch.llm.budget import call_cost
+from perch.llm.contacts import blank_contacts
 from perch.schemas import Lead, Opportunity, Record, Scholarship
 from perch.scout import session
 from perch.scout.answer import name_index
@@ -116,9 +117,11 @@ def account_data(ud: UserData, uid: UUID, audience: str, service: BriefService,
         return rows[0][1].text if rows else None
 
     def entries() -> list[tuple[str | None, str]]:
-        out = [(e.label, e.text) for _, e in ud.list(uid, "entry", aud, EntryDoc, limit=20)]
-        out += [(d.title, d.abstract or "") for _, d in ud.list(uid, "doc", aud, UserDoc,
-                                                                limit=20)]
+        # A label or a title is user text too: blanked before it can reach a prompt (S45 S5).
+        out = [(blank_contacts(e.label) if e.label else e.label, e.text)
+               for _, e in ud.list(uid, "entry", aud, EntryDoc, limit=20)]
+        out += [(blank_contacts(d.title) if d.title else d.title, d.abstract or "")
+                for _, d in ud.list(uid, "doc", aud, UserDoc, limit=20)]
         return out
 
     def saved() -> list[SavedRef]:
