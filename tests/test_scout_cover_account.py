@@ -72,9 +72,9 @@ def stack(env, tmp_path, monkeypatch):
     jobs._brief_service = None
 
 
-def go(env, c, svc, bid, rid, model, timeout=40):
+def go(env, c, svc, bid, rid, model, timeout=40, again=False):
     svc.models.provider = lambda spec: FakeProvider(responder=model)
-    r = c.post(f"/briefs/{bid}/cover-points", json={"record_id": rid})
+    r = c.post(f"/briefs/{bid}/cover-points", json={"record_id": rid, "again": again})
     assert r.status_code == 202, r.text
     job = r.json()["job_id"]
     run_worker(env.pg, ["cover_points"], lambda: job_state(env.pg, job) in
@@ -147,3 +147,34 @@ def test_the_same_question_twice_is_one_live_job(stack):
     a = c.post(f"/briefs/{bid}/cover-points", json={"record_id": rid}).json()
     b = c.post(f"/briefs/{bid}/cover-points", json={"record_id": rid}).json()
     assert a["job_id"] == b["job_id"] and a["status"] == "queued"
+
+
+def test_again_makes_a_new_job_and_spends_quota_only_then(stack, monkeypatch):
+    from perch.scout import web as sweb
+
+    env, c, svc, bid, rid = stack
+    spent = []
+    real = sweb.quota.admit
+    monkeypatch.setattr(sweb.quota, "admit",
+                        lambda *a, **k: (spent.append(a[-1]), real(*a, **k))[1])
+    first, _ = go(env, c, svc, bid, rid, Cover())
+    assert len(spent) == 1
+    # a second plain call returns the finished job and spends nothing
+    again_plain = c.post(f"/briefs/{bid}/cover-points", json={"record_id": rid}).json()
+    assert again_plain["job_id"] == first and len(spent) == 1
+    # "again" is a new job, charged once, and the stored set is replaced by the newer one
+    second, r = go(env, c, svc, bid, rid, Cover(), again=True)
+    assert second != first and len(spent) == 2
+    assert len(env.ud.list(env.uid, "cover_points", "student", CoverPointSet)) == 1
+    assert r.json()["job"]["state"] == "succeeded" and r.json()["result"]["points"]
+    # another "again" is another attempt; a plain call still returns the first job
+    a = c.post(f"/briefs/{bid}/cover-points", json={"record_id": rid, "again": True}).json()
+    b = c.post(f"/briefs/{bid}/cover-points", json={"record_id": rid}).json()
+    assert a["job_id"] != second and b["job_id"] == first
+
+
+def test_the_brief_lists_the_records_that_have_stored_points(stack):
+    env, c, svc, bid, rid = stack
+    assert c.get(f"/briefs/{bid}").json()["cover_points"] == []
+    go(env, c, svc, bid, rid, Cover())
+    assert c.get(f"/briefs/{bid}").json()["cover_points"] == [rid]

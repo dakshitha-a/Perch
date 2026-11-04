@@ -476,7 +476,10 @@ def test_cover_points_button_is_wired_on_every_lead_card():
     """
     cover = (WEB_DIR / "cover.js").read_text()
     for s in ("Cover-letter points", "Points again", "Sign in to get cover-letter points",
-              "A model writes these from your CV and papers. You put them in your own words.",
+              "A model writes these from your CV and entries. You put them in your own words.",
+              "A model writes these from your CV, entries and the papers the record cites.",
+              "Still running. Try again in a minute.", "Agree to the consent first.",
+              'e.code === "consent_required"', "onPage(k)",
               "A model is reading the record and your CV. This takes up to two minutes…",
               "The points are ready below.", "The points could not be made. Try again.",
               "Cover points start once the brief has finished.", "Too many requests. Try again in ",
@@ -486,12 +489,12 @@ def test_cover_points_button_is_wired_on_every_lead_card():
         assert s in cover, s
     assert "export function pointsBlock(" in (WEB_DIR / "scout.js").read_text()
     api = (WEB_DIR / "api.js").read_text()
-    assert "cover-points`, { record_id: recordId }" in api and "err.retryAfter" in api
+    assert "cover-points`, again ? { record_id: recordId, again: true }" in api and "err.retryAfter" in api
     assert api.index("coverStart:") < api.index("studentNote:")
     student = (WEB_DIR / "student.js").read_text()
-    assert 'l.status === "dismissed" ? null : coverBlock(ctx, ctx.briefId, l.record_id)' in student
+    assert 'l.status === "dismissed" ? null : coverBlock({ ...ctx, audience: "student"' in student
     app = (WEB_DIR / "app.js").read_text()
     assert 'l.status === "dismissed" ? null : coverBlock({ api, announce, openEvidence' in app
-    assert "verdict !== \"not eligible\"" not in student.split("coverBlock(ctx")[1][:80]
+    assert "verdict !== \"not eligible\"" not in student.split("coverBlock({ ...ctx")[1][:80]
     mods = (ROOT / "scripts/build_ui_preview.py").read_text()
     assert mods.index('"scout.js"') < mods.index('"cover.js"') < mods.index('"student.js"')

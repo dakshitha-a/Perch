@@ -42,3 +42,4 @@ class BriefOptions(BaseModel):
 
 class CoverPointsRequest(BaseModel):
     record_id: str = Field(min_length=1, max_length=200)
+    again: bool = False  # ask for a fresh set; without it a live or finished job is reused

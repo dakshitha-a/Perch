@@ -6,23 +6,28 @@
 import { h, icon } from "./dom.js";
 import { pointsBlock } from "./scout.js";
 
-export const COVER_HINT = "A model writes these from your CV and papers. You put them in your own words.";
+export const COVER_HINT = {
+  student: "A model writes these from your CV and entries. You put them in your own words.",
+  researcher: "A model writes these from your CV, entries and the papers the record cites. You put them in your own words.",
+};
 export const COVER_WAIT = "A model is reading the record and your CV. This takes up to two minutes…";
 export const COVER_READY = "The points are ready below.";
 export const COVER_SIGNIN = "Sign in to get cover-letter points";
 export const COVER_FAILED = "The points could not be made. Try again.";
 export const COVER_NOT_DONE = "Cover points start once the brief has finished.";
+export const COVER_SLOW = "Still running. Try again in a minute.";
+export const COVER_CONSENT = "Agree to the consent first.";
 const POLL_MS = 2000;
 const POLL_MAX_MS = 150000;
 
-// key -> { busy, error, signin, result, restored }; each drawn block rebuilds itself from it.
+// key -> { busy, error, signin, consent, slow, jobId, result, tried }; each drawn block rebuilds itself from it.
 const STATE = new Map();
 const NODES = new Map();
 let UI = null; // the latest context: { api, announce, openEvidence, label }
 
 const keyOf = (briefId, recordId) => `${briefId}|${recordId}`;
 const st = (k) => {
-  if (!STATE.has(k)) STATE.set(k, { busy: false, error: null, signin: false, result: null, restored: false });
+  if (!STATE.has(k)) STATE.set(k, { busy: false, error: null, signin: false, consent: false, slow: false, jobId: null, result: null, tried: false });
   return STATE.get(k);
 };
 
@@ -44,10 +49,13 @@ export function coverError(e) {
       : "Too many requests. Try again in a little while." };
   }
   if (e && e.status === 409) return { text: COVER_NOT_DONE };
-  if (e && e.status === 403) return { signin: true };
+  if (e && e.status === 403) return e.code === "consent_required" ? { consent: true } : { signin: true };
+  if (e && e.message === "timeout") return { slow: true, text: COVER_SLOW };
   if (e && e.status === 0) return { text: e.message };
   return { text: COVER_FAILED };
 }
+
+const onPage = (k) => [...(NODES.get(k) || [])].some(([n]) => n.isConnected);
 
 function draw(k, focus) {
   const nodes = NODES.get(k);
@@ -63,21 +71,23 @@ function draw(k, focus) {
 async function run(k, briefId, recordId) {
   const s = st(k);
   if (s.busy) return;
-  Object.assign(s, { busy: true, error: null, signin: false });
+  const again = Boolean(s.result) && !s.jobId; // a finished set asks for a fresh one; a slow job is resumed
+  Object.assign(s, { busy: true, error: null, signin: false, consent: false, slow: false });
   draw(k, "button");
   const { api, announce } = UI;
+  announce(COVER_WAIT);
   try {
-    const job = await api.coverStart(briefId, recordId);
+    if (!s.jobId) s.jobId = (await api.coverStart(briefId, recordId, again)).job_id;
     const end = Date.now() + POLL_MAX_MS;
     for (;;) {
       await new Promise((r) => setTimeout(r, POLL_MS));
-      const got = await api.coverGet(briefId, recordId, job.job_id);
+      if (!onPage(k)) { s.busy = false; return; } // the user left the brief: stop, say nothing
+      const got = await api.coverGet(briefId, recordId, s.jobId);
       const state = got.job && got.job.state;
       if (state === "succeeded" && got.result) {
-        s.result = got.result;
-        s.busy = false;
+        Object.assign(s, { result: got.result, busy: false, jobId: null });
         draw(k, "result");
-        announce(COVER_READY);
+        if (onPage(k)) announce(COVER_READY);
         return;
       }
       if (!got.job || state === "succeeded" || ["failed", "dead", "cancelled"].includes(state)) throw new Error("job");
@@ -85,23 +95,25 @@ async function run(k, briefId, recordId) {
     }
   } catch (e) {
     const c = coverError(e);
-    Object.assign(s, { busy: false, error: c.text || null, signin: Boolean(c.signin) });
+    if (!c.slow) s.jobId = null; // a slow job keeps its id, so the next press resumes it
+    Object.assign(s, { busy: false, error: c.text || null, signin: Boolean(c.signin), consent: Boolean(c.consent), slow: Boolean(c.slow) });
     draw(k, "button");
   }
 }
 
-// One GET on first draw brings back points that are already stored.
+// The brief payload lists the records that have stored points; only those cards make a GET.
 async function restore(k, briefId, recordId, api) {
   const s = st(k);
-  if (s.restored) return;
-  s.restored = true;
+  if (s.tried || s.busy || s.result) return;
+  s.tried = true;
   try {
     const got = await api.coverGet(briefId, recordId, null);
     if (got.result && !s.busy) { s.result = got.result; draw(k, null); }
-  } catch { /* nothing stored, or no access: the button stays */ }
+  } catch { /* no access: the button stays */ }
 }
 
-// The block for one card. `ctx`: { api, announce, openEvidence, label, guest, signIn }.
+// The block for one card. `ctx`: { api, announce, openEvidence, guest, signIn, audience, stored }.
+// `stored` is the brief's cover_points list: record ids that have points saved.
 export function coverBlock(ctx, briefId, recordId) {
   if (!ctx.api || ctx.api.mode !== "live" || !ctx.api.coverStart) return null;
   UI = ctx;
@@ -112,11 +124,17 @@ export function coverBlock(ctx, briefId, recordId) {
       return [h("a", { class: "btn", href: ctx.signIn, "data-key": `cover-${recordId}`, text: COVER_SIGNIN })];
     }
     const out = [h("div", { class: "actions" },
-      h("button", { class: "btn", type: "button", "data-key": `cover-${recordId}`, disabled: s.busy,
-        "aria-busy": s.busy ? "true" : null, onclick: () => run(k, briefId, recordId) },
+      h("button", { class: "btn", type: "button", "data-key": `cover-${recordId}`,
+        "aria-disabled": s.busy ? "true" : null, "aria-busy": s.busy ? "true" : null,
+        onclick: () => run(k, briefId, recordId) },
       icon("pen"), h("span", { text: s.result ? "Points again" : "Cover-letter points" }))),
-    h("p", { class: "hint", text: COVER_HINT })];
-    if (s.busy) out.push(h("p", { class: "hint", role: "status", text: COVER_WAIT }));
+    ];
+    if (!s.result) out.push(h("p", { class: "hint", text: COVER_HINT[ctx.audience === "student" ? "student" : "researcher"] }));
+    if (s.busy) out.push(h("p", { class: "hint", "data-cover-wait": "", text: COVER_WAIT }));
+    else if (s.consent) {
+      out.push(h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: COVER_CONSENT })),
+        h("div", { class: "actions" }, h("a", { class: "btn", href: "#/welcome", text: "Agree to the consent" })));
+    } else if (s.slow) out.push(h("p", { class: "hint", role: "status", text: COVER_SLOW }));
     else if (s.signin) {
       out.push(h("p", { class: "notice error", role: "alert" }, icon("warn"),
         h("span", {}, h("span", { text: "Sign in to get cover-letter points. " }),
@@ -129,6 +147,6 @@ export function coverBlock(ctx, briefId, recordId) {
   if (!NODES.has(k)) NODES.set(k, new Map());
   NODES.get(k).set(box, build);
   box.replaceChildren(...build());
-  if (!ctx.guest && !s.restored) restore(k, briefId, recordId, ctx.api);
+  if (!ctx.guest && (ctx.stored || []).includes(recordId)) restore(k, briefId, recordId, ctx.api);
   return box;
 }
