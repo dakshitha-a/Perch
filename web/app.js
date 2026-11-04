@@ -735,7 +735,10 @@ function renderBrief() {
   if (!student && !["A", "B"].includes(S.route)) S.route = "A";
   // F23: the date's parts never part at a line end ("1" / "Nov 2026").
   const asOf = f.formatDate(d.brief.options.as_of).replace(/ /g, "\u00a0");
-  const meta = student ? `Fellowships and sample scholarships, checked against your CV by rule · as of ${asOf}`
+  // DRAFT copy: a guest's sample brief says whose CV it checks (S43 S8).
+  const sampleBrief = Boolean(d.brief.options.persona);
+  const meta = student ? (sampleBrief ? `Fellowships and sample scholarships, checked against the sample student's CV by rule · as of ${asOf}`
+      : `Temple awards and fellowships, checked against your CV by rule · as of ${asOf}`)
     : [...(r.institutions || []), `Brief as of ${asOf}`].join(" · ");
   // Back: a student returns to the start screen, a researcher to the matches.
   const back = student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Back" }))
@@ -2276,6 +2279,16 @@ function init() {
   }
   // The server says who is here before the first screen is drawn. A signed-in visitor
   // lands on the side they used last; a signed-out one always lands on Student.
+  // A sign-in that did not finish comes back as #/?signin=failed or =unavailable (S43 M1).
+  const signin = new URLSearchParams(location.hash.split("?")[1] || "").get("signin");
+  if (signin) {
+    history.replaceState(null, "", "#/");
+    // DRAFT copy
+    S.flash = signin === "unavailable"
+      ? "Sign-in is not available right now. You can still try a sample student."
+      : "Sign-in did not finish. Try again.";
+    S.flashFor = "#/";
+  }
   refreshSession().then((sess) => {
     if (sess.signed_in && sess.audience) S.who = sess.audience === "researcher" ? "r" : "s";
     route();

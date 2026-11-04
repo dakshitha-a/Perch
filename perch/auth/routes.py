@@ -113,6 +113,9 @@ def _needs_welcome(roles: frozenset[str] | set[str], consent_version: int) -> bo
 async def login(request: Request, return_to: str | None = None) -> Response:
     _limit(request, "login_global", "site")
     _limit(request, "login_start", _addr_subject(request))
+    if getattr(request.app.state, "auth_provider", None) is None:
+        # A browser navigation: land on the app with a code, never on a JSON page (S43 M1).
+        return RedirectResponse("/#/?signin=unavailable", status_code=302, headers=NO_STORE)
     red = await _provider(request).begin(safe_return_to(return_to))
     resp = RedirectResponse(red.url, status_code=302, headers=NO_STORE)
     _set_oidc_cookie(resp, red.binder)
@@ -127,7 +130,8 @@ async def callback(request: Request) -> Response:
     try:
         identity, return_to = await _provider(request).complete(dict(request.query_params), binder)
     except AuthError as e:
-        resp = _json({"error": e.code}, 400)
+        # The code is not shown; the app says "Sign-in did not finish" (S43 M1).
+        resp = RedirectResponse("/#/?signin=failed", status_code=302, headers=NO_STORE)
         _clear_oidc_cookie(resp)
         return resp
     uid = await run_in_threadpool(accounts.login_user, pool, identity.issuer, identity.subject)

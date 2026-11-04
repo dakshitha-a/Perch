@@ -638,6 +638,10 @@ class BriefService:
     def _run_scholarships(self, b: Brief) -> tuple[str, bool]:
         from perch.student import samples
 
+        if not b.options.get("persona"):
+            # A signed-in student's brief holds public records only; the SYNTHETIC samples
+            # live on their own screen (fork F6, S43 M4). Only a guest's sample persona has this route.
+            return "sample scholarships are on their own screen", True
         pool = samples()  # SYNTHETIC records, a list of their own (rule 11); read-only
         leads, ok = self._student_route(b, "S", pool)
         with self.repo() as r:

@@ -222,7 +222,7 @@ export async function renderMyPerch(root, ctx) {
     listEl.setAttribute("aria-busy", "false");
     fill(listEl, rows.length ? h("ul", { class: "leads" }, rows.map((b) => h("li", { class: "card lead brief-row", "data-id": b.id },
       h("div", {}, h("p", { class: "lead-title", text: side === "student" ? "Student brief" : (b.topics && b.topics.length ? b.topics.slice(0, 3).join(", ") : "Researcher brief") }),
-        h("p", { class: "hint", text: `Built ${f.formatDate(b.created_at)} · ${f.plural(b.leads, "lead")} · ${b.status}` })),
+        h("p", { class: "hint", text: `Built ${f.formatDate(b.created_at)} · ${f.plural(b.leads, "lead")}${b.sample_leads ? ` · ${b.sample_leads} sample` : ""} · ${b.status}` })),
       h("a", { class: "btn", href: `#/brief/${encodeURIComponent(b.id)}/routes` },
         h("span", { text: "Open" }), h("span", { class: "sr-only", text: ` the brief built ${f.formatDate(b.created_at)}` })))))
       : h("div", { class: "empty-list" }, h("p", { class: "lede", text: "No briefs yet." }),

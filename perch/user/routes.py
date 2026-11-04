@@ -135,7 +135,10 @@ def delete_me(req: DeleteConfirm, s: Session = Depends(deps.require_user),
 def _summary(rid: UUID, sb: StoredBrief) -> dict:
     b = sb.brief
     return {"id": str(rid), "status": b.status, "researcher_id": b.researcher_id,
-            "created_at": b.created_at.isoformat(), "leads": len(sb.leads),
+            "created_at": b.created_at.isoformat(),
+            # Public and SYNTHETIC sample leads are counted apart (standing rule 11).
+            "leads": sum(not x.sample for x in sb.leads),
+            "sample_leads": sum(bool(x.sample) for x in sb.leads),
             "topics": b.topics[:5]}
 
 
