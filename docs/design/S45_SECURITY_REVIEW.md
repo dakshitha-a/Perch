@@ -24,3 +24,21 @@ Fresh-context Opus review, read-only, 2026-11-04. Judged the code on rebuild/v1 
 
 ## Clean
 Tool allowlist, cross-user access, logging, rendering (textContent, no XSS) and the fail-open gate design.
+
+## Re-check after the fixes (fresh-context Opus, 2026-11-04)
+
+- **Fixed:** M1 (all nine write routes check CSRF), S6 (caps; the real ceiling is about 52,000 characters), S7 (Help), and the S4 UI.
+- **Partly fixed:**
+  - **S1:** the crisis list misses "I wish I were dead", "suicidal thoughts", "thinking about suicide", "end it all", "no reason to live", "can't go on" and "dont wanna live". With the budget spent mid-job these get the budget text.
+  - **S2:** a question answered with the budget text, or cancelled before the gate, stays in history unscreened.
+  - **S3 and S4:** headings, questions and placeholder-cited "nothing" sentences can still carry eligibility or fit claims ("**Undergraduates may apply:**", "Nothing in your saved list requires citizenship [user:saved]"). A bare "eligible", "require", "may apply", "open to" and "fit" are not caught.
+  - **S5:** some phone shapes, short-domain links and "at ... dot edu" still reach the model; a 10-digit grant number is blanked.
+- **New must-fix:**
+  - **R1:** the withheld text says "The records Scout read are listed below the answer", but nothing is listed (rule 10).
+  - **R2:** the S3 and S4 gaps above.
+  - **R3:** the S2 gap above.
+- **Should-fix:**
+  - The notice says "They are listed here" when only some are listed.
+  - Attempt 2 puts tool data in a user message, which makes injected record text easier to obey.
+  - Help's "start a new one" conflicts with the daily budget.
+  - The free distress path has no rate limit.
