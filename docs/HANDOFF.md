@@ -1,6 +1,6 @@
 # HANDOFF.md — state for the next context window
 
-Rewritten 2026-11-04 at about 14:15 EST, during S45's last fix round. Dakshitha asked for the sessions to run back to back in one orchestrating context ("carry on till everything is finished, all phases"), so this file is rewritten at each close.
+Rewritten 2026-11-04 at about 19:00 EST, at the start of S48. Dakshitha asked for the sessions to run back to back in one orchestrating context ("carry on till everything is finished, all phases"), so this file is rewritten at each close.
 
 ## Read this first
 
@@ -17,20 +17,22 @@ Rewritten 2026-11-04 at about 14:15 EST, during S45's last fix round. Dakshitha 
 
 ## Where the rebuild stands
 
-- **S34 to S42 and S44 done.** Phases 0 to 6 and 8a. `docs/RESULTS.md` has the S38, S40 and S45 sections.
-- **S43 done (Phase 7).** Student-first screens, browse with the Temple filter and school tags, account page with withdraw and delete, Help rewritten. The Opus review's 7 must-fix items are closed. Walks: guest 60 states in light and dark, real sign-in 16 states, all 0 errors and 0 axe. The only small targets are two inline links, which WCAG 2.5.8 exempts. Should-fix leftovers are listed in `docs/sessions/S43.md` for S46.
-- **S45 done (Phase 8b).** Bench table in `docs/RESULTS.md`. Final run s45g: out of scope 24 of 24, distress 5 of 5, in scope 10 of 33 pass Layer 1, 23 shown with sentences removed, 0 empty. The security review's must-fix items are closed after four re-checks; the should-fix list for S46 is at the end of `docs/design/S45_SECURITY_REVIEW.md`. Exempt sentences now follow fixed shapes, and distress screening runs even when the budget is spent. Q49 asks about strictness against usefulness.
-- **S46 started early (Phase 9).**
-  - **Dataset v3.** The v2 hand-check by a fresh reviewer: 16.6% of 217 rows wrong or missing (v1 7.4%), mostly Temple-funded misses. Fixes for the deadline conflict, per-award amounts and explicit Temple funding wording were applied, and v3 was rebuilt from the same reads without model calls. 310 records, 27 Temple-funded. Loaded into `perch_dev`. v3's error rate is not yet re-measured.
-  - **Search filter.** Vector search now uses the same "listed on a Temple page" rule as browse.
-- **Spend.** The ledger is about $9.92 of the $100 cap; the `.env` cap is $32.60.
-- **Tests at the last merge.** `make test` 896 passed.
+- **S34 to S47 done.** Phases 0 to 10. `docs/RESULTS.md` has the S38, S40, S45 and S47 sections; the tracker has one row per session.
+- **S45:** Scout bench final run: out of scope 24 of 24, distress 5 of 5, in scope 10 of 33 pass Layer 1, 23 shown with sentences removed, 0 empty. Security review closed after four re-checks; should-fix list at the end of `docs/design/S45_SECURITY_REVIEW.md`.
+- **S46:** two QA rounds with no open must-fix. Cover-letter points button on every grant and award card, reviewed and re-checked. Guests see "Ask Scout needs an account". README rewritten for v1. Dataset v3 loaded. Real-model student brief: 59 of 60 explanations shown, about $0.11 a brief.
+- **S47:** the worker now builds one brief service per process (it rebuilt the GPU models per job and failed at 4 in flight). One GPU: 37.1 briefs a minute at 24 in flight, saturating near 41. HTTP at 1,000 users: target not met (one web process ~62 req/s, four ~156). GPU worker image builds; this node had no NVIDIA container runtime, so the demo worker runs natively on GPU 3 (Dakshitha). Dakshitha installed nvidia-container-toolkit 1.20.1 on 4 Nov evening (steps 1 to 3; Docker restart pending at the time of writing). Health checks, JSON logs, loopback `/metrics`, daily backups with 35-day retention, restore test passed. Runbook: `docs/deploy.md`.
+- **Spend.** The ledger is about $10.60 of the $100 cap; the `.env` cap is $32.60.
+- **Tests.** `make test` 910 passed.
 
-## What is left after S45
+## S48 (Phase 11), now
 
-- **S46 (Phase 9), the QA cycle.** First: wire a cover-points button to `/briefs/{id}/cover-points` (the route works, no screen calls it; standing rule 5's fourth job), then Q49's prompt tuning measured offline. Two tester-then-fixer rounds: `make test`, the full walk with axe, the bench, the rehearsal script, the leakage check. Also: S43's should-fix leftovers; confirm on the real model that student brief explanations are not all withheld (the walk's fake model withholds every one); the student brief cost; the docs sweep for retired private-mode links; v3 hand-check; a person grading `grades.csv`.
-- **S47 (Phase 10).** The CUDA worker image with the Compose worker on `cloud-gpu`; the measured concurrent GPU load test; per-call spend reserve and settle; backup retention set to 35 days, to match the consent text; the runbook.
-- **S48 (Phase 11).** A fresh-context security review; the `rekey` and `tombstones` purge actions; the docs, the demo rebuild, `make package` and the tag `v1.0-deploy`.
+1. Fresh-context Opus security review: encryption, sign-in, sessions, injection through record text, quotas, secrets. Fix every must-fix, re-check.
+2. The `rekey` and `tombstones` purge actions.
+3. Carried: Q49 Scout tuning; S43 and S45 should-fix lists; ARCHITECTURE_V1 `/ready` wording; a worker systemd unit.
+4. Docs verified against the code (README, SPEC, ARCHITECTURE_V1, SOURCES, RESULTS, the hosted spec, the deck's deployment slide).
+5. Demo rebuild on the new stack: Compose for Postgres, Redis, Keycloak and web; the worker natively on GPU 3. Do not take port 8090 or the Funnel from the fallback until Dakshitha decides at the gate. Rehearse, walk, leak check on the new URL.
+6. `make package`, tag `v1.0-deploy`.
+- **The gate:** Thursday 5 Nov, 6:00 pm. If the rebuild is not demo-ready, write the submission decision to `bridge/QUESTIONS.md`.
 
 ## Worth knowing
 
