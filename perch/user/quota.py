@@ -79,6 +79,22 @@ def admit(r: redis.Redis, pool: ConnectionPool, uid: UUID, rate_scope: str = "su
         raise QuotaExceeded(scope.name)
 
 
+FREE_GATE_PER_DAY = 10  # out-of-budget distress screens per account per UTC day (S45 S1)
+
+
+def free_gate(r: redis.Redis, uid: UUID, *, now: datetime | None = None,
+              cap: int = FREE_GATE_PER_DAY) -> bool:
+    """May this account have one more unmetered gate call today? The gate screens a question
+    for distress even when the budget is spent, so that screen is never budget-gated; this cap
+    keeps the free path from being an unmetered model. Counts the call when it says yes."""
+    t = now or datetime.now(UTC)
+    key = f"perch:gate_free:{uid}:{t:%Y-%m-%d}"
+    n = int(r.incr(key))
+    if n == 1:
+        r.expire(key, 2 * 86400)
+    return n <= cap
+
+
 def reserve_call(r: redis.Redis, uid: UUID, estimate_micro: int, *,
                  now: datetime | None = None, **limits: float) -> list[Scope]:
     """Reserve against the user's day and the global month before one model call."""

@@ -16,21 +16,26 @@ const TOOLS = {
   search_options: "Search options", check_option: "Check against your CV", explain_verdict: "Explain a verdict",
   read_cv: "What Perch read", compare_options: "Compare options", draft_note: "Draft a note",
   cover_points: "Points for a cover letter",
+  // Scout v2's read tools (perch/scout/read_tools.py), the only steps it runs (S45)
+  search_records: "Search records", read_record: "Read a record", read_brief: "Read the brief",
+  read_cv_part: "Read a CV part", read_entries: "Read your entries", read_saved: "Read your saved list",
 };
-// The rail lists what Scout can use; students get their own tools (S24, Q27 revised).
+// The rail lists what Scout can use: its read tools (perch/scout/read_tools.py) and the
+// buttons, which code answers (perch/scout/buttons.py). S45 fix round 3: search takes words
+// only, so no filter is claimed.
+const BUTTONS_LINE = "Buttons answered by code: Top leads, Deadlines, Compare kept leads, Hand-off to a Temple office";
 const CAN_USE = {
-  researcher: ["Search with filters: agency, ceiling, close date, activity code, words",
-    "Industry leads and their signals", "Any record in the brief", "Public awards and the research profile",
-    "A fit explanation", "Compare chosen or kept leads", "A hand-off draft, shown for you to copy",
-    "Points for a cover letter, for one lead, from your CV, documents and papers"],
-  student: ["Search fellowships and sample scholarships with filters: verdict, deadline, amount, words",
-    "Check one option against your CV by rule", "Explain a verdict and what is still needed",
-    "What Perch read from your CV", "Compare chosen or kept options", "A note to a Temple office, shown for you to copy",
-    "Points for a cover letter, for one option, from your CV, interests and achievements"],
+  researcher: ["Search Perch’s public records by words", "Read one record in full",
+    "Read this brief: its leads, their order and which you kept",
+    "Read your CV, documents and entries, with contact details blanked", "Read your saved list", BUTTONS_LINE],
+  student: ["Search fellowships and scholarships by words", "Read one record in full",
+    "Read this brief: its options, their order and which you kept",
+    "Read your CV and entries, with contact details blanked", "Read your saved list", BUTTONS_LINE],
 };
-// F18: dates as the app writes them, and examples the demo brief can answer.
-const STUDENT_EXAMPLES = ["Only options with a deadline after 1\u00a0Mar\u00a02027", "Why is my top fellowship “may be eligible”?",
-  "What do my kept options still need?", "Draft a note about my kept fellowships",
+// Examples Scout's read tools can answer: words, the brief, the CV (S45 fix round 3).
+const STUDENT_EXAMPLES = ["Which of my options closes soonest?",
+  "What does my top option ask for that my CV does not show yet?",
+  "Find scholarships for a graduate student in public health.",
   "What should my application for my top option highlight?"];
 const ARGS = {
   route: "Route", author_id: "Researcher", min_amount: "Ceiling at least", max_amount: "Ceiling at most",
@@ -47,9 +52,9 @@ const ARGS = {
 };
 const SCOPES = { brief: "your brief", all: "all opportunities" };
 const STATUS = { proposed: "Running…", done: "Done", not_run: "Not run", refused: "Refused", error: "Failed", repeated: "Repeat, not run again" };
-const EXAMPLES = ["Which of my NSF leads close by 1\u00a0Mar\u00a02027?", "Small grants only: a ceiling of $200k or less",
-  "Leave out Department of Defense grants", "Why does the top lead fit?",
-  "What could my cover letter for the top lead say?"];
+const EXAMPLES = ["Which of my leads closes soonest?",
+  "What does my top lead ask for that my CV does not show yet?",
+  "Find NSF grants on sensor networks.", "What could my cover letter for the top lead say?"];
 // F9: "start over" and its kin open a new conversation, as the button beside the box does.
 // G9: with polite words around it ("can we start over", "lets start over pls"), as the
 // server's START_OVER_RE (perch/scout/loop.py) reads it.
@@ -131,8 +136,8 @@ function welcome(ctx) {
         h("button", { class: "chip", type: "button", onclick: () => { T.draft = q; send(ctx); } }, q)))) : null,
       h("details", { class: "scout-limits" }, h("summary", { text: "What I will not do" }),
         h("p", { text: ctx.student
-          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after a fixed number of tool steps for one question, cannot browse the web, send anything or change a record. A model reads your CV when you ask for cover-letter points, and when it opens a CV part to answer a question. Contact details are blanked first. Sample scholarships stay marked as samples. Scout has a daily budget; when it is spent, it resets each day."
-          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after a fixed number of tool steps for one question, cannot browse the web, send anything or change a record. A model reads your documents and entries when you ask for cover-letter points, or when it opens them to answer a question, with contact details blanked. Scout has a daily budget; when it is spent, it resets each day." }))));
+          ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after a fixed number of tool steps for one question, cannot browse the web, send anything or change a record. A model reads a part of your CV, your entries or your saved list when it opens them to answer a question. Contact details are blanked first. Sample scholarships stay marked as samples. Scout has a daily budget; when it is spent, it resets each day."
+          : "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after a fixed number of tool steps for one question, cannot browse the web, send anything or change a record. A model reads your CV, documents, entries or saved list when it opens them to answer a question, with contact details blanked. Scout has a daily budget; when it is spent, it resets each day." }))));
 }
 
 // The chat fills the window below the sticky tabs, so the question box sits on the bottom
@@ -334,7 +339,10 @@ function answer(x, ctx, thinking) {
   if (thinking) return h("div", { class: "scout-wait" }, owl("look", "owl-sm"),
     h("span", { text: T.stopping ? "Stopping after this step…" : now ? `${TOOLS[now.tool] || now.tool}…` : "Scout is working…" }),
     h("button", { class: "btn quiet scout-stop", type: "button", disabled: T.stopping, onclick: () => stop(ctx) }, icon("stop"), h("span", { text: "Stop" })));
-  if (x.status === "stopped" && x.by_user) return h("p", { class: "hint scout-stopped", text: "You stopped this question. The steps below show what ran; ask again to go on." });
+  // A stopped turn writes no answer, so it usually has no steps to point to (S45 R1).
+  if (x.status === "stopped" && x.by_user) return h("p", { class: "hint scout-stopped", text: x.cards.length
+    ? "You stopped this question. The steps below show what ran; ask again to go on."
+    : "You stopped this question before Scout answered. Ask again to go on." });
   // After a draft or a points step the answer line is written by code, not a model (R3, R20, S33).
   if (x.answer && x.answer_by === "code") {
     const hasDraft = x.cards.some((c) => c.draft), hasPoints = x.cards.some((c) => c.points);
@@ -348,7 +356,8 @@ function answer(x, ctx, thinking) {
   // Model prose says so in words, not by its tint alone (U7). What the checks found is shown
   // with it (S45): sentences Scout could not confirm are marked, sentences it removed are
   // counted, and the General advice part sits apart, labelled as uncited.
-  if (x.answer) {
+  // An answer may be all General advice, with no grounded part (S45 R1).
+  if (x.answer || (x.message && x.message.general)) {
     const m = x.message || {};
     if (m.flagged && m.withheld_all) {
       // The records Scout opened, so the notice is not left without them: public records only, as chips.
@@ -378,23 +387,18 @@ function answer(x, ctx, thinking) {
         h("p", { text: `Scout could not confirm ${plural(n)} against the cited records. ${noticeWhere(n, marked.missed.length)} Open the record before relying on them.` }),
         marked.missed.length ? h("ul", {}, marked.missed.map((u) => h("li", { text: u.replace(/\*\*/g, "") }))) : null)) : null);
   }
-  if (x.flagged) return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "Scout’s answer was withheld: it did not pass the citation check twice. The steps below show what it found." }));
-  // T4: the conversation's token or cost budget is spent. A new conversation keeps the
-  // brief and starts Scout's history afresh.
-  if (x.limit) return h("div", { class: "notice warn scout-limit" }, icon("warn"),
-    h("div", {}, h("p", { text: "Scout has reached its limit for this conversation. Start a new conversation to keep asking; your brief, kept leads and drafts stay as they are." }),
-      h("button", { class: "btn", type: "button", "data-key": "scout-new", onclick: () => newConversation(ctx, x.question) }, h("span", { text: "Start a new conversation and ask again" }))));
+  // A wholly withheld answer always carries its text (perch/scout/turn.py), and v2 has no
+  // per-conversation limit, so the old empty-answer and limit notices are gone (S45 R1).
   if (x.status === "stopped" || x.status === "failed") return h("p", { class: "notice warn" }, icon("warn"), h("span", { text: `Scout stopped: ${(x.errors || []).join("; ") || "no answer"}.` }));
   return null;
 }
 
 // T4: forget this conversation on the page; the next question opens a new Scout session
-// on the same brief. F14: a question the budget stopped is asked again in the new one.
-function newConversation(ctx, again = "") {
+// on the same brief.
+function newConversation(ctx) {
   const typed = T.draft;
   reset(T.briefId);
-  T.draft = again || typed;
-  if (again) { send(ctx); ctx.announce("New conversation. Scout is asking your question again."); return; }
+  T.draft = typed;
   ctx.rerender();
   const q = document.getElementById("scout-q");
   if (q) q.focus();

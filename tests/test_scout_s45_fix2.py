@@ -150,10 +150,13 @@ def test_wider_crisis_words_match_and_research_phrasing_does_not():
     from perch.scout import texts
 
     for q in ["I wish I were dead", "I have suicidal thoughts", "im having suicidal thoughts",
-              "I keep thinking about suicide", "thinking about suicide", "I want to end it all",
-              "there is no reason to live", "I can't go on", "cant go on", "I dont wanna live",
+              "I keep thinking about suicide", "I want to end it all",
+              "I have no reason to live", "I can't go on", "i cant go on", "I dont wanna live",
               "I don't want to live anymore"]:
         assert texts.DISTRESS_RE.search(q), q
+    # No first-person subject: the fast path leaves these to the gate (S45 fix round 3)
+    for q in ["thinking about suicide", "there is no reason to live", "cant go on"]:
+        assert not texts.DISTRESS_RE.search(q), q
     for q in ["suicide prevention funding", "self-harm research grants",
               "funding to study suicidal thoughts in teens", "suicidal ideation grants",
               "grants on thinking about suicide prevention"]:
@@ -255,11 +258,12 @@ def _seen_with_entries():
 def test_placeholder_sentences_in_the_subject_first_shape_pass():
     seen = _seen_with_entries()
     for text in ["Your saved list is empty [user:saved].",
-                 "Your CV and entries hold none [user:entries].",
-                 "Your entries are empty, so nothing there adds to the link [user:entries]."]:
+                 "Your CV and entries hold none [user:entries]."]:
         g = ans.grade(text, seen, set(), AS_OF)
         assert g.ok, (text, g.removed())
     for text in ["Your saved list is empty, but you qualify for all of them [user:saved].",
+                 # a tail after the empty-state template fails by shape (S45 fix round 3)
+                 "Your entries are empty, so nothing there adds to the link [user:entries].",
                  "Your entries are empty, so you are a strong fit [user:entries].",
                  "Your saved items show strong research experience [user:saved].",
                  "Your CV has no weaknesses [user:cv].",

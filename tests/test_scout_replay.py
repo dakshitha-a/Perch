@@ -127,8 +127,11 @@ def test_an_empty_brief_and_nothing_saved_can_be_cited(seen):
     assert tools.read_entries()["id"] == "user:entries"
     assert tools.read_cv_part()["id"] == "user:cv"
     g = ans.grade("Your brief has no leads yet [user:brief]. You have nothing saved yet "
-                  "[user:saved].\nYou have no leads in your brief.", tools.seen, set(), AS_OF)
+                  "[user:saved].\nI found no records for that.", tools.seen, set(), AS_OF)
     assert g.ok, reasons(g)
+    # an uncited "nothing" sentence that is not a fixed template is removed (S45 fix round 3)
+    g = ans.grade("You have no leads in your brief.", tools.seen, set(), AS_OF)
+    assert [r for _, _, r in reasons(g)] == ["absent_not_template"]
 
 
 # --- what the old rules removed, by rule, as evidence for the fix ---
@@ -137,8 +140,10 @@ def test_each_loosened_rule_on_its_own(seen):
     # sentences that state no record fact
     for s in ("Tell me which one to read in full.", "I can compare it with your CV next.",
               "You can keep a lead from its card.", "Would you like the full record?",
-              "Here is what I can do:", "**Your top lead**", "### Deadlines"):
+              "Here is what I can do:", "### Deadlines"):
         assert ans.grade(s, seen, NAMES, AS_OF).ok, s
+    # an uncited rank claim is not a section name (S45 fix round 3)
+    assert not ans.grade("**Your top lead**", seen, NAMES, AS_OF).ok
     # ordinary words in General advice
     for s in ("Ask well before the deadline.", "Check that you are eligible.",
               "Write a closing paragraph.", "Be open to feedback.", "Put your aims first.",
@@ -163,8 +168,11 @@ SAFETY = [
     ("You can apply only if you are a citizen.", "grounded", "no_citation"),
     ("Ask whether you must be a citizen.", "grounded", "general_eligibility_word"),
     ("Check https://example.invalid for the form.", "grounded", "general_link"),
-    ("Did you know it pays $3,000?", "grounded", "uncited_number_or_date"),
-    ("No record gives a link other than https://example.invalid.", "grounded", "uncited_link"),
+    ("Would you like the one that pays $3,000?", "grounded", "uncited_number_or_date"),
+    ("Did you know it pays $3,000?", "grounded", "question_not_offer"),
+    ("Do you want the link https://example.invalid?", "grounded", "uncited_link"),
+    ("No record gives a link other than https://example.invalid.", "grounded",
+     "absent_not_template"),
     ("General advice:\nApply to the Beinecke Scholarship early.", "general",
      "general_named_award"),
     ("General advice:\nTry a Fulbright Scholarship.", "general", "general_named_award"),

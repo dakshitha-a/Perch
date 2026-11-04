@@ -72,12 +72,13 @@ function figHandoff(student) {
 
 function figScout() {
   return fig(
-    h("div", { class: "pic-field" }, h("span", { class: "typed n29", text: "only R21s that close by March" })),
+    // S45 fix round 3: Scout v2 runs read steps and cites records; it shows no filters or scores.
+    h("div", { class: "pic-field" }, h("span", { class: "typed n29", text: "what does my top lead ask for" })),
     h("div", { class: "pic-row" },
-      h("span", { class: "chip in2", text: "Activity codes: R21" }),
-      h("span", { class: "chip in3" }, h("span", { text: "Closes by: " }), ph(20))),
-    card(h("div", { class: "pic-row in4" }, ph(60), h("span", { class: "fit good" }, h("b", { text: "71" }))),
-      h("div", { class: "pic-row in4" }, ph(50), h("span", { class: "fit strong" }, h("b", { text: "84" })))));
+      h("span", { class: "chip in2", text: "Read the brief" }),
+      h("span", { class: "chip in3", text: "Read a record" })),
+    card(h("div", { class: "pic-row in4" }, h("span", { class: "tag model", text: "Model text" }), ph(40)),
+      h("div", { class: "pic-row in4" }, ph(60), h("span", { class: "chip", text: "Record" }))));
 }
 
 function figWho() {
@@ -154,7 +155,7 @@ function researcher() {
     ["Confirm and build", "Check the institution and the papers, press This is the one, then Build brief. The owl rides the branch as each step finishes.", figBuild()],
     ["Read the routes and decide", "Grants and Industry are separate lists. Keep the leads worth a closer look and dismiss the rest. Kept leads gather in Your shortlist.", figRoutes()],
     ["Compare and hand off", "Compare puts your kept leads side by side. Pick an office and Perch drafts an email for you to edit and send. Drafting needs an account.", figHandoff(false)],
-    ["Ask Scout", "Ask in plain words, such as “only R21s that close by March”. You can also ask for cover-letter points for a lead. Scout needs an account.", figScout()],
+    ["Ask Scout", "Ask in plain words, such as “what does my top lead ask for that my CV does not show yet?”. Scout reads your brief, the records and your CV, and cites each claim. You can also ask for cover-letter points for a lead. Its buttons, such as Deadlines, are answered by code. Scout needs an account.", figScout()],
   ]);
 }
 

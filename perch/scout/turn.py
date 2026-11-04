@@ -89,6 +89,10 @@ class TurnDeps:
     meter: Meter = Meter()  # noqa: RUF009 - stateless
     handoff: Callable[[], dict[str, Any] | None] | None = None
     cancelled: Callable[[], bool] = lambda: False  # the job's ctx.cancelled
+    # May the gate run once unmetered when the budget refuses it? The job counts it per account
+    # per day in Redis (perch/user/quota.py free_gate); distress screening is never
+    # budget-gated (S45 S1, fix round 3).
+    free_gate: Callable[[], bool] = lambda: True
     # The bench's view of each graded draft: (attempt, raw model text, graded). Never set in
     # the app, so a draft's text is not kept anywhere but the bench's own results folder.
     on_draft: Callable[[int, str, ans.Graded], None] | None = None
@@ -294,6 +298,22 @@ def open_answer(deps: TurnDeps, history: list[Message], question: str) -> dict[s
 
 # --- the turn ---
 
+def free_screen(deps: TurnDeps, q: str) -> gate.GateResult | None:
+    """The gate once, not charged to the budget, when the budget refused it: a crisis message
+    the keyword fast path missed still gets the care text. None when the day's free screens are
+    used up or the call fails; the caller then shows the budget text."""
+    if not deps.free_gate():
+        return None
+    try:
+        return gate.classify(Metered(deps.provider_for("gate"), Meter(), "gate", deps.cancelled),
+                             q)
+    except TurnCancelled:
+        raise
+    except Exception as e:  # noqa: BLE001 - a failed free screen falls back to the budget text
+        log_.warning("scout free gate failed: %s", type(e).__name__)  # no text: rule 5
+        return None
+
+
 def run_turn(deps: TurnDeps, history: list[dict[str, Any]], *, question: str | None = None,
              intent: str | None = None) -> dict[str, Any]:
     """The assistant message for one user message. `history` is the session's earlier
@@ -315,7 +335,15 @@ def run_turn(deps: TurnDeps, history: list[dict[str, Any]], *, question: str | N
         return message("assistant", "distress", texts.distress_message(deps.data.audience),
                        gate="keyword")
     try:
-        g = gate.classify(Metered(deps.provider_for("gate"), deps.meter, "gate", deps.cancelled), q)
+        try:
+            g = gate.classify(Metered(deps.provider_for("gate"), deps.meter, "gate",
+                                      deps.cancelled), q)
+        except QuotaExceeded:
+            g = free_screen(deps, q)
+            if g is None or g.label != "distress":
+                raise
+            return message("assistant", "distress", texts.distress_message(deps.data.audience),
+                           gate="free_gate")  # unmetered, so counted apart from charged screens
         if g.label == "out_of_scope":
             return message("assistant", "refusal", texts.REFUSAL, gate=g.label)
         if g.label == "distress":
