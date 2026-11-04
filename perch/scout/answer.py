@@ -7,11 +7,16 @@ Grounded part:
   * every sentence that states a fact cites at least one id in square brackets, and every id
     was returned by a tool this turn (`seen`). A citation may sit before or after the full
     stop; one written after the full stop belongs to the sentence before it;
-  * the exceptions, which need no citation: a question, a short heading, a sentence that only
-    says nothing was found, and a help sentence: an offer or an instruction about using Perch
-    or Scout ("Tell me which one to read in full."). A help sentence passes the same content
-    checks as General advice, so it cannot carry a number, a date, a link, an award's name or
-    an eligibility rule;
+  * the exceptions, which need no citation, are an allow-list of shapes (S45 fix round 3; the
+    shapes live in perch/scout/texts.py): a heading that is one of the fixed section names, or
+    a label made only of words from the records cited under it; a question that starts with an
+    offer stem ("Would you like", "Which"); a "nothing found" sentence that is one of the fixed
+    templates; and a help sentence: an offer or an instruction about using Perch or Scout
+    ("Tell me which one to read in full."). A sentence citing only an empty-result id
+    ([user:saved]) must be one of the fixed empty-state templates. Anything else is removed with
+    a reason code. Help sentences, offers and record labels pass the same content checks as
+    General advice, so they cannot carry a number, a date, a link, an award's name or an
+    eligibility rule;
   * Layer 1 (perch/validate.py) runs per sentence against the records that sentence cites: every
     number, date and link must be in one of them;
   * Layer 2 (MiniCheck, perch/grounding.py) flags sentences the cited records do not support.
@@ -41,7 +46,15 @@ from perch import validate
 from perch.grounding import THRESHOLD, Grounder
 from perch.schemas import Opportunity, Record, Scholarship
 from perch.scout.read_tools import NOT_STATED, ReadTools, facts
-from perch.scout.texts import GENERAL_LABEL
+from perch.scout.texts import (
+    ABSENT_TEMPLATES,
+    EMPTY_TEMPLATES,
+    GENERAL_LABEL,
+    HEADING_EXAMPLES,
+    OFFER_STEMS,
+    STRUCTURAL_HEADINGS,
+    STRUCTURAL_LEADINS,
+)
 
 CITE_RE = re.compile(r"\[([^\[\]]+)\]")
 LEAD_CITES_RE = re.compile(r"^\s*((?:\[[^\[\]]+\][\s.,;:]*)+)")
@@ -55,30 +68,56 @@ PREFIX_RE = re.compile(r"^(\s*(?:[-*•]|\d{1,2}[.)])\s+)")
 ABBREV_RE = re.compile(
     r"(?:\b(?:[A-Za-z]\.){2,}|\b[A-Z]\.|\b(?:e\.g|i\.e|Dr|Mr|Mrs|Ms|Prof|St|No|vs|Inc|Jr|Sr|"
     r"approx|Dept|Univ|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\.)[*_)\"'”’]*$")
-# A sentence that only says nothing was found, or that Scout cannot help, needs no record.
+# The shape of a "nothing found" sentence. It needs no record only when it is one of the fixed
+# templates (texts.ABSENT_TEMPLATES); this pattern only names the reason when it is not.
 ABSENT_RE = re.compile(
     r"\b(?:no|not|none|neither|nor|nothing|n't|cannot|can't|could not|couldn't|did not|"
     r"didn't)\b.*\b(?:record|records|result|results|match|matches|found|find|information|help|"
     r"answer|read|access|leads?|brief|saved|entries|entry|cv|items?|ids?)\b", re.I)
 ABSENT_WORDS = 20  # a "nothing found" sentence is short; a long one may be hiding a claim
-# The subject-first shape a sentence citing an empty-result id takes: "Your saved list is
-# empty [user:saved]", "Your CV and entries hold none [user:entries]". Used only for a sentence
-# that cites nothing but a placeholder id, which still passes the no-record checks (S46 replay).
-EMPTY_RE = re.compile(
-    r"\b(?:is|are|was|were|looks?|seems?|still)\s+empty\b|"
-    r"\b(?:holds?|has|have|contains?|shows?|lists?|gives?)\s+(?:none|nothing)\b", re.I)
-EMPTY_TAIL_NEG = re.compile(r"\b(?:no|not|nothing|none)\b|n['’]t\b", re.I)
+def _alts(patterns: tuple[str, ...]) -> re.Pattern[str]:
+    return re.compile("|".join(f"(?:{p})" for p in patterns))
 
 
-def _says_empty(body: str) -> bool:
-    """The subject-first "nothing found" shape, and nothing after it but the end of the sentence
-    or another negation ("is empty, so there are no notes"): "Your CV shows nothing that would
-    weaken your case" is a claim, not an empty result."""
-    m = EMPTY_RE.search(body)
-    if not m:
+# The allow-list (S45 fix round 3), each matched in full against `norm_exempt` text.
+STRUCTURAL_RE = _alts(STRUCTURAL_HEADINGS)
+LEADIN_RE = _alts(STRUCTURAL_LEADINS)
+EMPTY_TEMPLATE_RE = _alts(EMPTY_TEMPLATES)
+ABSENT_TEMPLATE_RE = _alts(ABSENT_TEMPLATES)
+OFFER_RE = re.compile(r"^(?:" + "|".join(re.escape(s) for s in OFFER_STEMS) + r")\b")
+# An offer has no need to grade the user or a record, so these words are not allowed in one.
+OFFER_FIT_RE = re.compile(r"\b(?:great|ideal\w*|perfect\w*|natural\w*|strong\w*|good|better|best|"
+                          r"eligib\w*|welcom\w*|suit\w*|fits?|fitting|match\w*|qualif\w*|"
+                          r"shoo|accept\w*|top)\b")
+# A record's label (route ii) names the record, not the reader.
+PERSON_RE = re.compile(r"\b(?:you|your|yours|yourself|you're|youre|i|i'm|im|me|my|we|our|us)\b")
+STOPWORDS = frozenset(
+    "a an the and or of for to in on at by with from into about as vs versus is are be this "
+    "that these those its it their s".split())
+WORD_RE = re.compile(r"[a-z0-9]+")
+
+
+def norm_exempt(text: str) -> str:
+    """A sentence as the allow-list reads it: citations, markdown, a list marker and closing
+    punctuation removed; lower case; curly quotes straight; "doesn't" written "does not"."""
+    t = strip_cites(text).replace("\u2019", "'").replace("\u2018", "'")
+    t = re.sub(r"[*_`#>]+", " ", t)
+    t = re.sub(r"^\s*(?:[-•]|\d{1,2}[.)])\s+", "", t).lower()
+    t = t.replace("can't", "cannot").replace("won't", "will not")
+    t = re.sub(r"\b(\w+)n't\b", r"\1 not", t)
+    return re.sub(r"\s+", " ", t).strip(" :.!?;,")
+
+
+def _label_words_in(n: str, block: str) -> bool:
+    """Route ii for a heading: every content word is a word of a record cited under it."""
+    words = [w for w in WORD_RE.findall(n) if w not in STOPWORDS]
+    if not block or not words or PERSON_RE.search(n):
         return False
-    tail = body[m.end():]
-    return not tail.strip(" .,;:!*_") or bool(EMPTY_TAIL_NEG.search(tail))
+    vocab = set(WORD_RE.findall(block))
+    return all(w in vocab or (w.endswith("s") and w[:-1] in vocab) or w + "s" in vocab
+               for w in words)
+
+
 # The system prompt's own disclaimer (texts.SCOUT_SYSTEM): the exact sentence needs no record.
 DISCLAIMER_RE = re.compile(
     r"^[\W_]*Perch (?:does not|doesn['’]t) confirm personal eligibility\.?[\W_]*$", re.I)
@@ -140,7 +179,8 @@ REASONS = (
     "layer1_link", "layer1_action_word", "layer1_other", "uncited_number_or_date",
     "uncited_link", "sample_mix", "placeholder_only",
     "general_cite", "general_number", "general_date", "general_month", "general_link",
-    "general_eligibility_word", "general_award_code", "general_named_award", "uncited_fit_word")
+    "general_eligibility_word", "general_award_code", "general_named_award", "uncited_fit_word",
+    "heading_not_structural", "question_not_offer", "absent_not_template")
 
 
 @dataclass
@@ -469,34 +509,57 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
             if not e.startswith("cited id"):  # unresolved ids were reported above
                 s.fail(_layer1_code(e), e, _token(e))
         # An empty-result placeholder ("user:saved", "user:brief") holds only "nothing found",
-        # so alone it can back only a sentence that says so (S45 S4).
+        # so alone it backs only a fixed empty-state template with nothing after it (S45 S4,
+        # fix round 3: an allow-list, not a word list).
         if ids and all(i in PLACEHOLDER_IDS for i in ids):
-            if not (len(body.split()) <= ABSENT_WORDS
-                    and (ABSENT_RE.search(body) or _says_empty(body))):
-                s.fail("placeholder_only", "an empty-result id such as [user:saved] supports "
-                       "only a sentence that says nothing was found; do not cite it for a claim",
+            if EMPTY_TEMPLATE_RE.fullmatch(norm_exempt(s.text)):
+                s.kind = "absent"
+            else:
+                s.fail("placeholder_only", "an empty-result id such as [user:saved] backs only "
+                       "a short empty-state sentence such as 'Your saved list is empty "
+                       "[user:saved].', with nothing after it; do not cite it for a claim",
                        ids[0])
-            else:  # a "nothing found" sentence may not smuggle in an eligibility or fit claim
-                _no_record_claims(s, body, names, seen, cited=True)
         return
     # No citation: allowed only for a sentence that states no record fact.
     if DISCLAIMER_RE.match(s.text):
         s.kind = "help"  # the exact disclaimer the system prompt asks for; nothing to check
         return
+    n = norm_exempt(s.text)
     if heading:
         s.kind = "heading"
+        if STRUCTURAL_RE.fullmatch(n):
+            return  # a fixed section name: nothing in it to check
+        if LEADIN_RE.fullmatch(n) and not OFFER_FIT_RE.search(n):
+            pass  # a how-to lead-in: its tail gets the content checks below
+        elif not _label_words_in(n, block):
+            s.fail("heading_not_structural", "a heading with no citation must be a section name "
+                   "such as " + ", ".join(f"'{h}'" for h in HEADING_EXAMPLES) + ", or the title "
+                   "of a record cited under it", n[:60])
+            return
     elif s.text.rstrip("*_ ").endswith("?"):
         s.kind = "question"
+        if not OFFER_RE.match(n) or OFFER_FIT_RE.search(n):
+            s.fail("question_not_offer", "a question with no citation must be an offer that "
+                   "starts 'Would you like', 'Do you want', 'Shall I', 'Should I', 'Want me to', "
+                   "'Which' or 'Tell me', and may not say how well anything fits", n[:60])
+            return
     elif HELP_RE.search(body):
         s.kind = "help"
+    elif ABSENT_TEMPLATE_RE.fullmatch(n):
+        s.kind = "absent"
+        return  # a fixed template: nothing in it to check
     elif len(body.split()) <= ABSENT_WORDS and ABSENT_RE.search(body):
         s.kind = "absent"
+        s.fail("absent_not_template", "a 'nothing found' sentence with no citation must be "
+               "exactly 'I found no record on that.' or 'No record I read states that.'; "
+               "otherwise cite the record or the empty-result id", n[:60])
+        return
     else:
         s.fail("no_citation", f"sentence has no citation: {body[:80]!r}")
         return
-    # An uncited sentence of any exempt kind passes the same content checks as General
-    # advice, so a heading, a question or a "nothing found" sentence cannot carry an award's
-    # name or an eligibility rule (S45 S3).
+    # An uncited sentence of an exempt kind that is not a fixed text (a record's label, an
+    # offer, a help sentence) passes the same content checks as General advice, so it cannot
+    # carry an award's name or an eligibility rule (S45 S3).
     _no_record_claims(s, body, names, seen, cited=False,
                       block=block if s.kind == "heading" else "")
     if s.kind == "help":
@@ -713,6 +776,9 @@ def feedback(g: Graded) -> str:
             "about the user's brief, CV, entries or saved items ends with the id it comes from, "
             "in square brackets, copied from a tool result, such as [grants_gov:23-500]. Copy "
             "numbers and dates exactly from the tool results; leave out any number or date a "
-            "cited record does not hold. Advice and how-to-use-Perch help go last, under "
+            "cited record does not hold. Without an id, a heading is a section name such as "
+            "'What the record asks for' or a cited record's title, a question is an offer "
+            "such as 'Would you like me to read it in full?', and 'nothing found' is 'I found "
+            "no record on that.' Advice and how-to-use-Perch help go last, under "
             f"'{GENERAL_LABEL}', with no citation, no award names, no numbers or dates and no "
             "eligibility rules.")

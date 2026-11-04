@@ -81,6 +81,100 @@ def distress_message(audience: str) -> str:  # noqa: ARG001 - kept so callers ne
     return DISTRESS
 
 
+# --- the only shapes an uncited sentence may take (S45 fix round 3: an allow-list) ---
+#
+# Headings, questions and "nothing found" sentences need no citation, so they are allowed only
+# in the fixed shapes below. Each pattern is matched in full against the sentence normalised by
+# perch/scout/answer.py `norm_exempt` (lower case, markdown, a trailing colon or full stop and
+# the citations removed, "doesn't" written "does not"). A heading may also be a record's label,
+# made only of words from the records cited under it (answer.py, route ii).
+
+_WHAT = r"(?:the|this|each|your|that|its)"
+_REC = r"(?:records?|awards?|leads?|fellowships?|scholarships?|grants?|options?|it|they|each)"
+_MINE = r"(?:cv|material|materials|entries|entry|list|saved list|brief|papers|work|profile)"
+_SHOW = r"(?:shows?|says?|states?|lists?|holds?)"
+_NOSHOW = r"(?:does|do) not (?:show|say|state|list|mention)(?: yet)?"
+STRUCTURAL_HEADINGS = (
+    # feedback sections (system prompt FEEDBACK): what the record asks for, what your CV shows
+    rf"what (?:{_WHAT} )?{_REC} (?:asks? for|requires?|needs?|says you need(?: ready)?|"
+    rf"{_SHOW}|funds?|(?:does|do) show|{_NOSHOW})",
+    rf"what (?:{_WHAT} )?{_MINE} (?:{_SHOW}|{_NOSHOW}|(?:does|do) show)",
+    r"what (?:is|it is) (?:missing|not shown(?: yet)?)(?: or looks like a gap)?",
+    r"what a reviewer would not find",
+    rf"what to add(?: to your {_MINE})?",
+    rf"where your {_MINE} (?:is|are|looks?) (?:strong|weak|thin|stronger|weaker)",
+    rf"how (?:it|they|this|these|your work|your {_MINE}) connects?(?: to (?:it|them|this|"
+    r"the records?|your work))?(?:,? and where (?:it|they) (?:may|might) not)?",
+    rf"(?:main|key) (?:themes?|differences?|points?|facts|details)(?: in your {_MINE})?",
+    r"what each (?:one |lead |record )?funds",
+    r"points to (?:highlight|check(?: first)?|add|raise|cover)",
+    r"(?:suggested|possible) (?:edits|changes|points)",
+    r"(?:application|cover letter) points",
+    # answer sections: general advice, next steps, your options, deadlines, compare
+    r"general advice", r"next steps?", r"what to do next", r"(?:your )?options",
+    r"(?:the )?deadlines?", r"close dates?", r"amounts?", r"award sizes?", r"compare",
+    r"comparison", r"summary", r"in short", r"gaps", r"effort", r"who submits", r"who applies",
+    r"(?:application )?requirements", r"eligibility(?: in the records?)?",
+    r"(?:eligibility|requirement|key) points (?:the|this) records? (?:states?|lists?|gives?)",
+    r"here is what (?:i can do|i found|i read|the records? (?:says?|shows?|asks? for))",
+    r"(?:your )?(?:kept|dismissed|other) leads", r"(?:your )?leads", r"other results",
+    r"(?:your )?shortlist", r"(?:your )?saved list", r"grants", r"industry(?: leads)?",
+    r"grants and foundations", r"sources", r"records read",
+    r"which (?:lead|leads|record|records|option|options) could use (?:it|this|them)",
+    # groups of records by where they come from (S45 fix round 3 replay)
+    r"(?:federal|temple|temple-listed|foundation|industry|other|public|sample) (?:fellowship |"
+    r"scholarship |award |grant )?(?:opportunities|fellowships|scholarships|awards|grants|"
+    r"listings|leads|options|records)(?:, invented)?",
+)
+# A how-to lead-in over help steps ("Here is how to find grants for your lab:"). It has a free
+# tail, so unlike the headings above it still passes the content checks and the offer's
+# no-grading words (answer.py).
+_HOWTO = (r"(?:find|use|build|start|search|read|compare|draft|keep|save|ask|write|order|plan|"
+          r"prepare|get started|browse|check|open|add|upload)")
+STRUCTURAL_LEADINS = (
+    rf"(?:here is|here are the steps|these are the steps) (?:how )?to {_HOWTO}\b.*",
+    rf"(?:how|steps|ways) to {_HOWTO}\b.*",
+)
+# A question back to the user is allowed only as an offer: it starts with one of these stems.
+OFFER_STEMS = ("would you like", "do you want", "shall i", "should i", "want me to", "which",
+               "tell me if", "tell me which")
+# A sentence citing only an empty-result id ([user:saved], [user:brief], [user:entries],
+# [user:cv]) is allowed only as one of these, with nothing after it.
+_MY = r"(?:saved list|saved items|brief|entries|cv|list of entries)"
+_SUBJ = rf"your {_MY}(?: and (?:your )?{_MY})?"
+EMPTY_TEMPLATES = (
+    rf"{_SUBJ} (?:is|are) (?:still )?empty(?: for now| so far)?",
+    rf"{_SUBJ} (?:has|have|holds?|shows?|lists?) (?:no (?:leads|items|entries|awards|records)|"
+    r"nothing|none)(?: yet| on (?:this|that)| about (?:this|that))?",
+    r"you have (?:nothing saved|no (?:saved (?:items|awards|records)|(?:typed )?entries|leads|"
+    r"cv|brief|saved list))(?: yet)?",
+    r"you have not (?:saved anything|added any entries|added a cv|built a brief)(?: yet)?",
+    r"nothing is saved(?: yet)?",
+    r"there are no leads in your brief(?: yet)?",
+)
+# An uncited "nothing found" sentence is allowed only as one of these.
+ABSENT_TEMPLATES = (
+    r"i found no (?:records?|results?|leads?|matches)(?: (?:on|for|about) (?:that|this|it|"
+    r"this question|your question))?",
+    r"i (?:could not|did not) find (?:a |any )?(?:records?|results?|matches|leads?)"
+    r"(?: (?:on|for|about) (?:that|this|it))?",
+    r"no record i (?:read|found) (?:states|says|gives|lists|shows) (?:that|this|it|one)",
+    r"none of the records i read (?:states?|says?|gives?|lists?) (?:that|this|it|one)",
+    r"the records i read do not (?:say|state|give|list) (?:that|this|it)",
+    r"nothing i (?:read|found) (?:says|states) (?:that|so)",
+    r"i have no record (?:on|of|for) (?:that|this)",
+    r"(?:that|this) is not in the records i read",
+    r"no records? (?:was|were) found(?: for (?:that|this|it))?",
+    # what Scout itself has not read yet, with no tail (S45 fix round 3 replay)
+    r"i have not read (?:this|that|its|their|the) (?:full )?records?(?: in full)?",
+    r"i did not read the other (?:parts|cv parts|records|leads)",
+)
+ABSENT_EXAMPLES = ("I found no record on that.", "No record I read states that.")
+EMPTY_EXAMPLES = ("Your saved list is empty [user:saved].", "You have no entries yet "
+                  "[user:entries].")
+HEADING_EXAMPLES = ("What the record asks for", "What your CV shows",
+                    "What it does not show yet", "Next steps")
+
 WITHHELD = "Scout's answer did not pass the citation check twice, so none of it is shown."
 ERROR = "Scout could not finish this question. Try again."
 BUDGET = ("You have used today's Scout budget. It resets each day. The buttons still "
@@ -108,13 +202,19 @@ stop, copied exactly from a tool result: "It closes 4 Nov 2026 [grants_gov:23-50
 go in one bracket with a comma, [grants_gov:23-500, user:cv:education], or in two brackets. \
 Use square brackets only, never round ones, and never put an id at the start of a sentence. \
 Each sentence carries its own id, even when the sentence before it cites the same record. \
-A tool result that is empty still has an id, such as [user:brief] or [user:saved]: cite it \
-when you say there is nothing there. Copy numbers, dates and amounts from the tool results \
+A tool result that is empty still has an id, such as [user:brief] or [user:saved]: say so \
+in one short sentence with nothing after it, "Your saved list is empty [user:saved].", and \
+cite it for nothing else. Copy numbers, dates and amounts from the tool results \
 exactly. Do not compute, estimate or round them, and do not repeat a number from the \
 question unless a record you cite holds it. Do not state links that a tool result does not \
 contain. A sentence that says a record has no information on something still cites that \
-record. A question back to the user, a short heading, or an offer such as "Tell me which one \
-to read in full." needs no id.
+record. Only these need no id: a heading that names a section, such as "What the record \
+asks for", "What your CV shows", "What it does not show yet" or "Next steps", or that copies \
+the title of a record cited under it; a question that offers help and starts "Would you \
+like", "Do you want", "Shall I", "Should I", "Want me to", "Which" or "Tell me"; an offer \
+such as "Tell me which one to read in full."; and "I found no record on that." Anything \
+else, including a heading or question that says who may apply or how well the user fits, \
+cites a record or is left out.
 
 FEEDBACK. When asked how the user's CV or entries match a record, read the record and the \
 user's material, then say what the record asks for, what the user's material shows, and what \

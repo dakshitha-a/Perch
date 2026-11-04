@@ -87,12 +87,14 @@ def seen(tmp_path_factory):
 
 
 @pytest.mark.parametrize("text,reason", [
-    ("**The Beinecke Scholarship:**", "general_named_award"),
-    ("Do you qualify for the Gilman Scholarship?", "general_named_award"),
-    ("You do not qualify, and I found no records.", "general_eligibility_word"),
-    ("No record says you are eligible for it.", "general_eligibility_word"),
-    ("I found no record that says you meet the requirements.", "general_eligibility_word"),
-    ("No results, though one source says it closes in 2027.", "uncited_number_or_date")])
+    # S45 fix round 3: these now fail by shape, before any word list is read
+    ("**The Beinecke Scholarship:**", "heading_not_structural"),
+    ("Do you qualify for the Gilman Scholarship?", "question_not_offer"),
+    ("Would you like the Gilman Scholarship?", "general_named_award"),
+    ("You do not qualify, and I found no records.", "absent_not_template"),
+    ("No record says you are eligible for it.", "absent_not_template"),
+    ("I found no record that says you meet the requirements.", "absent_not_template"),
+    ("No results, though one source says it closes in 2027.", "absent_not_template")])
 def test_exempt_sentences_are_checked(text, reason, seen):
     g = ans.grade(text, seen, {"beinecke scholarship"}, AS_OF)
     assert reason in [r["reason"] for r in g.removed()], g.removed()
