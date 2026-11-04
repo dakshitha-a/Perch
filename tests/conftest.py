@@ -118,3 +118,10 @@ def ud(web_pool, keys):
     from perch.user.data import UserData
 
     return UserData(web_pool)
+
+
+@pytest.fixture(autouse=True)
+def _guest_pepper(monkeypatch: pytest.MonkeyPatch) -> None:
+    """hash_subject refuses an empty guest pepper (S7); tests get a SYNTHETIC one."""
+    if not os.environ.get("PERCH_PEPPER_GUEST"):
+        monkeypatch.setenv("PERCH_PEPPER_GUEST", "synthetic-test-guest-pepper")

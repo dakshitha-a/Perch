@@ -29,6 +29,17 @@ from urllib.parse import urlsplit, urlunsplit
 ROOT = Path(__file__).resolve().parent.parent
 PORT = 8191
 SUPER = os.environ.get("PERCH_WALK_SUPER_DSN", "postgresql://postgres:perchtest@127.0.0.1:55432/postgres")
+LOCAL_TEST_DB = ("127.0.0.1", 55432)  # the local test container; it gets fixed role passwords
+
+
+def _guard(dsn: str) -> None:
+    p = urlsplit(dsn)
+    if (p.hostname, p.port) != LOCAL_TEST_DB and os.environ.get("PERCH_WALK_ALLOW_REMOTE") != "1":
+        sys.exit("walk_server refuses a DSN that is not 127.0.0.1:55432 "
+                 "(set PERCH_WALK_ALLOW_REMOTE=1 to override)")
+
+
+_guard(SUPER)
 REDIS = "redis://127.0.0.1:56379/14"
 DB, KEYS_DB = "perch_walk", "perch_walk_keys"
 ROLE_PW = "walk-throwaway-pw"

@@ -66,7 +66,12 @@ def _json(data: dict, status: int = 200) -> JSONResponse:
 def _limit(request: Request, scope: str, subject: str) -> None:
     ok, retry = rx.rate_limit(_store(request).r, scope, subject)
     if not ok:
-        audit.record(request, "rate_limited", scope=scope)
+        # One audit row per subject, scope and window, so a flood of 429s cannot flood the table.
+        _, window = rx.rate_table()[scope]
+        first = _store(request).r.set(f"{rx.PREFIX}:rl_audit:{scope}:{subject}", 1, nx=True,
+                                      ex=window)
+        if first:
+            audit.record(request, "rate_limited", scope=scope)
         raise HTTPException(429, "rate_limited", headers={"Retry-After": str(retry)})
 
 

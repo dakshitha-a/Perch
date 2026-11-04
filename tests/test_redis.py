@@ -268,3 +268,18 @@ def test_publish_hook(r) -> None:
         assert got == [uid]
     finally:
         stop()
+
+
+def test_hash_subject_refuses_an_empty_pepper(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("PERCH_PEPPER_GUEST", raising=False)
+    with pytest.raises(RuntimeError):
+        rx.hash_subject("a")
+    with pytest.raises(RuntimeError):
+        rx.hash_subject("a", "")
+    monkeypatch.setenv("PERCH_PEPPER_GUEST", "x")
+    assert len(rx.hash_subject("a")) == 64
+
+
+def test_global_caps_are_not_a_lockout() -> None:
+    assert rx.RATE_DEFAULTS["login_global"][0] >= 10000
+    assert rx.RATE_DEFAULTS["guest_new_global"][0] >= 10000

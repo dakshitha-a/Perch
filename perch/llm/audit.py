@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import threading
 import uuid
+from collections import Counter
 from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,6 +31,40 @@ def prompt_hash(system: str | None, messages: list[Message], schema: JsonSchema 
     return hashlib.sha256(payload.encode()).hexdigest()
 
 
+MAX_EVENTS = 20000  # in-memory cap; the oldest events drop first
+
+# Validator error text can quote a model sentence that paraphrases the user's CV, so the
+# log never holds it (rule 5). Each message maps to a stable code; first match wins, run on
+# the message with quoted fragments removed.
+_QUOTED = re.compile(r"'[^']*'|\"[^\"]*\"")
+_PATTERNS = [
+    ("unsupported", r"^unsupported\b"),
+    ("unparseable", r"unparse|not valid json|could not parse|schema"),
+    ("cited_id_unknown", r"cited id .*not in the input|names no record|not one of the given"),
+    ("cited_id_missing", r"cited_ids must|does not list it|cite 1 to 3"),
+    ("date_invalid", r"\bdate\b.*not a real date"),
+    ("date_unsupported", r"\bdate\b.*not in any cited"),
+    ("number_unsupported", r"\bnumber\b.*not in any cited"),
+    ("link_unsupported", r"\blink\b.*not in any cited"),
+    ("action_word", r"\bword\b.*not in any cited|describe fit only|do not direct"),
+    ("fragment", r"fragment"),
+    ("sentence_count", r"sentence|exactly two"),
+    ("point_count", r"give \d+ to \d+ points|holds at most"),
+    ("ids_mismatch", r"asks_ids|you_ids"),
+    ("missing_form", r"nothing the applicant added|a gap in the record"),
+    ("record_only", r"describe the record|cite only records"),
+]
+_CODES = [(c, re.compile(p)) for c, p in _PATTERNS]
+
+
+def error_code(msg: str) -> str:
+    plain = _QUOTED.sub("", msg)
+    for code, rx in _CODES:
+        if rx.search(plain):
+            return code
+    return "other"
+
+
 class AuditLog:
     def __init__(self, path: Path | None = AUDIT_LOG) -> None:
         self.path = path
@@ -41,6 +77,8 @@ class AuditLog:
 
     def _write(self, event: dict) -> None:
         self.events.append(event)
+        if len(self.events) > MAX_EVENTS:
+            del self.events[:len(self.events) - MAX_EVENTS]
         if self.path:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with self.path.open("a", encoding="utf-8") as f:
@@ -48,9 +86,12 @@ class AuditLog:
 
     def validation(self, call_id: str, skill: str, passed: bool, errors: list[str],
                    attempt: int, layer: int = 1) -> None:
+        """Logs error codes and counts only; the full text stays with the caller, which hands
+        it back to the model as regeneration feedback."""
+        codes = dict(sorted(Counter(error_code(e) for e in errors).items()))
         self.write({"kind": "validation", "at": datetime.now(UTC).isoformat(),
                     "call_id": call_id, "skill": skill, "layer": layer, "passed": passed,
-                    "attempt": attempt, "errors": errors})
+                    "attempt": attempt, "error_count": len(errors), "error_codes": codes})
 
     def rejection_rate(self, skill: str | None = None, layer: int = 1) -> tuple[int, int]:
         """(rejected, total) validation events, optionally for one skill."""
