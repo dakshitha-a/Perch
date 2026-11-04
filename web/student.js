@@ -43,16 +43,19 @@ export function isStudent(brief) {
 
 // ----- start -----
 
-// The start screen. A visitor without an account gets the built-in SYNTHETIC sample
-// student; using a CV of their own needs an account.
-export function renderStudentStart(root, { api, go, announce }) {
-  document.title = "Start as a student — Perch";
-  const draw = () => renderStudentStart(root, { api, go, announce });
-  async function build() {
+// The start screen. A signed-in student adds a CV (and optionally interests and
+// achievements); they are stored encrypted and the brief reads them. A visitor without an
+// account gets the built-in SYNTHETIC sample student; using a CV of their own needs an account.
+export async function renderStudentStart(root, { api, go, announce, session, signIn, refresh }) {
+  document.title = "Check my fit — Perch";
+  const sess = session || { signed_in: false };
+  const draw = () => renderStudentStart(root, { api, go, announce, session, signIn, refresh });
+  async function sample() {
     D.busy = true; D.error = null; draw();
     try {
       const r = await api.create({}, "student");
       D.busy = false;
+      if (refresh) await refresh();
       go(`#/brief/${encodeURIComponent(r.id)}/routes`);
     } catch (e) {
       D.error = e.message; D.busy = false; draw();
@@ -60,15 +63,106 @@ export function renderStudentStart(root, { api, go, announce }) {
       announce(e.message);
     }
   }
+  if (!sess.signed_in) {
+    // DRAFT copy (S43): the start screen for a visitor without an account.
+    fill(root, h("div", { class: "screen student-start" },
+      h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
+      h("div", {}, h("h1", { class: "page", text: "Check my fit." }),
+        h("p", { class: "page-sub", text: "Perch checks each option against a student's CV by rule and shows what is still needed. Sign in to use your own CV, or try the sample student to see how it works." })),
+      h("div", { class: "sample-row" },
+        h("span", { text: "The sample is an invented student, labelled SYNTHETIC. Nothing in it is about you, and its scholarships are invented too." }),
+        h("button", { class: "btn primary", type: "button", "data-key": "st-build", disabled: D.busy, onclick: sample },
+          h("span", { text: D.busy ? "Starting" : "Try a sample student" })),
+        sess.guest ? h("a", { class: "btn", href: signIn(), text: "Sign in to use your own CV" }) : null,
+        !sess.guest ? h("a", { class: "btn", href: signIn(), text: "Sign in" }) : null),
+      D.error ? h("p", { class: "notice error go-error", id: "st-error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null));
+    return;
+  }
+
+  let docs = [];
+  try {
+    docs = await api.docs("student");
+  } catch (e) {
+    if (e.code === "consent_required") { go("#/welcome"); return; }
+    D.error = e.message;
+  }
+  const cv = docs.find((d) => d.kind === "cv");
+  const ready = Boolean(cv);
+  const provider = (sess.consent && sess.consent.provider_name) || "the model provider";
+  const field = { text: "", label: "", interests: "" };
+
+  async function add(kind, body) {
+    D.busy = true; D.error = null;
+    try {
+      await api.addDoc({ kind, ...body }, "student");
+      announce("Saved.");
+    } catch (e) { D.error = e.message; announce(e.message); }
+    D.busy = false;
+    draw();
+  }
+  async function remove(d) {
+    try { await api.removeDoc(d.id); announce("Removed."); } catch (e) { D.error = e.message; }
+    draw();
+  }
+  function upload(file) {
+    const rd = new FileReader();
+    rd.onload = () => add("cv", { filename: file.name, data: String(rd.result).split(",")[1] || "" });
+    rd.readAsDataURL(file);
+  }
+  async function build() {
+    D.busy = true; D.error = null; draw();
+    try {
+      if (sess.audience !== "student") {  // a dual-role account: the brief is built on the side it is on
+        await api.setAudience("student");
+        if (refresh) await refresh();
+      }
+      const r = await api.create({ doc_ids: docs.map((d) => d.id) }, "student");
+      D.busy = false;
+      go(`#/brief/${encodeURIComponent(r.id)}/routes`);
+    } catch (e) {
+      D.error = e.message; D.busy = false; draw();
+      announce(e.message);
+    }
+  }
+  // DRAFT copy (S43): the headings, labels and privacy line on this screen.
   fill(root, h("div", { class: "screen student-start" },
     h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
-    h("div", {}, h("h1", { class: "page", text: "Find fellowships and scholarships." }),
-      h("p", { class: "page-sub", text: "Perch checks each option against a student's CV by rule and shows what is still needed. To see how that works, try the sample student." })),
-    h("div", { class: "sample-row" },
-      h("span", { text: "The sample is an invented student, labelled SYNTHETIC. Nothing in it is about you, and its scholarships are invented too. Using your own CV needs an account." }),
-      h("button", { class: "btn primary", type: "button", "data-key": "st-build", disabled: D.busy, onclick: build },
-        h("span", { text: D.busy ? "Starting" : "Try the sample student" }))),
-    D.error ? h("p", { class: "notice error go-error", id: "st-error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null));
+    h("div", {}, h("h1", { class: "page", id: "st-title", tabindex: "-1", text: "Tell Perch about you." }),
+      h("p", { class: "page-sub", text: "Perch checks each award against your CV by rule and shows what is still needed." })),
+    h("section", { class: "box", "aria-labelledby": "cv-h" },
+      h("h2", { class: "section-title", id: "cv-h", text: "Your CV" }),
+      cv ? h("div", { class: "added" }, h("span", { text: `${cv.name || "Your CV"} is stored.` }),
+        h("button", { class: "btn", type: "button", "data-key": "rm-cv", onclick: () => remove(cv) }, h("span", { text: "Remove" })))
+        : [h("label", { class: "big", for: "cv-text", text: "Paste your CV text" }),
+          h("textarea", { id: "cv-text", rows: 6, maxlength: 60000, value: field.text, oninput: (e) => { field.text = e.target.value; } }),
+          h("div", { class: "file-row" },
+            h("button", { class: "btn", type: "button", "data-key": "cv-save", disabled: D.busy,
+              onclick: () => { const t = root.querySelector("#cv-text").value.trim(); if (t) add("cv", { text: t, filename: "cv.txt" }); else announce("Paste your CV text first."); } },
+            h("span", { text: "Save my CV" })),
+            h("label", { class: "btn", for: "cv-file" }, h("span", { text: "Or upload a file" })),
+            h("input", { id: "cv-file", class: "sr-only", type: "file", accept: ".pdf,.docx,.txt,.md",
+              onchange: (e) => { if (e.target.files[0]) upload(e.target.files[0]); } }))],
+      h("p", { class: "hint", text: `Your CV is stored encrypted. Contact details are blanked before ${provider} reads it.` })),
+    h("section", { class: "box", "aria-labelledby": "more-h" },
+      h("h2", { class: "section-title", id: "more-h", text: "Interests and achievements (optional)" }),
+      docs.filter((d) => d.kind !== "cv").length ? h("ul", { class: "docs" }, docs.filter((d) => d.kind !== "cv").map((d) => h("li", { class: "doc" },
+        h("span", { class: "doc-name", text: d.label || d.kind }),
+        h("button", { class: "btn", type: "button", "data-key": `rm-${d.id}`, onclick: () => remove(d), "aria-label": `Remove ${d.label || d.kind}` }, h("span", { text: "Remove" }))))) : null,
+      h("label", { class: "big", for: "st-interests", text: "What you are interested in" }),
+      h("textarea", { id: "st-interests", rows: 3, maxlength: 4000 }),
+      h("button", { class: "btn", type: "button", disabled: D.busy, onclick: () => { const t = root.querySelector("#st-interests").value.trim(); if (t) add("interests", { text: t }); } },
+        h("span", { text: "Save interests" })),
+      h("label", { class: "big", for: "st-ach", text: "An achievement" }),
+      h("textarea", { id: "st-ach", rows: 3, maxlength: 4000 }),
+      h("button", { class: "btn", type: "button", disabled: D.busy, onclick: () => { const t = root.querySelector("#st-ach").value.trim(); if (t) add("entry", { text: t, label: "Achievement" }); } },
+        h("span", { text: "Add achievement" }))),
+    D.error ? h("p", { class: "notice error go-error", id: "st-error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null,
+    h("div", { class: "welcome-go" },
+      h("button", { class: "btn primary big", type: "button", "data-key": "st-build", disabled: !ready || D.busy, onclick: build },
+        h("span", { text: D.busy ? "Working" : "Find awards that fit" })),
+      !ready ? h("p", { class: "hint", text: "Save your CV first." }) : null)));
+  const t = root.querySelector("#st-title");
+  if (t && !D.busy) t.focus({ preventScroll: true });
 }
 
 // ----- profile -----

@@ -6,7 +6,8 @@
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#F7F8F4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0F1715" media="(prefers-color-scheme: dark)">
-<meta name="description" content="Perch reads a researcher's public papers and lists open funding that fits, every claim linked to its record.">
+<!-- DRAFT copy: meta description (S43), for Dakshitha to review -->
+<meta name="description" content="Perch lists Temple scholarships and research funding, with every claim linked to its public record.">
 <title>Perch</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
@@ -18,6 +19,7 @@
   <div class="bar-in">
     <a class="wordmark" href="#/" aria-label="Perch, home">Perch</a>
     <div class="bar-tools">
+      <div id="acct-slot" class="acct-slot"></div>
       <a id="help" class="btn quiet" href="#/help"><span class="theme-word">Help</span></a>
       <button id="theme" class="btn quiet theme" type="button">
         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
@@ -26,7 +28,7 @@
     </div>
   </div>
 </header>
-<div id="banner" class="banner" hidden></div>
+<div id="banner" class="banner" role="region" aria-label="Notice" hidden></div>
 <main id="main" tabindex="-1"></main>
 <div id="evidence-scrim" class="scrim" aria-hidden="true"></div>
 <div id="evidence" class="sheet" role="dialog" aria-modal="true" aria-labelledby="evidence-kind" hidden>
@@ -42,7 +44,8 @@
 <footer class="foot">
   <ul class="promises">
     <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6zM9 11h6M9 15h6"/></svg>Every claim cites a public record</li>
-    <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 10.5h11v9h-11zM8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>Nothing about you is stored</li>
+    <!-- DRAFT copy: footer promise 2 (S43), for Dakshitha to review -->
+    <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 10.5h11v9h-11zM8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>A CV you add is stored encrypted and can be deleted</li>
     <li><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4zM4 7l8 6 8-6"/></svg>Hand-offs are drafts; nothing is sent</li>
   </ul>
   <p>Perch is a starting point, not advice. This product uses the Grants.gov API but is not endorsed or certified by the U.S. Department of Health and Human Services.</p>

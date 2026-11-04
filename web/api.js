@@ -12,7 +12,12 @@ class ApiError extends Error {
 const ERROR_WORDS = {
   auth_required: "Start a guest session to continue.",
   account_required: "Sign in to use this: guests cannot draft hand-offs or use Scout.",
-  consent_required: "Accept the consent at sign-up first.",
+  consent_required: "Agree to the consent first.",
+  consent_version_changed: "The consent text changed. Reload the page and read it again.",
+  invalid_author_id: "That is not an OpenAlex author id. It is an A followed by at least eight digits.",
+  author_not_found: "OpenAlex has no author with that id.",
+  openalex_unavailable: "OpenAlex could not be reached. Try again later.",
+  audience_not_held: "That side is not on your account.",
   rate_limited: "You have reached your limit for now. Try again later.",
   quota_exceeded: "You have reached your limit for now. Try again later.",
 };
@@ -33,6 +38,16 @@ function failed(body, status) {
   return err;
 }
 
+// A query string from an object; empty, null and false values are left out, arrays repeat.
+function query(params) {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params || {})) {
+    for (const x of Array.isArray(v) ? v : [v]) if (x !== null && x !== undefined && x !== "" && x !== false) q.append(k, String(x));
+  }
+  const text = q.toString();
+  return text ? `?${text}` : "";
+}
+
 async function call(base, path, opts = {}) {
   let r;
   try {
@@ -48,7 +63,7 @@ async function call(base, path, opts = {}) {
 // The live API. The session is a cookie the server sets; the CSRF token it hands back is
 // kept in memory only and sent on every request that is not a GET. A visitor with no
 // session gets a guest session before the first brief, on the side (audience) they asked
-// for. `onExpired(message)` runs when the server no longer knows the session.
+// for. `onExpired(wasGuest)` runs when the server no longer knows the session.
 export function liveApi(base = "") {
   let csrf = null, audience = null, guest = false;
   let epoch = 0; // bumps when the session is lost, so calls that fail together report it once
@@ -58,9 +73,10 @@ export function liveApi(base = "") {
   const adopt = (r) => { csrf = r.csrf || null; audience = r.audience || null; return r; };
   const lost = (e, from) => {
     if (e instanceof ApiError && e.status === 401 && from === epoch) {
+      const wasGuest = guest;
       epoch += 1;
       csrf = null; audience = null; guest = false; last = { id: null, etag: null, body: null };
-      if (api.onExpired) api.onExpired("Your guest session ended, so Perch went back to the start. A guest session lasts an hour. Start again whenever you are ready.");
+      if (api.onExpired) api.onExpired(wasGuest);
     }
     throw e;
   };
@@ -136,6 +152,41 @@ export function liveApi(base = "") {
     scoutStart: (id, body) => post(`${bid(id)}/scout`, body),
     scoutGet: (sid) => p(`/scout/${encodeURIComponent(sid)}`),
     scoutAct: (sid, action, body) => post(`/scout/${encodeURIComponent(sid)}/${action}`, body),
+
+    // ----- session and account (S43). The page asks the server who is here; it never guesses. -----
+    session: async () => {
+      const now = await call(base, "/auth/session");
+      if (now.csrf) { adopt(now); guest = Boolean(now.guest); } else { csrf = null; audience = null; guest = false; }
+      return now;
+    },
+    startGuest: async (side) => {
+      const made = adopt(await call(base, "/auth/guest", { method: "POST", body: JSON.stringify({ audience: side }) }));
+      guest = true;
+      return made;
+    },
+    logout: async () => {
+      const out = await p("/auth/logout", { method: "POST" });
+      csrf = null; audience = null; guest = false; epoch += 1;
+      last = { id: null, etag: null, body: null };
+      return out;
+    },
+    // The public lists need no session. `kind` is "awards" or "opportunities".
+    list: (kind, params = {}) => call(base, `/${kind}${query(params)}`),
+    filters: (audienceName) => call(base, `/filters?audience=${encodeURIComponent(audienceName)}`),
+    samples: (audienceName, cursor = null) => call(base, `/samples${query({ audience: audienceName, cursor })}`),
+    setRoles: (roles) => post("/me/roles", { roles }),
+    setAudience: (side) => post("/me/audience", { audience: side }),
+    consent: (version) => post("/me/consent", { version }),
+    linkOpenAlex: (authorId) => p("/me/openalex", { method: "PUT", body: JSON.stringify({ author_id: authorId }) }),
+    docs: (side = null) => p(`/me/docs${query({ audience: side })}`),
+    addDoc: (body, side = null) => post(`/me/docs${query({ audience: side })}`, body),
+    removeDoc: (id) => p(`/me/docs/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    myBriefs: (side = null) => p(`/me/briefs${query({ audience: side })}`),
+    deleteMe: async () => {
+      const out = await post("/me/delete", { confirm: "delete" });
+      csrf = null; audience = null; guest = false; epoch += 1;
+      return out;
+    },
   });
   return api;
 }
