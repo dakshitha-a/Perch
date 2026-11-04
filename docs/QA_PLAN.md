@@ -1,5 +1,7 @@
 # QA_PLAN.md — full QA test (S25)
 
+> **v0 rows.** This plan was run on the fallback build. Rows marked "v0, retired in S42" (export masks, Local or Cloud) test features that do not exist in v1.
+
 One row per feature and path. Each row was run on the public URL, the dev server (a scratch copy of the demo store) or the CLI, and the result recorded. "Pass" means the expected result was seen. A failure is fixed in S25 or listed as a known limit in the README.
 
 | # | Feature | Path | How it was run | Expected | Result | Note |
@@ -22,15 +24,15 @@ One row per feature and path. Each row was run on the public URL, the dev server
 | 16 | Compare | Researcher | Browser | Table copied from records; cells open records | pass | Walk; on a phone each lead is a labelled card (review fix). |
 | 17 | Hand-off | Researcher | Browser | Office radios; draft; To empty; Copy; Open in mail | pass | Walk: office radios, a draft with an empty To line, Copy, Open in mail. |
 | 18 | Export | Markdown, JSON, print | Browser, Export menu | Files download; the full brief, with a note that it includes text from the documents | pass | Run before the 2 Nov 2026 full-export decision, when this row expected private text withheld: Markdown downloaded (6,897 characters) with no document text. Rerun 2 Nov 2026 on the dev server, PI-1 with and without a SYNTHETIC direction: all 10 grants carry Match, eligible applicants, a description excerpt of at most 596 characters and the record link; no Withheld text; the documents note shows only with documents. |
-| 19 | Export | Mask | Browser, persona-1 | Export box Mask my ongoing research: only ongoing-research phrases masked; unmask works in session | pass | Run before the 2 Nov 2026 change, when the box masked all private text: masked JSON had no canary. Found and fixed: the menu closed itself after a download. Rerun 2 Nov 2026: the direction phrase became [PRIVATE-PHRASE-1] in 3 places, the CV text stayed plain, and unmask restored the phrase. |
+| 19 | Export (v0, retired in S42) | Mask | Browser, persona-1 | Export box Mask my ongoing research: only ongoing-research phrases masked; unmask works in session | pass | Run before the 2 Nov 2026 change, when the box masked all private text: masked JSON had no canary. Found and fixed: the menu closed itself after a download. Rerun 2 Nov 2026: the direction phrase became [PRIVATE-PHRASE-1] in 3 places, the CV text stayed plain, and unmask restored the phrase. |
 | 20 | Fellowships | Student | Browser, persona-ug | Verdict chips with marks; "may be eligible" at best | pass | Walk: chips with a mark and a word; forecasts tagged "not open yet" (review fix). |
 | 21 | Scholarships | Student, sample | Browser | Sample data on tab, card and banner | pass | Walk: Sample data on tab, card, banner; heading no longer invites applying (review fix). |
 | 22 | What Perch read | Student | Browser | Rule fields; interests and achievements | pass | Rule fields; the student's own words under each record (review fix). |
 | 23 | Compare and note | Student | Browser | Office radio; code-written note; SAMPLE line | pass | Code-written note; a note about samples opens with DO NOT SEND and has no mail button (review fix). |
 | 24 | Ask Scout | Researcher | Browser | Ask before each step; Approve, Skip; cited answer | pass | Live on Gemma: "Only R21 grants" ran search_opportunities once and answered with cited ids. |
 | 25 | Ask Scout | Student | Browser | Student tools only; cited answer; samples marked | pass | Live on Gemma in S24: a cited answer about the kept option; API test covers the allowlist. |
-| 26 | Local or Cloud | Dialog | Browser | Warning names Anthropic; Cancel leaves Local | pass | Walk: the warning names Anthropic; Cancel leaves Local. Wording fixed (review). |
-| 27 | Local or Cloud | Documents | API | Cloud refused with documents (switch off) | pass | Canary: a document with Cloud on is refused (409). Found and fixed: the chip now says "Local only" once a document is added. |
+| 26 | Local or Cloud (v0, retired in S42) | Dialog | Browser | Warning names Anthropic; Cancel leaves Local | pass | Walk: the warning names Anthropic; Cancel leaves Local. Wording fixed (review). |
+| 27 | Local or Cloud (v0, retired in S42) | Documents | API | Cloud refused with documents (switch off) | pass | Canary: a document with Cloud on is refused (409). Found and fixed: the chip now says "Local only" once a document is added. |
 | 28 | End session | Any screen | Browser | Dialog lists what goes; back to landing | pass | The dialog lists what goes; back to the landing. |
 | 29 | Help | Content | Browser | Every claim matches the app | pass | Help rewritten in S24 and checked against the code; Jump to links added. |
 | 30 | MCP server | stdio | `scripts/mcp_check.py` | Tools listed; a cited result | pass | `scripts/mcp_check.py` on the dev store: tools listed, 3 cited works with provenance, 8.3 s. |

@@ -58,7 +58,7 @@ Scripted follow-up questions, checked for the right tool, the right arguments an
 
 ## Speed and cost
 
-- **Warm brief:** the demo researchers' briefs are held in memory and open in 17 ms. The full warm click path (5 screens, 14 clicks, a hand-off draft and a Scout answer) took 17.6 s wall (`docs/TRACKER.md` S24 row; `docs/design/WORKFLOW_REVIEW.md`, path tables).
+- **Warm brief (v0, fallback build only; warm briefs are retired in v1):** the demo researchers' briefs are held in memory and open in 17 ms. The full warm click path (5 screens, 14 clicks, a hand-off draft and a Scout answer) took 17.6 s wall (`docs/TRACKER.md` S24 row; `docs/design/WORKFLOW_REVIEW.md`, path tables).
 - **Live brief:** 41.9 s after the S30 fixes, from 46.6 s (`docs/TRACKER.md`, S30 row). The QA rounds saw 36 s on a quiet server and 41 s beside another build (`docs/design/qa/CYCLE_5.md`). Under load a second brief waits in line. Live build time on the rebuilt demo: 38.7 s for a live brief on a phone through the public URL after the rebuild, with the researcher's record already cached (`docs/sessions/S32.md`).
 - **Two model slots:** the same brief took 42.7 s with one slot and 38.6 s with two, measured on a spare card (`docs/design/WORKFLOW_REVIEW.md`, P1 measurement). The demo unit now runs two slots (`docs/sessions/S32.md`).
 - **S30 speed changes:** student polls fell from 8.06 MB to 0.41 MB, static files from 326 KB to 95 KB, and a cached rerank takes about 1 ms (`docs/TRACKER.md`, S30 row).

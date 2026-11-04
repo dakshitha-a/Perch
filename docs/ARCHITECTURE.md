@@ -1,4 +1,6 @@
-# Architecture
+# Architecture (v0, the fallback build)
+
+> **This file describes the v0 build, kept at the tag `v0.1-demo-fallback`.** The v1 build is described in [ARCHITECTURE_V1.md](ARCHITECTURE_V1.md): Postgres with pgvector, Redis, a job queue and worker, accounts, encrypted user data and the `cloud-gpu` profile.
 
 How Perch fits together, which steps of a brief use a model, what runs where in the two-GPU demo, and which steps can move to a cloud model through an API key. Model choices come from the S8 bench (Bench tab); memory figures are nvidia-smi readings from S8.
 
@@ -14,7 +16,7 @@ How Perch fits together, which steps of a brief use a model, what runs where in 
 - **The CV and documents:** a session's models may read them, with contact details blanked in every prompt (standing rule 5 as amended 2026-11-01). Code still reads the CV by rule for eligibility. Nothing from a document is stored.
 - **Students:** the same pipeline serves a student brief (S18): the CV is read by rule, fellowships come from public listings and scholarships from a SYNTHETIC sample corpus, and the verdicts are rules. Scout has its own student tools, with `cover_points` on both lists.
 - **The validator:** it checks every model output before it is shown. Code checks ids and numbers. Clef checks each sentence against the record it cites.
-- **Other ways in:** private mode (S13) runs the same pipeline on self-hosted models and writes nothing. The MCP server (S14) offers Scout's tools to any MCP client.
+- **Other ways in:** private mode (S13, retired in v1 at S42) ran the same pipeline on self-hosted models and wrote nothing. The MCP server (S14) offers Scout's tools to any MCP client.
 - **The hand-off draft (S12):** the chat model writes only an opening paragraph. Code writes the rest, and the app never sends it.
 
 ## A brief, step by step
@@ -50,4 +52,4 @@ The person who deploys Perch decides where the models run. This is a deployment 
 - **What stays local:** Anthropic offers no embedding or rerank API, and Perch has no adapter for another provider of them. Clef's job needs token scores.
 - **The GPU saving:** if every chat role moves to the API, GPU A no longer needs Gemma. Only Clef-flash would stay there, at about 7.4 GB.
 - **The layout:** S9 deployed it and measured the two cards together. The memory figures here were measured in separate S8 runs.
-- **Private mode:** built in S13. It refuses any model that is not on this server.
+- **Private mode:** built in S13 for the fallback build; it refused any model that was not on this server. Retired in v1 (S42).
