@@ -185,8 +185,9 @@ def cmd_extract(args: argparse.Namespace) -> int:
 
     from perch import temple_extract as te
 
-    return te.run_pilot(Path(args.cache_dir), Path(args.out), pilot=args.pilot,
-                        budget_usd=args.budget)
+    out = args.out or ("data/temple/extracted.jsonl" if args.all else "data/temple/pilot_s39.jsonl")
+    return te.run_extract(Path(args.cache_dir), Path(out), pilot=args.pilot, run_all=args.all,
+                          budget_usd=args.budget, restart=args.restart)
 
 
 def fetch_fellowship_details(args: argparse.Namespace) -> int:
@@ -533,7 +534,11 @@ def build_parser() -> argparse.ArgumentParser:
     ex = sub.add_parser("extract", help="propose award records from cached pages")
     ex.add_argument("source", choices=["temple-pages"])
     ex.add_argument("--cache-dir", default="data/cache/temple_pages")
-    ex.add_argument("--out", default="data/temple/pilot_s39.jsonl")
+    ex.add_argument("--out", default=None,
+                    help="default data/temple/pilot_s39.jsonl, or extracted.jsonl with --all")
+    ex.add_argument("--all", action="store_true",
+                    help="every cached page; appends to --out and skips pages already done")
+    ex.add_argument("--restart", action="store_true", help="with --all: discard earlier output")
     ex.add_argument("--pilot", type=int, default=20,
                     help="pages to extract, spread across owners")
     ex.add_argument("--budget", type=float, default=1.0,

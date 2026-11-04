@@ -447,19 +447,57 @@ def pick_pilot(pages: list[tuple[dict, str]], n: int) -> list[tuple[dict, str]]:
     return out
 
 
-def run_pilot(cache_dir: Path, out: Path, pilot: int = 20, budget_usd: float = 1.0,
-              provider: Provider | None = None) -> int:
+def done_path(out: Path) -> Path:
+    """Sidecar listing the pages already extracted into `out`, one JSON row per page."""
+    return out.with_name(out.name + ".pages")
+
+
+def read_done(out: Path) -> dict[str, dict]:
+    p = done_path(out)
+    rows: dict[str, dict] = {}
+    if p.is_file():
+        for ln in p.read_text("utf-8").splitlines():
+            if ln.strip():
+                d = json.loads(ln)
+                rows[d["url"]] = d
+    return rows
+
+
+def run_extract(cache_dir: Path, out: Path, *, pilot: int | None = 20, run_all: bool = False,
+                budget_usd: float = 1.0, provider: Provider | None = None,
+                restart: bool = False) -> int:
+    """Extract records from cached pages. A pilot run takes `pilot` pages spread across
+    owners and rewrites `out`. `run_all` takes every cached page, appends to `out`, and skips
+    pages already listed in the `out` sidecar, so a stopped run continues where it ended
+    (`restart` starts over). The budget is checked before each page."""
     pages = load_cached(cache_dir)
     if not pages:
         print("No cached pages. Run `perch fetch temple-pages` first.")
         return 2
     provider = provider or provider_for_role("extract")
-    total, spent, done = Stats(), 0.0, 0
+    model = getattr(provider, "model", "unknown")
     out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w", encoding="utf-8") as fh:
-        for meta, html_text in pick_pilot(pages, pilot):
+    if run_all:
+        todo = sorted(pages, key=lambda p: p[0]["url"])
+        if restart:
+            out.unlink(missing_ok=True)
+            done_path(out).unlink(missing_ok=True)
+        done = read_done(out)
+        before = len(todo)
+        todo = [p for p in todo if p[0]["url"] not in done]
+        print(f"{before} cached pages; {before - len(todo)} already done; {len(todo)} to do.")
+        mode = "a"
+    else:
+        todo = pick_pilot(pages, pilot or 20)
+        done_path(out).unlink(missing_ok=True)
+        mode = "w"
+    total, spent, n_done = Stats(), 0.0, 0
+    with out.open(mode, encoding="utf-8") as fh, \
+            done_path(out).open("a", encoding="utf-8") as side:
+        for meta, html_text in todo:
             if spent >= budget_usd:
-                print(f"Run budget ${budget_usd:.2f} reached after {done} pages.")
+                print(f"Run budget ${budget_usd:.2f} reached after {n_done} pages; "
+                      "run the same command again to continue.")
                 break
             try:
                 recs, st, cost = extract_page(provider, meta, html_text)
@@ -470,10 +508,19 @@ def run_pilot(cache_dir: Path, out: Path, pilot: int = 20, budget_usd: float = 1
                 print(f"Provider error on {meta['url']}: {e}")
                 continue
             spent += cost
-            done += 1
+            n_done += 1
             total.merge(st)
             for r in recs:
                 fh.write(json.dumps({"kind": r.kind, **r.model_dump(mode="json")}) + "\n")
-    print(f"Pages: {done}. Spent ${spent:.4f}. Output: {out}")
+            fh.flush()
+            side.write(json.dumps({"url": meta["url"], "records": len(recs), "model": model,
+                                   "cost_usd": round(cost, 6)}) + "\n")
+            side.flush()
+    print(f"Pages: {n_done}. Spent ${spent:.4f}. Output: {out}")
     print("\n".join(total.lines()))
     return 0
+
+
+def run_pilot(cache_dir: Path, out: Path, pilot: int = 20, budget_usd: float = 1.0,
+              provider: Provider | None = None) -> int:
+    return run_extract(cache_dir, out, pilot=pilot, budget_usd=budget_usd, provider=provider)
