@@ -418,7 +418,7 @@ class BriefService:
         from perch.profiles import current
 
         p = current()
-        return p.rerank_in if p.device == "cpu" else RERANK_IN
+        return p.rerank_in if p.device else RERANK_IN
 
     def _text_cache(self, b: Brief) -> bool:
         """True when this brief's model text depends on public inputs only (section 5)."""
@@ -570,7 +570,7 @@ def default_models(fake: bool = False, data_dir: Path = Path("data"),
             index=lambda: LanceIndex(data_dir / "lance"),
             grounder=lambda: make_grounder(p.grounder, fallback=lambda: RemoteGrounder(server)),
             summary_spec=llm, fit_spec=llm, handoff_spec=llm)
-    if p.device == "cpu":
+    if p.device in ("cpu", "cuda"):
         from perch.compute import (
             SlottedEmbedder,
             SlottedGrounder,
@@ -578,18 +578,21 @@ def default_models(fake: bool = False, data_dir: Path = Path("data"),
             configure_torch,
         )
 
+        dev = p.device
+
         def cpu[T](build: Callable[[], T]) -> T:  # torch threads are set before the first model
             configure_torch()
             return build()
 
-        # Each CPU model runs inside a model slot (perch/compute.py: PERCH_MODEL_SLOTS).
+        # Each model runs inside a model slot (perch/compute.py: PERCH_MODEL_SLOTS), on CPU
+        # for cloud-cpu and on the worker's one GPU for cloud-gpu.
         return Models(
             embedder=lambda: SlottedEmbedder(cpu(
-                lambda: get_embedder(p.embedder, cache=emb_cache, device="cpu"))),
+                lambda: get_embedder(p.embedder, cache=emb_cache, device=dev))),
             reranker=lambda: SlottedReranker(cpu(
-                lambda: make_reranker(p.reranker, device="cpu"))),
+                lambda: make_reranker(p.reranker, device=dev))),
             index=lambda: LanceIndex(data_dir / "lance"),
-            grounder=lambda: SlottedGrounder(cpu(lambda: make_grounder(p.grounder))),
+            grounder=lambda: SlottedGrounder(cpu(lambda: make_grounder(p.grounder, device=dev))),
             summary_spec=llm, fit_spec=llm, handoff_spec=llm)
     return Models(embedder=lambda: get_embedder(p.embedder, cache=emb_cache),
                   reranker=lambda: make_reranker(p.reranker),

@@ -128,7 +128,7 @@ services:
     image: perch-v1-worker
     environment:
       <<: *app-env
-      PERCH_PROFILE: cloud-cpu
+      PERCH_PROFILE: cloud-cpu  # cloud-gpu once the CUDA worker image exists (REBUILD_PLAN, 4 Nov revision)
       PERCH_DATABASE_URL: postgresql://perch_worker:${PERCH_WORKER_PASSWORD}@postgres:5432/perch
       PERCH_DATABASE_DIRECT_URL: postgresql://perch_worker:${PERCH_WORKER_PASSWORD}@postgres:5432/perch
       PERCH_TORCH_THREADS: ${PERCH_TORCH_THREADS:-4}

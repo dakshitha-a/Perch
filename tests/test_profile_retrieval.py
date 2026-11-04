@@ -5,6 +5,7 @@ from perch.retrieve import MODES
 
 
 def test_v1_profile_is_dense_only() -> None:
+    assert PROFILES["cloud-gpu"].retrieval == "dense"
     assert PROFILES["cloud-cpu"].retrieval == "dense"
 
 

@@ -41,12 +41,15 @@ AUTHOR = "https://openalex.org/A1"
 
 # --- profile and roles ---
 
-def test_cloud_cpu_is_the_default_and_names_the_provider_models(monkeypatch):
+def test_cloud_gpu_is_the_default_and_names_the_provider_models(monkeypatch):
     monkeypatch.delenv("PERCH_PROFILE", raising=False)
     for k in ("PERCH_LLM_DEFAULT", "PERCH_LLM_GATE", "PERCH_LLM_FIT_EXPLAINER"):
         monkeypatch.delenv(k, raising=False)
     p = current()
-    assert p is PROFILES["cloud-cpu"] and p.device == "cpu" and p.grounder == "minicheck"
+    assert p is PROFILES["cloud-gpu"] and p.device == "cuda" and p.grounder == "minicheck"
+    assert p.rerank_in == 100 and p.retrieval == "dense"
+    cpu = PROFILES["cloud-cpu"]
+    assert cpu.device == "cpu" and cpu.rerank_in == 14 and cpu.roles == p.roles
     assert spec_for_role("gate") == "anthropic:claude-haiku-5-5"
     assert spec_for_role("profile_summary") == "anthropic:claude-haiku-5-5"
     for role in ("fit_explainer", "handoff", "cover_points", "scout"):

@@ -1,8 +1,9 @@
 """Model choice per deployment profile (SPEC section 11), from the S8 bench.
 
-`PERCH_PROFILE` selects one of: cloud-cpu (the default, v1: cloud models, CPU
-embedder, reranker and MiniCheck), and the GPU layouts kept for the fallback build: dev,
-deploy-2gpu, deploy-1gpu. Each winner is the best measured performer for its job in
+`PERCH_PROFILE` selects one of: cloud-gpu (the default, v1: cloud models, embedder,
+reranker and MiniCheck on one GPU), cloud-cpu (the same on CPU, the no-GPU fallback),
+and the GPU layouts kept for the fallback build: dev, deploy-2gpu, deploy-1gpu.
+Each winner is the best measured performer for its job in
 bench/results/RESULTS.md, or the incumbent where the bench cannot separate them;
 the runner-up is the commented line below it, so a switch is one line.
 Environment variables (PERCH_LLM_<ROLE>) still override.
@@ -81,7 +82,23 @@ _CLOUD_CPU = ModelProfile(
            "handoff": _SONNET, "cover_points": _SONNET, "scout": _SONNET},
 )
 
+# v1 default from 2026-11-04 (Dakshitha): the same cloud roles, with the embedder, reranker
+# and MiniCheck on the worker's one GPU. Rerank goes back to 100 candidates: the CPU
+# back-test gave hit@10 0.229 at 100 against 0.062 at 14 (bench/results/s38_backtest), and
+# GPU rerank of 100 takes 0.79 s median with the 0.6B (bench/results/s38_gpu).
+_CLOUD_GPU = ModelProfile(
+    chat=_SONNET,
+    grounder="minicheck",
+    embedder="Qwen/Qwen3-Embedding-0.6B",
+    reranker="Qwen/Qwen3-Reranker-0.6B",
+    device="cuda",
+    rerank_in=100,
+    retrieval="dense",
+    roles=_CLOUD_CPU.roles,
+)
+
 PROFILES: dict[str, ModelProfile] = {
+    "cloud-gpu": _CLOUD_GPU,
     "cloud-cpu": _CLOUD_CPU,
     "dev": _TWO_GPU,
     "deploy-2gpu": _TWO_GPU,
@@ -101,7 +118,7 @@ PROFILES: dict[str, ModelProfile] = {
         # reranker="systemone:clef-flash",
     ),
 }
-DEFAULT_PROFILE = "cloud-cpu"
+DEFAULT_PROFILE = "cloud-gpu"
 
 
 def current() -> ModelProfile:
