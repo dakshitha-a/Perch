@@ -4,6 +4,7 @@
 // copied from the record; nothing here is a model's claim.
 
 import { evMark, fill, h, icon, labelCells } from "./dom.js";
+import { coverBlock } from "./cover.js";
 import { copy, mailto } from "./handoff.js";
 import * as f from "./format.js";
 
@@ -302,7 +303,8 @@ function cardLines(l) {
   return [none ? NO_FACTS : null, ...(l.verdict_lines.length === 1 ? l.verdict_lines : [])].filter(Boolean);
 }
 
-function card(l, { openEvidence, setLead, papers }, common = []) {
+function card(l, ctx, common = []) {
+  const { openEvidence, setLead } = ctx;
   const r = l.record || {};
   const sch = r.kind === "scholarship";
   const name = sch ? r.name : r.title;
@@ -342,7 +344,9 @@ function card(l, { openEvidence, setLead, papers }, common = []) {
         : h("ul", { class: "notes" }, l.verdict_lines.map((x) => h("li", { text: x })))) : null,
     l.gaps.length ? h("div", { class: "reason" }, h("b", { text: "Still needed: " }), h("span", { text: l.gaps.map(f.lowerFirst).join("; ") })) : null, // R17
     l.flagged ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "The explanation was withheld because it failed the citation checks twice." }))
-      : parsed ? fitReason(l) : null);
+      : parsed ? fitReason(l) : null,
+    // S46: on every lead card, a not-eligible one included; a dismissed card has none.
+    l.status === "dismissed" ? null : coverBlock(ctx, ctx.briefId, l.record_id));
 }
 
 // The reason it may fit leads, in plain view (S27, Dakshitha: say the reason right

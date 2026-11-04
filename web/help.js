@@ -13,6 +13,7 @@ import { verdictChip } from "./student.js";
 
 // Fixed notes, word for word as perch/offices.py writes them (tests/test_web.py compares).
 const SUBMISSION_URL = "https://research.temple.edu/researchadministration/contact-us/find-your-res-administrator";
+const COVER_HELP = "On a lead card, Cover-letter points asks a model to pair what the record asks for with what your CV, entries and papers show, each line cited. It needs an account, it is model text to put in your own words, and it is never sent or added to an export.";
 const SUBMISSION_NOTE = "Before anything goes to a sponsor, Temple routes it through ERA for institutional review and approval. That covers every grant proposal and any company agreement that brings Temple funding. Your assigned research administrator supports that step.";
 const FOUNDATION_NOTE = "Foundations are not covered yet. When they are, foundation leads will go to Temple's Office of Corporate and Foundation Relations, through your school's or college's development team, as that office's page asks.";
 const RESEARCH_SECURITY = "Companies outside the United States may need a research-security review before any contact; the office makes that check.";
@@ -172,7 +173,8 @@ function student() {
 
 function leadCard() {
   return h("section", { class: "help-block", "aria-labelledby": "h-card" },
-    h("h2", { id: "h-card", class: "section-title", text: "Reading a lead card" }), anatomy());
+    h("h2", { id: "h-card", class: "section-title", text: "Reading a lead card" }), anatomy(),
+    h("p", { class: "hint", "data-key": "help-cover", text: COVER_HELP }));
 }
 
 // ----- the architecture diagram -----

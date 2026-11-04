@@ -40,6 +40,7 @@ function failed(body, status) {
   const err = new ApiError(detailText(body, status), status);
   const d = body && body.detail;
   err.code = d && typeof d === "object" ? d.error || null : null;
+  err.serverMessage = d && typeof d === "object" && typeof d.message === "string" ? d.message : null;
   return err;
 }
 
@@ -61,7 +62,11 @@ async function call(base, path, opts = {}) {
     throw new ApiError(UNREACHABLE, 0);
   }
   const body = await r.json().catch(() => ({}));
-  if (!r.ok) throw failed(body, r.status);
+  if (!r.ok) {
+    const err = failed(body, r.status);
+    err.retryAfter = r.headers.get("Retry-After");
+    throw err;
+  }
   return body;
 }
 
@@ -140,6 +145,9 @@ export function liveApi(base = "") {
     record: (id) => p(`/records/${encodeURIComponent(id)}`),
     compare: (id) => p(`${bid(id)}/compare`),
     handoff: (id, body) => post(`${bid(id)}/handoff`, body),
+    // Cover-letter points (S46): queue the job, then poll it; a GET with no job id reads what is stored.
+    coverStart: (id, recordId) => post(`${bid(id)}/cover-points`, { record_id: recordId }),
+    coverGet: (id, recordId, jobId) => p(`${bid(id)}/cover-points${query({ record_id: recordId, job_id: jobId })}`),
     studentNote: (id, route) => p(`${bid(id)}/student/note?route=${encodeURIComponent(route)}`),
     // The export as a Blob (a plain fetch with the cookie); the caller saves or opens it.
     exportFile: async (id, kind, status = null) => {

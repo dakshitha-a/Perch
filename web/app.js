@@ -5,6 +5,7 @@ import { liveApi, replayApi } from "./api.js";
 import { add, evMark, fill, h, icon } from "./dom.js";
 import { renderHelp } from "./help.js";
 import { compareOffices, loadCompare, renderCompare } from "./compare.js";
+import { coverBlock } from "./cover.js";
 import { renderHandoff } from "./handoff.js";
 import { renderScout } from "./scout.js";
 import * as f from "./format.js";
@@ -1760,7 +1761,10 @@ function leadCard(l) {
   h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
     onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: o.title || l.record_id }), evMark())),
   h("p", { class: "opp-num", text: o.opportunity_number || "" }),
-  facts, noSize, leadNotes(l), explain);
+  facts, noSize, leadNotes(l), explain,
+  // S46: cover-letter points, on every grant lead that is not dismissed.
+  l.status === "dismissed" ? null : coverBlock({ api, announce, openEvidence, guest: Boolean(S.session.guest),
+    signIn: signInHref() }, S.briefId, l.record_id));
 }
 
 // The card head: tags on the left; the Match pill and the actions on the right, so Keep
