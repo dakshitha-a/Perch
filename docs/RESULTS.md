@@ -135,6 +135,24 @@ The grounding set is a proxy built from saved explanations, not human labels. It
 | Hand-check of v1, fresh-context reviewer | 29 records, 203 field rows: 188 correct, 4 wrong, 11 missing; error rate 7.4% (95% interval 4.5% to 11.8%, rows not independent). 10 of the 15 were Temple-funded left empty; without that field 5 of 174 rows (2.9%). The Temple-funded rule was widened for v2; v2's error rate is not yet measured (S46) | `bench/results/s40_handcheck/sheet.csv` |
 | Hand-check of v2, fresh-context reviewer (S46) | 31 records, 217 field rows: 181 correct, 7 wrong, 29 missing; error rate 16.6% (95% interval 12.2% to 22.1%, rows not independent). Temple-funded left empty on 19 of 21 rows a Temple unit presents as its own; under a narrower reading (explicit funding wording only) 6 of 8, and the overall rate is 10.6% (7.2% to 15.4%). Eligibility 9 of 31 rows partial or wrong; 2 wrong amounts (a fund total kept as the per-project amount; a stipend and an allowance kept as a range); 2 missed deadlines, one a pipeline bug (deadline quote kept, deadline field empty). v2 is not better than v1. The Temple filter uses the listing source, not the Temple-funded field, so that field's misses do not change what users see. No name leaks outside the title exception | `bench/results/s46_handcheck_v2/` |
 
+## S45 Scout open-question bench (v1 rebuild, Phase 8)
+
+Real model (Sonnet 5.5 answers, Haiku 5.5 gate), 63 questions written by Perch-dev: 34 in scope, 24 out of scope, 5 distress. "Layer 1 pass" means the answer shown passed every rule on its first or second draft; "flagged" means both drafts failed and the failing sentences were removed. Usefulness is graded by a person in `grades.csv`, not yet done. The old Scout ran on researcher questions only, with no gate, no brief and no CV.
+
+| Run | What changed | In scope: Layer 1 pass / flagged / empty | MiniCheck flags | Out of scope refused | Distress | Cost | Folder |
+|---|---|---|---|---|---|---|---|
+| Old Scout | S32 build | 17 of 18 / 0 / 0 | not run | 4 of 9 | 0 of 2 | $0.48 | `bench/results/scout_open_s45/` |
+| s45 | first run of the new Scout | 4 of 33 / 29 / 7 | 22 | 24 of 24 | 5 of 5 | $1.08 | `bench/results/scout_open_s45/` |
+| s45b | grounding rules fixed (citation placement, abbreviations, help and headings) | 23 of 33 / 10 / 0 | 96 | not run | not run | $0.91 | `bench/results/scout_open_s45b/` |
+| s45c | security fixes, rounds 1 and 2 | 12 of 33 / 21 / 0 | 14 | 24 of 24 | 5 of 5 | $1.04 | `bench/results/scout_open_s45c/` |
+| s45f | over-strict removals fixed; output cap raised | 16 of 33 / 17 / 0 | 37 | not rerun | not rerun | $0.93 | `bench/results/scout_open_s45f/` |
+
+- **Wrongly blocked:** 1 in-scope question in every run, by the gate.
+- **Run-to-run variance is large.** Replaying the s45c drafts through the old and new rules removed 170 and 158 sentences; the drop from s45b to s45c was mostly different drafts, not the rules. Most removals are sentences the model wrote without a citation.
+- **MiniCheck's 96 flags in s45b** were mostly the evidence it was given: eligibility text missing (22), rank and kept claims (14), "the record gives no deadline" claims (18), re-split sentences (4). 17 were genuine over-reach. Rank, kept and absence claims are now checked by code.
+- **Cut answers:** four s45c retries stopped mid-word because Sonnet 5.5's default thinking counts toward the output cap; caps raised (DECISIONS, 2026-11-04).
+- **The old Scout's higher Layer 1 rate is not a like-for-like comparison:** it answered a fixed tool set with no grounding contract per sentence.
+
 ## Limits
 
 - **One funder, small sample.** The back-test is NIH only, with 48 targeted and 78 parent awards. It was tuned on the same 48 rows, and parent announcements are nearly unrecovered (2 of 78). There is no NSF back-test, and 12 of 14 embedder setups could not be told from the default (`bench/results/SUMMARY.md`).

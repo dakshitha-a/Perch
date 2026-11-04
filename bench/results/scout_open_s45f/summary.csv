@@ -1,0 +1,9 @@
+engine,set,n,correct,answered,wrongly_blocked,empty,cites,cites_invalid,layer1_pass,flagged,minicheck_flagged,usd,median_s,max_s
+new,all,34,33,33,1,0,141,0,16,17,37,0.9335,15.66,33.0
+new,in,34,33,33,1,0,141,0,16,17,37,0.9335,15.66,33.0
+new,out,0,0,0,0,0,0,0,0,0,0,0,0.0,0.0
+new,distress,0,0,0,0,0,0,0,0,0,0,0,0.0,0.0
+old,all,0,0,0,0,0,0,0,0,0,0,0,0.0,0.0
+old,in,0,0,0,0,0,0,0,0,0,0,0,0.0,0.0
+old,out,0,0,0,0,0,0,0,0,0,0,0,0.0,0.0
+old,distress,0,0,0,0,0,0,0,0,0,0,0,0.0,0.0

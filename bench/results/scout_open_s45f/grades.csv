@@ -1,0 +1,559 @@
+id,engine,set,audience,kind,question,answer,usefulness,notes
+i01,new,in,researcher,how_to,How do I use Perch to find grants for my lab?,"General advice:
+1. Find your public papers in Perch by searching your name, your ORCID iD or your OpenAlex ID.
+2. Build a brief from those papers. The brief lists your leads, and Grants and Industry appear as separate lists.
+3. Read each card. It shows the deadline and amount copied from the record, and it links to the full record.
+4. Keep the leads worth a closer look and dismiss the rest. You can restore a dismissed lead later. Kept leads gather in the shortlist.
+5. Use Compare to put your kept leads side by side.
+6. Use the Hand-off to a Temple office button to draft a note to the Temple office you pick. You edit and send it yourself, because Perch sends nothing. Drafting needs an account.
+7. Ask Scout for help. It needs an account. Its buttons are Top leads, Deadlines, Compare kept leads and Hand-off to a Temple office.
+Perch does not confirm personal eligibility. Check each record's rules yourself. A Sample data badge marks invented synthetic records.",,
+i01,old,in,researcher,how_to,How do I use Perch to find grants for my lab?,(old engine skipped),,
+i02,new,in,student,how_to,How do I keep a lead and then draft a note to a Temple office?,"General advice:
+1. In your brief, look at each lead card. It shows its deadline and amount copied from the record.
+2. Keep the leads worth a closer look. Dismiss the rest. A dismissed lead can be restored.
+3. Kept leads gather in the shortlist. Compare puts kept leads side by side.
+4. Press the Hand-off to a Temple office button and pick the office you want.
+5. Perch drafts a note for you to edit and send. Perch sends nothing, so you send it yourself.
+6. Drafting needs an account.",,
+i02,old,in,student,how_to,How do I keep a lead and then draft a note to a Temple office?,(old engine skipped),,
+i03,new,in,student,how_to,What does the Hand-off to a Temple office button do?,"General advice:
+- The Hand-off to a Temple office button drafts a note to the Temple office you pick.
+- You edit the note and send it yourself. Perch sends nothing.
+- Drafting needs an account.
+- You can also find this button in Scout, next to Top leads, Deadlines and Compare kept leads.",,
+i03,old,in,student,how_to,What does the Hand-off to a Temple office button do?,(old engine skipped),,
+i04,new,in,student,how_to,What is the difference between a fellowship and a scholarship in my list?,"**What your list shows**
+- Your brief labels every lead as a scholarship, including ones titled ""Fellowships"" [temple_sdfa:american-council-of-learned-societies-fellowships, temple_sdfa:apaics-congressional-fellowship].
+- The record for the ACLS Fellowships lists a graduate level of study [temple_sdfa:american-council-of-learned-societies-fellowships].
+- The APAICS Congressional Fellowship record lists a bachelor's level and says ""For seniors and recent alumni"" [temple_sdfa:apaics-congressional-fellowship].
+- The AAUW record lists a graduate level of study [temple_sdfa:american-association-of-university-women].
+- The Amgen Scholars record lists a bachelor's level and says ""For first-year undergraduates, sophomores, or juniors"" [temple_sdfa:amgen-scholars].
+- The records I read have no stated purpose, amount or deadline, so they don't show how a fellowship differs from a scholarship [temple_sdfa:american-council-of-learned-societies-fellowships, temple_sdfa:apaics-congressional-fellowship, temple_sdfa:american-association-of-university-women, temple_sdfa:amgen-scholars].
+- You have nothing saved yet [user:saved].
+Tell me which lead to read in full if you want a closer look.
+
+General advice:
+- In general, a scholarship mostly helps pay for study. A fellowship often supports a project, research or a placement, and sometimes pays a stipend.
+- The label is only a rough guide. Programs use these words in different ways.
+- For each award, read what it pays for, what you must do, and who it is open to.
+- Check the sponsor's own page for the rules before you plan an application.",,
+i04,old,in,student,how_to,What is the difference between a fellowship and a scholarship in my list?,(old engine skipped),,
+i05,new,in,researcher,lookup,Which of my leads closes soonest?,"Kept leads:
+- SBE Postdoctoral Research Fellowships (SPRF) closes 4 Nov 2026 [grants_gov:23-500].
+- The NSF SBIR/STTR Phase I, Phase II, Fast-Track pilot on scientific instrumentation closes 4 Nov 2026 [grants_gov:26-511].
+Other leads:
+- AI Datasets closes 4 Nov 2026 [grants_gov:26-512].
+- State and Regional AI Infrastructure Hubs closes 4 Nov 2026 [grants_gov:26-513].
+- Bone Marrow Failure, Idea Development Award closes 4 Nov 2026 [grants_gov:HT942526BMFRPIDA].
+- Bone Marrow Failure, Investigator-Initiated Research Award closes 4 Nov 2026 [grants_gov:HT942526BMFRPIIRA].
+Tell me if you want me to read any of these records in full to check for earlier internal steps.",,
+i05,old,in,researcher,lookup,Which of my leads closes soonest?,(old engine skipped),,
+i06,new,in,student,lookup,Which of my leads closes soonest?,"I can't tell which lead closes soonest. None of your leads has a deadline in its record.
+- AAMC Summer Undergraduate Research Programs has no deadline stated [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- American Association of University Women has no deadline stated [temple_sdfa:american-association-of-university-women].
+- American Council of Learned Societies Fellowships has no deadline stated [temple_sdfa:american-council-of-learned-societies-fellowships].
+- Amgen Scholars has no deadline stated [temple_sdfa:amgen-scholars].
+- APAICS Congressional Fellowship has no deadline stated in your brief [temple_sdfa:apaics-congressional-fellowship].
+- APAICS Congressional Internship has no deadline stated in your brief [temple_sdfa:apaics-congressional-internship].
+The AAMC record links to the sponsor's page [temple_sdfa:aamc-summer-undergraduate-research-programs]. The AAUW record does too [temple_sdfa:american-association-of-university-women]. Check those pages for current dates.
+Tell me which lead to read in full.",,
+i06,old,in,student,lookup,Which of my leads closes soonest?,(old engine skipped),,
+i07,new,in,researcher,filter,"Only show NIH leads, and nothing with a ceiling under $500,000.","None of your brief's leads are from NIH. They come from the National Science Foundation and the Defense Health Agency [grants_gov:23-500, grants_gov:26-511, grants_gov:26-512, grants_gov:26-513, grants_gov:HT942526BMFRPIDA, grants_gov:HT942526BMFRPIIRA].
+None of the NIH records I found states a ceiling that I can confirm meets your limit.
+**Removed for a stated ceiling under your limit**
+- The R15 AREA award lists ""Up to $375,000"" [grants_gov:PAR-24-214].
+**NIH records with no ceiling stated**
+- Animal and Biological Material Resource Centers (P40) closes 26 Sep 2028, and its amount is not stated [grants_gov:RFA-OD-25-011].
+- Academic Career Excellence (ACE) Award (K32) closes 12 Jul 2029, and its amount is not stated [grants_gov:PAR-27-062].
+- The 2028 R15 AREA award closes 7 Jan 2028, and its amount is not stated [grants_gov:PAR-25-148].
+- Cancer Prevention and Control Clinical Trials Grant Program (R01) closes 7 Jan 2027, and its amount is not stated [grants_gov:PAR-25-167].
+- Change of Recipient Organization (Type 7) closes 12 Jul 2027, and its amount is not stated [grants_gov:PA-24-254].
+- Competing Revisions to Existing NIH Single Project Research Grants closes 24 Nov 2026, and its amount is not stated [grants_gov:PA-23-317].
+I have not read their full records.
+Tell me if you want only NIH records with a stated ceiling. I can search for those.
+
+General advice:
+- Check the funding amount in the official announcement before you plan a budget. A record may leave it out.",,
+i07,old,in,researcher,filter,"Only show NIH leads, and nothing with a ceiling under $500,000.",(old engine skipped),,
+i08,new,in,researcher,filter,Drop anything that mentions clinical trials.,"Scout answers questions about funding, scholarships, fellowships, grants, applications, your brief, your CV and entries, and how to use Perch. It cannot help with that question. You could ask, for example: ""Which of my leads closes soonest?"" ""What does this fellowship ask for that my CV does not show yet?"" ""Find scholarships for a graduate student in public health."" ""How should I order the points in a cover letter for this award?""",,
+i08,old,in,researcher,filter,Drop anything that mentions clinical trials.,(old engine skipped),,
+i09,new,in,researcher,filter,Show me only U01 and R01 grants.,"**U01**
+- Alzheimer's Drug-Development Program (U01 Clinical Trial Optional) closes 5 Nov 2027 and offers up to $1,500,000 [grants_gov:PAR-25-297].
+- Alzheimer's Drug-Development Program (U01 Clinical Trial Optional) has no close date in the record and no amount stated [grants_gov:RFA-AG-28-009].
+- ALS Intermediate Patient Population Expanded Access (U01 Clinical Trial Required) closes 10 Nov 2026, with no amount stated [grants_gov:RFA-NS-26-001].
+- ALS Intermediate Patient Population Expanded Access (U01 Clinical Trial Required) has no close date in the record and no amount stated [grants_gov:RFA-NS-28-009].
+- ancient DNA for Modern Genomics (aDMG) Research Projects (U01 Clinical Trials Not Allowed) has no close date in the record and no amount stated [grants_gov:RFA-HG-28-003].
+- Bioengineering Partnerships with Industry (U01 Clinical Trial Optional) closes 7 Sep 2027, with no amount stated [grants_gov:PAR-24-325].
+- BRAIN CONNECTS: Specialized Projects for Scalable Technologies (U01 Clinical Trial Not Allowed) closes 4 Oct 2027, with no amount stated [grants_gov:RFA-NS-27-015].
+- BRAIN Initiative: Brain Behavior Quantification and Synchronization, Next Generation Sensor Technology Development (U01 Clinical Trial Optional) closes 15 Jun 2027, with no amount stated [grants_gov:RFA-MH-26-140].
+**R01**
+- Academic-Industrial Partnerships (AIP) to Translate and Validate In Vivo Imaging Systems (R01 Clinical Trial Optional) closes 7 Jan 2027 and offers up to $500,000 [grants_gov:PAR-25-079].
+- Academic-Industrial Partnerships for Translation of Technologies for Diagnosis and Treatment (R01 Clinical Trial Not Allowed) closes 7 Jan 2028 and offers up to $499,000 [grants_gov:PAR-25-338].
+- Academic-Industrial Partnerships for Translation of Technologies for Diagnosis and Treatment (R01 Clinical Trial Optional) closes 7 Jan 2028 and offers up to $499,000 [grants_gov:PAR-25-337].
+- Accelerating Solutions to Improve Access and Quality of Empirically-Supported Practices for Youth Mental Health (R01 Clinical Trial Optional) closes 7 Jan 2027, with no amount stated [grants_gov:PAR-25-310].
+- Accelerating the Pace of Substance Use Research Using Existing Data (R01 Clinical Trial Not Allowed) closes 3 Dec 2027, with no amount stated [grants_gov:RFA-DA-26-055].
+- Advancement and Innovation in Measurement of Language Development and Predictors (R01 Clinical Trial Not Allowed) closes 7 Sep 2027, with no amount stated [grants_gov:PAR-25-112].
+- Advancing Bioinformatics, Translational Bioinformatics and Computational Biology Research (R01 Clinical Trial Optional) closes 5 Mar 2029 and offers up to $250,000 [grants_gov:PAR-26-040].
+- Advancing Healthcare for Older Adults from Populations that Experience Health Disparities (R01 Clinical Trial Optional) closes 7 Jan 2028, with no amount stated [grants_gov:PAR-24-273].
+Tell me which one to read in full, or give me a topic to narrow the search.
+
+General advice:
+- Read each record's full text before you decide. The record says what it asks for.
+- Keep the leads worth a closer look and dismiss the rest. Compare puts kept leads side by side.",,
+i09,old,in,researcher,filter,Show me only U01 and R01 grants.,(old engine skipped),,
+i10,new,in,researcher,count,How many of my leads are for NIH?,"None of your leads list NIH as the sponsor.
+- Four leads are from the U.S. National Science Foundation [grants_gov:23-500, grants_gov:26-511, grants_gov:26-512, grants_gov:26-513].
+- Two leads are from the Defense Health Agency Contracting Activity - DHACA [grants_gov:HT942526BMFRPIDA, grants_gov:HT942526BMFRPIIRA].
+I can search Perch's records for NIH opportunities if you'd like.",,
+i10,old,in,researcher,count,How many of my leads are for NIH?,(old engine skipped),,
+i11,new,in,researcher,themes,"What are the main themes of my work, and how do they connect to my top lead?","**Main themes in your CV**
+- Your seed grant is on shoe-worn force sensing for early gait change [user:cv:funding]. One paper is on low-cost insole sensors for home gait monitoring [user:cv:funding].
+- One paper covers stride-to-stride force variability [user:cv:funding].
+- Your thesis is on graph models of the gait cycle [user:cv:funding].
+- You were a postdoctoral fellow in a movement disorders lab [user:cv:appointments].
+- You have a PhD in biomedical engineering and a BS in electrical engineering [user:cv:education].
+**Your top lead**
+- Your top lead is the SBE Postdoctoral Research Fellowships (SPRF) from NSF [grants_gov:23-500].
+- The record asks for research that addresses important scientific questions within the scope of the SBE directorate [grants_gov:23-500].
+- It offers two tracks: Fundamental Research in the SBE Sciences, and Broadening Participation in the SBE Sciences [grants_gov:23-500].
+- It also asks for a doctoral degree in the SBE sciences within a set window [grants_gov:23-500].
+**How they connect**
+- Your CV shows engineering and bioengineering work on gait and movement [user:cv:education, user:cv:appointments].
+- The record text I read does not say whether gait or sensor research counts as SBE [grants_gov:23-500].
+- You have no typed entries that could fill this gap [user:entries].
+- Read the full solicitation to check the scope and the degree requirement [grants_gov:23-500].
+- Perch does not confirm personal eligibility.",,
+i11,old,in,researcher,themes,"What are the main themes of my work, and how do they connect to my top lead?",(old engine skipped),,
+i12,new,in,researcher,follow_up,Tell me more about my top lead.,"Your top lead is the SBE Postdoctoral Research Fellowships (SPRF) from the U.S. National Science Foundation [grants_gov:23-500].
+- **Status:** It is ranked first in your brief and you have kept it [grants_gov:23-500].
+- **Deadline:** It closes 4 Nov 2026 [grants_gov:23-500].
+- **Amount:** The record gives $160,000 to $170,000 [grants_gov:23-500].
+- **Purpose:** It aims to encourage independence early in the fellow's career by supporting their research and training goals [grants_gov:23-500].
+- **Scope:** The plan must address important scientific questions within the scope of the SBE directorate [grants_gov:23-500].
+- **Tracks:** The record lists two tracks [grants_gov:23-500].
+  - The first is Fundamental Research in the SBE Sciences (SPRF-FR) [grants_gov:23-500].
+  - The second is Broadening Participation in the SBE Sciences (SPRF-BP) [grants_gov:23-500].
+- **Who submits:** The individual submits the proposal, not the host institution [grants_gov:23-500].
+- **Where the award goes:** The award is made directly to the postdoctoral fellow [grants_gov:23-500].
+- **Host:** You must name one sponsoring scientist and a host institution when you submit [grants_gov:23-500].
+- **Citizenship or residency:** The record says the proposer must be a U.S. citizen, national or legally admitted permanent resident alien as of the proposal deadline [grants_gov:23-500].
+- **Degree timing:** The record asks for a doctoral degree in the SBE sciences obtained within the 3 years before the deadline [grants_gov:23-500].
+- **Later degree:** It also allows a doctoral degree obtained within 12 months after the deadline [grants_gov:23-500].
+- **Missing detail:** The eligibility text I received is cut off, so read the full solicitation for the rest [grants_gov:23-500].
+Tell me if you want me to compare your CV and entries against this record.
+
+General advice:
+- Read the full solicitation before you draft anything.
+- Check the eligibility rules against your own situation early.
+- Ask your Temple research office for help well before the deadline.",,
+i12,old,in,researcher,follow_up,Tell me more about my top lead.,(old engine skipped),,
+i13,new,in,researcher,compare,Compare my top two leads side by side.,"**Top two kept leads**
+- The sponsor is the U.S. National Science Foundation [grants_gov:23-500].
+- It closes 4 Nov 2026 [grants_gov:23-500].
+- The amount is $160,000 to $170,000 [grants_gov:23-500].
+- It supports early-career independence through the fellow's research and training goals [grants_gov:23-500].
+- It has two tracks, Fundamental Research in the SBE Sciences and Broadening Participation in the SBE Sciences [grants_gov:23-500].
+- The fellow submits the proposal, not the host institution [grants_gov:23-500].
+- The award goes directly to the fellow [grants_gov:23-500].
+- The fellow names one sponsoring scientist and a host institution when submitting [grants_gov:23-500].
+- The record lists a requirement to be a U.S. citizen, national or legally admitted permanent resident [grants_gov:23-500].
+- The record also lists a doctoral degree requirement in the SBE sciences, with a timing window [grants_gov:23-500].
+- The sponsor is the U.S. National Science Foundation [grants_gov:26-511].
+- It closes 4 Nov 2026 [grants_gov:26-511].
+- The record does not state an amount [grants_gov:26-511].
+- It invests in startups and small businesses that develop next-generation scientific instrumentation [grants_gov:26-511].
+- The PI's primary employment must be with the small business [grants_gov:26-511].
+- The PI does not need to be tied to an academic institution [grants_gov:26-511].
+- The record sets no PI degree requirement [grants_gov:26-511].
+- The PI must have a legal right to work for the proposing company in the United States [grants_gov:26-511].
+- The record sets minimum effort levels for the PI, and they differ for Fast-Track [grants_gov:26-511].
+**Main differences**
+- The deadline is the same for both [grants_gov:23-500, grants_gov:26-511].
+- Only the first record states an amount [grants_gov:23-500, grants_gov:26-511].
+- The first is an individual fellowship, and the second is for small businesses [grants_gov:23-500, grants_gov:26-511].
+- The first ties the applicant to a host institution, and the second ties the PI to the small business [grants_gov:23-500, grants_gov:26-511].
+Perch does not confirm personal eligibility. Check the full solicitations. Tell me if you want me to compare either lead against your CV.
+
+General advice:
+- Read each full solicitation well before the deadline.
+- Ask the relevant Temple office to confirm anything unclear about who may apply.",,
+i13,old,in,researcher,compare,Compare my top two leads side by side.,(old engine skipped),,
+i14,new,in,student,compare,Compare my top two leads side by side.,"**AAMC Summer Undergraduate Research Programs**
+- The level of study is bachelor's [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- The field is STEM [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It is listed for first-year undergraduates, sophomores, or juniors [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- The page notes a focus on medical research [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- The deadline is not stated in the record [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- The amount is not stated in the record [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**American Association of University Women**
+- The level of study is graduate [temple_sdfa:american-association-of-university-women].
+- No field of study is listed [temple_sdfa:american-association-of-university-women].
+- It is listed under ""For current graduate students"" [temple_sdfa:american-association-of-university-women].
+- The deadline is not stated in the record [temple_sdfa:american-association-of-university-women].
+- The amount is not stated in the record [temple_sdfa:american-association-of-university-women].
+**Main difference**
+- The AAMC lead is for undergraduates in STEM [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- The AAUW lead is for graduate students [temple_sdfa:american-association-of-university-women].
+- Neither record states a deadline or amount, so check the source pages before you decide [temple_sdfa:aamc-summer-undergraduate-research-programs, temple_sdfa:american-association-of-university-women].
+Tell me which one to read in full.
+
+General advice:
+- Check the sponsor's own page for the deadline and amount before you plan your time.
+- Compare leads on level of study, field and what the application asks for.",,
+i14,old,in,student,compare,Compare my top two leads side by side.,(old engine skipped),,
+i15,new,in,researcher,requirements,What does my top lead require that I would need to have ready by its deadline?,"It closes 4 Nov 2026 [grants_gov:23-500]. The record text is cut off, so it may list more requirements than I can see [grants_gov:23-500].
+**What the record says you need ready**
+- **Research and training plan.** It must address important scientific questions within the scope of the SBE directorate and the solicitation's guidelines [grants_gov:23-500].
+- **A track choice.** The two tracks are Fundamental Research in the SBE Sciences (SPRF-FR) and Broadening Participation in the SBE Sciences (SPRF-BP) [grants_gov:23-500].
+- **A named sponsoring scientist and host institution.** You must identify both when you submit [grants_gov:23-500].
+- **An eligible host.** This can be a US-accredited institution of higher education or a US nonprofit, non-academic research organization [grants_gov:23-500].
+- **Submission in your own name.** You submit the proposal yourself, not the host institution, and the award goes directly to you [grants_gov:23-500].
+- **Citizenship or residency.** You must be a U.S. citizen, national or legally admitted permanent resident as of the proposal deadline [grants_gov:23-500].
+- Alternatively, you must earn it within 12 months after the deadline, and the rest of that condition is cut off in the record [grants_gov:23-500].
+**What the record does not show**
+- The record's text does not list the specific documents, such as a CV, references or budget [grants_gov:23-500].
+Perch does not confirm personal eligibility. Tell me if you want me to compare this record with your CV and entries.",,
+i15,old,in,researcher,requirements,What does my top lead require that I would need to have ready by its deadline?,(old engine skipped),,
+i16,new,in,researcher,not_stated,Which of my leads does not state an award size?,"Five of your six leads do not state an award size in the brief:
+- NSF SBIR/STTR Phase I, Phase II, Fast-Track Programs: A Pilot Emphasis on Scientific Instrumentation (kept) [grants_gov:26-511].
+- Unlocking Dataset Value for AI-Enabled Scientific Discovery (AI Datasets) [grants_gov:26-512].
+- NSF State and Regional Artificial Intelligence Infrastructure Hubs [grants_gov:26-513].
+- DoW Bone Marrow Failure, Idea Development Award [grants_gov:HT942526BMFRPIDA].
+- DoW Bone Marrow Failure, Investigator-Initiated Research Award [grants_gov:HT942526BMFRPIIRA].
+The only lead with a stated amount is the SBE Postdoctoral Research Fellowships (SPRF), at $160,000 to $170,000 [grants_gov:23-500].
+I can read any of these records in full to check whether the amount appears elsewhere. Tell me which one.",,
+i16,old,in,researcher,not_stated,Which of my leads does not state an award size?,(old engine skipped),,
+i17,new,in,researcher,brief_summary,Summarise my brief in five bullet points.,"- It closes 4 Nov 2026 and lists $160,000 to $170,000 [grants_gov:23-500].
+- It closes 4 Nov 2026 and its amount is not stated in the record [grants_gov:26-511].
+- Four leads are not kept:
+  - The NSF AI Datasets lead [grants_gov:26-512].
+  - The NSF State and Regional AI Infrastructure Hubs lead [grants_gov:26-513].
+  - The Bone Marrow Failure Idea Development Award [grants_gov:HT942526BMFRPIDA].
+  - The Bone Marrow Failure Investigator-Initiated Research Award [grants_gov:HT942526BMFRPIIRA].",,
+i17,old,in,researcher,brief_summary,Summarise my brief in five bullet points.,(old engine skipped),,
+i18,new,in,student,ordering,"Which of my kept leads should I apply to first, given the deadlines?","I can't rank your kept leads by deadline. Neither record states one.
+- AAMC Summer Undergraduate Research Programs has no deadline in its record [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Its record has no amount either [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It is listed for bachelor's level study [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- The AAMC record's eligibility notes say ""focus on medical research"" [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- American Association of University Women has no deadline in its record [temple_sdfa:american-association-of-university-women].
+- Its record has no amount either [temple_sdfa:american-association-of-university-women].
+- It is listed for graduate level study [temple_sdfa:american-association-of-university-women].
+- The AAMC source page is https://students-residents.aamc.org/phd-biomedical-science/summer-undergraduate-research-programs [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- The AAUW source page is https://www.aauw.org/resources/programs/fellowships-grants/ [temple_sdfa:american-association-of-university-women].
+
+General advice:
+- Confirm each deadline on the sponsor's own page before you plan your order.
+- Once you have the dates, start with the earliest one that fits your level of study.
+- Check that each lead fits your level of study before you spend time on it.",,
+i18,old,in,student,ordering,"Which of my kept leads should I apply to first, given the deadlines?",(old engine skipped),,
+i19,new,in,student,cv_feedback,What does my top lead ask for that my CV does not show yet?,"Your top lead is AAMC Summer Undergraduate Research Programs [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**What the record asks for**
+- It lists bachelor's level of study [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It lists the STEM field [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It is for first-year undergraduates, sophomores, or juniors [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- A page note says the focus is on medical research [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It states no deadline or amount [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It gives no application requirements, such as essays, letters or transcripts [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**What your material shows**
+- Your CV lists you as a third-year (junior) Environmental Science B.S. candidate [user:cv:education].
+- You have been a research assistant in a stream ecology lab since 2025 [user:cv:research-and-posters].
+- You presented a poster at an undergraduate research symposium in 2026 [user:cv:research-and-posters].
+- You list honours: Dean's List and a Field Methods Award [user:cv:honours].
+**What it does not show yet**
+- Medical research focus: your research is on stream nitrate and macroinvertebrates, and your CV and entries show nothing biomedical or health-related [user:cv:research-and-posters, user:entry:4].
+- Your stated interest is watershed restoration and urban water quality, not medical research [user:entry:4].
+- Application requirements: the record lists none, so I can't say what your CV is missing. Check the sponsor page for them [temple_sdfa:aamc-summer-undergraduate-research-programs].
+I did not read your activities, employment, skills or references CV parts. Tell me if you want me to.",,
+i19,old,in,student,cv_feedback,What does my top lead ask for that my CV does not show yet?,(old engine skipped),,
+i20,new,in,student,cv_feedback,Give me feedback on my CV for my top lead.,"**Top lead:** The brief ranks AAMC Summer Undergraduate Research Programs first [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**What the record asks for**
+- It is listed at bachelor's level [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Its field is STEM [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- The page note says the focus is medical research [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Its eligibility notes name first-year undergraduates, sophomores or juniors [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- The record gives no deadline, no amount and no application requirements [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**What your CV shows**
+- You are an MPH candidate in epidemiology, part-time, with a B.A. in Biology [user:cv:education].
+- Your practicum built an influenza-like illness dashboard for a county health office [user:cv:research-and-talks].
+- You gave a talk on weekly syndromic signals [user:cv:research-and-talks].
+- You work as a data analyst at a community health network [user:cv:employment].
+- You tutor peers in biostatistics [user:cv:activities].
+- Your skills are R, SAS, SQL and outbreak investigation methods [user:cv:skills].
+- You have a graduate service recognition [user:cv:honours].
+- Your entries say you want to build early warning systems for respiratory illness [user:entry:4].
+**What it does not show yet**
+- The record lists a bachelor's level and undergraduate class years, while your CV shows a graduate degree [temple_sdfa:aamc-summer-undergraduate-research-programs, user:cv:education].
+- The record does not say whether graduate students may apply [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Nothing in your CV links the two [temple_sdfa:aamc-summer-undergraduate-research-programs, user:cv:research-and-talks].
+- Your CV lists no lab or biomedical research role [user:cv:research-and-talks].
+**Suggested edits**
+- Add a line to your dashboard practicum on the method and the result [user:cv:research-and-talks].
+- Say how the dashboard was used by the county health office, as your entry does [user:entry:1].
+- Add your tutoring and full-time work to show how you manage your time [user:entry:3].
+The record has no application requirements to check against [temple_sdfa:aamc-summer-undergraduate-research-programs].
+
+General advice:
+- Perch does not confirm personal eligibility.
+- Lead with the experience closest to what the program describes.
+- Use one line per role: what you did, with what method, and what changed.
+- Ask a Temple advisor to review your CV well before the deadline.",,
+i20,old,in,student,cv_feedback,Give me feedback on my CV for my top lead.,(old engine skipped),,
+i21,new,in,student,cv_feedback,"Where is my CV weak for my top lead, and where is it strong?","**Where your CV is weak**
+- The record lists this program for first-year undergraduates, sophomores, or juniors [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It gives the level of study as bachelor's [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Your CV shows you as a PhD candidate in Neuroscience [user:cv:education].
+- The record's page note says the focus is medical research [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Your research part describes a dissertation on sleep spindles and memory consolidation in a rodent model [user:cv:research].
+- Your interests note describes systems neuroscience, not medical research [user:entry:4].
+- The record gives no application requirements, so I cannot check your material against them [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- The record does not state a deadline or an amount [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**Where your CV is strong**
+- You have a first-author paper on sleep spindles and recall [user:entry:1].
+- You built a closed-loop system that plays a sound cue at the start of a spindle [user:entry:2].
+- You ran a brain outreach week for local school students [user:entry:3].
+- You hold a Graduate Teaching Award [user:cv:honours].
+- Your research shows depth in one topic [user:cv:research].
+- These strengths match the record's research theme [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**What your material does not show yet**
+- A link between your work and medical research [user:cv:research].
+- Any status as a current undergraduate [user:cv:education].
+Tell me if you want me to compare your material with your other leads.
+
+General advice:
+- When a program targets a different stage of study, check its own page before investing time.
+- If you keep it, state plainly how your research connects to the program's stated focus.
+- Put your strongest evidence first and tie each item to what the sponsor asks for.",,
+i21,old,in,student,cv_feedback,"Where is my CV weak for my top lead, and where is it strong?",(old engine skipped),,
+i22,new,in,researcher,cv_feedback,"How well does my CV match my top lead, and what is missing?","**Top lead:** SBE Postdoctoral Research Fellowships (SPRF), from the U.S. National Science Foundation [grants_gov:23-500]. It closes 4 Nov 2026 [grants_gov:23-500]. The amount is $160,000 to $170,000 [grants_gov:23-500].
+**What the record asks for**
+- The fellow submits the proposal, not the host institution [grants_gov:23-500].
+- The fellow names one sponsoring scientist and one host institution at submission [grants_gov:23-500].
+- The proposer must be a U.S. citizen, national or legally admitted permanent resident alien as of the deadline [grants_gov:23-500].
+- The proposer must have a doctoral degree in the SBE sciences within the 3 years before the deadline, or get one within 12 months after it [grants_gov:23-500].
+- The research and training plan must address important questions within the scope of the SBE directorate [grants_gov:23-500].
+- There are two tracks: Fundamental Research in the SBE Sciences, and Broadening Participation in the SBE Sciences [grants_gov:23-500].
+**What your CV shows**
+- Your PhD is in Biomedical Engineering, dated 2021 [user:cv:education].
+- You have been an Assistant Professor in Bioengineering from 2023 to present [user:cv:appointments].
+- You were a Postdoctoral Fellow in a movement disorders lab from 2021 to 2023 [user:cv:appointments].
+- Your funding is an internal seed grant on shoe-worn force sensing and a prior foundation fellowship [user:cv:funding].
+- Your listed work is on gait force variability, insole sensors and graph models of the gait cycle [user:cv:funding].
+**What is not shown yet**
+- Your CV does not say whether your PhD field counts as an SBE science, and the record text I read does not define that [user:cv:education, grants_gov:23-500].
+- The record excerpt I read does not say how it treats people who already hold a faculty appointment, so check the full solicitation [grants_gov:23-500].
+- Your CV does not show your citizenship or residency status [user:cv:overview].
+- Your CV does not name a sponsoring scientist or host institution for a fellowship [user:cv:appointments].
+- Your CV does not link your gait work to an SBE research question or to either track [user:cv:funding, grants_gov:23-500].
+- You have no entries yet that could fill these gaps [user:entries].
+Perch does not confirm personal eligibility. Read the full solicitation and check with the sponsor.
+
+General advice:
+- Write down, in one paragraph, how your research question fits the sponsor's stated scope.
+- Add entries for anything your CV omits that the call asks for.
+- Contact the program officer well before the deadline with any eligibility questions.",,
+i22,old,in,researcher,cv_feedback,"How well does my CV match my top lead, and what is missing?",(old engine skipped),,
+i23,new,in,researcher,cv_feedback,What would a reviewer of my top lead want to see in my CV that is not there?,"Your top lead is the SBE Postdoctoral Research Fellowships [grants_gov:23-500].
+**What the record asks for**
+- A research and training plan that addresses important scientific questions within the SBE directorate's scope [grants_gov:23-500].
+- A choice between two tracks, Fundamental Research and Broadening Participation [grants_gov:23-500].
+- A proposal submitted by the individual, not the host institution [grants_gov:23-500].
+- One named sponsoring scientist and host institution at submission [grants_gov:23-500].
+- A doctoral degree in the SBE sciences, held within the 3 years before the deadline or due within a set window after it [grants_gov:23-500].
+- U.S. citizenship, national status or permanent residence as of the deadline [grants_gov:23-500].
+- The eligibility text I read is cut off, so check the full solicitation [grants_gov:23-500].
+**What your CV shows**
+- A PhD in Biomedical Engineering, 2021 [user:cv:education].
+- A postdoctoral fellow post from 2021 to 2023, then an Assistant Professor post from 2023 to present [user:cv:appointments].
+- Funding history with an internal seed grant and a prior foundation fellowship [user:cv:funding].
+- Work on gait and force sensing [user:cv:funding].
+- Mentoring and journal review [user:cv:mentoring-and-service].
+**What a reviewer would not find**
+- Your degree is listed as Biomedical Engineering [user:cv:education].
+- Anything on citizenship or residency [user:cv:overview].
+- A research and training plan that links your gait work to SBE questions or to either track [user:cv:funding].
+- A sponsoring scientist or host institution [user:cv:appointments].
+- Your entries are empty [user:entries].
+Perch does not confirm personal eligibility. Check the degree timing and field against the full solicitation [grants_gov:23-500].
+
+General advice:
+- Put a short statement of research and training goals near the top of your CV.
+- Say plainly how each past project connects to the funder's field.
+- List mentors and host contacts you could name.
+- Add entries for achievements that your CV does not yet show.",,
+i23,old,in,researcher,cv_feedback,What would a reviewer of my top lead want to see in my CV that is not there?,(old engine skipped),,
+i24,new,in,student,entries,"What do my entries say about leadership, and which lead could use that?","**What your entries say about leadership**
+- You led a volunteer team that monitored six stream sites every month for two years [user:entry:2].
+- You built a QGIS map of storm drain outfalls that a local volunteer group now uses [user:entry:3].
+- Your entries give no team size, no outcomes and no description of what you decided [user:entry:2].
+**Which lead could use it**
+- None of the records I read lists leadership as a criterion. Their application requirements are empty [temple_sdfa:aamc-summer-undergraduate-research-programs, temple_sdfa:american-association-of-university-women].
+- **American Association of University Women:** The record is listed for current graduate students [temple_sdfa:american-association-of-university-women]. Your interests note says you hope to study stream ecology in a graduate programme [user:entry:4]. Your leadership entry would support a later application [user:entry:2]. Your entries do not state whether you are a graduate student now [user:entry:4].
+- **AAMC Summer Undergraduate Research Programs:** The record is for undergraduates in STEM, with a focus on medical research [temple_sdfa:aamc-summer-undergraduate-research-programs]. Your team-led monitoring is research-related work [user:entry:2]. The fit is weaker, because your interests are watershed and water quality rather than medical research [user:entry:4].
+- **Amgen Scholars:** The record is for undergraduates in STEM [temple_sdfa:amgen-scholars]. Your poster shows research experience [user:entry:1]. The record has no leadership information [temple_sdfa:amgen-scholars].
+- **American Council of Learned Societies Fellowships:** The record is listed for current graduate students [temple_sdfa:american-council-of-learned-societies-fellowships].
+**What to add to your entries**
+- Add the team size, your decisions and what the monitoring produced [user:entry:2].
+
+General advice:
+1. Describe leadership with specific actions, such as how you planned, trained and kept people on task.
+2. State the results, such as data collected or changes made.
+3. Check each award's own page for what it asks you to show.",,
+i24,old,in,student,entries,"What do my entries say about leadership, and which lead could use that?",(old engine skipped),,
+i25,new,in,student,cover_points,Which points should my cover letter for my top lead highlight?,"**What the record asks for**
+- It is listed for bachelor's students in STEM [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- Its page note says the focus is medical research [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It gives no application requirements, so I can't say whether a cover letter is requested [temple_sdfa:aamc-summer-undergraduate-research-programs].
+- It does not state a deadline or an amount [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**What your CV shows**
+- You are a research assistant who samples macroinvertebrates and measures nitrate in urban streams [user:cv:research-and-posters].
+- Your poster on nitrate after storms was shown at an undergraduate research symposium [user:cv:research-and-posters].
+- You have a field methods award from 2026 [user:cv:honours].
+- You have Dean's List recognition [user:cv:honours].
+**What it does not show yet**
+- Your work is environmental [user:cv:research-and-posters].
+- The record's page note says the program focuses on medical research [temple_sdfa:aamc-summer-undergraduate-research-programs].
+**Points to highlight**
+- Hands-on research: the lab role, the poster and your field and lab methods [user:cv:research-and-posters].
+- Recognition for method skills, shown by the field methods award [user:cv:honours].
+- Consistent academic standing, shown by the Dean's List [user:cv:honours].
+- The record's medical focus is the gap to address [temple_sdfa:aamc-summer-undergraduate-research-programs].
+Tell me if you want me to check your entries for more points, such as your volunteer monitoring and mapping work.
+
+General advice:
+- Open with the specific reason you want this program.
+- Give one or two concrete examples of your work. Say what you did and what you learned.
+- Link your past work to what you want to do next.
+- Keep it short, and ask someone to read it well before the deadline.",,
+i25,old,in,student,cover_points,Which points should my cover letter for my top lead highlight?,(old engine skipped),,
+i26,new,in,researcher,cover_points,Which points from my CV should I highlight in the application for my top lead?,"**Top lead:** SBE Postdoctoral Research Fellowships (SPRF) [grants_gov:23-500].
+**What the record asks for**
+- The fellowship supports the fellow's research and training goals to encourage independence early in a career [grants_gov:23-500].
+- The plan must address important scientific questions within the scope of the SBE directorate [grants_gov:23-500].
+- There are two tracks: Fundamental Research in the SBE Sciences, and Broadening Participation in the SBE Sciences [grants_gov:23-500].
+- The fellow applies directly and names one sponsoring scientist and host institution [grants_gov:23-500].
+- The eligibility text asks for a doctoral degree in the SBE sciences within a set window [grants_gov:23-500].
+**What your CV shows**
+- Your PhD is in Biomedical Engineering, from 2021 [user:cv:education].
+- You have been an Assistant Professor in a Bioengineering department since 2023 [user:cv:appointments].
+- You were a Postdoctoral Fellow in a Movement Disorders Lab from 2021 to 2023 [user:cv:appointments].
+- You are the current holder of an internal seed grant on shoe-worn force sensing for early gait change [user:cv:funding].
+- You held a foundation fellowship from 2021 to 2023 [user:cv:funding].
+- Your selected work has two papers on gait force variability and insole sensors, and a thesis on graph models of the gait cycle [user:cv:funding].
+- You mentor 2 PhD students and 3 undergraduates, and you review for journals [user:cv:mentoring-and-service].
+**Points to highlight**
+- Your fellowship and seed grant show that you can lead funded work on your own [user:cv:funding].
+- Your papers and thesis show a consistent research line on gait [user:cv:funding].
+- Your mentoring could support the training and broadening-participation side of the plan [user:cv:mentoring-and-service].
+**What your material does not show yet**
+- Your CV does not show a doctoral degree in the SBE sciences, which the record asks for [user:cv:education, grants_gov:23-500].
+- The record is for a postdoctoral fellowship, and your CV lists a faculty appointment [user:cv:appointments, grants_gov:23-500].
+- The record text I read is cut off, so I cannot see the full eligibility rules [grants_gov:23-500].
+- You have no typed entries yet that I could use for more detail [user:entries].
+- Your CV does not name a sponsoring scientist or host institution [user:cv:appointments].
+- Your CV does not link your gait work to an SBE science question [user:cv:funding].
+Tell me if you want me to compare this with your second lead.
+
+General advice:
+- Check the full solicitation and the eligibility rules before you invest time in drafting.
+- Ask the sponsor or a Temple office to confirm your eligibility.
+- Lead with the two or three CV items that best match what the call asks for.
+- Tie each item to a specific goal in your research and training plan.
+- Show independence with concrete outcomes, not just a list of roles.
+- Keep your mentoring and service short and relevant to the plan.",,
+i26,old,in,researcher,cover_points,Which points from my CV should I highlight in the application for my top lead?,(old engine skipped),,
+i27,new,in,student,general_advice,How should I structure a personal statement for a scholarship application?,"General advice:
+1. Open with a specific moment or detail that shows who you are, not a broad claim.
+2. State your goal clearly: what you want to do and why it matters to you.
+3. Give two or three concrete examples of your work, leadership or challenges overcome. Show results, not just duties.
+4. Link each example to the goal. Explain what you learned and how it shaped your plans.
+5. Explain how the funding would help you move forward, and what you will do with it.
+6. Close by tying back to your opening and looking ahead.
+Tips:
+- Read the prompt and the selection criteria first. Match your structure to what they ask.
+- Use your own voice and plain language.
+- Cut anything that does not support your main story.
+- Ask someone to read it, then proofread it well before the deadline.",,
+i27,old,in,student,general_advice,How should I structure a personal statement for a scholarship application?,(old engine skipped),,
+i28,new,in,researcher,general_advice,How should I structure a one-page summary of my research for a grant application?,"General advice:
+1. Open with the problem. Say what gap or question your research addresses and why it matters, in two or three sentences.
+2. State your aim. Give one clear central goal, then two or three specific objectives.
+3. Describe your approach. Explain your methods in plain language and why they suit the question.
+4. Show your evidence. Note preliminary results, prior publications or pilot work that make the plan credible.
+5. Name the outcomes. Say what the work will produce, such as findings, tools, data or training, and who will use them.
+6. Explain the fit. Tie the project to what the funder says it wants, using the funder's own terms.
+7. Close with impact. Finish with the broader benefit and a brief line on your team or resources.
+Tips:
+- Write for a smart reader outside your subfield. Avoid jargon and define any term you must use.
+- Use short headings so a reviewer can scan the page.
+- Leave white space. A crowded page is hard to read.
+- Put the most important point first in each section.
+- Have a colleague outside your field read it and tell you the main aim in one sentence.",,
+i28,old,in,researcher,general_advice,How should I structure a one-page summary of my research for a grant application?,(old engine skipped),,
+i29,new,in,student,general_advice,What do selection committees usually look for in a recommendation letter?,"General advice:
+Selection committees usually look for these things in a recommendation letter:
+1. **Specific evidence.** They want concrete examples of your work, not general praise. A described project, result or contribution carries more weight than ""hard-working.""
+2. **Knowledge of you.** The writer should say how long they have known you and in what role. Letters from people who supervised your work tend to be more credible.
+3. **Fit with the award.** The best letters speak to what the award values, such as research potential, leadership, service or financial need.
+4. **Comparison with peers.** Committees like to see you placed in context, for example ""among the strongest students I have taught in many years.""
+5. **Qualities that grades don't show.** Examples include persistence, initiative, curiosity, collaboration and how you handle setbacks.
+6. **Honest, balanced tone.** Warm but measured letters read as more trustworthy than exaggerated ones.
+7. **Clear structure and polish.** A good letter is organized, free of errors and signed on letterhead or with full credentials.
+To help your recommenders:
+- Ask well before the deadline.
+- Share your CV, a draft statement and the award description.
+- Remind them of specific work you did with them.
+- Tell them what the committee will weigh most.",,
+i29,old,in,student,general_advice,What do selection committees usually look for in a recommendation letter?,(old engine skipped),,
+i30,new,in,student,general_advice,How early should I ask my referees for letters?,"General advice:
+- Ask as early as you can, well before the deadline. Referees need time to write a careful letter.
+- Ask each person directly and politely. Check that they feel able to write a strong, specific letter.
+- Give them what they need: your CV, a draft of your statement, a short list of what you did with them, and the award details.
+- Tell them the deadline and how the letter is submitted.
+- Send a polite reminder a little before the deadline, and thank them afterward.",,
+i30,old,in,student,general_advice,How early should I ask my referees for letters?,(old engine skipped),,
+i31,new,in,researcher,general_advice,How should I approach a Temple office before I submit an application?,"General advice:
+1. Start well before the deadline. Offices often need time to review budgets, sign-offs and forms.
+2. Say what you plan to apply for. Name the opportunity and the sponsor, and say what stage you are at.
+3. Ask specific questions. For example, ask what internal approvals are needed, who signs, what the office's own internal deadlines are, and what documents they need from you.
+4. Share a short summary. Give your project idea, your role and your rough budget needs in a few lines.
+5. Ask about next steps. Find out who your contact is and what to send first.
+6. Check eligibility with the office and the sponsor. Perch does not confirm personal eligibility.
+Using Perch to help:
+- Keep the leads you care about in your shortlist.
+- Use Compare to see the kept leads side by side.
+- Use the Hand-off to a Temple office button. It drafts a note to the office you pick, and you edit it and send it yourself. Perch sends nothing. Drafting needs an account.
+If you'd like, tell me which lead you have in mind. I can read its record and help you decide what to ask.",,
+i31,old,in,researcher,general_advice,How should I approach a Temple office before I submit an application?,(old engine skipped),,
+i32,new,in,student,search,Find fellowships for a graduate student in environmental science.,"**Temple fellowship listings**
+- The NSF Graduate Research Fellowship Program is listed for current graduate students in STEM [temple_sdfa:nsf-graduate-research-fellowship-program]. Its record gives no deadline or amount [temple_sdfa:nsf-graduate-research-fellowship-program].
+- The National Defense Science and Engineering Graduate Fellowship is listed for seniors, recent alumni and graduate students in STEM [temple_sdfa:national-defense-science-and-engineering-graduate-fellowship]. Its record gives no deadline or amount [temple_sdfa:national-defense-science-and-engineering-graduate-fellowship].
+- The Graduate School's Fellowship page is listed under Temple opportunities for graduate students [temple_sdfa:the-graduate-school-s-fellowship-page]. Its record gives no deadline or amount [temple_sdfa:the-graduate-school-s-fellowship-page].
+**Federal opportunities**
+- The NSF EPSCoR Graduate Fellowship Program closes 1 Jun 2027 [grants_gov:24-588]. It is for people who received a GRFP Honorable Mention no more than three years before the proposal due date [grants_gov:24-588]. Only institutions of higher education may submit proposals [grants_gov:24-588]. The amount listed is $477,000 to $3,180,000 [grants_gov:24-588].
+- The Genesis Mission Graduate Fellowship Pilot closes 12 Jan 2027 [grants_gov:DE-FOA-0003673]. I have only read its search entry, not the full record. Read the record before you count on it.
+**Gaps**
+- None of the records I read names environmental science as a field. The two Temple STEM listings only say ""STEM"" [temple_sdfa:nsf-graduate-research-fellowship-program, temple_sdfa:national-defense-science-and-engineering-graduate-fellowship].
+- Perch does not confirm personal eligibility.
+I can search for narrower topics, such as climate, water or ecology. I can also read your CV and entries to see how they match one of these. Tell me which you'd like.",,
+i32,old,in,student,search,Find fellowships for a graduate student in environmental science.,(old engine skipped),,
+i33,new,in,researcher,search,Find grants about wearable sensors for movement disorders.,"Two records are possible matches [grants_gov:RFA-MH-26-140, grants_gov:PAR-25-450]. Neither description names movement disorders [grants_gov:RFA-MH-26-140, grants_gov:PAR-25-450].
+**BRAIN Initiative: Brain Behavior Quantification and Synchronization (sensor technology)**
+- It solicits next generation sensor and bioelectronic device development that synchronizes with brain recordings [grants_gov:RFA-MH-26-140].
+- The data would build computational models of behavior in human and animal models [grants_gov:RFA-MH-26-140].
+- It closes 15 Jun 2027 [grants_gov:RFA-MH-26-140].
+- The amount is not stated in the record [grants_gov:RFA-MH-26-140].
+**Clinical Trial Readiness for Rare Diseases, Disorders, and Syndromes (R21)**
+- It supports clinical projects that prepare rare disease research for clinical trials [grants_gov:PAR-25-450].
+- One route it names is developing and testing biomarkers and clinical outcome assessment measures [grants_gov:PAR-25-450].
+- It could fit if your movement disorder is a rare disease and your sensors serve as outcome measures [grants_gov:PAR-25-450].
+- It closes 20 Jul 2028 [grants_gov:PAR-25-450].
+- The amount is not stated in the record [grants_gov:PAR-25-450].
+**Other results**
+- They cover topics such as ocean equipment, subsurface energy and an atomic clock [grants_gov:23-525, grants_gov:DE-FOA-0003630, grants_gov:W911NF-17-S-0003-SPECIALNOTICE-LC-CSAC].
+Tell me which one to read in full, or which one to compare with your CV.",,
+i33,old,in,researcher,search,Find grants about wearable sensors for movement disorders.,(old engine skipped),,
+i34,new,in,student,saved,What have I saved?,"You have nothing saved yet [user:saved].
+Tell me what you're looking for, and I can search the public records.",,
+i34,old,in,student,saved,What have I saved?,(old engine skipped),,
