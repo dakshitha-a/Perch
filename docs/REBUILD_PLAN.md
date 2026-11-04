@@ -17,8 +17,18 @@ Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This 
 - **The rule:** `main` stays on the fallback until the rebuild passes the Friday gate below. Rebuild work happens on the branch `rebuild/v1` and merges into `main` only when green.
 - **The Friday gate:** the submission is due 6 Nov 2026 at 12:00 pm. At 6:00 pm on Thursday 5 Nov, the orchestrator checks the gate and reports. If the gate fails, the fallback is submitted, the rebuild branch is linked as the deployment track, and this plan becomes the roadmap slide.
 - **What Demo Day shows (Dakshitha, 3 Nov):** the working hybrid app, demoed live. The rebuild is presented as the deployment track: its architecture, what is already built on the new stack, and the numbers measured so far. The submission links both. The gate below decides only whether the rebuild's own demo URL is shown as well.
-- **The gate:** the student path works end to end on the new stack. A guest can sign in, see Temple awards with the toggle and tags, and build a brief on a cloud model with CPU ranking. `make test` is green. The walk with axe is clean on the new screens. The demo URL serves the new build.
+- **The gate:** the student path works end to end on the new stack. A guest can sign in, see Temple awards with the toggle and tags, and build a brief on a cloud model with GPU ranking (CPU ranking as the no-GPU fallback). `make test` is green. The walk with axe is clean on the new screens. The demo URL serves the new build.
 - **Honest estimate:** the full plan is about 15 sessions. Before Friday, Phases 0 to 4 and part of Phase 6 might be done at best. The gate is most likely met by a partial rebuild, or the fallback is submitted.
+
+## Revision on 4 Nov 2026 (S38 measurements)
+
+Dakshitha changed four things after the S38 numbers. Where this section and the text below disagree, this section wins.
+
+- **One GPU, cloud explainer.** The worker runs the embedder, the reranker and MiniCheck on one GPU. The profile summary, fit explanations, hand-offs, cover points, the scope gate and Scout stay on Anthropic. `cloud-gpu` is the default profile; `cloud-cpu` stays as the no-GPU fallback. **Why:** reranking 100 candidates takes about 53 s on 16 CPU cores and 0.79 s on one GPU. Cutting to 14 candidates on CPU lost most of the ranking quality: hit@10 0.062 against 0.229 at 100 (bench/results/s38_backtest, s38_gpu). This replaces "use no GPUs" in the direction above.
+- **Rerank goes back to 100 candidates.** The shrink rule applies only to `cloud-cpu` (14 candidates).
+- **Dense retrieval only for ranking.** Postgres `tsvector` found almost nothing alone and lowered hybrid recall@200 from 0.500 to 0.417. It stays for the keyword-only baseline, exact lookups and Scout's search tools. pg_search, a salient-term `tsvector` query and learned sparse search are parked (docs/v1/SPARSE_OPTIONS.md).
+- **Computed capacity, not yet measured:** one GPU gives about 33 briefs a minute at 100 candidates with the 0.6B reranker, or about 66 to 165 users at one brief per 2 to 5 minutes. Anthropic's output-token limit at the start tier gives about 68 briefs a minute. The old fully local build gives about 1.4. Phase 10 measures this with real concurrent briefs.
+- **The 4B reranker** is back-tested on GPU in S38. It replaces the 0.6B only if it is clearly better; it is about 4 times slower.
 
 ## Decisions taken on 3 Nov 2026
 
@@ -156,7 +166,9 @@ Done when: the inventory, the reuse map and the reviewed architecture document a
 
 Done when: the corpus is in Postgres, a brief job runs on a worker from the queue, and the encryption tests pass.
 
-### Phase 3 — The pipeline on cloud and CPU (S38)
+### Phase 3 — The pipeline on cloud and GPU (S38)
+
+*4 Nov revision:* tasks 1, 2 and 5 were run on CPU first; the results moved v1 to one GPU (see Revision on 4 Nov). Task 7 is added.
 
 1. Add the `cloud-cpu` profile and make it the default. Workers load the embedder, reranker and MiniCheck on CPU.
 2. Measure on CPU: query embed time, rerank time for the top 50, and MiniCheck time per sentence. Apply the shrink rule if rerank takes over 10 seconds.
@@ -164,8 +176,9 @@ Done when: the corpus is in Postgres, a brief job runs on a worker from the queu
 4. Build the caches listed under Caching and pre-caching, and the nightly researcher pre-cache job.
 5. **Re-measure:** rerun the back-test with its keyword-only baseline on the shipped setup. Rerun the grounding bench and the Scout bench on the cloud model. Report every number as measured, including any drop from the GPU setup.
 6. Add a Jev bench row if access and written data terms exist by then. Otherwise record why it is missing.
+7. Add the `cloud-gpu` profile and make it the default (done in S38). Time the embedder, both rerankers and MiniCheck on one GPU, and back-test the 0.6B and 4B rerankers on GPU at 100 candidates with dense retrieval.
 
-Done when: a brief runs with no GPU anywhere, and the bench rows for the new setup are in `docs/RESULTS.md`.
+Done when: a brief runs with its models on one GPU and its text on the cloud model, `cloud-cpu` still runs with no GPU, and the bench rows for both setups are in `docs/RESULTS.md`.
 
 ### Phase 4 — Temple scholarships and fellowships (S39, S40)
 
@@ -245,6 +258,8 @@ Done when: two rounds close with no open must-fix items.
 ### Phase 10 — Load test and operations (S47)
 
 1. A load test with a pinned Python tool against the Compose stack, at 1,000 simulated users and the mixes above. The cloud model is replaced by the fake provider with measured latencies injected, so the test costs nothing. A small run of 20 briefs on the real provider confirms those latencies.
+1a. *4 Nov revision:* the worker runs on one GPU, so the test steps up real concurrent briefs (1, 2, 4, 8, 16 and up) on that GPU and reports measured briefs a minute and p95, against the computed 33 a minute. It runs under `scripts/run_limited.sh` GPU mode. Batching MiniCheck calls is tried if grounding is the bottleneck.
+1b. A CUDA worker image: `Dockerfile.v1` builds a GPU worker target with the CUDA torch wheel from `uv.lock`, the Compose worker reserves one GPU, and its `PERCH_PROFILE` moves from `cloud-cpu` to `cloud-gpu`. The CPU-only image stays as the fallback.
 2. Report p50 and p95 per path, errors, worker queue depth and tokens per minute. State the provider tier that the measured peak needs. Every number is reported as measured, whether or not it meets the target.
 3. Operations: health checks, structured logs with no user data, metrics, Postgres backups and a restore test.
 4. `docs/deploy.md` is rewritten as a runbook: one host with Compose, or many hosts with managed Postgres and Redis.
@@ -269,7 +284,8 @@ Done when: the review is closed, the docs are verified, and the tag is pushed.
 ## Risks
 
 - **Time:** the plan does not fit before Friday. The fallback covers the submission.
-- **CPU speed:** rerank and MiniCheck speed on CPU are not measured yet. Phase 3 measures them, and the shrink rule applies.
+- **CPU speed:** measured in S38 and too slow for 100 candidates; v1 moved to one GPU (4 Nov revision).
+- **One GPU:** a single card is a single point of failure, and the advisor's point about GPU running cost still stands. The `cloud-cpu` profile is the fallback, at lower ranking quality, and the load test states how many users one card serves.
 - **Temple pages:** many pages state no amounts or deadlines, and some list stale dates. Those values stay "not stated".
 - **SSO:** Temple IT must register Perch as an application before real sign-in works. Until then, guest mode and Keycloak cover the demo.
 - **Provider limits:** the needed rate-limit tier is a contract question for Temple.
