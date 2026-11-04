@@ -55,6 +55,7 @@ from perch import awards as aw
 from perch import compare as cmp
 from perch import egress
 from perch import export as ex
+from perch.auth.wiring import install_auth, readiness
 from perch.config import env
 from perch.jobs import ClosureRunner
 from perch.request_models import BriefOptions, HandoffRequest, ScoutRequest
@@ -389,9 +390,16 @@ def create_app(service: BriefService, runner: ClosureRunner,
         app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST"],
                            allow_headers=["*"])
 
+    install_auth(app, service)  # S41: router, Redis and session store, shred hooks
+
     @app.get("/health")
-    def health(deep: bool = False) -> dict:
-        """Liveness; with ?deep=true, each model service the profile uses as up or down."""
+    def health(deep: bool = False, ready: bool = False):  # noqa: ANN202
+        """Liveness (process up). ?ready=true adds Postgres and Redis; ?deep=true, each model
+        service the profile uses as up or down."""
+        if ready:
+            r = readiness(app)
+            return JSONResponse({"status": "ok" if r["ready"] else "degraded", **r},
+                                status_code=200 if r["ready"] else 503)
         if not deep:
             return {"status": "ok"}
         checks = {name: up(url) for name, url in dependencies().items()}
