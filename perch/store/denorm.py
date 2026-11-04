@@ -26,6 +26,14 @@ class Columns:
     status: str | None = None
 
 
+def _audience(r: Record, kind: str) -> list[str]:
+    """The page-level audience when Phase 4 set it, else the scholarship's levels."""
+    level = getattr(r, "audience_level", None)
+    if level:
+        return [level]
+    return list(getattr(r, "level_of_study", []) or []) if kind == "scholarship" else []
+
+
 def columns(r: Record) -> Columns:
     scope = getattr(r, "scope", None) or "external"
     schools = sorted({s for s in (getattr(r, "schools", None) or []) if s})
@@ -38,8 +46,7 @@ def columns(r: Record) -> Columns:
         scope=scope,
         schools=schools,
         temple_funded=bool(getattr(r, "temple_funded", False)),
-        audience_level=(list(getattr(r, "level_of_study", []) or [])
-                        if kind == "scholarship" else []),
+        audience_level=_audience(r, kind),
         deadline=(getattr(r, "close_date", None) if kind == "opportunity"
                   else getattr(r, "deadline", None) if kind == "scholarship" else None),
         amount_max=(getattr(r, "award_ceiling", None) if kind == "opportunity"

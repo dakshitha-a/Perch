@@ -1,0 +1,32 @@
+{
+ "sfs_fly_in_4": {
+  "url": "https://sfs.temple.edu/financial-aid-types/grants/fly-4-grant",
+  "final_url": "https://sfs.temple.edu/financial-aid-types/grants/fly-4-grant",
+  "owner": "Student Financial Services",
+  "audience": "undergraduate",
+  "kind": "award_page",
+  "fetched_at": "2026-11-04T06:29:19+00:00",
+  "file": "449c60dc66f1c415.html",
+  "bytes": 6659
+ },
+ "lksom_faculty_development": {
+  "url": "https://medicine.temple.edu/departments-centers/clinical-departments/department-medicine/research-programs/faculty-development-research-awards",
+  "final_url": "https://medicine.temple.edu/departments-centers/clinical-departments/department-medicine/research-programs/faculty-development-research-awards",
+  "owner": "LKSOM Dept of Medicine",
+  "audience": "faculty",
+  "kind": "internal_research_funding",
+  "fetched_at": "2026-11-04T06:30:47+00:00",
+  "file": "b368a1dd563ab8f1.html",
+  "bytes": 6538
+ },
+ "dentistry_alumni_grant": {
+  "url": "https://dentistry.temple.edu/alumni-association-grant-application",
+  "final_url": "https://dentistry.temple.edu/alumni-association-grant-application",
+  "owner": "Kornberg School of Dentistry",
+  "audience": "professional",
+  "kind": "award_page",
+  "fetched_at": "2026-11-04T06:30:54+00:00",
+  "file": "8f07f433ee74842c.html",
+  "bytes": 2999
+ }
+}
