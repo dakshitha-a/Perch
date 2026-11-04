@@ -29,7 +29,7 @@ const UNKNOWN = "Something went wrong on Perch's side. Try again in a minute.";
 
 function detailText(body, status) {
   const d = body && body.detail;
-  if (typeof d === "string") return d;
+  if (typeof d === "string") return ERROR_WORDS[d] || d;
   if (d && typeof d === "object" && !Array.isArray(d)) {
     return ERROR_WORDS[d.error] || UNKNOWN;
   }
@@ -39,7 +39,7 @@ function detailText(body, status) {
 function failed(body, status) {
   const err = new ApiError(detailText(body, status), status);
   const d = body && body.detail;
-  err.code = d && typeof d === "object" ? d.error || null : null;
+  err.code = d && typeof d === "object" ? d.error || null : (typeof d === "string" && ERROR_WORDS[d] ? d : null);
   err.serverMessage = d && typeof d === "object" && typeof d.message === "string" ? d.message : null;
   return err;
 }
@@ -146,7 +146,7 @@ export function liveApi(base = "") {
     compare: (id) => p(`${bid(id)}/compare`),
     handoff: (id, body) => post(`${bid(id)}/handoff`, body),
     // Cover-letter points (S46): queue the job, then poll it; a GET with no job id reads what is stored.
-    coverStart: (id, recordId) => post(`${bid(id)}/cover-points`, { record_id: recordId }),
+    coverStart: (id, recordId, again = false) => post(`${bid(id)}/cover-points`, again ? { record_id: recordId, again: true } : { record_id: recordId }),
     coverGet: (id, recordId, jobId) => p(`${bid(id)}/cover-points${query({ record_id: recordId, job_id: jobId })}`),
     studentNote: (id, route) => p(`${bid(id)}/student/note?route=${encodeURIComponent(route)}`),
     // The export as a Blob (a plain fetch with the cookie); the caller saves or opens it.

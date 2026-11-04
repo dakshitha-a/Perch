@@ -13,32 +13,67 @@
   {
    "name": "cover_hidden_on_dismissed",
    "ok": true,
-   "detail": "card LmXgCn09P6Eq:F10"
+   "detail": "card Phaq9yUd6s_e:F10"
+  },
+  {
+   "name": "cover_walk_has_cards",
+   "ok": true,
+   "detail": "9 public cards"
   },
   {
    "name": "cover_button_on_every_card",
    "ok": true,
-   "detail": "17 cards not dismissed, 17 buttons, 17 restore GETs"
+   "detail": "17 cards not dismissed, 17 buttons"
+  },
+  {
+   "name": "cover_student_hint",
+   "ok": true,
+   "detail": "'A model writes these from your CV and entries. You put them in your own words.'"
+  },
+  {
+   "name": "cover_restore_is_one_get",
+   "ok": true,
+   "detail": "[{'record_id': 'temple_pages:nrsa-senior-postdoctoral-fellowship-f33-c5432c'}]"
   },
   {
    "name": "cover_busy_status",
    "ok": true,
-   "detail": "'A model is reading the record and your CV. This takes up to two minutes\u2026'"
+   "detail": "'A model is reading the record and your CV. This takes up to two minutes\u2026' live 'A model is reading the record and your CV. This takes up to two minutes\u2026' {'focus': True, 'disabledAttr': False, 'aria': 'true', 'busy': 'true'}"
   },
   {
    "name": "cover_result_card",
    "ok": true,
-   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'live': 'The points are ready below.'}"
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'hints': [], 'live': 'The points are ready below.'}"
   },
   {
    "name": "cover_result_focus_and_announce",
    "ok": true,
-   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'live': 'The points are ready below.'}"
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'hints': [], 'live': 'The points are ready below.'}"
+  },
+  {
+   "name": "cover_hint_hidden_with_result",
+   "ok": true,
+   "detail": "[]"
   },
   {
    "name": "cover_post_sends_csrf",
    "ok": true,
-   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf')]"
+   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', False)]"
+  },
+  {
+   "name": "cover_again_sends_again",
+   "ok": true,
+   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', False), ('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', True)]"
+  },
+  {
+   "name": "cover_sample_result_badge",
+   "ok": true,
+   "detail": "sample:sch-0001 ['Sample data']"
+  },
+  {
+   "name": "cover_consent_403_wording",
+   "ok": true,
+   "detail": "'Agree to the consent first.' #/welcome"
   },
   {
    "name": "cover_quota_alert",
@@ -49,6 +84,21 @@
    "name": "cover_result_survives_redraw",
    "ok": true,
    "detail": "result and error kept"
+  },
+  {
+   "name": "cover_researcher_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "cover_researcher_hint",
+   "ok": true,
+   "detail": "'A model writes these from your CV, entries and the papers the record cites. You put them in your own words.' gets []"
+  },
+  {
+   "name": "cover_researcher_result",
+   "ok": true,
+   "detail": "[('grants_gov:26-519', 'walk-csrf', False)]"
   },
   {
    "name": "cover_brief_built",
@@ -63,32 +113,67 @@
   {
    "name": "cover_hidden_on_dismissed",
    "ok": true,
-   "detail": "card k07gU6KE7kLG:F10"
+   "detail": "card aZqszXKwVpLX:F10"
+  },
+  {
+   "name": "cover_walk_has_cards",
+   "ok": true,
+   "detail": "9 public cards"
   },
   {
    "name": "cover_button_on_every_card",
    "ok": true,
-   "detail": "17 cards not dismissed, 17 buttons, 17 restore GETs"
+   "detail": "17 cards not dismissed, 17 buttons"
+  },
+  {
+   "name": "cover_student_hint",
+   "ok": true,
+   "detail": "'A model writes these from your CV and entries. You put them in your own words.'"
+  },
+  {
+   "name": "cover_restore_is_one_get",
+   "ok": true,
+   "detail": "[{'record_id': 'temple_pages:nrsa-senior-postdoctoral-fellowship-f33-c5432c'}]"
   },
   {
    "name": "cover_busy_status",
    "ok": true,
-   "detail": "'A model is reading the record and your CV. This takes up to two minutes\u2026'"
+   "detail": "'A model is reading the record and your CV. This takes up to two minutes\u2026' live 'A model is reading the record and your CV. This takes up to two minutes\u2026' {'focus': True, 'disabledAttr': False, 'aria': 'true', 'busy': 'true'}"
   },
   {
    "name": "cover_result_card",
    "ok": true,
-   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'live': 'The points are ready below.'}"
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'hints': [], 'live': 'The points are ready below.'}"
   },
   {
    "name": "cover_result_focus_and_announce",
    "ok": true,
-   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'live': 'The points are ready below.'}"
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'hints': [], 'live': 'The points are ready below.'}"
+  },
+  {
+   "name": "cover_hint_hidden_with_result",
+   "ok": true,
+   "detail": "[]"
   },
   {
    "name": "cover_post_sends_csrf",
    "ok": true,
-   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf')]"
+   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', False)]"
+  },
+  {
+   "name": "cover_again_sends_again",
+   "ok": true,
+   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', False), ('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', True)]"
+  },
+  {
+   "name": "cover_sample_result_badge",
+   "ok": true,
+   "detail": "sample:sch-0001 ['Sample data']"
+  },
+  {
+   "name": "cover_consent_403_wording",
+   "ok": true,
+   "detail": "'Agree to the consent first.' #/welcome"
   },
   {
    "name": "cover_quota_alert",
@@ -99,6 +184,21 @@
    "name": "cover_result_survives_redraw",
    "ok": true,
    "detail": "result and error kept"
+  },
+  {
+   "name": "cover_researcher_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "cover_researcher_hint",
+   "ok": true,
+   "detail": "'A model writes these from your CV, entries and the papers the record cites. You put them in your own words.' gets []"
+  },
+  {
+   "name": "cover_researcher_result",
+   "ok": true,
+   "detail": "[('grants_gov:26-519', 'walk-csrf', False)]"
   },
   {
    "name": "no_dead_modules",
@@ -130,7 +230,7 @@
    "small": [],
    "overflow": 0,
    "title": "Your options \u2014 Perch",
-   "hash": "#/brief/LmXgCn09P6Eq/routes",
+   "hash": "#/brief/Phaq9yUd6s_e/routes",
    "axe": []
   },
   {
@@ -140,7 +240,7 @@
    "small": [],
    "overflow": 0,
    "title": "Your options \u2014 Perch",
-   "hash": "#/brief/LmXgCn09P6Eq/routes",
+   "hash": "#/brief/Phaq9yUd6s_e/routes",
    "axe": []
   },
   {
@@ -150,7 +250,27 @@
    "small": [],
    "overflow": 0,
    "title": "Your options \u2014 Perch",
-   "hash": "#/brief/LmXgCn09P6Eq/routes",
+   "hash": "#/brief/Phaq9yUd6s_e/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-sample",
+   "shot": "w1280-cover-sample.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/Phaq9yUd6s_e/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-consent",
+   "shot": "w1280-cover-consent.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/Phaq9yUd6s_e/routes",
    "axe": []
   },
   {
@@ -160,7 +280,27 @@
    "small": [],
    "overflow": 0,
    "title": "Your options \u2014 Perch",
-   "hash": "#/brief/LmXgCn09P6Eq/routes",
+   "hash": "#/brief/Phaq9yUd6s_e/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-researcher-button",
+   "shot": "w1280-cover-researcher-button.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/EOEbPdZLTBRw/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-researcher-result",
+   "shot": "w1280-cover-researcher-result.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/EOEbPdZLTBRw/routes",
    "axe": []
   },
   {
@@ -170,7 +310,7 @@
    "small": [],
    "overflow": 0,
    "title": "Your options \u2014 Perch",
-   "hash": "#/brief/k07gU6KE7kLG/routes",
+   "hash": "#/brief/aZqszXKwVpLX/routes",
    "axe": []
   },
   {
@@ -180,7 +320,7 @@
    "small": [],
    "overflow": 0,
    "title": "Your options \u2014 Perch",
-   "hash": "#/brief/k07gU6KE7kLG/routes",
+   "hash": "#/brief/aZqszXKwVpLX/routes",
    "axe": []
   },
   {
@@ -190,7 +330,27 @@
    "small": [],
    "overflow": 0,
    "title": "Your options \u2014 Perch",
-   "hash": "#/brief/k07gU6KE7kLG/routes",
+   "hash": "#/brief/aZqszXKwVpLX/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-sample",
+   "shot": "w360-cover-sample.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/aZqszXKwVpLX/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-consent",
+   "shot": "w360-cover-consent.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/aZqszXKwVpLX/routes",
    "axe": []
   },
   {
@@ -200,7 +360,27 @@
    "small": [],
    "overflow": 0,
    "title": "Your options \u2014 Perch",
-   "hash": "#/brief/k07gU6KE7kLG/routes",
+   "hash": "#/brief/aZqszXKwVpLX/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-researcher-button",
+   "shot": "w360-cover-researcher-button.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/cInQbaiP3ZIU/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-researcher-result",
+   "shot": "w360-cover-researcher-result.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/cInQbaiP3ZIU/routes",
    "axe": []
   }
  ],

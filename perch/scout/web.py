@@ -264,12 +264,25 @@ def stop(sv: UserServices, uid: UUID, sid: UUID) -> None:
         sv.runner.cancel(UUID(pend["job_id"]), uid)
 
 
-def cover_submit(sv: UserServices, uid: UUID, audience: str, brief_id: str, record_id: str
-                 ) -> dict[str, Any]:
-    """Queue a `cover_points` job: ids only in the payload, one live job per brief and record."""
+def cover_submit(sv: UserServices, uid: UUID, audience: str, brief_id: str, record_id: str,
+                 again: bool = False) -> dict[str, Any]:
+    """Queue a `cover_points` job: ids only in the payload, one live job per brief and record.
+    With `again` the key carries a fresh nonce, so a new set is made and the job replaces the
+    stored one. Without it an existing job is returned and no quota is spent."""
+    from uuid import uuid4
+
     from perch.jobs import PayloadError
     from perch.user.quota import RateLimited
 
+    base = f"cover|{uid}|{brief_id}|{record_id}"
+    key = hashlib.sha256(base.encode()).hexdigest()
+    if not again:
+        live = sv.runner.find_live("cover_points", key, uid)
+        if live is not None:
+            poll = f"/briefs/{brief_id}/cover-points?record_id={record_id}&job_id={live[0]}"
+            return {"job_id": str(live[0]), "status": "queued", "poll": poll}
+    else:
+        key = hashlib.sha256(f"{base}|{uuid4().hex}".encode()).hexdigest()
     try:
         quota.admit(sv.redis, sv.pool, uid, "submit_job")
     except RateLimited as e:
@@ -278,7 +291,6 @@ def cover_submit(sv: UserServices, uid: UUID, audience: str, brief_id: str, reco
     except QuotaExceeded:
         raise HTTPException(429, {"error": "quota_exceeded", "message": texts.BUDGET,
                                   "usage": usage_view(sv, uid)}) from None
-    key = hashlib.sha256(f"cover|{uid}|{brief_id}|{record_id}".encode()).hexdigest()
     try:
         job = sv.runner.submit("cover_points", {"brief_id": brief_id, "record_id": record_id},
                                uid, key, audience=audience)  # type: ignore[arg-type]
@@ -297,12 +309,15 @@ def cover_get(sv: UserServices, uid: UUID, audience: str, brief_id: str, record_
     """{"result": the stored set or null, "job": {"id", "state"} or null}."""
     from perch.user.models import CoverPointSet
 
-    found = None
+    best = None
     for _, x in sv.ud.list(uid, "cover_points", audience, CoverPointSet, limit=100):  # type: ignore[arg-type]
-        if x.brief_id == brief_id and x.record_id == record_id:
-            found = x.model_dump(mode="json")
-            found["note"] = COVER_NOTE
-            break
+        if x.brief_id == brief_id and x.record_id == record_id \
+                and (best is None or x.created_at > best.created_at):
+            best = x  # the newest set wins
+    found = None
+    if best is not None:
+        found = best.model_dump(mode="json")
+        found["note"] = COVER_NOTE
     job = None
     if job_id:
         try:
@@ -311,6 +326,15 @@ def cover_get(sv: UserServices, uid: UUID, audience: str, brief_id: str, record_
             st = None
         job = {"id": job_id, "state": st.state.value} if st else None
     return {"result": found, "job": job}
+
+
+def cover_index(sv: UserServices, uid: UUID, audience: str, brief_id: str) -> list[str]:
+    """The record ids of this brief that have stored cover points (one list, no text)."""
+    from perch.user.models import CoverPointSet
+
+    return sorted({x.record_id for _, x in sv.ud.list(
+        uid, "cover_points", audience, CoverPointSet, limit=100)  # type: ignore[arg-type]
+        if x.brief_id == brief_id})
 
 
 def sessions_for(sv: UserServices, uid: UUID, audience: str, brief_id: str) -> list[UUID]:

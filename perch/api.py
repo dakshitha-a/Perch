@@ -638,6 +638,15 @@ def create_app(service: BriefService, runner: ClosureRunner,
         while nothing changed (review P3)."""
         with scope(request, sess, brief_id):
             out = brief_view(brief_id)
+            svc_u = accounts(request)
+            if sess is not None and sess.user_id is not None and svc_u is not None:
+                from perch.scout import web as sweb
+
+                try:  # S46: which leads have stored cover points, so a card makes no request
+                    out["cover_points"] = sweb.cover_index(
+                        svc_u, sess.user_id, sweb.audience_of(load(brief_id)[0]), brief_id)
+                except Exception:  # noqa: BLE001 - the brief still loads without the list
+                    out["cover_points"] = []
         body = json.dumps(jsonable_encoder(out), separators=(",", ":")).encode()
         tag = '"' + hashlib.sha256(body).hexdigest()[:20] + '"'
         if request.headers.get("if-none-match") == tag:
@@ -1021,7 +1030,8 @@ def create_app(service: BriefService, runner: ClosureRunner,
                 raise HTTPException(409, "Cover points start once the brief has finished.")
             if not any(x.record_id == req.record_id for x in leads):
                 raise HTTPException(404, {"error": "not_found"})
-        return sweb.cover_submit(sv, sess.user_id, sweb.audience_of(b), brief_id, req.record_id)
+        return sweb.cover_submit(sv, sess.user_id, sweb.audience_of(b), brief_id, req.record_id,
+                                 again=req.again)
 
     @app.get("/briefs/{brief_id}/cover-points", dependencies=STORED)
     def cover_points_get(brief_id: str, record_id: str, request: Request,

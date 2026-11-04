@@ -1764,7 +1764,7 @@ function leadCard(l) {
   facts, noSize, leadNotes(l), explain,
   // S46: cover-letter points, on every grant lead that is not dismissed.
   l.status === "dismissed" ? null : coverBlock({ api, announce, openEvidence, guest: Boolean(S.session.guest),
-    signIn: signInHref() }, S.briefId, l.record_id));
+    signIn: signInHref(), audience: "researcher", stored: (S.brief && S.brief.cover_points) || [] }, S.briefId, l.record_id));
 }
 
 // The card head: tags on the left; the Match pill and the actions on the right, so Keep

@@ -346,7 +346,7 @@ function card(l, ctx, common = []) {
     l.flagged ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "The explanation was withheld because it failed the citation checks twice." }))
       : parsed ? fitReason(l) : null,
     // S46: on every lead card, a not-eligible one included; a dismissed card has none.
-    l.status === "dismissed" ? null : coverBlock(ctx, ctx.briefId, l.record_id));
+    l.status === "dismissed" ? null : coverBlock({ ...ctx, audience: "student", stored: (ctx.brief && ctx.brief.cover_points) || [] }, ctx.briefId, l.record_id));
 }
 
 // The reason it may fit leads, in plain view (S27, Dakshitha: say the reason right

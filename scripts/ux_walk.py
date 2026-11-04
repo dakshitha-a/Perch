@@ -20,8 +20,10 @@ Flows, each at every width:
   header    the guest header stays on one row on a phone; a focused control is not under it
   scoutmarks  Ask Scout with a stubbed, SYNTHETIC answer in four states (clean; two unsupported sentences and
             General advice; flagged with a body; withheld in full): the marks, notices and checked line
-  cover     Cover-letter points on every student lead card: the guest sign-in link; with a stubbed session and
-            routes, the busy status, a SYNTHETIC result (Model text tag, Copy), focus, announce, a 429 alert, a redraw
+  cover     Cover-letter points on every lead card: the guest sign-in link; with a stubbed session and routes,
+            the busy status and focus, a SYNTHETIC result (Model text tag, Copy), Points again sending `again`,
+            a sample record's Sample data badge, a consent 403, a 429 alert, one stored card restored by one GET,
+            a redraw; then a researcher lead card
   signinfail  /auth/login and /auth/callback land on the app with a message, never on JSON
   mocked    welcome, account page, withdraw consent, delete dialog and My Perch against a stubbed signed-in session
             (the stubs are in this file; no sign-in service is needed, and the walk says so)
@@ -54,7 +56,7 @@ VIEWS = {1280: {"width": 1280, "height": 860}, 360: {"width": 360, "height": 780
 OLD_COPY = ("Nothing about you is stored", "Local · nothing stored")
 PLANTS = ["guest_banner", "no_sample_public", "badge_on_samples", "tag_row_360", "tag_row_contained",
           "counts_from_server", "focus_order", "delete_keyboard", "delete_guard", "old_copy",
-          "no_dead_modules", "header_height", "scroll_padding", "retry_filters", "small_target", "mark_sr_text", "cover_no_tag"]
+          "no_dead_modules", "header_height", "scroll_padding", "retry_filters", "small_target", "mark_sr_text", "cover_no_tag", "cover_sample_badge"]
 PROBE = """() => {
   const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
     return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; };
@@ -784,9 +786,10 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
 
 
 async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
-    """S46: the Cover-letter points button on every lead card of a student brief (the SYNTHETIC sample
-    persona). A guest sees the sign-in link; a stubbed signed-in session sees the button, and the
-    cover-points routes are stubbed with a SYNTHETIC set in the CoverPointSet shape, then a 429."""
+    """S46: the Cover-letter points button on every lead card. A guest sees the sign-in link; a stubbed
+    signed-in session sees the button, and the cover-points routes are stubbed with SYNTHETIC sets in the
+    CoverPointSet shape: busy state and focus, a result, "Points again" sending `again`, a sample record's
+    badge, a consent 403, a 429, one stored card restored by a single GET; then a researcher lead card."""
     page = await new_page(browser, w, tag, view, base)
     await page.goto(base + "/")
     await page.click("[data-key=guest-start]")
@@ -815,24 +818,183 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     w.check("cover_hidden_on_dismissed", await card.count() == 1 and "Restore" in (await card.text_content() or "")
             and await card.locator("[data-key^=cover-]").count() == 0, f"card {gone}")
     got = await page.evaluate("(id) => fetch('/briefs/' + id).then(r => r.json())", bid)
-    rids = [x["record_id"] for x in got["leads"] if x["route"] == "F" and x["verdict"] != "not eligible"
-            and x["status"] != "dismissed"][:2]
     titles = {x["record_id"]: (x["record"].get("name") or x["record"].get("title") or x["record_id"]) for x in got["leads"]}
-    seen: dict = {"posts": [], "gets": []}
+    seen = await stub_cover(page, bid, titles, "student")
+    # the brief payload names one stored record; only that card makes a GET
+    stored_rid: dict = {"id": None}
 
-    def points_for(rid: str) -> dict:
+    async def with_stored(route: Route) -> None:
+        resp = await route.fetch()
+        if resp.status != 200:
+            return await route.fulfill(response=resp)
+        body = await resp.json()
+        if stored_rid["id"] and isinstance(body, dict) and "leads" in body:
+            body["cover_points"] = [stored_rid["id"]]
+        await route.fulfill(response=resp, json=body)
+    await page.route(re.compile(r".*/briefs/[^/?]+$"), with_stored)
+    await page.goto(base + "/")  # a plain load first, to read the ids the screen shows
+    await page.evaluate("(id) => { location.hash = '#/brief/' + encodeURIComponent(id) + '/routes'; }", bid)
+    await page.wait_for_selector("#panel li.card.lead button[data-key^=cover-]")
+    ids = []
+    for el in await page.locator("#panel [data-cover]").all():
+        if await el.is_visible():
+            ids.append(await el.get_attribute("data-cover"))
+    plain = [i for i in ids if not i.startswith("sample:")]
+    w.check("cover_walk_has_cards", len(plain) >= 5, f"{len(plain)} public cards")
+    first, quota_rid, consent_rid, restored_rid = plain[0], plain[1], plain[2], plain[3]
+    stored_rid["id"] = restored_rid
+    seen["refuse"].update({quota_rid: "quota", consent_rid: "consent"})
+    seen["gets"].clear()
+    await page.reload()
+    await page.wait_for_selector("#panel li.card.lead button[data-key^=cover-]")
+    await page.wait_for_timeout(600)
+    cards = await page.locator("#panel li.card.lead:not(:has([data-key^=restore]))").count()
+    btns = await page.locator("#panel li.card.lead button[data-key^=cover-]").count()
+    hint0 = await page.locator(f"[data-cover='{first}'] > .hint").first.inner_text()
+    w.check("cover_button_on_every_card", cards > 0 and btns == cards
+            and (await page.locator(f"button[data-key='cover-{first}']").inner_text()) == "Cover-letter points",
+            f"{cards} cards not dismissed, {btns} buttons")
+    w.check("cover_student_hint", hint0 == "A model writes these from your CV and entries. You put them in your own words.", repr(hint0))
+    w.check("cover_restore_is_one_get", seen["gets"] == [{"record_id": restored_rid}]
+            and await page.locator(f"[data-cover='{restored_rid}'] .scout-points").count() == 1
+            and await page.locator(f"button[data-key='cover-{restored_rid}']").inner_text() == "Points again"
+            and await page.locator(f"[data-cover='{restored_rid}'] > .hint").count() == 0
+            and await page.locator("#panel .scout-points").count() == 1, f"{seen['gets']}")
+    await w.snap(page, tag, "cover-button")
+    one = page.locator(f"button[data-key='cover-{first}']")
+    await one.click()
+    await page.wait_for_timeout(150)
+    live = await page.locator("#live").inner_text()
+    wait_line = await page.locator(f"[data-cover='{first}'] [data-cover-wait]").inner_text()
+    state = await page.evaluate("""(r) => { const b = document.querySelector(`button[data-key='cover-${r}']`);
+      return { focus: document.activeElement === b, disabledAttr: b.disabled, aria: b.getAttribute('aria-disabled'),
+        busy: b.getAttribute('aria-busy') }; }""", first)
+    w.check("cover_busy_status", wait_line.startswith("A model is reading the record and your CV.")
+            and live == wait_line and state["busy"] == "true" and state["aria"] == "true" and not state["disabledAttr"]
+            and state["focus"], f"{wait_line!r} live {live!r} {state}")
+    await page.wait_for_selector(f"[data-cover='{first}'] .scout-points", timeout=15_000)
+    await page.wait_for_timeout(400)
+    if w.plant == "cover_no_tag":
+        await page.evaluate("document.querySelectorAll('.scout-points .tag.model').forEach((e) => e.remove())")
+    res = await page.evaluate("""(rid) => { const c = document.querySelector(`[data-cover='${rid}']`);
+      const a = document.activeElement; return { tag: c.querySelector('.scout-points .tag.model')?.textContent || '',
+        copy: Boolean(c.querySelector('.points-copy')), items: c.querySelectorAll('.points-list > li').length,
+        focusSummary: a.tagName === 'SUMMARY' && c.contains(a), label: c.querySelector('button').textContent.trim(),
+        hints: [...c.querySelectorAll(':scope > .hint')].map((e) => e.textContent), live: document.querySelector('#live').textContent }; }""", first)
+    w.check("cover_result_card", res["tag"] == "Model text" and res["copy"] and res["items"] == 3
+            and res["label"] == "Points again", f"{res}")
+    w.check("cover_result_focus_and_announce", res["focusSummary"] and res["live"] == "The points are ready below.", f"{res}")
+    w.check("cover_hint_hidden_with_result", not any(x.startswith("A model writes these") for x in res["hints"]), f"{res['hints']}")
+    w.check("cover_post_sends_csrf", bool(seen["posts"]) and seen["posts"][0][:2] == (first, "walk-csrf"), f"{seen['posts']}")
+    await show(page, f"[data-cover='{first}']")
+    await w.snap(page, tag, "cover-result", full=False)
+    # "Points again" asks for a fresh set: the POST carries `again`, and the second set replaces the first
+    await one.click()
+    await page.wait_for_selector(f"[data-cover='{first}'] :text('SYNTHETIC: second set')", timeout=15_000)
+    w.check("cover_again_sends_again", [p[2] for p in seen["posts"]] == [False, True] and seen["posts"][1][0] == first
+            and await page.locator(f"[data-cover='{first}'] .points-list > li").count() == 3, f"{seen['posts']}")
+    # a sample record's result carries the Sample data badge (rule 11); the samples sit on their own route
+    await page.click("[data-key=route-S]")
+    await page.wait_for_selector("#panel li.card.lead button[data-key^=cover-]")
+    sample_rid = await page.locator("#panel [data-cover]").first.get_attribute("data-cover")
+    await page.locator(f"button[data-key='cover-{sample_rid}']").click()
+    await page.wait_for_selector(f"[data-cover='{sample_rid}'] .scout-points", timeout=15_000)
+    if w.plant == "cover_sample_badge":
+        await page.evaluate("document.querySelectorAll('.scout-points .sample-badge').forEach((e) => e.remove())")
+    badge = await page.locator(f"[data-cover='{sample_rid}'] .scout-points .sample-badge").all_inner_texts()
+    w.check("cover_sample_result_badge", sample_rid.startswith("sample:") and badge == ["Sample data"], f"{sample_rid} {badge}")
+    await show(page, f"[data-cover='{sample_rid}']")
+    await w.snap(page, tag, "cover-sample", full=False)
+    await page.click("[data-key=route-F]")
+    await page.wait_for_selector(f"button[data-key='cover-{consent_rid}']")
+    # a 403 for consent names the consent, not the sign-in
+    await page.locator(f"button[data-key='cover-{consent_rid}']").click()
+    await page.wait_for_selector(f"[data-cover='{consent_rid}'] [role=alert]", timeout=10_000)
+    alert = await page.locator(f"[data-cover='{consent_rid}'] [role=alert]").inner_text()
+    href = await page.locator(f"[data-cover='{consent_rid}'] a.btn").get_attribute("href")
+    w.check("cover_consent_403_wording", alert.strip() == "Agree to the consent first." and "Sign in" not in alert
+            and href == "#/welcome", f"{alert!r} {href}")
+    await show(page, f"[data-cover='{consent_rid}']")
+    await w.snap(page, tag, "cover-consent", full=False)
+    await page.locator(f"button[data-key='cover-{quota_rid}']").click()
+    await page.wait_for_selector(f"[data-cover='{quota_rid}'] [role=alert]", timeout=10_000)
+    alert = await page.locator(f"[data-cover='{quota_rid}'] [role=alert]").inner_text()
+    second = page.locator(f"button[data-key='cover-{quota_rid}']")
+    w.check("cover_quota_alert", alert.strip() == "SYNTHETIC: you have used today's allowance."
+            and not await second.is_disabled() and await page.evaluate(
+                "(r) => document.activeElement === document.querySelector(`button[data-key='cover-${r}']`)", quota_rid), repr(alert))
+    await show(page, f"[data-cover='{quota_rid}']")
+    await w.snap(page, tag, "cover-error", full=False)
+    # a redraw (the sort switch) keeps the result: the state is held outside the card
+    await page.locator("[data-key=sort-closing]").click()
+    await page.wait_for_timeout(500)
+    w.check("cover_result_survives_redraw", await page.locator(f"[data-cover='{first}'] .scout-points").count() == 1
+            and await page.locator(f"[data-cover='{quota_rid}'] [role=alert]").count() == 1, "result and error kept")
+    await page.context.close()
+
+    # the researcher lead card: a guest brief for the public author id, a stubbed signed-in session
+    page = await new_page(browser, w, tag, view, base)
+    await page.goto(base + "/")
+    await page.click("[data-key=guest-start]")
+    await page.wait_for_selector("[data-key=guest-banner]")
+    await page.click("[data-key=seg-r]")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector("[data-key=build], .cand button", timeout=60_000)
+    if not await page.locator("[data-key=build]").count():
+        await page.click(".cand button")
+    await page.click("[data-key=build]")
+    status = await build_wait(page)
+    w.check("cover_researcher_brief_built", status == "done", f"status {status}")
+    rbid = await page.evaluate("decodeURIComponent(location.hash.split('/')[2])")
+    got = await page.evaluate("(id) => fetch('/briefs/' + id).then(r => r.json())", rbid)
+    rtitles = {x["record_id"]: ((x.get("record") or {}).get("name") or (x.get("record") or {}).get("title")
+                                or x.get("title") or x["record_id"]) for x in got["leads"]}
+    rseen = await stub_cover(page, rbid, rtitles, "researcher")
+    await page.goto(base + "/")
+    await page.evaluate("(id) => { location.hash = '#/brief/' + encodeURIComponent(id) + '/routes'; }", rbid)
+    await page.wait_for_selector("#panel li.card.lead button[data-key^=cover-]", timeout=20_000)
+    rid = await page.locator("#panel [data-cover]").first.get_attribute("data-cover")
+    rhint = await page.locator(f"[data-cover='{rid}'] > .hint").first.inner_text()
+    w.check("cover_researcher_hint", rhint == "A model writes these from your CV, entries and the papers the record cites. You put them in your own words."
+            and not rseen["gets"], f"{rhint!r} gets {rseen['gets']}")
+    await show(page, f"[data-cover='{rid}']")
+    await w.snap(page, tag, "cover-researcher-button", full=False)
+    await page.locator(f"button[data-key='cover-{rid}']").click()
+    await page.wait_for_selector(f"[data-cover='{rid}'] .scout-points", timeout=15_000)
+    w.check("cover_researcher_result", await page.locator(f"[data-cover='{rid}'] .points-list > li").count() == 3
+            and rseen["posts"][0][0] == rid, f"{rseen['posts']}")
+    await show(page, f"[data-cover='{rid}']")
+    await w.snap(page, tag, "cover-researcher-result", full=False)
+    await page.context.close()
+
+
+async def show(page: Page, selector: str) -> None:
+    """Scroll a card to the top of the view, so the picture shows it and not the top of the page."""
+    await page.evaluate("(s) => document.querySelector(s).closest('li.card').scrollIntoView({ block: 'start' })", selector)
+    await page.wait_for_timeout(200)
+
+
+async def stub_cover(page: Page, bid: str, titles: dict, audience: str) -> dict:
+    """A SYNTHETIC signed-in session and the cover-points routes for one page. A POST gets the first job id,
+    or the second with `again`, which gives a second set. A record id in `seen["refuse"]` gets a 429
+    ("quota") or a 403 consent_required ("consent")."""
+    seen: dict = {"posts": [], "gets": [], "refuse": {}}  # refuse: record id -> "quota" or "consent"
+
+    def points_for(rid: str, second: bool) -> dict:
         def pt(asks: str, you: str) -> dict:
             return {"asks": asks, "asks_ids": [rid], "you": you, "you_ids": ["user:interests"]}
-        return {"brief_id": bid, "record_id": rid, "title": titles[rid], "sample": False, "status": "done",
-                "created_at": "2026-11-04T12:00:00", "missing": ["SYNTHETIC: a letter of support"], "unsupported": [],
-                "sources": {rid: titles[rid], "user:interests": "SYNTHETIC interests note"},
-                "points": [pt("SYNTHETIC: the record asks for a short research plan.", "SYNTHETIC: your interests note describes a plan."),
+        lead = "SYNTHETIC: second set. " if second else "SYNTHETIC: "
+        return {"brief_id": bid, "record_id": rid, "title": titles.get(rid, rid), "sample": rid.startswith("sample:"),
+                "status": "done", "created_at": "2026-11-04T12:00:00", "missing": ["SYNTHETIC: a letter of support"],
+                "unsupported": [], "sources": {rid: titles.get(rid, rid), "user:interests": "SYNTHETIC interests note"},
+                "points": [pt(f"{lead}the record asks for a short research plan.", "SYNTHETIC: your interests note describes a plan."),
                            pt("SYNTHETIC: it asks for a named mentor.", "SYNTHETIC: your interests note names a mentor."),
                            pt("SYNTHETIC: it asks for service to the community.", "SYNTHETIC: your interests note lists service.")],
                 "note": "SYNTHETIC note"}
 
     async def session(route: Route) -> None:
-        await route.fulfill(json={"signed_in": True, "guest": False, "roles": ["student"], "audience": "student",
+        await route.fulfill(json={"signed_in": True, "guest": False, "roles": [audience], "audience": audience,
                                   "csrf": "walk-csrf", "display_name": "Sam Example Walker", "expires_at": 9999999999,
                                   "consent": {"required": False, "current_version": 1, "accepted_version": 1,
                                               "provider_name": "SYNTHETIC Provider", "text": CONSENT},
@@ -841,64 +1003,26 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     async def cover(route: Route) -> None:
         req = route.request
         if req.method == "POST":
-            rid = json.loads(req.post_data or "{}").get("record_id")
-            seen["posts"].append((rid, req.headers.get("x-csrf-token")))
-            if rid == rids[1]:
+            body = json.loads(req.post_data or "{}")
+            rid = body.get("record_id")
+            seen["posts"].append((rid, req.headers.get("x-csrf-token"), bool(body.get("again"))))
+            kind = seen["refuse"].get(rid)
+            if kind == "consent":
+                return await route.fulfill(status=403, json={"detail": "consent_required"})
+            if kind == "quota":
                 return await route.fulfill(status=429, json={"detail": {"error": "quota_exceeded",
                                            "message": "SYNTHETIC: you have used today's allowance.", "usage": {}}})
-            return await route.fulfill(status=202, json={"job_id": "22222222-2222-2222-2222-222222222222",
-                                       "status": "queued", "poll": "x"})
+            job = "33333333-3333-3333-3333-333333333333" if body.get("again") else "22222222-2222-2222-2222-222222222222"
+            return await route.fulfill(status=202, json={"job_id": job, "status": "queued", "poll": "x"})
         q = dict(urllib.parse.parse_qsl(req.url.split("?", 1)[1]))
         seen["gets"].append(q)
         if "job_id" in q:
-            return await route.fulfill(json={"result": points_for(q["record_id"]),
+            return await route.fulfill(json={"result": points_for(q["record_id"], q["job_id"].startswith("3333")),
                                              "job": {"id": q["job_id"], "state": "succeeded"}})
-        await route.fulfill(json={"result": None, "job": None})
+        await route.fulfill(json={"result": points_for(q["record_id"], False), "job": None})
     await page.route("**/auth/session", session)
     await page.route(re.compile(r".*/briefs/[^/?]+/cover-points(\?.*)?$"), cover)
-    await page.reload()
-    await page.wait_for_selector("#panel li.card.lead button[data-key^=cover-]")
-    cards = await page.locator("#panel li.card.lead:not(:has([data-key^=restore]))").count()
-    btns = await page.locator("#panel li.card.lead button[data-key^=cover-]").count()
-    w.check("cover_button_on_every_card", cards > 0 and btns == cards
-            and (await page.locator("button[data-key^=cover-]").first.inner_text()) == "Cover-letter points"
-            and len(seen["gets"]) >= 1 and "job_id" not in seen["gets"][0],
-            f"{cards} cards not dismissed, {btns} buttons, {len(seen['gets'])} restore GETs")
-    first, second = (page.locator(f"button[data-key='cover-{r}']") for r in rids)
-    await w.snap(page, tag, "cover-button")
-    await first.click()
-    status_line = await page.locator(f"[data-cover='{rids[0]}'] [role=status]").inner_text()
-    w.check("cover_busy_status", status_line.startswith("A model is reading the record and your CV.")
-            and await first.get_attribute("aria-busy") == "true" and await first.is_disabled(), repr(status_line))
-    await page.wait_for_selector(f"[data-cover='{rids[0]}'] .scout-points", timeout=15_000)
-    await page.wait_for_timeout(400)
-    if w.plant == "cover_no_tag":
-        await page.evaluate("document.querySelectorAll('.scout-points .tag.model').forEach((e) => e.remove())")
-    res = await page.evaluate("""(rid) => { const c = document.querySelector(`[data-cover='${rid}']`);
-      const a = document.activeElement; return { tag: c.querySelector('.scout-points .tag.model')?.textContent || '',
-        copy: Boolean(c.querySelector('.points-copy')), items: c.querySelectorAll('.points-list > li').length,
-        focusSummary: a.tagName === 'SUMMARY' && c.contains(a), label: c.querySelector('button').textContent.trim(),
-        live: document.querySelector('#live').textContent }; }""", rids[0])
-    w.check("cover_result_card", res["tag"] == "Model text" and res["copy"] and res["items"] == 3
-            and res["label"] == "Points again", f"{res}")
-    w.check("cover_result_focus_and_announce", res["focusSummary"] and res["live"] == "The points are ready below.", f"{res}")
-    w.check("cover_post_sends_csrf", bool(seen["posts"]) and seen["posts"][0] == (rids[0], "walk-csrf"), f"{seen['posts']}")
-    await w.snap(page, tag, "cover-result")
-    await second.click()
-    await page.wait_for_selector(f"[data-cover='{rids[1]}'] [role=alert]", timeout=10_000)
-    alert = await page.locator(f"[data-cover='{rids[1]}'] [role=alert]").inner_text()
-    w.check("cover_quota_alert", alert.strip() == "SYNTHETIC: you have used today's allowance."
-            and not await second.is_disabled() and await page.evaluate(
-                "(r) => document.activeElement === document.querySelector(`button[data-key='cover-${r}']`)", rids[1]), repr(alert))
-    await w.snap(page, tag, "cover-error")
-    # the error sits on the second card, below the 2000 px cut of the page picture: shoot the card
-    await page.locator(f"li.card.lead:has([data-cover='{rids[1]}'])").screenshot(path=str(w.out / f"{tag}-cover-error-card.png"))
-    # a redraw (the sort switch) keeps the result: the state is held outside the card
-    await page.locator("[data-key=sort-closing]").click()
-    await page.wait_for_timeout(500)
-    w.check("cover_result_survives_redraw", await page.locator(f"[data-cover='{rids[0]}'] .scout-points").count() == 1
-            and await page.locator(f"[data-cover='{rids[1]}'] [role=alert]").count() == 1, "result and error kept")
-    await page.context.close()
+    return seen
 
 
 FLOWS = {"landing": flow_landing, "awards": flow_awards, "funding": flow_funding, "samples": flow_samples,
