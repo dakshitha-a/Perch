@@ -83,7 +83,7 @@ def test_startup_builds_user_services_and_readiness_reports_keys(
 
 def test_cv_and_entry_routes_need_consent(env):  # noqa: F811
     env.session.consent_version = 0
-    assert env.client.get("/me/docs").status_code == 403
+    assert env.client.get("/me/docs").status_code == 200  # listing needs no consent (S43 M6)
     r = env.client.post("/me/docs", json={"kind": "entry", "text": "SYNTHETIC entry text."})
     assert r.status_code == 403 and r.json()["detail"] == "consent_required"
     assert env.ud.count(env.uid) == 0  # nothing was written

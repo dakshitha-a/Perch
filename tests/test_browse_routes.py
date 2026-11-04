@@ -62,8 +62,8 @@ def test_awards_lists_public_records_with_provenance_and_nulls(loaded):
     body = loaded.get("/awards").json()
     (g,) = body["groups"]
     assert body["kind"] == "scholarship" and g["key"] == "all" and g["total"] == 5
-    assert ids(g) == ["other:e", "temple_pages:a", "temple_pages:b", "temple_pages:c",
-                      "temple_pages:d"]
+    assert sorted(ids(g)) == ["other:e", "temple_pages:a", "temple_pages:b", "temple_pages:c",
+                              "temple_pages:d"]  # the list itself is in name order (S43)
     assert not any(i.startswith("sample:") for i in ids(g))
     for it in g["items"]:  # rule 4
         assert it["source"] and it["source_url"] and it["fetched_at"] and it["sample"] is False
@@ -76,7 +76,7 @@ def test_awards_lists_public_records_with_provenance_and_nulls(loaded):
 
 def test_temple_only_keeps_records_listed_on_temple_pages(loaded):
     (g,) = loaded.get("/awards", params={"temple_only": "true"}).json()["groups"]
-    assert ids(g) == ["temple_pages:a", "temple_pages:b", "temple_pages:c", "temple_pages:d"]
+    assert sorted(ids(g)) == [f"temple_pages:{k}" for k in "abcd"]
     (g,) = loaded.get("/opportunities", params={"temple_only": "true"}).json()["groups"]
     assert ids(g) == ["temple_pages:o1"]
     (g,) = loaded.get("/opportunities").json()["groups"]

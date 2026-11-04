@@ -8,7 +8,7 @@ import { copy, mailto } from "./handoff.js";
 import * as f from "./format.js";
 
 // The sample tab holds fellowships and prizes as well as scholarships (S22, audit S9).
-export const STUDENT_ROUTES = { F: "Fellowships (public)", S: "Scholarships and awards (sample)" };
+export const STUDENT_ROUTES = { F: "Temple awards and fellowships (public)", S: "Scholarships and awards (sample)" };
 const SAMPLE = "Sample data";
 const SAMPLE_NOTE = "These are invented records from a test corpus. They show how student mode works with a real scholarship feed; they are not real scholarships. Do not apply to them.";
 const VERDICTS = { eligible: ["eligible", "✓", "Eligible"], "may be eligible": ["may", "?", "May be eligible"],
@@ -20,6 +20,11 @@ export function verdictChip(v) {
   return h("span", { class: `verdict ${cls}` }, h("span", { class: "mk", "aria-hidden": "true", text: mark }), h("span", { text: word }));
 }
 const D = { busy: false, error: null };
+// The brief on screen is the guest's invented sample student (options.persona); the wording
+// then says "the sample student" instead of "you" (S43 S8).
+let SAMPLE_STUDENT = false;
+const setSample = (brief) => { SAMPLE_STUDENT = Boolean(brief && brief.brief && brief.brief.options && brief.brief.options.persona); };
+const cvWords = () => (SAMPLE_STUDENT ? "the sample student's CV" : "your CV");
 const NOT_STATED = "Not stated in the record";
 const SHUT = new Set(); // cards whose "More on why it may fit" was closed; it starts open (S27, Dakshitha)
 
@@ -70,7 +75,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
       h("div", {}, h("h1", { class: "page", text: "Check my fit." }),
         h("p", { class: "page-sub", text: "Perch checks each option against a student's CV by rule and shows what is still needed. Sign in to use your own CV, or try the sample student to see how it works." })),
       h("div", { class: "sample-row" },
-        h("span", { text: "The sample is an invented student, labelled SYNTHETIC. Nothing in it is about you, and its scholarships are invented too." }),
+        h("span", { text: "The sample is an invented student, labelled SYNTHETIC. Nothing in it is about you. Its sample scholarships are invented; the fellowships it checks are real public listings." }),
         h("button", { class: "btn primary", type: "button", "data-key": "st-build", disabled: D.busy, onclick: sample },
           h("span", { text: D.busy ? "Starting" : "Try a sample student" })),
         sess.guest ? h("a", { class: "btn", href: signIn(), text: "Sign in to use your own CV" }) : null,
@@ -212,7 +217,12 @@ function sortSwitch(redraw) {
 }
 
 export function studentRoutes(panel, ctx) {
-  const { brief, route, setRoute, openEvidence, setLead } = ctx;
+  const { brief, setRoute, openEvidence, setLead } = ctx;
+  setSample(brief);
+  // Only the guest's sample persona has a sample route; a signed-in student's brief holds
+  // public records only and links to the samples screen (S43 M4, fork F6).
+  const hasS = SAMPLE_STUDENT;
+  const route = hasS ? ctx.route : "F";
   const leads = brief.leads.filter((l) => l.route === route);
   const done = (name) => {
     const s = brief.brief.stages.find((x) => x.name === name);
@@ -221,7 +231,7 @@ export function studentRoutes(panel, ctx) {
   const ready = done(route === "F" ? "fellowships" : "scholarships");
   const n = (r) => brief.leads.filter((l) => l.route === r && l.verdict !== "not eligible" && l.status !== "dismissed").length;
   const sw = h("div", { class: "route-switch", role: "group", "aria-label": "Route" },
-    ["F", "S"].map((r) => h("button", { class: "route-btn", "data-key": `route-${r}`, "aria-pressed": String(route === r),
+    (hasS ? ["F", "S"] : ["F"]).map((r) => h("button", { class: "route-btn", "data-key": `route-${r}`, "aria-pressed": String(route === r),
       "aria-label": `${STUDENT_ROUTES[r]}${r === "S" ? ", sample data" : ""}${done(r === "F" ? "fellowships" : "scholarships") ? `, ${n(r)}` : ""}`,
       onclick: () => setRoute(r) },
     // Shorter visible names keep the sort switch on this row at laptop width; the aria-label
@@ -229,6 +239,9 @@ export function studentRoutes(panel, ctx) {
     h("span", { class: "lbl-long", "aria-hidden": "true", text: r === "F" ? "Fellowships" : "Scholarships and awards" }), h("span", { class: "lbl-short", "aria-hidden": "true", text: r === "F" ? "Fellowships" : "Samples" }),
     r === "S" ? h("span", { class: "tag sample lbl-long", text: SAMPLE }) : null,
     done(r === "F" ? "fellowships" : "scholarships") ? h("span", { class: "route-n", text: String(n(r)) }) : null)));
+  // DRAFT copy
+  const samplesLink = hasS ? null : h("p", { class: "hint" }, h("a", { href: "#/samples/student", text: "See how Perch works with sample records" }),
+    h("span", { text: ". They are invented and open on their own screen." }));
   if (!ready) {
     fill(panel, sw, h("p", { class: "hint", text: "Leads appear here when the search finishes." }));
     return;
@@ -245,9 +258,13 @@ export function studentRoutes(panel, ctx) {
     h("h2", { class: "section-title", id: "routes-title",
       text: route === "S" ? `${f.plural(ok.length, "sample option")} (invented, for demonstration)`
         : `${f.plural(ok.length, "option")} you may apply for` }),
+    // DRAFT copy: the sources are the ones the Fellowships stage reads (_run_fellowships):
+    // every public scholarship row in the store (Temple's public award pages and the
+    // Scholar Development and Fellowships Advising list) and NIH fellowships.
     h("p", { class: "hint", text: route === "F"
-      ? "Public listings: Temple's Scholar Development and Fellowships Advising list and NIH fellowships. Their own pages set the full rules, so the best verdict here is “may be eligible”."
-      : "Checked against your CV by rule. “May be eligible” means the record asks for something your CV does not show." }),
+      ? "Public listings: Temple's public award pages, Temple's Scholar Development and Fellowships Advising list and NIH fellowships. Their own pages set the full rules, so the best verdict here is “may be eligible”."
+      : `Checked against ${cvWords()} by rule. “May be eligible” means the record asks for something ${SAMPLE_STUDENT ? "that CV does" : "your CV does"} not show.` }),
+    samplesLink,
     common.length ? h("div", { class: "common-lines" }, h("p", { class: "mini", text: "Unless a card says otherwise" }),
       h("ul", {}, common.map((x) => h("li", { text: x === NO_FACTS ? "The listing states no deadline or amount." : x })))) : null,
     h("ol", { class: "leads", "aria-labelledby": "routes-title" }, ok.map((l) => card(l, ctx, common))),
@@ -268,7 +285,7 @@ export function matchPill(score, band, what = "the papers") {
 const NO_FACTS = "no-facts";
 // A public fellowship's deadline or amount was copied by code from the award's own page.
 const FROM_PAGE = "from the award's page";
-const fromPage = (r) => r.kind === "scholarship" && r.source === "temple_sdfa" && Boolean(r.details_url);
+const fromPage = (r) => r.kind === "scholarship" && ["temple_sdfa", "temple_pages"].includes(r.source) && Boolean(r.details_url);
 const withHint = (text, r) => (fromPage(r) && text !== NOT_STATED ? `${text} (${FROM_PAGE})` : text);
 // The deadline as the record gives it: "Expires 7 May 2028" for a parent announcement,
 // the record's words where standard dates apply (T17).
@@ -364,9 +381,10 @@ function you(text) {
 
 // Citation brackets go; a document's id reads as "your achievement A".
 function plainExplanation(text) {
+  const who = SAMPLE_STUDENT ? "the sample student's" : "your";
   return String(text || "").replace(/\s*\[[^\]]*\]/g, "")
-    .replace(/\b(?:user:)?achievement-([a-e])\b/g, (_, c) => `your achievement ${c.toUpperCase()}`)
-    .replace(/\b(?:user:)?interests\b/g, "your interests note")
+    .replace(/\b(?:user:)?achievement-([a-e])\b/g, (_, c) => `${who} achievement ${c.toUpperCase()}`)
+    .replace(/\b(?:user:)?interests\b/g, `${who} interests note`)
     .replace(/\bCited work:/, "Your work:").trim()
     .replace(/^./, (c) => c.toUpperCase());
 }
@@ -386,6 +404,7 @@ const NOTE = { office: null, edits: {}, subjects: {}, got: {}, keptSig: "" };
 
 export function studentCompare(panel, ctx) {
   const { brief, goRoutes, announce, api } = ctx;
+  setSample(brief);
   const offices = ctx.offices || {};
   const kept = brief.leads.filter((l) => l.status === "kept");
   if (!kept.length) {
@@ -402,7 +421,7 @@ export function studentCompare(panel, ctx) {
   if (NOTE.keptSig !== keptSig) { NOTE.edits = {}; NOTE.subjects = {}; NOTE.got = {}; NOTE.keptSig = keptSig; }
   // The note is written by the server, by the same code as Scout's draft_note (review W9).
   const route = NOTE.office;
-  if (!NOTE.got[route]) {
+  if (!ctx.guest && !NOTE.got[route]) {
     NOTE.got[route] = { wait: true };
     const ask = api && api.studentNote ? api.studentNote(ctx.briefId, route) : Promise.reject(new Error("The note needs the live app."));
     ask.then((n) => { NOTE.got[route] = { note: n }; }, (e) => { NOTE.got[route] = { error: e.message }; })
@@ -436,8 +455,11 @@ export function studentCompare(panel, ctx) {
           h("span", {}, h("b", { text: officeName(r) }), h("br"),
             h("span", { class: "hint", text: r === "F" ? "For the kept fellowships" : "For the kept sample scholarships" }))))),
       // Code writes the note at once, so it shows without a Draft press (review W8).
-      h("p", { class: "hint", text: "Code writes this note; no model. Perch never sends it." }),
-      got.note ? note(route, got.note, announce)
+      // DRAFT copy (decided 2026-11-04): a note to an office needs an account, so a guest gets a link.
+      ctx.guest ? h("p", {}, h("a", { class: "btn primary", href: ctx.signIn, "data-key": "note-signin", text: "Sign in to draft a note to the office" }))
+        : h("p", { class: "hint", text: "Code writes this note; no model. Perch never sends it." }),
+      ctx.guest ? null
+      : got.note ? note(route, got.note, announce)
         : got.error ? h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The note could not be written: ${got.error}` }))
           : h("p", { class: "hint st-note-wait", role: "status", text: "Writing the note…" })),
     // Public fellowships and SYNTHETIC samples never share a table (U10, standing rule 11).
@@ -447,7 +469,7 @@ export function studentCompare(panel, ctx) {
       h("div", { class: "table-wrap compare-wrap", role: "region", "aria-labelledby": `cmp-${r}`, tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
         h("thead", {}, h("tr", {}, [r === "S" ? "Sample option" : "Fellowship", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
         h("tbody", {}, byOffice[r].map(row))))))),
-    h("p", { class: "hint", text: "Each cell is copied from its record or checked against your CV by rule. “Not stated in the record” means the listing leaves it blank." }));
+    h("p", { class: "hint", text: `Each cell is copied from its record or checked against ${cvWords()} by rule. “Not stated in the record” means the listing leaves it blank.` }));
 }
 
 // The note as the server wrote it (GET /briefs/{id}/student/note), editable here.

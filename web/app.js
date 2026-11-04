@@ -110,8 +110,10 @@ function route() {
   else if (S.flash && S.flashFor !== location.hash) { S.flash = null; drawBanner(); }
   const sess = S.session;
   // A new account, or one whose consent text changed, finishes the welcome screen first.
+  // The public lists and the account page need no agreement, so they stay open (S43 S12, M6).
+  const OPEN = ["welcome", "account", "awards", "funding", "samples"];
   if (sess.signed_in && (sess.needs_welcome || (sess.consent && sess.consent.required))
-      && parts[0] !== "welcome") {
+      && !OPEN.includes(parts[0])) {
     leaveBrief();
     goReplace(`#/welcome${returnQuery()}`);
     return;
@@ -142,18 +144,21 @@ function route() {
   if (parts[0] === "awards" || parts[0] === "funding") {
     leaveBrief();
     screen("list");
+    window.scrollTo(0, 0);
     renderList(main(), { ...rt, audience: parts[0] === "awards" ? "student" : "researcher" });
     return;
   }
   if (parts[0] === "samples") {
     leaveBrief();
     screen("list");
+    window.scrollTo(0, 0);
     renderSamples(main(), { ...rt, audience: parts[1] === "researcher" ? "researcher" : "student" });
     return;
   }
   if (parts[0] === "student") {
     leaveBrief();
     screen("form");
+    window.scrollTo(0, 0);
     renderStudentStart(main(), { api, go, announce, session: S.session, signIn: signInHref, refresh: refreshSession });
     return;
   }
@@ -174,6 +179,7 @@ function route() {
   }
   leaveBrief();
   screen("landing");
+  window.scrollTo(0, 0);
   renderFind();
 }
 
@@ -735,7 +741,10 @@ function renderBrief() {
   if (!student && !["A", "B"].includes(S.route)) S.route = "A";
   // F23: the date's parts never part at a line end ("1" / "Nov 2026").
   const asOf = f.formatDate(d.brief.options.as_of).replace(/ /g, "\u00a0");
-  const meta = student ? `Fellowships and sample scholarships, checked against your CV by rule · as of ${asOf}`
+  // DRAFT copy: a guest's sample brief says whose CV it checks (S43 S8).
+  const sampleBrief = Boolean(d.brief.options.persona);
+  const meta = student ? (sampleBrief ? `Fellowships and sample scholarships, checked against the sample student's CV by rule · as of ${asOf}`
+      : `Temple awards and fellowships, checked against your CV by rule · as of ${asOf}`)
     : [...(r.institutions || []), `Brief as of ${asOf}`].join(" · ");
   // Back: a student returns to the start screen, a researcher to the matches.
   const back = student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Back" }))
@@ -1087,7 +1096,7 @@ function renderStudentPanel(panel) {
   if (panel.dataset.sig === sig) return;
   panel.dataset.sig = sig;
   const ctx = { brief: d, route: S.route, papers: d.papers || {}, openEvidence, setLead, announce, api,
-    offices: api.studentOffices,
+    offices: api.studentOffices, guest: Boolean(S.session.guest), signIn: signInHref(),
     briefId: S.briefId, setRoute: switchRoute,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) };
   if (S.tab === "profile") keepFocus(() => fill(panel, ...studentProfile(d, ctx)));
@@ -1106,7 +1115,8 @@ function drawCompare(focusKey) {
   renderCompare(panel, { keptCount: kept.length, openEvidence, redraw: drawCompare, handoff: true,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) });
   renderHandoff(panel.querySelector(".handoff-box"), { api, briefId: S.briefId, announce,
-    kept: leadsOf().filter((l) => l.status === "kept"), offices: compareOffices(), redraw: drawCompare });
+    kept: leadsOf().filter((l) => l.status === "kept"), offices: compareOffices(), redraw: drawCompare,
+    guest: Boolean(S.session.guest), signIn: signInHref() });
   if (kept.length) loadCompare(api, S.briefId, kept, () => drawCompare());
   if (focusKey) panelFocus(focusKey);
 }
@@ -2268,6 +2278,8 @@ function init() {
   const setBar = () => document.documentElement.style.setProperty("--bar-h", `${$(".bar").offsetHeight}px`);
   setBar();
   window.addEventListener("resize", setBar);
+  // The header's height changes when the guest chip or the account chip appears (S43 S3).
+  if (window.ResizeObserver) new ResizeObserver(setBar).observe($(".bar"));
   window.addEventListener("hashchange", route);
   if (api.mode === "replay") {
     S.who = window.PERCH_REPLAY.student ? "s" : "r";
@@ -2276,6 +2288,16 @@ function init() {
   }
   // The server says who is here before the first screen is drawn. A signed-in visitor
   // lands on the side they used last; a signed-out one always lands on Student.
+  // A sign-in that did not finish comes back as #/?signin=failed or =unavailable (S43 M1).
+  const signin = new URLSearchParams(location.hash.split("?")[1] || "").get("signin");
+  if (signin) {
+    history.replaceState(null, "", "#/");
+    // DRAFT copy
+    S.flash = signin === "unavailable"
+      ? "Sign-in is not available right now. You can still try a sample student."
+      : "Sign-in did not finish. Try again.";
+    S.flashFor = "#/";
+  }
   refreshSession().then((sess) => {
     if (sess.signed_in && sess.audience) S.who = sess.audience === "researcher" ? "r" : "s";
     route();

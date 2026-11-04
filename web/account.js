@@ -74,7 +74,8 @@ export function renderWelcome(root, ctx, returnTo) {
       h("section", { class: "box", "aria-labelledby": "w2" },
         h("h2", { class: "section-title", id: "w2", text: "2. How Perch uses your CV" }),
         h("div", { class: "consent-text", tabindex: "0", role: "region", "aria-label": "Consent text" },
-          h("p", { text: c.text || "" })),
+          // One paragraph per sentence, so it reads in steps; the words are the server's, unchanged.
+          ...String(c.text || "").split(/(?<=[.!?])\s+/).filter(Boolean).map((t) => h("p", { text: t }))),
         h("p", { class: "hint", text: `Consent text, version ${c.current_version ?? ""}.` }),
         h("label", { class: "check-row" },
           h("input", { type: "checkbox", "data-key": "agree", checked: state.agreed,
@@ -84,7 +85,17 @@ export function renderWelcome(root, ctx, returnTo) {
       h("div", { class: "welcome-go" },
         h("button", { class: "btn primary big", type: "button", "data-key": "continue", disabled: !ready,
           "aria-busy": state.busy ? "true" : null, onclick: submit }, h("span", { text: state.busy ? "Saving" : "Continue" })),
-        !ready && !state.busy ? h("p", { class: "hint", text: !sidesDone ? "Choose at least one side to continue." : "Tick “I agree” to continue." }) : null)));
+        !ready && !state.busy ? h("p", { class: "hint", text: !sidesDone ? "Choose at least one side to continue." : "Tick “I agree” to continue." }) : null),
+      // DRAFT copy (S43 S12): a way out that needs no agreement.
+      h("p", { class: "hint welcome-out" },
+        h("a", { href: "#/awards", text: "Not now: browse Temple awards" }), h("span", { text: " · " }),
+        h("button", { class: "linklike", type: "button", "data-key": "welcome-signout", onclick: async () => {
+          try {
+            const out = await ctx.api.logout();
+            if (out && out.end_session_url) { location.assign(out.end_session_url); return; }
+            location.assign("/");
+          } catch (e) { ctx.announce(e.message); }
+        }, text: "Sign out" }))));
   }
   paint();
   const t = document.getElementById("acct-title");
@@ -144,7 +155,7 @@ export async function renderAccount(root, ctx) {
       h("h2", { id: "del-title", class: "section-title", text: "Delete my data" }),
       // DRAFT copy (S43): the dialog text, for Dakshitha to review. It follows the consent
       // text and the delete route: CV and entries, briefs, account and key, 35-day backups.
-      h("p", { id: "del-help", text: "This deletes your CV and entries, your briefs and your account. Your key is destroyed, so nothing stored under it can be read again. After you delete your data, backups clear within 35 days. If you do nothing for 12 months, Perch deletes your data anyway." }),
+      h("p", { id: "del-help", text: "This deletes your CV and entries, your briefs, your saved awards and leads, your hand-off drafts and cover points, and your account. You will be signed out. Your key is destroyed, so nothing stored under it can be read again. After you delete your data, backups clear within 35 days. If you do nothing for 12 months, Perch deletes your data anyway." }),
       h("label", { for: "del-word", class: "big", text: "Type delete to confirm" }), word, err,
       h("div", { class: "dlg-actions" },
         h("button", { class: "btn", type: "button", id: "del-cancel", onclick: () => dlg.close() }, h("span", { text: "Cancel" })), go)));
@@ -167,6 +178,34 @@ export async function renderAccount(root, ctx) {
     }
   });
 
+  // ----- withdraw consent: a confirm that says what it blocks (S43 M6) -----
+  // DRAFT copy: what withdrawing does, from the server's behaviour. It stops the jobs that
+  // read the CV or entries and new documents; it deletes nothing; browsing, viewing and
+  // deleting stay open; agreeing again restores everything.
+  const wdErr = h("p", { class: "notice error", role: "alert", hidden: true });
+  const wdGo = h("button", { class: "btn danger", type: "button", id: "wd-go" }, h("span", { text: "Withdraw consent" }));
+  const wdDlg = h("dialog", { class: "del-dialog", "aria-labelledby": "wd-title" },
+    h("form", { method: "dialog", onsubmit: (e) => e.preventDefault() },
+      h("h2", { id: "wd-title", class: "section-title", text: "Withdraw consent" }),
+      h("p", { text: "Perch will stop using your CV and entries. That means no new briefs, no new documents and no model jobs on your text." }),
+      h("p", { text: "It does not delete anything. You can still browse Temple awards and research funding, see what is stored and delete it. You can agree again at any time." }),
+      wdErr,
+      h("div", { class: "dlg-actions" },
+        h("button", { class: "btn", type: "button", onclick: () => wdDlg.close() }, h("span", { text: "Cancel" })), wdGo)));
+  wdDlg.addEventListener("close", () => { const o = document.getElementById("wd-open"); if (o) o.focus(); });
+  wdGo.addEventListener("click", async () => {
+    wdGo.disabled = true;
+    try {
+      await ctx.api.withdrawConsent();
+      wdDlg.close();
+      await ctx.refresh();
+      ctx.flash("Consent withdrawn. Perch will not use your CV and entries until you agree again.", "#/account");
+      renderAccount(root, ctx);
+    } catch (e) {
+      wdErr.hidden = false; wdErr.textContent = e.message; wdGo.disabled = false;
+    }
+  });
+
   fill(root, h("div", { class: "screen account" },
     h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
     h("div", {}, h("h1", { class: "page", id: "acct-title", tabindex: "-1", text: "Account and data" })),
@@ -174,14 +213,18 @@ export async function renderAccount(root, ctx) {
       h("div", { class: "field" }, h("dt", { text: "Signed in as" }), h("dd", { text: sess.display_name || "your account" })),
       h("div", { class: "field" }, h("dt", { text: "Your sides" }), h("dd", { text: roles.map(sideWord).join(" and ") || "None chosen" })),
       sess.consent ? h("div", { class: "field" }, h("dt", { text: "Consent" }),
-        h("dd", { text: sess.consent.required ? "Not agreed to the current text" : `Version ${sess.consent.accepted_version}, agreed` })) : null),
+        h("dd", {}, h("span", { text: sess.consent.required ? "Not agreed to the current text. " : `Version ${sess.consent.accepted_version}, agreed. ` }),
+          sess.consent.required
+            ? h("a", { class: "btn", href: "#/welcome", "data-key": "consent-again", text: "Agree again" })
+            : h("button", { class: "btn", type: "button", id: "wd-open", "data-key": "wd-open",
+              onclick: () => wdDlg.showModal() }, h("span", { text: "Withdraw consent…" })))) : null),
     h("section", { class: "box", "aria-labelledby": "docs-h" },
       h("h2", { class: "section-title", id: "docs-h", tabindex: "-1", text: "Your documents" }), docsEl),
     h("section", { class: "box danger-zone", "aria-labelledby": "del-h" },
       h("h2", { class: "section-title", id: "del-h", text: "Delete my data" }),
-      h("p", { text: "Delete your CV and entries, your briefs and your account. Perch also deletes your data after 12 months without use." }),
+      h("p", { text: "Delete your CV and entries, your briefs, your saved awards and leads, your hand-off drafts and cover points, and your account. Perch also deletes your data after 12 months without use." }),
       opener),
-    dlg));
+    dlg, wdDlg));
   document.getElementById("acct-title").focus({ preventScroll: true });
   await loadDocs();
 }
@@ -222,7 +265,7 @@ export async function renderMyPerch(root, ctx) {
     listEl.setAttribute("aria-busy", "false");
     fill(listEl, rows.length ? h("ul", { class: "leads" }, rows.map((b) => h("li", { class: "card lead brief-row", "data-id": b.id },
       h("div", {}, h("p", { class: "lead-title", text: side === "student" ? "Student brief" : (b.topics && b.topics.length ? b.topics.slice(0, 3).join(", ") : "Researcher brief") }),
-        h("p", { class: "hint", text: `Built ${f.formatDate(b.created_at)} · ${f.plural(b.leads, "lead")} · ${b.status}` })),
+        h("p", { class: "hint", text: `Built ${f.formatDate(b.created_at)} · ${f.plural(b.leads, "lead")}${b.sample_leads ? ` · ${b.sample_leads} sample` : ""} · ${b.status}` })),
       h("a", { class: "btn", href: `#/brief/${encodeURIComponent(b.id)}/routes` },
         h("span", { text: "Open" }), h("span", { class: "sr-only", text: ` the brief built ${f.formatDate(b.created_at)}` })))))
       : h("div", { class: "empty-list" }, h("p", { class: "lede", text: "No briefs yet." }),

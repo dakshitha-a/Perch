@@ -357,15 +357,29 @@ def test_login_return_to_is_made_safe(r) -> None:
 def test_failed_callback_is_a_fixed_code_and_clears_the_binder(r) -> None:
     app = make_app(r, pool=object(), provider=FakeProvider())
     c = TestClient(app)
-    resp = c.get("/auth/callback?code=c&state=s")  # no binder cookie
-    assert resp.status_code == 400 and resp.json() == {"error": "binder_mismatch"}
+    resp = c.get("/auth/callback?code=c&state=s", follow_redirects=False)
+    assert resp.status_code == 302 and resp.headers["location"] == "/#/?signin=failed"
+    assert "binder_mismatch" not in resp.headers["location"] and "code=c" not in resp.headers["location"]
     assert "perch_oidc=" in resp.headers["set-cookie"]
+
+
+def test_login_without_a_provider_redirects_to_the_app(r) -> None:
+    c = TestClient(make_app(r))
+    resp = c.get("/auth/login", follow_redirects=False)
+    assert resp.status_code == 302 and resp.headers["location"] == "/#/?signin=unavailable"
+
+
+def test_callback_without_a_provider_redirects_to_the_app(r) -> None:
+    c = TestClient(make_app(r))
+    resp = c.get("/auth/callback?code=c&state=s", follow_redirects=False)
+    assert resp.status_code == 302 and resp.headers["location"] == "/#/?signin=unavailable"
 
 
 def test_callback_is_limited_per_binder(r) -> None:
     c = TestClient(make_app(r, pool=object(), provider=FakeProvider()))
-    codes = [c.get("/auth/callback?code=c&state=s").status_code for _ in range(7)]
-    assert codes[:5] == [400] * 5 and codes[5:] == [429, 429]
+    codes = [c.get("/auth/callback?code=c&state=s", follow_redirects=False).status_code
+             for _ in range(7)]
+    assert codes[:5] == [302] * 5 and codes[5:] == [429, 429]
 
 
 def test_logout_needs_csrf_destroys_and_returns_the_idp_url(r) -> None:

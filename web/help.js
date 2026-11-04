@@ -201,7 +201,7 @@ const NODES = [
   ["you", "You", ["Keep, compare, ask", "Scout, and send the", "hand-off draft."]],
 ];
 const SR_LIST = [
-  "Public sources: OpenAlex, NIH RePORTER, NSF, Grants.gov and the Temple fellowship list.",
+  "Public sources: OpenAlex, NIH RePORTER, NSF, Grants.gov, Temple's public scholarship and award pages and the Temple fellowship list.",
   "Fetch: plain code; every record keeps its source, link and fetch date.",
   "Store: public records and the search index.",
   "Search and rank: embedding and ranking models find and order matches.",
@@ -272,7 +272,7 @@ function privacy() {
   // DRAFT copy (S43): the privacy items, each checked against the code (the guest notice,
   // the consent text and the delete route).
   const items = [
-    ["person", "A guest session saves nothing.", " It ends after an hour. Hand-offs and Scout need an account."],
+    ["person", "A guest session saves nothing.", " It ends after an hour. Hand-off drafts, notes to an office and Scout need an account."],
     ["lock", "A CV you add is stored encrypted.", " Contact details are blanked before any text goes to the model provider named in the consent."],
     ["close", "You can delete your data.", " Open the account menu, then Account and data, then Delete my data. Perch also deletes it after 12 months without use."],
     ["mail", "Perch sends nothing.", " Hand-offs are drafts. You send them."],
@@ -294,7 +294,7 @@ function goodToKnow() {
         h("a", { href: SUBMISSION_URL, target: "_blank", rel: "noopener", text: "Find your research administrator" }),
         h("span", { text: "." })),
       h("li", { text: FOUNDATION_NOTE }),
-      h("li", { text: "A Sample data badge marks invented SYNTHETIC records. They are not real, and they live on their own screen, linked at the foot of each list." })),
+      h("li", { text: "A Sample data badge marks invented SYNTHETIC records. They are not real, and they live on their own screen, linked at the foot of each list and from a signed-in student's brief. The guest's sample student brief has a marked sample tab of its own." })),
     h("p", { class: "help-scout", text: "The full technical description is in the project’s docs." }));
 }
 

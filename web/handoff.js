@@ -39,7 +39,7 @@ export function mailto(d) {
   return `mailto:?subject=${subject}&body=${encodeURIComponent("(The draft from Perch is copied. Paste it here.)")}`;
 }
 
-export function renderHandoff(box, { api, briefId, kept, offices, announce, redraw }) {
+export function renderHandoff(box, { api, briefId, kept, offices, announce, redraw, guest, signIn }) {
   if (!box || !offices) return;
   const OFFICES = offices.map((o) => ({ ...o, what: WHAT[o.route] }));
   if (H.briefId !== briefId) reset(briefId);
@@ -82,13 +82,16 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     H.busy = null;
     redraw(H.drafts[office.key] ? focusKey : "handoff-make");
   }
-  const make = h("button", { class: `btn ${draft ? "" : "primary"}`, type: "button", "data-key": "handoff-make",
-    disabled: H.busy !== null, onclick: () => makeDraft() },
-  icon("pen"), h("span", { text: draft ? "Draft again" : "Draft the email" }));
+  // DRAFT copy (S43, decided 2026-11-04): a draft needs an account, so a guest gets a link, not a button that fails.
+  const make = guest
+    ? h("a", { class: "btn primary", href: signIn, "data-key": "handoff-signin", text: "Sign in to draft a note to the office" })
+    : h("button", { class: `btn ${draft ? "" : "primary"}`, type: "button", "data-key": "handoff-make",
+      disabled: H.busy !== null, onclick: () => makeDraft() },
+    icon("pen"), h("span", { text: draft ? "Draft again" : "Draft the email" }));
 
   const parts = [h("h2", { class: "section-title", id: "handoff-title", text: "Hand off" }),
     h("p", { class: "hint", text: "Perch drafts an email to the Temple office for these leads. "
-      + "You edit it and send it yourself. Perch never sends it and does not save it." }),
+      + "You edit it and send it yourself. Perch never sends it." }),
     choices,
     h("p", { class: "office-link" }, h("span", { text: "To: left blank for you. " }),
       h("a", { href: office.url, target: "_blank", rel: "noopener",

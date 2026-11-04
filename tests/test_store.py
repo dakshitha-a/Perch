@@ -76,15 +76,25 @@ def test_browse_filters_and_pages(repo):
                  opp("O3", "Kidney transplant", None),
                  opp("O4", "Kidney imaging", date(2028, 1, 1))])
     page = repo.browse(Opportunity, limit=2)
-    assert [o.id for o in page.items] == ["O1", "O2"] and page.total == 4
+    # Name order, case-folded (S43 S6): imaging, research, transplant, then Quantum.
+    assert [o.id for o in page.items] == ["O4", "O1"] and page.total == 4
     assert page.next_cursor is not None
     nxt = repo.browse(Opportunity, limit=2, cursor=page.next_cursor)
-    assert [o.id for o in nxt.items] == ["O3", "O4"] and nxt.next_cursor is None
+    assert [o.id for o in nxt.items] == ["O3", "O2"] and nxt.next_cursor is None
     kid = repo.browse(Opportunity, q="kidney")
-    assert [o.id for o in kid.items] == ["O1", "O3", "O4"] and kid.total == 3
+    assert [o.id for o in kid.items] == ["O4", "O1", "O3"] and kid.total == 3
     late = repo.browse(Opportunity, closes_after=date(2027, 6, 1))
     assert [o.id for o in late.items] == ["O4"]
     assert repo.browse(Opportunity, temple_only=True).items == []
+
+
+def test_browse_orders_by_name_ignoring_case_with_id_tie_break(repo):
+    repo.upsert([opp("Z1", "banana grant"), opp("Z2", "Apple grant"), opp("Z3", "apple grant"),
+                 opp("Z4", "Cherry grant")])
+    first = repo.browse(Opportunity, limit=3)
+    assert [o.id for o in first.items] == ["Z2", "Z3", "Z1"]  # Apple = apple, id breaks the tie
+    rest = repo.browse(Opportunity, limit=3, cursor=first.next_cursor)
+    assert [o.id for o in rest.items] == ["Z4"]
 
 
 def test_browse_never_returns_samples(repo):
@@ -117,7 +127,7 @@ def test_temple_only_means_listed_on_a_temple_page_not_temple_funded(repo):
     assert one.temple_funded is None  # nothing says Temple pays: the filter must not need it
     repo.upsert([one, none, wide, opp("O1", "SYNTHETIC grant"), sample_sch(1)])
     got = repo.browse(Scholarship, temple_only=True)
-    assert [r.id for r in got.items] == ["temple_pages:a", "temple_pages:b", "temple_pages:c"]
+    assert sorted(r.id for r in got.items) == ["temple_pages:a", "temple_pages:b", "temple_pages:c"]
     assert got.total == 3
     assert repo.browse(Opportunity, temple_only=True).items == []
     assert [o.id for o in repo.browse(Opportunity).items] == ["O1"]

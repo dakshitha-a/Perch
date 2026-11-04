@@ -5,6 +5,7 @@
       [--base http://127.0.0.1:8191] [--out build/s43_walk] [--widths 1280 360] \\
       [--only landing guest awards funding samples briefs mocked] \\
       [--login-helper scripts/e2e_oidc_login.py]   # adds the real sign-in flow
+      [--scheme light|dark]                        # colour scheme of the browser (default light)
       [--plant NAME]                               # break one thing on purpose (see PLANTS)
 
 Flows, each at every width:
@@ -15,7 +16,10 @@ Flows, each at every width:
   funding   the funding list: Temple toggle, tags, focus order
   samples   the sample screen: a badge on every card
   briefs    a guest brief for a public author id and for the SYNTHETIC sample persona, keep and compare
-  mocked    welcome, account page, delete dialog and My Perch against a stubbed signed-in session
+  retry     the list error state: /filters fails once, Retry brings the list and the filter bar back
+  header    the guest header stays on one row on a phone; a focused control is not under it
+  signinfail  /auth/login and /auth/callback land on the app with a message, never on JSON
+  mocked    welcome, account page, withdraw consent, delete dialog and My Perch against a stubbed signed-in session
             (the stubs are in this file; no sign-in service is needed, and the walk says so)
   signin    with --login-helper only: the real sign-in through the dev Keycloak, then welcome,
             account, My Perch and delete. `login(base)` of the helper returns an httpx client whose
@@ -45,7 +49,7 @@ VIEWS = {1280: {"width": 1280, "height": 860}, 360: {"width": 360, "height": 780
 OLD_COPY = ("Nothing about you is stored", "Local · nothing stored")
 PLANTS = ["guest_banner", "no_sample_public", "badge_on_samples", "tag_row_360", "tag_row_contained",
           "counts_from_server", "focus_order", "delete_keyboard", "delete_guard", "old_copy",
-          "no_dead_modules"]
+          "no_dead_modules", "header_height", "scroll_padding", "retry_filters", "small_target"]
 PROBE = """() => {
   const vis = (el) => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
     return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'; };
@@ -54,14 +58,17 @@ PROBE = """() => {
   const small = [];
   for (const el of document.querySelectorAll('a[href], button, input, select, textarea, summary, [role=switch], [role=radio]')) {
     if (!vis(el) || el.closest('[hidden]') || el.closest('dialog:not([open])')) continue;
-    if (el.type === 'checkbox' || el.type === 'file') continue;
-    const r = el.getBoundingClientRect();
+    if (el.type === 'file') continue;
+    // a checkbox is pressed through its label, so the label is the target (S43 M5)
+    const box = (el.type === 'checkbox' || el.type === 'radio') && el.closest('label') ? el.closest('label') : el;
+    if ((el.type === 'checkbox' || el.type === 'radio') && !vis(box)) continue;
+    const r = box.getBoundingClientRect();
     // exempt: a link or the guest link inside a sentence, and a card title button (a text link, 25 px
     // tall, which meets WCAG 2.2's 24 px minimum); both are counted in `under24` only if smaller
     const inline = (el.tagName === 'A' && !el.classList.contains('btn') && getComputedStyle(el).display === 'inline')
       || el.classList.contains('linkish') || el.classList.contains('title-btn');
     if (inline) { if (r.height < 24 && !el.classList.contains('linkish')) small.push({ el: name(el), w: Math.round(r.width), h: Math.round(r.height), under24: true }); continue; }
-    if (r.width < 44 || r.height < 44) small.push({ el: name(el), w: Math.round(r.width), h: Math.round(r.height) });
+    if (r.width < 44 || r.height < 44) small.push({ el: name(el) || name(box), w: Math.round(r.width), h: Math.round(r.height) });
   }
   return { small, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     title: document.title, hash: location.hash };
@@ -80,12 +87,15 @@ TAGS = """() => { const row = document.querySelector('.tag-row'); if (!row) retu
 
 
 class Walk:
-    def __init__(self, out: Path, axe: Path, plant: str | None) -> None:
-        self.out, self.axe, self.plant = out, axe, plant
+    def __init__(self, out: Path, axe: Path, plant: str | None, scheme: str = "light") -> None:
+        self.out, self.axe, self.plant, self.scheme = out, axe, plant, scheme
         self.states: list[dict] = []
         self.errors: list[str] = []
         self.checks: list[tuple[str, bool, str]] = []
         self.requests: list[str] = []
+
+    def errors_since(self, tag: str) -> list[str]:
+        return [e for e in self.errors if e.startswith(f"{tag}:")]
 
     def check(self, name: str, ok: bool, detail: str = "") -> None:
         self.checks.append((name, bool(ok), detail))
@@ -112,7 +122,7 @@ class Walk:
 
 
 async def new_page(browser: Browser, w: Walk, tag: str, view: dict, base: str) -> Page:
-    ctx = await browser.new_context(viewport=view, reduced_motion="reduce", device_scale_factor=1,
+    ctx = await browser.new_context(viewport=view, reduced_motion="reduce", device_scale_factor=1, color_scheme=w.scheme,
                                     has_touch=view["width"] < 600, is_mobile=view["width"] < 600)
     page = await ctx.new_page()
     w.watch(page, tag)
@@ -322,6 +332,29 @@ async def keep_two(page: Page) -> int:
     return n
 
 
+async def export_open(w: Walk, page: Page, tag: str, name: str) -> None:
+    """The Export menu open, so its rows are measured."""
+    await page.evaluate("location.hash = location.hash.replace(/\\/[a-z]+$/, '/routes')")
+    await page.wait_for_selector("details.export-menu > summary")
+    await page.click("details.export-menu > summary")
+    await page.wait_for_selector(".export-pop")
+    if w.plant == "small_target":
+        await page.evaluate("document.querySelectorAll('.export-pop .check, .export-pop .btn, .filter-chip, .route-btn').forEach((c) => { c.style.minHeight = '30px'; c.style.height = '30px'; })")
+    await w.snap(page, tag, name, full=False)
+    await page.keyboard.press("Escape")
+    if await page.locator("details.export-menu[open]").count():
+        await page.click("details.export-menu > summary")
+
+
+async def other_tabs(w: Walk, page: Page, tag: str, side: str) -> None:
+    """The brief's Profile and Scout tabs, each measured."""
+    base_hash = await page.evaluate("location.hash.replace(/\\/[a-z]+$/, '')")
+    for tab in ("profile", "scout"):
+        await page.evaluate("(h) => { location.hash = h; }", f"{base_hash}/{tab}")
+        await page.wait_for_timeout(1200)
+        await w.snap(page, tag, f"brief-{side}-{tab}")
+
+
 async def flow_briefs(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
     page = await new_page(browser, w, tag, view, base)
     await page.goto(base + "/")
@@ -335,11 +368,19 @@ async def flow_briefs(w: Walk, browser: Browser, base: str, tag: str, view: dict
     status = await build_wait(page)
     w.check("guest_researcher_brief", status == "done", f"status {status}")
     await w.snap(page, tag, "brief-researcher")
+    await export_open(w, page, tag, "brief-researcher-export")
+    await other_tabs(w, page, tag, "researcher")
+    await page.evaluate("location.hash = location.hash.replace(/\\/[a-z]+$/, '/routes')")
+    await page.wait_for_selector("#panel .btn.keep")
     kept = await keep_two(page)
     await page.evaluate("location.hash = location.hash.replace(/\\/[a-z]+$/, '/compare')")
-    await page.wait_for_timeout(1500)
+    await page.wait_for_selector("#panel table, #panel .compare, [data-key=handoff-signin], [data-key=note-signin]", timeout=20_000)
+    await page.wait_for_timeout(1000)
     await w.snap(page, tag, "brief-researcher-compare")
     w.check("guest_keep_compare_researcher", kept > 0 and await page.locator("#panel table, #panel .compare").count() > 0, f"{kept} kept")
+    w.check("guest_researcher_draft_is_signin",
+            await page.locator("[data-key=handoff-make]").count() == 0 and await page.locator("[data-key=handoff-signin]").count() == 1,
+            "a guest sees Sign in to draft a note to the office, not a Draft the email button")
     # the sample persona, as a guest
     await page.evaluate("location.hash = '#/'")
     await page.wait_for_selector("[data-key=seg-s]")
@@ -353,11 +394,27 @@ async def flow_briefs(w: Walk, browser: Browser, base: str, tag: str, view: dict
     status = await build_wait(page)
     w.check("guest_sample_persona_brief", status == "done", f"status {status}")
     await w.snap(page, tag, "brief-student")
+    bid = await page.evaluate("decodeURIComponent(location.hash.split('/')[2])")
+    got = await page.evaluate("(id) => fetch('/briefs/' + id).then(r => r.json())", bid)
+    fell = next((s for s in got["brief"]["stages"] if s["name"] == "fellowships"), {})
+    srcs = sorted({x["record"]["source"] for x in got["leads"] if x["route"] == "F"})
+    w.check("student_fellowship_sources", bool(srcs), f"stage says: {fell.get('summary')!r}; F leads come from {srcs}")
+    body = await page.locator("#main").inner_text()
+    w.check("sample_brief_not_your_cv", "your CV" not in body and "sample student's CV" in body,
+            "the sample brief names the sample student's CV, not yours")
+    await export_open(w, page, tag, "brief-student-export")
+    await other_tabs(w, page, tag, "student")
+    await page.evaluate("location.hash = location.hash.replace(/\\/[a-z]+$/, '/routes')")
+    await page.wait_for_selector("#panel .btn.keep")
     kept = await keep_two(page)
     await page.evaluate("location.hash = location.hash.replace(/\\/[a-z]+$/, '/compare')")
-    await page.wait_for_timeout(1500)
+    await page.wait_for_selector("#panel table, #panel .compare, [data-key=handoff-signin], [data-key=note-signin]", timeout=20_000)
+    await page.wait_for_timeout(1000)
     await w.snap(page, tag, "brief-student-compare")
     w.check("guest_keep_compare_student", kept > 0 and await page.locator("#panel table, #panel .compare").count() > 0, f"{kept} kept")
+    w.check("guest_student_note_is_signin",
+            await page.locator("[data-key=note-signin]").count() == 1 and await page.locator("#st-body").count() == 0,
+            "a guest sees Sign in to draft a note to the office, and no note")
     await page.context.close()
 
 
@@ -383,9 +440,16 @@ async def stub_signed_in(page: Page, state: dict) -> None:
         if "/me/roles" in url:
             state["roles"] = json.loads(route.request.post_data or "{}").get("roles", [])
             return await route.fulfill(json={"roles": state["roles"]})
+        if "/me/consent/withdraw" in url:
+            state["consented"] = False
+            state["withdrawn"] = True
+            return await route.fulfill(json={"consent_version": 0})
         if "/me/consent" in url:
             state["consented"] = True
             return await route.fulfill(json={"consent_version": 1})
+        if "/me/delete" in url and state.get("fail_delete"):
+            state["fail_delete"] = False
+            return await route.fulfill(status=500, json={"detail": {"error": "delete_incomplete"}})
         if "/me/delete" in url:
             state["deleted_with"] = route.request.post_data
             state["gone"] = True
@@ -410,6 +474,13 @@ async def flow_mocked(w: Walk, browser: Browser, base: str, tag: str, view: dict
     go_btn = page.locator("[data-key=continue]")
     await w.snap(page, tag, "welcome")
     w.check("welcome_continue_guarded", await go_btn.is_disabled(), "disabled before both steps")
+    clip = await page.evaluate("() => { const t = document.querySelector('.consent-text'); return t.scrollHeight - t.clientHeight; }")
+    w.check("consent_text_not_clipped", clip <= 0, f"scrollable overflow {clip} px")
+    await page.evaluate("location.hash = '#/awards'")
+    await page.wait_for_selector(".tag-row")
+    w.check("public_lists_open_without_welcome", "#/awards" in page.url, page.url)
+    await page.evaluate("location.hash = '#/welcome'")
+    await page.wait_for_selector(".welcome")
     await page.check("[data-key=role-student]")
     await page.check("[data-key=agree]")
     w.check("welcome_continue_enabled", await go_btn.is_enabled(), "enabled after both steps")
@@ -422,6 +493,36 @@ async def flow_mocked(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.evaluate("location.hash = '#/account'")
     await page.wait_for_selector("#del-open")
     await w.snap(page, tag, "account")
+    await page.click("#wd-open")
+    await page.wait_for_timeout(200)
+    await w.snap(page, tag, "withdraw-dialog", full=False)
+    await page.click("#wd-go")
+    await page.wait_for_selector("[data-key=consent-again]")
+    w.check("withdraw_consent", state.get("withdrawn") and await page.locator("#acct-title").count() == 1,
+            "the account page stays and offers Agree again")
+    await page.evaluate("location.hash = '#/funding'")
+    await page.wait_for_selector(".award, .tag-row, .filter-bar")
+    w.check("withdrawn_can_browse", "#/funding" in page.url, page.url)
+    await page.evaluate("location.hash = '#/account'")
+    await page.wait_for_selector("#del-open")
+    await w.snap(page, tag, "account-withdrawn")
+    await page.evaluate("location.hash = '#/welcome'")
+    await page.wait_for_selector("[data-key=agree]")
+    await page.check("[data-key=agree]")
+    await page.click("[data-key=continue]")
+    await page.wait_for_selector(".landing h1")
+    w.check("consent_again", state["consented"], "agreeing again works")
+    await page.evaluate("location.hash = '#/account'")
+    await page.wait_for_selector("#del-open")
+    state["fail_delete"] = True
+    await page.click("#del-open")
+    await page.fill("#del-word", "delete")
+    await page.click("#del-go")
+    await page.wait_for_selector(".del-dialog:has(#del-word) .notice.error:not([hidden])")
+    msg = await page.locator(".del-dialog:has(#del-word) .notice.error").inner_text()
+    w.check("delete_failure_words", "Press Delete again" in msg and "500" not in msg, msg)
+    await w.snap(page, tag, "delete-failed", full=False)
+    await page.keyboard.press("Escape")
     await page.click("#del-open")
     await page.wait_for_timeout(200)
     focused = await page.evaluate("document.activeElement.id + '|' + Boolean(document.activeElement.closest('dialog'))")
@@ -481,14 +582,87 @@ async def flow_signin(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.context.close()
 
 
+async def flow_retry(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
+    """M7: /filters fails once; Retry brings the list and its filter bar back."""
+    for aud, hash_ in (("student", "#/awards"), ("researcher", "#/funding")):
+        page = await new_page(browser, w, tag, view, base)
+        calls = {"n": 0}
+        n_err = len(w.errors)
+
+        def flake(calls: dict):  # noqa: ANN202 - a handler of one argument, bound to this page's counter
+            async def flaky(route: Route) -> None:
+                calls["n"] += 1
+                if calls["n"] == 1 or w.plant == "retry_filters":
+                    return await route.abort()
+                await route.continue_()
+            return flaky
+        await page.route(re.compile(r".*/filters\?.*"), flake(calls))
+        await page.goto(base + "/" + hash_)
+        await page.wait_for_selector("[data-key=retry]")
+        await w.snap(page, tag, f"{aud}-list-error")
+        await page.click("[data-key=retry]")
+        try:
+            await page.wait_for_selector(".award", timeout=8000)
+            ok = await page.locator(".filter-bar .tag-chip, .filter-bar [data-key=temple]").count() > 0
+        except Exception:  # noqa: BLE001
+            ok = False
+        w.check(f"retry_after_failed_filters_{aud}", ok and len(w.errors) == n_err, f"{calls['n']} /filters calls; list and bar back: {ok}")
+        await page.context.close()
+
+
+async def flow_header(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
+    """S2 and S3: one-row header on a phone; focus never under the sticky header."""
+    page = await new_page(browser, w, tag, view, base)
+    await page.goto(base + "/")
+    await page.wait_for_selector(".landing h1")
+    await page.click("[data-key=guest-start]")
+    await page.wait_for_selector("[data-key=guest-banner]")
+    if w.plant == "header_height" and view["width"] < 480:
+        await page.evaluate("document.querySelector('#acct-slot').style.gridRow = '2'")
+    hgt = await page.evaluate("document.querySelector('.bar').getBoundingClientRect().height")
+    w.check("header_one_row", hgt < 64 if view["width"] < 480 else True, f"header {hgt:.0f} px at {view['width']} px")
+    await go(page, base, "#/awards", ".award")
+    if w.plant == "scroll_padding":
+        await page.evaluate("document.documentElement.style.scrollPaddingTop = '0px'")
+    await page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
+    last = page.locator(".award .title-btn").last
+    await last.focus()
+    hidden = []
+    for _ in range(14):
+        await page.keyboard.press("Shift+Tab")
+        await page.wait_for_timeout(120)
+        top, bar = await page.evaluate("[document.activeElement.getBoundingClientRect().top, document.querySelector('.bar').getBoundingClientRect().bottom]")
+        if top < bar - 1:
+            hidden.append(round(top))
+    w.check("focus_not_under_header", not hidden, f"focus tops under the header: {hidden}")
+    await page.context.close()
+
+
+async def flow_signinfail(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
+    """M1: a sign-in that cannot start or finish lands on the app, with a message."""
+    for path, want in (("/auth/login", "not available"), ("/auth/callback?code=x&state=y", "available")):
+        page = await new_page(browser, w, tag, view, base)
+        await page.goto(base + path)
+        await page.wait_for_selector(".landing h1")
+        await page.wait_for_selector("[data-key=flash-banner]")
+        text = await page.evaluate("document.body.innerText")
+        raw = text.strip().startswith("{") or '"detail"' in text or '"error"' in text
+        w.check(f"signin_failure_lands_on_app {path.split('?')[0]}", not raw and want in text and "?signin" not in page.url,
+                f"hash {await page.evaluate('location.hash')!r}; banner: {(await page.locator('[data-key=flash-banner]').inner_text()).strip()}")
+        if path == "/auth/login":
+            await w.snap(page, tag, "signin-unavailable")
+        await page.context.close()
+
+
 FLOWS = {"landing": flow_landing, "awards": flow_awards, "funding": flow_funding, "samples": flow_samples,
-         "briefs": flow_briefs, "mocked": flow_mocked}
+         "briefs": flow_briefs, "mocked": flow_mocked, "retry": flow_retry, "header": flow_header,
+         "signinfail": flow_signinfail}
 
 
 async def main(a: argparse.Namespace) -> int:
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    w = Walk(out, Path(a.axe), a.plant)
+    w = Walk(out, Path(a.axe), a.plant, a.scheme)
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         for width in a.widths:
@@ -509,6 +683,12 @@ async def main(a: argparse.Namespace) -> int:
         await browser.close()
     dead = [u for u in w.requests if re.search(r"/(mode|private)\.js", u)]
     w.check("no_dead_modules", not dead, f"requests: {dead}")
+    under = [(s["tag"], s["name"], c["el"][:30], c["w"], c["h"]) for s in w.states for c in s["small"] if not c.get("under24")]
+    w.check("targets_44_every_state", not under, f"{len(under)} targets under 44 px: {under[:6]}")
+    sideways = [(s["tag"], s["name"]) for s in w.states if s["overflow"] > 0]
+    w.check("no_sideways_scroll", not sideways, f"{sideways[:6]}")
+    axe_bad = [(s["tag"], s["name"], v["id"]) for s in w.states for v in s["axe"]]
+    w.check("axe_clean_every_state", not axe_bad, f"{axe_bad[:6]}")
     report = {"checks": [{"name": n, "ok": ok, "detail": d} for n, ok, d in w.checks],
               "errors": w.errors, "states": w.states, "plant": a.plant}
     (out / f"report{'-' + a.plant if a.plant else ''}.json").write_text(json.dumps(report, indent=1))
@@ -541,5 +721,6 @@ if __name__ == "__main__":
     ap.add_argument("--widths", nargs="+", type=int, default=[1280, 360], choices=list(VIEWS))
     ap.add_argument("--only", nargs="+", default=list(FLOWS), choices=list(FLOWS))
     ap.add_argument("--login-helper", default=None)
+    ap.add_argument("--scheme", default="light", choices=["light", "dark"])
     ap.add_argument("--plant", default=None, choices=PLANTS)
     sys.exit(asyncio.run(main(ap.parse_args())))

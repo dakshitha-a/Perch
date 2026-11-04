@@ -45,6 +45,16 @@ function amountText(r) {
   return NOT_STATED;
 }
 
+// DRAFT copy: "Closed" is written by code when the record's own date, with its year, is before
+// today. A record with no full date gets no marker; nothing is inferred (S43 S4, rule 3).
+function isPast(r) {
+  const d = r.kind === "opportunity" ? r.close_date : r.deadline;
+  if (!/^\d{4}-\d{2}-\d{2}/.test(String(d || ""))) return false;
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return String(d).slice(0, 10) < today;
+}
+
 function deadlineText(r) {
   if (r.kind === "opportunity") {
     if (r.close_date_note && f.standardDates(r)) return r.close_date_note;
@@ -73,7 +83,8 @@ export function recordCard(r, { openEvidence }) {
     h("div", { class: "lead-head" }, h("span", { class: "tags" },
       r.sample ? h("span", { class: "tag sample", text: "Sample data" }) : null,
       ...[...new Set(r.schools || [])].map((s) => h("span", { class: "tag moss", text: s })),
-      opp && r.agency ? h("span", { class: "tag", text: f.agencyShort(r.agency, r.parent_agency) }) : null,
+      opp && r.agency && !(r.schools || []).includes(f.agencyShort(r.agency, r.parent_agency)) && !(r.schools || []).includes(r.agency)
+        ? h("span", { class: "tag", text: f.agencyShort(r.agency, r.parent_agency) }) : null,
       ...(r.levels ? [r.levels] : []).flat().map((v) => h("span", { class: "tag", text: levelWord(v) })),
       scope && !opp ? h("span", { class: "tag", text: scope }) : null,
       r.temple_funded === true ? h("span", { class: "tag ember", text: "Temple-funded" }) : null)),
@@ -84,7 +95,8 @@ export function recordCard(r, { openEvidence }) {
     quote ? h("blockquote", { class: "quote", text: `“${quote}”` }) : null,
     h("dl", { class: "facts" },
       h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, h("span", { class: amount === NOT_STATED ? "missing" : null, text: amount === NOT_STATED ? "Not stated" : amount }))),
-      h("div", { class: "fact" }, h("dt", { text: opp ? "Closes" : "Deadline" }), h("dd", {}, h("span", { class: due === NOT_STATED ? "missing" : null, text: due === NOT_STATED ? "Not stated" : due })))),
+      h("div", { class: "fact" }, h("dt", { text: opp ? "Closes" : "Deadline" }), h("dd", {}, h("span", { class: due === NOT_STATED ? "missing" : null, text: due === NOT_STATED ? "Not stated" : due }),
+        isPast(r) ? h("span", { class: "tag closed", text: "Closed" }) : null))),
     h("div", { class: "acts" },
       h("span", { class: "src-line", text: `Source: ${SOURCE_WORDS[r.source] || r.source}` }),
       f.safeUrl(r.source_url) ? h("a", { class: "btn", href: f.safeUrl(r.source_url), target: "_blank", rel: "noopener", "aria-describedby": tid },
@@ -173,7 +185,7 @@ export async function renderList(root, ctx) {
     if (error) {
       fill(groupsEl, h("div", { class: "notice error", role: "alert" }, icon("warn"),
         h("div", {}, h("p", { text: "Perch could not load the list. Try again." }),
-          h("button", { class: "btn", type: "button", "data-key": "retry", onclick: load }, h("span", { text: "Retry" })))));
+          h("button", { class: "btn", type: "button", "data-key": "retry", onclick: () => (filters ? load() : start()) }, h("span", { text: "Retry" })))));
       return;
     }
     if (!results || !total()) {
@@ -201,7 +213,7 @@ export async function renderList(root, ctx) {
     const tagsOn = aud === "student" || temple;
     const sel = st.school ? `s:${st.school}` : st.allTemple ? "t" : "a";
     const opts = [["a", "All", null, () => { st.school = null; st.allTemple = false; }],
-      ["t", "All Temple", null, () => { st.school = null; st.allTemple = true; }],
+      ["t", "Open across Temple", null, () => { st.school = null; st.allTemple = true; }],
       ...((filters && filters.schools) || []).map((s) => [`s:${s.name}`, s.name, s.count, () => { st.school = s.name; st.allTemple = false; }])];
     const pick = (o) => { o[3](); keep(drawBar); load(); };
     const tagRow = h("div", { class: "tag-row", role: "radiogroup", "aria-label": "School",
@@ -239,18 +251,25 @@ export async function renderList(root, ctx) {
     h("p", { class: "samples-link" }, h("a", { href: `#/samples/${aud}`, text: "See how Perch works with sample records" })));
   fill(root, page);
   drawResults();
-  try {
-    filters = await api.filters(aud);
-  } catch (e) {
-    error = e; busy = false;
+  // The whole start: filters, then the bar, then the list. Retry after a failed /filters
+  // runs it again, so the bar comes back too (S43 M7).
+  async function start() {
+    busy = true; error = null;
     drawResults();
-    return;
+    try {
+      filters = await api.filters(aud);
+    } catch (e) {
+      error = e; busy = false;
+      drawResults();
+      return;
+    }
+    if (aud === "student" && filters.total === filters.temple_total) st.temple = true;
+    drawBar();
+    await load();
+    const t = document.getElementById("list-title");
+    if (t && (document.activeElement === document.body || root.contains(document.activeElement))) t.focus({ preventScroll: true });
   }
-  if (aud === "student" && filters.total === filters.temple_total) st.temple = true;
-  drawBar();
-  await load();
-  const t = document.getElementById("list-title");
-  if (t) t.focus({ preventScroll: true });
+  await start();
 }
 
 // ---------- the sample screen ----------

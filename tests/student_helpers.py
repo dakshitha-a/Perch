@@ -64,12 +64,14 @@ def consent(env, monkeypatch) -> None:
     accounts.add_consent(env.pool, env.uid, 1, "SYNTHETIC Provider")
 
 
-def account_app(env, tmp_path, monkeypatch, responder=student_reply):
+def account_app(env, tmp_path, monkeypatch, responder=student_reply, samples=True):
     """(client, service): the API with the test account's services and the fake models, a
     fellowship listing, an opportunity and the SYNTHETIC sample store in tmp_path."""
     from perch.api import create_app
     from perch.jobs import InlineRunner
 
+    if samples:  # the account path exercises the sample route too; S43 M4 turned it off for real
+        monkeypatch.setattr("perch.service._has_sample_route", lambda b: True)
     monkeypatch.setenv("PERCH_REDIS_URL", REDIS_URL)
     monkeypatch.setenv("PERCH_SAMPLE_DB", str(tmp_path / "sample.db"))
     _, svc = make(tmp_path)

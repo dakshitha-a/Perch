@@ -77,8 +77,9 @@ def run_persona(svc, name: str, as_of: str) -> dict:  # noqa: ANN001
     store = MemoryBriefStore("bench", student=persona_inputs(name))
     with using_store(store):
         t0 = time.time()
+        # A persona is a SYNTHETIC sample student, so its brief has the sample route (S43 M4).
         b = svc.create(None, audience="student", as_of=date.fromisoformat(as_of),
-                       brief_id="bench")
+                       brief_id="bench", extra={"persona": name})
         status = svc.run(b.id)
         took = time.time() - t0
         brief, leads = store.view() or (b, [])
