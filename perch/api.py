@@ -1033,7 +1033,9 @@ def create_app(service: BriefService, runner: ClosureRunner,
         if sess is None or sess.user_id is None:
             raise HTTPException(403, {"error": "account_required"})
         signed_in(sess)
-        return sweb.cover_get(accounts(request), sess.user_id, sess.audience, brief_id,
+        with scope(request, sess, brief_id):
+            b, _ = load(brief_id)
+        return sweb.cover_get(accounts(request), sess.user_id, sweb.audience_of(b), brief_id,
                               record_id, job_id)
 
     from perch.scholarships import ensure_samples

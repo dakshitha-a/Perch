@@ -204,16 +204,16 @@ def scout_turn_handler(ctx: JobContext) -> str | None:
 
 # --- the cover_points job (S45) ---
 
-COVER_NOTE = ("Points to put in your own words. Each pairs one thing the record asks for with "
-              "one thing from your CV or entries. Check every point before you use it.")
-
-
 def _cover_target(service: BriefService, record_id: str) -> tuple[Opportunity, Record]:
     """(the record as an Opportunity the skill reads, the record itself)."""
     from perch.student import as_opportunity
 
     with service.repo() as r:
         rec = r.get_any(record_id)
+    if rec is None:  # a SYNTHETIC sample scholarship lives in the sample store (rule 11)
+        from perch.user.briefs import _sample
+
+        rec = _sample(record_id)
     if isinstance(rec, Opportunity):
         return rec, rec
     if isinstance(rec, Scholarship):

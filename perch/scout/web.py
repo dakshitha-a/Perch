@@ -229,6 +229,10 @@ def cover_submit(sv: UserServices, uid: UUID, audience: str, brief_id: str, reco
             "poll": f"/briefs/{brief_id}/cover-points?record_id={record_id}&job_id={job}"}
 
 
+COVER_NOTE = ("Points to put in your own words. Each pairs one thing the record asks for with "
+              "one thing from your CV or entries. Check every point before you use it.")
+
+
 def cover_get(sv: UserServices, uid: UUID, audience: str, brief_id: str, record_id: str,
               job_id: str | None) -> dict[str, Any]:
     """{"result": the stored set or null, "job": {"id", "state"} or null}."""
@@ -238,7 +242,7 @@ def cover_get(sv: UserServices, uid: UUID, audience: str, brief_id: str, record_
     for _, x in sv.ud.list(uid, "cover_points", audience, CoverPointSet, limit=100):  # type: ignore[arg-type]
         if x.brief_id == brief_id and x.record_id == record_id:
             found = x.model_dump(mode="json")
-            found["note"] = "Points to put in your own words. Check every point before you use it."
+            found["note"] = COVER_NOTE
             break
     job = None
     if job_id:

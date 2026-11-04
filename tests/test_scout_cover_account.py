@@ -112,6 +112,16 @@ def test_cover_points_run_on_a_worker_and_are_stored_encrypted(stack):
     assert len(env.ud.list(env.uid, "cover_points", "student", CoverPointSet)) == 1
 
 
+def test_a_sample_scholarship_lead_resolves_and_stays_marked_sample(stack):
+    env, c, svc, bid, rid = stack
+    leads = c.get(f"/briefs/{bid}").json()["leads"]
+    samples = [x["record_id"] for x in leads if x["record_id"].startswith("sample:")]
+    assert samples, "the student brief should hold SYNTHETIC sample leads"
+    _, r = go(env, c, svc, bid, samples[0], Cover())
+    got = r.json()["result"]
+    assert got["status"] == "done" and got["sample"] is True and got["points"]
+
+
 def test_points_that_fail_the_check_twice_are_stored_withheld(stack):
     env, c, svc, bid, rid = stack
     model = Cover(bad=True)
