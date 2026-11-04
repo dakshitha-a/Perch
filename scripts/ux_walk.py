@@ -120,7 +120,7 @@ async def new_page(browser: Browser, w: Walk, tag: str, view: dict, base: str) -
         await page.add_init_script("addEventListener('DOMContentLoaded', () => import('/mode.js').catch(() => 0))")
     if w.plant == "delete_keyboard":  # open the dialog without moving focus into it
         await page.add_init_script("HTMLDialogElement.prototype.showModal = function () {"
-                                   " this.setAttribute('open', ''); document.activeElement.blur(); }")
+                                   " this.setAttribute('open', ''); setTimeout(() => document.activeElement.blur(), 0); }")
     return page
 
 
@@ -190,10 +190,11 @@ async def flow_awards(w: Walk, browser: Browser, base: str, tag: str, view: dict
         async def leak(route: Route) -> None:
             r = await route.fetch()
             data = await r.json()
-            item = dict(data["groups"][0]["items"][0])
-            item.update(id="sample:sch-0001", sample=True, source="synthetic", name="Planted sample")
-            data["groups"][0]["items"].insert(0, item)
-            await route.fulfill(response=r, json=data)
+            if data["groups"][0]["items"]:  # an empty search answer is left alone
+                item = dict(data["groups"][0]["items"][0])
+                item.update(id="sample:sch-0001", sample=True, source="synthetic", name="Planted sample")
+                data["groups"][0]["items"].insert(0, item)
+            await route.fulfill(status=200, content_type="application/json", body=json.dumps(data))
         await page.route(re.compile(r".*/awards\?.*"), leak)
     if w.plant == "counts_from_server":
         async def skew(route: Route) -> None:
@@ -203,7 +204,7 @@ async def flow_awards(w: Walk, browser: Browser, base: str, tag: str, view: dict
             if calls["filters"] > 1:  # the chips were drawn from the first answer
                 for s in data["schools"]:
                     s["count"] += 1
-            await route.fulfill(response=r, json=data)
+            await route.fulfill(status=200, content_type="application/json", body=json.dumps(data))
         await page.route(re.compile(r".*/filters\?.*"), skew)
     await page.goto(base + "/#/awards")
     await page.wait_for_selector(".tag-row")
@@ -304,9 +305,10 @@ async def flow_samples(w: Walk, browser: Browser, base: str, tag: str, view: dic
 async def build_wait(page: Page, secs: int = 420) -> str:
     await until(page, "() => location.hash.startsWith('#/brief/')", secs=60)
     bid = await page.evaluate("decodeURIComponent(location.hash.split('/')[2])")
-    await until(page, """(id) => fetch('/briefs/' + id).then(r => r.json()).then(j => ['done', 'failed']
-      .includes(j.brief.status))""", bid, secs=secs, every=3)
-    status = await page.evaluate("(id) => fetch('/briefs/' + id).then(r => r.json()).then(j => j.brief.status)", bid)
+    one = """(id) => fetch('/briefs/' + id).then(r => r.json()).then(j => j.brief ? j.brief.status
+      : 'answer: ' + JSON.stringify(j).slice(0, 100))"""
+    await until(page, "(id) => (" + one + ")(id).then(s => !['queued', 'running'].includes(s))", bid, secs=secs, every=3)
+    status = await page.evaluate(one, bid)
     await page.wait_for_timeout(1500)
     return status
 
@@ -343,7 +345,11 @@ async def flow_briefs(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.wait_for_selector("[data-key=seg-s]")
     await page.click("[data-key=seg-s]")
     await page.click("[data-key=fit]")
-    await page.click("[data-key=st-build]")
+    try:
+        await page.click("[data-key=st-build]", timeout=8000)
+    except Exception:
+        await w.snap(page, tag, "debug-student-start")
+        raise
     status = await build_wait(page)
     w.check("guest_sample_persona_brief", status == "done", f"status {status}")
     await w.snap(page, tag, "brief-student")
@@ -492,7 +498,8 @@ async def main(a: argparse.Namespace) -> int:
                 try:
                     await FLOWS[name](w, browser, a.base, tag, VIEWS[width])
                 except Exception as e:  # noqa: BLE001 - a failed flow is a finding; the walk goes on
-                    w.errors.append(f"{tag}: {name}: {type(e).__name__}: {str(e).splitlines()[0][:200]}")
+                    line = e.__traceback__.tb_next.tb_lineno if e.__traceback__ and e.__traceback__.tb_next else "?"
+                    w.errors.append(f"{tag}: {name} (line {line}): {type(e).__name__}: {str(e).splitlines()[0][:200]}")
                 print(f"{tag} {name}: {len(w.checks) - before} checks", flush=True)
             if a.login_helper:
                 try:

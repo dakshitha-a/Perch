@@ -657,6 +657,7 @@ async function build(c) {
       await refreshSession();
     }
     const r = await api.create(req, "researcher");
+    await refreshSession(); // a first brief may have started a guest session: show the banner
     S.startedHere = true;
     S.tab = "routes";
     S.briefId = null; // a new brief: open it fresh
