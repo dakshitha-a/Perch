@@ -5,9 +5,15 @@
 #   make v1-down    stop it, keeping the volumes
 #
 # Every host port is bound to 127.0.0.1. Passwords and keys come from the environment
-# (.env), never from this file. `web` and `worker` rely on a /health route and a
-# `perch worker` command that land in later S37 tasks; until then those two containers
-# may fail their healthcheck or exit.
+# (.env), never from this file.
+#
+# The worker runs on one GPU (the `worker-gpu` image, profile cloud-gpu), chosen by
+# PERCH_WORKER_GPU (default 3). On a host without a GPU add the CPU override:
+#   docker compose -f deploy/compose/docker-compose.v1.yml -f deploy/compose/docker-compose.cpu.yml ...
+#
+# Backups: the `backup` service dumps `perch` and `perch_keys` every day into separate
+# volumes and deletes dumps older than 35 days (backup.sh). Restore check:
+# restore_test.sh. After any restore run `perch reconcile-shreds`.
 name: perch-v1
 
 x-app-env: &app-env
@@ -20,6 +26,7 @@ x-app-env: &app-env
   PERCH_KEYS_DATABASE_URL: postgresql://perch_keys:${PERCH_KEYS_PASSWORD:?set}@postgres:5432/perch_keys
   PERCH_PUBLIC_URL: http://127.0.0.1:8190
   PERCH_COOKIE_INSECURE: "1"
+  PERCH_LOG_FORMAT: ${PERCH_LOG_FORMAT:-json}
 
 services:
   postgres:
@@ -124,11 +131,11 @@ services:
     build:
       context: ../..
       dockerfile: deploy/compose/Dockerfile.v1
-      target: worker
-    image: perch-v1-worker
+      target: worker-gpu
+    image: perch-v1-worker:gpu
     environment:
       <<: *app-env
-      PERCH_PROFILE: cloud-cpu  # cloud-gpu once the CUDA worker image exists (REBUILD_PLAN, 4 Nov revision)
+      PERCH_PROFILE: cloud-gpu
       PERCH_DATABASE_URL: postgresql://perch_worker:${PERCH_WORKER_PASSWORD}@postgres:5432/perch
       PERCH_DATABASE_DIRECT_URL: postgresql://perch_worker:${PERCH_WORKER_PASSWORD}@postgres:5432/perch
       PERCH_TORCH_THREADS: ${PERCH_TORCH_THREADS:-4}
@@ -138,17 +145,52 @@ services:
     depends_on:
       migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["${PERCH_WORKER_GPU:-3}"]
+              capabilities: [gpu]
     healthcheck:
-      # Liveness only. The heartbeat row (ARCHITECTURE_V1 section 3) is the real signal.
-      test: ["CMD", "/opt/venv/bin/python", "-c", "import perch"]
+      # True when this container's worker_heartbeat row is under 90 seconds old.
+      test: ["CMD", "/opt/venv/bin/perch", "worker", "--check"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 120s
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     restart: unless-stopped
 
+  backup:
+    image: pgvector/pgvector:0.8.0-pg16
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    environment:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_DIR: /backups
+      BACKUP_KEYS_DIR: /backups-keys
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-35}
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - backups:/backups
+      - backups-keys:/backups-keys
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      # The loop touches the file after every run, so it is under 25 hours old.
+      test: ["CMD-SHELL", "find /tmp/backup-heartbeat -mmin -1500 | grep -q ."]
+      interval: 1h
+      timeout: 10s
+      retries: 1
+      start_period: 5m
+    restart: unless-stopped
+
 volumes:
+  backups:
+  backups-keys:
   pgdata:
   redisdata:
   kcdata:

@@ -57,7 +57,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import Field
 
@@ -67,6 +67,7 @@ from perch import export as ex
 from perch.auth.wiring import install_auth, readiness
 from perch.config import env
 from perch.jobs import ClosureRunner
+from perch.metrics import Counting, local_only, render
 from perch.request_models import (
     BriefOptions,
     CoverPointsRequest,
@@ -502,6 +503,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(BodyLimit, limit=MAX_BODY)  # inside Crashed: its 413 stays a 413
     app.add_middleware(Crashed)
+    app.add_middleware(Counting)
     app.add_middleware(SecurityHeaders)  # outermost, so a 500 or 413 carries them too
 
     origins = [o.strip() for o in (env("PERCH_CORS_ORIGINS") or "").split(",") if o.strip()]
@@ -523,6 +525,24 @@ def create_app(service: BriefService, runner: ClosureRunner,
             return {"status": "ok"}
         checks = {name: up(url) for name, url in dependencies().items()}
         return {"status": "ok" if all(checks.values()) else "degraded", "services": checks}
+
+    @app.get("/metrics", include_in_schema=False)
+    def metrics(request: Request):  # noqa: ANN202
+        """Request counters and worker liveness; loopback callers only (perch/metrics.py)."""
+        host = request.client.host if request.client else None
+        if not local_only(host, request.scope.get("headers", [])):
+            raise HTTPException(404)
+        extra: dict[str, float] = {}
+        pool = getattr(app.state, "pool", None)
+        if pool is not None:
+            try:
+                with pool.connection() as c:
+                    row = c.execute("SELECT count(*) FROM worker_heartbeat "
+                                    "WHERE at > now() - interval '90 seconds'").fetchone()
+                extra["perch_workers_alive"] = row[0] if row else 0
+            except Exception:  # noqa: BLE001
+                extra["perch_workers_alive"] = -1
+        return PlainTextResponse(render(extra))
 
     ID_HINT = ("An OpenAlex author ID is an A followed by at least eight digits. Check it, or "
                "search by name or ORCID iD.")
