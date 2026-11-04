@@ -123,7 +123,8 @@ def test_a_signed_in_student_brief_has_no_sample_route(env, tmp_path, monkeypatc
     c, svc = account_app(env, tmp_path, monkeypatch, samples=False)
     got = run_brief(env, svc, c)
     assert got["brief"]["status"] == "done"
-    assert {x["route"] for x in got["leads"]} == {"F"} and not any(x["sample"] for x in got["leads"])
+    assert {x["route"] for x in got["leads"]} == {"F"}
+    assert not any(x["sample"] for x in got["leads"])
     stage = next(s for s in got["brief"]["stages"] if s["name"] == "scholarships")
     assert stage["status"] == "skipped"
 

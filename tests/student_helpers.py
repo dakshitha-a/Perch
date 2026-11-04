@@ -70,7 +70,7 @@ def account_app(env, tmp_path, monkeypatch, responder=student_reply, samples=Tru
     from perch.api import create_app
     from perch.jobs import InlineRunner
 
-    if samples:  # the account path exercises the sample route too; S43 M4 turns it off for real accounts
+    if samples:  # the account path exercises the sample route too; S43 M4 turned it off for real
         monkeypatch.setattr("perch.service._has_sample_route", lambda b: True)
     monkeypatch.setenv("PERCH_REDIS_URL", REDIS_URL)
     monkeypatch.setenv("PERCH_SAMPLE_DB", str(tmp_path / "sample.db"))

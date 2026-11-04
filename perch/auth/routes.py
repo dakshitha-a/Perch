@@ -131,7 +131,7 @@ async def callback(request: Request) -> Response:
     store, pool = _store(request), _pool(request)
     try:
         identity, return_to = await _provider(request).complete(dict(request.query_params), binder)
-    except AuthError as e:
+    except AuthError:
         # The code is not shown; the app says "Sign-in did not finish" (S43 M1).
         resp = RedirectResponse("/#/?signin=failed", status_code=302, headers=NO_STORE)
         _clear_oidc_cookie(resp)

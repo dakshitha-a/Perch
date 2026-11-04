@@ -142,7 +142,8 @@ class PostgresRepository(Repository):
         if cursor:
             # Name order, case-folded, with the id as the tie-break; the cursor holds both.
             after = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
-            if not (isinstance(after, list) and len(after) == 2 and all(isinstance(x, str) for x in after)):
+            if not (isinstance(after, list) and len(after) == 2
+                    and all(isinstance(x, str) for x in after)):
                 raise ValueError("bad cursor")
             page_where += f' AND ({NAME_SQL}, id COLLATE "C") > (%s, %s)'
             page_args.extend(after)

@@ -587,7 +587,7 @@ async def flow_retry(w: Walk, browser: Browser, base: str, tag: str, view: dict)
         calls = {"n": 0}
         n_err = len(w.errors)
 
-        async def flaky(route: Route) -> None:
+        async def flaky(route: Route, calls: dict = calls) -> None:
             calls["n"] += 1
             if calls["n"] == 1 or w.plant == "retry_filters":
                 return await route.abort()

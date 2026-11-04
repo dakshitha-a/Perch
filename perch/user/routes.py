@@ -74,7 +74,8 @@ def _side(s: Session, audience: str | None) -> Literal["researcher", "student"]:
 
 def _consented(s: Session) -> None:
     """Writing the CV, entries or documents, or building from them, needs the current consent
-    (7.5). Listing and deleting do not: a user who withdrew can still see and remove what is stored."""
+    (7.5). Listing and deleting do not: a user who withdrew can still see and remove what is
+    stored."""
     deps.require_consent(s)
 
 

@@ -640,7 +640,8 @@ class BriefService:
 
         if not _has_sample_route(b):
             # A signed-in student's brief holds public records only; the SYNTHETIC samples
-            # live on their own screen (fork F6, S43 M4). Only a guest's sample persona has this route.
+            # live on their own screen (fork F6, S43 M4). Only a guest's sample persona
+            # has this route.
             return "sample scholarships are on their own screen", True
         pool = samples()  # SYNTHETIC records, a list of their own (rule 11); read-only
         leads, ok = self._student_route(b, "S", pool)

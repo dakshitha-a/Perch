@@ -76,7 +76,7 @@ def test_awards_lists_public_records_with_provenance_and_nulls(loaded):
 
 def test_temple_only_keeps_records_listed_on_temple_pages(loaded):
     (g,) = loaded.get("/awards", params={"temple_only": "true"}).json()["groups"]
-    assert sorted(ids(g)) == ["temple_pages:a", "temple_pages:b", "temple_pages:c", "temple_pages:d"]
+    assert sorted(ids(g)) == [f"temple_pages:{k}" for k in "abcd"]
     (g,) = loaded.get("/opportunities", params={"temple_only": "true"}).json()["groups"]
     assert ids(g) == ["temple_pages:o1"]
     (g,) = loaded.get("/opportunities").json()["groups"]
