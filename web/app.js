@@ -44,7 +44,7 @@ const SIGNALS = { citing_works: "They cite your papers", sbir_sttr: "NIH SBIR/ST
 const S = {
   find: { q: "", busy: false, error: null, candidates: null, searched: "", explain: true,
     minAmount: "", direction: "", include: "", exclude: "", stage: "",
-    picked: null, building: false },
+    picked: null, building: false, docs: null, docIds: new Set() },
   who: "s", // the landing's Student | Researcher control; Student comes first (S43)
   session: { signed_in: false }, // the last GET /auth/session answer; the page never guesses
   flash: null, // a message for the banner slot, e.g. "Your data was deleted."
@@ -613,7 +613,27 @@ function contextPanel(c) {
         h("label", { class: "big", for: "ctx-min", text: "Leave out awards smaller than (US dollars)" }),
         h("input", { id: "ctx-min", type: "number", inputmode: "numeric", min: "0", step: "any", placeholder: "Any",
           value: F.minAmount, "aria-describedby": "min-hint", oninput: (e) => { F.minAmount = e.target.value; } }),
-        h("p", { class: "note", id: "min-hint", text: "Compared with the award ceiling in each record. Records that state no amount stay in." })))));
+        h("p", { class: "note", id: "min-hint", text: "Compared with the award ceiling in each record. Records that state no amount stay in." })),
+      cvBox())));
+}
+
+// A signed-in researcher can attach stored documents; a guest is pointed to sign-in.
+// DRAFT copy (S43): the labels in this box.
+function cvBox() {
+  const F = S.find;
+  if (S.session.guest) return h("div", { class: "box" }, h("p", { class: "note", text: "Sign in to add your CV." }));
+  if (!S.session.signed_in || api.mode === "replay") return null;
+  const box = h("div", { class: "box" }, h("h3", { class: "big", text: "Your stored documents" }));
+  const draw = () => fill(box, h("h3", { class: "big", text: "Your stored documents" }),
+    F.docs && F.docs.length ? F.docs.map((d) => h("label", { class: "check" },
+      h("input", { type: "checkbox", checked: F.docIds.has(d.id), onchange: (e) => { if (e.target.checked) F.docIds.add(d.id); else F.docIds.delete(d.id); } }),
+      h("span", { text: `${d.name || d.label || d.kind} (${d.kind})` })))
+      : h("p", { class: "note", text: F.docs ? "You have no stored documents. Add a CV on the Check my fit page." : "Loading your documents" }));
+  draw();
+  if (!F.docs) {
+    api.docs("researcher").then((d) => { F.docs = d; draw(); }).catch((e) => { F.docs = []; fill(box, h("p", { class: "note", text: e.code === "consent_required" ? "Agree to the consent first." : e.message })); });
+  }
+  return box;
 }
 
 // One build call: the api makes sure a session exists, then starts the brief.
@@ -626,11 +646,16 @@ async function build(c) {
   if (words(F.include).length) req.include_keywords = words(F.include);
   if (words(F.exclude).length) req.exclude_keywords = words(F.exclude);
   if (F.stage) req.career_stage = F.stage;
+  if (F.docIds.size) req.doc_ids = [...F.docIds];
   const min = parseFloat(F.minAmount);
   if (Number.isFinite(min) && min > 0) req.min_amount = min;
   F.building = true; F.error = null;
   keepFocus(renderPick);
   try {
+    if (S.session.signed_in && S.session.audience !== "researcher" && (S.session.roles || []).includes("researcher")) {
+      await api.setAudience("researcher");  // a brief is built on the side the session is on
+      await refreshSession();
+    }
     const r = await api.create(req, "researcher");
     S.startedHere = true;
     S.tab = "routes";

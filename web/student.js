@@ -112,6 +112,10 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
   async function build() {
     D.busy = true; D.error = null; draw();
     try {
+      if (sess.audience !== "student") {  // a dual-role account: the brief is built on the side it is on
+        await api.setAudience("student");
+        if (refresh) await refresh();
+      }
       const r = await api.create({ doc_ids: docs.map((d) => d.id) }, "student");
       D.busy = false;
       go(`#/brief/${encodeURIComponent(r.id)}/routes`);
