@@ -489,7 +489,8 @@ def test_cover_points_button_is_wired_on_every_lead_card():
         assert s in cover, s
     assert "export function pointsBlock(" in (WEB_DIR / "scout.js").read_text()
     api = (WEB_DIR / "api.js").read_text()
-    assert "cover-points`, again ? { record_id: recordId, again: true }" in api and "err.retryAfter" in api
+    assert "cover-points`, again ? { record_id: recordId, again: true }" in api
+    assert "err.retryAfter" in api
     assert api.index("coverStart:") < api.index("studentNote:")
     student = (WEB_DIR / "student.js").read_text()
     assert 'l.status === "dismissed" ? null : coverBlock({ ...ctx, audience: "student"' in student
