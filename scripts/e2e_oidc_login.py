@@ -177,6 +177,29 @@ def submit_login(kc: Kc, action: str) -> str:
     return loc
 
 
+def login(base_url: str = BASE) -> httpx.Client:
+    """One real login as the SYNTHETIC realm user, for scripts/e2e_account.py. The app must
+    already run at `base_url` with the Keycloak dev realm. Returns an httpx client that holds the
+    Perch session cookie. Raises RuntimeError when a step fails; prints nothing."""
+    global BASE
+    BASE = base_url.rstrip("/")
+    app = httpx.Client(base_url=BASE, follow_redirects=False, timeout=30)
+    kc = Kc()  # a new Keycloak browser each time, so a second call shows the form again
+    r = app.get("/auth/login", params={"return_to": "/briefs"})
+    loc = r.headers.get("location", "")
+    if r.status_code != 302 or not loc:
+        raise RuntimeError(f"login did not redirect (http {r.status_code})")
+    page = kc_get(kc, loc)
+    action = form_action(page.text)
+    cb = submit_login(kc, action) if action else page.headers.get("location", "")
+    if not cb.startswith(BASE + "/auth/callback?"):
+        raise RuntimeError("Keycloak did not send the browser back to the app")
+    done = app.get(cb[len(BASE):])
+    if done.status_code != 302:
+        raise RuntimeError(f"callback refused (http {done.status_code})")
+    return app
+
+
 def run(keys_ready: bool) -> None:
     origin = {"Origin": BASE}
     app = httpx.Client(base_url=BASE, follow_redirects=False, timeout=15)
