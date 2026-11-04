@@ -361,7 +361,7 @@ def reconcile_shreds(user_ids: set[UUID]) -> int:
     return revived
 
 
-def rotate_master(old_id: str, new_id: str, *, batch: int = 500) -> int:
+def rotate_master(old_id: str, new_id: str, *, batch: int = 500, dry_run: bool = False) -> int:
     """Re-wrap every user_keys row whose master_key_id == old_id under new_id.
 
     Resumable and safe while serving; data blobs are untouched. The key store must hold both
@@ -372,6 +372,8 @@ def rotate_master(old_id: str, new_id: str, *, batch: int = 500) -> int:
         raise CryptoError("old and new master ids must differ")
     if ks.current_master_id != new_id:
         raise CryptoError("new_id must be the key store's current master id")
+    if dry_run:
+        return repo.count_for_master(old_id)
     total = 0
     while True:
         rows = repo.all_for_master(old_id, batch)
@@ -394,3 +396,36 @@ def rotate_data_key(user_id: UUID) -> int:
     if _S.rekey_hook is not None:
         _S.rekey_hook(user_id)
     return version
+
+
+def newest_version(user_id: UUID) -> int | None:
+    """The user's newest data key version, or None when there is no key row. No tombstone check."""
+    latest = _repo().latest(user_id)
+    return latest.key_version if latest else None
+
+
+# A tombstone must outlive every backup that could still hold the user's key (6.6): never fewer
+# than 400 days, and never fewer than the longest backup retention.
+MIN_TOMBSTONE_DAYS = 400
+
+
+def tombstone_retention_days(backup_days: int = 0, configured: int | None = None) -> int:
+    """The retention to use: `configured` (default 400) if it meets the floor, else CryptoError."""
+    days = MIN_TOMBSTONE_DAYS if configured is None else configured
+    if days < max(MIN_TOMBSTONE_DAYS, backup_days):
+        raise CryptoError("tombstone retention is below the floor")
+    return days
+
+
+def purge_tombstones(older_than_days: int, *, dry_run: bool = True) -> int:
+    """Remove tombstones older than the retention from the keys database. Returns the count
+    (removed, or that would be removed with dry_run). Callers pass a retention that already
+    met tombstone_retention_days; the database function refuses under 400 days as well."""
+    if older_than_days < MIN_TOMBSTONE_DAYS:
+        raise CryptoError("tombstone retention is below the floor")
+    return _repo().purge_tombstones(older_than_days, dry_run)
+
+
+def users_with_rotated_keys(after: UUID | None, limit: int) -> list[tuple[UUID, int]]:
+    """(user_id, newest version) for users whose data key has been rotated, by user id."""
+    return _repo().users_with_rotated_keys(after, limit)

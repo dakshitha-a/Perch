@@ -21,7 +21,7 @@ from uuid import UUID
 import redis
 from psycopg_pool import ConnectionPool
 
-from perch import crypto
+from perch import crypto, keyops
 from perch.config import env
 from perch.crypto import CryptoError
 from perch.jobs import JobContext, JobRunner, PermanentError, register
@@ -112,6 +112,21 @@ def _redis() -> redis.Redis | None:
     return get_client() if env("PERCH_REDIS_URL") else None
 
 
+def _purge_tombstones(pool: ConnectionPool) -> None:
+    """Daily: reconcile first (a restore may have revived keys), then drop tombstones past the
+    retention from all three copies. Counts only."""
+    from perch import shredhooks
+
+    keys_dsn = env("PERCH_KEYS_DATABASE_URL")
+    if keys_dsn:
+        crypto.reconcile_shreds(shredhooks.tombstone_union(keys_dsn, pool))
+    try:
+        res = keyops.purge_old_tombstones(pool, dry_run=False)
+    except CryptoError:
+        raise PermanentError("retention_invalid") from None
+    keyops.audit(pool, "tombstones_purge", **res)
+
+
 @register("purge", max_attempts=5, timeout_s=600, priority=5)
 def purge_handler(ctx: JobContext) -> str | None:
     action = ctx.payload["action"]
@@ -136,6 +151,16 @@ def purge_handler(ctx: JobContext) -> str | None:
     elif action == "audit":
         with pg.public_tx(pool) as c:
             c.execute("SELECT perch_null_old_actors(interval '90 days')")
-    else:  # rekey and tombstones belong to the key-rotation work
+    elif action == "rekey":
+        uid = ctx.payload.get("user_id")
+        if not uid:
+            raise PermanentError("invalid_input")
+        res = keyops.rekey_user(pool, UUID(uid))
+        keyops.audit(pool, "key_rotate_data", user_id=uid, **res)
+        if res["failed"]:
+            raise PermanentError("rekey_incomplete")  # counts are in the audit row
+    elif action == "tombstones":
+        _purge_tombstones(pool)
+    else:
         raise PermanentError("no_handler")
     return None

@@ -10,7 +10,7 @@ test:
 # Key-store tests against a test Postgres (creates and drops perch_test_b_* databases).
 PERCH_TEST_KEYS_DATABASE_URL ?= postgresql://postgres:perchtest@127.0.0.1:55432/postgres
 test-keys:
-	PERCH_TEST_KEYS_DATABASE_URL=$(PERCH_TEST_KEYS_DATABASE_URL) $(UV) run pytest tests/test_crypto.py tests/test_keystore.py
+	PERCH_TEST_KEYS_DATABASE_URL=$(PERCH_TEST_KEYS_DATABASE_URL) $(UV) run pytest tests/test_crypto.py tests/test_keystore.py tests/test_key_ops.py
 
 # Redis tests: DB 15 of the local test server only (it is flushed).
 PERCH_TEST_REDIS_URL ?= redis://127.0.0.1:56379/15
@@ -31,7 +31,7 @@ test-user:
 	PERCH_TEST_DATABASE_URL=$${PERCH_TEST_DATABASE_URL:-postgresql://postgres:perchtest@127.0.0.1:55432/postgres} \
 	PERCH_TEST_KEYS_DATABASE_URL=$(PERCH_TEST_KEYS_DATABASE_URL) \
 	PERCH_TEST_REDIS_URL=$(PERCH_TEST_REDIS_URL) \
-		$(UV) run pytest tests/test_user_data_pg.py tests/test_user_briefs.py tests/test_user_account.py tests/test_s41_integration.py \
+		$(UV) run pytest tests/test_user_data_pg.py tests/test_user_briefs.py tests/test_user_account.py tests/test_key_ops_user.py tests/test_s41_integration.py \
 		tests/test_student_account.py tests/test_student_routes.py tests/test_leak_check.py \
 		tests/test_scout_v2_account.py tests/test_scout_s45_account.py tests/test_scout_cover_account.py -p no:cacheprovider
 
