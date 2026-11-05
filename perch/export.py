@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from perch import datefmt
-from perch.compare import COLUMNS, Row, award_size, lower_first
+from perch.compare import Row, award_size, columns_for, lower_first
 from perch.offices import RESEARCH_SECURITY, SUBMISSION_NOTE, SUBMISSION_URL, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
 from perch.score import band, match_text
@@ -250,7 +250,7 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     kept = [x for x in leads if x.status == "kept"]
     if compare_rows:
         out.append(Block("h2", f"Kept leads compared ({len(compare_rows)})"))
-        cols = [c for c in COLUMNS if c[0] != "office"]
+        cols = [c for c in columns_for(compare_rows) if c[0] != "office"]
 
         def lead_table(rows: list, label: object) -> list:
             table = [["Lead", *[lbl for _, lbl in cols], "Office"]]

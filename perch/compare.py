@@ -100,7 +100,10 @@ def closes(o: Opportunity, as_of: date) -> Cell:
     return Cell(o.close_date.isoformat(), o.close_date.isoformat(), o.id, note)
 
 
-def route_a_row(lead: Lead, o: Opportunity | None, as_of: date) -> Row:
+def route_a_row(lead: Lead, o: Opportunity | None, as_of: date,
+                explained: bool = False) -> Row:
+    """`explained`: the brief's explanation stage is over (done or skipped), so a lead with no
+    explanation will not get one (S51 W7)."""
     rid = lead.record_id
     if o is None:
         blank = Cell(NONE, None, rid)
@@ -110,7 +113,8 @@ def route_a_row(lead: Lead, o: Opportunity | None, as_of: date) -> Row:
     else:
         papers = [c for c in lead.cited_ids if c.startswith("W")]
         state = ("explanation withheld" if lead.flagged else
-                 "explanation checked" if lead.explanation else "no explanation yet")
+                 "explanation checked" if lead.explanation else
+                 "no written reason" if explained else "no explanation yet")
         # The card's Match, not the rank: one number for one lead everywhere (U6).
         rank = match_text(lead.match_score) or "No Match score"
         ev = f"{rank}; cites {len(papers)} of your papers" if papers else rank
@@ -164,17 +168,27 @@ def compare(brief: Brief, leads: list[Lead], r: Repository, status: str | None =
     # Route A's own list first, then Temple internal as its own section, then route B.
     # A centre or programme grant (S51 H7) is ranked with the grants, so it sorts with them.
     chosen.sort(key=lambda x: (x.route, x.group == "temple_internal", x.rank or 0))
+    explained = any(s.name == "explanations" and s.status in ("done", "skipped")
+                    for s in brief.stages)
     rows = []
     for x in chosen:
         if x.route == "A":
-            rows.append(route_a_row(x, r.get(Opportunity, x.record_id), as_of))
+            rows.append(route_a_row(x, r.get(Opportunity, x.record_id), as_of, explained))
         else:
             rows.append(route_b_row(x, r.get(Organisation, x.record_id)))
     return rows
 
 
+def columns_for(rows: list[Row]) -> list[tuple[str, str]]:
+    """The columns a table of these rows shows. Every grant's instrument is "Grant", so the
+    instrument row is left out when every row is a grant (S51 W7)."""
+    if rows and all(x.route == "A" for x in rows):
+        return [c for c in COLUMNS if c[0] != "kind"]
+    return list(COLUMNS)
+
+
 def rows_json(rows: list[Row]) -> dict:
-    return {"columns": [{"key": k, "label": lbl} for k, lbl in COLUMNS],
+    return {"columns": [{"key": k, "label": lbl} for k, lbl in columns_for(rows)],
             "rows": [asdict(x) for x in rows], "none": NONE,
             # Research briefs only: the student offices (F, S) have their own browser-side
             # drafts, and listing them here showed "no kept undefined" (S22, audit M1).
