@@ -192,7 +192,9 @@ def _summary(rid: UUID, sb: StoredBrief) -> dict:
             # Kept leads, public and sample apart, for My Perch (S49 V3).
             "kept": sum(x.status == "kept" and not x.sample for x in sb.leads),
             "sample_kept": sum(x.status == "kept" and bool(x.sample) for x in sb.leads),
-            "topics": b.topics[:5]}
+            "topics": b.topics[:5],
+            # S50 QA: a stored failed brief says why on My Perch, as the brief page does
+            **({"error": b.error} if b.status == "failed" and b.error else {})}
 
 
 @router.get("/me/briefs")
