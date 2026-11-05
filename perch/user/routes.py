@@ -22,12 +22,14 @@ from pydantic import BaseModel, Field
 from perch import redisx
 from perch.auth import deps
 from perch.auth.session import Session
+from perch.citizenship import CITIZENSHIP_VALUES, STATE_CODES
 from perch.jobs import JobRunner
 from perch.user import docs, quota, saved
+from perch.user import profile as profile_store
 from perch.user.data import BadBlob, UserData
 from perch.user.delete import delete_account
 from perch.user.inputs import MAX_BYTES, MAX_CHARS, InputError
-from perch.user.models import StoredBrief
+from perch.user.models import ProfileDoc, StoredBrief
 
 log = logging.getLogger("perch.user.routes")
 router = APIRouter()
@@ -58,6 +60,13 @@ class DocAdd(BaseModel):
 
 class SavedAdd(BaseModel):
     record_id: str = Field(min_length=1, max_length=200)
+
+
+class ProfilePut(BaseModel):
+    """The optional picks (S53). Anything outside the closed lists is a 422."""
+
+    citizenship: Literal[CITIZENSHIP_VALUES] | None = None  # type: ignore[valid-type]
+    residency_state: Literal[STATE_CODES] | None = None  # type: ignore[valid-type]
 
 
 class DeleteConfirm(BaseModel):
@@ -120,6 +129,29 @@ def remove_doc(doc_id: UUID, s: Session = Depends(deps.require_user),
     if not docs.remove(sv.ud, _uid(s), doc_id):
         raise HTTPException(404, {"error": "not_found"})  # also for another user's id
     return {"ok": True}
+
+
+# --- optional citizenship and state of residence (S53) ---
+
+@router.get("/me/profile")
+def get_profile(audience: str | None = None, s: Session = Depends(deps.require_user),
+                sv: UserServices = Depends(services)) -> dict:
+    # Like the document listing, reading what is stored needs no consent.
+    p = profile_store.read(sv.ud, _uid(s), _side(s, audience))
+    return {"citizenship": p.citizenship, "residency_state": p.residency_state}
+
+
+@router.put("/me/profile", dependencies=[Depends(deps.require_csrf)])
+def put_profile(req: ProfilePut, audience: str | None = None,
+                s: Session = Depends(deps.require_user),
+                sv: UserServices = Depends(services)) -> dict:
+    _consented(s)
+    uid = _uid(s)
+    _limit(sv, uid, "api_write")
+    p = profile_store.save(sv.ud, uid, _side(s, audience),
+                           ProfileDoc(citizenship=req.citizenship,
+                                      residency_state=req.residency_state))
+    return {"citizenship": p.citizenship, "residency_state": p.residency_state}
 
 
 # --- saved awards and funding calls (S49 V2) ---

@@ -440,8 +440,12 @@ class BriefService:
                                 profile=profile, index_new=self.index_new,
                                 rerank_in=self.rerank_in())
             ranked = []
+            cit, res = store.profile_picks() if store is not None else (None, None)
             for x in brief.leads:
                 notes = []
+                dem, prov = grant_demotion(x.opportunity, cit, res)
+                if dem:
+                    notes.append(dem)
                 if esi and career_stage_restricted(x.opportunity):
                     notes.append(cv.esi_note() if cv else ESI_SAID)
                 bonus = 0.0
@@ -449,8 +453,9 @@ class BriefService:
                     notes.append(f"Your CV lists a past award from {k}, so this sponsor's "
                                  "programme moved up.")
                     bonus = SPONSOR_BONUS
-                ranked.append((x.rerank_score + bonus, x, notes))
-            ranked.sort(key=lambda t: -t[0])
+                ranked.append((x.rerank_score + bonus, x, notes, prov))
+            # S53: a listing whose own rule the user's pick does not meet moves after the others
+            ranked.sort(key=lambda t: (bool(t[3] and t[3]["outcome"] == "fail"), -t[0]))
             # Match comes from the same adjusted score the order uses, so they agree.
             leads = [Lead(id=f"{b.id}:{i}", source=x.opportunity.source,
                           source_url=x.opportunity.source_url,
@@ -461,8 +466,10 @@ class BriefService:
                           # S51 H7: a centre or programme grant keeps its rank and Match and
                           # is shown in its own fold; fresh and pre-cached briefs alike.
                           group="centre" if (cn := centre_note(x.opportunity)) else None,
+                          demoted=bool(prov and prov["outcome"] == "fail"),
+                          citizenship_rule=prov,
                           notes=[*notes, cn] if cn else notes)
-                     for i, (adj, x, notes) in enumerate(ranked, 1)]
+                     for i, (adj, x, notes, prov) in enumerate(ranked, 1)]
             # Temple internal funding: its own group, ranked 1..n within it (S49 M9). A brief
             # from the nightly pre-cache has not run it yet.
             temple, tnotes = brief.temple, brief.temple_notes
@@ -470,6 +477,8 @@ class BriefService:
                 temple, tnotes = temple_internal(brief.profile, r, self.models.get("embedder"),
                                                  self.models.get("reranker"), c,
                                                  RerankCache(self.rerank_cache))
+            tjudged = [(x, *grant_demotion(x.opportunity, cit, res)) for x in temple]
+            tjudged.sort(key=lambda t: bool(t[2] and t[2]["outcome"] == "fail"))  # stable
             tleads = [Lead(id=f"{b.id}:T{i}", source=x.opportunity.source,
                            source_url=x.opportunity.source_url,
                            fetched_at=x.opportunity.fetched_at, brief_id=b.id, route="A",
@@ -477,8 +486,10 @@ class BriefService:
                            rerank_score=round(x.rerank_score, 4),
                            match_score=match_score(x.rerank_score),
                            matched_thread=x.candidate.best_thread,
-                           notes=tnotes.get(x.opportunity.id, []))
-                      for i, x in enumerate(temple, 1)]
+                           demoted=bool(prov and prov["outcome"] == "fail"),
+                           citizenship_rule=prov,
+                           notes=[*([dem] if dem else []), *tnotes.get(x.opportunity.id, [])])
+                      for i, (x, dem, prov) in enumerate(tjudged, 1)]
             r.upsert([*leads, *tleads])
         b.lead_ids = [x.id for x in [*leads, *tleads]]
         b.timings_ms = brief.timings_ms
@@ -661,6 +672,8 @@ class BriefService:
 
         inp = self._inputs()
         facts = parse_student_cv(inp.cv)
+        # S53: the optional picks ride on the facts for the rule check only; no model sees them.
+        facts.citizenship, facts.residency_state = inp.citizenship, inp.residency_state
         achieved = achievement_docs(inp.entries)
         if not inp.interests and not achieved:
             raise InputProblem("Add your interests or achievements too.")
@@ -780,6 +793,29 @@ class BriefService:
             return BUDGET_DETAIL + named, True
         flagged = sum(v.flagged for v in results)
         return f"{len(results) - flagged} explained, {flagged} withheld{named}", False
+
+
+def grant_demotion(o: Opportunity, cit: str | None, res: str | None
+                   ) -> tuple[str | None, dict | None]:
+    """(a code-written note when the user's pick does not meet the opportunity's own rule,
+    the provenance of what was found). Both None when no pick was given (S53)."""
+    from perch import citizenship as cz
+
+    if not (cit or res):
+        return None, None
+    src = cz.opportunity_sources(o)
+    outs = cz.judge(src, cit, res, o.source, is_grants=o.source == "grants_gov")
+    if not outs:
+        return None, None
+    prov = cz.rule_json(outs, o.id, o.source_url, cz.has_text(src))
+    fail = next((x for x in outs.values() if x.status == "fail"), None)
+    ok = next((x for x in outs.values() if x.status == "pass"), None)
+    if fail is not None:
+        return cz.demoted_note(fail, cz.you_label(fail.kind, cit, res)), prov
+    if ok is not None:
+        kind = "Citizenship" if ok.kind == "citizenship" else "Residency"
+        return cz.stated_note(kind, ok, cz.you_label(ok.kind, cit, res)), prov
+    return cz.none_note(cz.has_text(src), cz.where_all(o.source, o.source == "grants_gov")), prov
 
 
 def _text_hash(profile) -> str:  # noqa: ANN001 - a perch.profile.Profile

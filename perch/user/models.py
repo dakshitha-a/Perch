@@ -11,14 +11,15 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from perch.citizenship import CITIZENSHIP_VALUES, STATE_CODES
 from perch.schemas import Brief, Lead, utcnow
 from perch.user.inputs import UserDoc
 
 UserKind = Literal["cv", "entry", "doc", "brief", "saved_item", "handoff", "cover_points",
-                   "scout_session"]
+                   "scout_session", "profile"]
 Audience = Literal["researcher", "student"]
 USER_KINDS: tuple[str, ...] = ("cv", "entry", "doc", "brief", "saved_item", "handoff",
-                               "cover_points", "scout_session")
+                               "cover_points", "scout_session", "profile")
 
 
 class _M(BaseModel):
@@ -91,11 +92,21 @@ class ScoutSessionDoc(_M):
     messages: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class ProfileDoc(_M):
+    """The optional picks that let Perch compare a listing's own rule with the user: a
+    citizenship status and a state of residence (S53). Either may be null. Stored encrypted;
+    never shown to a model (standing rule 5) and never logged."""
+
+    citizenship: Literal[CITIZENSHIP_VALUES] | None = None  # type: ignore[valid-type]
+    residency_state: Literal[STATE_CODES] | None = None  # type: ignore[valid-type]
+
+
 MODEL_FOR_KIND: dict[str, type[BaseModel]] = {
     "cv": CvDoc, "entry": EntryDoc, "doc": UserDoc, "brief": StoredBrief,
     "saved_item": SavedItem, "handoff": HandoffDraft, "cover_points": CoverPointSet,
-    "scout_session": ScoutSessionDoc,
+    "scout_session": ScoutSessionDoc, "profile": ProfileDoc,
 }
 
 __all__ = ["Audience", "CoverPointSet", "CvDoc", "EntryDoc", "HandoffDraft", "MODEL_FOR_KIND",
-           "SavedItem", "ScoutSessionDoc", "StoredBrief", "USER_KINDS", "UserDoc", "UserKind"]
+           "ProfileDoc", "SavedItem", "ScoutSessionDoc", "StoredBrief", "USER_KINDS", "UserDoc",
+           "UserKind"]

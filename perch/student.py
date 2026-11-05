@@ -9,8 +9,11 @@ with the hand-written keys:
   show (a minimum GPA with no GPA stated, residency, citizenship, a targeted criterion),
   or the CV does not state a fact a rule needs.
 - Eligible: no rule broken and nothing unknown.
-The app never asks for residency, citizenship or a targeted criterion; it quotes the
-record and leaves the judgment to the student.
+Residency and citizenship are asked for only if the student chooses to answer (S53). Code
+compares the answer with the listing's own quoted rule; a listing the answer does not meet
+moves lower in its list, never out of it, and never becomes "not eligible". A blank answer
+leaves everything as it was: the app quotes the record and the student decides. It never asks
+for a targeted criterion.
 """
 
 from __future__ import annotations
@@ -21,10 +24,23 @@ from datetime import date, datetime
 
 import numpy as np
 
+from perch.citizenship import (
+    CITIZENSHIP_LABELS,
+    STATES,
+    Outcome,
+    demoted_note,
+    has_text,
+    judge,
+    none_note,
+    rule_json,
+    stated_note,
+    student_sources,
+    where_all,
+)
 from perch.datefmt import day
 from perch.embed import normalise
 from perch.profile import Profile, Thread
-from perch.schemas import Lead, Opportunity, Scholarship, utcnow
+from perch.schemas import Lead, Opportunity, Scholarship, ScholarshipEligibility, utcnow
 from perch.scholarships import NIH_FELLOWSHIP_LEVEL, sample_records
 from perch.score import match_score
 from perch.user.cv import sections
@@ -60,6 +76,9 @@ class StudentFacts:
     employment: list[str] = field(default_factory=list)
     referees: int = 0
     portfolio: bool = False
+    # S53: the optional picks. Not read from the CV; set by the job from the user's profile.
+    citizenship: str | None = None  # us_citizen, permanent_resident, international, prefer_not
+    residency_state: str | None = None  # a two-letter code
 
     def summary(self) -> list[tuple[str, str]]:
         """What the parse read, as label and value, for the Profile screen."""
@@ -145,6 +164,11 @@ class Verdict:
     unknown: list[str] = field(default_factory=list)
     # Q1 (S50): {"rule", "outcome": "pass"|"fail"|"unknown", "text"} for every rule run
     checks: list[dict[str, str]] = field(default_factory=list)
+    # S53: the listing asks for something the user's pick does not meet. The verdict stays
+    # "may be eligible"; the lead moves lower in its list.
+    demoted: bool = False
+    # S53: where the citizenship or residency rule was found (perch.citizenship.rule_json)
+    rule: dict | None = None
 
 
 def _fmt(d: date) -> str:
@@ -400,12 +424,38 @@ def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
         else:
             note("enrolment", "pass", f"Enrollment: open to {st} students; your CV says "
                                       f"{f.enrolment}.")
-    if e.residency_state:
+    demoted = False
+    outs = judge_picks(s, f)
+    res_out, cit_out = outs.get("residency"), outs.get("citizenship")
+    if res_out and res_out.status == "pass":
+        note("residency", "pass", stated_note("Residency", res_out, STATES[f.residency_state]))
+    elif res_out and res_out.status == "fail":
+        line = demoted_note(res_out, STATES[f.residency_state])
+        unknown.insert(0, ("residency", line))
+        note("residency", "unknown", f"Residency: {line}")
+        demoted = True
+    elif e.residency_state:
         unknown.append(("residency", f"For residents of {e.residency_state}. You decide if "
                                      "this applies."))
         note("residency", "unknown",
              f"Residency: for residents of {e.residency_state}. You decide if this applies.")
-    if e.citizenship:
+    if cit_out and cit_out.status == "pass":
+        note("citizenship", "pass",
+             stated_note("Citizenship", cit_out, CITIZENSHIP_LABELS[f.citizenship]))
+    elif cit_out and cit_out.status == "fail":
+        line = demoted_note(cit_out, CITIZENSHIP_LABELS[f.citizenship])
+        unknown.insert(0, ("citizenship", line))
+        note("citizenship", "unknown", f"Citizenship: {line}")
+        demoted = True
+    elif f.citizenship == "international" and s.international_ok is False:
+        line = ("From the award's international-students field, the listing says "
+                "international students may not apply. You entered: International.")
+        unknown.insert(0, ("citizenship", line))
+        note("citizenship", "unknown", f"Citizenship: {line}")
+        demoted = True
+        cit_out = Outcome("citizenship", "fail", None, "the award's international-students "
+                          "field")
+    elif e.citizenship:
         unknown.append(("citizenship", f"Asks for: {e.citizenship}. You decide if this "
                                        "applies."))
         note("citizenship", "unknown",
@@ -416,9 +466,14 @@ def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
     elif s.international_ok is False:
         note("citizenship", "unknown", "Citizenship: the listing says international students "
                                        "may not apply. You decide if this applies.")
-    elif not e.residency_state:
-        note("citizenship", "unknown",
-             "Citizenship or residency: the listing states no rule; the award's page may.")
+    elif not e.residency_state and not (res_out and res_out.status != "none"):
+        if cit_out or res_out:  # S53: a pick was given; say where Perch looked
+            note("citizenship", "unknown", none_note(has_text(student_sources(s)),
+                                                     where_all(s.source)))
+        else:
+            note("citizenship", "unknown",
+                 "Citizenship or residency: the listing states no rule; the award's page "
+                 "may.")
     if e.targeted_criterion:
         unknown.append(("targeted", f"{for_whom(e.targeted_criterion)} You decide if this "
                                     "applies."))
@@ -438,13 +493,28 @@ def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
     if broken:
         broken.sort(key=lambda b: RULES.index(b[0]))
         return Verdict("not eligible", broken[0][0], [broken[0][1]], checks=checks)
+    shown = {k: o for k, o in (("citizenship", cit_out), ("residency", res_out)) if o}
+    prov = rule_json(shown, s.id, s.source_url, has_text(student_sources(s)))
     if unknown:
         return Verdict("may be eligible", unknown[0][0], [u[1] for u in unknown],
-                       [u[0] for u in unknown], checks=checks)
+                       [u[0] for u in unknown], checks=checks, demoted=demoted, rule=prov)
     if s.source != "synthetic":  # a public listing names who may apply, not its full rules
         return Verdict("may be eligible", "listing_only", listing_lines(s, checks),
-                       ["listing_only"], checks=checks)
-    return Verdict("eligible", None, ["Meets every rule Perch checks."], checks=checks)
+                       ["listing_only"], checks=checks, rule=prov)
+    return Verdict("eligible", None, ["Meets every rule Perch checks."], checks=checks,
+                   rule=prov)
+
+
+def judge_picks(s: Scholarship, f: StudentFacts) -> dict[str, Outcome]:
+    """The user's picks against the record's own words. Empty when no pick was given."""
+    if not (f.citizenship or f.residency_state):
+        return {}
+    sources = student_sources(s)
+    if f.residency_state and s.eligibility.residency_state:
+        sources.append(("eligibility.residency_state",
+                        f"For residents of {STATES.get(s.eligibility.residency_state, '')}"
+                        if s.eligibility.residency_state in STATES else None))
+    return judge(sources, f.citizenship, f.residency_state, s.source)
 
 
 def listing_lines(s: Scholarship, checks: list[dict[str, str]]) -> list[str]:
@@ -492,7 +562,8 @@ def nih_as_scholarship(o: Opportunity) -> Scholarship:
     return Scholarship(id=o.id, source=o.source, source_url=o.source_url,
                        fetched_at=o.fetched_at, name=o.title, sponsor=o.agency,
                        purpose=o.description, level_of_study=["graduate"],
-                       award_type="fellowship", deadline=o.close_date)
+                       award_type="fellowship", deadline=o.close_date,
+                       eligibility=ScholarshipEligibility(notes=o.eligibility_notes))
 
 
 def check_nih(o: Opportunity, f: StudentFacts, as_of: date) -> Verdict:
@@ -738,7 +809,11 @@ def choose(scored: list[Scored], top: int = TOP, ruled_out: int = RULED_OUT_SHOW
            ) -> list[Scored]:
     """The best `top` not ruled out, then the best `ruled_out` ruled-out ones, so the
     student sees why."""
-    ok = [x for x in scored if x.verdict.verdict != "not eligible"][:top]
+    # S53: a listing whose own rule the user's pick does not meet moves to the end of this list
+    # (stable, so each group keeps its score order). It is still shown, and still counts as one
+    # the student may apply for: only the not-eligible cap below is separate.
+    ok = sorted((x for x in scored if x.verdict.verdict != "not eligible"),
+                key=lambda x: x.verdict.demoted)[:top]
     out = [x for x in scored if x.verdict.verdict == "not eligible"][:ruled_out]
     return ok + out
 
@@ -746,6 +821,7 @@ def choose(scored: list[Scored], top: int = TOP, ruled_out: int = RULED_OUT_SHOW
 # A guest's brief reads the SYNTHETIC sample student's CV, not the viewer's: its rule lines
 # say so (S43 S8, S50 QA). Ordered: the longer phrases first.
 SAMPLE_WORDS = [
+    (re.compile(r"\bYou entered\b"), "The sample student entered"),
     (re.compile(r"\byour CV does not say yours\b"), "the sample student's CV does not say theirs"),
     (re.compile(r"\byour CV\b"), "the sample student's CV"),
     (re.compile(r"\bYour CV\b"), "The sample student's CV"),
@@ -808,7 +884,7 @@ def to_leads(brief_id: str, route: str, chosen: list[Scored], facts: StudentFact
             id=f"{brief_id}:{route}{i}", source=src.source, source_url=src.source_url,
             fetched_at=src.fetched_at, brief_id=brief_id, route=route, record_id=src.id,
             rank=i, rerank_score=round(x.score, 4), match_score=match_score(x.score),
-            verdict=v.verdict,
+            verdict=v.verdict, demoted=v.demoted, citizenship_rule=v.rule,
             verdict_reason=v.reason, verdict_lines=[say(t) for t in v.lines],
             checks=[{**c, "text": say(c["text"])} for c in v.checks],
             gaps=[say(t) for _, t in g],
