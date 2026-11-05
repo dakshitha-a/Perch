@@ -87,7 +87,8 @@ def register(U):  # noqa: N803 - the ux_walk module handed in by the loader
         if w.plant == "picks_no_label":
             await page.evaluate("document.querySelectorAll('fieldset.profile-picks label').forEach((l) => l.remove())")
         ra = [await page.evaluate(PICKS_PROBE, p) for p in ("acct-student", "acct-researcher")]
-        w.check("s53_picks_account_legend_labels", all(x["fieldset"] and x["both"] and x["legend"] and x["labC"] and x["labS"] for x in ra),
+        w.check("s53_picks_account_legend_labels", all(x["fieldset"] and x["both"] and x["labC"] and x["labS"] for x in ra)
+                and sum(bool(x["legend"]) for x in ra) == 1,  # the legend is said once (S53 review)
                 f"account page: {ra}")
         await w.snap(page, tag, "s53-account-picks")
         await page.context.close()
@@ -102,7 +103,13 @@ def register(U):  # noqa: N803 - the ux_walk module handed in by the loader
         await page.wait_for_selector("[data-key=build], .cand button", timeout=60_000)
         if not await page.locator("[data-key=build]").count():
             await page.click(".cand button")
-        await page.wait_for_selector("#r-pick-citizenship", timeout=20_000)
+        await page.wait_for_selector("#r-pick-citizenship", state="attached", timeout=20_000)
+        # S53 review (decided): on the researcher start the picks are folded and closed
+        fold = await page.evaluate("""() => { const d = document.querySelector('details.picks-fold');
+          return d ? { open: d.open, summary: d.querySelector('summary').textContent.trim(), shown: d.querySelector('select').checkVisibility() } : null; }""")
+        w.check("s53_picks_researcher_folded", bool(fold) and not fold["open"] and not fold["shown"] and fold["summary"] == "Citizenship and state (optional)", f"{fold}")
+        await w.snap(page, tag, "s53-researcher-start-folded")
+        await page.click("details.picks-fold summary")
         if w.plant == "picks_no_legend":
             await page.evaluate("document.querySelector('fieldset.profile-picks legend').remove()")
         if w.plant == "picks_no_label":
