@@ -309,6 +309,10 @@ def test_two_identical_clicks_return_the_brief_that_runs(pg_clean, ud, tmp_path,
         assert second == first
     assert rows(pg_clean, "SELECT count(*) FROM user_data WHERE kind = 'brief'") == [(1,)]
     assert len(r.keys("perch:gsess:*:brief:*")) == 1
+    # S50 C18: the losing twin gives its rate-window hit back; only the first one counts
+    for scope in ("submit_job", "guest_job"):
+        hits = [int(r.get(k)) for k in r.keys(f"*:rl:{scope}:*")]
+        assert sum(hits) == 1, scope
     r.flushdb()
     r.close()
 

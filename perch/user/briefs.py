@@ -712,6 +712,9 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
         won = _same_request_won(runner, key, session.user_id, None, b.id, job)
         if won is not None:  # a twin request created its brief first: drop ours (S49 B4)
             ud.delete(session.user_id, UUID(b.id), kinds=("brief",))
+            from perch.redisx import rate_refund
+
+            rate_refund(r, "submit_job", f"u:{session.user_id}")  # nothing new ran (S50 C18)
             return won
         return b.id, job
     if doc_ids:
@@ -741,6 +744,9 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     won = _same_request_won(runner, key, None, bytes.fromhex(gh), b.id, job)
     if won is not None:  # a twin request created its brief first: drop ours (S49 B4)
         r.delete(GuestBriefStore(r, gh, b.id).state_key)
+        from perch.redisx import rate_refund
+
+        rate_refund(r, "guest_job", gh)  # nothing new ran (S50 C18)
         return won
     r.set(f"perch:gsess:{gh}:job:{b.id}", str(job), ex=ttl)  # brief id -> job id, for the read
     return b.id, job
