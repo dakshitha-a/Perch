@@ -3,6 +3,10 @@
   "enabled": true,
   "registrationAllowed": false,
   "loginWithEmailAllowed": false,
+  "bruteForceProtected": true,
+  "failureFactor": 10,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
   "sslRequired": "none",
   "attributes": {
     "_comment": "DEV ONLY. No users are imported. The SYNTHETIC end-to-end user is created by scripts/e2e_oidc_login.py (ensure_user) from deploy/compose/keycloak/e2e-user.json. Never import into a real deployment."
