@@ -24,6 +24,7 @@ This file is the design contract written on 2026-11-03. Where the code differs, 
 - **Key operations.** `perch keys rekey` re-encrypts blobs under each user's newest key, and `perch keys tombstones purge` removes old tombstones (dry run unless `--apply`).
 - **Identity provider.** The Keycloak realm in `deploy/compose/keycloak/perch-realm.json` imports no user. The SYNTHETIC end-to-end user is created by `scripts/e2e_oidc_login.py`.
 - **Concurrent users.** The target is 250 (Dakshitha, 2026-11-04), not 1,000. See the note under section 4.2.1.
+- **File names in the design.** Four names in the design text differ from the code. `blank_contacts` lives in `perch/llm/contacts.py`. Migrations are plain SQL files in `perch/db/migrations/perch/` and `perch/db/migrations/keys/`, not `perch/store/migrations/`. The response models are not in a `perch/response_models.py` file, which was never created. The files `perch/privacy.py`, `perch/private/` and `perch/shelved/monitor/` no longer exist, and `data/sample.db` is not tracked.
 
 ## As built after S50 (Phase 12, rounds 1 and 2)
 

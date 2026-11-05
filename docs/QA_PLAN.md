@@ -1,6 +1,6 @@
 # QA_PLAN.md — full QA test (S25)
 
-> **v0 rows.** This plan was run on the fallback build. Rows marked "v0, retired in S42" (export masks, Local or Cloud) test features that do not exist in v1.
+> **v0 rows.** This plan was run on the fallback build. Rows marked "v0, retired in S42" (export masks, Local or Cloud) test features that do not exist in v1. The v1 build's QA results are in `docs/sessions/S49.md` to `S55.md` and the Tracker, not in this table.
 
 One row per feature and path. Each row was run on the public URL, the dev server (a scratch copy of the demo store) or the CLI, and the result recorded. "Pass" means the expected result was seen. A failure is fixed in S25 or listed as a known limit in the README.
 
