@@ -161,3 +161,20 @@ def test_brief_explain_with_fake_models(tmp_path, capsys):
     assert "Validator layer 1: 4 of 4 outputs rejected; 2 withheld" in out
     log = (tmp_path / "logs" / "model_calls.jsonl").read_text()
     assert log.count('"kind": "call"') == 4
+
+
+def test_the_web_reads_records_through_the_apps_own_pool(monkeypatch):
+    """S50 C14: `perch serve` built a second pool of 4 connections, labelled worker, for every
+    record read. The web's repositories now use the app's pool, read only."""
+    from types import SimpleNamespace
+
+    import pytest
+
+    monkeypatch.setenv("PERCH_DATABASE_URL", "postgresql://SYNTHETIC-unused/none")
+    pool = object()
+    make = cli.v1_repo_factory(app=SimpleNamespace(state=SimpleNamespace(pool=pool)),
+                               role="web")
+    repo = make()
+    assert repo.pool is pool and repo.role == "web"
+    with pytest.raises(PermissionError):
+        repo.upsert([])
