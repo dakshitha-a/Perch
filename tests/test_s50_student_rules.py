@@ -187,3 +187,11 @@ def test_sample_text_tidies_a_doubled_possessive():
     assert tidy_sample_text("Your The sample student's entry shows it.") == (
         "The sample student's entry shows it.")
     assert tidy_sample_text(None) is None
+
+
+def test_sample_text_names_the_sample_students_documents():
+    from perch.student import tidy_sample_text
+
+    assert tidy_sample_text("Your interests note mentions streams; your entry shows a poster.") == (
+        "The sample student's interests note mentions streams; the sample student's entry shows"
+        " a poster.")

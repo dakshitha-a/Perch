@@ -764,6 +764,10 @@ SAMPLE_WORDS = [
 # the sample student ("your the sample student's interests note note says"). Code tidies the
 # possessive only; no claim changes.
 SAMPLE_TIDY = [
+    (re.compile(r"\bYour interests note\b"), "The sample student's interests note"),
+    (re.compile(r"\byour interests note\b"), "the sample student's interests note"),
+    (re.compile(r"\bYour entry\b"), "The sample student's entry"),
+    (re.compile(r"\byour entry\b"), "the sample student's entry"),
     (re.compile(r"\b([Yy])our ([Tt]he sample student's)"),
      lambda m: ("T" if m.group(1) == "Y" else "t") + m.group(2)[1:]),
     (re.compile(r"\b(interests note|entry) \1\b"), r"\1"),

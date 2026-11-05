@@ -118,7 +118,10 @@ def test_a_sample_brief_names_the_sample_students_entries(tmp_path):
     inp = StudentInputs(cv="SYNTHETIC CV\nUndergraduate, junior, GPA 3.6",
                         interests=make_doc("interests", "SYNTHETIC interest in streams"),
                         entries=["SYNTHETIC poster on stream nitrate after storms"])
-    for persona, want in ((None, "Your entry"), ("persona-ug", "The sample student's entry")):
+    # S52: the prompt keeps the documents' own titles for the sample student too (a title naming
+    # the sample student was written into sentences as a noun phrase); code rewords the saved
+    # text afterwards (perch.student.tidy_sample_text).
+    for persona, want in ((None, "Your entry"), ("persona-ug", "Your entry")):
         b = Brief(id="b", source="perch", source_url="perch://b", fetched_at=T,
                   researcher_id="user:you",
                   options={"as_of": date(2026, 11, 5).isoformat(), "persona": persona})

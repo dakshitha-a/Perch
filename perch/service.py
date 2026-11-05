@@ -655,7 +655,6 @@ class BriefService:
         from perch.student import (
             INTERESTS_TITLE,
             achievement_docs,
-            for_sample,
             parse_student_cv,
             student_profile,
         )
@@ -669,10 +668,9 @@ class BriefService:
         # interests". The guest's sample is the sample student's, not the viewer's.
         interests = (inp.interests.model_copy(update={"title": INTERESTS_TITLE})
                      if inp.interests else None)
-        if _has_sample_route(b):
-            achieved = [d.model_copy(update={"title": for_sample(d.title)}) for d in achieved]
-            if interests:
-                interests = interests.model_copy(update={"title": for_sample(interests.title)})
+        # S52: the documents keep their own titles in the prompt even for the sample student;
+        # a title naming "the sample student" made the model write it as a noun phrase. The
+        # saved text is reworded by code afterwards (tidy_sample_text).
         p = student_profile(facts, interests, achieved, self.models.get("embedder"),
                             date.fromisoformat(b.options["as_of"]))
         self._ctx.setdefault(b.id, {}).update(profile=p, facts=facts, achieved=achieved,
