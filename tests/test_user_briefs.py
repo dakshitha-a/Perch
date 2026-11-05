@@ -339,23 +339,21 @@ def test_a_keep_while_the_brief_runs_neither_fails_it_nor_is_lost(pg_clean, ud, 
     b = create_user_brief(svc, ud, uid, "researcher", "A5026494099", as_of=AS_OF)
     store = UserBriefStore(ud, uid, "researcher", b.id)
     assert store.load()
-    real = svc._run_route_b
+    real = svc._run_explanations
     kept = {}
 
-    def route_b_then_keep(brief):  # the user keeps the top grant while route B runs
-        out = real(brief)
-        lead = brief.lead_ids[0]
-        kept["lead"] = set_lead_status(ud, r, s, b.id, lead, "kept").id
-        return out
+    def keep_then_explain(brief):  # the user keeps the top grant while the brief runs
+        kept["lead"] = set_lead_status(ud, r, s, b.id, brief.lead_ids[0], "kept").id
+        return real(brief)
 
-    svc._run_route_b = route_b_then_keep
+    svc._run_explanations = keep_then_explain
     with using_store(store):
         assert svc.run(b.id) == "done"
     got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
     assert got.brief.status == "done"
     assert {x.id: x.status for x in got.leads}[kept["lead"]] == "kept"
     # a retry of the job rebuilds the same leads: the keep stays
-    svc._run_route_b = real
+    svc._run_explanations = real
     again = UserBriefStore(ud, uid, "researcher", b.id)
     assert again.load()
     with using_store(again):
@@ -382,15 +380,14 @@ def test_a_guest_keep_while_the_brief_runs_is_not_lost(tmp_path):
     r.set(f"perch:gsess:{gh}:job:{b.id}", str(job))
     store = GuestBriefStore(r, gh, b.id, job)
     assert store.load()
-    real = svc._run_route_b
+    real = svc._run_explanations
     kept = {}
 
-    def route_b_then_keep(brief):
-        out = real(brief)
+    def keep_then_explain(brief):
         kept["lead"] = set_lead_status(None, r, s, b.id, brief.lead_ids[0], "kept").id
-        return out
+        return real(brief)
 
-    svc._run_route_b = route_b_then_keep
+    svc._run_explanations = keep_then_explain
     with using_store(store):
         assert svc.run(b.id) == "done"
     got = read_guest_result(r, job)

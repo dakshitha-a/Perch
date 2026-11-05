@@ -737,7 +737,7 @@ def set_lead_status(ud: UserData, r: redis.Redis, session: Session, brief_id: st
             row = UUID(brief_id)
         except ValueError:
             return None
-        for _ in range(3):
+        for _ in range(WRITE_TRIES):
             try:
                 got = ud.get_row(session.user_id, row, StoredBrief, kind="brief")
             except NotFound:
