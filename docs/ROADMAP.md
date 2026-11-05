@@ -121,7 +121,7 @@ Every line below is taken from the repository's own record. Where the record doe
 - **Student results:** they use invented personas and sample scholarships. They show a mechanism and say nothing about real students.
 - **Judged by builders:** industry leads and Scout's usefulness were judged by AI agents, and no user study has been done.
 - **Grounding:** the check was run on 40 pairs from saved explanations, not human labels.
-- **A real pilot:** it should measure whether a researcher or student would act on a lead they did not already know.
+- **A real pilot, proposed:** these measures are a proposal, not yet a plan on record. It should measure whether a researcher or student would act on a lead they did not already know.
 - **Pilot measures:** the share of listed leads that are eligible after a person checks them, the share of facts that are correct against the source page, and the time a brief saves.
 - **Pilot measures, continued:** how often an office finds a hand-off draft usable, how many flagged sentences a reader finds wrong, and the cost per brief for each kind of user.
 - **Pilot honesty:** it should report the keyword-only baseline beside every row and should not present a mechanism as a gain.
