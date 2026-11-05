@@ -114,6 +114,7 @@ make demo-clean    # the same, and remove the demo volumes
 - **Secrets:** the first run writes `.env.demo` with random dev-only values (gitignored, mode 600). It never reads `.env`.
 - **Data:** the one-shot `seed` service loads the committed Temple dataset (`temple_awards_v3.jsonl`; `DEMO_DATASET` picks another file). The SYNTHETIC sample scholarships are read from `data/synthetic` and need no load. Federal listings from Grants.gov, NIH and NSF are not loaded, because that corpus is copied from the fallback stores (section 5, step 3). A run on 5 Nov 2026 loaded 310 Temple records; `/awards` listed 50 and `/opportunities` 26.
 - **Sign-in:** guest browsing works. Browser sign-in does not, because the OIDC issuer is the internal address `http://keycloak:8080`.
+- **Known issues in `docker-compose.v1.yml`:** its Keycloak data volume is created owned by root, and its Keycloak health check never passes. `docker-compose.demo.yml` works around both for the demo. A deploy that uses `docker-compose.v1.yml` directly needs the same two fixes (found 5 Nov 2026).
 - **GPU worker:** `make demo GPU=1` uses the GPU worker image on `DEMO_WORKER_GPU` (default 3). It needs the NVIDIA container toolkit and was not run on the lab node, which has none.
 
 ## 4. Many hosts: managed Postgres and Redis
