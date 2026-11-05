@@ -27,10 +27,8 @@ def test_the_alias_swap_matches_escaped_and_normalised_forms_of_a_name():
 
 def test_an_accented_spelling_is_swapped_when_the_csv_is_plain():
     """S52: pi_aliases.csv may spell a name plainly while a source uses an accent."""
-    import unicodedata
-
     real = "Ysolde Kowarth"  # SYNTHETIC: an invented name
-    accented = "Kow" + "á" + "lski"
+    accented = "Kow\u00e1rth"
     decomposed = unicodedata.normalize("NFD", accented)
     body = f"Ysolde {accented} and Dr. {decomposed} and Kowarth"
     assert names.swap_names(body, {real: "PI-9"}) == "PI-9 and Dr. PI-9 and PI-9"
