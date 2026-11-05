@@ -1,10 +1,19 @@
-"""Walk the web app in replay mode and save screenshots (for Checkup 2 and review).
+"""Take the repo screenshots in docs/screenshots/ from the running v1 app.
 
-  uv run --no-project --with playwright python scripts/screenshots.py [--chrome PATH] [--out DIR]
+  uv run --no-project --with playwright --with pillow python scripts/screenshots.py \\
+      --base https://<host> --env-file <file> [--only 5 6] [--view wide phone] [--scheme light dark]
 
-Needs build/artifacts/ui.html (scripts/build_ui_preview.py) and a Chromium binary;
-Playwright is a dev-only tool here, not a project dependency. The replay shows the
-researcher by alias.
+Each screen is saved as <view>-<scheme>-<n>-<name>.png, where the view is wide (1280 by 800)
+or phone (390 by 844 at 2x). Guest screens need no account. Signed-in screens use the
+SYNTHETIC demo student and researcher accounts (DEMO_STUDENT_* and DEMO_RESEARCHER_* in the
+environment; the passwords are never printed) and reuse the newest brief that already
+exists on each account; nothing is built or changed. Researchers appear by alias only: every
+JSON answer has real names swapped for the alias in data/overrides/pi_aliases.csv, and the
+text of every screen is checked for a real name before it is saved (a hit fails the run and
+the image is removed). Playwright is a dev-only tool, not a project dependency.
+
+The transient Scout states are staged: the "working" glow holds the Scout request open
+before it reaches the server, and "Conversation cleared. Undo" is the app's own line.
 """
 
 from __future__ import annotations
@@ -18,116 +27,294 @@ from pathlib import Path
 
 from playwright.async_api import Page, async_playwright
 
-PHONE = {"width": 390, "height": 844}
-NARROW = {"width": 320, "height": 640}
-WIDE = {"width": 1280, "height": 860}
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "scripts/tour"))
+import film  # noqa: E402
+from demo_films import NameCheck, alias_checked  # noqa: E402
+
+VIEWS = {"wide": ({"width": 1280, "height": 800}, 1), "phone": ({"width": 390, "height": 844}, 2)}
+STUDENT_PICK_BRIEF = "3d7c9535-c66f-43b9-bc2f-5d6cd399f2d1"  # a U.S. citizen pick, the Gilman card
+RESEARCHER_BRIEF = None  # set from My Perch: the first brief on the account
+
+
+class Shots:
+    def __init__(self, out: Path, view: str, scheme: str, check: NameCheck, only: set[int]) -> None:
+        self.out, self.view, self.scheme, self.check, self.only = out, view, scheme, check, only
+        self.made: list[str] = []
+
+    def want(self, n: int) -> bool:
+        return not self.only or n in self.only
+
+    async def snap(self, page: Page, n: int, name: str) -> None:
+        await page.wait_for_timeout(350)
+        before = len(self.check.hits)
+        await self.check.screen(page, f"{self.view}-{self.scheme}-{n}")
+        if len(self.check.hits) > before:
+            return  # never save a screen with a real name on it
+        path = self.out / f"{self.view}-{self.scheme}-{n}-{name}.png"
+        await page.screenshot(path=str(path), animations="disabled")
+        self.made.append(path.name)
 
 
 def find_chrome() -> str | None:
-    pattern = os.path.expanduser("~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome")
-    hits = sorted(glob.glob(pattern))
+    hits = sorted(glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome")))
     return hits[-1] if hits else None
 
 
-async def walk(page: Page, url: str, out: Path, tag: str, errors: list[str]) -> None:
-    async def snap(name: str, full: bool = False) -> None:
-        if full:  # from the top, or the sticky bar and rail are drawn mid-page
-            await page.evaluate("window.scrollTo(0, 0)")
-            await page.wait_for_timeout(300)
-        await page.screenshot(path=str(out / f"{tag}-{name}.png"), full_page=full,
-                              animations="disabled" if full else "allow")
+async def top(page: Page, locator, offset: int = 70) -> None:  # noqa: ANN001
+    """Scroll an element to the top of the window, below the sticky bars."""
+    await locator.evaluate("e => e.scrollIntoView({block: 'start'})")
+    await page.evaluate(f"window.scrollBy(0, -{offset})")
+    await page.wait_for_timeout(250)
 
-    page.on("pageerror", lambda e: errors.append(f"{tag}: {e}"))
-    await page.goto(url)
-    await page.wait_for_selector(".landing")
-    await snap("1-find")
-    await page.click(".searchbox button[type=submit]")
-    await page.wait_for_selector(".cand")
-    await page.click(".cand .btn.outline")
-    await page.wait_for_selector(".more-panel")
-    await page.wait_for_timeout(500)
-    await snap("2-candidate")
-    await page.click("[data-key=build]")
-    await page.wait_for_selector(".pcard")
+
+async def sign_in_as(page: Page, base: str, side: str) -> None:
+    os.environ["PERCH_TOUR_USER"] = os.environ[f"DEMO_{side}_USERNAME"]
+    os.environ["PERCH_TOUR_PASSWORD"] = os.environ[f"DEMO_{side}_PASSWORD"]
+    await film.sign_in(page, base, None)
+
+
+async def open_brief(page: Page, base: str, brief: str | None, tab: str = "routes") -> None:
+    if brief is None:
+        await page.goto(base + "/#/me")
+        await film.need(page, ".brief-row a.btn", "a brief on My Perch", 30_000)
+        await page.wait_for_timeout(800)
+        brief_href = await page.evaluate("document.querySelector('.brief-row a.btn').getAttribute('href')")
+        await page.goto(base + "/" + brief_href.replace("/routes", f"/{tab}"))
+    else:
+        await page.goto(f"{base}/#/brief/{brief}/{tab}")
+    await film.need(page, "#panel .leads > li, #panel .scout-ask-row, .prof-cols", "the brief", 60_000)
+    await page.locator("#progress .pcard").wait_for(state="detached", timeout=120_000)
     await page.wait_for_timeout(1500)
-    await snap("3-building")
-    await page.wait_for_selector(".leads > li", timeout=30000)
-    await page.wait_for_timeout(2500)
-    await snap("4-building-routes")
-    ready = "() => /Brief ready/.test(document.querySelector('#progress').innerText)"
-    await page.wait_for_function(ready, timeout=60000)
-    await page.wait_for_timeout(500)
-    await snap("5-routes-done")
-    await page.click(".lead .why summary")
-    await page.wait_for_timeout(200)
-    await page.locator(".lead").first.scroll_into_view_if_needed()
-    await snap("6-why-it-fits")
-    await page.click(".lead .why .paper-ref")
-    await page.wait_for_selector(".rec-title")
-    await page.wait_for_timeout(350)
-    await snap("7-evidence-paper")
-    await page.keyboard.press("Escape")
-    await page.click(".lead .title-btn")
-    await page.wait_for_selector(".rec-title")
-    await page.wait_for_timeout(350)
-    await snap("8-evidence-opportunity")
-    await page.keyboard.press("Escape")
-    await page.wait_for_timeout(300)
-    keeps = page.locator(".leads > li:not(.kept) .btn.keep")
-    await keeps.first.click()
-    await page.locator(".leads > li:not(.kept)").first.locator("[data-key=dismiss]").click()
-    await page.wait_for_timeout(400)
-    if await page.locator(".dismissed").count() != 1:
-        errors.append(f"{tag}: dismiss did not take effect")
-    shown = """() => [...document.querySelectorAll('.shortlist li, #keep-float .keep-float')]
-      .some((el) => el.offsetParent !== null)"""
-    if not await page.evaluate(shown):
-        errors.append(f"{tag}: neither the shortlist nor the keep pill shows the kept lead")
-    await snap("9b-keep-bar")
-    wide = await page.evaluate("document.documentElement.scrollWidth - innerWidth")
-    if wide > 0:
-        errors.append(f"{tag}: page scrolls sideways by {wide}px")
-    await snap("9-routes-full", full=True)
-    await page.click("#tab-profile")
-    await page.wait_for_timeout(300)
-    await snap("10-profile-full", full=True)
-    await page.evaluate("location.hash = '#/help'")
-    await page.wait_for_selector("#h-researcher")
-    await page.emulate_media(reduced_motion="reduce")  # Help's figures loop: show them complete
-    await page.wait_for_timeout(300)
-    await snap("11-help-full", full=True)
-    await page.emulate_media(reduced_motion="no-preference")
 
 
-async def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--chrome", default=find_chrome())
-    ap.add_argument("--page", default="build/artifacts/ui.html")
-    ap.add_argument("--out", default="docs/screenshots")
-    ap.add_argument("--only", choices=["phone", "wide", "dark", "narrow"], action="append")
-    args = ap.parse_args(argv[1:])
-    out = Path(args.out)
+async def guest_screens(page: Page, base: str, s: Shots) -> None:
+    await page.goto(base + "/#/")
+    await film.need(page, ".landing h1", "the landing page")
+    await page.wait_for_timeout(600)
+    if s.want(1):
+        await s.snap(page, 1, "landing")
+    if s.want(2):
+        await page.goto(base + "/#/awards")
+        await film.need(page, ".award", "the award list", 30_000)
+        await s.snap(page, 2, "awards")
+    if s.want(3):
+        await page.goto(base + "/#/funding")
+        await film.need(page, ".award, .lead, .funding-list li", "the funding list", 30_000)
+        await s.snap(page, 3, "funding")
+    if s.want(4):
+        await page.goto(base + "/#/help")
+        await film.need(page, "#h-researcher", "the Help page")
+        await page.emulate_media(reduced_motion="reduce", color_scheme=s.scheme)  # figures complete
+        await s.snap(page, 4, "help")
+        await page.emulate_media(reduced_motion="no-preference", color_scheme=s.scheme)
+
+
+async def researcher_screens(page: Page, base: str, s: Shots) -> None:
+    await film.need(page, "#acct-btn", "the signed-in header")
+    await open_brief(page, base, RESEARCHER_BRIEF)
+    if s.want(14):
+        await page.goto(base + "/#/start")
+        await film.pick_author(page, None, film.AUTHOR)  # PI-1; the picks appear after the pick
+        await film.need(page, "[data-key=picks-fold]", "the folded picks")
+        await page.locator("[data-key=picks-fold] summary").scroll_into_view_if_needed()
+        await page.evaluate("window.scrollBy(0, 160)")
+        await s.snap(page, 14, "researcher-start-picks")
+        await open_brief(page, base, RESEARCHER_BRIEF)
+    if s.want(5):
+        await page.evaluate("window.scrollTo(0, 0)")
+        await s.snap(page, 5, "researcher-brief")
+    if s.want(6):
+        summ = page.locator(".lead .why summary").first
+        await film.need(page, ".lead .why summary", "a Why it fits fold")
+        if not await page.locator(".lead .why[open]").count():
+            await summ.click()
+        await page.wait_for_timeout(300)
+        await top(page, page.locator(".lead").first, 80)
+        await s.snap(page, 6, "researcher-why")
+    if s.want(7):
+        await page.locator(".lead .title-btn").first.click()
+        await film.need(page, ".rec-title", "the evidence panel")
+        await page.wait_for_timeout(400)
+        await s.snap(page, 7, "researcher-evidence")
+        await page.keyboard.press("Escape")
+        await page.wait_for_timeout(300)
+    if s.want(8):
+        await page.evaluate("window.scrollTo(0, 0)")
+        t = page.locator("[data-key=route-T]")
+        if await t.count():
+            await t.click()
+            await film.need(page, "#panel .leads > li", "the Temple internal list")
+            await s.snap(page, 8, "researcher-temple")
+            await page.locator("[data-key=route-A]").click()
+    if s.want(9):
+        await page.evaluate("window.scrollTo(0, 0)")
+        await page.click("#tab-compare")
+        await page.wait_for_timeout(900)
+        await s.snap(page, 9, "researcher-compare")
+    if s.want(10):
+        await page.click("#tab-scout")
+        await film.need(page, "#scout-q", "the Scout box")
+        await page.evaluate("window.scrollTo(0, 0)")
+        await s.snap(page, 10, "researcher-scout")
+
+
+async def stage_picks(page: Page) -> None:
+    """The brief's own answer carries the account's current picks as words; a reset account
+    has none, so the "You chose" line is staged with the pick the brief's cards were checked
+    against (U.S. citizen), as the app writes it."""
+    async def handler(route) -> None:  # noqa: ANN001
+        r = await route.fetch()
+        try:
+            body = await r.json()
+        except ValueError:
+            await route.fulfill(response=r)
+            return
+        if isinstance(body, dict) and body.get("student") is not None:
+            body["student_picks"] = {"citizenship": "U.S. citizen", "residency": None}
+        await route.fulfill(response=r, json=body)
+
+    await page.route(f"**/briefs/{STUDENT_PICK_BRIEF}", handler)
+
+
+async def student_screens(page: Page, base: str, s: Shots) -> None:
+    await film.need(page, "#acct-btn", "the signed-in header")
+    await stage_picks(page)
+    if s.want(13):  # the form with a CV stored; the picks fieldset sits under the notes boxes
+        await page.goto(base + "/#/student")
+        await film.need(page, ".profile-picks", "the picks on the student start")
+        await page.wait_for_timeout(800)
+        await top(page, page.locator(".profile-picks"), 150 if s.view == "wide" else 120)
+        await s.snap(page, 13, "student-start-picks")
+    await open_brief(page, base, STUDENT_PICK_BRIEF)
+    if s.want(11):
+        await page.evaluate("window.scrollTo(0, 0)")
+        await s.snap(page, 11, "student-brief")
+    rules = page.locator("#panel .leads > li:has(.rules)").nth(1)  # not the Gilman card, shown in 16
+    if s.want(12):
+        await top(page, rules, 80)
+        await s.snap(page, 12, "student-rules")
+    if s.want(16):
+        card = page.locator("#panel .leads > li:has(.pick-source)").first
+        await film.need(page, "#panel .leads > li .pick-source", "a card with a citizenship note")
+        await top(page, card, 80)
+        await card.locator(".check:has(.pick-source)").first.scroll_into_view_if_needed()
+        await top(page, card.locator(".check:has(.pick-source)").first, 260 if s.view == "wide" else 300)
+        await s.snap(page, 16, "student-card-citizenship")
+    if s.want(15):
+        await page.evaluate("window.scrollTo(0, 0)")
+        await page.click("#tab-profile")
+        await film.need(page, ".prof-cols .fields .field", "the CV panel")
+        await page.wait_for_timeout(600)
+        note = page.locator("#panel p.notice:has-text('You chose')")
+        await film.need(page, "#panel p.notice:has-text('You chose')", "the You chose line")
+        await note.evaluate("e => e.scrollIntoView({block: 'end'})")
+        await s.snap(page, 15, "student-cv-panel")
+    if any(s.want(n) for n in (17, 18, 19)):
+        await scout_screens(page, base, s)
+
+
+async def scout_screens(page: Page, base: str, s: Shots) -> None:
+    await page.evaluate("window.scrollTo(0, 0)")
+    await page.click("#tab-scout")
+    await film.need(page, "#scout-q", "the Scout box")
+    await page.wait_for_timeout(600)
+    clear = page.locator("[data-key=scout-clear]")
+    if not await page.locator(".scout-answer").count():  # one real question when the thread is empty
+        await page.fill("#scout-q", "Which award closes soonest, and what does it ask for?")
+        await page.click(".scout-ask button[type=submit]")
+        await film.need(page, ".scout-answer", "Scout's answer", 240_000)
+        await page.wait_for_timeout(1500)
+    await page.evaluate("window.scrollTo(0, 0)")
+    if s.want(17):
+        await s.snap(page, 17, "scout-ask-clear")
+    if s.want(19):
+        await clear.click()
+        await film.need(page, "text=Conversation cleared.", "the Undo line")
+        await page.wait_for_timeout(400)
+        await s.snap(page, 19, "scout-cleared-undo")
+        await page.get_by_role("button", name="Undo").click()  # the thread is back for the next view
+        await page.wait_for_timeout(800)
+    if s.want(18):
+        gate = asyncio.Event()
+
+        async def hold(route) -> None:  # noqa: ANN001 - the request waits, so the box keeps glowing
+            await gate.wait()
+            await route.abort()
+
+        await page.route("**/scout", hold, times=1)
+        await page.fill("#scout-q", "Which of these awards ask for a letter of recommendation?")
+        await page.click(".scout-ask button[type=submit]")
+        await film.need(page, ".scout-ask-row.working", "the working glow")
+        await page.wait_for_timeout(700)
+        await s.snap(page, 18, "scout-working")
+        gate.set()
+        await page.wait_for_timeout(500)
+        await page.unroute("**/scout")
+
+
+def load_env(path: str | None) -> None:
+    """Read DEMO_* credentials from an env file into this process only; nothing is printed."""
+    if not path:
+        return
+    for line in Path(path).read_text().splitlines():
+        k, _, v = line.strip().partition("=")
+        if k.startswith("DEMO_") and v:
+            os.environ.setdefault(k, v.strip("\"'"))
+
+
+async def main(a: argparse.Namespace) -> int:
+    load_env(a.env_file)
+    names = film.aliases()
+    out = ROOT / a.out
     out.mkdir(parents=True, exist_ok=True)
-    url = Path(args.page).resolve().as_uri()
-    errors: list[str] = []
-    runs = [("phone", PHONE, "light", 2), ("wide", WIDE, "light", 1), ("dark", PHONE, "dark", 2),
-            ("narrow", NARROW, "light", 2)]
+    only = set(a.only or [])
+    made = 0
+    failed = 0
+    hits: list[str] = []
     async with async_playwright() as p:
-        browser = await p.chromium.launch(executable_path=args.chrome, args=["--no-sandbox"])
-        for tag, size, scheme, scale in runs:
-            if args.only and tag not in args.only:
-                continue
-            ctx = await browser.new_context(viewport=size, device_scale_factor=scale,
-                                            color_scheme=scheme, has_touch=tag != "wide",
-                                            is_mobile=tag != "wide")
-            await walk(await ctx.new_page(), url, out, tag, errors)
-            await ctx.close()
+        browser = await p.chromium.launch(executable_path=find_chrome(), args=["--no-sandbox"])
+        for view in a.view:
+            size, scale = VIEWS[view]
+            for scheme in a.scheme:
+                for kind, fn, wanted in (("guest", guest_screens, {1, 2, 3, 4}),
+                                         ("researcher", researcher_screens, {5, 6, 7, 8, 9, 10, 14}),
+                                         ("student", student_screens, {11, 12, 13, 15, 16, 17, 18, 19})):
+                    if only and not (only & wanted):
+                        continue
+                    check = NameCheck(names, surnames=True)
+                    s = Shots(out, view, scheme, check, only)
+                    ctx = await browser.new_context(viewport=size, device_scale_factor=scale,
+                                                    color_scheme=scheme, has_touch=view == "phone",
+                                                    is_mobile=view == "phone")
+                    page = await ctx.new_page()
+                    page.set_default_timeout(30_000)
+                    errs: list[str] = []
+                    page.on("pageerror", lambda e, errs=errs: errs.append(str(e)))
+                    try:
+                        await alias_checked(page, names, check)
+                        if kind != "guest":
+                            await sign_in_as(page, a.base, kind.upper())
+                        await fn(page, a.base, s)
+                    except Exception as e:  # noqa: BLE001
+                        failed += 1
+                        print(f"{view}-{scheme}-{kind}: FAILED {type(e).__name__}: {str(e).splitlines()[0][:200]}")
+                    await ctx.close()
+                    made += len(s.made)
+                    hits += check.hits
+                    print(f"{view}-{scheme}-{kind}: {len(s.made)} saved; name check: {check.report()}"
+                          + (f"; page errors: {errs[:2]}" if errs else ""))
         await browser.close()
-    for e in errors:
-        print("page error:", e)
-    print(f"screenshots in {out}")
-    return 1 if errors else 0
+    print(f"{made} screenshots in {out}; name hits: {len(hits)}; failed groups: {failed}")
+    return 1 if (hits or failed) else 0
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main(sys.argv)))
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--base", required=True)
+    ap.add_argument("--env-file", help="a file with the DEMO_*_USERNAME and _PASSWORD lines")
+    ap.add_argument("--out", default="docs/screenshots")
+    ap.add_argument("--only", type=int, nargs="*", help="screen numbers")
+    ap.add_argument("--view", nargs="*", default=["wide", "phone"], choices=list(VIEWS))
+    ap.add_argument("--scheme", nargs="*", default=["light", "dark"], choices=["light", "dark"])
+    sys.exit(asyncio.run(main(ap.parse_args())))
