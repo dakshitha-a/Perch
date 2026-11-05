@@ -404,10 +404,11 @@ def _absent_fact(rec: Record, what: str, as_of: date) -> bool | None:
     """Does this record lack the deadline, amount or requirements? None when it cannot say."""
     what = what.lower()
     if what in ("deadline", "close date"):
+        # The page's deadline words count as a deadline (S49 M3).
         if isinstance(rec, Opportunity):
-            return not rec.close_date and not rec.close_date_note
+            return not (rec.close_date or rec.close_date_note or rec.deadline_quote)
         if isinstance(rec, Scholarship):
-            return rec.deadline is None
+            return rec.deadline is None and not rec.deadline_quote
         return None
     if what in ("amount", "award size"):
         if isinstance(rec, Opportunity | Scholarship):

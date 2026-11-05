@@ -91,15 +91,30 @@ def slug(heading: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", heading.lower()).strip("-") or "overview"
 
 
+def deadline_words(rec: Opportunity | Scholarship, as_of: date) -> str:
+    """The deadline as the record gives it. With no date, the record's or the page's own
+    words, quoted (S49 M3: 43 Temple pages state a deadline with no year)."""
+    if isinstance(rec, Opportunity):
+        if rec.close_date:
+            return deadline(rec, as_of)
+        words = rec.close_date_note or rec.deadline_quote
+        return f"no date; the record's words: {words}" if words else deadline(rec, as_of)
+    if rec.deadline:
+        return day(rec.deadline)
+    return f"no date; the page's words: {rec.deadline_quote}" if rec.deadline_quote \
+        else NOT_STATED
+
+
 def facts(rec: Record, as_of: date) -> dict[str, Any]:
     """Title, sponsor, deadline and amount as the cards write them: copied, not computed."""
     out: dict[str, Any] = {"id": rec.id, "kind": rec.kind}
     if isinstance(rec, Opportunity):
-        out |= {"title": rec.title, "sponsor": rec.agency, "deadline": deadline(rec, as_of),
+        out |= {"title": rec.title, "sponsor": rec.agency,
+                "deadline": deadline_words(rec, as_of),
                 "amount": award_size(rec) or NOT_STATED}
     elif isinstance(rec, Scholarship):
         out |= {"title": rec.name, "sponsor": rec.sponsor,
-                "deadline": day(rec.deadline) if rec.deadline else NOT_STATED,
+                "deadline": deadline_words(rec, as_of),
                 "amount": amount_text(rec) or NOT_STATED}
     elif isinstance(rec, Organisation):
         out |= {"title": rec.name, "type": rec.type}
