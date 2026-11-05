@@ -33,6 +33,7 @@ log = logging.getLogger("perch.user.delete")
 INACTIVE_AFTER = "12 months"
 INACTIVE_BATCH = 500
 GUEST_JOB_AFTER = "24 hours"
+FINISHED_JOB_AFTER = "30 days"
 LASTSEEN_TTL_S = 86_400
 
 
@@ -106,6 +107,14 @@ def purge_guest_jobs(pool: ConnectionPool, *, older_than: str = GUEST_JOB_AFTER)
             "AND created_at < now() - %s::interval", (older_than,)).rowcount
 
 
+def purge_finished_jobs(pool: ConnectionPool, *, older_than: str = FINISHED_JOB_AFTER) -> int:
+    """Finished job rows, dead-lettered ones too (S49 B16), after 30 days."""
+    with pg.public_tx(pool) as c:
+        return c.execute(
+            "DELETE FROM jobs WHERE state IN ('succeeded','failed','cancelled','dead') "
+            "AND finished_at < now() - %s::interval", (older_than,)).rowcount
+
+
 def _redis() -> redis.Redis | None:
     from perch.redisx import get_client
 
@@ -148,9 +157,7 @@ def purge_handler(ctx: JobContext) -> str | None:
     elif action == "guests":
         purge_guest_jobs(pool)
     elif action == "jobs":
-        with pg.public_tx(pool) as c:
-            c.execute("DELETE FROM jobs WHERE state IN ('succeeded','failed','cancelled') "
-                      "AND finished_at < now() - interval '30 days'")
+        purge_finished_jobs(pool)
     elif action == "audit":
         with pg.public_tx(pool) as c:
             c.execute("SELECT perch_null_old_actors(interval '90 days')")

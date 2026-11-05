@@ -460,3 +460,25 @@ def test_usage_route_copies_the_counter(env, rds):
     r = env.client.get("/usage")
     assert r.status_code == 200
     assert set(r.json()) == {"spent_usd", "limit_usd", "resets_at"} and r.json()["spent_usd"] == 0
+
+
+def test_purge_codes_are_kept_on_the_job_row():
+    """S49 B14: the purge handler's own codes used to be stored as `permanent`."""
+    assert jobs.PermanentError("retention_invalid").code == "retention_invalid"
+    assert jobs.PermanentError("rekey_incomplete").code == "rekey_incomplete"
+
+
+def test_purge_jobs_removes_dead_rows_past_thirty_days(pg_clean, worker_pool):
+    """S49 B16: dead-lettered rows used to stay for good."""
+    runner = PostgresRunner(pool=worker_pool, timing=FAST)
+    ids = {s: runner.submit("precache", {"author_id": f"A{i}"}, None, f"j{i}")
+           for i, s in enumerate(("succeeded", "dead", "failed", "queued"))}
+    for state, jid in ids.items():
+        sql(pg_clean, "UPDATE jobs SET state = %s, finished_at = now() - interval '31 days' "
+            "WHERE id = %s", state, jid)
+    fresh = runner.submit("precache", {"author_id": "A9"}, None, "j9")
+    sql(pg_clean, "UPDATE jobs SET state = 'dead', finished_at = now() WHERE id = %s", fresh)
+    jid = runner.submit("purge", {"action": "jobs"}, None, "pj")
+    run_worker(pg_clean, ["purge"], lambda: job_state(pg_clean, jid) == "succeeded")
+    left = {r[0] for r in sql(pg_clean, "SELECT id FROM jobs WHERE kind = 'precache'")}
+    assert left == {ids["queued"], fresh}

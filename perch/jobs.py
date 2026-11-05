@@ -60,7 +60,7 @@ TERMINAL = frozenset({JobState.SUCCEEDED, JobState.FAILED, JobState.DEAD, JobSta
 ERROR_CODES = frozenset({
     "lease_expired", "handler_error", "permanent", "cancelled", "refusal", "budget_exceeded",
     "quota_exceeded", "consent_required", "invalid_input", "missing_key", "provider_error",
-    "network_error", "no_handler",
+    "network_error", "no_handler", "retention_invalid", "rekey_incomplete", "timeout",
 })
 
 
