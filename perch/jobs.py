@@ -716,8 +716,18 @@ SCHEDULER_LOCK = 0x70657263  # pg advisory lock id: one worker at a time runs a 
 
 
 def _hhmm(text: str | None, default: str) -> tuple[int, int]:
-    h, _, m = (text or default).partition(":")
-    return int(h), int(m or 0)
+    """HH:MM as (hour, minute). A value that is not a time falls back to `default` with a
+    warning, so a typo in the environment does not stop the worker (S50 C16)."""
+    for value in (text or default, default):
+        h, _, m = value.partition(":")
+        try:
+            hh, mm = int(h), int(m or 0)
+        except ValueError:
+            hh = mm = -1
+        if 0 <= hh < 24 and 0 <= mm < 60:
+            return hh, mm
+        log.warning("bad schedule time; using %s", default)
+    raise ValueError("the default schedule time is not HH:MM")
 
 
 @dataclass
@@ -764,15 +774,17 @@ class Scheduler:
                     if seen is None:
                         runner.submit("purge", {"action": key.split(":")[1]}, None, key)
                         out.append(key)
-                else:
-                    seen = c.execute("SELECT 1 FROM jobs WHERE kind = 'precache' "
-                                     "AND idempotency_key LIKE %s LIMIT 1",
-                                     (f"precache:%:{day}",)).fetchone()
-                    if seen is None and self.precache is not None:
-                        n = self.precache(runner, day)
-                        out.append(key)
-                        log.info("scheduled precache jobs=%s", n)
-                self._done.add(key)
+                    self._done.add(key)
+        # S50 C16: the precache is enqueued outside the lock, once a day per process, and
+        # never skipped because some of the day's rows exist: a tick that failed part way
+        # left the other researchers without a precache. Each job's key holds the author and
+        # the date, so a second enqueue adds only the missing ones.
+        key = f"precache:{day}"
+        if key in due and self.precache is not None:
+            n = self.precache(runner, day)
+            out.append(key)
+            self._done.add(key)
+            log.info("scheduled precache jobs=%s", n)
         for key in out:
             log.info("scheduled %s", key.rsplit(":", 1)[0])
         return out

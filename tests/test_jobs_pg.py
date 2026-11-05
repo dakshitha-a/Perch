@@ -492,10 +492,36 @@ def test_the_scheduler_enqueues_the_nightly_precache_once(clean):
 
     r = mk(clean["worker"])
     now = datetime(2026, 11, 5, 2, 30, tzinfo=UTC)  # after 02:00, before the purges
+    first = Scheduler(precache=enqueue)
+    assert first.tick(r, now) == ["precache:2026-11-05"]
+    assert first.tick(r, now) == []  # once a day per process
+    # a restart enqueues again, and the per-author keys add nothing twice
     assert Scheduler(precache=enqueue).tick(r, now) == ["precache:2026-11-05"]
-    assert Scheduler(precache=enqueue).tick(r, now) == []
-    assert calls == ["2026-11-05"]
+    assert calls == ["2026-11-05", "2026-11-05"]
+    assert sorted(_keys(clean, "precache")) == ["precache:A1:2026-11-05",
+                                                "precache:A2:2026-11-05"]
     assert _keys(clean, "purge") == []
+
+
+def test_a_precache_enqueue_that_stopped_part_way_is_finished(clean):
+    """S50 C16: a tick that failed after the first researcher left a `precache:...:<day>` row,
+    and every later tick skipped the day, so the others had no precache."""
+    from datetime import UTC, datetime
+
+    from perch.jobs import Scheduler, _hhmm
+
+    def enqueue(runner, day):
+        for a in ("A1", "A2", "A3"):
+            runner.submit("precache", {"author_id": a}, None, f"precache:{a}:{day}")
+        return 3
+
+    r = mk(clean["worker"])
+    r.submit("precache", {"author_id": "A1"}, None, "precache:A1:2026-11-05")  # the partial run
+    now = datetime(2026, 11, 5, 2, 30, tzinfo=UTC)
+    assert Scheduler(precache=enqueue).tick(r, now) == ["precache:2026-11-05"]
+    assert len(_keys(clean, "precache")) == 3
+    # a typo in PERCH_PURGE_AT falls back to the default instead of stopping the worker
+    assert _hhmm("3am", "03:00") == (3, 0) and _hhmm("25:00", "02:00") == (2, 0)
 
 
 def test_only_one_worker_ticks_at_a_time(clean):
