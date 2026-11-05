@@ -52,7 +52,9 @@ def test_researcher_names_stay_out_of_shareable_docs():
         last_names = {fold(row["name"].split()[-1]) for row in csv.DictReader(f)}
     shareable = [ROOT / "README.md", *ROOT.glob("docs/**/*.md"), *ROOT.glob("docs/**/*.html"),
                  ROOT / "bridge/QUESTIONS.md", *(p for p in ROOT.glob("web/**/*") if p.is_file()
-                                                 and p.suffix in {".html", ".js", ".css"})]
+                                                 and p.suffix in {".html", ".js", ".css"}),
+                 # S51: code too, after a script carried a researcher's name for its name swap.
+                 *ROOT.glob("scripts/**/*.py")]  # perch/ holds award names (S51)
     # Whole words: a short last name can sit inside an ordinary word ("from").
     def body(p):
         text = p.read_text("utf-8")
