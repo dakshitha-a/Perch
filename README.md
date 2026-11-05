@@ -192,7 +192,7 @@ Other limits, from the build and its checks:
 
 ## The fallback
 
-The earlier build is the tag [`v0.1-demo-fallback`](https://github.com/dakshitha-a/Perch/tree/v0.1-demo-fallback), also the branch `fallback/v0.1-demo`. It runs on SQLite and LanceDB with local models, in-memory sessions, a Local and Cloud switch and warm briefs, and it has no accounts. It is linked from the v1 submission as the earlier hybrid build. The v1 build is the one submitted on 6 November 2026. The tour clips above show v1.
+The earlier build is the tag [`v0.1-demo-fallback`](https://github.com/dakshitha-a/Perch/tree/v0.1-demo-fallback), also the branch `fallback/v0.1-demo`. It runs on SQLite and LanceDB with local models, in-memory sessions, a Local and Cloud switch and warm briefs, and it has no accounts. It is offline since 5 November and kept as history. The v1 build is the one submitted and demoed on 6 November 2026. The tour clips above show v1.
 
 ## Learn more
 
