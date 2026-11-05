@@ -10,13 +10,14 @@ Sources (Markdown is the source of truth; the renderer never edits them):
   docs/design/qa/CYCLE_*.md, docs/design/UX_REVIEW_S*.md, docs/design/UX_AUDIT.md   UX tab
   and the later design and review files in docs/design/ (see UX_GLOBS)
   docs/ARCHITECTURE_OVERVIEW.md   the v1 overview; its ![caption](file.svg) figures are inlined
+  docs/ROADMAP.md          what a real deployment at Temple needs (Roadmap tab)
   data/synthetic/persona-1/  the SYNTHETIC private-mode persona
   data/logs/anthropic_spend.jsonl  gitignored; when absent the key-numbers row is used
   git log                  the last commit and each source file's last-changed date
 
 Tabs, switched by hash links (#current, #master, #decisions, #archive, #s<n>, ...):
-  Current, Master, Decisions, Archive, then UI, UX, Bench, README, Architecture, Persona
-  (each of the last six only when its source exists). Current opens at rest.
+  Current, Master, Decisions, Archive, then UI, UX, Bench, README, Architecture, Roadmap, Persona
+  (each of the last seven only when its source exists). Current opens at rest.
 
 The page is deterministic for a given commit and set of sources: nothing reads the clock.
 Countdowns to the freeze and the demo are computed in the browser from fixed deadlines.
@@ -1434,6 +1435,14 @@ def view_architecture(src: Source, root: Path, newest: tuple[datetime | None, st
     return "\n".join(out)
 
 
+def view_roadmap(src: Source, newest: tuple[datetime | None, str]) -> str:
+    """docs/ROADMAP.md: what a real deployment needs; every section is a short bullet list."""
+    doc = parse(src.text)
+    out = ['<div><div class="eyebrow">Beyond the demo</div>'
+           f"<h1>{inline(doc.title or 'Roadmap')}</h1></div>", source_note([src], newest)]
+    return "\n".join(out + fold_sections(doc))
+
+
 def view_persona(files: dict[str, str], note: str) -> str:
     """The synthetic private-mode test persona: README rendered, each document shown as is."""
     readme = parse(files.get("README.md", ""))
@@ -1502,7 +1511,8 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
                 arch: Source | None = None, arch_root: Path = Path("docs"),
                 persona: dict[str, str] | None = None, readme: str | None = None,
                 ux: list[Source] | None = None, ui_student: str | None = None,
-                questions_md: str = "", facts: Facts | None = None) -> str:
+                questions_md: str = "", facts: Facts | None = None,
+                roadmap: Source | None = None) -> str:
     facts = facts or Facts()
     master = parse(master_md)
     sessions = build_sessions(master, session_files)
@@ -1534,6 +1544,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
         ("bench", "Bench", lambda: view_bench(bench, newest), bench),
         ("readme", "README", lambda: view_readme(readme, note("README.md")), readme),
         ("architecture", "Architecture", lambda: view_architecture(arch, arch_root, newest), arch),
+        ("roadmap", "Roadmap", lambda: view_roadmap(roadmap, newest), roadmap),
         ("persona", "Persona", lambda: view_persona(
             persona, note("data/synthetic/persona-1/README.md", check=False)), persona),
     ) if t[3]]
@@ -1583,6 +1594,7 @@ def load_persona(folder: Path) -> dict[str, str]:
 
 
 ARCH_REL = "docs/ARCHITECTURE_OVERVIEW.md"
+ROADMAP_REL = "docs/ROADMAP.md"
 # The UX tab: the S25 to S29 reviews and QA cycles, then the design, UI and product reviews of
 # the v1 build (S43 to S51). Backend, function and security reviews are not UX and stay out.
 UX_GLOBS = ("docs/design/qa/CYCLE_*.md", "docs/design/UX_REVIEW_S*.md", "docs/design/S*_DESIGN.md",
@@ -1628,7 +1640,7 @@ def main(argv: list[str]) -> int:
 
     bench_rel = next((r for r in ("bench/results/RESULTS.md", "bench/results/SUMMARY.md")
                       if (root / r).is_file()), "")
-    rels = ["docs/TRACKER.md", "docs/DECISIONS.md", "docs/PLAN.md", ARCH_REL, "README.md",
+    rels = ["docs/TRACKER.md", "docs/DECISIONS.md", "docs/PLAN.md", ARCH_REL, ROADMAP_REL, "README.md",
             "data/synthetic/persona-1/README.md", *([bench_rel] if bench_rel else []), *ux_paths(root)]
     facts = Facts(file_dates={r: git(root, "log", "-1", "--format=%cI", "--", r) for r in rels})
     head = git(root, "log", "-1", "--format=%h %cI").split()
@@ -1652,7 +1664,7 @@ def main(argv: list[str]) -> int:
                        args.title, read("docs/DECISIONS.md"), read("docs/PLAN.md"), args.ui,
                        source(bench_rel), source(ARCH_REL), docs,
                        load_persona(root / "data/synthetic/persona-1"), args.readme, ux or None,
-                       args.ui_student, read("bridge/QUESTIONS.md"), facts)
+                       args.ui_student, read("bridge/QUESTIONS.md"), facts, source(ROADMAP_REL))
     dest.write_text(page, encoding="utf-8")
     if args.artifact:
         copy_images(page, dest.parent, docs)

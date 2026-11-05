@@ -312,6 +312,16 @@ def test_architecture_inlines_svg_figures(tmp_path):
     assert "<figcaption>FIG-CAPTION</figcaption>" in v and "ITEM" in v and "not in git yet" in v
 
 
+def test_roadmap_tab_renders_after_architecture():
+    arch = rt.Source("docs/ARCHITECTURE_OVERVIEW.md", "# Where\n", "")
+    src = rt.Source("docs/ROADMAP.md", "# Needs\n\n## 1. Sign-in\n\n- **Lead:** ITEM-TEXT\n", "")
+    p = rt.render_page(MASTER, {}, arch=arch, roadmap=src)
+    v = view(p, "roadmap")
+    assert "ITEM-TEXT" in v and "<h1>Needs</h1>" in v and "docs/ROADMAP.md" in v
+    assert p.index('id="tab-architecture"') < p.index('id="tab-roadmap"')
+    assert 'id="tab-roadmap"' not in rt.render_page(MASTER, {})
+
+
 def test_theme_toggle_and_artifact_contract():
     p = page(artifact=True)
     assert p.startswith("<title>Perch Build Tracker</title>")
