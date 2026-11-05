@@ -203,12 +203,23 @@ def explain_leads(opps: list[Opportunity], profile: Profile, works: dict[str, Wo
                   provider: AuditedProvider, grounder: Grounder | None = None,
                   workers: int = 4,
                   on_result: Callable[[int, Validated[Fit]], None] | None = None,
-                  audience: str = "researcher") -> list[Validated[Fit]]:
-    """Explain every lead; `on_result(index, result)` is called as each one finishes."""
+                  audience: str = "researcher",
+                  cancelled: Callable[[], bool] | None = None) -> list[Validated[Fit]]:
+    """Explain every lead; `on_result(index, result)` is called as each one finishes.
+    `cancelled` is checked before each lead, so a cancelled or timed-out job stops paying
+    between leads (S49 B6). By default it is the running job's own signal, read from the
+    brief store of the calling thread (pool threads do not inherit it)."""
+    if cancelled is None:
+        from perch.user.briefs import current_store
+
+        store = current_store.get()
+        cancelled = store.cancelled if store is not None else (lambda: False)
     system, paper_records = profile_prompt(profile, works, audience=audience)
     results: list[Validated[Fit] | None] = [None] * len(opps)
 
     def one(i: int) -> None:
+        if cancelled():
+            return
         results[i] = explain_one(opps[i], system, paper_records, provider, grounder)
         if on_result:
             on_result(i, results[i])

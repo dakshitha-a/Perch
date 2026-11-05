@@ -105,7 +105,7 @@ class PublicCache:
                 return None
             if epoch is not None and row_epoch != epoch:
                 return None
-            self._hot(namespace, key, value)
+            self._hot(namespace, key, value, expires)
             return value
         except Exception as e:  # noqa: BLE001 - a cache miss must not fail a brief
             log.warning("cache read failed ns=%s err=%s", namespace, type(e).__name__)
@@ -125,14 +125,22 @@ class PublicCache:
                     "ingest_epoch = EXCLUDED.ingest_epoch, created_at = now(), "
                     "expires_at = EXCLUDED.expires_at",
                     (key, namespace, Jsonb(value), Jsonb(meta), epoch, expires))
-            self._hot(namespace, key, value)
+            self._hot(namespace, key, value, expires)
         except Exception as e:  # noqa: BLE001
             log.warning("cache write failed ns=%s err=%s", namespace, type(e).__name__)
 
-    def _hot(self, namespace: str, key: str, value: dict) -> None:
+    def _hot(self, namespace: str, key: str, value: dict,
+             expires: datetime | None = None) -> None:
+        """The Redis copy lives at most REDIS_TTL_S and never past the row's own expiry, so a
+        hot hit cannot serve a value the table would call expired (S49 B17)."""
         if self.redis is None or namespace == "precache":  # precache is epoch-checked in SQL
             return
+        ttl = REDIS_TTL_S
+        if expires is not None:
+            ttl = min(ttl, int((expires - datetime.now(UTC)).total_seconds()))
+            if ttl <= 0:
+                return
         try:
-            self.redis.set(REDIS_PREFIX + key, json.dumps(value), ex=REDIS_TTL_S)
+            self.redis.set(REDIS_PREFIX + key, json.dumps(value), ex=ttl)
         except Exception:  # noqa: BLE001
             pass

@@ -429,3 +429,46 @@ def test_s8_level_columns_use_the_page_words():
                        level_of_study=["bachelor's", "graduate", "professional"])
     assert columns(sdfa).audience_level == ["undergraduate", "graduate"]
     assert columns(sch(audience_level="mixed")).audience_level == ["mixed"]
+
+
+# --- B17: the Redis hot copy never outlives the row ---
+
+def test_b17_hot_copy_ttl_is_capped_at_the_time_left():
+    from datetime import timedelta
+
+    from perch.cache import REDIS_TTL_S, PublicCache
+
+    class R:
+        def __init__(self):
+            self.ex = []
+
+        def set(self, k, v, ex):
+            self.ex.append(ex)
+
+    r = R()
+    c = PublicCache(pool=None, redis_client=r)  # type: ignore[arg-type]
+    now = datetime.now(UTC)
+    c._hot("profile_summary", "k", {"a": 1}, now + timedelta(seconds=120))
+    c._hot("profile_summary", "k", {"a": 1}, now + timedelta(days=30))
+    c._hot("profile_summary", "k", {"a": 1}, now - timedelta(seconds=5))  # expired: not set
+    c._hot("profile_summary", "k", {"a": 1}, None)
+    assert len(r.ex) == 3 and 100 <= r.ex[0] <= 120
+    assert r.ex[1] == REDIS_TTL_S and r.ex[2] == REDIS_TTL_S
+
+
+# --- B6: a cancelled job stops explaining between leads ---
+
+def test_b6_explain_leads_stops_when_the_job_is_cancelled():
+    from perch.skills.fit import explain_leads
+    from tests.test_skills import GOOD, OPP, PROFILE, WORKS, audited, fit_reply
+
+    p, log = audited([fit_reply(GOOD)] * 3)
+    calls = []
+
+    def cancelled():
+        calls.append(1)
+        return len(calls) > 1  # the first lead runs, then the job is cancelled
+
+    got = explain_leads([OPP, OPP, OPP], PROFILE, WORKS, p, workers=1, cancelled=cancelled)
+    assert len(got) == 1
+    assert sum(e["kind"] == "call" for e in log.events) == 1
