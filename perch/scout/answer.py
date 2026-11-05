@@ -474,6 +474,19 @@ def code_check(text: str, ids: list[str], seen: dict[str, Record], tools: ReadTo
     return all((i in pool) != neg for i in rows)
 
 
+def _rank_checked(body: str, ids: list[str], tools: ReadTools | None) -> str:
+    """The body Layer 1 reads. A rank number that matches the rank read_brief gave the one
+    cited record ("Rank 1 is X [id]") is the brief's own number, not a claim to find in the
+    record, so it is left out of the count (Q7). A wrong rank stays in, and fails."""
+    if tools is None or not tools.brief_read:
+        return body
+    rows = [i for i in ids if not i.startswith(("user:", "search:"))]
+    m = RANK_NUM_RE.search(body)
+    if m and len(rows) == 1 and tools.ranks.get(rows[0]) == int(m.group(1) or m.group(2)):
+        return body[:m.start()] + body[m.end():]
+    return body
+
+
 def _token(message: str) -> str:
     m = re.search(r"'([^']*)'", message)
     return m.group(1) if m else ""
@@ -512,7 +525,8 @@ def is_heading(s: Sentence, line: Line) -> bool:
 
 
 def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None = None,
-                   *, heading: bool = False, block: str = "") -> None:
+                   *, heading: bool = False, block: str = "",
+                   tools: ReadTools | None = None) -> None:
     """`block` is the lower-case text of the records the lines under a heading cite (see
     `block_text`); a heading may name what that block cites."""
     raw = cites_in(s.text)
@@ -528,7 +542,7 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
     # A list number inside bold marks ("**1. Title**") is numbering, not a number (Q5).
     body = BOLD_LIST_RE.sub(r"\1", strip_cites(s.text))
     if raw:
-        for e in validate.check(body, ids, seen).errors:
+        for e in validate.check(_rank_checked(body, ids, tools), ids, seen).errors:
             if not e.startswith("cited id"):  # unresolved ids were reported above
                 s.fail(_layer1_code(e), e, _token(e))
         # An empty-result placeholder ("user:saved", "user:brief") holds only "nothing found",
@@ -786,7 +800,7 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
         for s in ln.sentences:
             h = is_heading(s, ln) or bold_title(s, ln, cited_below(g.lines, li, seen))
             check_sentence(s, seen, names, heading=h,
-                           block=block_text(g.lines, li, seen) if h else "")
+                           block=block_text(g.lines, li, seen) if h else "", tools=tools)
     for s in g.general_sentences:
         s.kind = "general"
         for code, msg, d in general_reasons(s.text, names, seen):

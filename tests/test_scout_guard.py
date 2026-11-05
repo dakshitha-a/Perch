@@ -35,6 +35,7 @@ def test_q4_to_q11_shapes_now_pass():
         "Would you like me to read the SYNTHETIC Marsh Ecology Program record in full?",  # Q10
         "Or should I compare either record with your CV?",  # Q10
         "You have no entries to add context [user:entries].",  # Q11
+        f"Rank 1 is the SYNTHETIC Kidney Repair Program {C1}.",  # Q7: the brief's own rank
     ]
     for text in ok:
         g = _grade(text)
