@@ -200,10 +200,64 @@ TEMPLE_SOURCES = ("temple_pages", "temple_sdfa")
 PAST_CYCLE_DAYS = 31
 
 
+# G1, Q2 (S50): a Temple page that tags an award "mixed" or gives no tag sets no level, so a
+# "Graduate Student Research Grant" passed for an undergraduate. The award's own name then
+# decides, from the raw name (the bracket in "Film Award Fund (Graduate)" counts). A
+# postdoctoral fellowship (F32, F33) is not a student award; an F31 or predoctoral
+# fellowship filed under faculty is a graduate one. Training grants stay with faculty.
+POSTDOC_NAME = re.compile(r"\bpost-?doctoral\b|\bpostdocs?\b|\bF3[23]\b", re.I)
+PREDOC_NAME = re.compile(r"\bF31\b|\bpre-?doctoral fellowship", re.I)
+INSTITUTIONAL = re.compile(r"\binstitutional\b|\btraining (?:grants?|awards?)\b", re.I)
+UG_NAME = re.compile(r"\bundergraduates?\b", re.I)
+GRAD_NAME = re.compile(r"\bgraduate\b|\bdoctoral\b|\bdissertation\b|\bmaster'?s\b|\bph\.?d\b",
+                       re.I)
+
+
+def name_level(name: str) -> str | None:
+    """"postdoc", "graduate", "undergraduate" or None, from words in an award's name."""
+    if POSTDOC_NAME.search(name):
+        return "postdoc"
+    if PREDOC_NAME.search(name) and not INSTITUTIONAL.search(name):
+        return "graduate"
+    ug, grad = UG_NAME.search(name), GRAD_NAME.search(name)
+    if ug and grad:
+        return None  # "Undergraduate and Graduate ...": open to both, so no rule
+    return "undergraduate" if ug else "graduate" if grad else None
+
+
+def audience_of(s: Scholarship) -> str | None:
+    """The audience a Temple-page award is judged for: the page tag, or the award's name
+    when the tag is "mixed" or absent (G1), or names a postdoc or F31 fellowship (Q2).
+    A record that states its own levels, and every other source, keep the tag as it is."""
+    tag = s.audience_level
+    if s.source not in TEMPLE_SOURCES or s.level_of_study:
+        return tag
+    by_name = name_level(s.name)
+    if by_name == "postdoc":
+        return "postdoc"
+    if tag == "faculty" and by_name == "graduate" and PREDOC_NAME.search(s.name):
+        return "graduate"
+    if tag in (None, "mixed") and by_name:
+        return by_name
+    return tag
+
+
+def level_from_name(s: Scholarship) -> bool:
+    return not s.level_of_study and audience_of(s) != s.audience_level
+
+
 def study_levels(s: Scholarship) -> list[str]:
     if s.level_of_study:
         return list(s.level_of_study)
-    return AUDIENCE_LEVELS.get(s.audience_level or "", [])
+    return AUDIENCE_LEVELS.get(audience_of(s) or "", [])
+
+
+def level_said(s: Scholarship, levels: list[str]) -> str:
+    """The level as the record words it: its levels, the page tag, or the name's word."""
+    if s.level_of_study:
+        return f"{_levels(levels)} students"
+    word = audience_of(s) or ""
+    return f"{word} students, by the award's name" if level_from_name(s) else f"{word} students"
 
 
 def past_cycle(s: Scholarship, as_of: date) -> bool:
@@ -231,8 +285,7 @@ def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
         if not f.level:
             unknown.append(("level_unstated", "Your CV does not say your level of study."))
         elif f.level not in levels:
-            said = _levels(levels) if s.level_of_study else s.audience_level  # the record's word
-            broken.append(("level", f"Open to {said} students; your CV says {f.level}."))
+            broken.append(("level", f"Open to {level_said(s, levels)}; your CV says {f.level}."))
     if e.class_year and f.level == "bachelor's":
         years = _years(e.class_year)
         if f.class_year is None:
@@ -439,7 +492,7 @@ def student_pool(records: list[Scholarship]) -> tuple[list[Scholarship], dict[st
     the fellowships office is one award: the copy with more fields is kept and the other's
     page is listed under it (S7). A name found on one list only is left to
     perch/temple_dedupe.py, which keeps same-list copies apart when their fields differ."""
-    pool = [s for s in records if s.audience_level not in NOT_STUDENTS
+    pool = [s for s in records if audience_of(s) not in NOT_STUDENTS
             and norm_name(s.name) not in STAFF_AWARDS]
     by_name: dict[str, list[Scholarship]] = {}
     for s in pool:
