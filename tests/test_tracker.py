@@ -344,3 +344,20 @@ def test_real_tracker_renders_standalone():
 def test_bold_may_wrap_inline_code_and_code_is_left_alone():
     assert rt.inline("**the `x<y` file** and `**not bold**`") == (
         "<strong>the <code>x&lt;y</code> file</strong> and <code>**not bold**</code>")
+
+
+def test_bench_hoists_the_design_change_section():
+    text = "# T\n\nintro\n\n## Old\n\nx\n\n## Design change: now\n\ny\n\n## Later\n\nz\n"
+    out = rt.hoist_section(text, "Design change")
+    assert out.index("## Design change") < out.index("## Old") < out.index("## Later")
+    assert rt.hoist_section("# T\n\n## A\n\nx\n", "Design change") == "# T\n\n## A\n\nx\n"
+
+
+def test_ux_paths_cover_the_v1_reviews_and_skip_backend_ones(tmp_path):
+    d = tmp_path / "docs/design"
+    d.mkdir(parents=True)
+    for n in ("S50_DESIGN.md", "S51_PRODUCT_REVIEW.md", "S50_BACKEND_REVIEW.md", "WORKFLOW_REVIEW.md"):
+        (d / n).write_text("# x\n")
+    got = rt.ux_paths(tmp_path)
+    assert "docs/design/S50_DESIGN.md" in got and "docs/design/S51_PRODUCT_REVIEW.md" in got
+    assert "docs/design/WORKFLOW_REVIEW.md" in got and "docs/design/S50_BACKEND_REVIEW.md" not in got

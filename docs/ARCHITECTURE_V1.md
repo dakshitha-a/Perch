@@ -1,5 +1,7 @@
 # ARCHITECTURE_V1.md — Perch v1 contract
 
+> A short, current overview of the v1 build, with a figure, is [ARCHITECTURE_OVERVIEW.md](ARCHITECTURE_OVERVIEW.md). This file is the design contract; the code and tests cite its section numbers, so its body is kept as written.
+
 Phase 1, task 5 of `docs/REBUILD_PLAN.md`. Written 2026-11-03. Later implementation agents cite this file by section number. Decisions in the plan are settled and are not re-opened here. Choices the plan left open are marked **D-n** and listed in section 12. Findings from `docs/v1/DESIGN_REVIEW.md` are answered in the review log at the end.
 
 Reads with: `docs/REBUILD_PLAN.md`, `docs/v1/REUSE_MAP.md`, `docs/v1/PROVIDER_AND_SSO.md`. Anything those files mark UNVERIFIED stays UNVERIFIED here.
