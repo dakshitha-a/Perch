@@ -300,6 +300,7 @@ function architecture() {
 function privacy() {
   const items = [
     ["person", "A guest session saves nothing.", " It ends after an hour. Hand-off drafts, notes to an office and Scout need an account."],
+    ["person", "The demo sign-in is shared.", " Everyone who signs in as demo sees what is saved there, so do not paste a real CV. Perch says so on every screen of that account."],
     ["lock", "A CV you add is stored encrypted.", " Contact details are blanked before any text goes to the model provider named in the consent."],
     ["close", "You can delete your data.", " Open the account menu, then Account and data, then Delete my data. Perch also deletes it after 12 months without use."],
     ["mail", "Perch sends nothing.", " Hand-offs are drafts. You send them."],

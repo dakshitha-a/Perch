@@ -2,7 +2,7 @@
 // page with the delete-my-data dialog (#/account) and My Perch with the past briefs (#/me).
 // The consent text is whatever the server sends, shown as written (GET /auth/session).
 
-import { evMark, fill, h, icon } from "./dom.js";
+import { evMark, fill, h, icon, sharedWarn } from "./dom.js";
 import { owl } from "./owl.js";
 import { profilePicks } from "./profile_picks.js";
 import * as f from "./format.js";
@@ -236,7 +236,8 @@ export async function renderAccount(root, ctx) {
             : h("button", { class: "btn", type: "button", id: "wd-open", "data-key": "wd-open",
               onclick: () => wdDlg.showModal() }, h("span", { text: "Withdraw consent…" })))) : null),
     h("section", { class: "box", "aria-labelledby": "docs-h" },
-      h("h2", { class: "section-title", id: "docs-h", tabindex: "-1", text: "Your documents" }), docsEl),
+      h("h2", { class: "section-title", id: "docs-h", tabindex: "-1", text: "Your documents" }),
+      sharedWarn(ctx.session()), docsEl),
     h("section", { class: "box", "aria-labelledby": "picks-h" },
       h("h2", { class: "section-title", id: "picks-h", text: "Citizenship and state (optional)" }), picksEl),
     h("section", { class: "box danger-zone", "aria-labelledby": "del-h" },

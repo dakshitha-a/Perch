@@ -57,3 +57,25 @@ def consent_version() -> int:
 
 def consent_provider_name() -> str:
     return env("PERCH_CONSENT_PROVIDER_NAME") or "the contracted model provider"
+
+
+def _names(var: str) -> frozenset[str]:
+    return frozenset(x.strip().lower() for x in (env(var) or "").split(",") if x.strip())
+
+
+def shared_accounts() -> frozenset[str]:
+    """PERCH_SHARED_ACCOUNTS: comma-separated sign-in names (preferred_username) of shared demo
+    accounts. Default empty, so no account is shared. Compared in lower case."""
+    return _names("PERCH_SHARED_ACCOUNTS")
+
+
+def is_shared(claims) -> bool:  # noqa: ANN001 - a mapping of OIDC claims
+    """True when the sign-in name in the claims is a listed shared account."""
+    name = claims.get("preferred_username") if claims else None
+    return isinstance(name, str) and name.strip().lower() in shared_accounts()
+
+
+def shared_subjects() -> list[str]:
+    """PERCH_SHARED_SUBJECTS: the identity provider's user ids of the shared accounts, for the
+    nightly wipe. The database holds only a hash of the id, never the sign-in name."""
+    return [x.strip() for x in (env("PERCH_SHARED_SUBJECTS") or "").split(",") if x.strip()]

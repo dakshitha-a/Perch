@@ -3,7 +3,7 @@
 // hand-off. Every verdict, gap, date and amount is written by the server's rule code or
 // copied from the record; nothing here is a model's claim.
 
-import { evMark, fill, h, icon, labelCells } from "./dom.js";
+import { evMark, fill, h, icon, labelCells, sharedWarn } from "./dom.js";
 import { coverBlock, coverListLine } from "./cover.js";
 import { copy, mailto } from "./handoff.js";
 import * as f from "./format.js";
@@ -266,6 +266,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
         // S49 S6: an invented student fills the boxes; nothing is saved until Save.
         cv ? null : h("button", { class: "btn quiet", type: "button", "data-key": "load-sample", onclick: () => loadSample() },
           h("span", { text: "Load sample" }))),
+      sharedWarn(sess),
       cv ? null : h("p", { class: "hint", text: "Fills the boxes with an invented student. Nothing is saved until you press Save, or Save and find awards." }),
       h("div", { class: "sample-ask-slot" }),
       cv ? h("div", { class: "added" }, h("span", { text: `${cv.name || "Your CV"} is stored.` }),

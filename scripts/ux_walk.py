@@ -493,7 +493,8 @@ async def stub_signed_in(page: Page, state: dict) -> None:
                 "csrf": "walk-csrf", "display_name": "Sam Example Walker", "expires_at": 9999999999,
                 "consent": {"required": not state["consented"], "current_version": 1,
                             "accepted_version": 1 if state["consented"] else 0, "provider_name": "SYNTHETIC Provider", "text": CONSENT},
-                "needs_welcome": not (state["roles"] and state["consented"])}
+                "needs_welcome": not (state["roles"] and state["consented"]),
+                **({"shared": True} if state.get("shared") else {})}
 
     async def handle(route: Route) -> None:
         url = route.request.url

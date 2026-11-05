@@ -154,7 +154,8 @@ async def callback(request: Request) -> Response:
     if old:
         await store.destroy(old)
     s = await store.create_user(uid, roles, identity, audience=audience,
-                                consent_version=acct.consent_version)
+                                consent_version=acct.consent_version,
+                                shared=settings.is_shared(identity.claims))
     target = return_to
     if _needs_welcome(acct.roles, acct.consent_version):
         target = "/welcome?return_to=" + quote(return_to, safe="/")
@@ -187,6 +188,8 @@ async def session_info(request: Request) -> Response:
     out: dict = {"signed_in": not s.guest, "guest": s.guest, "roles": sorted(s.roles),
                  "audience": s.audience, "csrf": s.csrf, "display_name": s.display_name,
                  "expires_at": s.abs_exp, "accounts_open": settings.accounts_open()}
+    if s.shared:
+        out["shared"] = True
     if s.guest:
         out["notice"] = "Nothing is saved in a guest session. It ends in an hour."
     else:

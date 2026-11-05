@@ -35,7 +35,7 @@ test-user:
 		$(UV) run pytest tests/test_user_data_pg.py tests/test_user_briefs.py tests/test_user_account.py tests/test_key_ops_user.py tests/test_s41_integration.py \
 		tests/test_student_account.py tests/test_student_routes.py tests/test_leak_check.py tests/test_saved.py \
 		tests/test_scout_v2_account.py tests/test_scout_s45_account.py tests/test_scout_cover_account.py \
-		tests/test_s53_profile_account.py tests/test_spend_meter.py tests/test_restore_safety.py tests/test_handoff_job.py tests/test_s48_limits.py -p no:cacheprovider
+		tests/test_s53_profile_account.py tests/test_shared_account.py tests/test_spend_meter.py tests/test_restore_safety.py tests/test_handoff_job.py tests/test_s48_limits.py -p no:cacheprovider
 
 # The demo: the v1 stack (deploy/compose) as its own Compose project, perch-demo, with the
 # CPU worker, so no GPU is needed. One command: `make demo`. `make demo GPU=1` uses the GPU

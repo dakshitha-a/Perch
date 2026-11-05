@@ -1,6 +1,16 @@
 // Tiny DOM helpers shared by the app's modules. Values go in through textContent;
 // icons are static paths.
 
+// The shared demo account notice (the session says "shared": true). Same words on every screen.
+export const SHARED_NOTICE = "Shared demo account. Everyone who signs in sees what you save here. Do not paste a real CV.";
+
+// The short line beside a CV box or an upload button on a shared account; null otherwise.
+export function sharedWarn(sess) {
+  if (!sess || !sess.shared) return null;
+  return h("p", { class: "hint shared-warn", "data-key": "shared-cv-warn" }, icon("info"),
+    h("span", { text: SHARED_NOTICE }));
+}
+
 export function h(tag, attrs = {}, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {

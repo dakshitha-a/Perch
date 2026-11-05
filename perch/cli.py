@@ -681,6 +681,24 @@ def build_parser() -> argparse.ArgumentParser:
     tp.add_argument("--apply", action="store_true", help="really delete; default is a dry run")
     tp.add_argument("--days", type=int, default=None, help="retention; default "
                     "PERCH_TOMBSTONE_RETENTION_DAYS or 400; refused below 400")
+    us = sub.add_parser("user", help="shared demo account tasks (operator, admin DSN)")
+    ussub = us.add_subparsers(dest="user_command", required=True)
+    for name, hlp in (("wipe-data", "delete a shared account's data, keep the account, its "
+                       "consent and its roles"),
+                      ("prepare-shared", "give a shared account both roles and current "
+                       "consent so visitors skip the Welcome")):
+        up = ussub.add_parser(name, help=hlp)
+        up.add_argument("--dsn", default=None, help="admin DSN (superuser or BYPASSRLS); default "
+                        "PERCH_ADMIN_DATABASE_URL, then PERCH_DATABASE_URL")
+        up.add_argument("--issuer", default=None, help="default PERCH_OIDC_ISSUER")
+        if name == "wipe-data":
+            up.add_argument("--subject", default=None, help="the identity provider's user id")
+            up.add_argument("--all-shared", action="store_true",
+                            help="every id in PERCH_SHARED_SUBJECTS")
+        else:
+            up.add_argument("--subject", required=True,
+                            help="the identity provider's user id of the shared account")
+            up.add_argument("--roles", default="researcher,student")
     sub.add_parser("reconcile-shreds", help="after a restore: re-assert tombstones from all "
                    "three sources, delete the restored rows of shredded users, clear the "
                    "restore marker. Run in the worker container (perch_worker reads shred_log)")
@@ -935,6 +953,54 @@ def cmd_restore_mark(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_user(args: argparse.Namespace) -> int:
+    from perch.auth import settings as auth_settings
+    from perch.store.pg import make_pool
+    from perch.user import shared
+
+    dsn = args.dsn or env("PERCH_ADMIN_DATABASE_URL") or env("PERCH_DATABASE_URL")
+    issuer = args.issuer or env("PERCH_OIDC_ISSUER")
+    if not dsn or not issuer:
+        print("Set a DSN (--dsn or PERCH_ADMIN_DATABASE_URL) and PERCH_OIDC_ISSUER.",
+              file=sys.stderr)
+        return 2
+    if args.user_command == "wipe-data":
+        subjects = auth_settings.shared_subjects() if args.all_shared else (
+            [args.subject] if args.subject else [])
+        if not subjects:
+            print("Give --subject, or --all-shared with PERCH_SHARED_SUBJECTS set.",
+                  file=sys.stderr)
+            return 2
+    pool = make_pool(dsn, max_size=2)
+    try:
+        if args.user_command == "prepare-shared":
+            roles = [r.strip() for r in args.roles.split(",") if r.strip()]
+            try:
+                shared.prepare_shared(pool, issuer, args.subject, roles)
+            except (ValueError, shared.NotAdmin) as e:
+                print(str(e), file=sys.stderr)
+                return 2
+            print(f"Prepared the shared account with roles {', '.join(sorted(roles))} "
+                  "and current consent.")
+            return 0
+        try:
+            shared.require_admin(pool)
+        except shared.NotAdmin as e:
+            print(str(e), file=sys.stderr)
+            return 2
+        done = 0
+        for sub_id in subjects:
+            uid = shared.find_user(pool, issuer, sub_id)
+            if uid is None:
+                continue  # never signed in, nothing to wipe
+            shared.wipe_user_data(pool, uid)
+            done += 1
+        print(f"Wiped data for {done} of {len(subjects)} shared accounts.")
+        return 0
+    finally:
+        pool.close()
+
+
 def cmd_db(args: argparse.Namespace) -> int:
     from perch.db.migrate import migrate
 
@@ -977,6 +1043,8 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
         return cmd_precache(args)
     if args.command == "keys":
         return cmd_keys(args)
+    if args.command == "user":
+        return cmd_user(args)
     if args.command == "extract":
         return cmd_extract(args)
     if args.command == "temple":

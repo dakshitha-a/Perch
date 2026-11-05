@@ -29,6 +29,7 @@ class Session:
     created: float
     abs_exp: float
     consent_version: int = 0  # accepted consent version, 0 when none or withdrawn
+    shared: bool = False  # a shared demo account (PERCH_SHARED_ACCOUNTS), set at sign-in
 
 
 def guest_sid_hash(sid: str) -> bytes:
@@ -53,12 +54,13 @@ class SessionStore:
 
     async def create_user(self, user_id: UUID, roles: frozenset[str] | set[str] | list[str],
                           identity: Identity, *, audience: Audience | None = None,
-                          consent_version: int = 0) -> Session:
+                          consent_version: int = 0, shared: bool = False) -> Session:
         held = sorted(roles)
         aud = audience or ("student" if held == ["student"] else "researcher")
         sid, _ = rx.create_session(self.r, uid=user_id, roles=held, audience=aud,
                                    name=identity.display_name or "")
-        self.r.hset(f"{rx.PREFIX}:sess:{sid}", "consent", str(consent_version))
+        self.r.hset(f"{rx.PREFIX}:sess:{sid}", mapping={
+            "consent": str(consent_version), "shared": "1" if shared else "0"})
         s = await self.get(sid)
         assert s is not None
         return s
@@ -85,7 +87,7 @@ class SessionStore:
             roles=_roles(h.get("roles", "")), audience=_audience(h.get("audience", "")),
             csrf=h.get("csrf", ""), display_name=h.get("name") or None,
             created=float(h.get("created", "0")), abs_exp=float(h.get("abs_exp", "0")),
-            consent_version=int(h.get("consent", "0") or 0))
+            consent_version=int(h.get("consent", "0") or 0), shared=h.get("shared") == "1")
 
     async def set_audience(self, sid: str, audience: Audience) -> None:
         if self.r.exists(f"{rx.PREFIX}:sess:{sid}"):
