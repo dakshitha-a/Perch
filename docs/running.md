@@ -68,6 +68,17 @@ An OpenAlex API key is optional; see `.env.example`.
 
 `make bench` runs the back-test and bench matrix (results in `bench/results/`). `make package` builds the submission ZIP in S28.
 
+## Settings and scripts for a v1 deploy
+
+These are the names an operator meets. The reasons and the defaults are in [deploy.md](deploy.md).
+
+- **Accounts:** `PERCH_ACCOUNTS_OPEN=0` turns self-registration off.
+- **Guest limits:** the guest model budgets, the sessions an hour per address and the rate table are deploy settings. `PERCH_RATE_LIMITS` overrides the per-address rate limits as JSON.
+- **Worker:** the scheduler runs in the worker and `PERCH_SCHEDULER=0` turns it off. `PERCH_WORKER_FAST_THREADS` reserves job threads for Scout, cover points and hand-offs.
+- **Units:** `deploy/systemd/v1/` holds a web and a worker unit.
+- **Scripts:** `scripts/refresh_v1.py` refreshes the federal records. `scripts/redenorm.py` recomputes the filter columns. `scripts/smoke_deploy.py --base <url>` checks a running deploy as a guest. `scripts/live_capture.py` needs `PERCH_LIVE_BASE` and records real model text for a SYNTHETIC user. `scripts/demo_reset.py` clears the guest limits before a demo. `scripts/export_replay.py` saves a brief for the example page.
+- **Demo Day:** the run sheet is [DEMO.md](DEMO.md).
+
 ## Secrets
 
 API keys go in `.env`, which is gitignored. Copy `.env.example` to start. `make hooks` installs git hooks that refuse commits containing keys, tokens, local paths or emails.

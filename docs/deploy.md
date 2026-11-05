@@ -40,6 +40,9 @@ Copy `.env.example` to `.env`. Never commit `.env` and never paste a value into 
 - **Required by Compose:** `POSTGRES_PASSWORD`, `PERCH_OWNER_PASSWORD`, `PERCH_WEB_PASSWORD`, `PERCH_WORKER_PASSWORD`, `PERCH_KEYS_PASSWORD`, `KEYCLOAK_ADMIN_PASSWORD`, `PERCH_OIDC_CLIENT_SECRET`, `PERCH_MASTER_KEY`, `PERCH_PEPPER`, `PERCH_PEPPER_GUEST`, `PERCH_AUDIT_KEY`. The web also refuses to start without the two peppers, and the worker without the audit key when `PERCH_ENV=prod`. Make each with `openssl rand -base64 32`.
 - **Optional in Compose:** `PERCH_MASTER_KEY_ID`, `PERCH_LOG_FORMAT`, `PERCH_TORCH_THREADS`, `PERCH_WORKER_CONCURRENCY`, `PERCH_WORKER_GPU`, `BACKUP_RETENTION_DAYS`, `ANTHROPIC_API_KEY`.
 - **Model and cost:** `ANTHROPIC_API_KEY`, `PERCH_ANTHROPIC_BUDGET_USD` (default 100), `PERCH_LLM_DEFAULT`, `PERCH_MODEL_SLOTS`, `PERCH_MODEL_SLOT_TIMEOUT`, `PERCH_ANTHROPIC_TIMEOUT`. `PERCH_DAILY_BUDGET_USD` is read by `perch/redisx.py` (default 0.50 per account per UTC day) but is not listed in `.env.example`.
+- **Accounts and guests (S51):** `PERCH_ACCOUNTS_OPEN` (default 1; `0` turns self-registration off, and the landing page and the walls then lead guests to the sample and the example). `PERCH_GUEST_DAILY_BUDGET_USD` (default 0.10, per guest session), `PERCH_GUEST_ADDR_DAILY_BUDGET_USD` (default 0.30, per client address) and `PERCH_GUEST_GLOBAL_DAILY_BUDGET_USD` (default 3.00, all guests). `PERCH_GUEST_SESSIONS_PER_ADDRESS_HOUR` (default 60) and `PERCH_GUEST_TTL_S` (default 3600).
+- **Per-address limits are deploy settings:** `PERCH_RATE_LIMITS` is a JSON object that maps a scope name to a count and a window in seconds, such as `{"api_read": [3000, 60]}`. It overrides `RATE_DEFAULTS` in `perch/redisx.py` for the scopes it names. A malformed value breaks every rate-limited route, so check the JSON before a restart. It needs `PERCH_TRUSTED_PROXIES`, or every visitor shares one address. The values the test deploy uses sit in its untracked environment file, and the DECISIONS entry of 2026-11-05 records them.
+- **Worker threads (S51):** `PERCH_WORKER_CONCURRENCY` (default 16) sets the job threads of a worker. `PERCH_WORKER_FAST_THREADS` (default 2) reserves some of them for Scout, cover points, hand-offs and purges, as described in Daily jobs.
 - **Worker schedule (S49):** `PERCH_SCHEDULER` (default on; `0` turns it off), `PERCH_PURGE_AT` (default `03:00` UTC), `PERCH_PRECACHE_AT` (default `02:00` UTC), `PERCH_PRECACHE_CONCURRENCY` (default 1). See Daily jobs in section 1. All four are listed in `.env.example`.
 - **Keys:** `PERCH_KEYSTORE`, `PERCH_MASTER_KEY`, `PERCH_MASTER_KEY_ID`, `PERCH_MASTER_KEY_PREV`, `PERCH_MASTER_KEY_PREV_ID`, `PERCH_KMS_KEY_URI`, `PERCH_KEYS_DATABASE_URL`.
 - **Dev stack only:** the Compose file sets `PERCH_ENV=dev`, `PERCH_KEYSTORE=env` and `PERCH_COOKIE_INSECURE=1`. With `PERCH_ENV=prod` the env key store is refused (`perch/keystore.py`) and an OIDC issuer must start with `https://` (`perch/auth/oidc.py`). A production master key lives in a KMS; the reference format for `PERCH_KMS_KEY_URI` is `UNVERIFIED` until a host is chosen.
@@ -83,7 +86,7 @@ PERCH_LIMIT_GPU=3 scripts/run_limited.sh uv run --extra ml --extra anthropic per
 ```
 
 - **Not a general rule:** `run_limited.sh` is a guard for the shared lab node. On your own host run `CUDA_VISIBLE_DEVICES=<index> uv run --extra ml --extra anthropic perch worker`, or a systemd user unit.
-- **systemd unit:** the repo has no worker unit. `deploy/systemd/` holds only the demo model-server units (Clef-flash, Clef, the model server, Ollama) of the fallback demo. A unit for the worker with `Restart=on-failure`, an `EnvironmentFile`, `Environment=CUDA_VISIBLE_DEVICES=<index>` and the `ExecStart` above is `UNVERIFIED`; no such unit has been run.
+- **systemd units:** `deploy/systemd/v1/` holds `perch-web.service` and `perch-worker.service`. The web unit runs `perch serve` on 127.0.0.1 port 8200 with the web role's database URL. The worker unit runs `scripts/run_limited.sh` around `perch worker` with the worker role's database URL, `Restart=on-failure` and `PERCH_LIMIT_GPU` set in the unit. Both read an `EnvironmentFile` and expect the checkout at `/opt/perch`, so change the paths for your host. `deploy/systemd/` also holds the fallback demo's model-server units. The comments in each unit file say how to install it. Whether these units were started from these exact files on the demo node: `UNVERIFIED`.
 - **Health of a native worker:** the Compose healthcheck does not cover it. `perch worker --check` matches a heartbeat row by the host name, so run it on the same host with the same database variables. It exits 0 when a heartbeat under 90 seconds old exists.
 - **Stop it:** the worker handles SIGTERM and SIGINT and stops claiming jobs.
 
@@ -233,6 +236,17 @@ Every number is copied from `bench/results/s47_load/report.md` (S47, 4 Nov 2026,
 - **Provider tier:** at the S38 mean of 7,076 output tokens a researcher brief, the worker's 39.6 a minute is about 280K output tokens a minute; the offered peak was about 474K. `docs/RESULTS.md` gives the start tier as 400K output tokens and 4,000 requests a minute, so the offered peak exceeds it and the worker rate fits. Input-token limits and higher tiers: `UNVERIFIED`, not in the repo. Student brief token counts: `UNMEASURED`.
 - **Not in the mix:** hand-offs, cover points, Scout model turns, ingest.
 
+### Helper scripts
+
+Most of these scripts read a database or Redis address from the environment, so source the deploy's env file first. None prints a secret.
+
+- **`scripts/refresh_v1.py`:** refreshes the Grants.gov records in four phases, `plan`, `apply`, `vectors` and `epoch`. The steps above use it.
+- **`scripts/redenorm.py`:** rewrites every stored scholarship and opportunity so its filter columns are computed again. Run it after a change to `perch/store/denorm.py`. It takes `--dsn-env`, which names the variable that holds the worker-role database URL.
+- **`scripts/smoke_deploy.py`:** builds one guest student brief and one guest researcher brief through a deploy's public URL and prints one line per step. It takes `--base`, `--author` and `--no-researcher`, and exits 0 when every step passes. A researcher brief spends from the deploy's model budget.
+- **`scripts/live_capture.py`:** captures what the real model writes for a SYNTHETIC signed-in user, into `build/s50_live/`. It stops unless `PERCH_LIVE_BASE` holds the deploy's address, and it needs the Keycloak admin password in the environment. It takes `capture` or `render`.
+- **`scripts/demo_reset.py`:** counts, and with `--apply` deletes, the guest rate windows and the guest model budgets for today in the deploy's Redis. It never touches sessions, signed-in budgets, the monthly total or the spend ledger. Run it before a demo or a filming run. See [DEMO.md](DEMO.md).
+- **`scripts/export_replay.py`:** saves one finished brief as a replay file. The example brief pages play such files from `web/example/researcher.json` and `student.json`, which are gitignored and served only by a deploy that has them. A script named `export_example.py` does not exist in the repository.
+
 ## 11. Upgrades and rollbacks
 
 - **Upgrade:** `git pull`, then `make v1-up`. It rebuilds the images and reruns `migrate`, which applies only new migrations and resets the role passwords from `.env`. A native worker: stop it, `uv sync --extra ml --extra anthropic`, start it again.
@@ -246,6 +260,8 @@ Every number is copied from `bench/results/s47_load/report.md` (S47, 4 Nov 2026,
 The fallback is the root `docker-compose.yml` on `127.0.0.1:8090`, brought up with `make demo` on a node with two GPUs, Docker and llama.cpp. Stop it with `make demo-down`. Its models run as systemd user units rendered from `deploy/systemd/demo/`. For the public address, `tailscale funnel --bg 8090` publishes it, and `tailscale funnel --https=443 off` stops that. These commands came from the previous version of this page and were not re-run for this rewrite.
 
 If the node is down on Demo Day, `uv run python scripts/build_ui_preview.py` writes `build/artifacts/ui.html`, a replay page with no server and no network.
+
+The Demo Day run sheet, including how to move the app to port 443 and back, is [DEMO.md](DEMO.md).
 
 ## 13. Incident basics
 

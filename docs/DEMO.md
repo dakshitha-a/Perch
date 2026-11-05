@@ -1,0 +1,69 @@
+# Demo Day run sheet
+
+[Back to the README](../README.md) · [Deploying](deploy.md)
+
+This is the run sheet for the five-minute demo on Friday 6 November 2026. The click path comes from the product review in [S51_PRODUCT_REVIEW.md](design/S51_PRODUCT_REVIEW.md). Nothing here holds a host name or a password. The deploy's address is in the operator's private notes.
+
+## Before the demo
+
+Do these on the morning of the demo, in this order.
+
+- **Check the spend ledger.** The deploy's own ledger should have at least 5 USD left under its cap.
+- **Clear the guest limits.** Source the deploy's env file, then run `scripts/demo_reset.py` once to count and once with `--apply` to delete. It clears the guest rate windows and the guest model budgets for today in the deploy's Redis. It does not touch sessions, signed-in budgets or the spend ledger.
+- **Test from a phone on the venue network.** Open the deploy's address on the venue Wi-Fi and again on mobile data. The app is on port 8443 and sign-in is on port 10000, and some venue networks allow only port 443. If the page does not load, move the app to 443 as shown below.
+- **Sign in once as `demo-presenter`.** This is a SYNTHETIC account. Accept the consent, and set the role. The password is in the operator's private env file, never in this repository.
+- **Pre-build the researcher brief on that account.** Wait for Ready. Keep two individual-lab leads and draft the hand-off. Ask one Scout question so the thread already holds an answer.
+- **Pre-build the student brief on that account.** Use Try a sample student. Open the Samples tab and find where the card that fails on GPA sits.
+- **Keep two windows.** One is signed in on My Perch. One is a private window, signed out, which shows what the audience sees.
+- **Open the fallback once.** The fallback build is the tag `v0.1-demo-fallback`. Rehearse it once so it is ready if the deploy fails.
+- **Stay signed in.** A session ends after 30 idle minutes, so use the app at least every 25 minutes.
+
+## Who is on the projector
+
+A live researcher brief shows a real researcher's name, and its hand-off is written in the first person in that name. Question 51 in `bridge/QUESTIONS.md` asks Dakshitha to decide. The default is the aliased example brief, with the researcher shown as PI-4. Do not search a stranger's name live.
+
+## The click path
+
+Five minutes. The presenter has a laptop on the projector and the audience has phones.
+
+| Time | Step | What to click | Expected screen | Fallback |
+|---|---|---|---|---|
+| 0:00 | Landing | In the private window, show the tagline. Say: scan the code, tap Student, then Try a sample student. | The landing page with a Try a sample student button, since accounts are closed. | Say Try it as a guest, the small link under the buttons. |
+| 0:30 | Researcher brief | In the signed-in window, open the pre-built researcher brief from My Perch. | Ready, the Grants tab, Match pills, and the centre-grant line in its own fold. | Open `/example.html`. |
+| 1:00 | One card | Open Why it fits on the top individual-lab lead, then press Evidence. Point out that the date and amount are copied from the record. | Cited text and the evidence panel on the right. | The same card in the example. |
+| 1:40 | Temple internal and Industry | One tap on each tab. Check the Temple tab in the morning and skip it if a closed call shows. Read the line on an industry card: inferred from public signals, not verified. | Two short lists. | Skip and say the example has them. |
+| 2:10 | Ask Scout | Show the answer asked in the morning. Then press the Deadlines chip, which code answers at once. Do not type a new open question. | Cited dates in seconds. | `/example.html?tab=scout`. |
+| 2:50 | Compare and hand-off | Open Compare with the two kept leads. Scroll to the hand-off drafted in the morning. Point to the Model text label, the ERA line and the words that Perch never sends it. Do not press Open in my mail app. | The comparison table and the hand-off draft. | `/example.html?tab=compare`. |
+| 3:40 | Student | Open the pre-built sample-student brief. Show the Sample data badge, a card with check marks and question marks, and on the Samples tab the card that fails on GPA. Show cover points only if the morning run came back with no flags. | A SYNTHETIC student brief with rule lines. | `/example.html?side=student`. |
+| 4:30 | Close | Say: every claim cites a public record, nothing is sent, and the audience is using it now. Put the QR code back up. | The QR code slide. | None. |
+
+## If something fails
+
+- **Sign-in fails:** do steps 2 to 7 on the example pages. They need no sign-in and call no model.
+- **The deploy is down:** run the fallback build, the tag `v0.1-demo-fallback`.
+- **Guests see empty reasons:** the guest budget is used. The lists, dates and rules still work. Say so and move on.
+- **Slow steps to avoid live:** a fresh researcher brief takes about 38 to 50 seconds. Cover points can take up to two minutes. An open Scout question and Run again are also slow.
+
+## Moving the app to port 443
+
+Only Dakshitha runs these commands. They change what the public address serves.
+
+On the demo node, port 443 serves the fallback build and port 8443 serves v1. To put v1 on 443:
+
+```sh
+tailscale funnel --https=443 off
+tailscale funnel --bg --https=443 http://127.0.0.1:8200
+```
+
+To restore the fallback on 443:
+
+```sh
+tailscale funnel --https=443 off
+tailscale funnel --bg --https=443 http://127.0.0.1:8090
+```
+
+- **Guests are fine:** a guest needs no sign-in, so a guest session works on the new port.
+- **Sign-in may break:** the app's public address setting, `PERCH_PUBLIC_URL`, and the sign-in client's allowed return addresses name the port. Whether the presenter can still sign in after the move, without changing them, is UNVERIFIED. Sign in on the new address before the demo and test it.
+- **The presenter can use a hotspot:** only the presenter needs the sign-in port, which is 10000.
+- **Never remove the Keycloak container:** do not run `docker rm` on it. Its users live inside it.
+- **Question 52** in `bridge/QUESTIONS.md` records why the move may be needed.
