@@ -334,7 +334,7 @@ CREATE TABLE user_data (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid        NOT NULL REFERENCES users ON DELETE CASCADE,
   kind        text        NOT NULL CHECK (kind IN
-                ('cv','entry','doc','brief','saved_item','handoff','cover_points','scout_session')),
+                ('cv','entry','doc','brief','saved_item','handoff','cover_points','scout_session','profile')),
   audience    text        NOT NULL CHECK (audience IN ('researcher','student')),
   key_version int         NOT NULL,
   blob        bytea       NOT NULL,               -- section 6.2 format; the only column holding content
@@ -358,6 +358,7 @@ CREATE UNIQUE INDEX ud_one_cv ON user_data (user_id, audience) WHERE kind = 'cv'
 | `handoff` | One hand-off draft. |
 | `cover_points` | One cover-point set for one record. |
 | `scout_session` | The Scout message history and tool cards for one session. |
+| `profile` | The optional citizenship and state picks of one side (`ProfileDoc`, S53). One row per user and side; never shown to a model. |
 
 - **Per-side saved items.** `audience` is the column that keeps researcher and student saved items apart for one account, as the plan requires.
 - **RLS.** The policies are written in full in section 2.1.
@@ -734,7 +735,7 @@ Redis holds no durable truth. A flush loses sessions and caches and nothing else
 | `perch:lastseen:<uid>` | string | 86400 | Throttle: `users.last_active_at` is written at most once a day. |
 
 - **Session id.** 32 random bytes, URL-safe base64, from `secrets`. A new id is issued at login and the old one is deleted, which prevents fixation.
-- **No user text in Redis.** The only user-derived value is the display name in the session hash.
+- **No user text in Redis.** The only user-derived value is the display name in the session hash. One more, from S53: a guest researcher's optional citizenship and state picks are two closed values inside the guest brief's options, which are sealed under the guest session's own key like the rest of the brief.
 - **Persistence.** Redis runs with AOF `everysec`. Losing it logs everyone out and nothing more.
 
 ### 4.2 Quotas
