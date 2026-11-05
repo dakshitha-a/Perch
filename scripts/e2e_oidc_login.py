@@ -5,9 +5,11 @@ Run from the main checkout, where .env holds the dev settings:
     uv run python scripts/e2e_oidc_login.py
 
 It starts a small app (the auth router only) on 127.0.0.1:8190, which the realm file allows as
-a redirect URI, then drives one real login as the SYNTHETIC realm user through Keycloak's login
-form with httpx. It prints one line per step and never prints a token, cookie, CSRF value or
-the client secret. Exit code 0 when every step passes.
+a redirect URI, then drives one real login as the SYNTHETIC e2e user through Keycloak's login
+form with httpx. The shipped realm imports no user: the script first creates that user through
+the admin API (ensure_user, KEYCLOAK_ADMIN_PASSWORD from .env) when it is missing. It prints
+one line per step and never prints a token, cookie, CSRF value or the client secret. Exit code
+0 when every step passes.
 
 Needs in .env: PERCH_REDIS_URL, PERCH_DATABASE_URL (the perch_web role, migrated through
 0008), PERCH_PEPPER, PERCH_PEPPER_GUEST, PERCH_OIDC_CLIENT_SECRET. The issuer, client id and
@@ -34,10 +36,13 @@ from perch.config import env, load_dotenv
 
 PORT = 8190
 BASE = f"http://127.0.0.1:{PORT}"
-REALM_FILE = Path("deploy/compose/keycloak/perch-realm.json")  # SYNTHETIC dev users
-_USER = json.loads(REALM_FILE.read_text())["users"][0]
+# The SYNTHETIC end-to-end user. The shipped realm imports no user (S48 S9); ensure_user
+# creates this one through the dev Keycloak's admin API before a login.
+USER_FILE = Path(__file__).resolve().parents[1] / "deploy/compose/keycloak/e2e-user.json"
+_USER = {k: v for k, v in json.loads(USER_FILE.read_text()).items() if not k.startswith("_")}
 USER = _USER["username"]
 PASSWORD = _USER["credentials"][0]["value"]
+KC_BASE = "http://127.0.0.1:8180"
 REQUIRED = ["PERCH_REDIS_URL", "PERCH_DATABASE_URL", "PERCH_PEPPER", "PERCH_PEPPER_GUEST",
             "PERCH_OIDC_CLIENT_SECRET"]
 FAILED: list[str] = []
@@ -180,12 +185,45 @@ def submit_login(kc: Kc, action: str) -> str:
     return loc
 
 
+_ENSURED: list[bool] = []
+
+
+def ensure_user() -> None:
+    """Create the SYNTHETIC e2e user in the dev realm when it is missing, through the admin API
+    with KEYCLOAK_ADMIN_PASSWORD (.env). Idempotent; prints nothing secret. Only for the dev
+    Keycloak on 127.0.0.1:8180: the shipped realm has no user of its own."""
+    if _ENSURED:
+        return
+    pw = env("KEYCLOAK_ADMIN_PASSWORD")
+    if not pw:
+        raise RuntimeError("set KEYCLOAK_ADMIN_PASSWORD (.env) so the e2e user can be created")
+    with httpx.Client(base_url=KC_BASE, timeout=15) as kc:
+        tok = kc.post("/realms/master/protocol/openid-connect/token",
+                      data={"grant_type": "password", "client_id": "admin-cli",
+                            "username": env("KEYCLOAK_ADMIN_USERNAME") or "admin",
+                            "password": pw})
+        if tok.status_code != 200:
+            raise RuntimeError(f"Keycloak admin sign-in failed (http {tok.status_code})")
+        hdr = {"Authorization": "Bearer " + tok.json()["access_token"]}
+        found = kc.get("/admin/realms/perch/users", params={"username": USER, "exact": "true"},
+                       headers=hdr)
+        if found.status_code != 200:
+            raise RuntimeError(f"Keycloak user lookup failed (http {found.status_code})")
+        if not found.json():
+            made = kc.post("/admin/realms/perch/users", json=_USER, headers=hdr)
+            if made.status_code not in (201, 409):
+                raise RuntimeError(f"Keycloak user create failed (http {made.status_code})")
+            print("note: created the SYNTHETIC e2e user in the dev realm")
+    _ENSURED.append(True)
+
+
 def login(base_url: str = BASE) -> httpx.Client:
     """One real login as the SYNTHETIC realm user, for scripts/e2e_account.py. The app must
     already run at `base_url` with the Keycloak dev realm. Returns an httpx client that holds the
     Perch session cookie. Raises RuntimeError when a step fails; prints nothing."""
     global BASE
     BASE = base_url.rstrip("/")
+    ensure_user()
     app = httpx.Client(base_url=BASE, follow_redirects=False, timeout=30)
     kc = Kc()  # a new Keycloak browser each time, so a second call shows the form again
     r = app.get("/auth/login", params={"return_to": "/briefs"})
@@ -204,6 +242,7 @@ def login(base_url: str = BASE) -> httpx.Client:
 
 
 def run(keys_ready: bool) -> None:
+    ensure_user()
     origin = {"Origin": BASE}
     app = httpx.Client(base_url=BASE, follow_redirects=False, timeout=15)
     kc = Kc()

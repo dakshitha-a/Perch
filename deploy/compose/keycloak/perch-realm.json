@@ -5,23 +5,8 @@
   "loginWithEmailAllowed": false,
   "sslRequired": "none",
   "attributes": {
-    "_comment": "DEV ONLY. SYNTHETIC test user with a placeholder credential. Never import into a real deployment."
+    "_comment": "DEV ONLY. No users are imported. The SYNTHETIC end-to-end user is created by scripts/e2e_oidc_login.py (ensure_user) from deploy/compose/keycloak/e2e-user.json. Never import into a real deployment."
   },
-  "users": [
-    {
-      "username": "synthetic-user-1",
-      "enabled": true,
-      "firstName": "SYNTHETIC",
-      "lastName": "User",
-      "credentials": [
-        {
-          "type": "password",
-          "value": "synthetic-dev-only",
-          "temporary": false
-        }
-      ]
-    }
-  ],
   "clients": [
     {
       "clientId": "perch-web",

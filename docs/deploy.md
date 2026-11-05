@@ -13,7 +13,7 @@ This page is for the person who runs Perch. Every command was checked against th
 | **Postgres with pgvector** | Database `perch`: public records, the vector index, jobs, encrypted user data. Image `pgvector/pgvector:0.8.0-pg16`. | Service `postgres`, `127.0.0.1:5433`. |
 | **Key database** | Database `perch_keys`, role `perch_keys`: wrapped data keys and tombstones. Kept apart on purpose, see section 4. | Same server in Compose, created by `deploy/compose/initdb/10-databases.sh`. |
 | **Redis** | Sessions, quotas, rate limits, the response cache. Append-only file on. | Service `redis`, `127.0.0.1:6380`. |
-| **Identity provider** | OIDC sign-in. Compose runs Keycloak 26.0 in dev mode with the realm in `deploy/compose/keycloak/`. | Service `keycloak`, `127.0.0.1:8180`. Temple's real provider: `UNVERIFIED`, see `docs/v1/PROVIDER_AND_SSO.md`. |
+| **Identity provider** | OIDC sign-in. Compose runs Keycloak 26.0 in dev mode with the realm in `deploy/compose/keycloak/`. The realm imports no user. `scripts/e2e_oidc_login.py` creates the SYNTHETIC end-to-end user from `e2e-user.json` through the admin API when it runs. | Service `keycloak`, `127.0.0.1:8180`. Temple's real provider: `UNVERIFIED`, see `docs/v1/PROVIDER_AND_SSO.md`. |
 
 - **Model calls:** the explainer, gate, hand-off, cover points and Scout call Anthropic from the worker. Embedding, reranking and grounding run on the worker's GPU.
 - **Ports:** every published port is bound to 127.0.0.1. Put a TLS reverse proxy in front of `web`.

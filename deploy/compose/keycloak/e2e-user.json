@@ -1,0 +1,14 @@
+{
+  "_comment": "SYNTHETIC end-to-end test user with a placeholder credential. Created only by scripts/e2e_oidc_login.py (ensure_user) through the dev Keycloak admin API. The Compose realm import does not read this file.",
+  "username": "synthetic-user-1",
+  "enabled": true,
+  "firstName": "SYNTHETIC",
+  "lastName": "User",
+  "credentials": [
+    {
+      "type": "password",
+      "value": "synthetic-dev-only",
+      "temporary": false
+    }
+  ]
+}

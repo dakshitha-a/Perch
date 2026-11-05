@@ -54,3 +54,15 @@ def test_the_spend_file_is_on_a_named_volume():
     path = _env("worker")["PERCH_SPEND_LEDGER"]
     assert path.startswith("/")
     assert _mounts("worker").get(str(Path(path).parent)) == "spend"
+
+
+def test_the_shipped_realm_imports_no_user_and_the_e2e_user_is_synthetic():
+    import json
+
+    kc = ROOT / "deploy/compose/keycloak"
+    realm = json.loads((kc / "perch-realm.json").read_text())
+    assert "users" not in realm  # S48 S9: no account with a known password ships
+    mounted = " ".join(SVC["keycloak"]["volumes"])
+    assert "e2e-user.json" not in mounted
+    user = json.loads((kc / "e2e-user.json").read_text())
+    assert user["firstName"] == "SYNTHETIC" and "SYNTHETIC" in user["_comment"]
