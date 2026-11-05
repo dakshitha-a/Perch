@@ -643,8 +643,10 @@ def test_s51_tier_b_polish() -> None:
     name, the award horizon and the thread subtitle (docs/design/S51_DESIGN.md section 3.4, A5)."""
     app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
     css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
-    assert "Match: how closely the call’s text matches the papers, out of 100." in app
-    assert "It is not the odds of funding." in app
+    # S51 QA: the Match hint moved from a line above the list to the pill's tooltip
+    student = (WEB_DIR / "student.js").read_text(encoding="utf-8")
+    assert "match-hint" not in app
+    assert "matches ${what}, out of 100. It is not the odds of funding.` }" in student
     assert app.count('class: "btn quiet", "data-key": "dismiss"') == 2
     assert ".lead-foot:not(:has(> .cover:not(:empty))) { border-top: 0; padding-top: 4px; }" in css
     assert "l.inference && l.inference !== ORG_FALLBACK" in app

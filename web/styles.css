@@ -1689,6 +1689,13 @@ dialog::backdrop { background: rgba(10, 16, 14, .55); }
 details.hidden-fold > summary { min-height: 44px; font-size: var(--fs-14); color: var(--ink-3); font-weight: 600; }
 .hidden-list { margin: 0 0 4px; padding-left: 22px; font-size: var(--fs-14); color: var(--ink-3); display: grid; gap: 2px; }
 #panel .hidden-fold { margin: -16px 0 -6px; }
+/* S51 QA: the rules' count and the budget line share one quiet row under the list head. */
+#panel .list-status { display: flex; flex-wrap: wrap; align-items: center; gap: 0 20px; margin: -16px 0 -6px; }
+#panel .list-status .hidden-fold { margin: 0; }
+#panel .list-status .hidden-fold[open] { flex-basis: 100%; order: 2; }
+#panel .budget-note { display: flex; gap: 8px; align-items: flex-start; flex: 1 1 22rem; margin: 0; font-size: var(--fs-14); color: var(--ink-2); }
+#panel .budget-note .icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--ink-3); }
+@media (max-width: 599px) { #panel .list-status { margin-bottom: 0; } }
 /* The pick screen's second Build button, at the foot of the form (S50 V32). */
 .build-foot { display: flex; justify-content: flex-end; }
 @media (max-width: 699px) { .build-foot .btn { width: 100%; } }
@@ -1737,7 +1744,6 @@ details.threads-how > summary { min-height: 44px; font-size: var(--fs-14); font-
 .fit-why { min-width: 0; overflow-wrap: anywhere; }
 @media (max-width: 599px) { .fit-why .cite, .fit-why .nowrap { white-space: normal; } }
 /* What the Match number is, once under the list head (W22). */
-#panel .match-hint { margin-top: -8px; }
 /* A lighter card footer (W15): Dismiss is quiet; no rule when the footer holds no cover block. */
 .lead-foot:not(:has(> .cover:not(:empty))) { border-top: 0; padding-top: 4px; }
 .lead-foot .btn.quiet { min-height: 44px; }

@@ -1728,11 +1728,13 @@ function renderRoutes(panel) {
       h("div", { class: "list-head" },
         h("h2", { class: "section-title", id: "routes-title" }),
         sortSwitch()),
-      // S51 (W22): what the Match number is, said once for the list.
-      h("p", { class: "hint match-hint", text: "Match: how closely the call’s text matches the papers, out of 100. It is not the odds of funding." }),
+      // S51 QA: what Match means is in its pill's tooltip and read aloud with it (W22 moved there,
+      // as Dakshitha's S27 rule said), so the first card starts by 600 px.
       h("p", { class: "hint routes-sub" }),
-      S.route === "T" ? h("p", { class: "hint route-hint", text: "Temple’s own funding calls for faculty, kept apart from federal grants. Each call’s page says whom to contact." })
-        : hiddenLine(),
+      S.route === "T" ? h("p", { class: "hint route-hint", text: "Temple’s own funding calls for faculty, kept apart from federal grants. Each call’s page says whom to contact." }) : null,
+      // One quiet row: what the rules hid and, when the model budget is used, the budget line.
+      h("div", { class: "list-status" }, S.route === "T" ? null : hiddenLine(),
+        h("p", { class: "hint budget-note", "data-budget": "", hidden: true }, icon("info"), h("span", { text: BUDGET_TEXT }))),
       h("p", { class: "hint model-line", text: "Model text is a model’s reading of the fit, checked against the records it cites." }),
       h("div", { id: "list-notices" }),
       h("div", { class: "filter-box" }),
@@ -1836,8 +1838,13 @@ function drawNotices(box, shown) {
   // S51 (D16): when the model budget skipped the written reasons, one line says so, first,
   // in place of the withheld note. The stage's own detail says why (BUDGET_DETAIL).
   const budget = budgetSkipped(stage("explanations"));
+  // The researcher list shows the budget line in the quiet status row, beside the rules' count.
+  const row = box.parentElement && box.parentElement.querySelector(".list-status");
+  const note = row && row.querySelector("[data-budget]");
+  if (note) note.hidden = !budget;
+  if (row) row.hidden = ![...row.children].some((c) => !c.hidden);
   const items = [
-    budget ? budgetLine() : null,
+    budget && !note ? budgetLine() : null,
     flagged >= 2 && !budget ? h("p", { class: "notice info list-note", "data-withheld": "" }, icon("info"),
       h("span", { text: WITHHELD_NOTE })) : null,
     coverListLine(coverCtx())].filter(Boolean);
@@ -1849,8 +1856,8 @@ function drawNotices(box, shown) {
 
 // The budget line (S51 contract 3.2): the same on both sides; FE-B emits it on the student list.
 const budgetSkipped = (st) => Boolean(st && st.status === "skipped" && String(st.detail || "").startsWith("withheld: the daily model budget"));
-const budgetLine = () => h("p", { class: "notice info list-note", "data-budget": "" }, icon("info"),
-  h("span", { text: "Written reasons are paused: this session’s model budget for today is used. The list, dates, amounts and rule results are not affected." }));
+const BUDGET_TEXT = "Written reasons are paused: this session’s model budget for today is used. The list, dates, amounts and rule results are not affected.";
+const budgetLine = () => h("p", { class: "notice info list-note", "data-budget": "" }, icon("info"), h("span", { text: BUDGET_TEXT }));
 
 // The withheld-reason note, the same on both sides (S50 contract 3.2).
 const WITHHELD_NOTE = "Some written reasons failed Perch’s citation check, so those cards show no reason. Every date, amount and rule result on the cards is still copied from the record.";

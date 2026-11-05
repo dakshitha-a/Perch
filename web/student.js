@@ -432,7 +432,7 @@ export function studentRoutes(panel, ctx) {
 
 // The Match pill: how closely the listing's text matches the papers, 0 to 100 (S27).
 export function matchPill(score, band, what = "the papers") {
-  return h("span", { class: `fit ${band.key}`, title: `How closely the listing’s text matches ${what}` },
+  return h("span", { class: `fit ${band.key}`, title: `Match: how closely the listing’s text matches ${what}, out of 100. It is not the odds of funding.` },
     h("span", { class: "fit-k", text: "Match" }),
     h("span", { text: band.word }), h("b", { text: String(score) }),
     h("span", { class: "sr-only", text: ` out of 100: how closely the listing’s text matches ${what}, not the odds of funding` }));
