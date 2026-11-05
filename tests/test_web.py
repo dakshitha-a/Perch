@@ -561,3 +561,11 @@ def test_s49_brief_screen_contracts_in_the_app_shell():
     assert len(re.findall(r"^\.tag\.sample \{", css, re.M)) == 1
     assert "--page: 1180px" in css and "--form: 760px" in css
     assert "DRAFT copy" not in app
+
+
+def test_a_queued_brief_without_a_worker_says_so():
+    """S49 re-check B1: the queued state reads the job's worker_seen, so a stopped worker is
+    named instead of 'another brief is building'."""
+    app = (ROOT / "web/app.js").read_text(encoding="utf-8")
+    assert "job.worker_seen === false" in app
+    assert "Another brief is building" not in app

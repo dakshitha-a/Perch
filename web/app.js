@@ -991,9 +991,19 @@ function renderProgress() {
   } else if (b.status === "queued") {
     // Nothing has started: say it waits, not the first step's name (U19). The server
     // does not report a place in line, so none is shown.
+    const job = S.brief.job || {};
     headline = "Waiting in line";
     detail = `0 of ${stages.length} steps`;
-    sub = "Another brief is building on this server, and briefs run one at a time. Yours starts when that one finishes.";
+    if (job.worker_seen === false) {
+      // S49 re-check: no worker has checked in lately, so waiting would not help.
+      state = "droop";
+      headline = "Not started";
+      sub = "The part of Perch that builds briefs is not running right now. Your brief will start when it is back. You can leave this page and come back.";
+    } else if (job.queued_ahead > 0) {
+      sub = `${job.queued_ahead === 1 ? "One brief is" : `${job.queued_ahead} briefs are`} ahead of yours. Briefs run a few at a time.`;
+    } else {
+      sub = "Your brief starts in a moment.";
+    }
   } else {
     const i = runningIdx >= 0 ? runningIdx : Math.max(stages.findIndex((x) => x.status === "pending"), 0);
     const s = stages[i];
