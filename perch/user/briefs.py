@@ -458,7 +458,7 @@ def create_guest_brief(svc: BriefService, r: redis.Redis, gsid_hash: str, author
 def store_for_job(ctx: JobContext, ud: UserData | None = None, r: redis.Redis | None = None
                   ) -> BriefStore | None:
     """The store a `brief` job writes to: user_data for a signed-in job, Redis for a guest job,
-    None for an ownerless job (the SQLite path)."""
+    None for an ownerless job, which the handler refuses."""
     brief_id = ctx.payload["brief_id"]
     if ctx.user_id is not None:
         from perch.user.data import UserData as _UD

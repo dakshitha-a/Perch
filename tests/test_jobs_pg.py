@@ -290,17 +290,19 @@ def test_stages_are_reported_and_user_tx_is_fenced(clean):
             pass
 
 
-def test_brief_handler_runs_by_id_and_worker_row_is_written(clean):
+def test_an_ownerless_brief_job_fails_and_the_worker_row_is_written(clean):
+    """v1 submits every brief with an owner; an ownerless one fails at once (S49 B31). A
+    signed-in job writes a user_data row instead
+    (tests/test_user_briefs.py::test_signed_in_brief_job_runs_by_id_end_to_end)."""
     seen = {}
 
     class Svc:
         def run(self, brief_id):
             seen["id"] = brief_id
+            return "done"
 
     jobs.set_brief_service(Svc)
     w = mk(clean["worker"])
-    # An ownerless job takes the SQLite path. A signed-in job writes a user_data row instead
-    # (tests/test_user_briefs.py::test_signed_in_brief_job_runs_by_id_end_to_end).
     jid = w.submit("brief", {"brief_id": "b9"}, None, "k")
     stop, t = start(w, ["brief"], 2, "wk1")
     try:
@@ -312,9 +314,9 @@ def test_brief_handler_runs_by_id_and_worker_row_is_written(clean):
         stop.set()
         t.join()
         jobs._brief_service = None
-    assert st.state == JobState.SUCCEEDED
-    assert st.result_ref == "brief:b9"
-    assert seen["id"] == "b9"
+    assert st.state == JobState.FAILED
+    assert st.error_code == "invalid_input"
+    assert seen == {}
 
 
 def test_a_database_error_in_finish_does_not_end_the_job_thread(clean, monkeypatch):

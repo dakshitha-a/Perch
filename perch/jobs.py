@@ -653,14 +653,13 @@ def brief_handler(ctx: JobContext) -> str | None:
     brief_id = ctx.payload["brief_id"]
     from perch.user.briefs import store_for_job
 
-    store = store_for_job(ctx)  # user_data row, or Redis for a guest; None: the SQLite path
-    if store is None:
-        status = _brief_service().run(brief_id)
-    else:
-        status = _run_stored_brief(ctx, store, brief_id)
+    store = store_for_job(ctx)  # user_data row, or Redis for a guest
+    if store is None:  # v1 submits every brief with an owner (S49 B31)
+        raise PermanentError("invalid_input")
+    status = _run_stored_brief(ctx, store, brief_id)
     if status in ("failed", "missing"):  # the brief holds the stage detail, never the log
         raise PermanentError("permanent")
-    return store.result_ref if store is not None else f"brief:{brief_id}"
+    return store.result_ref
 
 
 def job_meter(ctx: JobContext) -> Any:  # noqa: ANN401 - a perch.user.spend.SpendMeter or None
