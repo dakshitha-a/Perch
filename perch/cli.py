@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import threading
 from collections.abc import Callable, Sequence
 from datetime import date
 from pathlib import Path
@@ -463,18 +464,34 @@ def cmd_mcp(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     return 0
 
 
-def v1_repo_factory(pool_size: int = 4) -> Callable[[], Repository] | None:
+def v1_repo_factory(pool_size: int = 4, *, app: object | None = None,
+                    role: str = "worker") -> Callable[[], Repository] | None:
     """With PERCH_DATABASE_URL (v1): every public record comes from Postgres, and a brief and
     its leads live in the user's store, so nothing reads or writes the SQLite file (S49 B10,
     B27). Without this the web read the empty SQLite file and every list was empty on a fresh
-    deployment (S48). None without a database URL: the fallback's SQLite store."""
+    deployment (S48). None without a database URL: the fallback's SQLite store.
+
+    With `app` (the web, S50 C14), each repository uses the app's own pool (app.state.pool,
+    PERCH_DB_POOL_MAX connections) instead of a second pool of 4. A pool of its own is made
+    on first use only when the app has none."""
     if not env("PERCH_DATABASE_URL"):
         return None
     from perch.store import pg
     from perch.store.postgres import PostgresRepository
 
-    pool = pg.make_pool(env("PERCH_DATABASE_URL"), pool_size)
-    return lambda: PostgresRepository(role="worker", pool=pool)
+    own: list = []
+    lock = threading.Lock()
+
+    def make() -> Repository:
+        pool = getattr(getattr(app, "state", None), "pool", None)
+        if pool is None:
+            with lock:
+                if not own:
+                    own.append(pg.make_pool(env("PERCH_DATABASE_URL"), pool_size))
+            pool = own[0]
+        return PostgresRepository(role=role, pool=pool)
+
+    return make
 
 
 def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
@@ -496,6 +513,8 @@ def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
 
     app = create_app(service, InProcessRunner(), scout_runner=InProcessRunner(workers=2),
                      scout_log=ScoutLog(data / "logs/scout.jsonl"))
+    if service.repo_factory is not None:  # S50 C14: the app's pool, read only
+        service.repo_factory = v1_repo_factory(app=app, role="web")
     from perch.logs import uvicorn_log_config
 
     uvicorn.run(app, host=args.host, port=args.port, log_level=args.log_level,

@@ -460,8 +460,8 @@ def seal_guest(r: redis.Redis, gh: str, slot: str, sb: StoredBrief) -> str:
 
 def open_guest(r: redis.Redis, gh: str, slot: str, raw: str | bytes | None
                ) -> StoredBrief | None:
-    """The brief in a sealed value, or None when it is missing or cannot be opened (its key
-    expired). A plain JSON value written before S49 is still read for its last hour."""
+    """The brief in a sealed value, or None when it is missing, not sealed, or cannot be
+    opened (its key expired). Plain values from before S49 expired long ago (S50 C24)."""
     import base64
 
     from cryptography.exceptions import InvalidTag
@@ -471,7 +471,7 @@ def open_guest(r: redis.Redis, gh: str, slot: str, raw: str | bytes | None
         return None
     text = raw.decode() if isinstance(raw, bytes) else raw
     if not text.startswith(SEALED):
-        return StoredBrief.model_validate_json(text)
+        return None
     key = _guest_key(r, gh)
     if key is None:
         return None
@@ -712,6 +712,9 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
         won = _same_request_won(runner, key, session.user_id, None, b.id, job)
         if won is not None:  # a twin request created its brief first: drop ours (S49 B4)
             ud.delete(session.user_id, UUID(b.id), kinds=("brief",))
+            from perch.redisx import rate_refund
+
+            rate_refund(r, "submit_job", f"u:{session.user_id}")  # nothing new ran (S50 C18)
             return won
         return b.id, job
     if doc_ids:
@@ -741,6 +744,9 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     won = _same_request_won(runner, key, None, bytes.fromhex(gh), b.id, job)
     if won is not None:  # a twin request created its brief first: drop ours (S49 B4)
         r.delete(GuestBriefStore(r, gh, b.id).state_key)
+        from perch.redisx import rate_refund
+
+        rate_refund(r, "guest_job", gh)  # nothing new ran (S50 C18)
         return won
     r.set(f"perch:gsess:{gh}:job:{b.id}", str(job), ex=ttl)  # brief id -> job id, for the read
     return b.id, job
@@ -862,6 +868,25 @@ def job_overlay(brief: dict, job: dict) -> None:
     elif state in ("failed", "dead", "cancelled"):
         brief["status"] = "failed"
         brief["error"] = JOB_ENDED.get(job.get("error_code") or "", JOB_ENDED_DEFAULT)
+
+
+def overlay_summaries(ud: UserData, user_id: UUID, summaries: list[dict]) -> None:
+    """`job_overlay` for a list of brief summaries, with one read of the jobs table (S50 C3):
+    My Perch shows a brief whose job ended without it as failed, as the brief page does."""
+    open_ = [x for x in summaries if x.get("status") in ("queued", "running")]
+    if not open_:
+        return
+    from perch.store import pg
+
+    with pg.user_tx(ud.pool, user_id) as c:
+        rows = c.execute(
+            "SELECT DISTINCT ON (payload->>'brief_id') payload->>'brief_id', state, error_code "
+            "FROM jobs WHERE user_id = %s AND kind = 'brief' AND payload->>'brief_id' = ANY(%s) "
+            "ORDER BY payload->>'brief_id', created_at DESC",
+            (user_id, [x["id"] for x in open_])).fetchall()
+    jobs_by_brief = {bid: {"state": st, "error_code": code} for bid, st, code in rows}
+    for x in open_:
+        job_overlay(x, jobs_by_brief.get(x["id"], {"state": "missing"}))
 
 
 def cancel_brief(runner: JobRunner, ud: UserData, r: redis.Redis, session: Session,

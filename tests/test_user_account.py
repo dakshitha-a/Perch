@@ -263,6 +263,39 @@ def test_delete_my_data_follows_the_order_and_leaves_nothing(env, pg_clean, tmp_
     delete.clear_rows(PostgresRunner(pg_clean.worker, timing=FAST, pool_size=2).pool, env.uid)
 
 
+def test_a_failed_shred_hook_in_the_purge_is_retried_until_it_finishes(env, pg_clean,
+                                                                      monkeypatch):
+    """S50 C9 (B15): the purge job clears the user's rows, its own job row too, so the retry
+    it asked for after a failed shred hook was lost. An ownerless retry now carries it."""
+    assert env.client.post("/me/delete", json={"confirm": "delete"}).status_code == 202
+    calls = {"n": 0}
+
+    def flaky_shred(uid):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise crypto.CryptoError("SYNTHETIC hook failure")
+
+    monkeypatch.setattr(delete.crypto, "shred", flaky_shred)
+    retried = ("SELECT state FROM jobs WHERE kind = 'purge' AND user_id IS NULL "
+               "AND payload->>'user_id' = %s")
+    run_worker(pg_clean, ["purge"],
+               lambda: sql(pg_clean, retried, str(env.uid)) == [("succeeded",)])
+    assert sql(pg_clean, retried, str(env.uid)) == [("succeeded",)]
+    assert calls["n"] == 2
+    assert sql(pg_clean, "SELECT count(*) FROM users WHERE id = %s", env.uid) == [(0,)]
+    assert sql(pg_clean, "SELECT count(*) FROM audit_log WHERE event = 'purge_user_retry'"
+               ) == [(1,)]
+
+    # a retry that died is queued again by the daily `jobs` purge, once a day
+    sql(pg_clean, "UPDATE jobs SET state = 'dead' WHERE user_id IS NULL AND kind = 'purge'")
+    runner = PostgresRunner(pg_clean.worker, timing=FAST, pool_size=2)
+    try:
+        assert delete.requeue_dead_purges(runner.pool, runner, "2026-11-05") == 1
+        assert delete.requeue_dead_purges(runner.pool, runner, "2026-11-05") == 0
+    finally:
+        runner.close()
+
+
 def test_delete_needs_the_confirm_word(env):
     assert env.client.post("/me/delete", json={"confirm": "yes"}).status_code == 422
     assert env.client.post("/me/delete", json={}).status_code == 422
@@ -561,6 +594,28 @@ def test_a_brief_whose_job_ended_without_it_stops_the_page(env, pg_clean, tmp_pa
     assert UserBriefStore(env.ud, env.uid, "researcher", bid).load()
     env.session.user_id = new_user(pg_clean)
     assert c.post(f"/briefs/{bid}/cancel").status_code == 404
+
+
+def test_my_perch_lists_a_brief_whose_job_ended_as_failed(env, pg_clean, tmp_path,
+                                                         monkeypatch):
+    """S50 C3: /me/briefs read the stored status only, so a brief whose job timed out, died
+    or was cancelled stayed "running" on My Perch while its own page said failed."""
+    from perch.user.briefs import JOB_ENDED, JOB_GONE
+
+    c, _ = brief_client(env, tmp_path, monkeypatch)
+    ids = []
+    for n in (1, 2, 3):
+        r = c.post("/briefs", json={"author_id": "A5026494099", "as_of": f"2026-10-{n:02d}"})
+        assert r.status_code == 202, r.text
+        ids.append((r.json()["id"], r.json()["job_id"]))
+    (b1, j1), (b2, j2), (b3, _) = ids
+    sql(pg_clean, "UPDATE jobs SET state = 'failed', error_code = 'timeout', "
+        "finished_at = now() WHERE id = %s", j1)
+    sql(pg_clean, "DELETE FROM jobs WHERE id = %s", j2)
+    got = {x["id"]: x for x in env.client.get("/me/briefs").json()}
+    assert got[b1]["status"] == "failed" and got[b1]["error"] == JOB_ENDED["timeout"]
+    assert got[b2]["status"] == "failed" and got[b2]["error"] == JOB_GONE
+    assert got[b3]["status"] == "queued" and "error" not in got[b3]  # its job still waits
 
 
 def test_a_repeated_brief_poll_reads_no_public_record_again(env, pg_clean, tmp_path,

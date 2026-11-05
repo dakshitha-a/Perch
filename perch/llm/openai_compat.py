@@ -13,6 +13,7 @@ import time
 
 import httpx
 
+from perch.llm import retry
 from perch.llm.base import (
     ChatResult,
     JsonSchema,
@@ -75,10 +76,11 @@ class OpenAICompatProvider(Provider):
             body["logprobs"] = True
             body["top_logprobs"] = logprobs
         t0 = time.perf_counter()
-        r = self.http.post("/chat/completions", json=body)
+        r = retry.post(lambda: self.http.post("/chat/completions", json=body))
         latency = (time.perf_counter() - t0) * 1000
         if r.status_code != 200:
-            raise ProviderError(f"openai-compatible {r.status_code}: {r.text[:300]}")
+            raise ProviderError(f"openai-compatible {r.status_code}: {r.text[:300]}",
+                                status=r.status_code)
         d = r.json()
         choice = (d.get("choices") or [{}])[0]
         msg = choice.get("message") or {}

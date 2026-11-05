@@ -198,8 +198,12 @@ def _summary(rid: UUID, sb: StoredBrief) -> dict:
 @router.get("/me/briefs")
 def list_briefs(audience: str | None = None, s: Session = Depends(deps.require_user),
                 sv: UserServices = Depends(services)) -> list[dict]:
-    return [_summary(i, sb) for i, sb in sv.ud.list(_uid(s), "brief", _side(s, audience),
-                                                    StoredBrief)]
+    from perch.user.briefs import overlay_summaries
+
+    out = [_summary(i, sb) for i, sb in sv.ud.list(_uid(s), "brief", _side(s, audience),
+                                                   StoredBrief)]
+    overlay_summaries(sv.ud, _uid(s), out)  # S50 C3: an ended job shows as failed here too
+    return out
 
 
 @router.get("/me/briefs/{brief_id}")

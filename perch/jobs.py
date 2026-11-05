@@ -252,8 +252,35 @@ class JobContext:
         self.payload: Mapping[str, Any] = dict(row["payload"])
         self.lease_owner = owner
         self._deadline = deadline
+        # A wait for the model slot does not count against the timeout (S50 C1), up to a hard
+        # limit of three timeouts in all, so a job that keeps waiting still ends.
+        self._hard_deadline = time.monotonic() + 3 * (deadline - time.monotonic())
+        self._wait_lock = threading.Lock()
+        self._waiting = 0
+        self._wait_since = 0.0
         self._cancel = threading.Event()
         self._timed_out = False
+
+    def wait_begin(self) -> None:
+        """A thread of this job starts waiting for a model slot (perch.compute)."""
+        with self._wait_lock:
+            if self._waiting == 0:
+                self._wait_since = time.monotonic()
+            self._waiting += 1
+
+    def wait_end(self) -> None:
+        with self._wait_lock:
+            self._waiting -= 1
+            if self._waiting == 0:
+                self._deadline += time.monotonic() - self._wait_since
+
+    def past_deadline(self) -> bool:
+        """True once the job has run longer than its timeout, not counting slot waits."""
+        now = time.monotonic()
+        if now > self._hard_deadline:
+            return True
+        with self._wait_lock:
+            return self._waiting == 0 and now > self._deadline
 
     @property
     def pool(self) -> ConnectionPool:
@@ -283,7 +310,7 @@ class JobContext:
 
     def cancelled(self) -> bool:
         """True when the lease is lost, the owner cancelled, or the hard timeout passed."""
-        return self._cancel.is_set() or time.monotonic() > self._deadline
+        return self._cancel.is_set() or self.past_deadline()
 
     def save_partial(self, ref: str) -> None:
         self._fenced("UPDATE jobs SET result_ref = %s WHERE " + _FENCE, [ref])
@@ -523,7 +550,7 @@ class PostgresRunner(JobRunner):
 
         def beat() -> None:
             while not done.wait(self.timing.heartbeat_s):
-                if time.monotonic() > ctx._deadline:
+                if ctx.past_deadline():
                     # S49 B6: end the job as failed with `timeout` now. The handler's next
                     # fenced write raises LeaseLost, so a second attempt never runs beside it.
                     ctx._timed_out = True
@@ -548,11 +575,15 @@ class PostgresRunner(JobRunner):
         hb = threading.Thread(target=beat, daemon=True, name="perch-heartbeat")
         hb.start()
         try:
+            from perch.compute import slot_wait_observer
+
+            watching = slot_wait_observer.set(ctx)
             try:
                 if spec is None:
                     raise PermanentError("no_handler")
                 ref = spec.handler(ctx)
             finally:
+                slot_wait_observer.reset(watching)
                 done.set()
                 hb.join(timeout=5)
             if ctx._cancel.is_set():  # stale: the reaper, the owner or the timeout acted
@@ -565,7 +596,7 @@ class PostgresRunner(JobRunner):
         except Exception as e:  # noqa: BLE001 - the class name and a fixed code are all we keep
             code = getattr(e, "code", "handler_error")
             code = code if code in ERROR_CODES else "handler_error"
-            if time.monotonic() > ctx._deadline:  # the handler stopped itself at the deadline
+            if ctx.past_deadline():  # the handler stopped itself at the deadline
                 code = "timeout"
             log.warning("error job=%s kind=%s attempt=%s err=%s code=%s",
                         ctx.job_id, ctx.kind, ctx.attempt, type(e).__name__, code)
@@ -584,16 +615,27 @@ class PostgresRunner(JobRunner):
         if not use:
             return
         wake = threading.Event()
+        # S50 C2: the nightly precache queues one job per researcher, and every one of them
+        # waits on the same model slot as a user's brief. At most PERCH_PRECACHE_CONCURRENCY
+        # (default 1) job threads of this worker run precache at once; the rest stay free.
+        bulk = threading.BoundedSemaphore(precache_concurrency())
 
         def loop(n: int) -> None:
             owner = f"{worker_id}/{n}"
             while not stop.is_set():
+                held = "precache" in use and bulk.acquire(blocking=False)
+                mine = use if held else [k for k in use if k != "precache"]
                 try:
-                    row = self.claim(owner, use)
+                    row = self.claim(owner, mine) if mine else None
                 except Exception as e:  # noqa: BLE001
                     log.warning("claim failed err=%s", type(e).__name__)
+                    if held:
+                        bulk.release()
                     stop.wait(self.timing.poll_s)
                     continue
+                if held and (row is None or row["kind"] != "precache"):
+                    bulk.release()
+                    held = False
                 if row is None:
                     wake.wait(self.timing.poll_s)
                     wake.clear()
@@ -604,6 +646,9 @@ class PostgresRunner(JobRunner):
                     # (S49 B3): the job's lease runs out and the reaper retries it.
                     log.warning("execute failed err=%s", type(e).__name__)
                     stop.wait(self.timing.poll_s)
+                finally:
+                    if held:
+                        bulk.release()
 
         def maintain() -> None:
             last_reap = last_tick = 0.0
@@ -656,6 +701,14 @@ class PostgresRunner(JobRunner):
             pass
 
 
+def precache_concurrency() -> int:
+    """How many job threads of one worker may run precache at once (S50 C2)."""
+    try:
+        return max(1, int(os.environ.get("PERCH_PRECACHE_CONCURRENCY") or 1))
+    except ValueError:
+        return 1
+
+
 # --- the scheduler: daily purges and the nightly precache (S49 B5) ---
 
 DAILY_PURGES = ("guests", "jobs", "audit", "tombstones", "inactive")
@@ -663,8 +716,18 @@ SCHEDULER_LOCK = 0x70657263  # pg advisory lock id: one worker at a time runs a 
 
 
 def _hhmm(text: str | None, default: str) -> tuple[int, int]:
-    h, _, m = (text or default).partition(":")
-    return int(h), int(m or 0)
+    """HH:MM as (hour, minute). A value that is not a time falls back to `default` with a
+    warning, so a typo in the environment does not stop the worker (S50 C16)."""
+    for value in (text or default, default):
+        h, _, m = value.partition(":")
+        try:
+            hh, mm = int(h), int(m or 0)
+        except ValueError:
+            hh = mm = -1
+        if 0 <= hh < 24 and 0 <= mm < 60:
+            return hh, mm
+        log.warning("bad schedule time; using %s", default)
+    raise ValueError("the default schedule time is not HH:MM")
 
 
 @dataclass
@@ -711,15 +774,17 @@ class Scheduler:
                     if seen is None:
                         runner.submit("purge", {"action": key.split(":")[1]}, None, key)
                         out.append(key)
-                else:
-                    seen = c.execute("SELECT 1 FROM jobs WHERE kind = 'precache' "
-                                     "AND idempotency_key LIKE %s LIMIT 1",
-                                     (f"precache:%:{day}",)).fetchone()
-                    if seen is None and self.precache is not None:
-                        n = self.precache(runner, day)
-                        out.append(key)
-                        log.info("scheduled precache jobs=%s", n)
-                self._done.add(key)
+                    self._done.add(key)
+        # S50 C16: the precache is enqueued outside the lock, once a day per process, and
+        # never skipped because some of the day's rows exist: a tick that failed part way
+        # left the other researchers without a precache. Each job's key holds the author and
+        # the date, so a second enqueue adds only the missing ones.
+        key = f"precache:{day}"
+        if key in due and self.precache is not None:
+            n = self.precache(runner, day)
+            out.append(key)
+            self._done.add(key)
+            log.info("scheduled precache jobs=%s", n)
         for key in out:
             log.info("scheduled %s", key.rsplit(":", 1)[0])
         return out

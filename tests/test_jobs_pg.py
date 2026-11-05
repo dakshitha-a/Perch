@@ -182,6 +182,82 @@ def test_a_result_just_past_the_deadline_is_kept(clean, monkeypatch):
     assert st.state == JobState.SUCCEEDED and st.result_ref == "ok"
 
 
+def test_a_wait_for_the_model_slot_does_not_count_against_the_timeout(clean, monkeypatch):
+    """S50 C1: the 1 s clock ran while the job queued behind another job's model call, so a
+    busy slot ended the brief as `timeout`. Time spent waiting for the slot is left out."""
+    from perch import compute
+
+    monkeypatch.setenv("PERCH_MODEL_SLOTS", "1")
+    compute.reset_slots()
+    held, release = threading.Event(), threading.Event()
+
+    def holder():
+        with compute.model_slot():
+            held.set()
+            release.wait(10)
+
+    def h(ctx):
+        with compute.model_slot():  # waits about 2 s for the holder
+            pass
+        assert not ctx.cancelled()
+        return "ok"
+
+    reg(monkeypatch, "precache", h, timeout_s=1)
+    hold = threading.Thread(target=holder)
+    hold.start()
+    held.wait(5)
+    threading.Timer(2.0, release.set).start()
+    r = mk(clean["worker"])
+    jid = r.submit("precache", pre(1), None, "k")
+    stop, t = start(r)
+    try:
+        st = r.wait(jid, 15)
+    finally:
+        release.set()
+        stop.set()
+        t.join()
+        hold.join()
+        compute.reset_slots()
+    assert st.state == JobState.SUCCEEDED and st.result_ref == "ok"
+
+
+def test_one_precache_job_runs_at_a_time_and_briefs_still_run_beside_it(clean, monkeypatch):
+    """S50 C2: the nightly precache could fill all 16 job threads, each queued on the model
+    slot ahead of a user's brief. One worker now runs one precache job at a time."""
+    lock = threading.Lock()
+    now = {"precache": 0, "max": 0, "other_ran_during": False}
+
+    def pc(ctx):
+        with lock:
+            now["precache"] += 1
+            now["max"] = max(now["max"], now["precache"])
+        time.sleep(0.4)
+        with lock:
+            now["precache"] -= 1
+        return "ok"
+
+    def other(ctx):
+        with lock:
+            now["other_ran_during"] = now["precache"] > 0
+        return "ok"
+
+    reg(monkeypatch, "precache", pc)
+    reg(monkeypatch, "purge", other)
+    r = mk(clean["worker"])
+    ids = [r.submit("precache", pre(i), None, f"k{i}") for i in range(4)]
+    stop, t = start(r, kinds=("precache", "purge"), concurrency=4)
+    try:
+        time.sleep(0.2)
+        oid = r.submit("purge", {"action": "jobs"}, None, "p")
+        for j in [*ids, oid]:
+            assert r.wait(j, 20).state == JobState.SUCCEEDED
+    finally:
+        stop.set()
+        t.join()
+    assert now["max"] == 1
+    assert now["other_ran_during"] is True
+
+
 def test_retries_then_dead_letter(clean, monkeypatch):
     monkeypatch.setattr(jobs, "backoff_s", lambda n: 0.0)
     calls = []
@@ -416,10 +492,36 @@ def test_the_scheduler_enqueues_the_nightly_precache_once(clean):
 
     r = mk(clean["worker"])
     now = datetime(2026, 11, 5, 2, 30, tzinfo=UTC)  # after 02:00, before the purges
+    first = Scheduler(precache=enqueue)
+    assert first.tick(r, now) == ["precache:2026-11-05"]
+    assert first.tick(r, now) == []  # once a day per process
+    # a restart enqueues again, and the per-author keys add nothing twice
     assert Scheduler(precache=enqueue).tick(r, now) == ["precache:2026-11-05"]
-    assert Scheduler(precache=enqueue).tick(r, now) == []
-    assert calls == ["2026-11-05"]
+    assert calls == ["2026-11-05", "2026-11-05"]
+    assert sorted(_keys(clean, "precache")) == ["precache:A1:2026-11-05",
+                                                "precache:A2:2026-11-05"]
     assert _keys(clean, "purge") == []
+
+
+def test_a_precache_enqueue_that_stopped_part_way_is_finished(clean):
+    """S50 C16: a tick that failed after the first researcher left a `precache:...:<day>` row,
+    and every later tick skipped the day, so the others had no precache."""
+    from datetime import UTC, datetime
+
+    from perch.jobs import Scheduler, _hhmm
+
+    def enqueue(runner, day):
+        for a in ("A1", "A2", "A3"):
+            runner.submit("precache", {"author_id": a}, None, f"precache:{a}:{day}")
+        return 3
+
+    r = mk(clean["worker"])
+    r.submit("precache", {"author_id": "A1"}, None, "precache:A1:2026-11-05")  # the partial run
+    now = datetime(2026, 11, 5, 2, 30, tzinfo=UTC)
+    assert Scheduler(precache=enqueue).tick(r, now) == ["precache:2026-11-05"]
+    assert len(_keys(clean, "precache")) == 3
+    # a typo in PERCH_PURGE_AT falls back to the default instead of stopping the worker
+    assert _hhmm("3am", "03:00") == (3, 0) and _hhmm("25:00", "02:00") == (2, 0)
 
 
 def test_only_one_worker_ticks_at_a_time(clean):

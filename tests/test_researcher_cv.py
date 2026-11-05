@@ -62,3 +62,32 @@ def test_a_cv_unlocks_early_stage_leads_and_moves_a_past_sponsor_up(tmp_path, mo
     _, svc3 = make(tmp_path / "c")
     spons = run(svc3, MemoryBriefStore(cv=cv), explain=False)
     assert any(f"past award from {sponsor}" in n for x in spons[1] for n in x.notes)
+
+
+def test_two_attempts_of_one_brief_do_not_share_their_run_state(tmp_path):
+    """S50 C20 (B22): the profile lived in a dict keyed by brief id. When a lost lease let a
+    second attempt run beside the first, whichever finished first removed the entry and the
+    other failed with a KeyError. Each run now has its own state."""
+    import threading
+
+    _, svc = make(tmp_path)
+    b = svc.create("A5026494099", as_of=AS_OF, brief_id="twin")
+    real = svc._run_route_a
+    inside, go = threading.Event(), threading.Event()
+
+    def slow_route_a(brief):
+        if threading.current_thread().name == "first-attempt":
+            inside.set()
+            go.wait(30)
+        return real(brief)
+
+    svc._run_route_a = slow_route_a
+    out = {}
+    first = threading.Thread(target=lambda: out.update(first=svc.run(b.id)),
+                             name="first-attempt")
+    first.start()
+    assert inside.wait(30)
+    out["second"] = svc.run(b.id)  # the second attempt runs to the end meanwhile
+    go.set()
+    first.join(60)
+    assert out == {"first": "done", "second": "done"}

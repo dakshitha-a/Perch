@@ -19,6 +19,7 @@ import logging
 from uuid import UUID
 
 import redis
+from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
 
 from perch import crypto, keyops
@@ -95,8 +96,37 @@ def purge_inactive(pool: ConnectionPool, runner: JobRunner, r: redis.Redis | Non
         ids = [row[0] for row in c.execute(
             "SELECT perch_inactive_users(%s::interval, %s)", (older_than, limit))]
     for uid in ids:
-        delete_account(uid, pool=pool, runner=runner, r=r, inline=True)
+        try:
+            delete_account(uid, pool=pool, runner=runner, r=r, inline=True)
+        except CryptoError:  # the rows are cleared; only the shred hooks are left (S50 C9)
+            queue_purge_retry(pool, runner, uid, "inactive")
     return len(ids)
+
+
+def queue_purge_retry(pool: ConnectionPool, runner: JobRunner, user_id: UUID, tag: str
+                      ) -> None:
+    """An ownerless purge(action="user") that repeats the shred hooks (S50 C9, B15). The
+    user's own purge job is deleted with the user's rows, so its retry would be lost. This
+    row has no owner, survives the clearing, and retries like any job; a dead one is queued
+    again by the daily `jobs` purge until it succeeds (standing rule 1)."""
+    runner.submit("purge", {"action": "user", "user_id": str(user_id)}, None,
+                  f"purge-user-retry:{user_id}:{tag}")
+    with pg.public_tx(pool) as c:
+        c.execute("INSERT INTO audit_log (event, detail) VALUES ('purge_user_retry', %s)",
+                  (Jsonb({"tag": tag[:40]}),))
+    log.warning("shred hook failed; purge retry queued tag=%s", tag[:40])
+
+
+def requeue_dead_purges(pool: ConnectionPool, runner: JobRunner, day: str) -> int:
+    """Queue a fresh retry for each user whose last ownerless purge died (S50 C9)."""
+    with pg.public_tx(pool) as c:
+        uids = [r[0] for r in c.execute(
+            "SELECT DISTINCT ON (payload->>'user_id') payload->>'user_id', state FROM jobs "
+            "WHERE kind = 'purge' AND user_id IS NULL AND payload->>'action' = 'user' "
+            "ORDER BY payload->>'user_id', created_at DESC").fetchall() if r[1] == "dead"]
+    for uid in uids:
+        queue_purge_retry(pool, runner, UUID(uid), f"daily:{day}")
+    return len(uids)
 
 
 def purge_guest_jobs(pool: ConnectionPool, *, older_than: str = GUEST_JOB_AFTER) -> int:
@@ -149,14 +179,19 @@ def purge_handler(ctx: JobContext) -> str | None:
             crypto.shred(UUID(uid))  # idempotent: also covers a purge queued by hand
         except CryptoError:
             hook_failed = True  # the keys are gone; clear the rows, then retry the hooks
-        clear_rows(pool, UUID(uid))
-        if hook_failed:
-            raise RetryableError("handler_error")  # a tombstone copy is missing: not complete
+        clear_rows(pool, UUID(uid))  # deletes the user's own jobs, this one too
+        if hook_failed:  # a tombstone copy is missing: not complete
+            if ctx.user_id is not None:  # this row is gone: hand the retry to an ownerless job
+                queue_purge_retry(pool, runner, UUID(uid), str(ctx.job_id))
+            raise RetryableError("handler_error")
     elif action == "inactive":
         purge_inactive(pool, runner, _redis())
     elif action == "guests":
         purge_guest_jobs(pool)
     elif action == "jobs":
+        from datetime import UTC, datetime
+
+        requeue_dead_purges(pool, runner, datetime.now(UTC).date().isoformat())
         purge_finished_jobs(pool)
     elif action == "audit":
         with pg.public_tx(pool) as c:

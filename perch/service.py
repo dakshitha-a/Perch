@@ -140,9 +140,17 @@ class BriefService:
         self.audit = AuditLog(root / "logs/model_calls.jsonl")
         self.rerank_cache = root / "cache/rerank.db"
         self.timings_log = root / "logs/brief_timings.jsonl"
-        self._ctx: dict[str, dict] = {}  # per-run state (the profile), keyed by brief id
+        self._outside_run: dict[str, dict] = {}  # stages called directly (tests, precache)
         # Exception type only, no traceback, for every brief that reads the user's own text.
         self.quiet_errors = False
+
+    @property
+    def _ctx(self) -> dict[str, dict]:
+        """Per-run state (the profile), keyed by brief id. Each run has its own dict, so two
+        attempts of one brief never share or remove each other's state (S50 C20, B22). Side
+        threads started with contextvars.copy_context() see their run's dict."""
+        run = _RUN_STATE.get()
+        return run if run is not None else self._outside_run
 
     def repo(self) -> SQLiteRepository:
         base = (self.repo_factory() if self.repo_factory is not None
@@ -266,6 +274,7 @@ class BriefService:
         quiet = self.quiet_errors or bool(store is not None and store.reads_user_data)
         names = [s.name for s in b.stages] or list(STAGES)  # a student brief has its own
         current = names[0]
+        run_state = _RUN_STATE.set({})
         lock = threading.Lock()  # stage writes come from this thread and the background one
         side: list[threading.Thread] = []
         side_error: list[tuple[str, Exception]] = []
@@ -310,7 +319,7 @@ class BriefService:
             if store is not None and store.retry_left() and is_transient(e):
                 # S49 B8: a server that did not answer is retried by the job; the brief
                 # waits for it as queued, so the page keeps polling.
-                stage(current, "pending", RETRY_DETAIL)
+                stage(current, "pending", retry_detail(e))
                 b.status = "queued"
             else:
                 b.error = (str(e) if isinstance(e, Cancelled) else plain_error(e)
@@ -319,9 +328,11 @@ class BriefService:
                 b.status = "failed"
                 if not quiet:
                     traceback.print_exc()
-        with self.repo() as r:
-            r.upsert([b])
-        self._ctx.pop(b.id, None)
+        try:
+            with self.repo() as r:
+                r.upsert([b])
+        finally:
+            _RUN_STATE.reset(run_state)
         return b.status
 
     def _researcher(self, r: SQLiteRepository, b: Brief) -> Researcher:
@@ -764,18 +775,39 @@ class Cancelled(Exception):
     """A brief stopped between stages; its message is written by code."""
 
 
+# The running brief's per-run state (BriefService._ctx); None outside BriefService.run.
+_RUN_STATE: contextvars.ContextVar[dict[str, dict] | None] = contextvars.ContextVar(
+    "perch_brief_run_state", default=None)
+
 RETRY_DETAIL = "A server did not answer. Trying again shortly."
+BUSY_DETAIL = "The models are busy with other briefs. Trying again shortly."
+
+
+def retry_detail(e: BaseException) -> str:
+    """The waiting stage's sentence: a busy model slot is not a server that did not answer."""
+    from perch.compute import SlotTimeout
+
+    return BUSY_DETAIL if any(isinstance(x, SlotTimeout)
+                              for x in (e, e.__cause__, e.__context__)) else RETRY_DETAIL
 
 
 def is_transient(e: BaseException) -> bool:
-    """A network failure or a server's 5xx or 429 answer: worth another attempt (S49 B8)."""
+    """A network failure, a server's 5xx or 429 answer (S49 B8), a model adapter's or the
+    provider SDK's busy answer, or no free model slot (S50 C1, C5): worth another attempt."""
     import httpx
 
+    from perch.compute import SlotTimeout
+    from perch.llm.retry import is_transient_provider_error
+
     for x in (e, e.__cause__, e.__context__):
-        if isinstance(x, httpx.TransportError):
+        if x is None:
+            continue
+        if isinstance(x, httpx.TransportError | SlotTimeout):
             return True
         if isinstance(x, httpx.HTTPStatusError) and (x.response.status_code >= 500
                                                      or x.response.status_code == 429):
+            return True
+        if is_transient_provider_error(x):
             return True
     return False
 

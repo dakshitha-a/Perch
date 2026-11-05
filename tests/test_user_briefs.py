@@ -309,6 +309,10 @@ def test_two_identical_clicks_return_the_brief_that_runs(pg_clean, ud, tmp_path,
         assert second == first
     assert rows(pg_clean, "SELECT count(*) FROM user_data WHERE kind = 'brief'") == [(1,)]
     assert len(r.keys("perch:gsess:*:brief:*")) == 1
+    # S50 C18: the losing twin gives its rate-window hit back; only the first one counts
+    for scope in ("submit_job", "guest_job"):
+        hits = [int(r.get(k)) for k in r.keys(f"*:rl:{scope}:*")]
+        assert sum(hits) == 1, scope
     r.flushdb()
     r.close()
 
@@ -564,6 +568,10 @@ def test_a_guest_brief_in_redis_is_sealed(pg_clean, tmp_path, web_pool, monkeypa
         assert needle not in everything
     # another guest session cannot open it, and the value is bound to its key
     assert load_brief(None, r, _session(None, "g-other"), bid) is None
+    # S50 C24: a plain JSON value is never read as a brief
+    from perch.user.briefs import open_guest
+
+    assert open_guest(r, gh, "slot", got.model_dump_json()) is None
     r.delete(f"perch:gsess:{gh}:bkey")
     assert load_brief(None, r, s, bid) is None
     r.flushdb()

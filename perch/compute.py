@@ -16,10 +16,12 @@ bursts; keep slots x threads at or under the usable cores.
 
 from __future__ import annotations
 
+import contextvars
 import os
 import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
+from typing import Protocol
 
 import numpy as np
 
@@ -83,15 +85,37 @@ def slot_timeout() -> float:
     return float(env("PERCH_MODEL_SLOT_TIMEOUT") or 300)
 
 
+class SlotWaitObserver(Protocol):
+    def wait_begin(self) -> None: ...
+    def wait_end(self) -> None: ...
+
+
+# The running job (perch.jobs.JobContext) watches its threads' waits for a slot, so the time
+# spent queued behind another job's model call does not count against its own timeout (S50
+# C1). Threads started with contextvars.copy_context() inherit it.
+slot_wait_observer: contextvars.ContextVar[SlotWaitObserver | None] = contextvars.ContextVar(
+    "perch_slot_wait_observer", default=None)
+
+
 @contextmanager
 def model_slot() -> Iterator[None]:
     """One model call at a time per slot. A wait past PERCH_MODEL_SLOT_TIMEOUT seconds (300)
     raises SlotTimeout, so a hung holder fails the waiting job loudly instead of silently
-    stalling every worker thread (S38: a Scout run sat on a lock for about 7 hours)."""
+    stalling every worker thread (S38: a Scout run sat on a lock for about 7 hours).
+    SlotTimeout is transient: the job retries it later (S50 C1, C5)."""
     sem = _semaphore()
-    if not sem.acquire(timeout=slot_timeout()):
-        raise SlotTimeout(f"no model slot free after {slot_timeout():.0f} s "
-                          f"({model_slots()} slot(s)); a holder may be hung")
+    if not sem.acquire(blocking=False):
+        obs = slot_wait_observer.get()
+        if obs is not None:
+            obs.wait_begin()
+        try:
+            got = sem.acquire(timeout=slot_timeout())
+        finally:
+            if obs is not None:
+                obs.wait_end()
+        if not got:
+            raise SlotTimeout(f"no model slot free after {slot_timeout():.0f} s "
+                              f"({model_slots()} slot(s)); a holder may be hung")
     try:
         yield
     finally:

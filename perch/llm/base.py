@@ -78,7 +78,12 @@ class ChatResult:
 
 
 class ProviderError(RuntimeError):
-    pass
+    """`status` is the server's HTTP status when there was one (S50 C5: 429 and 5xx are worth
+    another attempt; perch.llm.retry)."""
+
+    def __init__(self, message: str = "", status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
 
 
 class Refusal(ProviderError):

@@ -535,3 +535,28 @@ def test_the_brief_carries_every_paper_its_summary_cites(tmp_path):
         r.upsert([extra, b.model_copy(update={
             "summary": "Works on a SYNTHETIC topic [W9999999901]."})])
     assert extra.id in c.get(f"/briefs/{bid}").json()["papers"]
+
+
+def test_the_poll_cache_never_stores_a_brief_or_a_lead():
+    """S50 C10: get_any stored the loaded record in the process-wide dict and only then
+    checked its kind, so a brief sat there for a moment where another thread could read it."""
+    from types import SimpleNamespace
+
+    from perch.api import PUBLIC_KINDS, PublicReads
+
+    stored = []
+
+    class Recording(dict):
+        def __setitem__(self, key, value):
+            stored.append((key, value[1].kind))
+            super().__setitem__(key, value)
+
+    rows = {"b1": SimpleNamespace(kind="brief"), "l1": SimpleNamespace(kind="lead"),
+            "o1": SimpleNamespace(kind=next(iter(PUBLIC_KINDS)))}
+    base = SimpleNamespace(get_any=rows.get)
+    cache = PublicReads()
+    cache._d = Recording()
+    repo = cache.wrap(base)
+    assert repo.get_any("b1") is rows["b1"] and repo.get_any("l1") is rows["l1"]
+    assert repo.get_any("o1") is rows["o1"]
+    assert stored == [(("any", "o1"), rows["o1"].kind)]

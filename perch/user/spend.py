@@ -63,7 +63,8 @@ class SpendMeter:
             res = provider.chat(messages, **kw)
             return res
         except Exception as e:
-            timed_out = _timed_out(e)
+            # A local model server costs nothing, so its timeout is not charged (S50 C7).
+            timed_out = _timed_out(e) and _priced(provider)
             raise
         finally:
             gate = role == "gate"
@@ -94,6 +95,14 @@ class SpendMeter:
                 (self.uid, self.job_id, role, res.provider, res.model, res.usage.input_tokens,
                  res.usage.output_tokens, res.usage.cache_read_tokens,
                  res.usage.cache_write_tokens, round(cost, 6)))
+
+
+def _priced(provider: Provider) -> bool:
+    """A provider that bills per token: the Anthropic adapter, or any model with a price."""
+    from perch.llm import PRICES
+
+    return (getattr(provider, "name", "") == "anthropic"
+            or getattr(provider, "model", "") in PRICES)
 
 
 def _timed_out(e: BaseException) -> bool:

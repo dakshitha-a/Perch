@@ -310,6 +310,17 @@ def rate_limit(r: redis.Redis, scope: str, subject: str, *, now: float | None = 
     return True, 0
 
 
+def rate_refund(r: redis.Redis, scope: str, subject: str, *, now: float | None = None,
+                table: Mapping[str, tuple[int, int]] | None = None) -> None:
+    """Give back one hit of the current window, for a request that turned out to create
+    nothing (S50 C18: the losing twin of two identical requests). Never below zero."""
+    _, window = (table or rate_table())[scope]
+    t = now if now is not None else _now()
+    key = f"{PREFIX}:rl:{scope}:{subject}:{int(t // window)}"
+    if int(r.get(key) or 0) > 0:
+        r.decr(key)
+
+
 # --- response cache (4.4) ---
 
 def canonical_query(qs: str | Mapping[str, str]) -> str:
