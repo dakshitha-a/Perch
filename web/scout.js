@@ -325,7 +325,7 @@ export function pointsBlock(p, ctx, { short = false } = {}) {
         h("span", { text: ` ${pt.you} ` }), ...pt.you_ids.map(cite))))),
     p.status !== "withheld" && p.missing && p.missing.length ? h("div", { class: "points-missing" },
       h("p", { class: "mini", text: "Still needed" }),
-      h("p", { class: "hint", text: "What the record asks for that nothing you added shows." }),
+      h("p", { class: "hint", text: "What the record asks for that nothing in your records shows." }),
       h("ul", {}, ...p.missing.map((m) => h("li", { class: flagged.has(m) ? "flagged" : null }, h("span", { text: `${m} ` }), cite(p.for.id))))) : null,
     // The same flag the fit explanations use: the grounding model could not match the sentence.
     flagged.size ? h("div", { class: "notice warn" }, icon("warn"),
