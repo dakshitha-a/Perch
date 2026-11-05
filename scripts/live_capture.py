@@ -114,7 +114,7 @@ def capture() -> None:
         if s.get("audience") != "researcher":
             LOG["audience"] = c.call("POST", "/me/audience", {"audience": "researcher"})
         c.refresh()
-        r = c.call("POST", "/briefs", {"author_id": AUTHOR, "audience": "researcher"})
+        r = c.call("POST", "/briefs", {"author_id": AUTHOR, "audience": "researcher", "top": int(os.environ.get("PERCH_LIVE_TOP", "10"))})
         LOG["brief_create"] = r
         bid = r.get("id")
         if bid:
@@ -132,7 +132,7 @@ def capture() -> None:
                 LOG["scout"].append({"question": q, "final": r})
             if leads:
                 rec = leads[0].get("record_id")
-                r = c.call("POST", f"/briefs/{bid}/cover-points", {"record_id": rec})
+                r = c.call("POST", f"/briefs/{bid}/cover-points", {"record_id": rec, "again": True})
                 job = (r.get("job") or {}).get("id") or r.get("job_id")
                 LOG["cover_start"] = r
                 LOG["cover"] = poll(c, f"/briefs/{bid}/cover-points", lambda d: d.get("result") is not None
