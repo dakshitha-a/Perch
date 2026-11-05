@@ -21,10 +21,12 @@
       "serviceAccountsEnabled": false,
       "redirectUris": [
         "http://127.0.0.1:8190/*",
-        "http://localhost:8190/*"
+        "http://localhost:8190/*",
+        "http://127.0.0.1:8191/*"
       ],
       "webOrigins": [
-        "http://127.0.0.1:8190"
+        "http://127.0.0.1:8190",
+        "http://127.0.0.1:8191"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256"

@@ -32,6 +32,16 @@ SUPER = os.environ.get("PERCH_WALK_SUPER_DSN", "postgresql://postgres:perchtest@
 LOCAL_TEST_DB = ("127.0.0.1", 55432)  # the local test container; it gets fixed role passwords
 
 
+
+def _kc_issuer() -> str:
+    """The dev Keycloak's advertised issuer (the public URL when KC_HOSTNAME is set)."""
+    import httpx
+    try:
+        return httpx.get("http://127.0.0.1:8180/realms/perch/.well-known/openid-configuration",
+                         timeout=5).json()["issuer"]
+    except (httpx.HTTPError, ValueError, KeyError):
+        return "http://127.0.0.1:8180/realms/perch"
+
 def _guard(dsn: str) -> None:
     p = urlsplit(dsn)
     if (p.hostname, p.port) != LOCAL_TEST_DB and os.environ.get("PERCH_WALK_ALLOW_REMOTE") != "1":
@@ -87,7 +97,7 @@ def environment() -> None:
     for k in ("PERCH_ENV", "ANTHROPIC_API_KEY", "PERCH_MODEL_SERVER"):
         os.environ.pop(k, None)
     if os.environ.get("PERCH_OIDC_CLIENT_SECRET"):  # set by the caller for the sign-in walk only
-        os.environ.setdefault("PERCH_OIDC_ISSUER", "http://127.0.0.1:8180/realms/perch")
+        os.environ.setdefault("PERCH_OIDC_ISSUER", _kc_issuer())
         os.environ.setdefault("PERCH_OIDC_CLIENT_ID", "perch-web")
 
 

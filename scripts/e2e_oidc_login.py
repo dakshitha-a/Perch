@@ -43,6 +43,21 @@ _USER = {k: v for k, v in json.loads(USER_FILE.read_text()).items() if not k.sta
 USER = _USER["username"]
 PASSWORD = _USER["credentials"][0]["value"]
 KC_BASE = "http://127.0.0.1:8180"
+
+
+def _kc_public() -> str:
+    """The base URL the dev Keycloak puts in its issuer. It is 127.0.0.1:8180 unless the
+    container was started with KC_HOSTNAME (the S48 test deploy made it the public Funnel
+    URL); the browser-facing steps then use that base."""
+    try:
+        d = httpx.get(KC_BASE + "/realms/perch/.well-known/openid-configuration", timeout=5)
+        return d.json()["issuer"].rsplit("/realms/", 1)[0]
+    except (httpx.HTTPError, ValueError, KeyError):
+        return KC_BASE
+
+
+KC_PUBLIC = _kc_public()
+ISSUER = KC_PUBLIC + "/realms/perch"
 REQUIRED = ["PERCH_REDIS_URL", "PERCH_DATABASE_URL", "PERCH_PEPPER", "PERCH_PEPPER_GUEST",
             "PERCH_OIDC_CLIENT_SECRET"]
 FAILED: list[str] = []
@@ -61,7 +76,7 @@ def main() -> int:
     os.environ["PERCH_COOKIE_INSECURE"] = "1"
     # the web refuses to start without a shred ledger (S48 M3); a scratch one here
     os.environ.setdefault("PERCH_SHRED_LEDGER_URI", tempfile.mkdtemp(prefix="perch-e2e-ledger-"))
-    os.environ["PERCH_OIDC_ISSUER"] = "http://127.0.0.1:8180/realms/perch"
+    os.environ["PERCH_OIDC_ISSUER"] = ISSUER
     os.environ["PERCH_OIDC_CLIENT_ID"] = "perch-web"
     os.environ.setdefault("PERCH_CONSENT_PROVIDER_NAME", "SYNTHETIC Provider")
     os.environ.setdefault("PERCH_CONSENT_VERSION", "1")
@@ -254,7 +269,7 @@ def run(keys_ready: bool) -> None:
     r = app.get("/auth/login", params={"return_to": "/briefs"})
     loc = r.headers.get("location", "")
     step("login redirects to Keycloak with PKCE S256",
-         r.status_code == 302 and loc.startswith("http://127.0.0.1:8180/")
+         r.status_code == 302 and loc.startswith(KC_PUBLIC + "/")
          and "code_challenge_method=S256" in loc and "state=" in loc and "nonce=" in loc)
     step("binder cookie set (perch_oidc, HttpOnly, Max-Age=600)",
          "perch_oidc=" in r.headers.get("set-cookie", "")
@@ -348,7 +363,7 @@ def run(keys_ready: bool) -> None:
     out = app.post("/auth/logout", headers=hdr)
     end = out.json().get("end_session_url") if out.status_code == 200 else None
     step("logout returns the Keycloak end-session URL",
-         bool(end) and end.startswith("http://127.0.0.1:8180/") and "client_id=perch-web" in end)
+         bool(end) and end.startswith(KC_PUBLIC + "/") and "client_id=perch-web" in end)
     step("session is gone after logout", app.get("/auth/session").json() == {"signed_in": False})
     if end:
         e = kc.get(end)

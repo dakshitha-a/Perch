@@ -53,6 +53,16 @@ CHILDREN: list[subprocess.Popen] = []
 SERVER: list[object] = []
 
 
+
+def _kc_issuer() -> str:
+    """The dev Keycloak's advertised issuer (the public URL when KC_HOSTNAME is set)."""
+    import httpx
+    try:
+        return httpx.get("http://127.0.0.1:8180/realms/perch/.well-known/openid-configuration",
+                         timeout=5).json()["issuer"]
+    except (httpx.HTTPError, ValueError, KeyError):
+        return "http://127.0.0.1:8180/realms/perch"
+
 def step(name: str, ok: bool | None, note: str = "") -> None:
     state = "SKIPPED" if ok is None else "PASS" if ok else "FAIL"
     RESULTS.append((state, name))
@@ -97,7 +107,7 @@ def load_env() -> None:
     os.environ["PERCH_STORED_BRIEFS"] = "1"
     os.environ.pop("PERCH_ENV", None)
     os.environ.pop("ANTHROPIC_API_KEY", None)
-    os.environ.setdefault("PERCH_OIDC_ISSUER", "http://127.0.0.1:8180/realms/perch")
+    os.environ.setdefault("PERCH_OIDC_ISSUER", _kc_issuer())
     os.environ.setdefault("PERCH_OIDC_CLIENT_ID", "perch-web")
     os.environ.setdefault("PERCH_CONSENT_PROVIDER_NAME", "SYNTHETIC Provider")
     os.environ.setdefault("PERCH_CONSENT_VERSION", "1")
