@@ -426,7 +426,8 @@ def explain_brief(b: object, args: argparse.Namespace) -> None:
                   "twice; flagged for review)")
             continue
         f = v.value
-        print(f"\n{i:2}. {o.opportunity_number}  fit {f.fit}/100  (cites {', '.join(f.cited_ids)})")
+        fit = f"fit {f.fit}/100  " if f.fit is not None else ""
+        print(f"\n{i:2}. {o.opportunity_number}  {fit}(cites {', '.join(f.cited_ids)})")
         mark = "  [not supported by the cited record]"
         print(f"    {f.opportunity_sentence}"
               f"{mark if f.opportunity_sentence in f.unsupported else ''}")

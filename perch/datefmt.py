@@ -98,7 +98,9 @@ def deadline(o: Opportunity, as_of: date | None = None) -> str:
     "closes 4 Feb 2027"; the record's own words, such as "Proposals accepted anytime"; or,
     for a parent announcement, "the announcement expires 7 May 2028", never a deadline."""
     if not o.close_date:
-        return "close date not in the record"
+        # An open-anytime call (S49 M1) carries its own words, such as "Proposals accepted
+        # anytime"; show them as they are.
+        return o.close_date_note or "close date not in the record"
     if placeholder_close(o, as_of):
         return o.close_date_note or ""
     if expires_only(o):
