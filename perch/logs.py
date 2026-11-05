@@ -56,9 +56,17 @@ def configure(level: int = logging.INFO) -> None:
 
 
 def uvicorn_log_config(level: str) -> dict | None:
-    """A uvicorn log_config in JSON mode, else None (uvicorn's own default)."""
+    """A uvicorn log_config: JSON mode, or uvicorn's own default with the access filter added.
+    Either way the access line has no query string and no client address."""
     if not json_mode():
-        return None
+        import copy
+
+        from uvicorn.config import LOGGING_CONFIG
+
+        cfg = copy.deepcopy(LOGGING_CONFIG)
+        cfg["filters"] = {"access": {"()": "perch.logs.AccessFilter"}}
+        cfg["handlers"]["access"]["filters"] = ["access"]
+        return cfg
     lv = level.upper()
     return {"version": 1, "disable_existing_loggers": False,
             "formatters": {"json": {"()": "perch.logs.JsonFormatter"}},

@@ -115,8 +115,8 @@ services:
       PERCH_OIDC_ISSUER: http://keycloak:8080/realms/perch
       PERCH_OIDC_CLIENT_ID: perch-web
       PERCH_OIDC_CLIENT_SECRET: ${PERCH_OIDC_CLIENT_SECRET}
-      PERCH_PEPPER: ${PERCH_PEPPER:-}
-      PERCH_PEPPER_GUEST: ${PERCH_PEPPER_GUEST:-}
+      PERCH_PEPPER: ${PERCH_PEPPER:?set PERCH_PEPPER in .env (openssl rand -base64 32)}
+      PERCH_PEPPER_GUEST: ${PERCH_PEPPER_GUEST:?set PERCH_PEPPER_GUEST in .env (openssl rand -base64 32)}
       # S48 S2: the reverse proxy runs on the host and reaches the web through the published
       # port, so every request arrives from this network's gateway. X-Forwarded-For counts
       # only when the peer is that gateway (perch/redisx.py client_addr), so per-address
@@ -153,7 +153,7 @@ services:
       PERCH_DATABASE_DIRECT_URL: postgresql://perch_worker:${PERCH_WORKER_PASSWORD}@postgres:5432/perch
       PERCH_TORCH_THREADS: ${PERCH_TORCH_THREADS:-4}
       PERCH_WORKER_CONCURRENCY: ${PERCH_WORKER_CONCURRENCY:-16}
-      PERCH_AUDIT_KEY: ${PERCH_AUDIT_KEY:-}
+      PERCH_AUDIT_KEY: ${PERCH_AUDIT_KEY:?set PERCH_AUDIT_KEY in .env (openssl rand -base64 32)}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       # The adapter's own spend file (perch/llm/budget.py), on a named volume so recreating
       # the container keeps the running total (S48 M2). Only the worker calls a paid model.

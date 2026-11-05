@@ -526,7 +526,8 @@ def side_row_ids(ud: UserData, user_id: UUID, audience: str) -> list[UUID]:
 
 def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Redis,
                  session: Session, author_id: str | None, *, idempotency_key: str | None = None,
-                 doc_ids: Sequence[UUID] = (), **options: object) -> tuple[str, UUID]:
+                 doc_ids: Sequence[UUID] = (), addr_hash: str | None = None,
+                 **options: object) -> tuple[str, UUID]:
     """Create the brief where it lives and enqueue the job with ids only. Returns
     (brief_id, job_id). A signed-in user is held to the per-account rate and daily budget
     (perch/user/quota.py); a guest to the guest rate window. Raises quota.RateLimited or
@@ -581,7 +582,9 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     if not ok:
         raise quota.RateLimited("guest_job", retry)
     if options.get("explain", True):  # model text: the guest budget must have room (S48 M2)
-        quota.admit_guest(r, gh)
+        quota.admit_guest(r, gh, addr_hash=addr_hash)
+        if addr_hash:  # so the worker's meter charges the address too (it holds no pepper)
+            r.set(f"perch:gsess:{gh}:addr", addr_hash, ex=ttl)
     b = create_guest_brief(svc, r, gh, author_id, audience=session.audience, **options)
     job = runner.submit("brief", {"brief_id": b.id}, None, key,
                         audience=session.audience, guest_sid_hash=bytes.fromhex(gh))

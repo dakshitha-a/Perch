@@ -76,10 +76,25 @@ def build_state(app: FastAPI, service: Any = None) -> None:  # noqa: ANN401
         from perch.auth.oidc import OidcProvider
 
         state.auth_provider = OidcProvider.from_env(r)
+    if state.pool is not None:
+        require_peppers()
     state.stop_shred_listener = (shredhooks.install(state.pool, r)
                                  if state.pool is not None else (lambda: None))
     log.info("auth wired: redis=%s postgres=%s oidc=%s", r is not None,
              state.pool is not None, getattr(state, "auth_provider", None) is not None)
+
+
+PEPPER_VARS = ("PERCH_PEPPER", "PERCH_PEPPER_GUEST")
+
+
+def require_peppers() -> None:
+    """The web refuses to start without both peppers: an empty pepper makes the hashed
+    account subjects and the hashed guest and address keys guessable (S48 security follow-up)."""
+    missing = [v for v in PEPPER_VARS if not (env(v) or "").strip()]
+    if missing:
+        raise RuntimeError(
+            "refusing to start: " + ", ".join(missing) + " must be set to a random secret "
+            "(for example `openssl rand -base64 32`); see .env.example")
 
 
 def close_state(app: FastAPI) -> None:

@@ -690,6 +690,10 @@ def cmd_worker(args: argparse.Namespace) -> int:
 
     if args.check:
         return worker_check()
+    if env("PERCH_ENV") == "prod" and not (env("PERCH_AUDIT_KEY") or "").strip():
+        print("refusing to start: PERCH_AUDIT_KEY must be set when PERCH_ENV=prod "
+              "(for example `openssl rand -base64 32`); see .env.example", file=sys.stderr)
+        return 2
 
     from perch.jobs import PostgresRunner, set_brief_service
     from perch.redisx import get_client
@@ -745,8 +749,8 @@ def cmd_worker(args: argparse.Namespace) -> int:
 
     stop_sub = shredhooks.install(runner.pool, get_client() if env("PERCH_REDIS_URL") else None,
                                   runner)  # refuses to start without the shred ledger (S48 M3)
-    try:  # a restore happened: reconcile before any job runs, then clear the marker
-        shredhooks.reconcile_if_restored(env("PERCH_KEYS_DATABASE_URL"), runner.pool)
+    try:  # reconcile before any job runs when a restore is marked or the copies disagree
+        shredhooks.reconcile_at_start(env("PERCH_KEYS_DATABASE_URL"), runner.pool)
     except shredhooks.LedgerMissing as e:
         print(str(e), file=sys.stderr)
         return 2

@@ -8,6 +8,7 @@ call) and "validation" (written by the skill once it has checked the output).
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import re
 import threading
@@ -17,6 +18,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
+from perch.config import env
 from perch.llm import cost_usd
 from perch.llm.base import ChatResult, JsonSchema, Message, Provider, Tool
 
@@ -28,7 +30,12 @@ def prompt_hash(system: str | None, messages: list[Message], schema: JsonSchema 
     payload = json.dumps({"system": system, "messages": [asdict(m) for m in messages],
                           "schema": schema, "tools": [asdict(t) for t in tools or []]},
                          sort_keys=True)
-    return hashlib.sha256(payload.encode()).hexdigest()
+    key = env("PERCH_AUDIT_KEY")
+    if key:  # keyed, so a guessed prompt cannot be confirmed against the log
+        return hmac.new(key.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    if env("PERCH_ENV") == "prod":
+        raise RuntimeError("PERCH_AUDIT_KEY is not set (required when PERCH_ENV=prod)")
+    return hashlib.sha256(payload.encode()).hexdigest()  # dev only: a plain, unkeyed hash
 
 
 MAX_EVENTS = 20000  # in-memory cap; the oldest events drop first

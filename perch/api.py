@@ -649,6 +649,8 @@ def create_app(service: BriefService, runner: ClosureRunner,
             try:
                 bid, job = submit_brief(service, sv.runner, sv.ud, sv.redis, sess, req.author_id,
                                         doc_ids=req.doc_ids,
+                                        addr_hash=(redisx.hash_subject(redisx.client_addr(request))
+                                                   if sess.guest else None),
                                         as_of=req.as_of, top=req.top, explain=req.explain,
                                         min_amount=req.min_amount, agencies=req.agencies,
                                         context=req.context())

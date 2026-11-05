@@ -202,9 +202,12 @@ def _f(name: str, default: str) -> float:
 def quota_scopes(*, uid: UUID | str | None = None, gsid_hash: str | None = None,
                  now: datetime | None = None, daily_usd: float | None = None,
                  guest_usd: float | None = None, guest_global_usd: float | None = None,
-                 month_usd: float | None = None) -> list[Scope]:
+                 month_usd: float | None = None, addr_hash: str | None = None,
+                 guest_addr_usd: float | None = None) -> list[Scope]:
     """The counters that apply to a call: the user, or the guest session plus the guest
-    ceiling, and always the global month. Defaults come from the environment (section 1.3)."""
+    ceiling (and the address's day when `addr_hash`, the hashed client address, is known),
+    and always the global month. Defaults come from the environment (section 1.3). The guest
+    ceiling times 30 days must stay under the month, or guests alone can spend it."""
     t = now or datetime.now(UTC)
     d = t.strftime("%Y%m%d")
     out: list[Scope] = []
@@ -216,9 +219,14 @@ def quota_scopes(*, uid: UUID | str | None = None, gsid_hash: str | None = None,
         out.append(Scope("guest", f"{PREFIX}:q:gs:{gsid_hash}:{d}", usd_micro(usd), DAY_TTL,
                          True))
         g = (guest_global_usd if guest_global_usd is not None
-             else _f("PERCH_GUEST_GLOBAL_DAILY_BUDGET_USD", "5.00"))
+             else _f("PERCH_GUEST_GLOBAL_DAILY_BUDGET_USD", "3.00"))
         out.append(Scope("guest_global", f"{PREFIX}:q:gglobal:{d}", usd_micro(g), DAY_TTL,
                          False))
+        if addr_hash:
+            a = (guest_addr_usd if guest_addr_usd is not None
+                 else _f("PERCH_GUEST_ADDR_DAILY_BUDGET_USD", "0.30"))
+            out.append(Scope("guest_addr", f"{PREFIX}:q:ga:{addr_hash}:{d}", usd_micro(a),
+                             DAY_TTL, True))
     m = month_usd if month_usd is not None else _f("PERCH_ANTHROPIC_BUDGET_USD", "100")
     out.append(Scope("global", f"{PREFIX}:q:global:{t.strftime('%Y%m')}", usd_micro(m),
                      MONTH_TTL, False))

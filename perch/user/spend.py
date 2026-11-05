@@ -93,7 +93,10 @@ def for_job(r: redis.Redis, pool: ConnectionPool | None, *, user_id: UUID | None
                           job_id=job_id)
     if guest_sid_hash is not None:
         gh = guest_sid_hash.hex()
-        return SpendMeter(r, pool, lambda: redisx.quota_scopes(gsid_hash=gh), job_id=job_id)
+        # the web stored the hashed address at admission; the worker holds no pepper
+        ah = r.get(f"perch:gsess:{gh}:addr") or None
+        return SpendMeter(r, pool, lambda: redisx.quota_scopes(gsid_hash=gh, addr_hash=ah),
+                          job_id=job_id)
     return None
 
 
