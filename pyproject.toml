@@ -62,7 +62,6 @@ extend-immutable-calls = ["fastapi.Depends"]
 "tests/**" = ["ANN"]
 "tests/test_key_ops*.py" = ["ANN", "F811"]  # imported pytest fixtures
 "bench/load/**" = ["ANN"] # load-test harness: wraps and patches perch objects at run time
-"perch/shelved/monitor/tests/**" = ["ANN"]
 "scripts/render_tracker.py" = ["E501"]  # inline CSS
 "scripts/ux_walk.py" = ["E501"]  # inline JavaScript probes
 "scripts/tour/animate.py" = ["ANN", "E501", "B905"]  # copied unchanged from NextTex

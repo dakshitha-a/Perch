@@ -145,7 +145,7 @@ The full tables are in [docs/RESULTS.md](docs/RESULTS.md). The back-test is NIH 
 - **Some scholarships are synthetic.** Sample scholarships are invented, badged **Sample data**, and kept out of every number.
 - **No Temple single sign-on yet.** Sign-in goes through OIDC with a development identity provider.
 - **Industry leads** were judged once, by the agent that built them. A person has not checked them.
-- **Light monitoring only.** `GET /health?ready=true`, a loopback-only `GET /metrics` and optional JSON logs exist. There is no alerting. The weekly watch is shelved in `perch/shelved/monitor/`.
+- **Light monitoring only.** `GET /health?ready=true`, a loopback-only `GET /metrics` and optional JSON logs exist. There is no alerting. The weekly watch from the fallback build was removed in v1.
 
 ## The fallback
 

@@ -60,7 +60,7 @@ Route B lists up to five companies with at least two kinds of public signal: the
 uv run perch brief A5026494099 --route B
 ```
 
-`perch brief` on the command line stores its brief in your store: it is an operator tool. In the fallback build the web app kept nothing about visitors (see [the retired private-mode page](private-mode.md)). In v1, signed-in users' CVs, entries and briefs are stored encrypted per user and guests' briefs live in Redis for one hour; see the README and [ARCHITECTURE_V1.md](ARCHITECTURE_V1.md). The weekly watch (S16) is shelved in `perch/shelved/monitor/`.
+`perch brief` on the command line stores its brief in your store: it is an operator tool. In the fallback build the web app kept nothing about visitors (see [the retired private-mode page](private-mode.md)). In v1, signed-in users' CVs, entries and briefs are stored encrypted per user and guests' briefs live in Redis for one hour; see the README and [ARCHITECTURE_V1.md](ARCHITECTURE_V1.md). The weekly watch (S16) was removed in v1; it remains in the fallback build.
 
 Award links are matched by name. Fix a wrong or missed match in `data/overrides/award_links.csv`.
 
