@@ -51,6 +51,8 @@ def test_startup_builds_user_services_and_readiness_reports_keys(
 
     monkeypatch.setenv("PERCH_REDIS_URL", REDIS_URL)
     monkeypatch.setenv("PERCH_DATABASE_URL", pg_clean.web)
+    monkeypatch.setenv("PERCH_PEPPER", "synthetic-pepper")
+    monkeypatch.setenv("PERCH_PEPPER_GUEST", "synthetic-guest-pepper")
     for k in ("PERCH_KEYS_DATABASE_URL", "PERCH_MASTER_KEY"):
         monkeypatch.delenv(k, raising=False)
     app = FastAPI()

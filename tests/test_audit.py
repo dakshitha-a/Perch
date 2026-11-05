@@ -25,3 +25,24 @@ def test_every_call_logged_with_hash_not_text(tmp_path):
 def test_hash_is_order_stable():
     a = prompt_hash("s", [Message("user", "x")], {"b": 1, "a": 2}, None)
     assert a == prompt_hash("s", [Message("user", "x")], {"a": 2, "b": 1}, None)
+
+
+def test_prompt_hash_is_keyed_with_audit_key(monkeypatch):
+    msgs = [Message("user", "x")]
+    monkeypatch.delenv("PERCH_AUDIT_KEY", raising=False)
+    monkeypatch.setenv("PERCH_ENV", "dev")
+    plain = prompt_hash("s", msgs, None, None)
+    monkeypatch.setenv("PERCH_AUDIT_KEY", "synthetic-key-1")
+    k1 = prompt_hash("s", msgs, None, None)
+    monkeypatch.setenv("PERCH_AUDIT_KEY", "synthetic-key-2")
+    assert k1 != plain and k1 != prompt_hash("s", msgs, None, None)
+    assert len(k1) == 64
+
+
+def test_prompt_hash_without_key_is_dev_only(monkeypatch):
+    import pytest
+
+    monkeypatch.delenv("PERCH_AUDIT_KEY", raising=False)
+    monkeypatch.setenv("PERCH_ENV", "prod")
+    with pytest.raises(RuntimeError, match="PERCH_AUDIT_KEY"):
+        prompt_hash("s", [Message("user", "x")], None, None)

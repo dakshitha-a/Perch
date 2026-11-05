@@ -27,9 +27,27 @@ def test_json_log_line_has_class_name_but_no_exception_text() -> None:
     assert canary not in line
 
 
-def test_uvicorn_log_config_only_in_json_mode(monkeypatch) -> None:
+def test_uvicorn_log_config_filters_access_in_plain_mode_too(monkeypatch) -> None:
+    import logging
+    from logging.config import dictConfig
+
     monkeypatch.delenv("PERCH_LOG_FORMAT", raising=False)
-    assert uvicorn_log_config("warning") is None
+    plain = uvicorn_log_config("warning")
+    assert plain and plain["handlers"]["access"]["filters"] == ["access"]
+    assert "formatters" in plain and "json" not in plain["formatters"]
+    try:
+        dictConfig(plain)
+        h = logging.getLogger("uvicorn.access").handlers[0]
+        rec = logging.LogRecord("uvicorn.access", logging.INFO, "", 0,
+                                '%s - "%s %s HTTP/%s" %d',
+                                ("203.0.113.9:5", "GET", "/auth/callback?code=SYNTH&state=S",
+                                 "1.1", 200), None)
+        assert all(f.filter(rec) for f in h.filters)
+        out = rec.getMessage()
+        assert out == "GET /auth/callback 200"
+        assert "203.0.113.9" not in out and "SYNTH" not in out
+    finally:
+        logging.getLogger("uvicorn.access").handlers.clear()
     monkeypatch.setenv("PERCH_LOG_FORMAT", "json")
     cfg = uvicorn_log_config("warning")
     assert cfg and cfg["formatters"]["json"]["()"] == "perch.logs.JsonFormatter"

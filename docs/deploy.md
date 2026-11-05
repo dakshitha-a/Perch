@@ -24,8 +24,8 @@ This page is for the person who runs Perch. Every command was checked against th
 
 Copy `.env.example` to `.env`. Never commit `.env` and never paste a value into a ticket, a log or this page. The Compose file refuses to start when a required name is empty.
 
-- **Required by Compose:** `POSTGRES_PASSWORD`, `PERCH_OWNER_PASSWORD`, `PERCH_WEB_PASSWORD`, `PERCH_WORKER_PASSWORD`, `PERCH_KEYS_PASSWORD`, `KEYCLOAK_ADMIN_PASSWORD`, `PERCH_OIDC_CLIENT_SECRET`, `PERCH_MASTER_KEY`.
-- **Optional in Compose:** `PERCH_MASTER_KEY_ID`, `PERCH_PEPPER`, `PERCH_PEPPER_GUEST`, `PERCH_AUDIT_KEY`, `PERCH_LOG_FORMAT`, `PERCH_TORCH_THREADS`, `PERCH_WORKER_CONCURRENCY`, `PERCH_WORKER_GPU`, `BACKUP_RETENTION_DAYS`, `ANTHROPIC_API_KEY`.
+- **Required by Compose:** `POSTGRES_PASSWORD`, `PERCH_OWNER_PASSWORD`, `PERCH_WEB_PASSWORD`, `PERCH_WORKER_PASSWORD`, `PERCH_KEYS_PASSWORD`, `KEYCLOAK_ADMIN_PASSWORD`, `PERCH_OIDC_CLIENT_SECRET`, `PERCH_MASTER_KEY`, `PERCH_PEPPER`, `PERCH_PEPPER_GUEST`, `PERCH_AUDIT_KEY`. The web also refuses to start without the two peppers, and the worker without the audit key when `PERCH_ENV=prod`. Make each with `openssl rand -base64 32`.
+- **Optional in Compose:** `PERCH_MASTER_KEY_ID`, `PERCH_LOG_FORMAT`, `PERCH_TORCH_THREADS`, `PERCH_WORKER_CONCURRENCY`, `PERCH_WORKER_GPU`, `BACKUP_RETENTION_DAYS`, `ANTHROPIC_API_KEY`.
 - **Model and cost:** `ANTHROPIC_API_KEY`, `PERCH_ANTHROPIC_BUDGET_USD` (default 100), `PERCH_LLM_DEFAULT`, `PERCH_MODEL_SLOTS`, `PERCH_MODEL_SLOT_TIMEOUT`, `PERCH_ANTHROPIC_TIMEOUT`. `PERCH_DAILY_BUDGET_USD` is read by `perch/redisx.py` (default 0.50 per account per UTC day) but is not listed in `.env.example`.
 - **Keys:** `PERCH_KEYSTORE`, `PERCH_MASTER_KEY`, `PERCH_MASTER_KEY_ID`, `PERCH_MASTER_KEY_PREV`, `PERCH_MASTER_KEY_PREV_ID`, `PERCH_KMS_KEY_URI`, `PERCH_KEYS_DATABASE_URL`.
 - **Dev stack only:** the Compose file sets `PERCH_ENV=dev`, `PERCH_KEYSTORE=env` and `PERCH_COOKIE_INSECURE=1`. With `PERCH_ENV=prod` the env key store is refused (`perch/keystore.py`) and an OIDC issuer must start with `https://` (`perch/auth/oidc.py`). A production master key lives in a KMS; the reference format for `PERCH_KMS_KEY_URI` is `UNVERIFIED` until a host is chosen.
@@ -167,10 +167,13 @@ S47 ran it on the end-to-end test databases: 14 tables and 6,423 rows for the da
 - **Dev only:** `PERCH_SHRED_LEDGER_OPTIONAL=1` lets a process run without a ledger. Never set it in a deployment. The unit tests set it.
 - **Object stores.** An object-store URI (`s3://...`) is refused for now, because the ledger writes directories only. Writing to an object store with object lock is UNVERIFIED until a host is chosen.
 - **The marker.** `perch restore-mark` writes the file `RESTORE_PENDING` in the ledger directory. While it exists, `web` answers 503 with `{"error": "restore_pending"}` on `/auth`, `/briefs`, `/scout`, `/me`, `/usage` and `/welcome`, and `/health?ready=true` reports `restore: pending`. Public routes still serve.
-- **Who clears it.** The worker checks for the marker at start. If it is there, the worker runs the same reconcile as `perch reconcile-shreds` before it takes any job, then deletes the marker. `perch reconcile-shreds` also clears it.
+- **Who clears it.** The worker reconciles at every start, before it takes any job. With the marker present it always runs the full reconcile, the same code as `perch reconcile-shreds`, then deletes the marker. Without the marker it first makes three reads (key tombstones, `shred_log`, the ledger, and any key rows for those ids) and runs the reconcile only if the copies disagree, so a restart is cheap when nothing is wrong. That covers a restore where `perch restore-mark` was forgotten, but the marker is still what makes the web answer 503 meanwhile. `perch reconcile-shreds` also clears it.
 - **Why a file and not a database row.** ARCHITECTURE_V1 6.6 names a marker row in `ingest_runs`. A row in the data database can be erased by the restore it guards, so the marker lives on the ledger volume instead.
 
 ### Restoring for real
+
+- **Never restore the ledger.** The shred-ledger volume (`shred-ledger`) is never restored from a backup and never snapshotted with the databases. It is the one copy a restore must not revert. Do not include it in volume snapshots, and do not recreate it from an older copy.
+- **Always mark.** Every restore of either database runs `perch restore-mark` first. The worker also reconciles at every start, but the marker is what keeps the web at 503 until that has happened.
 
 1. Write the marker first, so a restore that stops halfway is still guarded:
    `docker compose -f deploy/compose/docker-compose.v1.yml run --rm --no-deps web perch restore-mark`

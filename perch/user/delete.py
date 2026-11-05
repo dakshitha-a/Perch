@@ -24,7 +24,7 @@ from psycopg_pool import ConnectionPool
 from perch import crypto, keyops
 from perch.config import env
 from perch.crypto import CryptoError
-from perch.jobs import JobContext, JobRunner, PermanentError, register
+from perch.jobs import JobContext, JobRunner, PermanentError, RetryableError, register
 from perch.redisx import destroy_user_sessions
 from perch.store import pg
 
@@ -135,11 +135,14 @@ def purge_handler(ctx: JobContext) -> str | None:
         uid = ctx.payload.get("user_id")
         if not uid:
             raise PermanentError("invalid_input")
+        hook_failed = False
         try:
             crypto.shred(UUID(uid))  # idempotent: also covers a purge queued by hand
         except CryptoError:
-            pass  # the keys are gone; the row clearing below is what matters
+            hook_failed = True  # the keys are gone; clear the rows, then retry the hooks
         clear_rows(pool, UUID(uid))
+        if hook_failed:
+            raise RetryableError("handler_error")  # a tombstone copy is missing: not complete
     elif action == "inactive":
         purge_inactive(pool, runner, _redis())
     elif action == "guests":

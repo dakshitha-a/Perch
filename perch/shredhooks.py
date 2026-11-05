@@ -25,13 +25,33 @@ from perch.store import pg
 log = logging.getLogger("perch.shred")
 
 
+class ShredHookFailed(RuntimeError):
+    """A tombstone copy could not be written. The text is fixed: it carries a code only."""
+
+    def __init__(self, code: str) -> None:
+        super().__init__(code)
+        self.code = code
+
+
+def _coded(code: str, fn: Callable[[UUID], None]) -> Callable[[UUID], None]:
+    """Run a hook; on any failure log the code and the exception class (never its message) and
+    raise ShredHookFailed, so crypto.shred reports the shred as not complete."""
+    def hook(user_id: UUID) -> None:
+        try:
+            fn(user_id)
+        except Exception as e:  # noqa: BLE001 - messages may hold data
+            log.error("shred hook failed code=%s err=%s", code, type(e).__name__)
+            raise ShredHookFailed(code) from None
+    return hook
+
+
 def shred_log_hook(pool: ConnectionPool) -> Callable[[UUID], None]:
     def hook(user_id: UUID) -> None:
         # user_tx: the web role's insert policy (migration 0007) checks perch.user_id
         with pg.user_tx(pool, user_id) as c:
             c.execute("INSERT INTO shred_log (user_id) VALUES (%s) ON CONFLICT DO NOTHING",
                       (user_id,))
-    return hook
+    return _coded("shred_log_write_failed", hook)
 
 
 def ledger_hook(uri: str | None = None) -> Callable[[UUID], None]:
@@ -47,7 +67,9 @@ def ledger_hook(uri: str | None = None) -> Callable[[UUID], None]:
         f = p / str(user_id)
         if not f.exists():  # an existing object is never rewritten
             f.write_text(datetime.now(UTC).date().isoformat() + "\n")
-    return hook
+        if not f.is_file():
+            raise OSError("ledger object missing after write")
+    return _coded("ledger_write_failed", hook)
 
 
 def publish_hook(r: redis.Redis) -> Callable[[UUID], None]:
@@ -128,7 +150,10 @@ def reconcile(keys_dsn: str, pool: ConnectionPool, ledger: str | None = None
     ids = tombstone_union(keys_dsn, pool, ledger)
     revived = crypto.reconcile_shreds(ids)
     restored = 0
+    to_log, to_ledger = shred_log_hook(pool), ledger_hook(ledger)
     for uid in sorted(ids, key=str):
+        to_log(uid)  # converge the copies: a no-op where the id is already there
+        to_ledger(uid)
         with pg.user_tx(pool, uid) as c:  # users is fenced: a role sees its own id only
             restored += c.execute("SELECT count(*) FROM users WHERE id = %s",
                                   (uid,)).fetchone()[0]
@@ -173,18 +198,59 @@ def install(pool: ConnectionPool, r: redis.Redis | None, runner: object | None =
     return stop
 
 
-def tombstone_union(keys_dsn: str, pool: ConnectionPool, ledger: str | None = None) -> set[UUID]:
-    """The union of the three tombstone sources: key_tombstones, shred_log, ledger objects."""
-    ids: set[UUID] = set()
+def _sources(keys_dsn: str, pool: ConnectionPool, ledger: str | None = None
+             ) -> tuple[set[UUID], set[UUID], set[UUID]]:
+    """The three tombstone sources: key_tombstones, shred_log, ledger objects."""
     with psycopg.connect(keys_dsn) as c:
-        ids |= {row[0] for row in c.execute("SELECT user_id FROM key_tombstones")}
+        tombs = {row[0] for row in c.execute("SELECT user_id FROM key_tombstones")}
     with pool.connection() as c:
-        ids |= {row[0] for row in c.execute("SELECT user_id FROM shred_log")}
+        logged = {row[0] for row in c.execute("SELECT user_id FROM shred_log")}
+    ledgered: set[UUID] = set()
     d = ledger if ledger is not None else env("PERCH_SHRED_LEDGER_URI")
     if d and "://" not in d and Path(d).is_dir():
         for f in Path(d).iterdir():
             try:
-                ids.add(UUID(f.name))
+                ledgered.add(UUID(f.name))
             except ValueError:
                 continue
-    return ids
+    return tombs, logged, ledgered
+
+
+def tombstone_union(keys_dsn: str, pool: ConnectionPool, ledger: str | None = None) -> set[UUID]:
+    """The union of the three tombstone sources: key_tombstones, shred_log, ledger objects."""
+    tombs, logged, ledgered = _sources(keys_dsn, pool, ledger)
+    return tombs | logged | ledgered
+
+
+def out_of_step(keys_dsn: str, pool: ConnectionPool, ledger: str | None = None) -> bool:
+    """True when a restore (or a failed shred hook) left the copies disagreeing: an id in the
+    union is missing from key_tombstones or shred_log, or still has key rows. Three reads, no
+    writes, so it is cheap when nothing is wrong."""
+    tombs, logged, ledgered = _sources(keys_dsn, pool, ledger)
+    ids = tombs | logged | ledgered
+    if not ids:
+        return False
+    if ids - tombs or ids - logged:
+        return True
+    with psycopg.connect(keys_dsn) as c:
+        row = c.execute("SELECT 1 FROM user_keys WHERE user_id = ANY(%s) LIMIT 1",
+                        (list(ids),)).fetchone()
+    return row is not None
+
+
+def reconcile_at_start(keys_dsn: str | None, pool: ConnectionPool, ledger: str | None = None
+                       ) -> dict[str, int] | None:
+    """The worker's first step on every start: reconcile when the restore marker exists or the
+    copies are out of step; otherwise do nothing (the check only reads). None when nothing
+    ran. The marker stays the web's 503 gate until a reconcile clears it."""
+    pending = restore_pending(ledger)
+    if not keys_dsn:
+        if pending:
+            raise LedgerMissing("a restore is pending and PERCH_KEYS_DATABASE_URL is not set")
+        return None
+    if not pending and not out_of_step(keys_dsn, pool, ledger):
+        return None
+    res = reconcile(keys_dsn, pool, ledger)
+    log.info("start reconcile marker=%s ids=%d key_rows=%d user_rows=%d", pending, res["ids"],
+             res["key_rows_revived"], res["user_rows_removed"])
+    return res
