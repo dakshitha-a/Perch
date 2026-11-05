@@ -275,6 +275,33 @@ Done when: the load-test report and the runbook are committed.
 
 Done when: the review is closed, the docs are verified, and the tag is pushed.
 
+### Phase 12 — Three review rounds, front end and back end (S49, S50, S51; Dakshitha, 4 Nov)
+
+Dakshitha (4 Nov evening, after testing the deploy): run three rounds of review and fixes, for the front end and for the back end. Each round also asks for feature and functionality improvements, and applies them. Major changes to the flow or the UI are welcome. If a change is a significant improvement, do it without worrying about time.
+
+Each round (one session each):
+1. **Front-end reviews**, run in parallel, each a fresh-context Opus agent given the code and current screenshots, not earlier conclusions:
+   - **UI/UX:** layout, alignment, hierarchy, consistency, accessibility and dark mode, on every screen and at both widths.
+   - **Product and flow:** what a student and a researcher are trying to do, where the flow fights them, which features are missing or should go, and whether the flow should be redone.
+2. **Back-end reviews**, run in parallel with step 1, each a fresh-context Opus agent:
+   - **Correctness and design:** API shape, data model, jobs, error handling, performance, and simplification.
+   - **Function and feature:** what the back end should do that it does not, and what it does that it should not, such as ranking quality, Scout usefulness, the dataset, caching and limits.
+3. **Design pass:** a design agent turns the front-end findings into a design. Real forks go to Dakshitha with a recommendation first.
+4. **Build:** builders in worktrees, front end and back end split so no two agents share a file. Each new geometry or behaviour check is proven to fail first.
+5. **QA:** full test suites, the full walk with axe in light and dark at both widths, the leak check, and a look at every changed screenshot.
+6. **Re-check:** fresh reviewers check that the round's must-fix items are closed. Should-fix items from round 3 that are not done go to the Limits list.
+
+Round 1 starts from Dakshitha's notes (`docs/design/S48_UI_NOTES.md`), the S48 design (`docs/design/S48_UI_DESIGN.md`) and the S48 UI review (`docs/design/S48_UI_REVIEW.md`), none of which is built yet. It also covers the carried items: Q49 Scout tuning, the S43 and S45 should-fix lists, the old profiles still in `profiles.py`, and a worker systemd unit.
+
+Done when: three rounds have closed with no open must-fix item on either side.
+
+### Release (S52)
+
+S48's last steps, moved after Phase 12:
+- **Checks on the deployed stack:** the leak check and the walk against the deployed stack, and a browser sign-in.
+- **Update the test deploy:** the new code goes onto the test deploy on Funnel 8443.
+- **Package and tag:** `make package`, and tag `v1.0-deploy`.
+
 ## Budget
 
 - **Spent so far:** $2.60 of the $100 Anthropic cap, from the spend ledger on 3 Nov.

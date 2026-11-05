@@ -33,6 +33,7 @@ The main session is the **orchestrator** and the manager of the rebuild (Dakshit
 - **Usage.** The account's usage window is shared by every agent, so heavy agents are staggered, and the orchestrator checks in on cost: one agent costs more than it looks, since it re-reads the repo.
 - **When not to delegate.** A handful of tool calls, a lookup whose target is known, or a fix in one file: the orchestrator does it in place.
 - **UI changes (Dakshitha, 2026-11-03).** Every UI change gets two subagent passes. Before: a design agent proposes the decisions and changes, and the orchestrator puts any real design fork to Dakshitha with the recommendation first. After: a reviewer with fresh context reviews the built screens, given the code and screenshots and not the builder's conclusions. Must-fix items are fixed and re-checked before the task closes.
+- **Review rounds (Dakshitha, 2026-11-04).** Reviews ask for feature, functionality and flow improvements as well as defects, on the front end and the back end. A reviewer may propose redoing a flow or making a major UI change. Apply the improvements the reviews find; when a change is a significant improvement, make it, even when it takes time. A real design fork still goes to Dakshitha with the recommendation first.
 
 ## Standing rules (never break these)
 
