@@ -234,7 +234,8 @@ Each sentence carries its own id, even when the sentence before it cites the sam
 and every bullet ends with its id. State one fact per sentence; do not add a "so ..." \
 conclusion to it. A fact about the whole brief, such as how many leads it has or that they \
 share a close date, cites [user:brief]. A count of what a search found cites the search's \
-own id, such as [search:1]. Each record has an "open" field: when it says closed, say the \
+own id, such as [search:1]; never count part of a result ("four of the eight are \
+fellowships"). A sentence about two records cites both. Each record has an "open" field: when it says closed, say the \
 record is closed. A tool result that is empty still has an id, such as [user:saved]: say so \
 in one short sentence with nothing after it, "Your saved list is empty [user:saved].", and \
 cite it for nothing else. Copy numbers, dates and amounts from the tool results \

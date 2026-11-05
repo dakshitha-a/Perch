@@ -92,3 +92,12 @@ def test_a_short_refusal_line_passes_and_a_claim_after_it_does_not():
     assert _errors("I cannot help with that, but the SYNTHETIC Marsh Ecology Program pays "
                    "$500,000.", "Marsh")
     assert _errors("I cannot help with the SYNTHETIC Marsh Ecology Program.", "Marsh")
+
+
+# --- G16: the prompt asks for what code cannot fix ---
+
+def test_system_prompt_forbids_partial_counts_and_asks_both_ids():
+    from perch.scout import texts
+
+    p = texts.system_prompt("researcher")
+    assert "never count part of a result" in p and "A sentence about two records cites both" in p
