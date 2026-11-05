@@ -117,6 +117,11 @@ services:
       PERCH_OIDC_CLIENT_SECRET: ${PERCH_OIDC_CLIENT_SECRET}
       PERCH_PEPPER: ${PERCH_PEPPER:-}
       PERCH_PEPPER_GUEST: ${PERCH_PEPPER_GUEST:-}
+      # S48 S2: the reverse proxy runs on the host and reaches the web through the published
+      # port, so every request arrives from this network's gateway. X-Forwarded-For counts
+      # only when the peer is that gateway (perch/redisx.py client_addr), so per-address
+      # limits see each visitor instead of one bucket. Keep it in step with networks below.
+      PERCH_TRUSTED_PROXIES: ${PERCH_TRUSTED_PROXIES:-172.29.190.1/32}
     ports: ["127.0.0.1:8190:8000"]
     volumes:
       - shred-ledger:/var/lib/perch/shred-ledger
@@ -210,3 +215,12 @@ volumes:
   pgdata:
   redisdata:
   kcdata:
+
+# A fixed subnet, so the gateway the web trusts for X-Forwarded-For (PERCH_TRUSTED_PROXIES
+# above) is known. Chosen away from Docker's defaults; change both together if it clashes.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.29.190.0/24
+          gateway: 172.29.190.1
