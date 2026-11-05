@@ -184,3 +184,16 @@ def test_a_word_search_reads_the_cards_fit_sentence(monkeypatch):
     assert "Every option listed matches" in got["note"]
 
 
+
+
+def test_plain_headings_are_read_s53():
+    """S53: a CV that writes "Education" with no "#", capitals or colon is still read."""
+    from perch.student import parse_student_cv
+
+    cv = ("SYNTHETIC example student (invented).\n\nSample student\n\nEducation\n"
+          "- B.S. candidate, Environmental Science, SYNTHETIC State University\n"
+          "- Third-year student (junior), full-time\n- Expected graduation: May 2028\n"
+          "- GPA: 3.40\n\nHonours\n- SYNTHETIC Dean's List, 2025\n")
+    f = parse_student_cv(cv)
+    assert f.level == "bachelor's" and f.gpa == 3.40 and f.class_year == 3
+    assert f.enrolment == "full-time" and f.honours == ["SYNTHETIC Dean's List, 2025"]

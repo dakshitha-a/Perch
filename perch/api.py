@@ -842,8 +842,10 @@ def create_app(service: BriefService, runner: ClosureRunner,
             if store is not None:
                 try:
                     view["student"] = parse_student_cv(store.student_inputs().cv).summary()
-                except (LookupError, ValueError):
-                    pass
+                except (LookupError, ValueError) as e:  # no CV text in the log (rule 5)
+                    logging.getLogger("perch").info("student CV summary skipped: %s",
+                                                    type(e).__name__)
+                    view["student"] = []
         return view
 
     def set_status(brief_id: str, lead_id: str, status: str, request: Request,

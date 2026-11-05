@@ -334,7 +334,8 @@ export function studentProfile(d, { openEvidence }) {
     h("div", { class: "left" }, h("section", { class: "pblock" },
       h("h2", { class: "section-title", text: "What the rules read from your CV" }),
       rows.length ? h("dl", { class: "fields" }, rows.map(([k, v]) => h("div", { class: "field" }, h("dt", { text: k }), h("dd", { text: CODE_WRITTEN.has(k) ? v.replace(/^./, (c) => c.toUpperCase()) : v }))))
-        : h("div", { class: "skeleton" }, h("span", { style: "width:80%" }), h("span", { style: "width:60%" })),
+        // S53: the brief has loaded here, so no rows means the rules read nothing; never a skeleton.
+        : h("p", { class: "hint", text: d.student ? "The rules read nothing from your CV. They look for headings such as Education, and lines such as \"B.S. candidate\" or \"GPA: 3.40\"." : "No CV saved for this brief." }),
       h("p", { class: "hint", text: "Read by code, not by a model." }))),
     h("div", { class: "right" }, h("section", { class: "pblock" },
       h("h2", { class: "section-title", text: "What steers the search" }),

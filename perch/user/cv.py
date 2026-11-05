@@ -70,6 +70,21 @@ class CVFacts:
                 f"also counts clinical training and extensions; check {ESI_URL}")
 
 
+# A short plain line that starts with one of these words is a heading even without "#", capitals
+# or a colon, as most CVs write "Education" (S53: the sample student's CV read nothing).
+HEADING_WORDS = ("education", "honours", "honors", "awards", "research", "posters",
+                 "presentations", "publications", "activities", "skills", "employment",
+                 "work experience", "experience", "references", "referees", "leadership",
+                 "service", "volunteer", "portfolio", "training", "grants", "funding",
+                 "appointments", "teaching", "certifications", "languages", "interests")
+
+
+def _plain_heading(s: str) -> bool:
+    low = s.lower()
+    return len(s) <= 40 and not s.startswith(("-", "*", "•")) \
+        and any(low == w or low.startswith(w + " ") for w in HEADING_WORDS)
+
+
 def sections(text: str) -> dict[str, list[str]]:
     """Lines under each heading, keyed by the heading in lower case."""
     out: dict[str, list[str]] = {"": []}
@@ -79,7 +94,7 @@ def sections(text: str) -> dict[str, list[str]]:
         if not s:
             continue
         h = re.match(r"^(#+\s*|)([A-Za-z][A-Za-z &/,-]{2,40}?):?\s*$", s)
-        if h and (h.group(1) or s.isupper() or s.endswith(":")):
+        if h and (h.group(1) or s.isupper() or s.endswith(":") or _plain_heading(s)):
             cur = h.group(2).strip().lower()
             out.setdefault(cur, [])
             continue
