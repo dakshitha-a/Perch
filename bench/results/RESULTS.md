@@ -161,6 +161,67 @@ An interval that contains 0 means the back-test cannot tell the config from the 
 
 <!-- Written by hand below this line; make bench keeps it. -->
 
+## Design change: inference moved to cloud models (v1)
+
+This section is hand-written. `make bench-v0` regenerates the sections above the marker line and keeps everything below it. `make bench` now runs the v1 back-test and does not write this file. Read the sections above as results of the fallback build, which ran its text models locally. The sections below the marker line were written later, by hand.
+
+### The decisions, from the record
+
+- **2026-11-03, after S33, Dakshitha:** Perch is rebuilt for deployment. Model work moves to a cloud provider, with embedding, reranking and MiniCheck grounding on CPU. The reason in `docs/DECISIONS.md` is a challenge advisor's advice, which Dakshitha agreed with, to prefer a cloud API over local hardware.
+- **2026-11-03, Dakshitha:** a cloud model may suggest Temple award fields during a one-time offline read, and code keeps a value only when a quoted page sentence supports it. About $30 of the $100 API cap goes to the rebuild.
+- **2026-11-04, S38, Dakshitha:** the rebuild is revised. Embedding, reranking and MiniCheck grounding run on one GPU. The explainer, the gate, the hand-off, the cover points and Scout stay on Anthropic. The profile `cloud-gpu` becomes the default and `cloud-cpu` stays as the no-GPU fallback. Rerank returns to 100 candidates and ranking is dense only. The reason recorded is the back-test: hit@10 0.229 at 100 candidates against 0.062 at 14 on CPU, and a rerank of 100 takes about 53 seconds on CPU and about 0.8 seconds on the GPU.
+- **2026-11-04, S45, Perch-dev:** output caps were raised because Sonnet 5.5 and Haiku 5.5 think by default, and the thinking counts toward the cap.
+
+### What changed, role by role
+
+| Job | Fallback build | v1 `cloud-gpu` profile |
+|---|---|---|
+| Profile summary | gemma4:26b-a4b through Ollama | Claude Haiku 5.5 |
+| Fit explanation, hand-off opening, application points | gemma4:26b-a4b through Ollama | Claude Sonnet 5.5 |
+| Scout | gemma4:26b-a4b through Ollama by default; Sonnet could be selected | Claude Sonnet 5.5 |
+| Scope gate | none; the old Scout had no gate | Claude Haiku 5.5 |
+| Typed yes-or-no answers, the `decide` role | Clef-flash | removed |
+| Temple page extraction, offline | none | Claude Haiku 5.5 |
+| Grounder, validator layer 2 | Clef | MiniCheck RoBERTa Large, on the worker's GPU |
+| Embedder | Qwen3-Embedding-0.6B | unchanged, now on the worker's GPU |
+| Reranker | Qwen3-Reranker-0.6B | unchanged, now on the worker's GPU |
+| Retrieval | hybrid, BM25 and dense | dense only |
+
+Sources: `perch/profiles.py` for both columns, `perch/llm/__init__.py` for the role list, and the S38 row in `docs/DECISIONS.md`.
+
+### What the measured numbers say about the change
+
+- **The NIH back-test measures ranking.** Ranking uses the embedder and the reranker. Neither changed model. Only the retrieval mode, the store and the device changed. No cloud model takes part in the back-test.
+- **Targeted awards, 48 rows, GPU, S38:** dense plus the 0.6B reranker gave hit@5 0.167, hit@10 0.250 and MRR 0.142. The keyword-only baseline gave 0.000, 0.000 and 0.002. Source: `bench/results/s38_backtest_gpu/README.md`.
+- **Parent awards, 78 rows, S38:** dense plus the 0.6B reranker gave hit@10 0.051 and MRR 0.032. Keyword-only gave 0.000 and 0.000.
+- **The S52 re-run matched S38.** The re-run is in `bench/results/s50_backtest`. It was run in S52 after the S50 eligibility changes. Every published figure matched to three decimals. Two targeted rows moved by one rank, far from the top ten, and no award was gained or lost. Source: `bench/results/s50_backtest/README.md`.
+- **Against the fallback's S27 run:** that run had hit@10 0.208 and MRR 0.144 on the same awards with BM25 and Lance. The v1 figure is two awards higher in 48 on hit@10 and the MRR is the same within 0.002. One award in 48 is 0.021, so this is within noise. It is not a gain.
+- **Dense against hybrid:** dense was at least as good as hybrid on every metric in S38. The gap is one to four awards, and most intervals touch zero. The recorded cause is that recall@200 is 0.500 dense against 0.417 hybrid.
+- **The 4B reranker:** it showed no measurable gain over the 0.6B and cost about 4.5 times the time, so the 0.6B stayed.
+
+### The grounder got weaker on the proxy set
+
+- **Clef to MiniCheck:** on the same 40 swapped-record pairs, Clef had AUC 0.998 and MiniCheck had 0.925. The S38 re-run on CPU gave 0.922 and on the GPU 0.922. The false-flag rate was 0.0 and the miss rate 0.1 for both. Sources: `grounders.csv` above and `bench/results/s38_grounding/README.md`.
+- **What that means:** MiniCheck separates supported from swapped sentences a little less well than Clef did on this set. The set is small and its pairs are a proxy for real errors.
+- **Speed:** MiniCheck takes about 0.017 seconds a claim on the GPU, against 0.362 seconds on CPU. Clef needed its own model server.
+- **MiniCheck inside Scout, S45:** MiniCheck flagged 96 sentences in the s45b run. Most traced to the evidence it was given, and 17 were real over-reach. Rank, kept and absence claims are now checked by code. See DECISIONS, 2026-11-04, S45.
+
+### Text models on the cloud, measured
+
+- **Fit explanation, S8 setup:** Claude Sonnet 5.5 passed both validator layers on 24 of 30 leads, against 28 of 30 for gemma4:26b-a4b. It took a median brief of 25.7 seconds against 42.9. This was measured in S8 on the fallback validator. It was not re-run on the v1 validator.
+- **Cost, S38:** five real researcher briefs, 10 leads each, all succeeded. Mean $0.0833 a brief, median wall time 37.7 seconds. These numbers do not include the hand-off or application points. Source: `bench/results/s38_cost/researcher_briefs.txt`.
+- **Scout, S38, Sonnet 5.5:** 30 of 30 tasks, 0 of 34 wrong tool calls, $0.42. Source: S38 row in `docs/TRACKER.md`. The task set is small, so this does not estimate a failure rate.
+- **Scout open questions, S45, real model:** Sonnet 5.5 answered and Haiku 5.5 gated 63 questions that Perch-dev wrote. In the last run, s45g, out-of-scope questions were refused 24 of 24 times and distress messages given 5 of 5 times. One in-scope question was wrongly blocked by the gate. Ten of 33 in-scope answers passed Layer 1 on a first or second draft. The other 23 were shown with failing sentences removed, none empty. MiniCheck flagged 4 sentences. The run cost $1.09. The seven S45 runs cost $5.94 in total. Source: `docs/RESULTS.md` and `bench/results/scout_open_s45g/report.md`.
+- **Usefulness of the S45 answers:** not graded. `grades.csv` is for a person to fill in.
+- **Run-to-run variance is large.** Replaying the same drafts through the old and new rules removed 170 and 158 sentences. Most removals are sentences without a citation.
+
+### What was not measured
+
+- **No claimed gain:** nothing here shows the cloud models are better than the local ones. The only like-for-like text measurement, S8, favours Gemma on the two validator layers, 28 of 30 against 24 of 30.
+- **Not measured:** a student brief's cost, the cost of a hand-off or of application points, Sonnet's fit quality under the v1 validator, and any gain in the usefulness of Scout answers.
+- **Not comparable:** the old Scout's higher Layer 1 rate, 17 of 18, came from a fixed tool set with no per-sentence grounding contract. Do not read it as a regression or a gain.
+- **UNVERIFIED:** whether the S27 and S38 back-tests used identical award pools. S38 says same rows, pool and date cut-off, but the store changed from Lance to Postgres.
+
 ## Scout agent (S10)
 
 20 scripted follow-ups in `bench/scout_tasks.yaml`: 14 tasks and 6 restraint cases, on three researchers, as of 2026-10-29. Run with `python -m bench.scout <model>`; per-task rows in `scout_<model>.csv`, totals in `scout_summary.csv`. Every session ran in "run" mode on the dev store.
