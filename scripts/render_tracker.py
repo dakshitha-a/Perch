@@ -108,6 +108,9 @@ a { color: var(--accent); text-underline-offset: 2px; }
 strong { color: var(--fg); }
 code { font-family: var(--mono); background: var(--code); padding: 1px 5px; border-radius: 3px;
   font-size: 0.86em; overflow-wrap: anywhere; }
+.strip { background: var(--accent-soft); border-bottom: 1px solid var(--line); font-size: var(--t-sm); }
+.strip .wrap { display: flex; flex-wrap: wrap; gap: 4px 20px; padding-top: 8px; padding-bottom: 8px; }
+.strip-links { margin-left: auto; font-weight: 600; }
 .appbar { background: var(--surface); border-bottom: 1px solid var(--line); }
 .appbar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding-top: 10px; }
 .brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; }
@@ -224,7 +227,13 @@ CARDS_ALWAYS
   .btn, .chip, select, input[type="search"] { min-height: 44px; }
   .glance { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hdr-meta { order: 3; flex-basis: 100%; }
-  nav { order: 4; }
+  nav { order: 4; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; margin-right: -16px; padding-right: 24px;
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+  nav::-webkit-scrollbar { display: none; }
+  nav a { flex: 0 0 auto; }
+  .strip-links { margin-left: 0; }
   .cardlabel { display: inline; }
   .more { min-height: 44px; }
   h1 { font-size: 22px; }
@@ -267,8 +276,10 @@ details .inner > * { min-width: 0; }
 
 /* Figures, previews */
 figure.diagram { margin: 0; padding: 16px; display: grid; gap: 12px; justify-items: center; overflow-x: auto; }
-@media (max-width: 600px) { figure.diagram { justify-items: start; } }
 figure.diagram svg { width: 100%; min-width: 560px; max-width: 720px; height: auto; color: var(--fg); }
+@media (max-width: 600px) { figure.diagram { justify-items: start; }
+  figure.diagram::after { content: "Scroll sideways to see the whole figure"; font-size: var(--t-xs);
+    color: var(--muted); position: sticky; left: 0; } }
 figure.shot { margin: 0; padding: 12px; display: grid; gap: 8px; justify-items: center; }
 figure.shot img { max-width: 100%; max-height: 640px; height: auto; border-radius: 6px; }
 figure figcaption { font-size: var(--t-sm); color: var(--muted); justify-self: start;
@@ -959,6 +970,23 @@ def newest_start(sessions: list[Session]) -> tuple[datetime | None, str]:
     return best
 
 
+def stale_reference(sessions: list[Session]) -> tuple[datetime | None, str]:
+    """The start of the most recent session with work done: a done task, or a finished session with
+    no task table. A current session with nothing done yet therefore falls back to the one before."""
+    best: tuple[datetime | None, str] = (None, "")
+    for s in sessions:
+        d = parse_stamp(s.started)
+        if not d:
+            continue
+        if s.work:
+            has_done = work_counts(s)[0] > 0
+        else:
+            has_done = s.status == "done"
+        if has_done and (best[0] is None or d > best[0]):
+            best = (d, s.sid)
+    return best
+
+
 def tracker_year(sessions: list[Session]) -> int:
     d, _ = newest_start(sessions)
     return d.year if d else 2026
@@ -1231,6 +1259,7 @@ def view_current(s: Session | None, at_a_glance: str, nxt: str, ms_html: str) ->
         f'<div class="title-row"><h1>{esc(s.sid)} · {inline(s.name)}</h1>{badge(s.status)}</div>',
         f'<div class="meta">{when}</div></div>',
         at_a_glance,
+        films_block(),
         *session_body(s),
         nxt,
         "<h2>Milestones</h2>" + ms_html if ms_html else "",
@@ -1385,7 +1414,7 @@ def fold_sections(doc: Doc, open_first: int = 1) -> list[str]:
         opened = " open" if n < open_first else ""
         out.append(f'<details{opened}><summary><span class="sline"><span class="stitle">{inline(title)}'
                    '</span></span></summary><div class="inner prose">'
-                   + "\n".join(render_blocks(blocks, heading_shift=0)) + "</div></details>")
+                   + "\n".join(render_blocks(blocks, heading_shift=-1)) + "</div></details>")
     return out
 
 
@@ -1417,7 +1446,7 @@ def view_ux(sources: list[Source], newest: tuple[datetime | None, str]) -> str:
         out.append(f'<details{" open" if n == 0 else ""}><summary><span class="sline"><span class="stitle">'
                    f"{inline(doc.title or s.path)}</span></span>"
                    f'<span class="smeta"><code>{esc(s.path)}</code>, {when}</span></summary>'
-                   '<div class="inner prose">' + "\n".join(render_blocks(doc.blocks, 1, prefix))
+                   '<div class="inner prose">' + "\n".join(render_blocks(doc.blocks, 0, prefix))
                    + "</div></details>")
     return "\n".join(out)
 
@@ -1471,8 +1500,10 @@ def view_roadmap(src: Source, newest: tuple[datetime | None, str], root: Path | 
 def view_persona(files: dict[str, str], note: str) -> str:
     """The synthetic private-mode test persona: README rendered, each document shown as is."""
     readme = parse(files.get("README.md", ""))
-    out = ['<div><div class="eyebrow">Synthetic test input for private mode, for team review'
-           f"</div><h1>{inline(readme.title or 'Persona 1')}</h1></div>", note]
+    out = ['<div><div class="eyebrow">History</div><h1>SYNTHETIC test personas (history)</h1></div>',
+           '<p class="lead">Private mode, which these personas tested, was retired in the v1 rebuild (S35). '
+           "The demo uses the SYNTHETIC persona-demo student in <code>data/synthetic/persona-demo/</code>.</p>",
+           note]
     out += ['<div class="prose">' + "\n".join(render_blocks(readme.blocks)) + "</div>"]
     for name, text in files.items():
         if name != "README.md":
@@ -1483,11 +1514,11 @@ def view_persona(files: dict[str, str], note: str) -> str:
 
 def view_readme(src: str, note: str) -> str:
     s = esc(src)
-    return f"""<div><div class="eyebrow">For review before the repository is public</div><h1>README</h1></div>
+    return f"""<div><div class="eyebrow">The repository's README, as GitHub shows it</div><h1>README</h1></div>
 {note}
 <p class="lead">The repository's README.md as GitHub will show it, with its clips and the architecture figure.</p>
 <div class="ui-tools"><a href="{s}" target="_blank" rel="noopener">Open on its own</a></div>
-<iframe id="readme-frame" class="readme-frame" src="{s}" title="README preview"></iframe>"""
+<iframe id="readme-frame" class="readme-frame" src="{s}" loading="lazy" title="README preview"></iframe>"""
 
 
 def replay_line(meta: dict | None, who: str) -> str:
@@ -1531,6 +1562,27 @@ fetched and nothing is saved.</p>
 title="Perch web app preview"></iframe></div>"""
 
 
+FILM_URL = "https://github.com/dakshitha-a/Perch/blob/main/docs/films/"
+FILMS = (("quick-student", "Student, quick tour", "30 s"), ("researcher", "Researcher", "47 s"),
+         ("student", "Student", "58 s"), ("scout", "Scout", "46 s"))
+
+
+def audience_strip(n_sessions: int, has_readme: bool) -> str:
+    built = f" Built in {n_sessions} sessions with Claude Code." if n_sessions else ""
+    read = '<a href="#readme">Read the README</a> · ' if has_readme else ""
+    return ('<div class="strip"><div class="wrap">'
+            f"<span>Perch finds every route to fund your work, each claim cited to a public record.{built}</span>"
+            f'<span class="strip-links">{read}'
+            f'<a href="{FILM_URL}quick-student.mp4" target="_blank" rel="noopener">Watch the 30-second film</a>'
+            "</span></div></div>")
+
+
+def films_block() -> str:
+    links = " · ".join(f'<a href="{FILM_URL}{f}.mp4" target="_blank" rel="noopener">{esc(t)}, {d}</a>'
+                       for f, t, d in FILMS)
+    return f'<p class="src"><b>Films:</b> {links}</p>'
+
+
 def render_page(master_md: str, session_files: dict[str, str], artifact: bool = False,
                 page_title: str = "Perch Build Tracker", decisions_md: str = "",
                 plan_md: str = "", ui: str | None = None, bench: Source | None = None,
@@ -1543,7 +1595,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
     master = parse(master_md)
     sessions = build_sessions(master, session_files)
     current = pick_current(sessions)
-    newest = newest_start(sessions)
+    newest = stale_reference(sessions)
     year = tracker_year(sessions)
     milestones = build_milestones(master, plan_md, sessions)
     ms_html = render_milestones(milestones, year)
@@ -1571,9 +1623,10 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
         ("readme", "README", lambda: view_readme(readme, note("README.md")), readme),
         ("architecture", "Architecture", lambda: view_architecture(arch, arch_root, newest), arch),
         ("roadmap", "Roadmap", lambda: view_roadmap(roadmap, newest, arch_root, cost), roadmap),
-        ("persona", "Persona", lambda: view_persona(
+        ("persona", "Personas", lambda: view_persona(
             persona, note("data/synthetic/persona-1/README.md", check=False)), persona),
     ) if t[3]]
+    tabs.sort(key=lambda t: {"ui": 0, "architecture": 1}.get(t[0], 2))  # UI lands first, then Architecture; stable
     nav = "\n".join(f'<a id="tab-{k}" href="#{k}"{" aria-current=\"page\"" if i == 0 else ""}>'
                     f"{label}</a>" for i, (k, label, _, _) in enumerate(tabs))
     views = "\n".join(f'<section id="view-{k}" class="view" data-view="{k}"'
@@ -1581,7 +1634,9 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
                       for i, (k, _, body, _) in enumerate(tabs))
     status = (f"{esc(current.sid)} {badge(current.status)} · " if current else "") + \
         f"{done} of {len(sessions)} sessions done"
+    strip = audience_strip(len(sessions), bool(readme))
     page = f"""<script>{THEME_SCRIPT}</script>
+{strip}
 <header class="appbar"><div class="wrap">
 <div class="brand"><b>Perch</b><span>Build tracker</span></div>
 <span class="hdr-meta">{status}</span>
@@ -1599,6 +1654,7 @@ and git. The Markdown is the source of truth.</p>
 """
     if artifact:
         return (f"<title>{name}</title>\n"
+                '<meta charset="utf-8">\n'
                 '<meta name="claude:viewport-fit-sides" content="cover">\n'
                 f"{FONT_LINK}\n<style>{CSS}</style>\n{page}")
     return ("<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n"

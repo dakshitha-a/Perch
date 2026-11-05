@@ -216,21 +216,28 @@ def test_tabs_open_on_current_in_reader_order(tmp_path):
     )
     order = re.findall(r'<a id="tab-([a-z]+)"', p)
     assert order == [
+        "ui",
+        "architecture",
         "current",
         "master",
         "decisions",
         "archive",
-        "ui",
         "ux",
         "bench",
         "readme",
-        "architecture",
         "persona",
     ]
     assert re.findall(r'data-view="([a-z]+)"', p) == order
-    assert '<a id="tab-current" href="#current" aria-current="page">Current</a>' in p
-    assert '<section id="view-current" class="view" data-view="current">' in p
-    assert '<section id="view-master" class="view" data-view="master" hidden>' in p
+    assert '<a id="tab-ui" href="#ui" aria-current="page">UI</a>' in p
+    assert '<section id="view-ui" class="view" data-view="ui">' in p
+    assert '<section id="view-current" class="view" data-view="current" hidden>' in p
+    assert "Perch finds every route to fund your work" in p
+    assert "Built in 3 sessions with Claude Code" in p
+    assert 'href="#readme">Read the README' in p and "quick-student.mp4" in p
+    # without a UI tab, Current is the landing tab
+    q = rt.render_page(MASTER, {})
+    assert '<a id="tab-current" href="#current" aria-current="page">Current</a>' in q
+    assert '<section id="view-master" class="view" data-view="master" hidden>' in q
     assert "tab-bench" not in rt.render_page(MASTER, {})
 
 
@@ -274,28 +281,28 @@ def test_decisions_filter_markup_newest_first():
     assert "not" not in v.split("Plan change log")[1].split("</table>")[0]
 
 
-def test_stale_note_when_source_predates_newest_session_start():
-    old = rt.Source(
-        "bench/results/RESULTS.md",
-        "# Bench\n\n## A\n\n| x | y |\n|---|---|\n| 1 | 2 |\n",
-        "2026-10-29T10:00:00-04:00",
-    )
-    new = rt.Source("bench/results/RESULTS.md", old.text, "2026-10-30T11:00:00-04:00")
+def test_stale_note_compares_with_the_last_session_that_has_work_done():
+    text = "# Bench\n\n## A\n\n| x | y |\n|---|---|\n| 1 | 2 |\n"
+    old = rt.Source("bench/results/RESULTS.md", text, "2026-10-27T10:00:00-04:00")
+    mid = rt.Source("bench/results/RESULTS.md", text, "2026-10-29T10:00:00-04:00")
+    # S1 started but has no task done: the reference is S0's start (28 Oct)
     stale = view(rt.render_page(MASTER, {}, bench=old), "bench")
-    assert (
-        "Built from <code>bench/results/RESULTS.md</code>, last changed 29 Oct 2026, 10:00" in stale
-    )
-    assert "May be behind: older than the start of S1" in stale
-    assert "May be behind" not in view(rt.render_page(MASTER, {}, bench=new), "bench")
+    assert "last changed 27 Oct 2026, 10:00" in stale
+    assert "May be behind: older than the start of S0" in stale
+    assert "May be behind" not in view(rt.render_page(MASTER, {}, bench=mid), "bench")
+    # a done task in S1 moves the reference to S1's start (30 Oct)
+    s1 = "# S1 — Store\n\n" + TASKS + "| 1 | x | done | | |\n"
+    p = rt.render_page(MASTER, {"S1": s1}, bench=mid)
+    assert "May be behind: older than the start of S1" in view(p, "bench")
 
 
 def test_ui_intro_comes_from_the_replay_sidecar():
     facts = rt.Facts(
-        replays={"ui": {"replay": "build/replay/abc.json", "created_at": "2026-10-29T20:51:40Z"}}
+        replays={"ui": {"replay": "build/replay/abc.json", "created_at": "2026-10-27T20:51:40Z"}}
     )
     p = rt.render_page(MASTER, {}, ui="ui.html", facts=facts)
     v = view(p, "ui")
-    assert "exported from the deploy on 29 Oct 2026" in v and "build/replay/abc.json" in v
+    assert "exported from the deploy on 27 Oct 2026" in v and "build/replay/abc.json" in v
     assert "May be behind" in v
     assert "S24" not in v and "15 seconds" not in v
     assert v.index('data-size="wide" aria-pressed="true">Laptop') < v.index(
