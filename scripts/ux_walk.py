@@ -937,7 +937,8 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     w.check("cover_button_on_every_card", cards > 0 and btns == cards
             and (await page.locator(f"button[data-key='cover-{first}']").inner_text()) == "Cover-letter points",
             f"{cards} cards not dismissed, {btns} buttons")
-    w.check("cover_student_hint", hint0.strip() == "A model writes these from your CV and entries. You put them in your own words."
+    # S51 W9: this brief is the sample student's, so the line names the sample student's CV
+    w.check("cover_student_hint", hint0.strip() == "A model writes these from the sample student's CV and entries. You put them in your own words."
             and await page.locator("#panel [data-cover-line]").count() == 1 and card_hints == 0,
             f"list line {hint0!r}; {card_hints} card hints")
     w.check("cover_restore_is_one_get", seen["gets"] == [{"record_id": restored_rid}]

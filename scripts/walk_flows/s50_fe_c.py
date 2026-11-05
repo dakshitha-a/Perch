@@ -120,8 +120,12 @@ def register(U):  # noqa: ANN001, ANN201, N803 - the ux_walk module, passed by i
         state = {"kind": "extras"}
         page = await open_brief(w, browser, base, tag, view, state)
         await go(page, "#/brief/b1/routes", "#panel .lead")
-        un = await page.locator("#panel .lead[data-id='b1:2'] .notice.warn", has_text="could not be matched").count()
-        w.check("s50c_unsupported", un == 1, f"{un} unsupported blocks")
+        # S51 W19: a quiet closed fold that lists the sentence, not an amber box
+        card = "#panel .lead[data-id='b1:2']"
+        un = await page.locator(f"{card} details.unsupported-fold:not([open]) > summary", has_text="1 sentence could not be matched to its source").count()
+        listed = await page.locator(f"{card} details.unsupported-fold li", has_text="Invented sentence the check could not match.").count()
+        amber = await page.locator(f"{card} .notice.warn").count()
+        w.check("s50c_unsupported", un == 1 and listed == 1 and amber == 0, f"{un} folds, {listed} sentences listed, {amber} amber boxes")
         facts = await page.locator("#panel .lead[data-id='b1:5'] .fact").count()
         wide = await page.locator("#panel .lead[data-id='b1:5'] .fact.fact-wide").count()
         stated = await page.locator("#panel .lead[data-id='b1:5']", has_text="Not stated").count()

@@ -871,6 +871,7 @@ textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 /* A guest's hand-off (S51 QA): the hint on its own line, then the example and Sign in side by side. */
 .guest-draft { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; flex: 1 1 100%; }
 .guest-draft > .hint { flex-basis: 100%; margin: 0; }
+@media (max-width: 599px) { .guest-draft .example-slot .quiet-link { padding-left: 0; } }
 .scout-draft { margin-top: 8px; }
 .scout-draft summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .draft-text { white-space: pre-wrap; word-break: break-word; font: 14px/1.5 var(--sans); background: var(--leaf); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; margin: 8px 0; max-height: 360px; overflow: auto; }

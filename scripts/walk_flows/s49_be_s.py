@@ -76,10 +76,12 @@ def register(U):  # noqa: ANN001, ANN201 - U is the ux_walk module
           return Boolean(h && h.querySelector('#routes-title') && h.querySelector('.sort-group')
             && !document.querySelector('#panel .route-row .sort-group')); }""")
         w.check("s49_student_sort_in_list_head", head, "Sort sits in .list-head, not on the route row")
-        mini = await page.locator("#panel .lead .facts .fact").count()
-        cards = await page.locator("#panel ol.leads > li.lead").count()
-        w.check("s49_student_two_facts_every_card", cards > 0 and mini == 2 * cards,
-                f"{mini} facts on {cards} cards")
+        # Every card has the date and the amount, or (S50 G7) one wide fact saying the listing gives neither.
+        shapes = await page.evaluate("""() => [...document.querySelectorAll('#panel ol.leads > li.lead')].map((c) => {
+          const f = [...c.querySelectorAll('.facts .fact')]; const wide = f.filter((x) => x.classList.contains('fact-wide'));
+          return wide.length ? (f.length === 1 && /gives neither/.test(wide[0].textContent) ? 'neither' : 'bad') : (f.length === 2 ? 'two' : 'bad'); })""")
+        w.check("s49_student_two_facts_every_card", bool(shapes) and "bad" not in shapes and "two" in shapes,
+                f"card fact shapes {shapes}")
         await page.context.close()
 
     async def flow_student_compare(w, browser, base, tag, view):
