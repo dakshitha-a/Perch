@@ -152,9 +152,9 @@ def test_s7_an_award_on_both_temple_lists_appears_once():
     pool, also = student_pool([a, b, other])
     assert {s.id for s in pool} == {"temple_sdfa:g", "temple_pages:h"}
     assert also == {"temple_sdfa:g": ["https://example.temple.edu/g"]}
-    # Two copies on one list are left alone here.
+    # S50 G2: two copies on one list are one award too.
     same = sch(id="temple_pages:g2", name="SYNTHETIC Gillfen Scholarship")
-    assert len(student_pool([a, same])[0]) == 2
+    assert len(student_pool([a, same])[0]) == 1
 
 
 def test_s10_ruled_out_records_are_capped_at_five():
@@ -416,7 +416,7 @@ def test_s15_the_fit_skill_asks_for_no_number():
 
     assert "fit" not in fit.SCHEMA["properties"] and "fit" not in fit.SCHEMA["required"]
     assert "0 (no overlap)" not in fit.INSTRUCTIONS and "at most three" in fit.INSTRUCTIONS
-    assert fit.PROMPT_VERSION == "fit-3"
+    assert fit.PROMPT_VERSION == "fit-4"  # S50: code-chosen papers
 
 
 # --- S8: one word per level in the filter columns ---

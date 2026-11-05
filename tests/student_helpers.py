@@ -34,7 +34,9 @@ def student_reply(messages, system, schema):
     if schema and "opportunity_sentence" in schema.get("properties", {}):
         rid = re.search(r"Opportunity:\n\[([^\]]+)\]", messages[-1].content).group(1)
         assert "[user:achievement-a]" in system
-        pid = "achievement-a"  # models drop the "user:" prefix; the skill maps it back
+        # S50: the first record code chose for this award; models drop the "user:" prefix
+        pid = re.search(r"closest first: \[([^\]]+)\]", messages[-1].content).group(1)
+        pid = pid.removeprefix("user:")
         return json.dumps({
             "reasoning": "r", "fit": 60,
             "opportunity_sentence": f"The award supports students in this field [{rid}].",

@@ -4,6 +4,7 @@ In process, through the SDK's own Client, with fake models and fixture-backed so
 """
 
 import json
+import re
 
 import anyio
 from mcp.client.client import Client
@@ -21,7 +22,8 @@ def fit_reply(messages, system, schema):
     if points := points_reply(messages, system, schema):
         return points
     if schema and "opportunity_sentence" in schema.get("properties", {}):
-        paper = next(w for w in system.split("[")[1:] if w.startswith("W")).split("]")[0]
+        # S50: the first paper code chose for this opportunity
+        paper = re.search(r"closest first: \[([^\]]+)\]", messages[-1].content).group(1)
         return json.dumps({
             "reasoning": "r", "fit": 66,
             "opportunity_sentence": "The announcement funds research projects [PAR-25-268].",

@@ -396,7 +396,9 @@ def run_new(service: BriefService, q: dict[str, Any], run: Run, *, as_of: date, 
                            "removed": g.removed(detail=True),
                            "kinds": [s.kind for s in g.sentences], "final": final,
                            # The turn's tool log, so bench/scout_replay.py is exact (S49 Q0).
-                           "read": m.get("read") or [], "steps": m.get("steps") or []})
+                           "read": m.get("read") or [], "steps": m.get("steps") or [],
+                           # G9 (S50): each search's own record text, count included
+                           "searches": {k: scrub(v, al) for k, v in g.search_records.items()}})
     if m.get("kind") == "answer":
         run.reasons.append(reason_row(q, m, drafts[0][2] if drafts else None))
     return score_new(service, q, m, meter, dt), shown_text(m)

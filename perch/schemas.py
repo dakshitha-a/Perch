@@ -212,6 +212,19 @@ class Signal(BaseModel):
     score: float = 0.0
 
 
+class RuleCheck(BaseModel):
+    """One student rule the check ran, or could not run, and its outcome (S50 Q1). Written
+    by code (perch/student.py) from the record and the student's stated facts."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rule: str = Field(description="level, class_year, school, citizenship, residency, "
+                                  "deadline, graduation, major, gpa, enrolment, targeted, "
+                                  "staff_only")
+    outcome: Literal["pass", "fail", "unknown"]
+    text: str
+
+
 class Lead(Record):
     """A route to funding for one brief. Provenance is the record it points at."""
 
@@ -245,6 +258,9 @@ class Lead(Record):
     verdict: Literal["eligible", "may be eligible", "not eligible"] | None = None
     verdict_reason: str | None = None
     verdict_lines: list[str] = Field(default_factory=list)
+    checks: list[RuleCheck] = Field(
+        default_factory=list, description="Student mode: every rule checked and its outcome, "
+        "in card order (S50 Q1)")
     gaps: list[str] = Field(default_factory=list, description="Requirements the CV lacks")
     gap_keys: list[str] = Field(default_factory=list)
     sample: bool = Field(default=False, description="Points at a SYNTHETIC sample record")

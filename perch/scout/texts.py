@@ -144,6 +144,10 @@ STRUCTURAL_HEADINGS = (
     # S49 Q9: section names the s45g drafts used; none states a result. "Your top lead" stays
     # out: uncited, it is a rank claim on the record under it (S45 fix round 3).
     r"differences", r"similarities",
+    # G13 (S50): neutral section names from the s49b drafts. "Closest matches" stays out: it
+    # judges relevance.
+    r"side by side", r"closes? soonest", r"next", r"deadlines in your brief", r"your brief",
+    r"where (?:it|they|each|this) sits? in your brief", r"what the search does not show",
     r"who (?:may|can) apply,? per the records?", r"what the records? (?:do )?says?",
     # groups of records by where they come from (S45 fix round 3 replay)
     r"(?:federal|temple|temple-listed|foundation|industry|other|public|sample) (?:fellowship |"
@@ -230,8 +234,10 @@ Each sentence carries its own id, even when the sentence before it cites the sam
 and every bullet ends with its id. State one fact per sentence; do not add a "so ..." \
 conclusion to it. A fact about the whole brief, such as how many leads it has or that they \
 share a close date, cites [user:brief]. A count of what a search found cites the search's \
-own id, such as [search:1]. Each record has an "open" field: when it says closed, say the \
-record is closed. A tool result that is empty still has an id, such as [user:saved]: say so \
+own id, such as [search:1]; never count part of a result ("four of the eight are \
+fellowships"). A sentence about two records cites both. Each record has an "open" field: \
+when it says closed, say the record is closed. A tool result that is empty still has an \
+id, such as [user:saved]: say so \
 in one short sentence with nothing after it, "Your saved list is empty [user:saved].", and \
 cite it for nothing else. Copy numbers, dates and amounts from the tool results \
 exactly. Do not compute, estimate or round them, and do not repeat a number from the \

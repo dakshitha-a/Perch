@@ -55,6 +55,16 @@ def temple_records(repo: Repository) -> list[Opportunity]:
     return [o for o in items if o.source == TEMPLE_INTERNAL_SOURCE]
 
 
+def dedupe_titles(opps: list[Opportunity]) -> list[Opportunity]:
+    """One page per title (G5: "Innovation Flight Fund" was listed twice): the lowest id."""
+    import re
+
+    out: dict[str, Opportunity] = {}
+    for o in sorted(opps, key=lambda o: o.id):
+        out.setdefault(re.sub(r"[^a-z0-9]+", " ", o.title.lower()).strip(), o)
+    return list(out.values())
+
+
 def temple_internal(profile: Profile, repo: Repository, embedder: Embedder, reranker: Reranker,
                     c: Constraints, cache: RerankCache | None = None, top: int = TEMPLE_TOP,
                     cacheable: Callable[[Thread], bool] = lambda t: True
@@ -65,7 +75,7 @@ def temple_internal(profile: Profile, repo: Repository, embedder: Embedder, rera
     record goes to the thread its embedding is nearest, then the reranker scores it there."""
     opps = {}
     notes: dict[str, list[str]] = {}
-    for o in temple_records(repo):
+    for o in dedupe_titles(temple_records(repo)):
         why, n = check_temple_internal(o, c)
         if not why:
             opps[o.id] = o

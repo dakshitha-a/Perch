@@ -143,6 +143,8 @@ class Verdict:
     reason: str | None  # the broken rule, or the first unknown
     lines: list[str] = field(default_factory=list)  # written by code, shown on the card
     unknown: list[str] = field(default_factory=list)
+    # Q1 (S50): {"rule", "outcome": "pass"|"fail"|"unknown", "text"} for every rule run
+    checks: list[dict[str, str]] = field(default_factory=list)
 
 
 def _fmt(d: date) -> str:
@@ -200,10 +202,64 @@ TEMPLE_SOURCES = ("temple_pages", "temple_sdfa")
 PAST_CYCLE_DAYS = 31
 
 
+# G1, Q2 (S50): a Temple page that tags an award "mixed" or gives no tag sets no level, so a
+# "Graduate Student Research Grant" passed for an undergraduate. The award's own name then
+# decides, from the raw name (the bracket in "Film Award Fund (Graduate)" counts). A
+# postdoctoral fellowship (F32, F33) is not a student award; an F31 or predoctoral
+# fellowship filed under faculty is a graduate one. Training grants stay with faculty.
+POSTDOC_NAME = re.compile(r"\bpost-?doctoral\b|\bpostdocs?\b|\bF3[23]\b", re.I)
+PREDOC_NAME = re.compile(r"\bF31\b|\bpre-?doctoral fellowship", re.I)
+INSTITUTIONAL = re.compile(r"\binstitutional\b|\btraining (?:grants?|awards?)\b", re.I)
+UG_NAME = re.compile(r"\bundergraduates?\b", re.I)
+GRAD_NAME = re.compile(r"\bgraduate\b|\bdoctoral\b|\bdissertation\b|\bmaster'?s\b|\bph\.?d\b",
+                       re.I)
+
+
+def name_level(name: str) -> str | None:
+    """"postdoc", "graduate", "undergraduate" or None, from words in an award's name."""
+    if POSTDOC_NAME.search(name):
+        return "postdoc"
+    if PREDOC_NAME.search(name) and not INSTITUTIONAL.search(name):
+        return "graduate"
+    ug, grad = UG_NAME.search(name), GRAD_NAME.search(name)
+    if ug and grad:
+        return None  # "Undergraduate and Graduate ...": open to both, so no rule
+    return "undergraduate" if ug else "graduate" if grad else None
+
+
+def audience_of(s: Scholarship) -> str | None:
+    """The audience a Temple-page award is judged for: the page tag, or the award's name
+    when the tag is "mixed" or absent (G1), or names a postdoc or F31 fellowship (Q2).
+    A record that states its own levels, and every other source, keep the tag as it is."""
+    tag = s.audience_level
+    if s.source not in TEMPLE_SOURCES or s.level_of_study:
+        return tag
+    by_name = name_level(s.name)
+    if by_name == "postdoc":
+        return "postdoc"
+    if tag == "faculty" and by_name == "graduate" and PREDOC_NAME.search(s.name):
+        return "graduate"
+    if tag in (None, "mixed") and by_name:
+        return by_name
+    return tag
+
+
+def level_from_name(s: Scholarship) -> bool:
+    return not s.level_of_study and audience_of(s) != s.audience_level
+
+
 def study_levels(s: Scholarship) -> list[str]:
     if s.level_of_study:
         return list(s.level_of_study)
-    return AUDIENCE_LEVELS.get(s.audience_level or "", [])
+    return AUDIENCE_LEVELS.get(audience_of(s) or "", [])
+
+
+def level_said(s: Scholarship, levels: list[str]) -> str:
+    """The level as the record words it: its levels, the page tag, or the name's word."""
+    if s.level_of_study:
+        return f"{_levels(levels)} students"
+    word = audience_of(s) or ""
+    return f"{word} students, by the award's name" if level_from_name(s) else f"{word} students"
 
 
 def past_cycle(s: Scholarship, as_of: date) -> bool:
@@ -215,85 +271,192 @@ def past_cycle_line(d: date) -> str:
     return f"The page shows a past date, {_fmt(d)}. Check the page for this year's date."
 
 
+# Q1, G6 (S50): each rule the check ran, or could not run, as one code-written line with its
+# outcome, so a "may be eligible" card says what was checked. The rule keys, in card order.
+CHECK_RULES = ("level", "class_year", "school", "citizenship", "residency", "deadline",
+               "graduation", "major", "gpa", "enrolment", "targeted", "staff_only")
+CHECK_LABELS = {"level": "level", "class_year": "year", "school": "school",
+                "citizenship": "citizenship", "residency": "residency", "deadline": "deadline",
+                "graduation": "graduation date", "major": "major", "gpa": "GPA",
+                "enrolment": "enrollment", "targeted": "who it is for",
+                "staff_only": "not a staff award"}
+LISTING_TAIL = "The award's own page sets the full rules. Read it before applying."
+QUOTE_CHARS = 300
+
+
+def first_sentence(text: str, n: int = QUOTE_CHARS) -> str:
+    """The first sentence of a page's own text, cut at a word past `n` characters."""
+    s = re.split(r"(?<=[.!?])\s+", " ".join(text.split()), maxsplit=1)[0]
+    return s if len(s) <= n else s[:n].rsplit(" ", 1)[0] + " …"
+
+
 def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
     """Eligibility by rule for one record. Every value in a line is copied from the
-    record or the parsed CV."""
+    record or the parsed CV. `Verdict.checks` holds every rule's outcome (Q1)."""
     e = s.eligibility
     broken: list[tuple[str, str]] = []
     unknown: list[tuple[str, str]] = []
+    checks: list[dict[str, str]] = []
+
+    def note(rule: str, outcome: str, text: str) -> None:
+        checks.append({"rule": rule, "outcome": outcome, "text": text})
+
     if s.deadline and s.deadline < as_of:
         if past_cycle(s, as_of):
             unknown.append(("past_cycle_date", past_cycle_line(s.deadline)))
+            note("deadline", "unknown", f"Deadline: {past_cycle_line(s.deadline)}")
         else:
             broken.append(("deadline", f"The deadline, {_fmt(s.deadline)}, has passed."))
+            note("deadline", "fail", f"Deadline: {_fmt(s.deadline)}, which has passed.")
+    elif s.deadline:
+        note("deadline", "pass", f"Deadline: {_fmt(s.deadline)}, not yet passed.")
+    elif s.deadline_quote:
+        note("deadline", "unknown",
+             f"Deadline: no date in the listing; the page says “{s.deadline_quote}”.")
+    else:
+        note("deadline", "unknown", "Deadline: the listing gives no date.")
     levels = study_levels(s)
     if levels:
+        said = level_said(s, levels)
         if not f.level:
             unknown.append(("level_unstated", "Your CV does not say your level of study."))
+            note("level", "unknown", f"Level: open to {said}; your CV does not say yours.")
         elif f.level not in levels:
-            said = _levels(levels) if s.level_of_study else s.audience_level  # the record's word
-            broken.append(("level", f"Open to {said} students; your CV says {f.level}."))
+            broken.append(("level", f"Open to {said}; your CV says {f.level}."))
+            note("level", "fail", f"Level: open to {said}; your CV says {f.level}.")
+        else:
+            note("level", "pass", f"Level: open to {said}; your CV says {f.level}.")
+    else:
+        note("level", "unknown", "Level: the listing does not state one.")
     if e.class_year and f.level == "bachelor's":
         years = _years(e.class_year)
         if f.class_year is None:
             unknown.append(("class_year_unstated",
                             f"Open to undergraduate {years}; your CV does not say "
                             "your year."))
+            note("class_year", "unknown",
+                 f"Year: open to undergraduate {years}; your CV does not say your year.")
         elif f.class_year not in e.class_year:
             broken.append(("class_year", f"Open to undergraduate {years}; your CV says "
                                          f"year {f.class_year}."))
+            note("class_year", "fail",
+                 f"Year: open to undergraduate {years}; your CV says year {f.class_year}.")
+        else:
+            note("class_year", "pass",
+                 f"Year: open to undergraduate {years}; your CV says year {f.class_year}.")
     if e.graduation_by or e.graduation_after:
         if not f.graduation:
             unknown.append(("graduation_unstated",
                             "The record limits graduation dates; your CV gives none."))
+            note("graduation", "unknown",
+                 "Graduation date: the record limits it; your CV gives none.")
         elif e.graduation_by and f.graduation > e.graduation_by:
             broken.append(("graduation", f"You must graduate by {_fmt(e.graduation_by)}; your "
                                          f"CV says {f.graduation.strftime('%B %Y')}."))
+            note("graduation", "fail", f"Graduation date: {broken[-1][1]}")
         elif e.graduation_after and f.graduation < e.graduation_after:
             broken.append(("graduation", f"You must graduate on or after "
                                          f"{_fmt(e.graduation_after)}; your CV says "
                                          f"{f.graduation.strftime('%B %Y')}."))
+            note("graduation", "fail", f"Graduation date: {broken[-1][1]}")
+        else:
+            note("graduation", "pass", "Graduation date: your CV's date is within the record's "
+                                       f"limits ({f.graduation.strftime('%B %Y')}).")
     if e.major:
+        majors = ", ".join(e.major)
         if not f.major:
-            unknown.append(("major_unstated", f"Open to {', '.join(e.major)} majors; your CV "
+            unknown.append(("major_unstated", f"Open to {majors} majors; your CV "
                                               "does not name a major."))
+            note("major", "unknown", f"Major: open to {majors} majors; your CV names none.")
         elif not _major_ok(f.major, e.major):
-            broken.append(("major", f"Open to {', '.join(e.major)} majors; your CV says "
-                                    f"{f.major}."))
+            broken.append(("major", f"Open to {majors} majors; your CV says {f.major}."))
+            note("major", "fail", f"Major: open to {majors} majors; your CV says {f.major}.")
+        else:
+            note("major", "pass", f"Major: open to {majors} majors; your CV says {f.major}.")
     if e.gpa_min is not None:
+        ask = f"asks for at least {e.gpa_min:.2f}"
         if f.gpa is None:
             unknown.append(("gpa_unstated", f"Asks for a GPA of at least {e.gpa_min:.2f}; your "
                                             "CV does not state one."))
+            note("gpa", "unknown", f"GPA: {ask}; your CV does not state one.")
         elif f.gpa < e.gpa_min:
             broken.append(("gpa", f"Asks for a GPA of at least {e.gpa_min:.2f}; your CV says "
                                   f"{f.gpa:.2f}."))
+            note("gpa", "fail", f"GPA: {ask}; your CV says {f.gpa:.2f}.")
+        else:
+            note("gpa", "pass", f"GPA: {ask}; your CV says {f.gpa:.2f}.")
     if e.enrolment_status in ("full-time", "part-time"):
+        st = e.enrolment_status
         if not f.enrolment:
-            unknown.append(("enrolment_unstated", f"Open to {e.enrolment_status} students; "
+            unknown.append(("enrolment_unstated", f"Open to {st} students; "
                                                   "your CV does not say which you are."))
-        elif f.enrolment != e.enrolment_status:
-            broken.append(("enrolment", f"Open to {e.enrolment_status} students; your CV says "
+            note("enrolment", "unknown",
+                 f"Enrollment: open to {st} students; your CV does not say which you are.")
+        elif f.enrolment != st:
+            broken.append(("enrolment", f"Open to {st} students; your CV says "
                                         f"{f.enrolment}."))
+            note("enrolment", "fail", f"Enrollment: open to {st} students; your CV says "
+                                      f"{f.enrolment}.")
+        else:
+            note("enrolment", "pass", f"Enrollment: open to {st} students; your CV says "
+                                      f"{f.enrolment}.")
     if e.residency_state:
         unknown.append(("residency", f"For residents of {e.residency_state}. You decide if "
                                      "this applies."))
+        note("residency", "unknown",
+             f"Residency: for residents of {e.residency_state}. You decide if this applies.")
     if e.citizenship:
         unknown.append(("citizenship", f"Asks for: {e.citizenship}. You decide if this "
                                        "applies."))
+        note("citizenship", "unknown",
+             f"Citizenship: asks for {e.citizenship}. You decide if this applies.")
+    elif s.international_ok is True:
+        note("citizenship", "pass", "Citizenship: the listing says international students "
+                                    "may apply.")
+    elif s.international_ok is False:
+        note("citizenship", "unknown", "Citizenship: the listing says international students "
+                                       "may not apply. You decide if this applies.")
+    elif not e.residency_state:
+        note("citizenship", "unknown",
+             "Citizenship or residency: the listing states no rule; the award's page may.")
     if e.targeted_criterion:
         unknown.append(("targeted", f"{for_whom(e.targeted_criterion)} You decide if this "
                                     "applies."))
+        note("targeted", "unknown",
+             f"Who it is for: {for_whom(e.targeted_criterion)} You decide if this applies.")
+    if s.source in TEMPLE_SOURCES:
+        if s.scope == "school" and s.schools:
+            note("school", "unknown", f"School: open to students of {_and(s.schools)}; Perch "
+                                      "does not know your school.")
+        elif s.scope == "temple_wide":
+            note("school", "pass", "School: open across Temple.")
+    staff = audience_of(s) in NOT_STUDENTS or norm_name(s.name) in STAFF_AWARDS
+    note("staff_only", "fail" if staff else "pass",
+         "Staff only: listed for staff or faculty, not students." if staff
+         else "Staff only: not listed as a staff or faculty award.")
+    checks.sort(key=lambda c: CHECK_RULES.index(c["rule"]))
     if broken:
         broken.sort(key=lambda b: RULES.index(b[0]))
-        return Verdict("not eligible", broken[0][0], [broken[0][1]])
+        return Verdict("not eligible", broken[0][0], [broken[0][1]], checks=checks)
     if unknown:
         return Verdict("may be eligible", unknown[0][0], [u[1] for u in unknown],
-                       [u[0] for u in unknown])
+                       [u[0] for u in unknown], checks=checks)
     if s.source != "synthetic":  # a public listing names who may apply, not its full rules
-        return Verdict("may be eligible", "listing_only",
-                       ["The listing says who may apply; the award's own page sets the full "
-                        "rules. Read it before applying."], ["listing_only"])
-    return Verdict("eligible", None, ["Meets every rule Perch checks."])
+        return Verdict("may be eligible", "listing_only", listing_lines(s, checks),
+                       ["listing_only"], checks=checks)
+    return Verdict("eligible", None, ["Meets every rule Perch checks."], checks=checks)
+
+
+def listing_lines(s: Scholarship, checks: list[dict[str, str]]) -> list[str]:
+    """G6: a listing that rules nothing out says what Perch checked, quotes the listing's
+    own eligibility sentence when it has one, and sends the student to the award's page."""
+    passed = [CHECK_LABELS[c["rule"]] for c in checks
+              if c["outcome"] == "pass" and c["rule"] != "staff_only"]
+    lines = [f"Perch checked {_and(passed)}; nothing there rules you out." if passed
+             else "The listing states no rule Perch can check against your CV."]
+    if s.eligibility.notes:
+        lines.append(f"The listing says: “{first_sentence(s.eligibility.notes)}”")
+    return [*lines, LISTING_TAIL]
 
 
 def gaps(s: Scholarship, f: StudentFacts) -> list[tuple[str, str]]:
@@ -335,13 +498,21 @@ def nih_as_scholarship(o: Opportunity) -> Scholarship:
 def check_nih(o: Opportunity, f: StudentFacts, as_of: date) -> Verdict:
     level = NIH_FELLOWSHIP_LEVEL.get(o.activity_code or "")
     if level != "graduate":
-        return Verdict("not eligible", "level",
-                       [f"{o.activity_code} is a {level} fellowship, not one for students."])
+        line = f"{o.activity_code} is a {level} fellowship, not one for students."
+        return Verdict("not eligible", "level", [line],
+                       checks=[{"rule": "level", "outcome": "fail", "text": f"Level: {line}"}])
     v = check(nih_as_scholarship(o), f, as_of)
+    from perch.datefmt import closes, no_deadline
+
+    if no_deadline(o, as_of) and o.close_date:  # T17, G8: an expiry or placeholder is no deadline
+        v.checks = [c if c["rule"] != "deadline" else
+                    {"rule": "deadline", "outcome": "unknown",
+                     "text": f"Deadline: none in the notice ({closes(o, as_of)})."}
+                    for c in v.checks]
     if v.reason == "listing_only":  # NIH rules (citizenship, sponsor, institution) not read
         return Verdict("may be eligible", "nih_rules",
                        ["Open to graduate students. NIH sets further rules in the notice; "
-                        "read it before applying."], ["nih_rules"])
+                        "read it before applying."], ["nih_rules"], checks=v.checks)
     return v
 
 
@@ -433,24 +604,47 @@ def _filled(s: Scholarship) -> int:
     return len(s.model_dump(exclude_defaults=True))
 
 
+# G2 (S50): copies of one award carry names that differ only in a plural, "Program",
+# "Scholarship(s)" or a bracket ("Diamond Research Scholars" and "Diamond Research Scholars
+# Program"; "Rhodes" and "Rhodes Scholarship"). The key drops those words.
+KEY_WORDS = re.compile(r"\b(?:programs?|scholarships?|scholars?|awards?)\b")
+# Names whose keys match but which may be different awards, reviewed by hand on 2026-11-05
+# from the deploy store's Temple-page records: a Rome-campus programme scholarship and a
+# degree-level one; Temple's need-based grant and the tuition-remission page's entry.
+DISTINCT_AWARDS = frozenset({"bachelor s degree", "temple university grant"})
+
+
+def award_key(name: str) -> str:
+    k = KEY_WORDS.sub(" ", norm_name(name))
+    return " ".join(re.sub(r"s$", "", w) if len(w) > 3 else w for w in k.split())
+
+
+def _keep(group: list[Scholarship]) -> Scholarship:
+    """The copy a merged group shows: the fellowships office's when it lists the award (its
+    level and class year are the reviewed ones, G2), else the copy with the most fields, and
+    on a tie the broader audience, so a narrow page tag never rules a student out alone."""
+    office = [s for s in group if s.source == "temple_sdfa"]
+    return max(office or group, key=lambda s: (_filled(s), s.audience_level in (None, "mixed"),
+                                               s.id))
+
+
 def student_pool(records: list[Scholarship]) -> tuple[list[Scholarship], dict[str, list[str]]]:
     """The records a student brief may rank, and {kept id: other pages listing it}.
-    Leaves out staff and faculty awards (M8). An award listed both on a Temple page and by
-    the fellowships office is one award: the copy with more fields is kept and the other's
-    page is listed under it (S7). A name found on one list only is left to
-    perch/temple_dedupe.py, which keeps same-list copies apart when their fields differ."""
-    pool = [s for s in records if s.audience_level not in NOT_STUDENTS
+    Leaves out staff and faculty awards (M8). Copies of one award, on Temple pages or by the
+    fellowships office, under names that share `award_key`, are one award (S7, G2): one copy
+    is kept (`_keep`) and the others' pages are listed under it. DISTINCT_AWARDS stay apart."""
+    pool = [s for s in records if audience_of(s) not in NOT_STUDENTS
             and norm_name(s.name) not in STAFF_AWARDS]
     by_name: dict[str, list[Scholarship]] = {}
     for s in pool:
-        if s.source in TEMPLE_SOURCES:
-            by_name.setdefault(norm_name(s.name), []).append(s)
+        if s.source in TEMPLE_SOURCES and (k := award_key(s.name)) not in DISTINCT_AWARDS:
+            by_name.setdefault(k, []).append(s)
     drop: set[str] = set()
     also: dict[str, list[str]] = {}
     for group in by_name.values():
-        if len({s.source for s in group}) < 2:
+        if len(group) < 2:
             continue
-        keep = max(group, key=lambda s: (_filled(s), s.source == "temple_sdfa"))
+        keep = _keep(group)
         others = [s for s in group if s.id != keep.id]
         drop |= {s.id for s in others}
         also[keep.id] = [s.source_url for s in others]
@@ -514,7 +708,8 @@ def to_leads(brief_id: str, route: str, chosen: list[Scored], facts: StudentFact
             fetched_at=src.fetched_at, brief_id=brief_id, route=route, record_id=src.id,
             rank=i, rerank_score=round(x.score, 4), match_score=match_score(x.score),
             verdict=v.verdict,
-            verdict_reason=v.reason, verdict_lines=v.lines, gaps=[t for _, t in g],
+            verdict_reason=v.reason, verdict_lines=v.lines, checks=v.checks,
+            gaps=[t for _, t in g],
             gap_keys=[k for k, _ in g], sample=s.synthetic,
             notes=[f"Also listed on {u}" for u in x.also_on]))
     return leads

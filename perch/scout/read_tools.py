@@ -34,6 +34,7 @@ from perch.schemas import (
     Work,
     utcnow,
 )
+from perch.score import band
 from perch.store.base import Repository
 from perch.user.cv import sections
 
@@ -154,6 +155,18 @@ def facts(rec: Record, as_of: date) -> dict[str, Any]:
 
 BRIEF_ID = "user:brief"
 BRIEF_TITLE = "Your brief"  # an empty brief's placeholder is titled "Brief" (`_empty`)
+# S50 (3d): in the live capture, "Which kept lead fits my work best?" got a list of record
+# facts and no answer. kept_leads gives the kept leads' ranks and match bands (code) and
+# each one's fit sentence from its card (model text, checked when the brief was built).
+KEPT_NOTE = ("kept_leads are the user's kept leads in the brief's order. For which fits best, "
+             "name them by rank and match band citing [user:brief], then give each one's "
+             "fit_sentence as the card's reason, said to be from the card.")
+
+
+def _fit_sentence(lead: Lead) -> str | None:
+    from perch.scout.tools import fit_sentence  # lazy: tools reads heavier modules
+
+    return fit_sentence(lead)
 
 
 def brief_summary(rows: list[dict[str, Any]]) -> str:
@@ -166,8 +179,17 @@ def brief_summary(rows: list[dict[str, Any]]) -> str:
         if r.get("sponsor"):
             bits.append(f"from {r['sponsor']}")
         bits.append(f"deadline: {r['deadline']}")
+        if r.get("match"):
+            bits.append(r["match"])
         bits.append("kept" if r.get("kept") else "not kept")
         parts.append(", ".join(bits) + ".")
+    # S50 (3d): the kept leads in one sentence, ranks and bands by code, so "which kept lead
+    # fits best" has a fact to cite.
+    kept = [r for r in rows if r.get("kept") and r.get("rank") is not None]
+    if kept:
+        parts.append("Kept leads, in the brief's order: " + "; ".join(
+            f"rank {r['rank']}, {r['title']}" + (f", {r['match']}" if r.get("match") else "")
+            for r in kept) + ".")
     return " ".join(parts)
 
 
@@ -350,6 +372,7 @@ class ReadTools:
         b, leads = got
         self.brief_read = True
         rows: list[dict[str, Any]] = []
+        kept: list[dict[str, Any]] = []  # S50 3d: the kept leads, ranks and bands by code
         temple = []  # Temple internal funding: its own list, outside the ranks (S49 M9)
         for x in sorted((x for x in leads if x.status != "dismissed" and x.group
                          == "temple_internal"), key=lambda x: x.rank or 0)[:MAX_LEADS]:
@@ -366,6 +389,8 @@ class ReadTools:
                 continue
             row = facts(self._see(rec), self.data.as_of)
             row |= {"rank": x.rank, "kept": x.status == "kept"}
+            if (m := band(x.match_score)) is not None:
+                row["match"] = f"{m} match"  # the card's Match band, by code (S50 3d)
             if x.rank is not None:
                 self.ranks[rec.id] = x.rank
             if x.status == "kept":
@@ -375,12 +400,21 @@ class ReadTools:
             if x.gaps:
                 row["gaps"] = x.gaps[:4]
             rows.append(row)
+            if x.status == "kept" and not row.get("sample"):
+                k = {"rank": x.rank, "id": row["id"], "title": row["title"],
+                     **({"match": row["match"]} if "match" in row else {})}
+                if fit := _fit_sentence(x):
+                    k["fit_sentence"] = fit
+                kept.append(k)
         # SYNTHETIC samples are kept apart from public leads (standing rule 11).
         public = [r for r in rows if not r.get("sample")]
         self.public_leads = len(public)
         sample = [r for r in rows if r.get("sample")]
         out: dict[str, Any] = {"leads": public,
                                "note": "Leads are in the brief's own order, the strongest first."}
+        if kept:
+            out["kept_leads"] = kept
+            out["kept_note"] = KEPT_NOTE
         if temple:
             out["temple_internal"] = temple
             out["temple_internal_note"] = ("temple_internal lists Temple's own faculty funding, "

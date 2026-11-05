@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from datetime import date
 
-from perch.datefmt import day, expires_only, placeholder_close
+from perch.datefmt import day, expires_only, placeholder_close, placeholder_text
 from perch.offices import OFFICES, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation
 from perch.score import match_text
@@ -89,8 +89,8 @@ def closes(o: Opportunity, as_of: date) -> Cell:
         note = f"listed as {o.status}" if o.status else None
         return Cell(NONE, None, o.id, note)
     if placeholder_close(o, as_of):  # the card's rule: the record's words, no day count (U3)
-        return Cell(o.close_date_note or "", o.close_date.isoformat(), o.id,
-                    "as the record states it")
+        return Cell(placeholder_text(o), o.close_date.isoformat(), o.id,  # G8: no bare date
+                    "as the record states it" if o.close_date_note else None)
     if expires_only(o):  # F3, T17: a parent announcement's date is its expiry
         return Cell(f"Expires {day(o.close_date)}", o.close_date.isoformat(), o.id,
                     "when the announcement expires; not a deadline")

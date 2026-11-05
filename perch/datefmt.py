@@ -64,12 +64,26 @@ STANDARD_DATES = re.compile(r"\bstandard (?:due |receipt )?dates apply\b", re.I)
 PARENT = re.compile(r"\(Parent\b")
 
 
+# G8 (S50): a close date more than ten years out is a placeholder whether or not the record
+# has words for it (twelve posted records carry 1 Jan 2099 with no note). With no words, this
+# line stands in its place; the date itself is never shown as a deadline.
+FAR_TEXT = "No close date in practice; see the record"
+
+
+def far_close(o: Opportunity, as_of: date | None = None) -> bool:
+    return bool(o.close_date and (o.close_date - (as_of or date.today())).days > FAR_DAYS)
+
+
 def placeholder_close(o: Opportunity, as_of: date | None = None) -> bool:
-    """The close date is a far-off placeholder and the record says so in words, or the
-    record says standard dates apply (T17)."""
-    return bool(o.close_date and o.close_date_note
-                and ((o.close_date - (as_of or date.today())).days > FAR_DAYS
-                     or STANDARD_DATES.search(o.close_date_note)))
+    """The close date is a far-off placeholder (G8: with or without the record's words), or
+    the record says standard dates apply (T17)."""
+    return bool(o.close_date and (far_close(o, as_of) or (
+        o.close_date_note and STANDARD_DATES.search(o.close_date_note))))
+
+
+def placeholder_text(o: Opportunity) -> str:
+    """What stands in place of a placeholder date: the record's words, or FAR_TEXT."""
+    return o.close_date_note or FAR_TEXT
 
 
 def expires_only(o: Opportunity) -> bool:
@@ -89,7 +103,7 @@ def closes(o: Opportunity, as_of: date | None = None) -> str | None:
     if not o.close_date:
         return None
     if placeholder_close(o, as_of):
-        return o.close_date_note
+        return placeholder_text(o)
     return f"Expires {day(o.close_date)}" if expires_only(o) else day(o.close_date)
 
 
@@ -102,7 +116,7 @@ def deadline(o: Opportunity, as_of: date | None = None) -> str:
         # anytime"; show them as they are.
         return o.close_date_note or "close date not in the record"
     if placeholder_close(o, as_of):
-        return o.close_date_note or ""
+        return placeholder_text(o)
     if expires_only(o):
         return f"no deadline in the record; the announcement expires {day(o.close_date)}"
     return f"closes {day(o.close_date)}"

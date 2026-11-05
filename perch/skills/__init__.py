@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import re
 
+from perch.datefmt import placeholder_close, placeholder_text
 from perch.llm.contacts import blank_contacts
 from perch.schemas import Opportunity, Work
 
@@ -61,7 +62,9 @@ def opportunity_view(o: Opportunity, description_chars: int = 1500) -> str:
         lines.append(f"  Activity code: {o.activity_code}")
     if o.open_date:
         lines.append(f"  Opens: {o.open_date.isoformat()}")
-    if o.close_date:
+    if o.close_date and placeholder_close(o):  # G8: never a placeholder date
+        lines.append(f"  Closes: {placeholder_text(o)}")
+    elif o.close_date:
         note = f" ({o.close_date_note})" if o.close_date_note else ""
         lines.append(f"  Closes: {o.close_date.isoformat()}{note}")
     if o.award_ceiling is not None:

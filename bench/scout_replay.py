@@ -86,11 +86,15 @@ def cited(text: str) -> list[str]:
                               if x.strip()))
 
 
-def searches(tools: ReadTools, ids: list[str]) -> None:
-    """Runs before S49 Q0's tool log kept no search query, so a search:N id is rebuilt as a
-    record that lists every public record the turn read. Its count is unknown, so a count
-    cited to it fails Layer 1 here: the replay understates search sentences that pass."""
-    recs = [r for r in tools.seen.values() if not r.id.startswith("user:")]
+def searches(tools: ReadTools, ids: list[str], logged: dict[str, str] | None = None) -> None:
+    """A run from S50 on logs each search:N record's own text (G9), and it is rebuilt as it
+    was. Earlier runs kept no search text, so a search:N id is rebuilt as a record that lists
+    every public record the turn read. Its count is unknown, so a count cited to it fails
+    Layer 1 there: the replay understates search sentences that pass."""
+    for sid, text in (logged or {}).items():
+        if sid not in tools.seen:
+            tools._see(user_doc(sid, f"Search {sid[7:]}", text))
+    recs = [r for r in tools.seen.values() if not r.id.startswith(("user:", "search:"))]
     titles = "; ".join(str(ans.facts(r, tools.data.as_of).get("title")) for r in recs)
     for i in ids:
         if i.startswith("search:") and i not in tools.seen:
@@ -187,7 +191,7 @@ def replay(run_dir: Path, records: list[Record], as_of: date | None = None,
         tools.read_brief()
         ids = [i for d in drafts for i in (d.get("read") or cited(d["draft"]))]
         rebuild(tools, list(dict.fromkeys(ids)))
-        searches(tools, ids)
+        searches(tools, ids, {k: v for d in drafts for k, v in (d.get("searches") or {}).items()})
         res = {"set": q["set"], "audience": q["audience"], "attempts": []}
         for d in sorted(drafts, key=lambda d: d["attempt"]):
             rec = Recorder(grounder)

@@ -29,7 +29,7 @@ import redis
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 
-from perch import redisx
+from perch import datefmt, redisx
 from perch.schemas import Opportunity, Record, Scholarship
 from perch.scholarships import read_samples
 from perch.store.base import Repository
@@ -56,6 +56,15 @@ def item(r: Record) -> dict:
                schools=c.schools, levels=c.audience_level,
                deadline=c.deadline.isoformat() if c.deadline else None,
                amount_max=c.amount_max, sample=r.source == "synthetic")
+    if isinstance(r, Opportunity):
+        # G8 (S50): a placeholder close date (NSF's 2076, a bare 2099) is never a date on the
+        # list. close_date and deadline go null, so the list shows the record's words; the
+        # raw value stays under its own key for the evidence panel. close_text is the deadline
+        # as the cards write it, for every opportunity.
+        out["close_text"] = datefmt.closes(r) or r.close_date_note
+        if datefmt.placeholder_close(r):
+            out.update(close_date=None, deadline=None,
+                       placeholder_close_date=r.close_date.isoformat())
     return out
 
 

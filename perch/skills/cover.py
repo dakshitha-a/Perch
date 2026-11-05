@@ -87,7 +87,9 @@ INSTRUCTIONS = (
     "\"Early-career research.\"), from the target record only, and asks_ids holds the target "
     "record's id alone; you is one full sentence addressed to the applicant as \"you\" (\"You "
     "led ...\") on what their records show that answers it, from the applicant records named "
-    f"in you_ids only, which must name at least one. missing lists up to {MAX_MISSING} things "
+    "in you_ids only, which must name at least one. Never give the applicant a role (led, "
+    "contributed, wrote, designed) that the records in you_ids do not state; for a paper, say "
+    f"what it reports (\"Your paper reports ...\"). missing lists up to {MAX_MISSING} things "
     "the target record asks for or rewards that no applicant record shows. Each item is one "
     "full sentence in this form: \"The record asks for a mentoring plan; nothing you added "
     "shows one.\" It names what the record wants and says that the applicant's records do "
@@ -227,6 +229,39 @@ def strip_ids(text: str) -> str:
     return " ".join(BRACKETED.sub("", text).split())
 
 
+# S50 (3c): the live points said "You contributed to ... RTx-303" citing a paper that names
+# no role. A role word in a you sentence must stand in a record it cites (the CV says "Led
+# ..."); otherwise the point says what the record reports. Decided by words, never a model.
+ROLE_RE = re.compile(r"\b(led|contribut\w*|co-?authored|authored|wrote|designed|directed|"
+                     r"supervis\w*|managed|founded|organi[sz]ed|mentored|chaired)\b", re.I)
+
+
+def role_claims(where: str, text: str, cited: list[Record]) -> list[str]:
+    body = " ".join(full_view(r) for r in cited).lower()
+    errs = []
+    for m in ROLE_RE.finditer(text):
+        word = m.group(1).lower()
+        stem = word[:7] if word.startswith(("contribut", "supervis")) else word
+        if not re.search(rf"\b{re.escape(stem)}", body):
+            errs.append(f"{where} says {m.group(0)!r}, a role the records it cites do not "
+                        "state: say what the record reports (\"Your paper reports ...\")")
+    return errs
+
+
+# A you sentence names the applicant; a paper it cites names its authors ("We found"), so
+# MiniCheck flagged "You identified X" against "We identified X". When a point cites papers
+# only, layer 2 scores it with the paper as the subject, as the fit skill does ("The paper
+# ..."). A CV or document line is the applicant's own, so it is scored as written.
+YOU_SUBJECT = re.compile(r"^(?:you|your work|your research)\b", re.I)
+
+
+def as_record_claim(text: str, cited: list[Record]) -> str:
+    if not cited or not all(isinstance(r, Work) and r.source != "user" for r in cited):
+        return text
+    claim = YOU_SUBJECT.sub("The paper", text.strip(), count=1)
+    return re.sub(r"\byou\b", "it", re.sub(r"\byour\b", "its", claim))
+
+
 def missing_form(where: str, text: str) -> list[str]:
     """The deterministic check of a missing item: it is about the applicant's records
     ("nothing you added shows one"), not a gap in the record ("The record does not specify
@@ -331,6 +366,8 @@ def cover_points(o: Opportunity, cv: Work | None, docs: list[Work], papers: list
             errors += sentence_checks(f"point {i} asks", pt.asks, [target], BANNED_ASKS)
             errors += sentence_checks(f"point {i} you", pt.you,
                                       [x for x in pt.you_ids if x in applicant])
+            errors += role_claims(f"point {i} you", pt.you,
+                                  [records[x] for x in pt.you_ids if x in applicant])
         for j, m in enumerate(p.missing, 1):
             errors += sentence_checks(f"missing {j}", m, [target], BANNED_ASKS)
             errors += missing_form(f"missing {j}", m)
@@ -353,8 +390,9 @@ def ground(p: Points, o: Opportunity, records: dict[str, Record], grounder: Grou
         p.support[f"point {i} asks"] = round(s, 3)
         if s <= THRESHOLD:
             p.unsupported.append(pt.asks)
-        doc = "\n\n".join(full_view(records[x]) for x in pt.you_ids if x in records)
-        s = grounder.support(doc, [pt.you])[0] if doc else 0.0
+        cited = [records[x] for x in pt.you_ids if x in records]
+        doc = "\n\n".join(full_view(r) for r in cited)
+        s = grounder.support(doc, [as_record_claim(pt.you, cited)])[0] if doc else 0.0
         p.support[f"point {i} you"] = round(s, 3)
         if s <= THRESHOLD:
             p.unsupported.append(pt.you)

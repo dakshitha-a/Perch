@@ -3,6 +3,7 @@
 from datetime import UTC, date, datetime
 
 from perch.compare import NONE, closes, money
+from perch.datefmt import FAR_TEXT
 from perch.schemas import Opportunity
 
 T = datetime(2026, 10, 29, tzinfo=UTC)
@@ -52,7 +53,7 @@ def test_a_placeholder_close_date_reads_as_the_record_says():
     assert c.sort == "2076-10-07"
     near = opp(close_date=date(2027, 1, 7), close_date_note="Proposals accepted anytime")
     assert closes(near, date(2026, 10, 29)).text == "2027-01-07"
-    assert closes(opp(close_date=date(2076, 10, 7)), date(2026, 10, 29)).text == "2076-10-07"
+    assert closes(opp(close_date=date(2076, 10, 7)), date(2026, 10, 29)).text == FAR_TEXT  # S50 G8
 
 
 def test_research_compare_offers_only_research_offices():
