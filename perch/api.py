@@ -505,6 +505,66 @@ def up(url: str) -> bool:
         return False
 
 
+PUBLIC_KINDS = frozenset({"researcher", "work", "award", "opportunity", "organisation",
+                          "scholarship"})
+
+
+class PublicReads:
+    """A short-lived, per-process copy of public record reads for the brief poll (S49 B9).
+
+    A poll every 1.5 seconds re-read every Award, the overrides file, each lead's record and
+    each Route B signal's records. Only public kinds are kept, by kind and id, for `ttl_s`;
+    a brief, a lead or anything from the user's store passes straight through, so no user
+    data is ever held here."""
+
+    def __init__(self, ttl_s: float = 120.0, max_items: int = 20_000) -> None:
+        self.ttl_s, self.max_items = ttl_s, max_items
+        self._d: dict[tuple, tuple[float, object]] = {}
+        self._lock = threading.Lock()
+
+    def _get(self, key: tuple, load: Callable[[], object]) -> object:
+        now = time.monotonic()
+        with self._lock:
+            hit = self._d.get(key)
+            if hit is not None and hit[0] > now:
+                return hit[1]
+        value = load()
+        with self._lock:
+            if len(self._d) >= self.max_items:
+                self._d.clear()
+            self._d[key] = (now + self.ttl_s, value)
+        return value
+
+    def wrap(self, repo: Repository) -> _CachedRepo:
+        return _CachedRepo(repo, self)
+
+
+class _CachedRepo:
+    """The read methods `brief_view` and `lead_json` use, over one repository."""
+
+    def __init__(self, base: Repository, cache: PublicReads) -> None:
+        self.base, self.cache = base, cache
+
+    def get(self, cls: type, id: str) -> object:
+        if cls.kind not in PUBLIC_KINDS:
+            return self.base.get(cls, id)
+        return self.cache._get(("get", cls.kind, id), lambda: self.base.get(cls, id))
+
+    def get_any(self, id: str) -> object:
+        got = self.cache._get(("any", id), lambda: self.base.get_any(id))
+        if got is not None and getattr(got, "kind", None) not in PUBLIC_KINDS:
+            with self.cache._lock:  # a brief or a lead: never kept
+                self.cache._d.pop(("any", id), None)
+            return self.base.get_any(id)
+        return got
+
+    def list(self, cls: type, **kw: object) -> list:
+        if cls.kind not in PUBLIC_KINDS:
+            return self.base.list(cls, **kw)
+        return self.cache._get(("list", cls.kind, tuple(sorted(kw.items()))),
+                               lambda: self.base.list(cls, **kw))
+
+
 def create_app(service: BriefService, runner: ClosureRunner,
                resolver: type[oa.OpenAlexClient] | None = None,
                web_dir: Path | None = WEB_DIR, scout_runner: ClosureRunner | None = None,
@@ -516,6 +576,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
             raise HTTPException(404, "Briefs are not available on this server.")
 
     STORED = [Depends(stored_only)]
+    public_reads = PublicReads()
     app = FastAPI(title="Perch API", description="See every route to fund your work. "
                   + grants_gov.ATTRIBUTION, version="0.1.0")
     @app.exception_handler(RequestValidationError)
@@ -710,6 +771,12 @@ def create_app(service: BriefService, runner: ClosureRunner,
         while nothing changed (review P3)."""
         with scope(request, sess, brief_id):
             out = brief_view(brief_id)
+            if sess is not None:  # S49 B1: a job that ended without the brief stops the page
+                from perch.user.briefs import brief_job, job_overlay
+
+                sv = request.app.state.user_services
+                out["job"] = brief_job(sv.runner, sv.ud, sv.redis, sess, brief_id)
+                job_overlay(out["brief"], out["job"])
             svc_u = accounts(request)
             if sess is not None and sess.user_id is not None and svc_u is not None:
                 from perch.scout import web as sweb
@@ -727,11 +794,14 @@ def create_app(service: BriefService, runner: ClosureRunner,
 
     def brief_view(brief_id: str, svc: BriefService = service) -> dict:
         b, leads = load(brief_id, svc)
-        with svc.repo() as r:
+        with svc.repo() as base:
+            r = public_reads.wrap(base)  # public records only, for a short while (S49 B9)
             res = r.get(Researcher, b.researcher_id)
             out = [lead_json(x, r) for x in leads]
-            ov = aw.load_overrides(res.id, svc.overrides) if res else None
-            linked = aw.link_stored(res, r.list(Award), ov) if res and ov else []
+            ov = (public_reads._get(("ov", res.id), lambda: aw.load_overrides(
+                res.id, svc.overrides)) if res else None)
+            linked = (public_reads._get(("linked", res.id), lambda: aw.link_stored(
+                res, r.list(Award), ov)) if res and ov else [])
             pids = {i for t in b.threads for i in t.get("work_ids", [])[:KEY_PAPERS]}
             pids |= {f"https://openalex.org/{c}" for x in leads for c in x.cited_ids
                      if c.startswith("W")}
@@ -796,6 +866,20 @@ def create_app(service: BriefService, runner: ClosureRunner,
     def restore(brief_id: str, lead_id: str, request: Request,
                 sess: object | None = Depends(account_session_csrf)) -> dict:
         return set_status(brief_id, lead_id, "new", request, sess)
+
+    @app.post("/briefs/{brief_id}/cancel", dependencies=STORED)
+    def cancel_brief(brief_id: str, request: Request,
+                     sess: object | None = Depends(account_session_csrf)) -> dict:
+        """Stop the job that builds this brief (S49 B1). The next poll shows it as cancelled."""
+        if sess is None:
+            raise HTTPException(404, {"error": "not_found"})
+        from perch.user.briefs import cancel_brief as cancel
+
+        sv = request.app.state.user_services
+        got = cancel(sv.runner, sv.ud, sv.redis, sess, brief_id)
+        if got is None:
+            raise HTTPException(404, {"error": "not_found"})
+        return {"id": brief_id, "cancelled": got}
 
     @app.get("/briefs/{brief_id}/export.json", dependencies=STORED)
     def export(brief_id: str, request: Request, status: str | None = None,

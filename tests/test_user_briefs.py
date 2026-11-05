@@ -163,12 +163,12 @@ def test_guest_brief_lives_in_redis_for_an_hour_and_has_no_user_row(pg_clean, tm
         assert svc.run(b.id) == "done"
     ttl = r.ttl(f"perch:gres:{job}")
     assert 0 < ttl <= 3600
-    got = read_guest_result(r, job)
+    got = read_guest_result(r, job, gsid)
     assert got.brief.status == "done" and got.leads
     assert rows(pg_clean, "SELECT count(*) FROM user_data") == [(0,)]
     assert rows(pg_clean, "SELECT count(*) FROM users") == [(0,)]
     r.delete(f"perch:gres:{job}")  # the hour is up
-    assert read_guest_result(r, job) is None
+    assert read_guest_result(r, job, gsid) is None
     r.flushdb()
     r.close()
 
@@ -266,5 +266,305 @@ def test_submit_and_load_for_a_user_and_for_a_guest(pg_clean, ud, tmp_path, web_
     assert guest_hash("g-1") in "".join(r.keys("perch:gsess:*"))
     with pytest.raises(PermissionError):
         submit_brief(svc, web, ud, r, guest_s, "A5026494099", doc_ids=[uuid.uuid4()])
+    r.flushdb()
+    r.close()
+
+
+@needs_pg
+@needs_redis
+def test_two_identical_clicks_return_the_brief_that_runs(pg_clean, ud, tmp_path, web_pool, keys,
+                                                         monkeypatch):
+    """S49 B4: two requests that both passed the idempotency check made two briefs, and the
+    second caller got the second brief with the first job, which never runs it."""
+    import time
+
+    import redis as redis_lib
+
+    from perch.auth.session import Session
+    from perch.jobs import PostgresRunner, Timing
+    from perch.user import briefs as ub
+
+    r = redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    r.flushdb()
+    uid = new_user(pg_clean)
+    _, svc = make(tmp_path)
+    web = PostgresRunner(pool=web_pool, timing=Timing())
+
+    def sess(user, sid):
+        return Session(sid=sid, user_id=user, guest=user is None, roles=frozenset(),
+                       audience="researcher", csrf="c", display_name=None, created=time.time(),
+                       abs_exp=time.time() + 3600)
+
+    for s in (sess(uid, "u-2"), sess(None, "g-2")):
+        first = ub.submit_brief(svc, web, ud, r, s, "A5026494099", as_of=AS_OF)
+        real, calls = ub._existing, []
+
+        def late(*a, _real=real, _calls=calls):  # the twin's check ran before the first insert
+            _calls.append(1)
+            return None if len(_calls) == 1 else _real(*a)
+
+        monkeypatch.setattr(ub, "_existing", late)
+        second = ub.submit_brief(svc, web, ud, r, s, "A5026494099", as_of=AS_OF)
+        monkeypatch.setattr(ub, "_existing", real)
+        assert second == first
+    assert rows(pg_clean, "SELECT count(*) FROM user_data WHERE kind = 'brief'") == [(1,)]
+    assert len(r.keys("perch:gsess:*:brief:*")) == 1
+    r.flushdb()
+    r.close()
+
+
+def _session(user, sid):
+    import time
+
+    from perch.auth.session import Session
+
+    return Session(sid=sid, user_id=user, guest=user is None, roles=frozenset(),
+                   audience="researcher", csrf="c", display_name=None, created=time.time(),
+                   abs_exp=time.time() + 3600)
+
+
+@needs_pg
+@needs_redis
+def test_a_keep_while_the_brief_runs_neither_fails_it_nor_is_lost(pg_clean, ud, tmp_path):
+    """S49 B2: a Keep changed the row's updated_at, the worker's next write raised Conflict,
+    the brief failed, and a rerun rebuilt the leads as `new`."""
+    import redis as redis_lib
+
+    from perch.user.briefs import set_lead_status
+
+    r = redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    uid = new_user(pg_clean)
+    s = _session(uid, "u-b2")
+    _, svc = make(tmp_path)
+    b = create_user_brief(svc, ud, uid, "researcher", "A5026494099", as_of=AS_OF)
+    store = UserBriefStore(ud, uid, "researcher", b.id)
+    assert store.load()
+    real = svc._run_explanations
+    kept = {}
+
+    def keep_then_explain(brief):  # the user keeps the top grant while the brief runs
+        kept["lead"] = set_lead_status(ud, r, s, b.id, brief.lead_ids[0], "kept").id
+        return real(brief)
+
+    svc._run_explanations = keep_then_explain
+    with using_store(store):
+        assert svc.run(b.id) == "done"
+    got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
+    assert got.brief.status == "done"
+    assert {x.id: x.status for x in got.leads}[kept["lead"]] == "kept"
+    # a retry of the job rebuilds the same leads: the keep stays
+    svc._run_explanations = real
+    again = UserBriefStore(ud, uid, "researcher", b.id)
+    assert again.load()
+    with using_store(again):
+        assert svc.run(b.id) == "done"
+    got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
+    assert {x.id: x.status for x in got.leads}[kept["lead"]] == "kept"
+    r.close()
+
+
+@needs_redis
+def test_a_guest_keep_while_the_brief_runs_is_not_lost(tmp_path):
+    """S49 B2, guest side: the worker wrote the whole brief from memory and dropped the keep."""
+    import redis as redis_lib
+
+    from perch.user.briefs import guest_hash, set_lead_status
+
+    r = redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    r.flushdb()
+    _, svc = make(tmp_path)
+    s = _session(None, "g-b2")
+    gh = guest_hash(s.sid)
+    b = create_guest_brief(svc, r, gh, "A5026494099", as_of=AS_OF)
+    job = uuid.uuid4()
+    r.set(f"perch:gsess:{gh}:job:{b.id}", str(job))
+    store = GuestBriefStore(r, gh, b.id, job)
+    assert store.load()
+    real = svc._run_explanations
+    kept = {}
+
+    def keep_then_explain(brief):
+        kept["lead"] = set_lead_status(None, r, s, b.id, brief.lead_ids[0], "kept").id
+        return real(brief)
+
+    svc._run_explanations = keep_then_explain
+    with using_store(store):
+        assert svc.run(b.id) == "done"
+    got = read_guest_result(r, job, gh)
+    assert got.brief.status == "done"
+    assert {x.id: x.status for x in got.leads}[kept["lead"]] == "kept"
+    r.flushdb()
+    r.close()
+
+
+@needs_redis
+def test_a_guest_store_stops_writing_once_its_job_is_lost(tmp_path):
+    """S49 B6: the guest store's `cancelled` was always False and its writes were not fenced,
+    so a timed-out guest brief ran on and overwrote the next attempt's result."""
+    from contextlib import contextmanager
+
+    import redis as redis_lib
+
+    from perch.jobs import LeaseLost
+
+    class LostCtx:
+        def cancelled(self):
+            return True
+
+        @contextmanager
+        def guest_tx(self):
+            raise LeaseLost
+            yield
+
+    r = redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    r.flushdb()
+    _, svc = make(tmp_path)
+    gsid = "cd" * 32
+    b = create_guest_brief(svc, r, gsid, "A5026494099", as_of=AS_OF)
+    job = uuid.uuid4()
+    store = GuestBriefStore(r, gsid, b.id, job, ctx=LostCtx())
+    assert store.load() and store.cancelled() is True
+    with pytest.raises(LeaseLost):
+        store.flush()
+    assert r.get(f"perch:gres:{job}") is None
+    r.flushdb()
+    r.close()
+
+
+def _run_brief_worker(pg_clean, svc, until, timeout=60):
+    import threading
+    import time
+
+    from perch import jobs
+    from perch.jobs import PostgresRunner, Timing
+
+    fast = Timing(lease_s=60, heartbeat_s=0.2, reaper_s=0.3, poll_s=0.05, drain_s=10)
+    jobs.set_brief_service(lambda: svc)
+    w = PostgresRunner(pg_clean.worker, timing=fast, pool_size=4)
+    stop = threading.Event()
+    t = threading.Thread(target=w.run_forever, args=("w-b8", ["brief"], 1, stop))
+    t.start()
+    try:
+        end = time.monotonic() + timeout
+        while time.monotonic() < end and not until():
+            time.sleep(0.1)
+    finally:
+        stop.set()
+        t.join()
+        jobs._brief_service = None
+        w.close()
+
+
+def _job_state(pg_clean, jid):
+    return rows(pg_clean, "SELECT state FROM jobs WHERE id = %s", jid)[0][0]
+
+
+@needs_pg
+def test_a_server_that_did_not_answer_is_retried(pg_clean, ud, tmp_path, web_pool, keys,
+                                                 monkeypatch):
+    """S49 B8: a network error failed the brief at once; max_attempts applied only to a lost
+    lease. Now the job is retried and the brief waits as queued in between."""
+    import httpx
+
+    from perch import jobs
+    from perch.jobs import PostgresRunner, Timing
+
+    monkeypatch.setattr(jobs, "backoff_s", lambda n: 0.0)
+    uid = new_user(pg_clean)
+    _, svc = make(tmp_path)
+    b = create_user_brief(svc, ud, uid, "researcher", "A5026494099", as_of=AS_OF)
+    jid = PostgresRunner(pool=web_pool, timing=Timing()).submit(
+        "brief", {"brief_id": b.id}, uid, f"k-{b.id}", audience="researcher")
+    real, seen = svc._run_works, []
+
+    def flaky(brief):
+        seen.append(1)
+        if len(seen) == 1:
+            raise httpx.ConnectError("no route")
+        return real(brief)
+
+    svc._run_works = flaky
+    _run_brief_worker(pg_clean, svc,
+                      lambda: _job_state(pg_clean, jid) in ("succeeded", "failed", "dead"))
+    assert rows(pg_clean, "SELECT state, attempts FROM jobs WHERE id = %s", jid) \
+        == [("succeeded", 2)]
+    got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
+    assert got.brief.status == "done" and len(seen) == 2
+
+
+@needs_pg
+def test_a_pending_retry_leaves_the_brief_queued(pg_clean, ud, tmp_path, keys):
+    """Between attempts the page must keep polling, so the brief is not written as failed."""
+    import httpx
+
+    uid = new_user(pg_clean)
+    _, svc = make(tmp_path)
+    b = create_user_brief(svc, ud, uid, "researcher", "A5026494099", as_of=AS_OF)
+
+    def down(brief):
+        raise httpx.ConnectError("no route")
+
+    svc._run_works = down
+    store = UserBriefStore(ud, uid, "researcher", b.id)
+    store.retry_left = lambda: True  # the job has another attempt
+    assert store.load()
+    with using_store(store):
+        assert svc.run(b.id) == "queued"
+    got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
+    assert got.brief.status == "queued" and not got.brief.error
+    store.retry_left = lambda: False  # the last attempt
+    with using_store(store):
+        assert svc.run(b.id) == "failed"
+    got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
+    assert got.brief.status == "failed" and "ConnectError" in got.brief.error
+
+
+@needs_pg
+@needs_redis
+def test_a_guest_brief_in_redis_is_sealed(pg_clean, tmp_path, web_pool, monkeypatch):
+    """S49 Q50: a guest's brief sat in Redis as plain JSON. Now every value is sealed under the
+    guest session's own key: no record title and no typed direction in any raw value."""
+    import json
+
+    import redis as redis_lib
+
+    from perch.jobs import PostgresRunner, Timing
+    from perch.schemas import Opportunity
+    from perch.user.briefs import guest_hash, load_brief, set_lead_status, submit_brief
+
+    r = redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    r.flushdb()
+    _, svc = make(tmp_path)
+    with svc.repo() as repo:
+        titles = [o.title for o in repo.list(Opportunity)]
+    assert titles and all(titles)
+    s = _session(None, "g-q50")
+    gh = guest_hash(s.sid)
+    direction = "SYNTHETIC-Q50 coral reef acoustics direction"
+    web = PostgresRunner(pool=web_pool, timing=Timing())
+    bid, job = submit_brief(svc, web, None, r, s, "A5026494099", as_of=AS_OF,
+                            context={"direction": direction})
+    store = GuestBriefStore(r, gh, bid, job)
+    assert store.load()
+    with using_store(store):
+        assert svc.run(bid) == "done"
+    got = load_brief(None, r, s, bid)
+    assert got.brief.status == "done" and got.leads
+    assert set_lead_status(None, r, s, bid, got.leads[0].id, "kept").status == "kept"
+    assert load_brief(None, r, s, bid).leads[0].status == "kept"
+    values = {k: r.get(k) for k in r.scan_iter("*") if r.type(k) == "string"}
+    briefs = {k: v for k, v in values.items() if ":brief:" in k or k.startswith("perch:gres:")}
+    assert len(briefs) == 2  # the state before the job and the job's result
+    everything = " ".join(str(v) for v in values.values())
+    for v in briefs.values():
+        assert v.startswith("g1:")
+        with pytest.raises(ValueError):
+            json.loads(v)
+    for needle in [*titles, direction, "SYNTHETIC-Q50", "A5026494099", bid]:
+        assert needle not in everything
+    # another guest session cannot open it, and the value is bound to its key
+    assert load_brief(None, r, _session(None, "g-other"), bid) is None
+    r.delete(f"perch:gsess:{gh}:bkey")
+    assert load_brief(None, r, s, bid) is None
     r.flushdb()
     r.close()

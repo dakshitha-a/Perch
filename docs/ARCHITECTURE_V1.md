@@ -13,7 +13,7 @@ This file is the design contract written on 2026-11-03. Where the code differs, 
 - **Compose files.** The services are in `deploy/compose/docker-compose.v1.yml` and one `deploy/compose/Dockerfile.v1` with targets `web`, `worker` and `worker-gpu`. The `docker/*.Dockerfile` paths in section 1.1 do not exist. The Compose `worker` uses the GPU image and reserves one GPU by index; `docker-compose.cpu.yml` is the CPU override. A `backup` service is in the stack. `pgbouncer` is not in the Compose file.
 - **Native demo worker.** The demo node has no NVIDIA container runtime, so its worker runs natively on one GPU against the Compose services. See `docs/deploy.md` section 3b.
 - **One brief service per process.** The worker builds one `BriefService` per process and shares it across job threads (`cmd_worker` in `perch/cli.py`). A new service per job failed at four or more concurrent briefs in the S47 load test.
-- **Scheduler.** There is no `perch scheduler` command in the code. Ingest and precache are run by hand. Sections 3.1 and 3.6 describe the design.
+- **Scheduler.** There is no `perch scheduler` command. The worker's maintenance thread submits the daily `purge` actions and the nightly `precache` instead, behind a Postgres advisory lock (S49; `Scheduler` in `perch/jobs.py`, `docs/deploy.md` section 1). Ingest is still run by hand. Sections 3.1 and 3.6 describe the design.
 - **Rate limits.** The per-address `RateLimiter` in `perch/api.py` is still used for hand-offs. Section 4.2 says the Redis limiter replaces it everywhere; that is true for the quota path only.
 - **Spend metering.** Every paid call goes through the adapter's spend meter and ledger, with the spend ledger on the `spend` volume. Guests have a per-session and a global daily budget (`PERCH_GUEST_DAILY_BUDGET_USD` default 0.10, `PERCH_GUEST_GLOBAL_DAILY_BUDGET_USD` default 5.00).
 - **Hand-offs.** For a signed-in account, `POST /briefs/{id}/handoff` admits the draft, queues a worker job of kind `handoff` and answers 202. The browser then reads the draft with `GET /briefs/{id}/handoff`. Other callers (the fallback path without accounts) draft in the web process under the per-address limiter.
@@ -512,7 +512,7 @@ Replaces the closure interface in `perch/jobs.py`. The old `submit(job_id, fn)` 
 | `ingest` | scheduler, CLI | 9 | 3600 | 5 | `ingest_runs` row |
 | `purge` | scheduler, web on delete | 5 | 600 | 5 | none |
 
-- **`purge` payload.** `{"action": "user", "user_id": "<uuid>"}`, `{"action": "inactive"}`, `{"action": "guests"}`, `{"action": "jobs"}`, `{"action": "audit"}`, `{"action": "rekey", "user_id": "<uuid>"}` or `{"action": "tombstones"}`. `jobs` deletes `succeeded`, `failed` and `cancelled` jobs after 30 days, which frees their idempotency keys, and that is safe because keys include the date. `audit` calls `perch_null_old_actors(90 days)`. The action is a code, not user text.
+- **`purge` payload.** `{"action": "user", "user_id": "<uuid>"}`, `{"action": "inactive"}`, `{"action": "guests"}`, `{"action": "jobs"}`, `{"action": "audit"}`, `{"action": "rekey", "user_id": "<uuid>"}` or `{"action": "tombstones"}`. `jobs` deletes `succeeded`, `failed`, `cancelled` and `dead` jobs after 30 days, which frees their idempotency keys, and that is safe because keys include the date. `audit` calls `perch_null_old_actors(90 days)`. The action is a code, not user text.
 - **Scheduler.** A `perch scheduler` command, one copy only, enqueues `ingest` per source, a nightly `precache` with one job per Temple-affiliated author, and a daily `purge` for `inactive`, `guests`, `jobs`, `audit` and `tombstones`. Phase 3 records the author count and CPU seconds per author. It uses idempotency keys that contain the date, so a second copy does nothing harmful.
 
 ### 3.2 States
@@ -1074,7 +1074,7 @@ def safe_return_to(v: str | None) -> str:
 - **Entry.** `POST /auth/guest` with a CSRF-exempt, same-origin check. It creates a guest session with `guest=1` and `uid` empty. TTL is `PERCH_GUEST_TTL_S` absolute, with no sliding.
 - **Can do.** Browse and filter awards and funding. Build a brief for a public OpenAlex author id, or for a built-in SYNTHETIC student persona. Compare, export. Read the Help page.
 - **Cannot do.** Upload or paste a CV or entries. Scout. Hand-off drafts. Cover points. Save anything. These need an account.
-- **Stored.** No row in `users`, `user_data` or `consents`. A guest brief is a job with `user_id` NULL and `guest_sid_hash` set, submitted and read through `guest_tx`, and its result is a Redis key `perch:gres:<job_id>` that expires in an hour. The `jobs` row has public ids only and is deleted by `purge(action="guests")` after 24 hours.
+- **Stored.** No row in `users`, `user_data` or `consents`. A guest brief is a job with `user_id` NULL and `guest_sid_hash` set, submitted and read through `guest_tx`, and its result is a Redis key `perch:gres:<job_id>` that expires in an hour. Every guest brief value in Redis is sealed with AES-GCM under a random key of that guest session, `perch:gsess:<gsid_hash>:bkey` (S49 Q50); the worker knows only the session hash, so the key sits beside the values rather than in the session cookie. The `jobs` row has public ids only and is deleted by `purge(action="guests")` after 24 hours.
 - **Limits.** The `guest_job` rate limit and the guest daily budget are keyed by the guest session. A site-wide guest ceiling and a per-address ceiling on new guest sessions bound abuse, see sections 4.2 and 4.3.
 - **Banner.** Every guest page shows a banner stating that nothing is saved and the session ends in an hour. Exports from a guest session carry the banner text.
 - **Model use.** The brief's model text for a public author id is public-input text and may hit `public_cache`. The synthetic persona brief carries the sample badge and banner required by rule 11.
@@ -1135,7 +1135,8 @@ All routes sit under one FastAPI app. "Auth" is the weakest allowed session: `no
 | `GET /health` | kept | Adds `?ready=true` for readiness. |
 | `GET /authors/resolve` | kept | Auth `session`. Rate limited. Runs in `web` with the OpenAlex key and a single-host egress rule, D-13. Results are cached in Redis for the author cache TTL. |
 | `POST /briefs` | changed | Body gains `audience`. Returns `JobAccepted`. Auth `session`. |
-| `GET /briefs/{id}` | changed | Reads the encrypted `brief` row. Auth `session`. Guest reads Redis. |
+| `GET /briefs/{id}` | changed | Reads the encrypted `brief` row. Auth `session`. Guest reads Redis. Carries the brief's `job` (state, error code, attempts, queue place, whether a worker is alive); a brief whose job ended without it shows as `failed` with a code-written sentence (S49 B1). |
+| `POST /briefs/{id}/cancel` | new (S49) | Auth `session` and CSRF. Cancels the job that builds the brief. |
 | `POST /briefs/{id}/leads/{lead_id}/keep`, `dismiss`, `restore` | changed | Auth `session`, so a guest can keep and compare as section 7.4 says. A user updates the `brief` row. A guest updates the brief's Redis key and does not extend its hour. |
 | `GET /briefs/{id}/export.json`, `export.md`, `export.html` | changed | Shared `brief_blocks`. Auth `session`. |
 | `GET /briefs/{id}/compare` | changed | Shared `compare_rows`. Auth `session`. Reads the session's own brief. |

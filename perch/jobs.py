@@ -25,8 +25,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import AbstractContextManager, contextmanager
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
@@ -60,7 +60,7 @@ TERMINAL = frozenset({JobState.SUCCEEDED, JobState.FAILED, JobState.DEAD, JobSta
 ERROR_CODES = frozenset({
     "lease_expired", "handler_error", "permanent", "cancelled", "refusal", "budget_exceeded",
     "quota_exceeded", "consent_required", "invalid_input", "missing_key", "provider_error",
-    "network_error", "no_handler",
+    "network_error", "no_handler", "retention_invalid", "rekey_incomplete", "timeout",
 })
 
 
@@ -248,6 +248,7 @@ class JobContext:
         self.guest_sid_hash: bytes | None = (bytes(row["guest_sid_hash"])
                                              if row["guest_sid_hash"] is not None else None)
         self.attempt: int = row["attempts"]
+        self.max_attempts: int = row.get("max_attempts") or 1
         self.payload: Mapping[str, Any] = dict(row["payload"])
         self.lease_owner = owner
         self._deadline = deadline
@@ -523,9 +524,20 @@ class PostgresRunner(JobRunner):
         def beat() -> None:
             while not done.wait(self.timing.heartbeat_s):
                 if time.monotonic() > ctx._deadline:
+                    # S49 B6: end the job as failed with `timeout` now. The handler's next
+                    # fenced write raises LeaseLost, so a second attempt never runs beside it.
                     ctx._timed_out = True
+                    try:
+                        self.finish_error(ctx, "timeout", permanent=True)
+                    except LeaseLost:
+                        pass  # the handler finished first, or the job was cancelled
+                    except Exception as e:  # noqa: BLE001 - the lease runs out; the reaper acts
+                        log.warning("timeout write failed job=%s err=%s", ctx.job_id,
+                                    type(e).__name__)
                     ctx._cancel.set()
-                    return  # stop heartbeating: the lease runs out and the reaper acts
+                    log.info("timeout job=%s kind=%s attempt=%s", ctx.job_id, ctx.kind,
+                             ctx.attempt)
+                    return
                 try:
                     ctx.heartbeat()
                 except LeaseLost:
@@ -543,28 +555,31 @@ class PostgresRunner(JobRunner):
             finally:
                 done.set()
                 hb.join(timeout=5)
-            if ctx.cancelled():  # stale: the reaper or the owner has acted, write nothing
+            if ctx._cancel.is_set():  # stale: the reaper, the owner or the timeout acted
                 log.info("stale job=%s", ctx.job_id)
                 return
-            self.finish_ok(ctx, ref)
+            self.finish_ok(ctx, ref)  # fenced: a result just past the deadline still counts
             log.info("done job=%s kind=%s attempt=%s", ctx.job_id, ctx.kind, ctx.attempt)
         except LeaseLost:
             log.info("lease lost job=%s kind=%s attempt=%s", ctx.job_id, ctx.kind, ctx.attempt)
         except Exception as e:  # noqa: BLE001 - the class name and a fixed code are all we keep
             code = getattr(e, "code", "handler_error")
             code = code if code in ERROR_CODES else "handler_error"
+            if time.monotonic() > ctx._deadline:  # the handler stopped itself at the deadline
+                code = "timeout"
             log.warning("error job=%s kind=%s attempt=%s err=%s code=%s",
                         ctx.job_id, ctx.kind, ctx.attempt, type(e).__name__, code)
-            if ctx.cancelled():
+            if ctx._cancel.is_set():
                 return
             try:
-                self.finish_error(ctx, code, isinstance(e, PermanentError))
+                self.finish_error(ctx, code, isinstance(e, PermanentError) or code == "timeout")
             except LeaseLost:
                 pass
 
     def run_forever(self, worker_id: str, kinds: Sequence[str], concurrency: int,
-                    stop: threading.Event) -> None:
-        """Claim and run jobs on `concurrency` threads until `stop` is set, then drain."""
+                    stop: threading.Event, *, scheduler: Scheduler | None = None) -> None:
+        """Claim and run jobs on `concurrency` threads until `stop` is set, then drain. With a
+        `scheduler`, the maintenance thread also submits the daily jobs (S49 B5)."""
         use = [k for k in kinds if k in _REGISTRY] if kinds else registered_kinds()
         if not use:
             return
@@ -583,10 +598,15 @@ class PostgresRunner(JobRunner):
                     wake.wait(self.timing.poll_s)
                     wake.clear()
                     continue
-                self.execute(row, owner)
+                try:
+                    self.execute(row, owner)
+                except Exception as e:  # noqa: BLE001 - a database blip must not end the thread
+                    # (S49 B3): the job's lease runs out and the reaper retries it.
+                    log.warning("execute failed err=%s", type(e).__name__)
+                    stop.wait(self.timing.poll_s)
 
         def maintain() -> None:
-            last_reap = 0.0
+            last_reap = last_tick = 0.0
             while not stop.is_set():
                 try:
                     with pg.public_tx(self.pool) as c:
@@ -599,6 +619,12 @@ class PostgresRunner(JobRunner):
                         self.reap()
                 except Exception as e:  # noqa: BLE001
                     log.warning("maintenance failed err=%s", type(e).__name__)
+                if scheduler is not None and time.monotonic() - last_tick >= scheduler.every_s:
+                    last_tick = time.monotonic()
+                    try:
+                        scheduler.tick(self, datetime.now(UTC))
+                    except Exception as e:  # noqa: BLE001 - the next tick tries again
+                        log.warning("scheduler failed err=%s", type(e).__name__)
                 stop.wait(min(self.timing.heartbeat_s, self.timing.reaper_s))
 
         def listen() -> None:
@@ -630,6 +656,75 @@ class PostgresRunner(JobRunner):
             pass
 
 
+# --- the scheduler: daily purges and the nightly precache (S49 B5) ---
+
+DAILY_PURGES = ("guests", "jobs", "audit", "tombstones", "inactive")
+SCHEDULER_LOCK = 0x70657263  # pg advisory lock id: one worker at a time runs a tick
+
+
+def _hhmm(text: str | None, default: str) -> tuple[int, int]:
+    h, _, m = (text or default).partition(":")
+    return int(h), int(m or 0)
+
+
+@dataclass
+class Scheduler:
+    """Submits each daily `purge` action once a UTC day at `purge_at`, and the nightly precache
+    at `precache_at` (UTC, HH:MM). Runs inside the worker's maintenance thread. Every key holds
+    the date, and a tick submits nothing whose key already has a row in any state, so a second
+    worker or a restart is harmless and a failed purge is not resubmitted the same day (its
+    row is the alert). A Postgres advisory lock keeps two workers from ticking at once.
+    `precache` enqueues the precache jobs for a date and returns how many."""
+
+    precache: Callable[[PostgresRunner, str], int] | None = None
+    purge_at: tuple[int, int] = (3, 0)
+    precache_at: tuple[int, int] = (2, 0)
+    every_s: float = 60.0
+    _done: set[str] = field(default_factory=set)
+
+    @classmethod
+    def from_env(cls, precache: Callable[[PostgresRunner, str], int] | None) -> Scheduler:
+        return cls(precache=precache,
+                   purge_at=_hhmm(os.environ.get("PERCH_PURGE_AT"), "03:00"),
+                   precache_at=_hhmm(os.environ.get("PERCH_PRECACHE_AT"), "02:00"))
+
+    def tick(self, runner: PostgresRunner, now: datetime) -> list[str]:
+        """Submit what is due at `now` (UTC). Returns the keys it submitted."""
+        day = now.date().isoformat()
+        due = []
+        if (now.hour, now.minute) >= self.purge_at:
+            due += [f"purge:{a}:{day}" for a in DAILY_PURGES]
+        if self.precache is not None and (now.hour, now.minute) >= self.precache_at:
+            due.append(f"precache:{day}")
+        due = [k for k in due if k not in self._done]
+        if not due:
+            return []
+        out: list[str] = []
+        with pg.public_tx(runner.pool) as c:
+            if not c.execute("SELECT pg_try_advisory_xact_lock(%s)",
+                             (SCHEDULER_LOCK,)).fetchone()[0]:
+                return []  # another worker is ticking
+            for key in due:
+                if key.startswith("purge:"):
+                    seen = c.execute("SELECT 1 FROM jobs WHERE kind = 'purge' "
+                                     "AND idempotency_key = %s LIMIT 1", (key,)).fetchone()
+                    if seen is None:
+                        runner.submit("purge", {"action": key.split(":")[1]}, None, key)
+                        out.append(key)
+                else:
+                    seen = c.execute("SELECT 1 FROM jobs WHERE kind = 'precache' "
+                                     "AND idempotency_key LIKE %s LIMIT 1",
+                                     (f"precache:%:{day}",)).fetchone()
+                    if seen is None and self.precache is not None:
+                        n = self.precache(runner, day)
+                        out.append(key)
+                        log.info("scheduled precache jobs=%s", n)
+                self._done.add(key)
+        for key in out:
+            log.info("scheduled %s", key.rsplit(":", 1)[0])
+        return out
+
+
 # --- the brief handler: the existing build, by id ---
 
 _brief_service: Callable[[], Any] | None = None
@@ -648,14 +743,15 @@ def brief_handler(ctx: JobContext) -> str | None:
     brief_id = ctx.payload["brief_id"]
     from perch.user.briefs import store_for_job
 
-    store = store_for_job(ctx)  # user_data row, or Redis for a guest; None: the SQLite path
-    if store is None:
-        status = _brief_service().run(brief_id)
-    else:
-        status = _run_stored_brief(ctx, store, brief_id)
+    store = store_for_job(ctx)  # user_data row, or Redis for a guest
+    if store is None:  # v1 submits every brief with an owner (S49 B31)
+        raise PermanentError("invalid_input")
+    status = _run_stored_brief(ctx, store, brief_id)
+    if status == "queued":  # a server did not answer: the brief waits for the retry (S49 B8)
+        raise RetryableError("network_error")
     if status in ("failed", "missing"):  # the brief holds the stage detail, never the log
         raise PermanentError("permanent")
-    return store.result_ref if store is not None else f"brief:{brief_id}"
+    return store.result_ref
 
 
 def job_meter(ctx: JobContext) -> Any:  # noqa: ANN401 - a perch.user.spend.SpendMeter or None

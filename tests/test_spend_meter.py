@@ -109,3 +109,39 @@ def test_a_guest_whose_budget_is_used_cannot_start_an_explained_brief(
     assert r.status_code == 429 and r.json()["detail"]["error"] == "quota_exceeded"
     # without explanations no paid call is made, so the budget does not stop the brief
     assert c.post("/briefs", json={"as_of": "2026-11-06", "explain": False}).status_code == 202
+
+
+def test_a_call_that_timed_out_is_charged_its_hold(env, worker_pool):  # noqa: F811
+    """S49 B25: a call that raised after the provider may have billed it was settled at zero
+    with no ledger row. A timeout now counts the reserved estimate; another error still
+    counts nothing."""
+    import httpx
+    import pytest
+
+    from perch.llm.base import Message
+    from perch.user.spend import ESTIMATE_MICRO, SpendMeter
+
+    class Slow:
+        name, model = "fake", "fake-1"
+
+        def __init__(self, err):
+            self.err = err
+
+        def chat(self, messages, **kw):
+            raise self.err
+
+    meter = SpendMeter(env.r, worker_pool, lambda: redisx.quota_scopes(uid=env.uid),
+                       user_id=env.uid)
+    scope = redisx.quota_scopes(uid=env.uid)[0]
+    before = redisx.spent_micro(env.r, scope)
+    with pytest.raises(httpx.ReadTimeout):
+        meter.call("fit_explainer", Slow(httpx.ReadTimeout("slow")), [Message("user", "x")])
+    held = ESTIMATE_MICRO["fit_explainer"]
+    assert redisx.spent_micro(env.r, scope) - before == held
+    assert sql(env.pg, "SELECT role, cost_usd::float FROM spend_ledger") \
+        == [("fit_explainer", held / 1_000_000)]
+    with pytest.raises(ValueError):
+        meter.call("fit_explainer", Slow(ValueError("bad")), [Message("user", "x")])
+    assert redisx.spent_micro(env.r, scope) - before == held
+    assert not env.r.exists(f"perch:inflight:u:{env.uid}:{day()}") \
+        or int(env.r.get(f"perch:inflight:u:{env.uid}:{day()}") or 0) == 0

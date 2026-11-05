@@ -2,8 +2,10 @@
 
 * Signed-in user: one encrypted `user_data` row of kind `brief` holding the Brief and its Leads.
   The row id is the brief id. It is written at creation and at every stage (partial saves).
-* Guest: JSON in Redis. State before the job runs sits at `perch:gsess:<gsid_hash>:brief:<id>`
-  and the result at `perch:gres:<job_id>`, one hour TTL. Nothing in Postgres but the `jobs` row.
+* Guest: in Redis, sealed with AES-GCM under a random key of the guest session
+  (`perch:gsess:<gsid_hash>:bkey`; S49 Q50). State before the job runs sits at
+  `perch:gsess:<gsid_hash>:brief:<id>` and the result at `perch:gres:<job_id>`, one hour TTL.
+  Nothing in Postgres but the `jobs` row.
 * Fallback profiles and tests: no store; `BriefService` keeps using its SQLite repository.
 
 `BriefService.repo()` asks `current_store` for a store and, when there is one, returns an
@@ -43,6 +45,7 @@ if TYPE_CHECKING:
     from perch.service import BriefService
 
 GRES_TTL_S = 3600
+WRITE_TRIES = 5  # a stale brief write re-reads the user's lead statuses and tries again
 GUEST_TTL_DEFAULT_S = 3600
 
 current_store: ContextVar[BriefStore | None] = ContextVar("perch_brief_store", default=None)
@@ -96,6 +99,10 @@ class BriefStore(ABC):
         self.brief: Brief | None = None
         self.leads: dict[str, Lead] = {}
         self._lock = threading.RLock()
+        # Lead id -> (record id, status) as last read from storage. A lead's status is the
+        # user's (keep, dismiss, restore on the web); the job never sets one, so every write
+        # carries the stored status over to the lead with the same id and record (S49 B2).
+        self._status: dict[str, tuple[str, str]] = {}
 
     @property
     @abstractmethod
@@ -110,6 +117,11 @@ class BriefStore(ABC):
 
     def cancelled(self) -> bool:
         return False
+
+    def retry_left(self) -> bool:
+        """True when this brief runs in a job that has another attempt (S49 B8)."""
+        ctx = getattr(self, "ctx", None)
+        return bool(ctx is not None and ctx.attempt < ctx.max_attempts)
 
     def user_docs(self) -> list[Work]:
         """User documents (CV text excluded) that become query threads. Empty for guests."""
@@ -128,6 +140,20 @@ class BriefStore(ABC):
             if self.brief is None:
                 return
             self._write(StoredBrief(brief=self.brief, leads=list(self.leads.values())))
+
+    def _remember(self, leads: Iterable[Lead]) -> None:
+        self._status = {x.id: (x.record_id, x.status) for x in leads}
+
+    def _keep_statuses(self, sb: StoredBrief) -> StoredBrief:
+        """`sb` with the stored statuses on its leads (the in-memory leads take them too)."""
+        out = []
+        for x in sb.leads:
+            got = self._status.get(x.id)
+            if got is not None and got[0] == x.record_id and got[1] != x.status:
+                x = x.model_copy(update={"status": got[1]})
+                self.leads[x.id] = x
+            out.append(x)
+        return StoredBrief(brief=sb.brief, leads=out)
 
     def wrap(self, base: Repository) -> Repository:
         return StoreRepository(base, self)
@@ -263,25 +289,46 @@ class UserBriefStore(BriefStore):
 
     def load(self) -> bool:
         with self._conn() as c:
-            got = self.ud.get_row(self.user_id, self.row_id, StoredBrief, conn=c)
+            got = self.ud.get_row(self.user_id, self.row_id, StoredBrief, conn=c, kind="brief")
         if got is None:
             return False
         sb, self._ts = got[0], got[1]
         self.brief = sb.brief
         self.leads = {x.id: x for x in sb.leads}
+        self._remember(sb.leads)
         self._doc_ids = [UUID(i) for i in sb.brief.options.get("user_data") or []]
         self.reads_user_data = bool(self._doc_ids) or bool(sb.brief.options.get("student"))
         return True
 
     def _write(self, sb: StoredBrief) -> None:
-        with self._conn() as c:
-            if self._ts is None:
+        from perch.user.data import Conflict
+
+        if self._ts is None:
+            with self._conn() as c:
                 self.ud.put(self.user_id, "brief", self.audience, sb, row_id=self.row_id, conn=c)
-                got = self.ud.get_row(self.user_id, self.row_id, StoredBrief, conn=c)
-                self._ts = got[1] if got else None
-            else:
-                self._ts = self.ud.update(self.user_id, self.row_id, sb,
-                                          expect_updated_at=self._ts, conn=c)
+                got = self.ud.get_row(self.user_id, self.row_id, StoredBrief, conn=c,
+                                      kind="brief")
+            self._ts = got[1] if got else None
+            self._remember(sb.leads)
+            return
+        for _ in range(WRITE_TRIES):
+            with self._conn() as c:
+                out = self._keep_statuses(sb)
+                try:
+                    self._ts = self.ud.update(self.user_id, self.row_id, out,
+                                              expect_updated_at=self._ts, conn=c)
+                    self._remember(out.leads)
+                    return
+                except Conflict:  # the user kept or dismissed a lead meanwhile: take theirs
+                    pass
+            with self._conn() as c:
+                got = self.ud.get_row(self.user_id, self.row_id, StoredBrief, conn=c,
+                                      kind="brief")
+            if got is None:
+                raise Conflict("the brief is gone")
+            self._ts = got[1]
+            self._remember(got[0].leads)
+        raise Conflict("the brief kept changing")
 
     def cancelled(self) -> bool:
         return bool(self.ctx is not None and self.ctx.cancelled())
@@ -370,14 +417,83 @@ class MemoryBriefStore(BriefStore):
 
 # --- guest: Redis, public inputs only ---
 
+SEALED = "g1:"  # prefix of a sealed guest brief value (S49 Q50)
+
+
+def _guest_key_name(gh: str) -> str:
+    return f"perch:gsess:{gh}:bkey"
+
+
+def _guest_key(r: redis.Redis, gh: str, *, create: bool = False) -> bytes | None:
+    """The guest session's own random brief key (32 bytes, base64 in Redis). The worker knows
+    only the session hash, so the key sits beside the briefs under that hash; it lives as long
+    as the longest brief value, and a dump of the brief values alone reads nothing."""
+    import base64
+    import secrets
+
+    name = _guest_key_name(gh)
+    if create:
+        life = max(int(env("PERCH_GUEST_TTL_S", str(GUEST_TTL_DEFAULT_S))
+                       or GUEST_TTL_DEFAULT_S), GRES_TTL_S) + 300
+        r.set(name, base64.b64encode(secrets.token_bytes(32)).decode(), nx=True, ex=life)
+        r.expire(name, life)
+    got = r.get(name)
+    if not got:
+        return None
+    return base64.b64decode(got if isinstance(got, bytes) else got.encode())
+
+
+def seal_guest(r: redis.Redis, gh: str, slot: str, sb: StoredBrief) -> str:
+    """AES-GCM under the session's brief key, bound to the Redis key it is written to."""
+    import base64
+    import secrets
+
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    key = _guest_key(r, gh, create=True)
+    assert key is not None
+    nonce = secrets.token_bytes(12)
+    ct = AESGCM(key).encrypt(nonce, sb.model_dump_json().encode(), slot.encode())
+    return SEALED + base64.b64encode(nonce + ct).decode()
+
+
+def open_guest(r: redis.Redis, gh: str, slot: str, raw: str | bytes | None
+               ) -> StoredBrief | None:
+    """The brief in a sealed value, or None when it is missing or cannot be opened (its key
+    expired). A plain JSON value written before S49 is still read for its last hour."""
+    import base64
+
+    from cryptography.exceptions import InvalidTag
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    if not raw:
+        return None
+    text = raw.decode() if isinstance(raw, bytes) else raw
+    if not text.startswith(SEALED):
+        return StoredBrief.model_validate_json(text)
+    key = _guest_key(r, gh)
+    if key is None:
+        return None
+    blob = base64.b64decode(text[len(SEALED):])
+    try:
+        plain = AESGCM(key).decrypt(blob[:12], blob[12:], slot.encode())
+    except InvalidTag:
+        return None
+    return StoredBrief.model_validate_json(plain)
+
+
 class GuestBriefStore(BriefStore):
     """No CV, no entries, no rows in Postgres. `job_id` is known in the worker; at creation the
     state goes to the session key, and from the first worker write on to `perch:gres:<job_id>`."""
 
-    def __init__(self, r: redis.Redis, gsid_hash: str, brief_id: str, job_id: UUID | None = None
-                 ) -> None:
+    def __init__(self, r: redis.Redis, gsid_hash: str, brief_id: str, job_id: UUID | None = None,
+                 *, ctx: JobContext | None = None) -> None:
         super().__init__(brief_id)
         self.r, self.gsid_hash, self.job_id = r, gsid_hash, job_id
+        self.ctx = ctx  # the worker's job: writes stop once the lease is lost (S49 B6)
+
+    def cancelled(self) -> bool:
+        return bool(self.ctx is not None and self.ctx.cancelled())
 
     def student_inputs(self) -> StudentInputs:
         """A guest has no CV: the student brief reads the SYNTHETIC persona named in its
@@ -398,27 +514,54 @@ class GuestBriefStore(BriefStore):
         return f"redis:{self.result_key}"
 
     def load(self) -> bool:
-        raw = (self.r.get(self.result_key) if self.job_id else None) or self.r.get(self.state_key)
-        if not raw:
+        sb = None
+        for slot in ([self.result_key] if self.job_id else []) + [self.state_key]:
+            sb = open_guest(self.r, self.gsid_hash, slot, self.r.get(slot))
+            if sb is not None:
+                break
+        if sb is None:
             return False
-        sb = StoredBrief.model_validate_json(raw)
         self.brief = sb.brief
         self.leads = {x.id: x for x in sb.leads}
+        self._remember(sb.leads)
         return True
 
     def _write(self, sb: StoredBrief) -> None:
-        data = sb.model_dump_json()
+        """Read, merge the guest's lead statuses, write: in one WATCH transaction, so a keep
+        made while the job runs is never overwritten (S49 B2)."""
         if self.job_id is None:
-            ttl = int(env("PERCH_GUEST_TTL_S", str(GUEST_TTL_DEFAULT_S)) or GUEST_TTL_DEFAULT_S)
-            self.r.set(self.state_key, data, ex=ttl)
+            key = self.state_key
+            ex = int(env("PERCH_GUEST_TTL_S", str(GUEST_TTL_DEFAULT_S)) or GUEST_TTL_DEFAULT_S)
         else:
-            self.r.set(self.result_key, data, ex=GRES_TTL_S)
+            key, ex = self.result_key, GRES_TTL_S
+        watched = [key] if key == self.state_key else [key, self.state_key]
+        if self.ctx is not None:  # raises LeaseLost once the job timed out or was taken over
+            with self.ctx.guest_tx():
+                pass
+        with self.r.pipeline() as p:
+            for _ in range(WRITE_TRIES):
+                try:
+                    p.watch(*watched)
+                    stored = next((x for x in (open_guest(self.r, self.gsid_hash, k, p.get(k))
+                                               for k in watched) if x), None)
+                    if stored is not None:
+                        self._remember(stored.leads)
+                    out = self._keep_statuses(sb)
+                    sealed = seal_guest(self.r, self.gsid_hash, key, out)
+                    p.multi()
+                    p.set(key, sealed, ex=ex)
+                    p.execute()
+                    self._remember(out.leads)
+                    return
+                except redis.WatchError:
+                    continue
+        raise RuntimeError("the guest brief kept changing")
 
 
-def read_guest_result(r: redis.Redis, job_id: UUID | str) -> StoredBrief | None:
+def read_guest_result(r: redis.Redis, job_id: UUID | str, gh: str) -> StoredBrief | None:
     """The guest brief a job wrote, or None after the hour is up."""
-    raw = r.get(f"perch:gres:{job_id}")
-    return StoredBrief.model_validate_json(raw) if raw else None
+    slot = f"perch:gres:{job_id}"
+    return open_guest(r, gh, slot, r.get(slot))
 
 
 # --- creation and the job's store ---
@@ -457,7 +600,7 @@ def create_guest_brief(svc: BriefService, r: redis.Redis, gsid_hash: str, author
 def store_for_job(ctx: JobContext, ud: UserData | None = None, r: redis.Redis | None = None
                   ) -> BriefStore | None:
     """The store a `brief` job writes to: user_data for a signed-in job, Redis for a guest job,
-    None for an ownerless job (the SQLite path)."""
+    None for an ownerless job, which the handler refuses."""
     brief_id = ctx.payload["brief_id"]
     if ctx.user_id is not None:
         from perch.user.data import UserData as _UD
@@ -467,7 +610,8 @@ def store_for_job(ctx: JobContext, ud: UserData | None = None, r: redis.Redis | 
     if ctx.guest_sid_hash is not None:
         from perch.redisx import get_client
 
-        return GuestBriefStore(r or get_client(), ctx.guest_sid_hash.hex(), brief_id, ctx.job_id)
+        return GuestBriefStore(r or get_client(), ctx.guest_sid_hash.hex(), brief_id, ctx.job_id,
+                               ctx=ctx)
     return None
 
 
@@ -477,9 +621,10 @@ def read_user_brief(ud: UserData, user_id: UUID, brief_id: str) -> StoredBrief |
     except ValueError:
         return None
     try:
-        return ud.get(user_id, row, StoredBrief)
+        got = ud.get_row(user_id, row, StoredBrief, kind="brief")
     except NotFound:
         return None
+    return got[0] if got else None
 
 
 # --- the two calls the web layer makes (api.py): submit a brief, read a brief ---
@@ -563,6 +708,10 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
                               doc_ids=doc_ids, **options)
         job = runner.submit("brief", {"brief_id": b.id}, session.user_id, key,
                             audience=session.audience)
+        won = _same_request_won(runner, key, session.user_id, None, b.id, job)
+        if won is not None:  # a twin request created its brief first: drop ours (S49 B4)
+            ud.delete(session.user_id, UUID(b.id), kinds=("brief",))
+            return won
         return b.id, job
     if doc_ids:
         raise PermissionError("a guest cannot use documents")
@@ -588,8 +737,22 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     b = create_guest_brief(svc, r, gh, author_id, audience=session.audience, **options)
     job = runner.submit("brief", {"brief_id": b.id}, None, key,
                         audience=session.audience, guest_sid_hash=bytes.fromhex(gh))
+    won = _same_request_won(runner, key, None, bytes.fromhex(gh), b.id, job)
+    if won is not None:  # a twin request created its brief first: drop ours (S49 B4)
+        r.delete(GuestBriefStore(r, gh, b.id).state_key)
+        return won
     r.set(f"perch:gsess:{gh}:job:{b.id}", str(job), ex=ttl)  # brief id -> job id, for the read
     return b.id, job
+
+
+def _same_request_won(runner: JobRunner, key: str, user_id: UUID | None, guest: bytes | None,
+                      brief_id: str, job: UUID) -> tuple[str, UUID] | None:
+    """After the submit: when two identical requests raced past `_existing`, the unique index
+    hands both the first job. Then the (brief, job) pair that job runs, else None (S49 B4)."""
+    got = _existing(runner, key, user_id, guest)
+    if got is None or got[0] == brief_id:
+        return None
+    return got if got[1] == job else None
 
 
 def _existing(runner: JobRunner, key: str, user_id: UUID | None, guest: bytes | None
@@ -620,6 +783,97 @@ def open_store(ud: UserData, r: redis.Redis, session: Session, brief_id: str
     return store if store.load() else None
 
 
+# --- the brief's job, as the page sees it (S49 B1) ---
+
+# Written by code: the only sentences a brief shows for a job that ended without it.
+JOB_ENDED = {
+    "consent_required": "This brief reads your own text, and your consent is not current. "
+                        "Accept it again, then build the brief again.",
+    "timeout": "This brief took too long and was stopped. Build it again.",
+    "cancelled": "This brief was cancelled.",
+    "quota_exceeded": "Today's budget for written explanations is used up. Build the brief "
+                      "again tomorrow.",
+    "budget_exceeded": "Today's budget for written explanations is used up. Build the brief "
+                       "again tomorrow.",
+}
+JOB_ENDED_DEFAULT = "This brief could not finish. Build it again in a few minutes."
+JOB_GONE = "This brief has no job on record any more. Build it again."
+WORKER_FRESH_S = 90  # a worker whose heartbeat row is older than this is not counted
+
+
+def _brief_job_id(ud: UserData, r: redis.Redis, session: Session, brief_id: str
+                  ) -> UUID | None:
+    if session.user_id is not None:
+        from perch.store import pg
+
+        with pg.user_tx(ud.pool, session.user_id) as c:
+            row = c.execute(
+                "SELECT id FROM jobs WHERE user_id = %s AND kind = 'brief' "
+                "AND payload->>'brief_id' = %s ORDER BY created_at DESC LIMIT 1",
+                (session.user_id, brief_id)).fetchone()
+        return row[0] if row else None
+    job = r.get(f"perch:gsess:{guest_hash(session.sid)}:job:{brief_id}")
+    return UUID(job.decode() if isinstance(job, bytes) else job) if job else None
+
+
+def brief_job(runner: JobRunner, ud: UserData, r: redis.Redis, session: Session,
+              brief_id: str) -> dict:
+    """The state of the job that builds this brief: `state` (a job state, or `missing` when
+    no job row is left), `error_code`, `attempts`, `queued_ahead`, and for a queued job
+    `worker_seen` (False when no worker has beaten for this kind lately; None when unknown).
+    Ids, states and fixed codes only."""
+    jid = _brief_job_id(ud, r, session, brief_id)
+    guest = None if session.user_id is not None else bytes.fromhex(guest_hash(session.sid))
+    st = runner.status(jid, session.user_id, guest_sid_hash=guest) if jid else None
+    if st is None:
+        return {"state": "missing"}
+    out: dict = {"id": str(st.job_id), "state": st.state.value, "error_code": st.error_code,
+                 "attempts": st.attempts, "queued_ahead": st.queued_ahead}
+    if st.state.value == "queued":
+        out["worker_seen"] = _worker_seen(ud, "brief")
+    return out
+
+
+def _worker_seen(ud: UserData, kind: str) -> bool | None:
+    from perch.store import pg
+
+    try:
+        with pg.public_tx(ud.pool) as c:
+            row = c.execute(
+                "SELECT 1 FROM worker_heartbeat WHERE at > now() - make_interval(secs => %s) "
+                "AND (kinds = '{}' OR %s = ANY(kinds)) LIMIT 1", (WORKER_FRESH_S, kind)
+            ).fetchone()
+    except psycopg.Error:
+        return None
+    return row is not None
+
+
+def job_overlay(brief: dict, job: dict) -> None:
+    """A brief still marked queued or running whose job has ended without it (refused before
+    the run, dead after its lease ran out, timed out, cancelled, or gone) is shown as failed
+    with a sentence written by code, so the page stops waiting. The stored brief is not
+    changed. A job still queued or running leaves the brief as it is."""
+    if brief.get("status") not in ("queued", "running"):
+        return
+    state = job.get("state")
+    if state == "missing":
+        brief["status"], brief["error"] = "failed", JOB_GONE
+    elif state in ("failed", "dead", "cancelled"):
+        brief["status"] = "failed"
+        brief["error"] = JOB_ENDED.get(job.get("error_code") or "", JOB_ENDED_DEFAULT)
+
+
+def cancel_brief(runner: JobRunner, ud: UserData, r: redis.Redis, session: Session,
+                 brief_id: str) -> bool | None:
+    """Cancel the job that builds this brief. None when the brief is not the session's;
+    False when the job already ended."""
+    jid = _brief_job_id(ud, r, session, brief_id)
+    if jid is None:
+        return None
+    guest = None if session.user_id is not None else bytes.fromhex(guest_hash(session.sid))
+    return runner.cancel(jid, session.user_id, guest_sid_hash=guest)
+
+
 def load_brief(ud: UserData, r: redis.Redis, session: Session, brief_id: str
                ) -> StoredBrief | None:
     """The brief for this session, or None (also for a brief that belongs to someone else)."""
@@ -628,11 +882,11 @@ def load_brief(ud: UserData, r: redis.Redis, session: Session, brief_id: str
     gh = guest_hash(session.sid)
     job = r.get(f"perch:gsess:{gh}:job:{brief_id}")
     if job:
-        got = read_guest_result(r, job)
+        got = read_guest_result(r, job, gh)
         if got is not None:
             return got
-    raw = r.get(f"perch:gsess:{gh}:brief:{brief_id}")
-    return StoredBrief.model_validate_json(raw) if raw else None
+    slot = f"perch:gsess:{gh}:brief:{brief_id}"
+    return open_guest(r, gh, slot, r.get(slot))
 
 
 # --- keep, dismiss, restore on the session path (section 7.4, S43 fork F3) ---
@@ -651,9 +905,9 @@ def set_lead_status(ud: UserData, r: redis.Redis, session: Session, brief_id: st
             row = UUID(brief_id)
         except ValueError:
             return None
-        for _ in range(3):
+        for _ in range(WRITE_TRIES):
             try:
-                got = ud.get_row(session.user_id, row, StoredBrief)
+                got = ud.get_row(session.user_id, row, StoredBrief, kind="brief")
             except NotFound:
                 return None
             if got is None:
@@ -674,15 +928,25 @@ def set_lead_status(ud: UserData, r: redis.Redis, session: Session, brief_id: st
     job = r.get(f"perch:gsess:{gh}:job:{brief_id}")
     keys = ([f"perch:gres:{job.decode() if isinstance(job, bytes) else job}"] if job else [])
     for key in [*keys, f"perch:gsess:{gh}:brief:{brief_id}"]:
-        raw = r.get(key)
-        if not raw:
-            continue
-        sb = StoredBrief.model_validate_json(raw)
-        lead = next((x for x in sb.leads if x.id == lead_id), None)
-        if lead is None:
-            return None
-        new = lead.model_copy(update={"status": status})
-        sb.leads = [new if x.id == lead_id else x for x in sb.leads]
-        r.set(key, sb.model_dump_json(), keepttl=True)
-        return new
+        with r.pipeline() as p:
+            for _ in range(WRITE_TRIES):  # the worker may write the same key meanwhile (B2)
+                try:
+                    p.watch(key)
+                    sb = open_guest(r, gh, key, p.get(key))
+                    if sb is None:
+                        break
+                    lead = next((x for x in sb.leads if x.id == lead_id), None)
+                    if lead is None:
+                        return None
+                    new = lead.model_copy(update={"status": status})
+                    sb.leads = [new if x.id == lead_id else x for x in sb.leads]
+                    sealed = seal_guest(r, gh, key, sb)
+                    p.multi()
+                    p.set(key, sealed, keepttl=True)
+                    p.execute()
+                    return new
+                except redis.WatchError:
+                    continue
+            else:
+                raise Conflict("the brief kept changing")
     return None

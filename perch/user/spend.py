@@ -58,17 +58,30 @@ class SpendMeter:
         scopes = self.scopes()
         redisx.reserve(self.r, scopes, est)  # raises QuotaExceeded: no call is made
         res: ChatResult | None = None
+        timed_out = False
         try:
             res = provider.chat(messages, **kw)
             return res
+        except Exception as e:
+            timed_out = _timed_out(e)
+            raise
         finally:
-            cost = call_cost(res.model, res.usage) if res else 0.0
             gate = role == "gate"
+            if res is not None:
+                cost = call_cost(res.model, res.usage)
+            elif timed_out:  # the provider may have charged for it: count the hold (S49 B25)
+                cost = est / 1_000_000
+            else:
+                cost = 0.0
             redisx.settle(self.r, scopes, est, redisx.usd_micro(cost),
                           in_tok=res.usage.input_tokens if res else 0,
                           out_tok=res.usage.output_tokens if res else 0, gate=gate)
             if res is not None:
                 self._ledger(role, res, max(cost, 1e-6) if gate else cost)
+            elif timed_out:
+                self._ledger(role, ChatResult(
+                    text="", provider=getattr(provider, "name", "unknown"),
+                    model=getattr(provider, "model", "unknown")), cost)
 
     def _ledger(self, role: str, res: ChatResult, cost: float) -> None:
         if self.pool is None:
@@ -81,6 +94,18 @@ class SpendMeter:
                 (self.uid, self.job_id, role, res.provider, res.model, res.usage.input_tokens,
                  res.usage.output_tokens, res.usage.cache_read_tokens,
                  res.usage.cache_write_tokens, round(cost, 6)))
+
+
+def _timed_out(e: BaseException) -> bool:
+    """A read or request timeout: the request was sent and may have been billed."""
+    seen: BaseException | None = e
+    for _ in range(4):
+        if seen is None:
+            break
+        if "Timeout" in type(seen).__name__:
+            return True
+        seen = seen.__cause__ or seen.__context__
+    return False
 
 
 def for_job(r: redis.Redis, pool: ConnectionPool | None, *, user_id: UUID | None,

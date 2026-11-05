@@ -66,3 +66,20 @@ def test_the_shipped_realm_imports_no_user_and_the_e2e_user_is_synthetic():
     assert "e2e-user.json" not in mounted
     user = json.loads((kc / "e2e-user.json").read_text())
     assert user["firstName"] == "SYNTHETIC" and "SYNTHETIC" in user["_comment"]
+
+
+def _seconds(text: str) -> float:
+    m = re.fullmatch(r"(\d+)(s|m)", str(text))
+    assert m, text
+    return int(m.group(1)) * (60 if m.group(2) == "m" else 1)
+
+
+def test_the_worker_can_drain_before_docker_kills_it():
+    """S49 B13: Docker's default 10 s stop grace was shorter than the 30 s drain, so every
+    deploy killed in-flight jobs."""
+    from perch.jobs import Timing
+
+    assert _seconds(SVC["worker"]["stop_grace_period"]) > Timing().drain_s + 5
+    unit = (ROOT / "deploy/systemd/v1/perch-worker.service").read_text()
+    stop = re.search(r"^TimeoutStopSec=(\d+)", unit, re.M)
+    assert stop and int(stop.group(1)) > Timing().drain_s + 5

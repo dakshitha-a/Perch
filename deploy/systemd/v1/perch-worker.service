@@ -3,6 +3,8 @@
 # PERCH_LIMIT_GPU, caps its CPU cores and holds a lock so only one GPU job runs on that card.
 # For the no-GPU fallback, drop PERCH_LIMIT_GPU and set the cloud-cpu profile in perch.env.
 # Install as for perch-web.service; start it after the web process has migrated the database.
+# The worker also submits the daily purges and the nightly precache from its maintenance
+# thread (docs/deploy.md section 1, Daily jobs). PERCH_SCHEDULER=0 in perch.env turns that off.
 [Unit]
 Description=Perch v1 worker
 After=network-online.target perch-web.service

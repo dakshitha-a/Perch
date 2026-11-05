@@ -460,3 +460,137 @@ def test_usage_route_copies_the_counter(env, rds):
     r = env.client.get("/usage")
     assert r.status_code == 200
     assert set(r.json()) == {"spent_usd", "limit_usd", "resets_at"} and r.json()["spent_usd"] == 0
+
+
+def test_purge_codes_are_kept_on_the_job_row():
+    """S49 B14: the purge handler's own codes used to be stored as `permanent`."""
+    assert jobs.PermanentError("retention_invalid").code == "retention_invalid"
+    assert jobs.PermanentError("rekey_incomplete").code == "rekey_incomplete"
+
+
+def test_purge_jobs_removes_dead_rows_past_thirty_days(pg_clean, worker_pool):
+    """S49 B16: dead-lettered rows used to stay for good."""
+    runner = PostgresRunner(pool=worker_pool, timing=FAST)
+    ids = {s: runner.submit("precache", {"author_id": f"A{i}"}, None, f"j{i}")
+           for i, s in enumerate(("succeeded", "dead", "failed", "queued"))}
+    for state, jid in ids.items():
+        sql(pg_clean, "UPDATE jobs SET state = %s, finished_at = now() - interval '31 days' "
+            "WHERE id = %s", state, jid)
+    fresh = runner.submit("precache", {"author_id": "A9"}, None, "j9")
+    sql(pg_clean, "UPDATE jobs SET state = 'dead', finished_at = now() WHERE id = %s", fresh)
+    jid = runner.submit("purge", {"action": "jobs"}, None, "pj")
+    run_worker(pg_clean, ["purge"], lambda: job_state(pg_clean, jid) == "succeeded")
+    left = {r[0] for r in sql(pg_clean, "SELECT id FROM jobs WHERE kind = 'precache'")}
+    assert left == {ids["queued"], fresh}
+
+
+def brief_client(env, tmp_path, monkeypatch, audience="researcher"):
+    """The api app wired to the account services, as `perch serve` builds it."""
+    from perch.api import create_app
+    from perch.jobs import InlineRunner
+
+    monkeypatch.setenv("PERCH_REDIS_URL", REDIS_URL)
+    _, svc = make(tmp_path)
+    app = create_app(svc, InlineRunner(), stored_briefs=True, web_dir=None)
+    app.state.user_services = env.client.app.state.user_services
+    app.dependency_overrides[deps.session_optional] = lambda request: env.session
+    app.dependency_overrides[deps.require_csrf] = lambda: None
+    env.session.audience = audience
+    return TestClient(app), svc
+
+
+def test_opening_a_document_id_as_a_brief_is_a_404(env, tmp_path, monkeypatch):
+    """S49 B20: the id of the user's own CV row decrypted as a brief and gave a 500."""
+    c, _ = brief_client(env, tmp_path, monkeypatch)
+    cv = env.ud.put(env.uid, "cv", "researcher", CvDoc(text="SYNTHETIC CV text"))
+    r = c.get(f"/briefs/{cv}")
+    assert r.status_code == 404, r.text
+    assert UserBriefStore(env.ud, env.uid, "researcher", str(cv)).load() is False
+
+
+def test_a_brief_whose_job_ended_without_it_stops_the_page(env, pg_clean, tmp_path,
+                                                         monkeypatch):
+    """S49 B1: the page read only the brief's own status, so a job refused before the run,
+    dead after its lease ran out, or gone left the owl spinning for good."""
+    from perch.user.briefs import JOB_ENDED, JOB_ENDED_DEFAULT, JOB_GONE
+
+    c, _ = brief_client(env, tmp_path, monkeypatch)
+
+    def new_brief(n):
+        r = c.post("/briefs", json={"author_id": "A5026494099", "as_of": f"2026-10-{n:02d}"})
+        assert r.status_code == 202, r.text
+        return r.json()["id"], r.json()["job_id"]
+
+    bid, jid = new_brief(1)
+    got = c.get(f"/briefs/{bid}").json()
+    assert got["brief"]["status"] == "queued"
+    assert got["job"]["state"] == "queued" and got["job"]["worker_seen"] is False
+    sql(pg_clean, "INSERT INTO worker_heartbeat (worker, at, kinds, models_loaded) "
+        "VALUES ('w-seen', now(), '{brief}', false)")
+    assert c.get(f"/briefs/{bid}").json()["job"]["worker_seen"] is True
+    sql(pg_clean, "DELETE FROM worker_heartbeat")
+
+    sql(pg_clean, "UPDATE jobs SET state = 'dead', error_code = 'lease_expired', "
+        "finished_at = now() WHERE id = %s", jid)
+    got = c.get(f"/briefs/{bid}").json()
+    assert got["brief"]["status"] == "failed" and got["brief"]["error"] == JOB_ENDED_DEFAULT
+    assert got["job"]["state"] == "dead"
+
+    bid, jid = new_brief(2)
+    sql(pg_clean, "UPDATE jobs SET state = 'failed', error_code = 'consent_required', "
+        "finished_at = now() WHERE id = %s", jid)
+    assert c.get(f"/briefs/{bid}").json()["brief"]["error"] == JOB_ENDED["consent_required"]
+
+    bid, jid = new_brief(3)
+    sql(pg_clean, "DELETE FROM jobs WHERE id = %s", jid)
+    got = c.get(f"/briefs/{bid}").json()
+    assert got["brief"]["status"] == "failed" and got["brief"]["error"] == JOB_GONE
+
+    bid, jid = new_brief(4)  # the owner stops it
+    assert c.post(f"/briefs/{bid}/cancel").json()["cancelled"] is True
+    got = c.get(f"/briefs/{bid}").json()
+    assert got["brief"]["status"] == "failed" and got["brief"]["error"] == JOB_ENDED["cancelled"]
+    assert c.post(f"/briefs/{bid}/cancel").json()["cancelled"] is False
+
+    bid, jid = new_brief(5)  # a retry is pending: the page keeps polling
+    sql(pg_clean, "UPDATE jobs SET attempts = 1, error_code = 'network_error' WHERE id = %s",
+        jid)
+    assert c.get(f"/briefs/{bid}").json()["brief"]["status"] == "queued"
+
+    # the stored brief itself is unchanged; another account sees nothing
+    assert UserBriefStore(env.ud, env.uid, "researcher", bid).load()
+    env.session.user_id = new_user(pg_clean)
+    assert c.post(f"/briefs/{bid}/cancel").status_code == 404
+
+
+def test_a_repeated_brief_poll_reads_no_public_record_again(env, pg_clean, tmp_path,
+                                                            monkeypatch):
+    """S49 B9: every 1.5 s poll re-read every Award, the overrides file and each lead's record.
+    Public records are now kept per process for a short while; the brief itself is not."""
+    from perch import awards as aw
+    from perch.store.sqlite import SQLiteRepository
+
+    c, svc = brief_client(env, tmp_path, monkeypatch)
+    r = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28"})
+    bid = r.json()["id"]
+    jobs.set_brief_service(lambda: svc)
+    try:
+        run_worker(pg_clean, ["brief"],
+                   lambda: c.get(f"/briefs/{bid}").json()["brief"]["status"] == "done")
+    finally:
+        jobs._brief_service = None
+    first = c.get(f"/briefs/{bid}").json()
+    assert first["leads"]
+    calls = []
+    real_get, real_list, real_ov = SQLiteRepository.get, SQLiteRepository.list, aw.load_overrides
+    monkeypatch.setattr(SQLiteRepository, "get",
+                        lambda self, cls, i: calls.append(("get", cls.kind)) or
+                        real_get(self, cls, i))
+    monkeypatch.setattr(SQLiteRepository, "list",
+                        lambda self, cls, **k: calls.append(("list", cls.kind)) or
+                        real_list(self, cls, **k))
+    monkeypatch.setattr(aw, "load_overrides",
+                        lambda *a, **k: calls.append(("overrides",)) or real_ov(*a, **k))
+    again = c.get(f"/briefs/{bid}").json()
+    assert again["leads"] == first["leads"] and again["awards"] == first["awards"]
+    assert calls == []

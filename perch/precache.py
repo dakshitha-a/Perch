@@ -39,6 +39,23 @@ def temple_affiliated(r: Researcher) -> bool:
     return any("temple university" in i.lower() for i in r.institutions)
 
 
+def enqueue_nightly(runner: Any, day: str, *, limit: int | None = None,  # noqa: ANN401
+                    dry_run: bool = False) -> int:
+    """One `precache` job per Temple-affiliated researcher, keyed `precache:<author>:<day>`,
+    so a second run the same day adds nothing. `runner` is a jobs.PostgresRunner on the worker
+    role. Used by `perch precache` and by the worker's scheduler (S49 B5)."""
+    from perch.store.postgres import PostgresRepository
+
+    repo = PostgresRepository(role="worker", pool=runner.pool)
+    authors = [r.id for r in repo.list(Researcher) if temple_affiliated(r)]
+    if limit:
+        authors = authors[:limit]
+    if not dry_run:
+        for a in authors:
+            runner.submit("precache", {"author_id": a}, None, f"precache:{a}:{day}")
+    return len(authors)
+
+
 def public_profile_hash(p: Profile) -> str:
     return profile_hash(p.researcher_id, p.work_ids, p.as_of.isoformat(),
                         [t.work_ids for t in p.threads])
