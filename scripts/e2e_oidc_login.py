@@ -24,6 +24,7 @@ import html
 import json
 import os
 import re
+import secrets
 import sys
 import tempfile
 import threading
@@ -229,6 +230,19 @@ def ensure_user() -> None:
             if made.status_code not in (201, 409):
                 raise RuntimeError(f"Keycloak user create failed (http {made.status_code})")
             print("note: created the SYNTHETIC e2e user in the dev realm")
+            found = kc.get("/admin/realms/perch/users",
+                           params={"username": USER, "exact": "true"}, headers=hdr)
+        # S50: the dev realm also serves the public test deploy, and the password in
+        # e2e-user.json is in the repository. So every run sets a fresh random password and
+        # signs in with it; the tracked password opens nothing.
+        global PASSWORD
+        fresh = secrets.token_urlsafe(24)
+        uid = found.json()[0]["id"]
+        reset = kc.put(f"/admin/realms/perch/users/{uid}/reset-password", headers=hdr,
+                       json={"type": "password", "value": fresh, "temporary": False})
+        if reset.status_code not in (200, 204):
+            raise RuntimeError(f"Keycloak password reset failed (http {reset.status_code})")
+        PASSWORD = fresh
     _ENSURED.append(True)
 
 
