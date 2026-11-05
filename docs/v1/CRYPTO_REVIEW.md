@@ -1,5 +1,7 @@
 # Crypto and key store review (rebuild Phase 2, task 9)
 
+> **History (5 Nov 2026).** This review is a dated record of the code at the commit it names. Later changes to `perch/crypto.py` and `perch/keystore.py` are listed in the as-built notes of `docs/ARCHITECTURE_V1.md`.
+
 Independent review with fresh context, 2026-11-03, branch `rebuild/v1` at `7952ed0`. Reviewed the code, not a builder's summary: `perch/crypto.py`, `perch/keystore.py`, `perch/db/keys_migrate.py`, `perch/db/migrations/keys/0001_keys.sql`, `perch/db/migrations/perch/0001`–`0005`, `perch/store/pg.py`, `tests/test_crypto.py`, `tests/test_keystore.py`, against `docs/ARCHITECTURE_V1.md` sections 2.1, 3.7, 6 and 10 and standing rules 1 and 5. `make test-keys` passed: 38 tests. Two findings were reproduced with throwaway scripts outside the repo. No repo file other than this one was changed.
 
 ## Verdict

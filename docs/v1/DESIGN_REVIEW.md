@@ -1,5 +1,7 @@
 # DESIGN_REVIEW.md — review of ARCHITECTURE_V1.md
 
+> **History (5 Nov 2026).** This review was written on 3 Nov, before any v1 code existed. Its findings are answered in the review log of `docs/ARCHITECTURE_V1.md`. Files it names, such as `perch/private/student.py`, no longer exist.
+
 Phase 1, task 6 of `docs/REBUILD_PLAN.md`. An independent design review with fresh context, written 2026-11-03 before any v1 code exists. It was given the architecture document, the plan, the reuse map, the provider and SSO notes, and the current code. It was not given the author's conclusions.
 
 ## Verdict

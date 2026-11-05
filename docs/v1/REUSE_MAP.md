@@ -1,5 +1,7 @@
 # REUSE_MAP.md — Perch v1 rebuild, Phase 1 task 4
 
+> **History (5 Nov 2026).** This map was written on 3 Nov as the brief for Phases 5 to 8. Several files it names, such as `perch/private/`, `perch/privacy.py` and `perch/egress.py`, were removed or replaced during the rebuild. For the current layout read `docs/ARCHITECTURE_V1.md`.
+
 This map is the brief for Phases 5 to 8 of `docs/REBUILD_PLAN.md`. It covers `perch/private/`, `perch/api.py`, `perch/request_models.py`, `perch/scout/`, `perch/brief.py`, `perch/egress.py`, `perch/privacy.py`, `perch/jobs.py`, `perch/store/`, `perch/model_server.py`, `perch/remote_models.py` and `web/`. It also names the neighbouring files that the pairs touch: `perch/service.py`, `perch/export.py`, `perch/compare.py`, `perch/student.py`, `perch/offices.py`, `perch/mcp_server.py` and `perch/cli.py`.
 
 ## How to read this

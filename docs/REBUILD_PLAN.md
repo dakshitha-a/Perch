@@ -1,5 +1,7 @@
 # REBUILD_PLAN.md — Perch v1, built to deploy
 
+> **Status (5 Nov 2026): history.** The rebuild is built and the gate was passed in S52. This plan is kept as the record of what was planned. Where it differs from what was built, the built state is in `docs/ARCHITECTURE_V1.md` (see its as-built lists) and `docs/TRACKER.md`. Two differences matter: the user target was cut from 1,000 to 250 on 4 Nov, and the default profile became `cloud-gpu`, with the embedder, reranker and MiniCheck on one GPU, not `cloud-cpu`.
+
 Written 2026-11-03 by Perch-dev, from Dakshitha's direction on 3 Nov 2026. This plan replaces S34 and the roadmap in `docs/PLAN.md`. The S-numbered sessions here follow the same session protocol as before (CLAUDE.md).
 
 ## Why we are rebuilding

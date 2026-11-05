@@ -11,7 +11,7 @@ Reads with: `docs/REBUILD_PLAN.md`, `docs/v1/REUSE_MAP.md`, `docs/v1/PROVIDER_AN
 This file is the design contract written on 2026-11-03. Where the code differs, the code on `rebuild/v1` is the truth, and this list says how. Each line was checked against the code on 2026-11-04.
 
 - **Health route.** There is no `/ready` route. Readiness is `GET /health?ready=true`, which checks Postgres, Redis and the keys database and answers 503 when one is down. Plain `GET /health` is liveness. `GET /health?deep=true` checks model services. `GET /metrics` answers loopback callers only. Wherever this file says `/ready`, read `/health?ready=true`.
-- **Default profile.** The default is `cloud-gpu`, not `cloud-cpu` (`DEFAULT_PROFILE` in `perch/profiles.py`, set 2026-11-04). `cloud-cpu` stays as the no-GPU profile with 14 candidates reranked. The profiles `dev`, `deploy-2gpu` and `deploy-1gpu` and the `systemone` grounder entries are still in `perch/profiles.py`; section 1.2 says they are removed, and that has not been done.
+- **Default profile.** The default is `cloud-gpu`, not `cloud-cpu` (`DEFAULT_PROFILE` in `perch/profiles.py`, set 2026-11-04). `cloud-cpu` stays as the no-GPU profile with 14 candidates reranked. The profiles `dev`, `deploy-2gpu` and `deploy-1gpu` and the `systemone` grounder entries are still in `perch/profiles.py` for the fallback build; section 1.2 says they are removed, and that has not been done. `ROLES` in `perch/llm/__init__.py` also holds a seventh role, `extract`, which section 1.2 does not list.
 - **Compose files.** The services are in `deploy/compose/docker-compose.v1.yml` and one `deploy/compose/Dockerfile.v1` with targets `web`, `worker` and `worker-gpu`. The `docker/*.Dockerfile` paths in section 1.1 do not exist. The Compose `worker` uses the GPU image and reserves one GPU by index; `docker-compose.cpu.yml` is the CPU override. A `backup` service is in the stack. `pgbouncer` is not in the Compose file.
 - **Native demo worker.** The demo node has no NVIDIA container runtime, so its worker runs natively on one GPU against the Compose services. See `docs/deploy.md` section 3b.
 - **One brief service per process.** The worker builds one `BriefService` per process and shares it across job threads (`cmd_worker` in `perch/cli.py`). A new service per job failed at four or more concurrent briefs in the S47 load test.
@@ -24,6 +24,7 @@ This file is the design contract written on 2026-11-03. Where the code differs, 
 - **Key operations.** `perch keys rekey` re-encrypts blobs under each user's newest key, and `perch keys tombstones purge` removes old tombstones (dry run unless `--apply`).
 - **Identity provider.** The Keycloak realm in `deploy/compose/keycloak/perch-realm.json` imports no user. The SYNTHETIC end-to-end user is created by `scripts/e2e_oidc_login.py`.
 - **Concurrent users.** The target is 250 (Dakshitha, 2026-11-04), not 1,000. See the note under section 4.2.1.
+- **File names in the design.** Four names in the design text differ from the code. `blank_contacts` lives in `perch/llm/contacts.py`. Migrations are plain SQL files in `perch/db/migrations/perch/` and `perch/db/migrations/keys/`, not `perch/store/migrations/`. The response models are not in a `perch/response_models.py` file, which was never created. The files `perch/privacy.py`, `perch/private/` and `perch/shelved/monitor/` no longer exist, and `data/sample.db` is not tracked.
 
 ## As built after S50 (Phase 12, rounds 1 and 2)
 
@@ -42,6 +43,18 @@ Each line was checked against the code on `rebuild/v1` on 2026-11-05. It adds to
 - **Example brief page.** `web/example.html` and `web/example.js` play back a saved brief from `web/example/<side>.json`, in the app's replay mode. Nothing is called and nothing is saved. The files are gitignored and placed by the deploy, so a server without them shows "The example is not on this server."
 - **E2E sign-in.** `scripts/e2e_oidc_login.py` sets a fresh random password on the SYNTHETIC realm user at every run through the Keycloak admin API, because the realm also serves the public test deploy and the password in the tracked user file would otherwise sign anyone in.
 - **Per-address limits for Demo Day.** The rate limits and guest budgets are deploy settings, not code changes. `PERCH_RATE_LIMITS` is a JSON object that maps a scope name to `[count, window seconds]` and overrides `RATE_DEFAULTS` in `perch/redisx.py`. `PERCH_GUEST_SESSIONS_PER_ADDRESS_HOUR` sets new guest sessions an hour, default 60. Section 4.3 gives the scopes. DECISIONS of 2026-11-05 records the test deploy's values: reads 3,000 a minute, writes 600 a minute, job submits 60 a minute, guest briefs 60 per 10 minutes, 600 guest sessions an hour, and a guest model budget of $4.00 an address and $8.00 a day. The values sit in the deploy's untracked environment file, so they are UNVERIFIED against the running deploy. They depend on `PERCH_TRUSTED_PROXIES` being set, or every visitor shares one address.
+
+## As built after S55 (Phases 12 and 13)
+
+Each line was checked against the code on `rebuild/v1` on 2026-11-05. Section numbers say where the detail sits.
+- **Optional citizenship and state.** A signed-in user may pick a citizenship and a state of residence. They are stored in one encrypted `profile` row per side (migration `0011_profile_kind.sql`, section 2.2) and read and written through `GET` and `PUT /me/profile` (section 9.2). Section 8.1 says how a brief uses them.
+- **Closed-phrase matcher.** `perch/citizenship.py` compares a pick with a rule only when the record's own eligibility text states the rule in one of a few closed phrases. A listing the pick does not meet moves lower in the same list with a note that quotes the sentence and names the field and page. It is never hidden and never marked not eligible. A sentence that only states a preference is not a rule.
+- **Picks stay out of models and exports.** Scout tools and exports drop the pick lines through `without_picks` and `strip_entered`. No model sees the pick. A guest researcher's picks sit in the sealed guest brief, section 7.4.
+- **Plain CV headings.** The CV reader in `perch/user/cv.py` accepts a short plain line such as "Education" or "Work experience" as a heading, besides `#` lines, capitals and a trailing colon.
+- **Shared demo account.** `PERCH_SHARED_ACCOUNTS` lists sign-in names and `PERCH_SHARED_SUBJECTS` lists identity provider user ids. A listed sign-in gets `shared` on its session and the web app shows a notice. Section 7.7 has the detail.
+- **Scout Clear with Undo.** After Clear in the Scout panel the browser offers Undo for about 8 seconds and shows a working glow while Scout answers. This is front-end behaviour in `web/scout.js`. The server route is the existing `DELETE /scout/{sid}`.
+- **Port 443 and the fallback.** On Demo Day the v1 app is served on port 443 and the v0 fallback is kept offline. How to move between them is in `docs/DEMO.md`.
+- **Cloud GPU role mapping.** `_CLOUD_GPU` reuses the role map of `_CLOUD_CPU` in `perch/profiles.py`: Haiku 5.5 for `gate`, `profile_summary` and `extract`, Sonnet 5.5 for `fit_explainer`, `handoff`, `cover_points` and `scout`.
 
 ## 0. Rules this design must keep
 
@@ -89,9 +102,11 @@ _CLOUD_CPU = ModelProfile(
 DEFAULT_PROFILE = "cloud-cpu"
 ```
 
+As built: `DEFAULT_PROFILE` is `"cloud-gpu"` (set 2026-11-04). `_CLOUD_GPU` has the same chat model, grounder, embedder, reranker and role map, with `device="cuda"` and `rerank_in=100`. `cloud-cpu` remains with `rerank_in=14`.
+
 - **Contact blanking has one enforcement point.** `AuditedProvider.chat` calls `blank_contacts` on the system prompt, on every message's content and on every `ToolResult.content` before the inner adapter sees them. `blank_contacts` moves from `perch/privacy.py` into `perch/llm/`. No user text is ever put in the `system` block, so the provider's prompt cache in section 5 never holds it. A test plants a SYNTHETIC email and phone number in each of those places and asserts the fake provider receives none.
 
-`ROLES` in `perch/llm/__init__.py` becomes `("gate", "profile_summary", "fit_explainer", "handoff", "cover_points", "scout")`. The `decide` role is removed. Per-role defaults follow `docs/v1/PROVIDER_AND_SSO.md`: Haiku 5.5 for `gate` and `profile_summary`, Sonnet 5.5 for the rest. Phase 3 confirms or changes them by measurement.
+`ROLES` in `perch/llm/__init__.py` becomes `("gate", "profile_summary", "fit_explainer", "handoff", "cover_points", "scout")`. The `decide` role is removed. As built it also holds `extract`, mapped to Haiku 5.5, so the tuple has seven names. Per-role defaults follow `docs/v1/PROVIDER_AND_SSO.md`: Haiku 5.5 for `gate` and `profile_summary`, Sonnet 5.5 for the rest. Phase 3 confirms or changes them by measurement.
 
 ### 1.3 Environment variables
 
@@ -1125,6 +1140,15 @@ def client_addr(request) -> str:
 - **Replaces** `client_key` and `SERVE_OPTIONS` in `perch/api.py`, which trust forwarded headers only from loopback.
 - **Keys.** Signed-in limits use the user id. Guest limits use the guest session hash. Only `login_start`, `guest_new` and unauthenticated reads use the address, and each also has a site-wide ceiling.
 
+### 7.7 Shared demo account (as built, S54)
+
+- **What it is.** A SYNTHETIC account whose sign-in is handed out in public, so everyone who signs in sees what the last visitor saved.
+- **Settings.** `PERCH_SHARED_ACCOUNTS` is a comma-separated list of sign-in names, compared in lower case. A listed sign-in gives the session `shared`, and `GET /auth/session` returns `"shared": true`. `PERCH_SHARED_SUBJECTS` lists the identity provider user ids that the operator commands act on. Both default to empty, so no account is shared.
+- **Warning in the app.** The web app shows one fixed notice on every screen and beside the CV box: do not paste a real CV.
+- **Operator commands.** `perch user prepare-shared` gives the account both roles and consent at the current version. `perch user wipe-data` deletes every `user_data` row, the account's jobs and job events and the OpenAlex link. It keeps the account row, the consents, the roles and the spend ledger. Both need an admin database role that can bypass row-level security, and they refuse any other role. The code is `perch/user/shared.py`.
+- **Nightly wipe.** The unit `deploy/systemd/v1/perch-demo-wipe.service`, with its timer set for 03:30, runs the wipe. Each wipe writes one `audit_log` row named `shared_account_wipe` that holds counts only.
+- **Budget.** The spend ledger is kept on purpose, so a wipe never resets the account's daily budget.
+
 ## 8. Request paths
 
 `audience` is a request parameter and a session field. Nothing below forks on audience except the record kinds, the eligibility rules, the profile source and the receiving offices, as the plan fixes.
@@ -1144,6 +1168,14 @@ def client_addr(request) -> str:
 - **Web never runs a model.** The scope gate runs in the worker as the first step of a `scout_turn` job, which costs one queue hop. If Phase 3 shows that hop is too slow, a bounded gate call from the web process is a design change to be recorded in the plan.
 - **Streaming of text.** The worker calls `ctx.save_partial` after each stage, and the page re-reads the `brief` row through `GET /briefs/{id}`.
 - **Error paths.** `ConsentRequired`, `QuotaExceeded` and `BudgetExceeded` end the job as `failed` with a fixed `error_code` and a fixed plain message in the UI.
+
+### 8.1 Citizenship and state in the brief (as built, S53)
+
+- **Source of the picks.** A signed-in brief job reads the side's `profile` row. A guest researcher's picks arrive in the brief options and sit in the sealed guest brief.
+- **Where the matcher runs.** The deterministic code in `perch/service.py` for researcher briefs and `perch/student.py` for student briefs calls `perch/citizenship.py`. It reads the record's own eligibility text: the notes and the quoted eligibility sentence, plus the citizenship field on a scholarship. No model is involved.
+- **What it decides.** A rule counts only when it matches one of a few closed phrases. A listing the pick does not meet moves lower within its own list. Nothing is hidden and no verdict of not eligible is written.
+- **What the user sees.** Each demoted lead carries a note with the full sentence and the field and page it came from. A lead with no stated rule carries a note that says where Perch looked and that it found none.
+- **What never happens.** No model sees the pick. Scout tools and exports remove the pick lines. The pick is never logged.
 
 ## 9. API surface
 
@@ -1186,6 +1218,8 @@ All routes sit under one FastAPI app. "Auth" is the weakest allowed session: `no
 | `GET /me/docs` | user | query `audience` | `list[DocView]`, labels only decrypted for the owner |
 | `POST /me/docs` | user | `DocAdd {kind, label, text}` or multipart file | `DocView` |
 | `DELETE /me/docs/{id}` | user | none | `Ok` |
+| `GET /me/profile` | user | query `audience` | `{citizenship, residency_state}`, both nullable (as built, S53) |
+| `PUT /me/profile` | user | `ProfilePut {citizenship, residency_state}`, query `audience` | the saved picks; two blank picks remove the row (as built, S53) |
 | `GET /me/saved` | user | query `audience` | the saved rows and the leads kept in briefs, one entry per record (as built, S49) |
 | `POST /me/saved` | user | `SavedAdd {record_id}`, query `audience` | 201 or 200 `{saved_id, record_id, saved_at}`; 422 `sample_not_saved`, 404 `not_found`, 409 `saved_full` (as built, S49) |
 | `DELETE /me/saved/{saved_id}` | user | none | `Ok`; also removes a twin row for the same record (as built, S49, S50 C4) |
@@ -1286,7 +1320,7 @@ Command: `perch migrate-corpus --sqlite <perch.db> --lance <dir> --pg <dsn>`. Da
 | D-9 | Scope gate runs in the worker as the first step of `scout_turn`, so `web` never calls a model. | Keeps `web` stateless and keyless. |
 | D-10 | Job state enum is `queued, running, succeeded, failed, dead, cancelled`. | Section 3.2. |
 | D-11 | Quota and rate-limit numbers in 4.3 and the budgets are placeholders until Phases 3 and 10 measure. The arithmetic is in section 4.2.1. | Rule 10: no invented numbers. |
-| D-12 | `ROLES` gains `gate` and `cover_points`, loses `decide`. Profile `cloud-cpu` replaces the others. | Matches the plan's cloud models and removed Clef. |
+| D-12 | `ROLES` gains `gate` and `cover_points`, loses `decide`. Profile `cloud-cpu` replaces the others. As built: `extract` was added to `ROLES`, the default is `cloud-gpu`, and the old profiles remain for the fallback. | Matches the plan's cloud models and removed Clef. |
 | D-13 | `web` holds the OpenAlex key for `GET /authors/resolve`, with an egress rule for that one host and a Redis cache. | A short job would add a queue hop to a lookup the page waits on. |
 | D-14 | Records carry `scope` and `schools text[]` instead of one `school`. | A program can sit on several school pages, and "All Temple" must differ from "not Temple". |
 | D-15 | Only two vector indexes exist: `opportunities` and `scholarships`. | The code shows one caller today. |
