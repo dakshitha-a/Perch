@@ -31,9 +31,10 @@ h1, h2 { border-bottom: 1px solid var(--line); padding-bottom: .3em; }
 h1 { font-size: 2em; } h2 { font-size: 1.5em; margin-top: 24px; } h3 { font-size: 1.25em; }
 a { color: var(--link); text-decoration: none; } a:hover { text-decoration: underline; }
 img { max-width: 100%; height: auto; }
-code { background: var(--code); padding: .2em .4em; border-radius: 6px; font-size: 85%; }
-pre { background: var(--code); padding: 16px; border-radius: 6px; overflow: auto; }
+code { background: var(--code); padding: .2em .4em; border-radius: 6px; font-size: 85%; overflow-wrap: anywhere; }
+pre { background: var(--code); padding: 16px; border-radius: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
 pre code { background: none; padding: 0; font-size: 85%; }
+body, td, th, li, p { overflow-wrap: break-word; }
 table { border-collapse: collapse; display: block; overflow: auto; margin: 16px 0; }
 td, th { border: 1px solid var(--line); padding: 6px 13px; vertical-align: top; }
 blockquote { margin: 0; padding: 0 1em; color: var(--quote); border-left: .25em solid var(--line); }

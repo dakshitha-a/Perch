@@ -10,7 +10,7 @@
 
 Funding calls are spread across many agencies and offices. Perch puts the ones that fit your own papers, or your CV, in one cited list.
 
-**See it:** four short films are in [docs/films](docs/films): the researcher side, the student side, Scout, and a 30 second student tour. On a running deploy, the example brief page (`/example.html`) shows a finished researcher brief, built on public papers and shown by alias, and a SYNTHETIC student brief. The example files are not tracked in this repository, so the page works only on a deploy that serves them.
+**See it:** the clips and films below were filmed in the running app.
 
 ![python](https://img.shields.io/badge/python-3.12-3f8f72)
 ![built for](https://img.shields.io/badge/built%20for-Temple%20AI%20Build%20Challenge-8a1e41)
@@ -28,25 +28,41 @@ Funding calls are spread across many agencies and offices. Perch puts the ones t
 - **Hand-offs are drafts.** Perch drafts a note to the right Temple office. It sends nothing. You edit it and send it yourself.
 - **Scout answers questions.** Buttons on a card are plain code. Open questions go to Scout, which can only read. It has six read-only tools and cannot browse, send or change anything.
 
-This is the v1 build. It is the prototype submitted for Demo Day, and `main` takes the `rebuild/v1` branch at release. The earlier build, with in-memory sessions and local models, is kept as the fallback. See [The fallback](#the-fallback).
+This is the v1 build. It is the prototype submitted for Demo Day. `main` took the `rebuild/v1` branch at release (S52, tag `v1.0-deploy`). The earlier build, with in-memory sessions and local models, is kept as the fallback. See [The fallback](#the-fallback).
 
 ## Tour
 
 These clips were filmed in the running v1 app. Researchers appear by alias. The signed-in clips use a SYNTHETIC test account and SYNTHETIC text only.
 
+**A guest tries Perch with the SYNTHETIC sample student and watches a brief build.**
+
 ![A guest opens Perch, taps Try it as a guest, loads the SYNTHETIC sample student, watches the brief build, scrolls the list of awards and opens one card's evidence.](docs/tour/hero.webp)
+
+**A guest browses Temple awards by school and deadline.**
 
 ![A guest browses Temple awards, picks a school chip, sorts by the soonest deadline and opens one award's evidence.](docs/tour/awards.webp)
 
+**A guest builds a researcher brief from an OpenAlex id.**
+
 ![A guest researcher finds a researcher by OpenAlex id, builds the brief, looks at the Grants and Temple internal lists and opens the top lead's evidence.](docs/tour/researcher.webp)
+
+**A signed-in user keeps two leads and drafts a hand-off to an office.**
 
 ![A signed-in user keeps two leads, opens Compare and draft, reads the comparison table and a hand-off draft to an office.](docs/tour/keep.webp)
 
+**The My Perch page, with kept leads and a brief to run again.**
+
 ![The My Perch page of a signed-in user shows kept items and a brief, and Change details and run again opens the form with the details filled in.](docs/tour/myperch.webp)
+
+**A signed-in user asks Scout an example question and reads its cited answer.**
 
 ![A signed-in user presses one example question for Scout and reads its cited answer.](docs/tour/scout.webp)
 
+**A signed-in user asks for cover-letter points on one lead.**
+
 ![A signed-in user asks for cover-letter points on one lead card and reads the cited lines.](docs/tour/points.webp)
+
+**Films:** [researcher, 47 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/researcher.mp4) · [student, 58 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/student.mp4) · [scout, 46 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/scout.mp4) · [quick student, 30 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/quick-student.mp4)
 
 Four longer films, in 1920 by 1080 MP4 and 1280 by 720 WebP, are in [docs/films](docs/films). Each is filmed in the v1 app. `researcher` shows PI-1 by alias. `student` and `quick-student` use the SYNTHETIC sample student. `scout` shows cover-letter points, the glow while Scout works, Clear and Undo, and the reply to a distress message.
 
@@ -80,7 +96,6 @@ Perch needs [uv](https://docs.astral.sh/uv/) and `make`. uv installs Python 3.12
 
 ```bash
 git clone https://github.com/dakshitha-a/Perch && cd Perch
-git checkout rebuild/v1
 ```
 
 ### Look at the screens with fake models
@@ -167,7 +182,10 @@ Every command is in [docs/running.md](docs/running.md).
 
 The figures are drawn from the files in `docs/architecture/`. Each is also rendered as a PNG in light and dark.
 
-![How Perch works, in one picture.](docs/architecture/v1-simple-light.png)
+<picture>
+<source media="(prefers-color-scheme: dark)" srcset="docs/architecture/v1-simple-dark.png">
+<img src="docs/architecture/v1-simple-light.png" alt="How Perch works, in one picture.">
+</picture>
 
 [The detailed v1 figure](docs/architecture/v1-light.png), [the roadmap](docs/architecture/roadmap-light.png) and [the cost model](docs/architecture/cost_model-light.png) have `-dark.png` twins in the same folder.
 
@@ -198,6 +216,7 @@ The full tables are in [docs/RESULTS.md](docs/RESULTS.md). The back-test is NIH 
 
 - **Accounts are not open on the test deploy.** Self-registration is off. Visitors use guest mode or the shared demo account, and the example brief shows what a signed-in user gets.
 - **The example is a saved file.** The example brief plays back a saved file, and it does not show cover-letter points.
+- **The example page needs its files.** On a running deploy, `/example.html` shows a finished researcher brief, built on public papers and shown by alias, and a SYNTHETIC student brief. The example files are not tracked in this repository, so the page works only on a deploy that serves them.
 - **Guests cannot paste a CV.** The guest student path uses an invented sample student.
 - **Guests have a small daily budget.** Each guest session has a small daily model budget, and when it is used the written reasons pause while the list, dates, amounts and rule results still show.
 - **Only four codes are folded as centre grants.** Perch folds only NIH activity codes P30, P01, P50 and U54 as centre and programme grants; other institution-level grants are listed with the single-lab grants.
