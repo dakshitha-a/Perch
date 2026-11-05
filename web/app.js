@@ -1681,7 +1681,6 @@ function drawNotices(box, shown) {
   if (box.dataset.sig === sig) return;
   box.dataset.sig = sig;
   fill(box, ...items);
-  box.hidden = !items.length;
 }
 
 const RESEARCH_SECURITY ="Companies outside the United States may need a research-security review before any contact; the office makes that check.";

@@ -1535,6 +1535,7 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
 .lead .lead-notes { margin: 0; font-size: var(--fs-14); }
 .lead .lead-notes li { color: var(--ink-3); line-height: 1.45; overflow-wrap: anywhere; }
 #list-notices { display: grid; gap: 8px; }
+#list-notices:empty { display: none; }
 #list-notices .list-note { margin: 0; }
 @media (max-width: 599px) {
   .lead-top { grid-template-columns: 1fr; }
