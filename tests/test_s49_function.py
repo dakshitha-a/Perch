@@ -390,3 +390,15 @@ def test_q2_a_search_is_a_citable_record():
     assert out["id"] == "search:1" and out["count"] == 1
     assert "found 1 record: SYNTHETIC kidney repair research" in t.seen["search:1"].abstract
     assert t.search_records("kidney")["id"] == "search:2"
+
+
+# --- S8: one word per level in the filter columns ---
+
+def test_s8_level_columns_use_the_page_words():
+    from perch.store.denorm import columns
+
+    sdfa = Scholarship(id="temple_sdfa:x", source="temple_sdfa", fetched_at=T,
+                       source_url="https://example.temple.edu/x", name="SYNTHETIC Award",
+                       level_of_study=["bachelor's", "graduate", "professional"])
+    assert columns(sdfa).audience_level == ["undergraduate", "graduate"]
+    assert columns(sch(audience_level="mixed")).audience_level == ["mixed"]

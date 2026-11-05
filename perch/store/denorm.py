@@ -29,12 +29,21 @@ class Columns:
     status: str | None = None
 
 
+# A scholarship's level_of_study in the page-level words, so one level filter finds both
+# ("bachelor's" on 44 SDFA records was missed by "undergraduate", S49 S8).
+LEVEL_WORDS = {"bachelor's": "undergraduate", "associate": "undergraduate",
+               "graduate": "graduate", "professional": "graduate"}
+
+
 def _audience(r: Record, kind: str) -> list[str]:
     """The page-level audience when Phase 4 set it, else the scholarship's levels."""
     level = getattr(r, "audience_level", None)
     if level:
         return [level]
-    return list(getattr(r, "level_of_study", []) or []) if kind == "scholarship" else []
+    if kind != "scholarship":
+        return []
+    levels = getattr(r, "level_of_study", []) or []
+    return list(dict.fromkeys(LEVEL_WORDS.get(x, x) for x in levels))
 
 
 def columns(r: Record) -> Columns:
