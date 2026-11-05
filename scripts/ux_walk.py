@@ -162,10 +162,28 @@ async def until(page: Page, expr: str, arg: object = None, secs: float = 30, eve
     raise TimeoutError(f"waited {secs:.0f} s for: {expr[:80]}")
 
 
+async def open_filters(page: Page) -> None:
+    """S50 (FE-B): on a phone the list filters fold behind a Filters button; open them."""
+    t = page.locator("[data-key=filters]")
+    if await t.count() and await t.is_visible() and await t.get_attribute("aria-expanded") == "false":
+        await t.click()
+        await page.wait_for_timeout(150)
+
+
+async def wait_filters(page: Page, sel: str = ".tag-row", timeout: int = 30_000) -> None:
+    """Wait for a filter-bar element, opening the folded phone filters first."""
+    await page.wait_for_selector(sel, state="attached", timeout=timeout)
+    await open_filters(page)
+    await page.wait_for_selector(sel, timeout=10_000)
+
+
 async def go(page: Page, base: str, hash_: str, ready: str) -> None:
     if not page.url.startswith(base):
         await page.goto(base + "/")
     await page.evaluate("(h) => { location.hash = h; }", hash_)
+    if ready == ".tag-row":
+        await wait_filters(page)
+        return
     await page.wait_for_selector(ready, timeout=30_000)
 
 
@@ -234,7 +252,7 @@ async def flow_awards(w: Walk, browser: Browser, base: str, tag: str, view: dict
             await route.fulfill(status=200, content_type="application/json", body=json.dumps(data))
         await page.route(re.compile(r".*/filters\?.*"), skew)
     await page.goto(base + "/#/awards")
-    await page.wait_for_selector(".tag-row")
+    await wait_filters(page)
     await page.wait_for_selector(".award")
     await w.snap(page, tag, "awards")
     flt = await page.evaluate("fetch('/filters?audience=student').then(r => r.json())")
@@ -304,6 +322,7 @@ async def flow_funding(w: Walk, browser: Browser, base: str, tag: str, view: dic
     await page.wait_for_selector(".award")
     w.check("funding_toggle_off", await page.locator("[data-key=temple]").get_attribute("aria-checked") == "false", "off by default")
     await w.snap(page, tag, "funding")
+    await open_filters(page)
     await page.click("[data-key=temple]")
     await until(page, "() => document.querySelector('[data-key=temple]').getAttribute('aria-checked') === 'true'")
     await page.wait_for_selector(".award")
@@ -311,11 +330,13 @@ async def flow_funding(w: Walk, browser: Browser, base: str, tag: str, view: dic
     if w.plant == "focus_order":
         await page.evaluate("""() => { const row = document.querySelector('.filter-row'); row.append(row.firstElementChild); }""")
     seq = await tab_order(page)
-    # S49 filter bar: row 1 search, level, sort; then the two switches (the school chips need Temple only on,
-    # so they follow it); then the chips, the guest keep line and the list
-    order = ["search", "level", "sort", "toggle", "closed", "tag", "keepline", "card"]
+    # S49 filter bar: row 1 search, sort; then the two switches (the school chips need Temple only on,
+    # so they follow it); then the chips, the guest keep line and the list. S50 (FE-B): the funding
+    # list has no level select, so "level" must not appear.
+    order = ["search", "sort", "toggle", "closed", "tag", "keepline", "card"]
     firsts = [seq.index(k) for k in order if k in seq]
-    w.check("focus_order_lists", [k for k in order if k in seq] == order and firsts == sorted(firsts), " > ".join(dict.fromkeys(seq)))
+    w.check("focus_order_lists", [k for k in order if k in seq] == order and firsts == sorted(firsts) and "level" not in seq,
+            " > ".join(dict.fromkeys(seq)))
     leak = await sample_leak(page)
     w.check("no_sample_in_funding", not leak, f"{leak}")
     await page.context.close()
@@ -503,7 +524,7 @@ async def flow_mocked(w: Walk, browser: Browser, base: str, tag: str, view: dict
     clip = await page.evaluate("() => { const t = document.querySelector('.consent-text'); return t.scrollHeight - t.clientHeight; }")
     w.check("consent_text_not_clipped", clip <= 0, f"scrollable overflow {clip} px")
     await page.evaluate("location.hash = '#/awards'")
-    await page.wait_for_selector(".tag-row")
+    await page.wait_for_selector(".tag-row", state="attached")
     w.check("public_lists_open_without_welcome", "#/awards" in page.url, page.url)
     await page.evaluate("location.hash = '#/welcome'")
     await page.wait_for_selector(".welcome")
@@ -969,11 +990,13 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await page.wait_for_selector(f"button[data-key='cover-{consent_rid}']")
     # a 403 for consent names the consent, not the sign-in
     await page.locator(f"button[data-key='cover-{consent_rid}']").click()
-    await page.wait_for_selector(f"[data-cover='{consent_rid}'] [role=alert]", timeout=10_000)
-    alert = await page.locator(f"[data-cover='{consent_rid}'] [role=alert]").inner_text()
+    # S50 (FE-B): consent is a step, not an error: an info status with a Read and agree link
+    await page.wait_for_selector(f"[data-cover='{consent_rid}'] .notice.info[role=status]", timeout=10_000)
+    alert = await page.locator(f"[data-cover='{consent_rid}'] .notice.info[role=status]").inner_text()
     href = await page.locator(f"[data-cover='{consent_rid}'] a.btn").get_attribute("href")
-    w.check("cover_consent_403_wording", alert.strip() == "Agree to the consent first." and "Sign in" not in alert
-            and href == "#/welcome", f"{alert!r} {href}")
+    errs = await page.locator(f"[data-cover='{consent_rid}'] [role=alert], [data-cover='{consent_rid}'] .notice.error").count()
+    w.check("cover_consent_403_wording", "need your consent first" in alert and "Sign in" not in alert and errs == 0
+            and href == "#/welcome", f"{alert!r} {href}; {errs} error notes")
     await show(page, f"[data-cover='{consent_rid}']")
     await w.snap(page, tag, "cover-consent", full=False)
     # S49 (U6): the allowance is said once, in a status line above the list; the card points to it

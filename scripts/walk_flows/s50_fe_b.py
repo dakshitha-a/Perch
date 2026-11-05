@@ -23,6 +23,8 @@ async def ev(page, js, arg=None):
 
 
 def register(U):  # noqa: N803 - the module handed in by the loader
+    PLANT = {"w": None}  # the walk's --plant, read inside the stubs
+
     async def opp_stub(page) -> None:
         """Funding list: the first row gets a far-off date with a note, the second only page words."""
         async def route(r) -> None:
@@ -30,13 +32,22 @@ def register(U):  # noqa: N803 - the module handed in by the loader
             data = await resp.json()
             items = data["groups"][0]["items"]
             if len(items) > 1:
+                # the front end's own far-date rule, as before the server's G8 words (no close_text)
+                items[0].pop("close_text", None)
                 items[0].update(close_date="2076-10-05", close_date_note="SYNTHETIC proposals accepted anytime")
-                items[1].update(close_date=None, close_date_note="SYNTHETIC rolling review by the sponsor")
+                # no date: the server sends the note as close_text too; the list still quotes it (V29)
+                items[1].update(close_date=None, close_date_note="SYNTHETIC rolling review by the sponsor",
+                                close_text="SYNTHETIC rolling review by the sponsor")
+                items[1].pop("placeholder_close_date", None)
+            if len(items) > 2 and PLANT["w"] != "s50b_no_close_text":
+                # G8: the server's own words for a close date win over the date (QA, S50)
+                items[2].update(close_date="2027-01-15", close_text="SYNTHETIC: closes when the sponsor says")
             await r.fulfill(json=data)
         await page.route(re.compile(r".*/opportunities\?.*"), route)
 
     # ---------- lists, as a guest ----------
     async def flow_lists(w, browser, base, tag, view) -> None:
+        PLANT["w"] = w.plant
         phone = view["width"] < 600
         tops = {}
         for side, path in (("awards", "#/awards"), ("funding", "#/funding")):
@@ -83,6 +94,9 @@ def register(U):  # noqa: N803 - the module handed in by the loader
             await page.keyboard.press("Escape")
             if side == "funding":
                 texts = await page.evaluate("[...document.querySelectorAll('.award-row')].slice(0, 2).map(e => e.querySelector('.ar-facts').textContent)")
+                third = await page.evaluate("(() => { const e = document.querySelectorAll('.award-row')[2]; return e ? e.querySelector('.ar-facts').textContent : ''; })()")
+                w.check("s50b_close_text", "SYNTHETIC: closes when the sponsor says" in third and "2027" not in third,
+                        f"[mock] {third[:90]!r}")
                 w.check("s50b_far_date", len(texts) > 1 and "SYNTHETIC proposals accepted anytime" in texts[0] and "2076" not in texts[0],
                         f"[mock] {texts[0][:90] if texts else ''!r}")
                 w.check("s50b_page_words", len(texts) > 1 and "The page says: “SYNTHETIC rolling review by the sponsor”" in texts[1]
@@ -109,6 +123,8 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         async def cancel(route) -> None:
             seen["cancels"] += 1
             row["status"] = "failed"
+            if w.plant != "s50b_no_brief_error":
+                row["error"] = "SYNTHETIC: this brief was stopped."
             await route.fulfill(json={"id": "b2", "cancelled": True})
 
         async def saved(route) -> None:
@@ -129,6 +145,10 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         after = await page.locator(".brief-row").inner_text()
         w.check("s50b_stop_row", shown == 1 and "Still building" in before and seen["cancels"] == 1 and "Stopped" in after
                 and await page.locator("[data-key=stop-b2]").count() == 0, f"[mock] stop shown {shown}, cancels {seen['cancels']}, after {after[:80]!r}")
+        err = page.locator("[data-key=brief-error]")
+        etext = (await err.inner_text()).strip() if await err.count() == 1 else ""
+        w.check("s50b_stop_error", etext == "SYNTHETIC: this brief was stopped." and await err.is_visible(),
+                f"[mock] error line {etext!r}")
         await w.snap(page, tag, "s50b-my-perch-stopped")
         await page.context.close()
 
@@ -199,6 +219,23 @@ def register(U):  # noqa: N803 - the module handed in by the loader
             const a = panel.querySelector('[data-key=example-scout]'); const o = { href: a ? a.getAttribute('href') : null, text: a ? a.textContent : null }; panel.remove(); return o; };
           return { yes: await mk(true), no: await mk(false) }; }""")
         w.check("s50b_example_scout_link", (sc.get("yes") or {}).get("href") == "example.html?tab=scout" and sc["yes"]["text"] == "Or see an example answer" and sc["no"]["href"] is None, f"[mock] {sc}")
+        # hand-off: a draft that left kept leads out says so under the buttons (BE left_out_note)
+        lo = await ev(page, """async ([offices, plant]) => {
+          const { renderHandoff } = await import('/handoff.js');
+          const box = document.createElement('div'); document.body.append(box);
+          const note = 'SYNTHETIC: 1 kept lead is left out of this note.';
+          const d = { subject: 'SYNTHETIC subject', body: 'SYNTHETIC body', flagged: false, model: 'm', lead_ids: ['L1'] };
+          if (plant !== 's50b_no_left_out') d.left_out_note = note;
+          const args = { api: { exampleAvailable: async () => false, handoff: async () => d }, briefId: 'blo',
+            kept: [{ id: 'L1', route: 'A', title: 'SYNTHETIC grant' }], offices, announce() {}, guest: false, signIn: '#/' };
+          args.redraw = () => renderHandoff(box, args);
+          renderHandoff(box, args);
+          box.querySelector('[data-key=handoff-make]').click();
+          for (let i = 0; i < 40 && !box.querySelector('[data-key=handoff-subject]'); i++) await new Promise((r) => setTimeout(r, 50));
+          const e = box.querySelector('[data-key=left-out-note]');
+          const out = { text: e ? e.textContent : null, draft: Boolean(box.querySelector('[data-key=handoff-subject]')) };
+          box.remove(); return out; }""", [OFFICES, w.plant])
+        w.check("s50b_left_out_note", lo.get("draft") is True and lo.get("text") == "SYNTHETIC: 1 kept lead is left out of this note.", f"[mock] {lo}")
         await page.context.close()
 
     # ---------- Help ----------
@@ -220,4 +257,4 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         await page.context.close()
 
     flows = {"s50b_lists": flow_lists, "s50b_stop": flow_stop, "s50b_modules": flow_modules, "s50b_help": flow_help}
-    return flows, []
+    return flows, ["s50b_no_close_text", "s50b_no_brief_error", "s50b_no_left_out"]

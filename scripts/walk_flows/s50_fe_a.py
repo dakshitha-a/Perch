@@ -158,7 +158,7 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
         state = {"roles": [], "consented": False, "gone": False, "deleted_with": None}
         await U.stub_signed_in(page, state)
         await page.goto(base + "/#/awards")
-        await page.wait_for_selector(".tag-row")
+        await page.wait_for_selector(".tag-row", state="attached")
         await page.evaluate("location.hash = '#/welcome'")
         await page.wait_for_selector("#acct-title")
         await page.wait_for_timeout(300)

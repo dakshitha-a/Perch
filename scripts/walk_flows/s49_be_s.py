@@ -52,7 +52,10 @@ def register(U):  # noqa: ANN001, ANN201 - U is the ux_walk module
         gap = await page.evaluate("""() => {
           const t = document.querySelector('#routes-title').getBoundingClientRect();
           const l = document.querySelector('#panel .lead').getBoundingClientRect();
-          return Math.round(l.top - t.bottom); }""")
+          // S50 B4: the cover-points hint is said once above the list by design; it is not preamble
+          const c = document.querySelector('#panel [data-cover-line]');
+          const ch = c ? c.getBoundingClientRect().height + parseFloat(getComputedStyle(c).marginTop) + parseFloat(getComputedStyle(c).marginBottom) : 0;
+          return Math.round(l.top - t.bottom - ch); }""")
         limit = 120 if view["width"] >= 600 else 160  # at 360 the Sort switch wraps under the heading
         w.check("s49_student_preamble_folded", gap <= limit, f"first card starts {gap} px under the heading (limit {limit})")
         await w.snap(page, tag, "s49-student-list-clean")
@@ -60,7 +63,7 @@ def register(U):  # noqa: ANN001, ANN201 - U is the ux_walk module
         await page.reload()
         await page.wait_for_selector("#panel .lead", timeout=30_000)
         await w.snap(page, tag, "s49-student-list")
-        notes = await page.locator("#panel .list-note").count()
+        notes = await page.locator("#panel .list-note[data-withheld]").count()  # S50: the cover hint is a list note too
         amber = await page.locator("#panel .lead .notice.warn").count()
         lines = await page.locator("#panel .lead .withheld-line").count()
         # S50 V5: with the list note up, the flagged cards carry no line of their own (their missing reason is the sign)
