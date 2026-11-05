@@ -32,7 +32,7 @@ from perch.skills import (
 from perch.validate import Check, Validated, check, generate_validated
 
 SKILL = "fit_explainer"
-PROMPT_VERSION = "fit-3"  # bump with INSTRUCTIONS or SCHEMA; keys cached text (tests/test_cache.py)
+PROMPT_VERSION = "fit-4"  # bump with INSTRUCTIONS or SCHEMA; keys cached text (tests/test_cache.py)
 SCHEMA = {
     "type": "object",
     "properties": {  # order matters: reasoning is generated before the answer
@@ -55,13 +55,69 @@ INSTRUCTIONS = (
     "First, in the reasoning field, note in at most three short phrases which of the "
     "opportunity's aims the papers touch. Then write three sentences for the researcher. "
     "opportunity_sentence: one factual sentence "
-    "on what the opportunity funds, using only the opportunity record. research_findings: 1 "
+    "on what the opportunity funds, using only the opportunity record; when the record says "
+    "little, say what it names and never what it leaves out. research_findings: 1 "
     "to 3 items, each one paper id and a short clause starting with a past-tense verb that "
     "states what that one paper did, using only that paper (e.g. \"surveyed living kidney "
     "donors about genetic testing\"). link_sentence: one short sentence on why the work and "
     "the opportunity fit or do not. cited_ids must hold the opportunity id and the paper ids "
     "used. " + GROUND_RULES
 )
+
+
+TRAILING_CITE = re.compile(r"\s*\[[^\[\]]*\]\s*\.?\s*$")
+SPLIT_BRACKETS = re.compile(r"(\[[^\[\]]*\])")
+
+
+def name_ids(text: str, labels: dict[str, str]) -> str:
+    """S50 (3a): a user document's id written bare in model text ("user:achievement-a
+    presented ...") reads as its title; ids inside citation brackets stay."""
+    if not labels or not text:
+        return text
+    keys = sorted({k for i in labels for k in (i, i.removeprefix("user:"))}, key=len,
+                  reverse=True)
+    rx = re.compile(r"(?<![\w:-])(?:" + "|".join(re.escape(k) for k in keys) + r")(?![\w-])")
+
+    def label(m: re.Match) -> str:
+        key = m.group(0)
+        name = labels.get(key) or labels[f"user:{key}"]
+        before = m.string[:m.start()].rstrip()
+        if not before or before.endswith((".", "!", "?", ":")) or name[1:2].isupper():
+            return name  # a sentence's start, or an acronym such as CV
+        return name[:1].lower() + name[1:]
+
+    return "".join(p if SPLIT_BRACKETS.fullmatch(p) else rx.sub(label, p)
+                   for p in SPLIT_BRACKETS.split(text))
+
+
+# S50 (3b): the live capture cited the same three papers on almost every card. Code now
+# picks, per lead, the papers whose words best match the opportunity record (tf-idf cosine
+# over the profile's papers, ties in profile order), and the findings may use only those.
+CHOSEN_PAPERS = {"researcher": 3, "student": 2}
+
+
+def choose_papers(o: Opportunity, paper_records: dict[str, Record], k: int) -> list[str]:
+    import math
+    from collections import Counter
+
+    from perch.profile import words
+
+    ids = [i for i, r in paper_records.items() if isinstance(r, Work)]
+    if len(ids) <= k:
+        return ids
+    bags = {i: Counter(words(f"{paper_records[i].title or ''} "
+                             f"{paper_records[i].abstract or ''}")) for i in ids}
+    df = Counter(t for b in bags.values() for t in b)
+    idf = {t: math.log(1 + len(ids) / n) for t, n in df.items()}
+    q = Counter(words(f"{o.title} {o.description or ''}"))
+
+    def cos(b: Counter) -> float:
+        dot = sum(q[t] * b[t] * idf[t] ** 2 for t in b if t in q)
+        nb = math.sqrt(sum((b[t] * idf[t]) ** 2 for t in b)) or 1.0
+        return dot / nb
+
+    order = sorted(range(len(ids)), key=lambda j: (-cos(bags[ids[j]]), j))
+    return [ids[j] for j in order[:k]]
 
 
 @dataclass
@@ -76,11 +132,22 @@ class Fit:
     reasoning: str
     unsupported: list[str] = field(default_factory=list)  # layer 2 flags (factual sentences)
     support: dict[str, float] = field(default_factory=dict)
+    # S50 (3a): a user document's title by its id ("Your achievement A"), so the visible text
+    # names it and the id stays only inside a citation mark. Empty for papers.
+    labels: dict[str, str] = field(default_factory=dict)
+
+    def part(self, pid: str, clause: str) -> str:
+        """One finding as shown: "W1 studied ..." for a paper (web/format.js parses that
+        shape), "Your achievement A presented ... [user:achievement-a]" for a document."""
+        if pid in self.labels:
+            c = TRAILING_CITE.sub("", clause.strip()).rstrip(".")
+            return f"{self.labels[pid]} {c} [{pid}]"
+        return f"{pid} {clause.strip().rstrip('.')}"
 
     @property
     def research_sentence(self) -> str:
         """Rendered by code from the per-paper findings, so each part stays checkable."""
-        parts = [f"{pid} {clause.strip().rstrip('.')}" for pid, clause in self.findings]
+        parts = [self.part(pid, clause) for pid, clause in self.findings]
         return ("Cited work: " + "; ".join(parts) + ".") if parts else ""
 
     @property
@@ -116,10 +183,18 @@ def profile_prompt(profile: Profile, works: dict[str, Work], per_thread: int = 5
 
 
 def explain_one(o: Opportunity, system: str, paper_records: dict[str, Record],
-                provider: AuditedProvider, grounder: Grounder | None = None
-                ) -> Validated[Fit]:
+                provider: AuditedProvider, grounder: Grounder | None = None,
+                audience: str = "researcher") -> Validated[Fit]:
     records = {**paper_records, o.opportunity_number: o}
-    prompt = "Opportunity:\n" + opportunity_view(o)
+    chosen = choose_papers(o, paper_records, CHOSEN_PAPERS.get(audience, 3))
+    labels = ({i: r.title for i, r in paper_records.items()
+               if i.startswith("user:") and isinstance(r, Work) and r.title}
+              if audience == "student" else {})
+    noun = "records" if audience == "student" else "papers"
+    prompt = ("Opportunity:\n" + opportunity_view(o)
+              + f"\n\nThe {noun} closest to this opportunity, chosen by code, closest first: "
+              + ", ".join(f"[{i}]" for i in chosen)
+              + f". research_findings and cited_ids use only these {noun}.")
 
     def generate(feedback: list[str]) -> Fit:
         msg = prompt + ("\n\nYour previous answer was rejected: " + "; ".join(feedback)
@@ -133,11 +208,12 @@ def explain_one(o: Opportunity, system: str, paper_records: dict[str, Record],
             return f"user:{i}" if i not in records and f"user:{i}" in records else i
 
         try:
-            findings = [(known(x["paper_id"]), x["finding"].strip())
+            findings = [(known(x["paper_id"]), name_ids(x["finding"].strip(), labels))
                         for x in d["research_findings"]]
-            return Fit(None, d["opportunity_sentence"].strip(), findings,
-                       d.get("link_sentence", "").strip(), [known(i) for i in d["cited_ids"]],
-                       d.get("reasoning", ""))
+            return Fit(None, name_ids(d["opportunity_sentence"].strip(), labels), findings,
+                       name_ids(d.get("link_sentence", "").strip(), labels),
+                       [known(i) for i in d["cited_ids"]], d.get("reasoning", ""),
+                       labels=labels)
         except (KeyError, TypeError, AttributeError) as e:
             raise ValueError(f"missing field: {e}") from e
 
@@ -161,6 +237,9 @@ def explain_one(o: Opportunity, system: str, paper_records: dict[str, Record],
                 errors.append(f"finding names {pid!r}, which is not one of the given papers")
             elif pid not in f.cited_ids:
                 errors.append(f"finding names {pid!r} but cited_ids does not list it")
+        if off := [i for i in papers if i not in chosen]:  # S50 (3b): code chose the papers
+            errors.append(f"cite only the {noun} chosen for this opportunity "
+                          f"({', '.join(chosen)}), not {', '.join(off)}")
         if sentences(f.opportunity_sentence) != 1:
             errors.append("opportunity_sentence must be one sentence")
         provider.log.validation(provider.last_call_id, SKILL, not errors, errors, attempts[0])
@@ -193,7 +272,7 @@ def ground(f: Fit, o: Opportunity, paper_records: dict[str, Record], grounder: G
         p = grounder.support(work_view(w, abstract_chars=2000), [claim])[0]
         f.support[pid] = round(p, 3)
         if p <= THRESHOLD:
-            f.unsupported.append(f"{pid} {clause}")
+            f.unsupported.append(f.part(pid, clause))
     passed = not f.unsupported
     provider.log.validation(provider.last_call_id, SKILL, passed,
                             [f"unsupported: {s}" for s in f.unsupported], 1, layer=2)
@@ -220,7 +299,7 @@ def explain_leads(opps: list[Opportunity], profile: Profile, works: dict[str, Wo
     def one(i: int) -> None:
         if cancelled():
             return
-        results[i] = explain_one(opps[i], system, paper_records, provider, grounder)
+        results[i] = explain_one(opps[i], system, paper_records, provider, grounder, audience)
         if on_result:
             on_result(i, results[i])
 

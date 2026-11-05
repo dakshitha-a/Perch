@@ -416,7 +416,7 @@ def test_s15_the_fit_skill_asks_for_no_number():
 
     assert "fit" not in fit.SCHEMA["properties"] and "fit" not in fit.SCHEMA["required"]
     assert "0 (no overlap)" not in fit.INSTRUCTIONS and "at most three" in fit.INSTRUCTIONS
-    assert fit.PROMPT_VERSION == "fit-3"
+    assert fit.PROMPT_VERSION == "fit-4"  # S50: code-chosen papers
 
 
 # --- S8: one word per level in the filter columns ---

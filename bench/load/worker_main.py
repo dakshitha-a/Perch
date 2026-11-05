@@ -47,7 +47,10 @@ def reply(messages, system, schema) -> tuple[str, str]:
     if "research_findings" in props:
         m = re.search(r"Opportunity:\n\[([^\]]+)\]", text)
         opp = m.group(1) if m else "x"
-        pids = re.findall(r"^\[([^\]]+)\]", system or "", re.M)
+        # S50: the papers code chose for this opportunity, else the profile's first ones
+        chosen = re.search(r"closest first: (.*)", text)
+        pids = (re.findall(r"\[([^\]]+)\]", chosen.group(1)) if chosen
+                else re.findall(r"^\[([^\]]+)\]", system or "", re.M))
         p1, p2 = (pids + ["p1", "p2"])[:2]
         return "fit", json.dumps({
             "reasoning": "compared aims", "fit": 50,
