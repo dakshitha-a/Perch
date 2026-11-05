@@ -525,6 +525,10 @@ def test_a_brief_whose_job_ended_without_it_stops_the_page(env, pg_clean, tmp_pa
     got = c.get(f"/briefs/{bid}").json()
     assert got["brief"]["status"] == "queued"
     assert got["job"]["state"] == "queued" and got["job"]["worker_seen"] is False
+    sql(pg_clean, "INSERT INTO worker_heartbeat (worker, at, kinds, models_loaded) "
+        "VALUES ('w-seen', now(), '{brief}', false)")
+    assert c.get(f"/briefs/{bid}").json()["job"]["worker_seen"] is True
+    sql(pg_clean, "DELETE FROM worker_heartbeat")
 
     sql(pg_clean, "UPDATE jobs SET state = 'dead', error_code = 'lease_expired', "
         "finished_at = now() WHERE id = %s", jid)
