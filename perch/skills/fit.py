@@ -312,6 +312,14 @@ def explain_leads(opps: list[Opportunity], profile: Profile, works: dict[str, Wo
     if "prompt_cache" in provider.capabilities:
         one(0)
         start = 1
+    # S50 re-check C1: each pool thread runs in a copy of the job's context, so a wait for the
+    # model slot inside an explanation (the citation checker takes the slot) is tracked as a
+    # wait, not counted against the brief's timeout.
+    import contextvars
+
     with ThreadPoolExecutor(max_workers=workers) as pool:
-        list(pool.map(one, range(start, len(opps))))
+        futures = [pool.submit(contextvars.copy_context().run, one, i)
+                   for i in range(start, len(opps))]
+        for f in futures:
+            f.result()
     return [r for r in results if r is not None]

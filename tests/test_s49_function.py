@@ -496,3 +496,22 @@ def test_fit_prompt_asks_for_no_private_reasoning():
     assert "private reasoning" not in fit.INSTRUCTIONS
     assert "private reasoning" not in fit.STUDENT_INSTRUCTIONS
     assert "private reasoning" not in cover.INSTRUCTIONS
+
+
+
+def test_explanation_threads_see_the_job_context(monkeypatch):
+    """S50 re-check C1: explain_leads' pool threads inherit the caller's contextvars, so a
+    model-slot wait inside an explanation is tracked by the job's wait tracker."""
+    import contextvars
+    from types import SimpleNamespace
+
+    from perch.skills import fit
+
+    probe = contextvars.ContextVar("probe", default=None)
+    seen = []
+    monkeypatch.setattr(fit, "profile_prompt", lambda *a, **k: ("system", {}))
+    monkeypatch.setattr(fit, "explain_one", lambda *a, **k: seen.append(probe.get()))
+    probe.set("job-1")
+    fit.explain_leads([object()] * 4, None, {}, SimpleNamespace(capabilities=set()), workers=3,
+                      cancelled=lambda: False)
+    assert seen == ["job-1"] * 4

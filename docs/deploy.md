@@ -138,7 +138,7 @@ Grants.gov listings close and new ones appear every day. This refresh updates th
 5. **Apply:** `.venv/bin/python scripts/refresh_v1.py apply --sqlite <scratch>/gg.db`. Every pulled and looked-up record is upserted with its new `fetched_at`.
 6. **Vectors**, on the worker's GPU only: `PERCH_LIMIT_GPU=3 PERCH_LIMIT_LOCK=$XDG_RUNTIME_DIR/perch-refresh.lock scripts/run_limited.sh .venv/bin/python scripts/refresh_v1.py vectors`. It embeds only the records whose index text is new or changed.
 7. **Filter columns:** `.venv/bin/python scripts/redenorm.py --dsn-env PERCH_WORKER_DATABASE_URL`.
-8. **Caches:** `.venv/bin/python scripts/refresh_v1.py epoch` bumps the ingest epoch in Postgres and copies it to Redis, so cached lists and precached briefs go stale. The nightly precache at 02:00 UTC rebuilds the briefs.
+8. **Caches:** `.venv/bin/python scripts/refresh_v1.py epoch` bumps the ingest epoch in Postgres and copies it to Redis, so cached lists and precached briefs go stale. The nightly precache rebuilds the briefs at `PERCH_PRECACHE_AT` (default 02:00 UTC; the test deploy uses 08:00 UTC, night in Philadelphia).
 9. **Check:** `.venv/bin/python scripts/smoke_deploy.py --base <public url> --no-researcher` shows 0 failed. No service restart is needed.
 
 The archived records kept for the back-test are never touched. On 5 Nov 2026 the run gave 26 new, 59 changed and 1,412 unchanged records. 47 posted records became closed, 4 became archived and 2 forecasts were posted. 32 vectors were written. 10 forecasts that Grants.gov no longer lists under any status were left as they were.
