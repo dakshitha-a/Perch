@@ -13,7 +13,7 @@ import { verdictChip } from "./student.js";
 
 // Fixed notes, word for word as perch/offices.py writes them (tests/test_web.py compares).
 const SUBMISSION_URL = "https://research.temple.edu/researchadministration/contact-us/find-your-res-administrator";
-const COVER_HELP = "On a lead card, Cover-letter points asks a model to pair what the record asks for with what your CV, entries and papers show, each line cited. It needs an account, it is model text to put in your own words, and it is never sent or added to an export. When today’s allowance is used, one note above the list says so, with the time it comes back.";
+const COVER_HELP = "On a lead card, Cover-letter points asks a model to pair what the record asks for with what your CV, entries and papers show, each line cited. It needs an account, it is model text to put in your own words, and it is never sent or added to an export. One line above the list says how points are written. The points use your CV, so they need your consent first. When today’s allowance is used, one note above the list says so, with the time it comes back.";
 const SUBMISSION_NOTE = "Before anything goes to a sponsor, Temple routes it through ERA for institutional review and approval. That covers every grant proposal and any company agreement that brings Temple funding. Your assigned research administrator supports that step.";
 const FOUNDATION_NOTE = "Foundations are not covered yet. When they are, foundation leads will go to Temple's Office of Corporate and Foundation Relations, through your school's or college's development team, as that office's page asks.";
 const RESEARCH_SECURITY = "Companies outside the United States may need a research-security review before any contact; the office makes that check.";
@@ -48,12 +48,13 @@ function figRoutes() {
     h("span", { class: "k-on" }, icon("keep"), h("span", { text: "Kept" })));
   return fig(
     card(
-      h("div", { class: "pic-row between" },
-        h("span", { class: "fit strong" }, h("span", { class: "fit-k", text: "Match" }), h("b", { text: "86" })),
-        h("span", { class: "pic-row" }, keep, btn("Dismiss", "ghost", "dismiss"))),
-      ph(80, "tall"), ph(50)),
+      h("div", { class: "pic-row between" }, ph(60),
+        h("span", { class: "fit strong" }, h("span", { class: "fit-k", text: "Match" }), h("b", { text: "86" }))),
+      ph(80),
+      h("div", { class: "pic-row" }, keep, btn("Dismiss", "ghost", "dismiss"))),
     h("div", { class: "pic-card dim-later" },
-      h("div", { class: "pic-row between" }, ph(30), btn("Dismiss", "ghost press2", "dismiss")), ph(70)),
+      h("div", { class: "pic-row between" }, ph(50), ph(20)), ph(70),
+      h("div", { class: "pic-row" }, btn("Dismiss", "ghost press2", "dismiss"))),
     h("div", { class: "pic-row between" },
       h("b", { text: "Your shortlist" }),
       h("span", { class: "count" }, h("span", { class: "c0", text: "0" }), h("span", { class: "c1", text: "1" }))));
@@ -117,21 +118,21 @@ function anatomy() {
   const n = (i) => h("span", { class: "callout", text: String(i) });
   const art = h("figure", { class: "fig anat", "aria-hidden": "true" },
     card(
-      h("div", { class: "pic-row" }, n(1), h("span", { class: "anat-title", text: "Opportunity title" })),
       h("div", { class: "pic-row between" },
-        h("span", { class: "pic-row" }, n(2), h("span", { class: "fit strong" }, h("span", { class: "fit-k", text: "Match" }), h("b", { text: "86" }))),
-        h("span", { class: "pic-row" }, n(3), btn("Keep", "ghost", "keep"), btn("Dismiss", "ghost", "dismiss"))),
+        h("span", { class: "pic-row" }, n(1), h("span", { class: "anat-title", text: "Opportunity title" })),
+        h("span", { class: "pic-row" }, n(2), h("span", { class: "fit strong" }, h("span", { class: "fit-k", text: "Match" }), h("b", { text: "86" })))),
       h("dl", { class: "facts" },
-        h("div", { class: "fact" }, h("dt", { text: "Closes" }), h("dd", {}, n(4), ph(60))),
+        h("div", { class: "fact" }, h("dt", { text: "Closes" }), h("dd", {}, n(3), ph(60))),
         h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, ph(50)))),
-      h("div", { class: "pic-row" }, n(5), h("span", { class: "tag model", text: "Model text" }), ph(50)),
-      h("div", { class: "pic-row" }, h("b", { text: "Why it fits" }), icon("back"))));
+      h("div", { class: "pic-row" }, n(4), h("span", { class: "tag model", text: "Model text" }), ph(50)),
+      h("div", { class: "pic-row" }, h("b", { text: "Why it fits" }), icon("back")),
+      h("div", { class: "pic-row" }, n(5), btn("Cover-letter points", "ghost", "pen"), btn("Keep", "ghost", "keep"), btn("Dismiss", "ghost", "dismiss"))));
   const items = [
-    ["The title", " comes first, then the agency and code. The title opens the full record."],
+    ["The title", " comes first, with the Match pill beside it. The title opens the full record."],
     ["Match", " is how closely the listing’s text matches the papers, from 0 to 100: strong is 80 or more, good 60 to 79, partial 40 to 59, weak below 40."],
-    ["Keep or Dismiss", ": keep what is worth a closer look and dismiss the rest. A dismissed lead can be restored."],
-    ["Closes and Amount", " are always shown. Not stated means the record leaves it blank. The page says means the date is in the page’s words, not a date field."],
+    ["Closes and Amount", " sit in two columns and are always shown. Not stated means the record leaves it blank. The page says means the date is in the page’s words, not a date field."],
     ["Model text", " marks a model’s sentence, checked against the records it cites. When a sentence fails that check twice, the card says so in one line and keeps only the fields copied from the record."],
+    ["The bottom row.", " Keep, Dismiss and Cover-letter points sit in the card’s bottom row. Keep what is worth a closer look and dismiss the rest. A dismissed lead can be restored."],
   ];
   return h("div", { class: "anatomy" }, art,
     h("ol", { class: "callouts" }, items.map(([b, t]) => h("li", {}, h("span", {}, h("b", { text: b }), t)))));
@@ -174,6 +175,13 @@ function keeping() {
   const items = [
     ["Keep from the lists.", " On Temple awards and Research funding, Keep saves a record to your account. Kept and saved records collect on My Perch with their dates. Sample records cannot be kept."],
     ["Sort and closed calls.", " Sort a list A to Z, by the soonest date or by the largest amount. Records that state no date or amount come last. Research funding hides calls whose close date has passed; turn on Show closed calls to see them."],
+    ["Sort a brief.", " Best match puts the highest Match first. Closing soonest puts the nearest date first; records with no date come last."],
+    ["Rule lines.", " On a student card, the chip says what the rules found: eligible, may be eligible or not eligible. Under it, each line says what one rule checked. A check mark means the rule was met, a cross means it was not, and a question mark means the listing or your CV does not say. When every card shares a line, it is said once above the list."],
+    ["Withheld reasons.", " When several written reasons fail the citation check, one note above the list says so, and those cards show no reason. Their dates, amounts and rule results are still copied from the record."],
+    ["Phone filters.", " On a phone, Filters opens the level, sort and school choices. The number on the button counts the filters that are on."],
+    ["See an example brief", " opens a saved brief for a Temple researcher, shown by alias. It plays back from a file, so it opens at once and nothing is called or saved. The banner says when it was built."],
+    ["Stop.", " While a brief builds, a signed-in user can press Stop. The brief shows as Stopped on My Perch, and Change details and run again builds a new one."],
+    ["Temple’s own calls in a hand-off.", " A note to Research Development lists kept federal grants only. Temple’s own calls name their contact on each call’s page."],
     ["A past date on an award.", " Many Temple awards recur each year. When an award’s page shows a date that has passed, the card says Past date on the page, and a check of your fit says may be eligible, with the date from the page. Check the page for this year’s date."],
     ["My Perch is your home.", " When you are signed in, Perch opens on My Perch: what you kept and saved, sorted by date, your briefs, and your documents. Start a new search from there."],
     ["Change details and run again.", " It opens the start screen with your details filled in. Running it makes a new brief; the old one stays on My Perch."],

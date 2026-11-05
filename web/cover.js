@@ -17,6 +17,7 @@ export const COVER_FAILED = "The points could not be made. Try again.";
 export const COVER_NOT_DONE = "Cover points start once the brief has finished.";
 export const COVER_SLOW = "Still running. Try again in a minute.";
 export const COVER_CONSENT = "Agree to the consent first.";
+const COVER_NEEDS_CONSENT = "Cover-letter points use your CV, so they need your consent first. ";
 export const COVER_QUOTA_CARD = "Today’s allowance is used. See the note above the list.";
 const QUOTA_DEFAULT = "You have used today’s model allowance.";
 const POLL_MS = 2000;
@@ -130,8 +131,10 @@ function backAt(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  const same = d.toDateString() === new Date().toDateString();
-  return same ? time : `${d.toLocaleDateString([], { day: "numeric", month: "short" })} ${time}`;
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return time;
+  const opts = d.getFullYear() === now.getFullYear() ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" };
+  return `${d.toLocaleDateString([], opts)} ${time}`;
 }
 
 const quotaLine = () => {
@@ -150,10 +153,15 @@ function drawListNotice() {
   return true;
 }
 
-// The one line above a list. A guest is told once, not on every card; after a refused request the
-// allowance note replaces it. `ctx` is the object coverBlock takes.
+// The one line above a list. A guest is told once, not on every card; a signed-in user reads how
+// the points are written once, not on every card (V5); after a refused request the allowance note
+// replaces it. `ctx` is the object coverBlock takes.
 export function coverListLine(ctx) {
   if (QUOTA) return quotaLine();
+  if (ctx && !ctx.guest && ctx.api && ctx.api.mode === "live" && ctx.api.coverStart) {
+    return h("p", { class: "list-note", "data-cover-line": "" }, icon("pen"),
+      h("span", { text: COVER_HINT[ctx.audience === "student" ? "student" : "researcher"] }));
+  }
   if (ctx && ctx.guest && ctx.api && ctx.api.mode === "live") {
     return h("p", { class: "list-note", "data-cover-line": "" }, icon("pen"),
       h("span", {}, h("span", { text: "Cover-letter points need an account. " }), h("a", { href: ctx.signIn, text: "Sign in" })));
@@ -177,11 +185,10 @@ export function coverBlock(ctx, briefId, recordId) {
       icon("pen"), h("span", { text: s.result ? "Points again" : "Cover-letter points" })));
     // With a result, the points come first and the action to ask again sits under them (U14).
     const out = s.result ? [pointsBlock(asPoints(s.result), ctx, { short: true }), act] : [act];
-    if (!s.result) out.push(h("p", { class: "hint", text: COVER_HINT[ctx.audience === "student" ? "student" : "researcher"] }));
     if (s.busy) out.push(h("p", { class: "hint", "data-cover-wait": "", text: COVER_WAIT }));
     else if (s.consent) {
-      out.push(h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: COVER_CONSENT })),
-        h("div", { class: "actions" }, h("a", { class: "btn", href: "#/welcome", text: "Agree to the consent" })));
+      out.push(h("p", { class: "notice info", role: "status" }, icon("info"),
+        h("span", {}, h("span", { text: COVER_NEEDS_CONSENT }), h("a", { class: "btn", href: "#/welcome", text: "Read and agree" }))));
     } else if (s.slow) out.push(h("p", { class: "hint", role: "status", text: COVER_SLOW }));
     else if (s.quota) out.push(h("p", { class: "hint quota-hint", text: COVER_QUOTA_CARD }));
     else if (s.signin) {

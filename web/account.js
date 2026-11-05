@@ -335,18 +335,40 @@ export async function renderMyPerch(root, ctx, opts = {}) {
   ctx.api.myBriefs(side).then((rows) => {
     rows.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
     briefsEl.setAttribute("aria-busy", "false");
-    fill(briefsEl, rows.length ? h("ul", { class: "brief-list-rows" }, rows.map((b) => {
+    const draw = (list) => {
+      briefsEl.setAttribute("aria-busy", "false");
+      fill(briefsEl, list.length ? h("ul", { class: "brief-list-rows" }, list.map((b) => {
       const busy = b.status === "queued" || b.status === "running";
-      const status = busy ? "Still building" : b.status === "failed" ? "Stopped" : null;
+      const status = busy ? "Still building" : ["failed", "cancelled", "dead"].includes(b.status) ? "Stopped" : null;
       const meta = `${f.plural(b.leads, "lead")} · ${b.kept || 0} kept${b.sample_leads ? ` · ${b.sample_leads} sample` : ""}${status ? ` · ${status}` : ""}`;
       return h("li", { class: "brief-line brief-row", "data-id": b.id },
-        h("div", { class: "brief-main" }, h("p", { class: "brief-title", text: briefTitle(b, side) }), h("p", { class: "brief-meta", text: meta })),
+        h("div", { class: "brief-main" }, h("p", { class: "brief-title", text: briefTitle(b, side) }), h("p", { class: "brief-meta", text: meta }),
+          status === "Stopped" && b.error ? h("p", { class: "brief-meta brief-error", "data-key": "brief-error", text: String(b.error) }) : null),
         h("div", { class: "brief-acts" },
           h("a", { class: "btn", href: `#/brief/${encodeURIComponent(b.id)}/routes` },
             h("span", { text: "Open" }), h("span", { class: "sr-only", text: ` the brief built ${f.formatDate(b.created_at)}` })),
+          busy ? h("button", { class: "btn quiet", type: "button", "data-key": `stop-${b.id}`, onclick: () => stopBrief(b.id) }, icon("stop"), h("span", { text: "Stop" })) : null,
           h("a", { class: "quiet-link", href: `#/rerun/${encodeURIComponent(b.id)}`, text: "Change details and run again" })));
     })) : h("div", { class: "empty-list" }, h("p", { class: "lede", text: "No briefs yet." }),
       h("a", { class: "btn", href: startHref, text: student ? "Check my fit" : "Find a researcher" })));
+    };
+    async function stopBrief(id) {
+      const btn = briefsEl.querySelector(`[data-key="stop-${CSS.escape(id)}"]`);
+      if (btn) { btn.disabled = true; btn.setAttribute("aria-busy", "true"); }
+      try {
+        await ctx.api.cancelBrief(id);
+        const fresh = await ctx.api.myBriefs(side);
+        fresh.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+        draw(fresh);
+        const open = briefsEl.querySelector(`[data-id="${CSS.escape(id)}"] a.btn`);
+        if (open) open.focus({ preventScroll: true });
+        ctx.announce("Stopped. Change details and run again builds a new one.");
+      } catch (e) {
+        if (btn) { btn.disabled = false; btn.removeAttribute("aria-busy"); }
+        ctx.announce(e.message);
+      }
+    }
+    draw(rows);
   }, (e) => { briefsEl.setAttribute("aria-busy", "false"); fill(briefsEl, failure(e, "Your briefs")); });
 
   // ----- documents -----

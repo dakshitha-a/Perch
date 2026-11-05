@@ -75,20 +75,24 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
   if (H.briefId !== briefId) reset(briefId);
   const keptSig = kept.map((l) => l.id).sort().join(",");
   if (H.keptSig !== keptSig) { H.drafts = {}; H.error = null; H.keptSig = keptSig; }
-  const count = (route) => kept.filter((l) => (l.route || "A") === route).length;
+  // Temple's own calls are not federal grants: they leave Research Development's note (Q3).
+  const federal = (l) => l.group !== "temple_internal";
+  const hasTemple = kept.some((l) => !federal(l));
+  const count = (route) => kept.filter((l) => federal(l) && (l.route || "A") === route).length;
   const usable = OFFICES.filter((o) => count(o.route));
-  if (!usable.length) { box.replaceChildren(); return; }
-  if (!H.office || !count(OFFICES.find((o) => o.key === H.office).route)) H.office = usable[0].key;
-  const office = OFFICES.find((o) => o.key === H.office);
+  if (!usable.length && !hasTemple) { box.replaceChildren(); return; }
+  if (usable.length && (!H.office || !count(OFFICES.find((o) => o.key === H.office).route))) H.office = usable[0].key;
+  const office = OFFICES.find((o) => o.key === H.office) || OFFICES[0];
   const draft = H.drafts[office.key];
 
+  const templeLine = hasTemple ? h("p", { class: "hint", "data-key": "temple-line", text: "Temple’s own calls name their contact on each call’s page." }) : null;
   const choices = h("fieldset", { class: "office-pick" },
     h("legend", { text: "Which office?" }),
     ...OFFICES.map((o) => {
       const n = count(o.route);
       return h("label", { class: `office-opt${n ? "" : " off"}` },
         h("input", { type: "radio", name: "office", value: o.key, "data-key": `office-${o.key}`,
-          checked: o.key === H.office, disabled: !n,
+          checked: usable.length > 0 && o.key === H.office, disabled: !n,
           onchange: () => { H.office = o.key; H.error = null; redraw(`office-${o.key}`); } }),
         h("span", {}, h("b", { text: o.name }),
           h("span", { class: "hint", text: n ? ` · ${n} kept ${n === 1 ? o.what.replace(/s$/, "") : o.what}`
@@ -99,7 +103,7 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
   // It uses what the page already holds; nothing is asked of the server (P7).
   const titleOf = (l) => (l.opportunity && l.opportunity.title) || (l.organisation && l.organisation.name) || l.title
     || (l.record && (l.record.title || l.record.name)) || "Untitled lead";
-  const inNote = kept.filter((l) => (l.route || "A") === office.route).map(titleOf);
+  const inNote = kept.filter((l) => federal(l) && (l.route || "A") === office.route).map(titleOf);
   const status = H.busy === office.key
     ? h("div", { class: "handoff-progress" },
       h("p", { class: "hint", text: `Writing to ${office.name}.` }),
@@ -107,17 +111,23 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
         h("ul", { class: "progress-leads" }, ...inNote.slice(0, 6).map((t) => h("li", { text: t })),
           inNote.length > 6 ? h("li", { text: `and ${inNote.length - 6} more` }) : null)) : null,
       h("p", { class: "hint", role: "status", text: "A model is writing the opening paragraph. This can take up to two minutes…" }))
-    : H.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: H.error })) : null;
+    : null;
+  // The error goes above a draft that already exists, and says the draft shown is the older one (V24).
+  const errorNote = H.busy === office.key || !H.error ? null
+    : h("div", { class: "draft-error" },
+      h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: H.error })),
+      draft ? h("p", { class: "hint", text: "The draft below is the previous one." }) : null);
 
   async function makeDraft(focusKey = "handoff-subject") {
     H.busy = office.key; H.error = null; redraw("handoff-make");
     try {
       const d = await draftOf(api, briefId, office.key);
       H.drafts[office.key] = { subject: d.subject, body: d.body, flagged: d.flagged, model: d.model,
-        n: d.lead_ids.length };
+        n: d.lead_ids.length, leftOut: d.left_out_note || null };
       announce("The draft is ready below. You can edit it.");
     } catch (e) {
-      H.error = `The draft could not be made: ${e.message}`;
+      const m = String(e.message || "").trim();
+      H.error = `The draft could not be made. ${m ? m[0].toUpperCase() + m.slice(1) : ""}`.trim();
     }
     H.busy = null;
     redraw(H.drafts[office.key] ? focusKey : "handoff-make");
@@ -125,21 +135,29 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
   // A draft needs an account, so a guest gets a link, not a button that fails. Once a draft
   // exists, Draft again sits under it with the other actions (U13).
   const make = guest
-    ? h("a", { class: "btn primary", href: signIn, "data-key": "handoff-signin", text: "Sign in to draft a note to the office" })
+    ? h("span", { class: "guest-draft" },
+      h("a", { class: "btn primary", href: signIn, "data-key": "handoff-signin", text: "Sign in to draft a note to the office" }),
+      h("span", { class: "example-slot" }))
     : h("button", { class: `btn ${draft ? "quiet" : "primary"}`, type: "button", "data-key": "handoff-make",
       disabled: H.busy !== null, onclick: () => makeDraft() },
     icon("pen"), h("span", { text: draft ? "Draft again" : "Draft the email" }));
 
+  if (!usable.length) {  // only Temple's own calls are kept: no federal office applies
+    fill(box, h("section", { class: "handoff", "aria-labelledby": "handoff-title" }, h("h2", { class: "section-title", id: "handoff-title", text: "Hand off" }),
+      choices, templeLine));
+    return;
+  }
   const parts = [h("h2", { class: "section-title", id: "handoff-title", text: "Hand off" }),
     h("p", { class: "hint", text: "Perch drafts an email to the Temple office for these leads. "
       + "You edit it and send it yourself. Perch never sends it." }),
     choices,
+    templeLine,
     h("p", { class: "office-link" }, h("span", { text: "To: add the address yourself. " }),
       h("a", { href: office.url, target: "_blank", rel: "noopener",
       text: `${office.name} contacts on research.temple.edu` })),
     h("p", { class: "hint submission-note", "data-key": "submission-note" }, h("span", { text: SUBMISSION_NOTE + " " }),
       h("a", { href: SUBMISSION_URL, target: "_blank", rel: "noopener", text: "Find your research administrator" })),
-    draft ? null : h("div", { class: "actions" }, make), draft ? null : status];
+    draft ? null : errorNote, draft ? null : h("div", { class: "actions" }, make), draft ? null : status];
 
   if (draft) {
     const subject = h("input", { id: "handoff-subject", "data-key": "handoff-subject", class: "input", value: draft.subject,
@@ -153,7 +171,7 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
       : h("p", { class: "hint model-note" }, h("span", { class: "tag model", text: "Model text" }),
         h("span", { text: ` The opening paragraph was written by ${draft.model || "a model"} and checked against the records it cites. `
           + "The list of leads, dates, amounts and papers is written by code." }));
-    parts.push(h("div", { class: "draft" }, tag,
+    parts.push(h("div", { class: "draft" }, errorNote, tag,
       h("label", { class: "field-label", for: "handoff-subject", text: "Subject" }), subject,
       h("label", { class: "field-label", for: "handoff-body", text: "Email" }), body,
       h("div", { class: "actions" },
@@ -162,8 +180,16 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
         h("a", { class: "btn", href: "#", "data-key": "handoff-mail",
           onclick: async (e) => { e.currentTarget.href = mailto(draft); await copy(draftText(draft), announce); } },
         h("span", { text: "Open in my mail app" })), make),
+      draft.leftOut ? h("p", { class: "hint", "data-key": "left-out-note", text: draft.leftOut }) : null,
       status,
       h("p", { class: "hint", text: "Open in my mail app also copies the draft. A long draft is too long for a mail link: paste it into the new message." })));
   }
   fill(box, h("section", { class: "handoff", "aria-labelledby": "handoff-title" }, ...parts));
+  // A guest may look at a saved example draft, when the deploy has one (Q7).
+  const slot = box.querySelector(".example-slot");
+  if (slot && api && api.exampleAvailable) {
+    api.exampleAvailable("researcher").then((ok) => {
+      if (ok && slot.isConnected) slot.append(h("a", { class: "quiet-link", "data-key": "example-draft", href: "example.html?tab=compare", text: "Or see an example draft" }));
+    }, () => {});
+  }
 }

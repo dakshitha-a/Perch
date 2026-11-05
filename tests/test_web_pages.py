@@ -51,7 +51,7 @@ def test_lists_send_sort_and_open_only_and_default_funding_to_closing_soonest():
     # a sample row never gets Keep (rule 11), and the sample screen builds rows without a keep state
     assert "keep && !sample ? keepButton(r, keep)" in js
     assert "recordRow(r, ctx))" in js
-    assert "Past date on the page" in js and "No amount or deadline on the page" in js
+    assert "Past date on the page" in js and "Not on the page" in js
 
 
 def test_my_perch_is_the_three_card_home():
