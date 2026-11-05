@@ -1247,6 +1247,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
     from perch.user.routes import router as user_router
 
     app.include_router(user_router)  # /me/docs, /me/delete, /me/briefs, /usage (S41 part B)
+    app.state.public_repo = service.repo  # /me/saved reads the public store (S49 V2)
 
     from perch.browse.routes import make_router as browse_router
 
