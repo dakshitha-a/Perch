@@ -392,6 +392,16 @@ def test_q2_a_search_is_a_citable_record():
     assert t.search_records("kidney")["id"] == "search:2"
 
 
+# --- S15: the fit explainer no longer asks for a 0-100 number ---
+
+def test_s15_the_fit_skill_asks_for_no_number():
+    from perch.skills import fit
+
+    assert "fit" not in fit.SCHEMA["properties"] and "fit" not in fit.SCHEMA["required"]
+    assert "0 (no overlap)" not in fit.INSTRUCTIONS and "at most three" in fit.INSTRUCTIONS
+    assert fit.PROMPT_VERSION == "fit-2"
+
+
 # --- S8: one word per level in the filter columns ---
 
 def test_s8_level_columns_use_the_page_words():
