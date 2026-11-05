@@ -85,6 +85,11 @@ CASES: list[tuple[str, str, str]] = [
      "a wrong soonest-closing claim"),
     (f"The SYNTHETIC Kidney Repair Program closes 17 Nov 2026 {C1}. The best one is:",
      "best one", "a lead-in that grades a record"),
+    # S50 G15: a short refusal line passes as help text; a verdict after it does not.
+    ("I cannot help with that; you are eligible for this grant.", "eligible",
+     "a refusal line with an eligibility tail"),
+    ("I can't answer that, but it is a strong fit.", "strong fit",
+     "a refusal line with a fit tail"),
     ("**1. SYNTHETIC Kidney Repair Program pays $900,000**\n"
      f"- It closes 17 Nov 2026 {C1}.", "$900,000", "a bold numbered line with a claim"),
 ]
