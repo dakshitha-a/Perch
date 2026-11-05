@@ -19,14 +19,37 @@ BASE = os.environ.get("PERCH_LIVE_BASE", "")
 if not BASE:
     sys.exit("set PERCH_LIVE_BASE to the deploy URL (it is kept out of the repository)")
 AUTHOR = "A5063022331"
-ALIAS = ("Tomasz Skórski", "Skórski", "Tomasz Skorski", "Skorski, Tomasz", "T. Skorski", "Skorski")
+def _real_names(alias: str = "PI-1") -> tuple[str, ...]:
+    """The researcher's name forms to replace, read from data/overrides/pi_aliases.csv (the one
+    tracked place real names may sit), longest first."""
+    import csv
+    import unicodedata
+
+    with (ROOT / "data/overrides/pi_aliases.csv").open(newline="", encoding="utf-8") as f:
+        name = next((r["name"] for r in csv.DictReader(f) if r["alias"] == alias), "")
+    if not name:
+        return ()
+    first, last = name.split()[0], name.split()[-1]
+    plain = lambda t: unicodedata.normalize("NFKD", t).encode("ascii", "ignore").decode()  # noqa: E731
+    forms = {name, last, f"{last}, {first}", f"{first[0]}. {last}"}
+    forms |= {plain(x) for x in forms}
+    return tuple(sorted(forms, key=len, reverse=True))
+
+
+ALIAS = _real_names()
 LOG: dict = {"notes": []}
 
 
 def alias(text: str) -> str:
+    """Replace the researcher's name with "PI-1". Matching is on accent-free text, so an
+    accented spelling in a record matches the plain one in pi_aliases.csv."""
+    import unicodedata
+
+    folded = "".join(ch for ch in unicodedata.normalize("NFKD", text)
+                     if not unicodedata.combining(ch))
     for n in ALIAS:
-        text = text.replace(n, "PI-1")
-    return text
+        folded = folded.replace(n, "PI-1")
+    return folded
 
 
 def note(s: str) -> None:
