@@ -1,3 +1,4 @@
+# ruff: noqa: E501, ANN001, ANN201, ANN202, ANN003  - walk flows hold inline JavaScript probes, like ux_walk.py
 """S49 FE-B walk flows: lists, My Perch, account, compare, hand-off and cover points.
 
 register(U) -> (flows, plants). `U` is the ux_walk module. Checks that rely on Playwright route
@@ -321,5 +322,14 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         await w.snap(page, tag, "s49b-cover-quota", full=False)
         await page.context.close()
 
-    flows = {"s49b_lists": flow_lists, "s49b_signed": flow_signed, "s49b_brief": flow_brief}
+    async def flow_scoutmarks(w, browser, base, tag, view) -> None:
+        """The existing scoutmarks flow with U21's one-word provenance line for a flagged answer."""
+        old = U.CHECKED_FLAGGED
+        U.CHECKED_FLAGGED = "Written by a model."
+        try:
+            await U.flow_scoutmarks(w, browser, base, tag, view)
+        finally:
+            U.CHECKED_FLAGGED = old
+
+    flows = {"s49b_scoutmarks": flow_scoutmarks, "s49b_lists": flow_lists, "s49b_signed": flow_signed, "s49b_brief": flow_brief}
     return flows, []

@@ -41,6 +41,12 @@ export async function draftOf(api, briefId, office, sleep = (ms) => new Promise(
   }
 }
 
+// The box fits the draft: 80 characters to a line, at least 8 rows and at most 18 (U12).
+export function bodyRows(text) {
+  const lines = String(text || "").split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / 80)), 0);
+  return Math.min(18, Math.max(8, lines + 1));
+}
+
 function draftText(d) {
   return `Subject: ${d.subject}\n\n${d.body}`;
 }
@@ -89,8 +95,18 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
             : ` · no kept ${o.what}` })));
     }));
 
+  // While the model writes, the box names the office and the kept leads that go in the note.
+  // It uses what the page already holds; nothing is asked of the server (P7).
+  const titleOf = (l) => (l.opportunity && l.opportunity.title) || (l.organisation && l.organisation.name) || l.title
+    || (l.record && (l.record.title || l.record.name)) || "Untitled lead";
+  const inNote = kept.filter((l) => (l.route || "A") === office.route).map(titleOf);
   const status = H.busy === office.key
-    ? h("p", { class: "hint", role: "status", text: "A model is writing the opening paragraph. This can take up to two minutes…" })
+    ? h("div", { class: "handoff-progress" },
+      h("p", { class: "hint", text: `Writing to ${office.name}.` }),
+      inNote.length ? h("div", {}, h("p", { class: "hint", text: "Leads in this note:" }),
+        h("ul", { class: "progress-leads" }, ...inNote.slice(0, 6).map((t) => h("li", { text: t })),
+          inNote.length > 6 ? h("li", { text: `and ${inNote.length - 6} more` }) : null)) : null,
+      h("p", { class: "hint", role: "status", text: "A model is writing the opening paragraph. This can take up to two minutes…" }))
     : H.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: H.error })) : null;
 
   async function makeDraft(focusKey = "handoff-subject") {
@@ -106,10 +122,11 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     H.busy = null;
     redraw(H.drafts[office.key] ? focusKey : "handoff-make");
   }
-  // DRAFT copy (S43, decided 2026-11-04): a draft needs an account, so a guest gets a link, not a button that fails.
+  // A draft needs an account, so a guest gets a link, not a button that fails. Once a draft
+  // exists, Draft again sits under it with the other actions (U13).
   const make = guest
     ? h("a", { class: "btn primary", href: signIn, "data-key": "handoff-signin", text: "Sign in to draft a note to the office" })
-    : h("button", { class: `btn ${draft ? "" : "primary"}`, type: "button", "data-key": "handoff-make",
+    : h("button", { class: `btn ${draft ? "quiet" : "primary"}`, type: "button", "data-key": "handoff-make",
       disabled: H.busy !== null, onclick: () => makeDraft() },
     icon("pen"), h("span", { text: draft ? "Draft again" : "Draft the email" }));
 
@@ -117,17 +134,17 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     h("p", { class: "hint", text: "Perch drafts an email to the Temple office for these leads. "
       + "You edit it and send it yourself. Perch never sends it." }),
     choices,
-    h("p", { class: "office-link" }, h("span", { text: "To: left blank for you. " }),
+    h("p", { class: "office-link" }, h("span", { text: "To: add the address yourself. " }),
       h("a", { href: office.url, target: "_blank", rel: "noopener",
       text: `${office.name} contacts on research.temple.edu` })),
     h("p", { class: "hint submission-note", "data-key": "submission-note" }, h("span", { text: SUBMISSION_NOTE + " " }),
       h("a", { href: SUBMISSION_URL, target: "_blank", rel: "noopener", text: "Find your research administrator" })),
-    h("div", { class: "actions" }, make), status];
+    draft ? null : h("div", { class: "actions" }, make), draft ? null : status];
 
   if (draft) {
     const subject = h("input", { id: "handoff-subject", "data-key": "handoff-subject", class: "input", value: draft.subject,
       oninput: (e) => { draft.subject = e.target.value; } });
-    const body = h("textarea", { id: "handoff-body", "data-key": "handoff-body", class: "input draft-body", rows: "18",
+    const body = h("textarea", { id: "handoff-body", "data-key": "handoff-body", class: "input draft-body", rows: String(bodyRows(draft.body)),
       oninput: (e) => { draft.body = e.target.value; } });
     body.value = draft.body;
     const tag = draft.flagged
@@ -144,7 +161,8 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
           onclick: () => copy(draftText(draft), announce) }, h("span", { text: "Copy the draft" })),
         h("a", { class: "btn", href: "#", "data-key": "handoff-mail",
           onclick: async (e) => { e.currentTarget.href = mailto(draft); await copy(draftText(draft), announce); } },
-        h("span", { text: "Open in my mail app" }))),
+        h("span", { text: "Open in my mail app" })), make),
+      status,
       h("p", { class: "hint", text: "Open in my mail app also copies the draft. A long draft is too long for a mail link: paste it into the new message." })));
   }
   fill(box, h("section", { class: "handoff", "aria-labelledby": "handoff-title" }, ...parts));
