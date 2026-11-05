@@ -396,6 +396,9 @@ function renderFind() {
         h("p", { text: "After you pick the person, you can tell Perch where your research is going, keywords to search for or leave out, a career stage and a smallest award size. All of it is optional." }))));
   const sess = S.session;
   const replay = api.mode === "replay";
+  // S51 (D4): while accounts are not open, a visitor who is not signed in starts the guest
+  // sample from the second button, as when sign-in is down. The header keeps its Sign in.
+  const closed = !sess.signed_in && !sess.guest && sess.accounts_open === false;
   // The landing buttons and the guest line (S43).
   const fitButton = sess.signed_in
     ? h("button", { class: "btn", type: "button", "data-key": "fit", onclick: () => go("#/student") },
@@ -403,8 +406,8 @@ function renderFind() {
     : sess.guest
       ? h("button", { class: "btn", type: "button", "data-key": "fit", onclick: () => go("#/student") },
         h("span", { text: "Try a sample student" }))
-      : S.signinDown
-        // Sign-in is unavailable (S43 M1): the fit button offers the guest sample instead.
+      : S.signinDown || closed
+        // Sign-in is unavailable (S43 M1) or accounts are closed (S51 D4): the guest sample instead.
         ? h("button", { class: "btn", type: "button", "data-key": "fit", disabled: S.guestBusy, onclick: startGuest },
           h("span", { text: "Try a sample student" }))
         : h("a", { class: "btn", "data-key": "fit", href: signInHref("#/student") },
@@ -420,7 +423,7 @@ function renderFind() {
     replay ? h("span", { class: "hint", text: "The preview has no server." }) : fitButton,
     replay ? null : exampleSlot("student"),
     // With sign-in down, "Try a sample student" is already the guest path (S49 U19, R5).
-    S.signinDown ? null : guestLine);
+    S.signinDown || closed ? null : guestLine);
   const browseFunding = replay ? null : h("a", { class: "quiet-link", "data-key": "browse-funding", href: "#/funding" },
     h("span", { text: "Browse funding" }));
   fill(main(), h("div", { class: "landing" },
@@ -448,7 +451,7 @@ function exampleSlot(side) {
   api.exampleAvailable(side).then((ok) => {
     if (!ok || !slot.isConnected) return;
     fill(slot, h("a", { class: "quiet-link", "data-key": "example-brief", href: side === "student" ? "example.html?side=student" : "example.html" },
-      h("span", { text: side === "student" ? "See an example" : "See an example brief" })));
+      h("span", { text: "See an example brief" })));
   });
   return slot;
 }
@@ -822,7 +825,7 @@ function stopPolling() {
 
 async function openBrief(id) {
   stopPolling();
-  Object.assign(S, { briefId: id, brief: null, filter: null, weakOpen: false, open: new Set(), shut: new Set(), stepsOpen: false,
+  Object.assign(S, { briefId: id, brief: null, filter: null, weakOpen: false, centreOpen: false, firstShown: null, open: new Set(), shut: new Set(), stepsOpen: false,
     failedPolls: 0, seen: { explained: 0, stagesDone: 0 } });
   fill(main(), h("div", { class: "loading" }, owl("work", "owl-md"),
     h("p", { text: "Opening the brief" })));
@@ -1060,6 +1063,10 @@ function renderProgress() {
     if (s.name === "explanations" && isDone("route_a")) detail += ` · ${explainedCount()} of ${routeLeads("A").length} explained`;
   }
   const pct = b.status === "done" ? 100 : (doneN / Math.max(stages.length, 1)) * 100;
+  // S51 (W5): the header's Run again shows once. It is hidden while the brief is queued or
+  // running, and after this reader stopped it, since the progress card then holds its own.
+  const quiet = ["queued", "running"].includes(b.status) || stopped;
+  for (const a of document.querySelectorAll("[data-key=rerun-wide], [data-key=rerun-narrow]")) a.hidden = quiet;
   // S49 (U37, S8): once the brief is ready, the progress card folds into a chip beside
   // Export, "Ready · 7 s", which opens the Steps. While it builds or after it fails, the
   // full card stays. The saved preview keeps its card, which holds "Replay the build".
@@ -1335,7 +1342,7 @@ function renderStudentPanel(panel) {
   panel.dataset.sig = sig;
   const ctx = { brief: d, route: S.route, papers: d.papers || {}, openEvidence, setLead, announce, api,
     offices: d.offices || api.studentOffices, guest: Boolean(S.session.guest), signIn: signInHref(),
-    briefId: S.briefId, setRoute: switchRoute,
+    briefId: S.briefId, setRoute: switchRoute, accountsOpen: accountsOpen(),
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) };
   if (S.tab === "profile") keepFocus(() => fill(panel, ...studentProfile(d, ctx)));
   else if (S.tab === "compare") studentCompare(panel, ctx);
@@ -1354,7 +1361,7 @@ function drawCompare(focusKey) {
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) });
   renderHandoff(panel.querySelector(".handoff-box"), { api, briefId: S.briefId, announce,
     kept: leadsOf().filter((l) => l.status === "kept"), offices: compareOffices(), redraw: drawCompare,
-    guest: Boolean(S.session.guest), signIn: signInHref() });
+    guest: Boolean(S.session.guest), signIn: signInHref(), accountsOpen: accountsOpen() });
   if (kept.length) loadCompare(api, S.briefId, kept, () => drawCompare());
   if (focusKey) panelFocus(focusKey);
 }
@@ -1366,7 +1373,7 @@ function drawScout() {
     openEvidence, announce, rerender: drawScout, label: recordLabel,
     // Only a guest is turned away: a server without accounts still runs the open Scout path
     // and has no guest sessions (S46 re-check).
-    signedIn: !(S.session && S.session.guest), signIn: signInHref() });
+    signedIn: !(S.session && S.session.guest), signIn: signInHref(), accountsOpen: accountsOpen() });
 }
 
 // How Scout names a record of this brief (U8): a grant by its opportunity number; a
@@ -1699,7 +1706,7 @@ function renderRoutes(panel) {
       h("div", {}, h("p", { class: "lede", text: stopped ? "You stopped this brief before the search for leads finished."
         : failed ? "The search for leads did not run." : "Leads appear here when the search finishes." }),
       h("p", { class: "hint", text: stopped ? "Run again builds a new one." : failed ? "See the steps above for what stopped."
-        : "The profile tab fills in first." }))), skeleton(3), skeleton(3));
+        : "What Perch read fills in first." }))), failed ? null : [skeleton(3), skeleton(3)]);
     return;
   }
   const leads = sortedLeads();
@@ -1725,6 +1732,7 @@ function renderRoutes(panel) {
       h("div", { class: "filter-box" }),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
       h("div", { class: "weak-box" }),
+      h("div", { class: "centre-box" }),
       h("div", { class: "dismissed-box" }));
   }
   updateSwitch(panel);
@@ -1757,8 +1765,15 @@ function renderRoutes(panel) {
   // The first five cards always show open, whatever their band, so the first view is
   // never one card; after the fifth, weak ones fold under a count (U24, Q6).
   const weak = (l) => (f.fitBand(l.match_score) || {}).key === "weak";
-  const folded = active.slice(OPEN_FIRST).filter(weak);
-  syncList(panel.querySelector(".leads"), active.filter((l) => !folded.includes(l)));
+  // S51 (H7): centre and programme grants leave the list for their own fold, under the
+  // single-lab cards and their "Show N more". They still count in the heading and the tab.
+  const centre = active.filter((l) => l.group === "centre");
+  const single = active.filter((l) => l.group !== "centre");
+  const folded = single.slice(OPEN_FIRST).filter(weak);
+  const top = single.filter((l) => !folded.includes(l));
+  // S51 (W14): with a CV in the brief, only the first card shown starts open.
+  S.firstShown = top.length ? top[0].id : null;
+  syncList(panel.querySelector(".leads"), top);
   const wbox = panel.querySelector(".weak-box");
   if (!folded.length) wbox.replaceChildren();
   else {
@@ -1768,8 +1783,22 @@ function renderRoutes(panel) {
         ontoggle: (e) => { S.weakOpen = e.target.open; } }, h("summary", { "data-key": "weak-fold" }), h("ol", { class: "leads" }));
       fill(wbox, wd);
     }
-    wd.querySelector("summary").textContent = `Weaker matches (${folded.length})`;
+    wd.querySelector("summary").textContent = `Show ${folded.length} more`;
     syncList(wd.querySelector("ol"), folded);
+  }
+  const cbox = panel.querySelector(".centre-box");
+  if (!centre.length) cbox.replaceChildren();
+  else {
+    let cd = cbox.querySelector("details");
+    if (!cd) {
+      cd = h("details", { class: "weak-fold centre-fold", open: S.centreOpen,
+        ontoggle: (e) => { S.centreOpen = e.target.open; } }, h("summary", { "data-key": "centre-fold" }),
+      h("p", { class: "hint", text: "Centres and programmes of several projects apply through the institution. Each card says why it is here." }),
+      h("ol", { class: "leads" }));
+      fill(cbox, cd);
+    }
+    cd.querySelector("summary").textContent = `Centre and programme grants (${centre.length})`;
+    syncList(cd.querySelector("ol"), centre);
   }
   const box = panel.querySelector(".dismissed-box");
   if (!dismissed.length) { box.replaceChildren(); return; }
@@ -1798,15 +1827,24 @@ function hiddenLine() {
 function drawNotices(box, shown) {
   if (!box) return;
   const flagged = shown.filter((l) => l.flagged).length;
+  // S51 (D16): when the model budget skipped the written reasons, one line says so, first,
+  // in place of the withheld note. The stage's own detail says why (BUDGET_DETAIL).
+  const budget = budgetSkipped(stage("explanations"));
   const items = [
-    flagged >= 2 ? h("p", { class: "notice info list-note", "data-withheld": "" }, icon("info"),
+    budget ? budgetLine() : null,
+    flagged >= 2 && !budget ? h("p", { class: "notice info list-note", "data-withheld": "" }, icon("info"),
       h("span", { text: WITHHELD_NOTE })) : null,
     coverListLine(coverCtx())].filter(Boolean);
-  const sig = JSON.stringify([flagged >= 2, items.map((x) => x.textContent)]);
+  const sig = JSON.stringify([budget, flagged >= 2, items.map((x) => x.textContent)]);
   if (box.dataset.sig === sig) return;
   box.dataset.sig = sig;
   fill(box, ...items);
 }
+
+// The budget line (S51 contract 3.2): the same on both sides; FE-B emits it on the student list.
+const budgetSkipped = (st) => Boolean(st && st.status === "skipped" && String(st.detail || "").startsWith("withheld: the daily model budget"));
+const budgetLine = () => h("p", { class: "notice info list-note", "data-budget": "" }, icon("info"),
+  h("span", { text: "Written reasons are paused: this session’s model budget for today is used. The list, dates, amounts and rule results are not affected." }));
 
 // The withheld-reason note, the same on both sides (S50 contract 3.2).
 const WITHHELD_NOTE = "Some written reasons failed Perch’s citation check, so those cards show no reason. Every date, amount and rule result on the cards is still copied from the record.";
@@ -1980,7 +2018,7 @@ function syncList(ol, leads) {
   for (const [id, el] of have) if (!want.has(id)) el.remove();
   leads.forEach((l, i) => {
     const sig = JSON.stringify([l.status, l.match_score, l.explanation, l.inference, l.flagged,
-      l.unsupported, l.cited_ids.length, isPending(l), Boolean(l.flagged && S.listWithheld)]);
+      l.unsupported, l.cited_ids.length, isPending(l), Boolean(l.flagged && S.listWithheld), l.id === S.firstShown]);
     let el = have.get(l.id);
     if (!el || el.dataset.sig !== sig) {
       const focusKey = el && el.contains(document.activeElement)
@@ -2099,7 +2137,12 @@ function leadFoot(cover, actions) {
 // What cover.js needs for a researcher card and for the list's one line (S49 U16).
 function coverCtx() {
   return { api, announce, openEvidence, guest: Boolean(S.session.guest), signIn: signInHref(), audience: "researcher",
-    stored: (S.brief && S.brief.cover_points) || [] };
+    stored: (S.brief && S.brief.cover_points) || [], accountsOpen: accountsOpen() };
+}
+
+// S51 (D4, contract 3.2): /auth/session says whether accounts are open; a missing field means open.
+function accountsOpen() {
+  return !S.session || S.session.accounts_open !== false;
 }
 
 // Rule notes written by code: a career-stage unlock, a past sponsor, what the user said.
@@ -2111,24 +2154,28 @@ function leadNotes(l) {
 
 function explanationBlock(l, parsed, o) {
   const papers = S.brief.papers || {};
+  const weakBand = (f.fitBand(l.match_score) || {}).key === "weak";
   if (parsed.raw) {
     return h("div", { class: "explain" },
-      h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.raw, ownIds(o))), inferenceBox(l, o));
+      h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.raw, ownIds(o))), fitWhy(l, o, weakBand));
   }
-  // With the researcher's CV or current research in the brief, the reasons start open
-  // (S27, Dakshitha), as they do for a student.
+  const inference = fitWhy(l, o, weakBand);
+  // With the researcher's CV or current research in the brief, the first card shown starts
+  // open (S51 W14; it was every card since S27). The verdict is on every card's face now.
   const own = Object.values(papers).some(isOwnDoc);
-  const open = own ? !S.shut.has(l.id) : S.open.has(l.id);
+  const open = own && l.id === S.firstShown ? !S.shut.has(l.id) : S.open.has(l.id);
   const n = parsed.findings.length;
   const docs = parsed.findings.filter((x) => isOwnDoc(papers[x.paper]) || /^user:/.test(x.paper)).length;
   const why = h("details", { class: "why", open,
     ontoggle: (e) => {
       if (e.target.open) { S.open.add(l.id); S.shut.delete(l.id); } else { S.open.delete(l.id); S.shut.add(l.id); }
     } },
-  h("summary", { "data-key": "why" }, h("span", { text: (f.fitBand(l.match_score) || {}).key === "weak" ? "How it relates" : "Why it fits" }),
+  h("summary", { "data-key": "why" }, h("span", { text: weakBand ? "How it relates" : "Why it fits" }),
     h("span", { class: "hint", text: docs && docs < n
       ? ` cites ${f.plural(n, "paper or document", "papers and documents")}`
       : docs ? ` cites ${f.plural(n, "document")}` : ` cites ${f.plural(n, "paper")} by the researcher` })),
+  // S51 (W13): what the call funds opens the disclosure; the verdict moved to the face.
+  inference ? h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.opportunity, ownIds(o))) : null,
   // A cited document is not a paper; with the SYNTHETIC sample it is not even theirs (U11).
   // With no paper cited, the heading names the documents alone (G1).
   h("h4", { class: "mini", text: docs && docs < n
@@ -2136,14 +2183,29 @@ function explanationBlock(l, parsed, o) {
     : docs ? (sampleSteered() ? "From the sample document" : "From your documents") : "From the researcher’s papers" }),
   h("ul", { class: "findings" }, parsed.findings.map((x) => h("li", {},
     paperRef(x.paper, papers), h("p", { text: `${x.text}.` })))),
-  // Chips for papers the list above already shows are left out (U35).
-  inferenceBox(l, o, new Set(parsed.findings.map((x) => x.paper))),
-  l.unsupported && l.unsupported.length ? h("div", { class: "notice warn" }, icon("warn"),
-    h("div", {}, h("p", { text: "This statement could not be matched to its source:" }),
-      h("ul", {}, l.unsupported.map((u) => h("li", { text: u }))))) : null,
+  unsupportedFold(l.unsupported),
   eligibilityRows(o));
   return h("div", { class: "explain" },
-    h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.opportunity, ownIds(o))), why);
+    inference || h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.opportunity, ownIds(o))), why);
+}
+
+// The fit verdict on the card's face (S51 W13): the model's inference, labelled as the
+// disclosure's summary is, and tagged Inference. Chips for the card's own record are left out.
+function fitWhy(l, o, weakBand) {
+  if (!l.inference) return null;
+  return h("p", { class: "fit-why" }, h("b", { text: weakBand ? "How it relates: " : "Why it fits: " }),
+    renderSegs(f.segments(f.secondPerson(l.inference), new Set(l.cited_ids), ownIds(o)), ownIds(o)),
+    h("span", { class: "tag model", text: "Inference" }));
+}
+
+// Sentences the citation check could not match to a source (S51 contract 3.2, W19): a quiet
+// fold that lists each one as it came. FE-B emits the same markup on the student card.
+function unsupportedFold(list) {
+  if (!list || !list.length) return null;
+  return h("details", { class: "unsupported-fold" },
+    h("summary", { "data-key": "unsupported", text: list.length === 1 ? "1 sentence could not be matched to its source"
+      : `${list.length} sentences could not be matched to their source` }),
+    h("ul", {}, list.map((u) => h("li", { text: u }))));
 }
 
 function modelWord() {
@@ -2161,15 +2223,6 @@ function ownLabel(text = "Your own document") {
 
 function ownIds(o) {
   return new Set([o.opportunity_number, o.id].filter(Boolean));
-}
-
-function inferenceBox(l, o = {}, listed = new Set()) {
-  if (!l.inference) return null;
-  const skip = new Set([...ownIds(o), ...listed]);
-  return h("div", { class: "inference" },
-    h("p", { class: "inference-label" }, h("span", { class: "tag model", text: "Inference" }),
-      h("span", { text: "A model’s reading of the fit, not a fact from a record." })),
-    h("p", {}, renderSegs(f.segments(f.secondPerson(l.inference), new Set(l.cited_ids), ownIds(o)), skip)));
 }
 
 function eligibilityRows(o) {

@@ -609,3 +609,27 @@ def test_s50_fe_a_card_sort_stop_and_example():
     assert 'import("./app.js")' in ex
     # the landing link shows only when the server holds the file
     assert "api.exampleAvailable(side)" in app and '"data-key": "example-brief"' in app
+
+
+def test_s51_researcher_card_and_list() -> None:
+    """S51 FE-A: the centre fold, the verdict on the face, the quiet folds, the budget line,
+    accounts closed, and Run again said once (docs/design/S51_DESIGN.md section 3.4)."""
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
+    # centre and programme grants fold under the single-lab cards; the weak fold reads "Show N more"
+    assert 'l.group === "centre"' in app and "Centre and programme grants (${centre.length})" in app
+    assert "Show ${folded.length} more" in app and "Weaker matches (" not in app
+    # the verdict sits on the card's face, labelled and tagged; the old inference box is gone
+    assert '"fit-why"' in app and '"How it relates: " : "Why it fits: "' in app and "function inferenceBox" not in app
+    assert "own && l.id === S.firstShown" in app
+    # a sentence not matched to a source is a quiet fold, not an amber notice
+    assert '"unsupported-fold"' in app and "This statement could not be matched to its source:" not in app
+    assert ".unsupported-fold summary { color: var(--ink-2);" in css
+    # the budget line comes first and stands in for the withheld note
+    assert 'startsWith("withheld: the daily model budget")' in app and '"data-budget": ""' in app
+    assert "Written reasons are paused: this session’s model budget for today is used." in app
+    # accounts closed: the landing offers the guest sample; every ctx says whether accounts are open
+    assert "sess.accounts_open === false" in app and app.count("accountsOpen: accountsOpen()") == 4
+    # Run again is hidden while the brief builds and after this reader stopped it
+    assert '["queued", "running"].includes(b.status) || stopped' in app
+    assert "What Perch read fills in first." in app and "The profile tab fills in first." not in app

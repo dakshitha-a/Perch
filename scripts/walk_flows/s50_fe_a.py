@@ -73,6 +73,11 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
         if flag_two:
             for x in a[:3]:
                 x.update(flagged=True, explanation=None, cited_ids=[])
+            # S51 (D16): a stage skipped by the model budget shows the budget line instead, so
+            # the withheld case runs with the explanations stage done.
+            for s in d["brief"]["stages"]:
+                if s["name"] == "explanations":
+                    s.update(status="done", detail="SYNTHETIC: 3 withheld")
         if len(a) > 3:  # BE-G: a placeholder date reaches the page as null, with the record's own words
             o = a[3].setdefault("opportunity", {})
             o.update(close_date=None, close_date_note=None, deadline_quote=None, close_text="SYNTHETIC: proposals accepted at any time")
@@ -267,6 +272,10 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
             await page.wait_for_timeout(600)
             org = await page.evaluate("() => [...document.querySelectorAll('#panel li.card.lead.org')].map((c) => Boolean(c.querySelector('.lead-foot > .actions [data-key=keep]')))")
             w.check(f"s50a_industry_cards_{tag}", bool(org) and all(org), f"{len(org)} industry cards; Keep in the footer on {sum(org)}")
+            # from the top, so the guest banner is not half under the sticky header (S51: the list
+            # now starts lower, so the closed sheet's focus return leaves the page scrolled)
+            await page.evaluate("window.scrollTo(0, 0)")
+            await page.wait_for_timeout(200)
             await w.snap(page, tag, "s50a-industry")
             await page.click("[data-key=route-A]")
             await page.wait_for_timeout(300)
