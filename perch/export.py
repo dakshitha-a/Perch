@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from perch import datefmt
+from perch.citizenship import strip_entered
 from perch.compare import Row, award_size, columns_for, lower_first
 from perch.offices import RESEARCH_SECURITY, SUBMISSION_NOTE, SUBMISSION_URL, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
@@ -294,7 +295,7 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
         facts = [match_text(x.match_score), _status_line(o),
                  f"Agency: {o.agency_label()}", f"Closes: {closes}", f"Money: {_money(o)}",
                  f"Activity code: {o.activity_code or 'Not in the record'}",
-                 f"Office: {for_route('A').name}", *(_note_line(n) for n in x.notes)]
+                 f"Office: {for_route('A').name}", *(_note_line(n) for n in strip_entered(x.notes))]
         out.append(Block("list", items=[f for f in facts if f]))
         if eligible := higher_ed_rows(o.eligible_applicants):
             out.append(Block("p", "Eligible applicants include:"))
@@ -327,7 +328,7 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
                     else (f"the page says: {o.deadline_quote}" if o.deadline_quote else None))
             facts = [f"Listed by: {o.page_owner or o.agency}",
                      f"Closes: {when or 'Not on the page'}",
-                     *(_note_line(n) for n in x.notes)]
+                     *(_note_line(n) for n in strip_entered(x.notes))]
             out.append(Block("list", items=facts))
             out.append(Block("link", "Record: Temple page", href=o.source_url))
 

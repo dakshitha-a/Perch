@@ -815,7 +815,8 @@ def grant_demotion(o: Opportunity, cit: str | None, res: str | None
     if ok is not None:
         kind = "Citizenship" if ok.kind == "citizenship" else "Residency"
         return cz.stated_note(kind, ok, cz.you_label(ok.kind, cit, res)), prov
-    return cz.none_note(cz.has_text(src), cz.where_all(o.source, o.source == "grants_gov")), prov
+    # No rule to compare: no note on the card. The page says it once above the list (S53).
+    return None, prov
 
 
 def _text_hash(profile) -> str:  # noqa: ANN001 - a perch.profile.Profile

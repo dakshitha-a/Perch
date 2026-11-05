@@ -34,7 +34,7 @@ export function ruleItems(l) {
   const src = l.citizenship_rule && l.citizenship_rule.quote ? l.citizenship_rule.source_url : null;
   const items = Array.isArray(l.checks) && l.checks.length
     ? l.checks.map((c) => {
-      const pick = PICK_RULES.has(c.rule) && /listing asks for/.test(c.text || "");
+      const pick = PICK_RULES.has(c.rule) && /listing asks for|residency field says/.test(c.text || "");
       const lower = Boolean(l.demoted) && pick && c.outcome === "unknown";
       return { rule: c.rule, outcome: OUTCOME[c.outcome] ? c.outcome : "unknown", text: String(c.text || ""), lower, url: pick ? src : null };
     })
@@ -88,6 +88,12 @@ const PICKS = { draft: null };  // the picks typed on the start screen and not s
 // then says "the sample student" instead of "you" (S43 S8).
 let SAMPLE_STUDENT = false;
 const setSample = (brief) => { SAMPLE_STUDENT = Boolean(brief && brief.brief && brief.brief.options && brief.brief.options.persona); };
+// "The sample student chose: International." or "You chose: International, Pennsylvania." (S53)
+function chose(d) {
+  const p = d && d.student_picks;
+  const v = p ? [p.citizenship, p.residency].filter(Boolean) : [];
+  return v.length ? ` ${SAMPLE_STUDENT ? "The sample student chose" : "You chose"}: ${v.join(", ")}.` : "";
+}
 const cvWords = () => (SAMPLE_STUDENT ? "the sample student's CV" : "your CV");
 const BUDGET_DETAIL = "withheld: the daily model budget"; // the stage's own detail, written by code (perch)
 const BUDGET_LINE = "Written reasons are paused: this session’s model budget for today is used. The list, dates, amounts and rule results are not affected.";
@@ -288,7 +294,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
       h("button", { class: "btn", type: "button", disabled: D.busy, onclick: () => { const t = withCanary("achievement", root.querySelector("#st-ach").value); if (t) add("entry", { text: t, label: "Achievement" }); } },
         h("span", { text: "Add achievement" }))),
     h("section", { class: "box", "aria-label": "Optional citizenship and state" },
-      profilePicks({ prefix: "st-pick", value: picks, onchange: () => { PICKS.draft = picks; syncBuild(); } })),
+      profilePicks({ prefix: "st-pick", value: picks, guest: !sess.signed_in, onchange: () => { PICKS.draft = picks; sampleSetPick = false; syncBuild(); } })),
     D.error ? h("p", { class: "notice error go-error", id: "st-error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null,
     h("div", { class: "welcome-go" },
       h("button", { class: "btn primary big", type: "button", "data-key": "st-build", disabled: !ready || D.busy, onclick: build },
@@ -302,12 +308,26 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
   const boxes = () => [["#cv-text", SAMPLE_TEXT.cv], ["#st-interests", SAMPLE_TEXT.interests], ["#st-ach", SAMPLE_TEXT.achievement]]
     .map(([sel, text]) => [root.querySelector(sel), text]);
   const slot = (c) => root.querySelector(`.${c}`);
-  function clearTag() { const s = slot("sample-slot"); if (s) s.replaceChildren(); }
+  // The sample ticks International only when the user has no pick yet, and gives it back when the
+  // sample is edited away, so a saved pick is never overwritten (S53 review).
+  let sampleSetPick = false;
+  function restorePick() {
+    if (!sampleSetPick) return;
+    sampleSetPick = false;
+    if (picks.citizenship === "international") {
+      picks.citizenship = null; PICKS.draft = picks;
+      const ps = root.querySelector("#st-pick-citizenship"); if (ps) ps.value = "";
+      syncBuild();
+    }
+  }
+  function clearTag() { const s = slot("sample-slot"); if (s) s.replaceChildren(); restorePick(); }
   function fillSample() {
     for (const [el, text] of boxes()) if (el) el.value = noCanary(text);
     // The invented student ticks "international" (S53).
-    picks.citizenship = "international"; PICKS.draft = picks;
-    const ps = root.querySelector("#st-pick-citizenship"); if (ps) ps.value = "international";
+    if (!picks.citizenship) {
+      picks.citizenship = "international"; PICKS.draft = picks; sampleSetPick = true;
+      const ps = root.querySelector("#st-pick-citizenship"); if (ps) ps.value = "international";
+    }
     field.text = noCanary(SAMPLE_TEXT.cv);
     const s = slot("sample-slot");
     if (s) s.replaceChildren(h("span", { class: "tag sample", text: "SYNTHETIC example" }));
@@ -375,7 +395,7 @@ export function studentProfile(d, { openEvidence }) {
       h("h3", { class: "mini", text: "Your achievements" }),
       achievements.length ? h("ul", { class: "papers" }, achievements.map(ref)) : h("p", { class: "hint", text: "None added." }),
       h("p", { class: "hint", text: "Explanations may cite these." }))),
-    h("p", { class: "notice", style: "flex: 1 1 100%" }, icon("lock"), h("span", { text: "Perch asks about citizenship and state only if you choose to answer. It compares your answer with a listing's own words. A listing that asks for something else moves lower. It is never hidden." + ruleCount(d) })))];
+    h("p", { class: "notice", style: "flex: 1 1 100%" }, icon("lock"), h("span", { text: "Perch asks about citizenship and state only if you choose to answer. It compares your answer with a listing's own words. A listing that asks for something else moves lower. It is never hidden." + ruleCount(d) + chose(d) })))];
 }
 
 // ----- routes -----

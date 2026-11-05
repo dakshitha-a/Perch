@@ -911,6 +911,18 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
             and "Records Scout read:" in a["notes"][0] and a["cites"] == 2
             and "user:" not in a["notes"][0] and not a["answerBox"] and not a["modelTag"] and not a["marks"],
             f"notes {a['notes']}, cites {a['cites']}, model tag {a['modelTag']}")
+    # S53 review: Clear on a conversation offers Undo for a few seconds; Undo puts the exchange back.
+    n_before = await page.locator(".scout-x").count()
+    await page.click("[data-key=scout-clear]")
+    cleared = await page.locator(".scout-x").count() == 0
+    line = (await page.locator("[data-key=scout-undo]").inner_text()).strip() if await page.locator("[data-key=scout-undo]").count() else ""
+    await w.snap(page, tag, "scout-cleared-undo")
+    if await page.locator("[data-key=scout-undo-btn]").count():
+        await page.click("[data-key=scout-undo-btn]")
+    back = await page.locator(".scout-x").count()
+    gone = await page.locator("[data-key=scout-undo]").count() == 0
+    w.check("scout_clear_undo", n_before > 0 and cleared and line.startswith("Conversation cleared.") and back == n_before and gone,
+            f"before {n_before}, cleared {cleared}, line {line!r}, after undo {back}, line gone {gone}")
     await page.context.close()
 
 

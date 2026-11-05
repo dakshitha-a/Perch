@@ -80,9 +80,13 @@ HEADING_WORDS = ("education", "honours", "honors", "awards", "research", "poster
 
 
 def _plain_heading(s: str) -> bool:
-    low = s.lower()
-    return len(s) <= 40 and not s.startswith(("-", "*", "•")) \
-        and any(low == w or low.startswith(w + " ") for w in HEADING_WORDS)
+    """Exactly a heading word, or the word and "and <words>" or "experience" ("Research and
+    posters", "Work experience"). "Research Assistant, Smith Lab" is a line, not a heading."""
+    low = s.lower().strip()
+    if len(s) > 40 or "," in s or s.startswith(("-", "*", "•")):
+        return False
+    return any(low == w or re.fullmatch(re.escape(w) + r" (?:and [a-z ]+|experience)", low)
+               for w in HEADING_WORDS)
 
 
 def sections(text: str) -> dict[str, list[str]]:

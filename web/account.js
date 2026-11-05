@@ -113,6 +113,7 @@ export async function renderAccount(root, ctx) {
   // removes the stored row.
   const picksEl = h("div", { class: "picks-list" });
   async function loadPicks() {
+    let first = true;  // the legend is said once, not under each side heading
     for (const side of roles) {
       const value = { citizenship: null, residency_state: null };
       let err = null;
@@ -128,7 +129,8 @@ export async function renderAccount(root, ctx) {
       picksEl.append(h("div", { class: "picks-side" },
         roles.length > 1 ? h("h3", { class: "mini", text: sideWord(side) }) : null,
         err ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: `These could not be loaded. ${err.message}` }))
-          : [profilePicks({ prefix: `acct-${side}`, value }), save, status]));
+          : [profilePicks({ prefix: `acct-${side}`, value, legend: first }), save, status]));
+      first = false;
     }
   }
 

@@ -146,8 +146,8 @@ def test_blank_and_prefer_not_leave_the_verdict_exactly_as_before():
 def test_no_phrase_says_where_perch_looked():
     v = check(sch("Students at Temple may apply."), facts("us_citizen"), AS_OF)
     assert not v.demoted
-    assert line(v) == ("Perch read this listing's eligibility text on its Temple page and found "
-                       "no citizenship or residency rule.")
+    assert line(v) == ("Perch found no rule it can compare with your answer. Read the "
+                       "eligibility text.")
     assert v.rule["outcome"] == "none" and v.rule["quote"] is None
     assert v.rule["has_text"] is True
 
@@ -178,9 +178,9 @@ def test_demoted_listings_come_last_stay_in_the_list_and_do_not_use_the_ruled_ou
     out = choose(top, top=10, ruled_out=0)
     assert [x.record.id.split(":")[1] for x in out] == ["b", "c", "a"]
     assert out[-1].verdict.demoted and out[-1].verdict.verdict == "may be eligible"
-    # the cut is made on the demoted order
+    # the cut is made first; demoted ones go last inside the shown set, none is dropped
     out = choose(top, top=2, ruled_out=5)
-    assert [x.record.id.split(":")[1] for x in out] == ["b", "c"]
+    assert [x.record.id.split(":")[1] for x in out] == ["b", "a"]
 
 
 def test_leads_carry_the_flag_and_the_rule():
@@ -211,10 +211,9 @@ def test_researcher_demotion_note_names_grants_gov():
     assert prov["outcome"] == "pass" and "You entered: U.S. citizen." in note
     note, prov = grant_demotion(opp("Open to universities."), "us_citizen", None)
     assert prov["outcome"] == "none"
-    assert note == ("Perch read this listing's eligibility text on Grants.gov and found no "
-                    "citizenship or residency rule.")
+    assert note is None  # said once above the list, not on every card
     note, prov = grant_demotion(opp(None), "us_citizen", None)
-    assert "has no eligibility text" in note and prov["has_text"] is False
+    assert note is None and prov["has_text"] is False
     assert grant_demotion(opp(US_ONLY), None, None) == (None, None)
     assert grant_demotion(opp(US_ONLY), "prefer_not", None) == (None, None)
 
@@ -258,3 +257,66 @@ def test_scout_student_tool_output_holds_no_pick_value():
             if re.search(r"\.(verdict_lines|notes)\b", src) and "e.notes" not in src \
                     and "eligibility" not in src and "rec.notes" not in src:
                 assert "without_picks(" in src, f"{f.name}:{n} reads lead lines unscrubbed"
+
+
+def test_eligible_noncitizen_lets_permanent_residents_apply():
+    # The federal aid phrase; SYNTHETIC wording shaped like it.
+    s = "Be a U.S. citizen or Eligible Noncitizen."
+    (r,) = rules_in(s, "eligibility.notes")
+    assert r.allows == frozenset({"us_citizen", "permanent_resident"})
+    from perch.citizenship import judge
+
+    src = [("eligibility.notes", s)]
+    assert judge(src, "permanent_resident", None, "temple_pages")["citizenship"].status == "pass"
+    assert judge(src, "international", None, "temple_pages")["citizenship"].status == "fail"
+
+
+def test_fafsa_sentences_are_not_rules():
+    assert rules_in("You must be eligible to file the FAFSA as a U.S. citizen.",
+                    "eligibility.notes") == []
+    assert rules_in("Complete the FAFSA; U.S. citizens only.", "eligibility.notes")[0].sentence \
+        == "U.S. citizens only."
+
+
+def test_pipe_splits_clauses_so_a_not_cannot_cancel_a_rule():
+    rs = rules_in("U.S. citizens only | Not open to staff", "eligibility.notes")
+    assert [r.mode for r in rs] == ["only"]
+
+
+def test_residency_note_is_not_quoted_as_the_listings_words():
+    from perch.citizenship import judge, stated_note
+
+    outs = judge([("eligibility.residency_state", "For residents of Pennsylvania")], None, "NJ",
+                 "temple_pages")
+    from perch.citizenship import demoted_note
+
+    n = demoted_note(outs["residency"], "New Jersey")
+    assert n == "The award's residency field says: Pennsylvania. You entered: New Jersey."
+    assert "“" not in n
+    outs = judge([("eligibility.residency_state", "For residents of Pennsylvania")], None, "PA",
+                 "temple_pages")
+    assert "“" not in stated_note("Residency", outs["residency"], "Pennsylvania")
+
+
+def test_choose_cuts_first_then_puts_demoted_last():
+    from types import SimpleNamespace as NS
+
+    def sc(i, demoted):
+        return NS(i=i, verdict=NS(verdict="may be eligible", demoted=demoted))
+
+    items = [sc(0, True), sc(1, False), sc(2, False), sc(3, False)]
+    out = choose(items, top=3, ruled_out=0)
+    assert [x.i for x in out] == [1, 2, 0]  # the demoted one is still shown, last
+    assert {x.i for x in out} == {0, 1, 2}
+
+
+def test_export_notes_keep_the_rule_and_drop_the_pick():
+    from perch.citizenship import strip_entered
+
+    got = strip_entered([
+        "From the award's eligibility notes, the listing asks for: “U.S. citizens only”. "
+        "You entered: U.S. citizen.",
+        "Perch found no rule it can compare with your answer. Read the eligibility text.",
+        "Your CV lists a past award from X."])
+    assert got == ["From the award's eligibility notes, the listing asks for: “U.S. citizens "
+                   "only”.", "Your CV lists a past award from X."]
