@@ -279,10 +279,10 @@ def build(ledger_args: list[str]) -> tuple[str, str]:
             bm = "; ".join(f"{mm.replace('claude-','')} n={v['n']} mean {money(v['mean'],5)} median {money(v['median'],5)} per call"
                            for mm, v in e["by_model"].items())
             a(f"| Spend ledger, {k} | {e['n']} calls, {money(e['total'],2)} from {e['first']} to {e['last']}; {bm} | MEASURED | the {k} ledger (fields {', '.join(e['fields'])}) |")
-    a(f"| GPU worker memory | 6,544 MiB at 24 briefs in flight, 8,940 MiB at 48 | MEASURED | `docs/deploy.md` section 10; so a 24 GB L4 fits |")
+    a("| GPU worker memory | 6,544 MiB at 24 briefs in flight, 8,940 MiB at 48 | MEASURED | `docs/deploy.md` section 10; so a 24 GB L4 fits |")
     a("| Postgres data directory | 100 MB, both databases, n=1 | MEASURED | `du` of the test deploy's Postgres base directory, 2026-11-05 |")
     a(f"| GPU worker rate | {GPU_BRIEFS_PER_MIN} to 40 briefs a minute, fake provider | MEASURED | `docs/RESULTS.md` load test |")
-    a(f"| Web process | 1 process met the 250-user target | MEASURED | `docs/RESULTS.md` load test |")
+    a("| Web process | 1 process met the 250-user target | MEASURED | `docs/RESULTS.md` load test |")
     a(f"| CPU rerank, 14 candidates, 16 cores | {CPU_RERANK14_S:.3f} s | MEASURED | `docs/RESULTS.md` CPU timings |")
     for k, (v, d, src) in p.items():
         val = money(v, 4) if v < 10 else (f"{v:,.0f} W" if k == "gpu_watts" else money(v))
@@ -386,7 +386,8 @@ def build(ledger_args: list[str]) -> tuple[str, str]:
     base = base_mc + base_ex
     sens = []
 
-    def total_with(unit_mult=None, act_mult=None, price_mult=None) -> float:
+    def total_with(unit_mult: dict | None = None, act_mult: dict | None = None,
+                   price_mult: dict | None = None) -> float:
         uu = dict(u)
         aa = dict(ACT)
         pp = dict(p)
