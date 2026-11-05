@@ -82,7 +82,7 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         s, hd = res.get("scout") or {}, res.get("hand") or {}
         ok = (s.get("primary") == "example-scout" and (s.get("href") or "").endswith("example.html?tab=scout") and not s.get("signinPrimary")
               and hd.get("primary") == "example-draft" and not hd.get("signinPrimary")
-              and res.get("cover") == "Cover-letter points need an account, and accounts are not open yet." and res.get("open") == "scout-signin")
+              and res.get("cover") == "Cover-letter points need an account, and accounts are not open yet. See an example brief" and res.get("open") == "scout-signin")
         w.check("s51b_walls_closed", ok, f"[mock] {json.dumps(res)[:300]}")
         await ev(page, "() => { document.getElementById('wall-h').scrollIntoView(); }")
         await w.snap(page, tag, "s51b-walls-closed")
