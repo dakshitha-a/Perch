@@ -12,7 +12,7 @@ import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
 import { renderAccount, renderMyPerch, renderWelcome } from "./account.js";
 import { renderList, renderSamples } from "./browse.js";
-import { isStudent, keptWords, matchPill, resetStudent, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
+import { isStudent, keptWords, matchPill, requestSample, resetStudent, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
 
 const api = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
 // The server no longer knows the session (a guest session lasts an hour): go to the start
@@ -404,12 +404,14 @@ function renderFind() {
     ? h("button", { class: "btn", type: "button", "data-key": "fit", onclick: () => go("#/student") },
       h("span", { text: "Check my fit with my CV" }))
     : sess.guest
-      ? h("button", { class: "btn", type: "button", "data-key": "fit", onclick: () => go("#/student") },
+      ? h("button", { class: "btn", type: "button", "data-key": "fit", onclick: () => { requestSample(); go("#/student"); } },
         h("span", { text: "Try a sample student" }))
       : S.signinDown || closed
         // Sign-in is unavailable (S43 M1) or accounts are closed (S51 D4): the guest sample instead.
-        ? h("button", { class: "btn", type: "button", "data-key": "fit", disabled: S.guestBusy, onclick: startGuest },
-          h("span", { text: "Try a sample student" }))
+        // S52: one press starts the guest session and builds the sample brief.
+        ? h("button", { class: "btn", type: "button", "data-key": "fit", disabled: S.guestBusy,
+          onclick: async () => { S.who = "s"; await startGuest(); if (S.session && S.session.guest) { requestSample(); go("#/student"); } } },
+          h("span", { text: S.guestBusy ? "Starting" : "Try a sample student" }))
         : h("a", { class: "btn", "data-key": "fit", href: signInHref("#/student") },
           h("span", { text: "Check my fit with my CV" }));
   const guestLine = !sess.signed_in && !sess.guest && !replay

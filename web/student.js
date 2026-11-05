@@ -109,6 +109,11 @@ export function isStudent(brief) {
 // The start screen. A signed-in student adds a CV (and optionally interests and
 // achievements); they are stored encrypted and the brief reads them. A visitor without an
 // account gets the built-in SYNTHETIC sample student; using a CV of their own needs an account.
+// S52: the landing's "Try a sample student" asks for the sample brief at once, so a visitor
+// presses one button, not three (session, page, build).
+let SAMPLE_NOW = false;
+export function requestSample() { SAMPLE_NOW = true; }
+
 export async function renderStudentStart(root, { api, go, announce, session, signIn, refresh }) {
   document.title = "Check my fit — Perch";
   const sess = session || { signed_in: false };
@@ -125,6 +130,11 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
       const b = root.querySelector('[data-key="st-build"]'); if (b) b.focus();
       announce(e.message);
     }
+  }
+  if (!sess.signed_in && sess.guest && SAMPLE_NOW && !D.busy) {
+    SAMPLE_NOW = false;
+    sample();
+    return;
   }
   if (!sess.signed_in) {
     // The start screen for a visitor without an account.

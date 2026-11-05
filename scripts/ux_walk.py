@@ -138,6 +138,19 @@ class Walk:
         page.on("request", lambda r: self.requests.append(r.url))
 
 
+
+async def sample_after_fit(page: Page) -> bool:
+    """S52: a guest's "Try a sample student" builds the sample brief in one press. Returns True
+    when the brief started without the start screen's Build button; clicks it otherwise."""
+    for _ in range(40):
+        if "#/brief/" in page.url:
+            return True
+        if await page.locator("[data-key=st-build]").count():
+            await page.click("[data-key=st-build]")
+            return False
+        await page.wait_for_timeout(250)
+    return "#/brief/" in page.url
+
 async def new_page(browser: Browser, w: Walk, tag: str, view: dict, base: str) -> Page:
     ctx = await browser.new_context(viewport=view, reduced_motion="reduce", device_scale_factor=1, color_scheme=w.scheme,
                                     has_touch=view["width"] < 600, is_mobile=view["width"] < 600)
@@ -435,7 +448,8 @@ async def flow_briefs(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.click("[data-key=seg-s]")
     await page.click("[data-key=fit]")
     try:
-        await page.click("[data-key=st-build]", timeout=8000)
+        one_press = await sample_after_fit(page)
+        w.check("sample_one_press", one_press, "a guest's Try a sample student builds the brief in one press")
     except Exception:
         await w.snap(page, tag, "debug-student-start")
         raise
@@ -783,7 +797,7 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
     await page.wait_for_selector("[data-key=guest-banner]")
     await page.click("[data-key=seg-s]")
     await page.click("[data-key=fit]")
-    await page.click("[data-key=st-build]", timeout=8000)
+    await sample_after_fit(page)
     status = await build_wait(page)
     w.check("scoutmarks_brief_built", status == "done", f"status {status}")
     bid = await page.evaluate("decodeURIComponent(location.hash.split('/')[2])")
@@ -872,7 +886,7 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await page.wait_for_selector("[data-key=guest-banner]")
     await page.click("[data-key=seg-s]")
     await page.click("[data-key=fit]")
-    await page.click("[data-key=st-build]", timeout=8000)
+    await sample_after_fit(page)
     status = await build_wait(page)
     w.check("cover_brief_built", status == "done", f"status {status}")
     bid = await page.evaluate("decodeURIComponent(location.hash.split('/')[2])")

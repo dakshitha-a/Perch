@@ -279,7 +279,16 @@ export async function renderList(root, ctx) {
         h("button", { class: "btn", type: "button", "data-key": "clear", onclick: clearAll }, h("span", { text: "Clear filters" }))));
       return;
     }
-    fill(groupsEl, results.map((g) => h("section", { class: "group", "aria-labelledby": `g-${g.key}` },
+    // S52: when no listing states an upcoming date, a closing-date sort starts with the most
+    // recent past dates; say so, so the order does not read as a list of open deadlines.
+    const today = new Date().toISOString().slice(0, 10);
+    const first = (results[0] && results[0].items[0]) || {};
+    const firstDate = first.deadline || first.close_date || null;
+    const pastNote = st.sort === "closing" && firstDate && firstDate < today
+      ? h("p", { class: "list-note", "data-key": "past-first" }, icon("info"),
+        h("span", { text: "No listing here states an upcoming date, so the most recent past dates come first. Check each page for this year's date." }))
+      : null;
+    fill(groupsEl, pastNote, ...results.map((g) => h("section", { class: "group", "aria-labelledby": `g-${g.key}` },
       g.label ? h("h2", { class: "section-title group-title", id: `g-${g.key}`, text: `${g.label} (${g.total})` })
         : h("h2", { class: "sr-only", id: `g-${g.key}`, text: word.title }),
       g.items.length ? h("ul", { class: "award-list", "aria-labelledby": `g-${g.key}` }, g.items.map((r) => recordRow(r, ctx, keepState)))

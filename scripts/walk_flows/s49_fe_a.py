@@ -89,7 +89,7 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
         await page.wait_for_selector("[data-key=seg-s]")
         await page.click("[data-key=seg-s]")
         await page.click("[data-key=fit]")
-        await page.click("[data-key=st-build]", timeout=8000)
+        await U.sample_after_fit(page)
         await keep(page, sp)
         await page.context.close()
         return json.loads(rp.read_text()), json.loads(sp.read_text())
