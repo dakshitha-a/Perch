@@ -251,14 +251,25 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     if compare_rows:
         out.append(Block("h2", f"Kept leads compared ({len(compare_rows)})"))
         cols = [c for c in COLUMNS if c[0] != "office"]
-        table = [["Lead", *[lbl for _, lbl in cols], "Office"]]
-        for r in compare_rows:
-            # /compare gives the close date as ISO text, which the screen formats (R1).
-            lead_name = f"{r.number}: {r.title}" if r.number else r.title  # S49 V4
-            table.append([f"{'Industry' if r.route == 'B' else 'Grant'}: {lead_name}",
-                          *[datefmt.shown(r.cells[k].text) if k == "closes" else r.cells[k].text
-                            for k, _ in cols], r.cells["office"].text])
-        out.append(Block("table", rows=table))
+
+        def lead_table(rows: list, label: object) -> list:
+            table = [["Lead", *[lbl for _, lbl in cols], "Office"]]
+            for r in rows:
+                # /compare gives the close date as ISO text, which the screen formats (R1).
+                lead_name = f"{r.number}: {r.title}" if r.number else r.title  # S49 V4
+                table.append([f"{label(r)}: {lead_name}",
+                              *[datefmt.shown(r.cells[k].text) if k == "closes" else r.cells[k].text
+                                for k, _ in cols], r.cells["office"].text])
+            return table
+
+        main_rows = [r for r in compare_rows if r.group is None]
+        internal_rows = [r for r in compare_rows if r.group == "temple_internal"]
+        if main_rows:
+            out.append(Block("table", rows=lead_table(
+                main_rows, lambda r: "Industry" if r.route == "B" else "Grant")))
+        if internal_rows:  # Temple's own funding is its own section, never among the grants
+            out.append(Block("h3", "Temple internal"))
+            out.append(Block("table", rows=lead_table(internal_rows, lambda r: "Temple internal")))
 
     shown = [x for x in leads if x.status != "dismissed"]
     gone = [x for x in leads if x.status == "dismissed"]

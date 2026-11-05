@@ -49,6 +49,7 @@ class Row:
     record_id: str
     cells: dict[str, Cell]
     number: str | None = None  # the opportunity number; `title` is the title alone (S49 V4)
+    group: str | None = None  # "temple_internal": Temple's own funding, its own section
 
 
 def lower_first(phrase: str) -> str:
@@ -124,8 +125,13 @@ def route_a_row(lead: Lead, o: Opportunity | None, as_of: date) -> Row:
         title = o.title
         number = o.opportunity_number or None
     office = for_route("A")
-    cells["office"] = Cell(office.name, office.name, None)
-    return Row(lead.id, "A", title, rid, cells, number)
+    if lead.group == "temple_internal":
+        # Perch does not say which Temple office handles internal calls (UNVERIFIED): the
+        # call's own page names it.
+        cells["office"] = Cell("Named on the call’s page", None, rid)
+    else:
+        cells["office"] = Cell(office.name, office.name, None)
+    return Row(lead.id, "A", title, rid, cells, number, lead.group)
 
 
 def route_b_row(lead: Lead, org: Organisation | None) -> Row:
@@ -155,7 +161,8 @@ def compare(brief: Brief, leads: list[Lead], r: Repository, status: str | None =
     as_of = date.fromisoformat(brief.options.get("as_of") or date.today().isoformat())
     chosen = [x for x in leads if (status is None or x.status == status)
               and x.route in ("A", "B")]  # student leads compare in the browser (S18)
-    chosen.sort(key=lambda x: (x.route, x.rank or 0))
+    # Route A's own list first, then Temple internal as its own section, then route B.
+    chosen.sort(key=lambda x: (x.route, x.group is not None, x.rank or 0))
     rows = []
     for x in chosen:
         if x.route == "A":
