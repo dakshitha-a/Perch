@@ -10,7 +10,7 @@
 
 Funding calls are spread across many agencies and offices. Perch puts the ones that fit your own papers, or your CV, in one cited list.
 
-**See it:** on a running deploy, the example brief page (`/example.html`) shows a finished researcher brief, built on public papers and shown by alias, and a SYNTHETIC student brief. The example files are not tracked in this repository, so the page works only on a deploy that serves them.
+**See it:** four short films are in [docs/films](docs/films): the researcher side, the student side, Scout, and a 30 second student tour. On a running deploy, the example brief page (`/example.html`) shows a finished researcher brief, built on public papers and shown by alias, and a SYNTHETIC student brief. The example files are not tracked in this repository, so the page works only on a deploy that serves them.
 
 ![python](https://img.shields.io/badge/python-3.12-3f8f72)
 ![built for](https://img.shields.io/badge/built%20for-Temple%20AI%20Build%20Challenge-8a1e41)
@@ -47,6 +47,8 @@ These clips were filmed in the running v1 app. Researchers appear by alias. The 
 ![A signed-in user presses one example question for Scout and reads its cited answer.](docs/tour/scout.webp)
 
 ![A signed-in user asks for cover-letter points on one lead card and reads the cited lines.](docs/tour/points.webp)
+
+Four longer films, in 1920 by 1080 MP4 and 1280 by 720 WebP, are in [docs/films](docs/films). Each is filmed in the v1 app. `researcher` shows PI-1 by alias. `student` and `quick-student` use the SYNTHETIC sample student. `scout` shows cover-letter points, the glow while Scout works, Clear and Undo, and the reply to a distress message.
 
 ## Screens
 
@@ -135,6 +137,7 @@ Every command is in [docs/running.md](docs/running.md).
 - **Spend limits:** every paid model call is metered. By default a guest session has 0.10 USD a day, one client address has 0.30 USD a day and all guests together have 3.00 USD a day. A signed-in account has 0.50 USD a day. These are placeholders, not measured.
 - **Demo Day settings:** the test deploy raises the per-address rate limits and sets a guest model budget of 4.00 USD an address and 8.00 USD a day. Those values live in the deploy's own environment file, so they are UNVERIFIED against the running deploy.
 - **Accounts closed:** `PERCH_ACCOUNTS_OPEN=0` turns self-registration off. The landing page then offers a sample student, and the walls for Scout, the hand-off and cover points lead to the example brief.
+- **Shared demo account:** the Demo Day deploy has one SYNTHETIC account, `demo` with the password `demo`, that every visitor shares. A notice on every screen says everyone sees what is saved there and that no real CV should be pasted. A nightly timer deletes its CV, entries, briefs and Scout sessions, and keeps the account. Because it is one account, it has one daily model budget. The steps are in [docs/DEMO.md](docs/DEMO.md).
 - **Consent:** you are asked once, at sign-up. The text says that your CV and entries may be sent to the deployment's cloud model provider, that contact details are blanked first, and that you can withdraw at any time.
 
 ## What is stored and how it is protected
@@ -156,6 +159,8 @@ Every command is in [docs/running.md](docs/running.md).
 - **The pipeline is code:** fetching, eligibility, retrieval and ranking run the same way every time. Ranking is dense retrieval plus a reranker. The keyword index is kept for the keyword-only baseline, exact lookups and Scout's search.
 - **Models are bounded:** a model writes the profile summary, the fit explanations, the hand-off opening and the cover-letter points. A small model runs the scope gate, and Scout uses a model to answer.
 - **Every model output is checked:** code checks every id, date and number against a cited record. A second model, MiniCheck, checks each sentence against its source. A failed output is rewritten once, then shown without the explanation and flagged.
+- **Citizenship and state picks:** a student or researcher can say whether they are a U.S. citizen, a permanent resident or international, and name a state. Both are optional. Code compares a pick with a listing only when the listing states the rule in one of a few fixed phrases. A listing you do not meet moves lower in the same list with a note. The note quotes the sentence and names the field and the page. Nothing is hidden and no verdict of not eligible is given. A model never sees the picks.
+- **CV reader:** code reads the sections of a CV, and plain headings such as Education or Work experience count, not only lines with a hash or capitals.
 - **Scout v2:** buttons on cards are answered by code. An open question first passes a scope gate. An out-of-scope question gets a refusal written by code, and the large model is not called. A message that reads as distress gets a fixed pointer to Temple's counselling and employee assistance services.
 - **Profiles:** `cloud-gpu` is the default. The embedder, reranker and MiniCheck run on the worker's one GPU, and the text jobs run on Anthropic. `cloud-cpu` is the no-GPU fallback profile.
 - **Stack:** Postgres with pgvector, Redis, a Postgres job queue and a worker. SQLite is kept behind the same interface for unit tests only.
@@ -184,14 +189,14 @@ The full tables are in [docs/RESULTS.md](docs/RESULTS.md). The back-test is NIH 
 - **Tuned on the same awards.** The retrieval setup was chosen on these 48 targeted awards, so part of the gain is fitted to them.
 - **Setups are not compared as gains.** The 4B reranker and the hybrid setup were compared with the kept setup. The 4B was not measurably better, so the 0.6B stayed.
 - **Re-run on later code.** The back-test was re-run on 5 November for the keyword-only baseline and the kept setup. Every figure matched the earlier run.
-- **Student matching is a mechanism check.** The student checks use invented personas and sample scholarships, and they say nothing about real students. A measured cost for a student brief on the v1 stack is not in the results page, so it is UNVERIFIED.
+- **Student matching is a mechanism check.** The student checks use invented personas and sample scholarships, and they say nothing about real students. A student brief on the v1 stack cost 0.1135 USD on average, with 20 leads explained, over 3 SYNTHETIC personas (`bench/results/s46_student_real/counts.csv`). That is a cost, not a measure of quality.
 - **Temple awards dataset:** a fresh-context reviewer's hand-check found 7.4 percent of 203 field rows wrong or missing in v1, and 16.6 percent of 217 in v2. v3 was rebuilt to fix the causes. Its error rate is not measured (UNVERIFIED).
 - **Load test:** on one GPU with a fake provider that sleeps for real call times, the worker drained 38 to 40 briefs a minute at 24 in flight with 0 failed. No real model calls were made in it. One web process met the 250-user target (browse p95 132 to 190 ms). The numbers are in [docs/RESULTS.md](docs/RESULTS.md).
 - **Not yet graded by a person:** whether Scout's answers are useful.
 
 ## Known limits
 
-- **Accounts are not open on the test deploy.** Visitors use guest mode, and the example brief shows what a signed-in user gets.
+- **Accounts are not open on the test deploy.** Self-registration is off. Visitors use guest mode or the shared demo account, and the example brief shows what a signed-in user gets.
 - **The example is a saved file.** The example brief plays back a saved file, and it does not show cover-letter points.
 - **Guests cannot paste a CV.** The guest student path uses an invented sample student.
 - **Guests have a small daily budget.** Each guest session has a small daily model budget, and when it is used the written reasons pause while the list, dates, amounts and rule results still show.
@@ -232,6 +237,8 @@ The earlier build is the tag [`v0.1-demo-fallback`](https://github.com/dakshitha
 - [Architecture, v1](docs/ARCHITECTURE_V1.md): the contract for the v1 build. [Architecture, v0](docs/ARCHITECTURE.md) describes the fallback.
 - [Rebuild plan](docs/REBUILD_PLAN.md) and [decisions](docs/DECISIONS.md).
 - [Results](docs/RESULTS.md) and [bench results](bench/results/SUMMARY.md).
+- [Cost model](docs/COST_MODEL.md) and [roadmap](docs/ROADMAP.md): measured costs, and what a real deployment at Temple needs.
+- [Films](docs/films) and [screenshots](docs/screenshots/README.md): what the app looks like, filmed and captured from v1.
 - [MCP server](docs/mcp.md): the researcher tools, on the single-user store, in Claude Code or any MCP client.
 - [Sources](docs/SOURCES.md): every endpoint, field, limit and term, verified live.
 - [Specification](docs/SPEC.md) and [plan](docs/PLAN.md).
