@@ -1,4 +1,4 @@
-"""Film the three Demo Day films in the running v1 app (S53).
+"""Film the four Demo Day films in the running v1 app (S53, S54): researcher, student, scout, quick.
 
 Films (each 45 to 90 seconds once slow waits are played back quickly):
   researcher  a researcher's brief, shown by alias: Ready, the top individual-lab grant with
