@@ -227,14 +227,14 @@ def with_caption(im: Image.Image, text: str, font) -> Image.Image:  # noqa: ANN0
     base = im.convert("RGBA")
     over = Image.new("RGBA", base.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(over)
-    l, t, r, b = d.textbbox((0, 0), text, font=font)
-    tw, th = r - l, b - t
+    left, t, r, b = d.textbbox((0, 0), text, font=font)
+    tw, th = r - left, b - t
     padx, pady = round(base.width * 0.018), round(base.height * 0.016)
     x0 = (base.width - tw) // 2 - padx
     y1 = round(base.height * 0.045) + th + 2 * pady  # the caption sits at the top, clear of the bottom controls
     d.rounded_rectangle((x0, y1 - th - 2 * pady, x0 + tw + 2 * padx, y1), radius=round(th * 0.6),
                         fill=(20, 28, 24, 214))
-    d.text((x0 + padx - l, y1 - pady - th - t), text, font=font, fill=(255, 255, 255, 255))
+    d.text((x0 + padx - left, y1 - pady - th - t), text, font=font, fill=(255, 255, 255, 255))
     return Image.alpha_composite(base, over).convert("RGB")
 
 
@@ -452,7 +452,6 @@ async def researcher(page: Page, base: str, o: argparse.Namespace, check: NameCh
     rec.wide()
     await page.evaluate("window.scrollTo(0, 0)")
     await rec.hold(500)
-    sw = page.locator(".route-switch:not(.sort-switch)").first
     if await page.locator("[data-key=route-T]").count():
         rec.cap("Temple's own funding calls")
         await click(page, page.locator("[data-key=route-T]"))
