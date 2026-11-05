@@ -31,7 +31,7 @@ AS_OF = "2026-11-06"
 
 def student_reply(messages, system, schema):
     """A valid fit explanation citing the record shown and the first achievement."""
-    if schema and "fit" in schema.get("properties", {}):
+    if schema and "opportunity_sentence" in schema.get("properties", {}):
         rid = re.search(r"Opportunity:\n\[([^\]]+)\]", messages[-1].content).group(1)
         assert "[user:achievement-a]" in system
         pid = "achievement-a"  # models drop the "user:" prefix; the skill maps it back

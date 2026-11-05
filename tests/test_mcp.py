@@ -20,7 +20,7 @@ from .test_scout import points_reply
 def fit_reply(messages, system, schema):
     if points := points_reply(messages, system, schema):
         return points
-    if schema and "fit" in schema.get("properties", {}):
+    if schema and "opportunity_sentence" in schema.get("properties", {}):
         paper = next(w for w in system.split("[")[1:] if w.startswith("W")).split("]")[0]
         return json.dumps({
             "reasoning": "r", "fit": 66,
