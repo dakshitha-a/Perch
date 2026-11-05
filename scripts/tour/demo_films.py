@@ -8,6 +8,8 @@ Films (each 45 to 90 seconds once slow waits are played back quickly):
               optional picks, Save and find awards, what the rules read from the CV, a lead's
               check marks and question marks, the note that names where a rule was found, the
               sample data badge
+  quick       (30 s or less, played at 1.5x) the student path for a new user: Load sample,
+              Save and find awards, one card with its check marks, Evidence, Keep, the other tabs
   scout       the same student's brief: cover-letter points with their citations, one question
               to Scout with the glow while it works, and a crisis message answered by a fixed
               reply from code with its help links
@@ -239,7 +241,7 @@ def with_caption(im: Image.Image, text: str, font) -> Image.Image:  # noqa: ANN0
 
 
 def render(scene_dir: Path, out_stem: Path, webp_width: int, mp4_width: int, fps: int,
-           quality: int, tail: float = 1.5) -> dict:
+           quality: int, tail: float = 1.5, speed: float = 1.0) -> dict:
     """WebP at `webp_width` (the README clips' settings: fps and quality as passed) and, when
     imageio-ffmpeg is installed, an MP4 at `mp4_width`. Returns the lengths and sizes."""
     scene = json.loads((scene_dir / "scene.json").read_text())
@@ -279,7 +281,7 @@ def render(scene_dir: Path, out_stem: Path, webp_width: int, mp4_width: int, fps
     t = 0.0
     while t <= end:
         ts.append(t)
-        t += step * speed_at(t)
+        t += step * speed * speed_at(t)
     out: dict = {"seconds": len(ts) / fps + tail}
 
     # WebP: identical neighbours become one frame held longer, as animate.py does.
@@ -587,6 +589,76 @@ async def student(page: Page, base: str, o: argparse.Namespace, check: NameCheck
     return rec
 
 
+async def quick(page: Page, base: str, o: argparse.Namespace, check: NameCheck) -> Film:
+    """A 30-second tour of the student path. Holds are in real time; the render plays at 1.5x,
+    so a beat of N final seconds holds 1.5 N real seconds."""
+    await ready_account(page, base, "student")
+    await reset_student(page)
+    # Off camera: one full build, so the filmed build is quick and nothing slow is filmed.
+    await page.goto(base + "/#/student")
+    await need(page, "#cv-text", "the CV box")
+    await page.click("[data-key=load-sample]")
+    await page.select_option("#st-pick-citizenship", "")  # Load sample ticks International: back to Not stated
+    await page.click("[data-key=st-build]")
+    await need(page, "#panel .leads > li", "a brief with leads", LONG)
+    await page.locator("#progress .pcard").wait_for(state="detached", timeout=180_000)
+    await settle(page, 800)
+    await reset_student(page)
+    await page.goto(base + "/#/student")
+    await need(page, "#cv-text", "the CV box")
+    await settle(page, 1000)
+
+    def fin(s: float) -> int:  # final seconds to real milliseconds
+        return round(s * 1.5 * 1000)
+
+    rec = Film(page, "quick", check)
+    await rec.start()
+    rec.cap("Start here: your CV, interests and achievements")
+    await rec.hold(fin(2.6))
+    rec.cap("Load sample fills all three boxes")
+    await click(page, page.locator("[data-key=load-sample]"))
+    # Load sample ticks International; the pick is set back to Not stated, so no card shows a rule
+    # about an answer the viewer never saw. The select is below the fold here, so nothing shows.
+    await page.select_option("#st-pick-citizenship", "")
+    await rec.hold(fin(1.2))
+    await page.evaluate("window.scrollTo({top: 470, behavior: 'smooth'})")  # one move down to the other two boxes, not a scroll through text
+    await rec.hold(fin(1.3))
+    rec.cap("Perch checks every award against your CV")
+    await click(page, page.locator("[data-key=st-build]"))
+    await rec.hold(fin(2.0))
+    wait = page.locator("#panel .leads > li").first.wait_for(timeout=LONG)
+    await rec.quickly(lambda: wait, speed=40)
+    done = page.locator("#progress .pcard").wait_for(state="detached", timeout=120_000)
+    await rec.quickly(lambda: done, speed=40)
+    await settle(page, 900)
+    await page.evaluate("window.scrollTo(0, 0)")
+    top = page.locator("#panel .leads > li").first
+    keep = top.locator("[data-key^=keep-]").first
+    if "on" in ((await keep.get_attribute("class")) or "").split():
+        await keep.click()  # off camera: start from not kept
+        await settle(page, 700)
+    rec.cap("A check means you meet it. A question mark means check it yourself.")
+    await page.evaluate("window.scrollTo({top: 150, behavior: 'smooth'})")  # the whole card in view
+    await settle(page, 500)
+    rec.wide()
+    await rec.hold(fin(4.6))
+    rec.cap("Every date and amount is copied from the record")
+    await click(page, top.locator(".title-btn").first)
+    await need(page, "#rail-ev .rec-title", "the record in the evidence rail")
+    rec.wide()
+    await rec.hold(fin(3.0))
+    rec.cap("Keep the awards you like")
+    await click(page, keep)
+    await rec.hold(fin(1.5))
+    for tab, text in (("profile", "What Perch read from your CV"), ("compare", "Compare and draft"),
+                      ("scout", "Ask Scout")):
+        rec.cap(text)
+        await click(page, page.locator(f"#tab-{tab}"))
+        await rec.hold(fin(1.2))
+    await rec.stop()
+    return rec
+
+
 async def click_hover(page: Page, target) -> None:  # noqa: ANN001
     """Point at a link without following it (it opens another tab)."""
     await glide(page, target)
@@ -694,8 +766,10 @@ async def scout(page: Page, base: str, o: argparse.Namespace, check: NameCheck) 
     return rec
 
 
-FILMS = {"researcher": researcher, "student": student, "scout": scout}
-ACCOUNT = {"researcher": "RESEARCHER", "student": "STUDENT", "scout": "STUDENT"}
+FILMS = {"researcher": researcher, "student": student, "quick": quick, "scout": scout}
+STEM = {"quick": "quick-student"}
+SPEED = {"quick": 1.5}
+ACCOUNT = {"researcher": "RESEARCHER", "student": "STUDENT", "quick": "STUDENT", "scout": "STUDENT"}
 
 
 async def main(a: argparse.Namespace) -> int:
@@ -737,8 +811,9 @@ async def main(a: argparse.Namespace) -> int:
                 print(f"{name}: NAME CHECK FAILED - {check.report()}")
                 failed += 1
                 continue
-            res = render(RAW / name, out / name, 640 if a.dry else a.webp_width,
-                         0 if a.dry else a.mp4_width, a.fps, a.quality)
+            res = render(RAW / name, out / STEM.get(name, name), 640 if a.dry else a.webp_width,
+                         0 if a.dry else a.mp4_width, a.fps, a.quality,
+                         tail=0.7 if name in SPEED else 1.5, speed=SPEED.get(name, 1.0))
             sizes = ", ".join(f"{k} {v[1]:.1f} MB" for k, v in res.items() if k != "seconds")
             print(f"{name}: filmed in {time.time() - t0:.0f} s of work, film length "
                   f"{res['seconds']:.1f} s, {sizes}; name check: {check.report()}")
