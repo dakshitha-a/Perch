@@ -439,13 +439,13 @@ function answer(x, ctx, thinking) {
 // T4: forget this conversation on the page; the next question opens a new Scout session
 // on the same brief.
 function newConversation(ctx) {
-  const typed = T.draft;
+  const had = Boolean(T.data);
   reset(T.briefId);
-  T.draft = typed;
+  T.draft = "";  // S53: "Clear" empties the box too
   ctx.rerender();
   const q = document.getElementById("scout-q");
-  if (q) q.focus();
-  ctx.announce("New conversation. Ask Scout a question.");
+  if (q) { q.value = ""; q.focus(); }
+  ctx.announce(had ? "Conversation cleared. Ask Scout a question." : "Box cleared.");
 }
 
 // The model's text, tidied for reading (U8): lines that start with "* " or "- " become a
@@ -563,16 +563,19 @@ function leadLabel(id) {
 function askForm(ctx, busy) {
   return h("form", { class: "scout-ask", onsubmit: (e) => { e.preventDefault(); send(ctx); } },
     h("label", { for: "scout-q", class: "sr-only", text: T.data ? "Ask a follow-up" : "Ask Scout" }),
-    h("div", { class: "scout-ask-row" },
+    // S53: the box glows while Scout works. The panel is redrawn on each poll, so the glow's
+    // start is set from the clock and the pulse carries on smoothly across redraws.
+    h("div", { class: `scout-ask-row${busy ? " working" : ""}`, style: busy ? `--glow-delay: -${Date.now() % 2400}ms` : null },
       h("input", { id: "scout-q", type: "text", maxlength: "1000", autocomplete: "off", value: T.draft,
         placeholder: T.data ? "Ask a follow-up" : ctx.student ? "Ask Scout, for example: only options with a deadline after March" : "Ask Scout, for example: only R21s that close by March",
-        oninput: (e) => { T.draft = e.target.value; } }),
+        oninput: (e) => { T.draft = e.target.value; const c = e.target.form && e.target.form.querySelector(".scout-clear");
+          if (c && !busy) c.disabled = !T.data && !T.draft.trim(); } }),
       h("button", { class: "btn primary", type: "submit", disabled: busy }, h("span", { text: "Ask" })),
-      // F9: always there once a conversation has begun, not only at the budget stop.
-      T.data ? h("button", { class: "btn quiet scout-new", type: "button", "data-key": "scout-new-any", disabled: busy,
-        "aria-label": "New conversation", title: "Start a new conversation", onclick: () => newConversation(ctx) },
-      h("span", { class: "new-long", "aria-hidden": "true", text: "New conversation" }),
-      h("span", { class: "new-short", "aria-hidden": "true", text: "New" })) : null));
+      // S53 (Dakshitha): "Clear" is always there, on both sides; it forgets the conversation and
+      // empties the box. It waits while Scout works, and has nothing to do with no conversation and an empty box.
+      h("button", { class: "btn quiet scout-clear", type: "button", "data-key": "scout-clear",
+        disabled: busy || (!T.data && !T.draft.trim()), title: "Clear the conversation and the box",
+        onclick: () => newConversation(ctx) }, h("span", { text: "Clear" }))));
 }
 
 async function send(ctx) {

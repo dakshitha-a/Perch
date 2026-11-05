@@ -1350,14 +1350,17 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
 .scout-table th, .scout-table td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
 .scout-table thead th { background: var(--surface); }
 .scout-table tbody th { font-weight: 600; }
-/* F9: New conversation sits beside Ask, in one row; on a phone its label is "New", so the
-   question box stays on the bottom edge. */
-.scout-ask-row .scout-new { padding: 0 14px; white-space: nowrap; }
-.scout-new .new-short { display: none; }
-@media (max-width: 479px) {
-  .scout-ask-row .btn { padding: 0 14px; }
-  .scout-new .new-long { display: none; }
-  .scout-new .new-short { display: inline; }
+/* S53: Clear sits beside Ask, in one row; on a phone both buttons narrow. */
+.scout-ask-row .scout-clear { padding: 0 14px; white-space: nowrap; }
+@media (max-width: 479px) { .scout-ask-row .btn { padding: 0 14px; } }
+/* S53: a soft glow on the question box while Scout works on a reply; a still ring when motion is reduced. */
+.scout-ask-row.working input { border-color: var(--moss); box-shadow: 0 0 0 3px var(--moss-soft); }
+@media (prefers-reduced-motion: no-preference) {
+  .scout-ask-row.working input { animation: scout-glow 2.4s ease-in-out infinite; animation-delay: var(--glow-delay, 0ms); }
+}
+@keyframes scout-glow {
+  0%, 100% { box-shadow: 0 0 0 2px var(--moss-soft); }
+  50% { box-shadow: 0 0 0 2px var(--moss-soft), 0 0 14px 4px color-mix(in srgb, var(--moss) 28%, transparent); }
 }
 /* F25: the hint under Find says what is missing */
 .hint-row .field-error { color: var(--brick); font-weight: 600; }

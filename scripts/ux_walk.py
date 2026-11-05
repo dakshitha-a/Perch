@@ -830,15 +830,47 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
     await page.route("**/auth/session", session_stub)
     res: dict[str, dict] = {}
     chips: list[str] = []
+    first = True
     for name, msg in states.items():
         cur["msg"] = None
         await page.goto(base + f"/#/brief/{bid}/scout")
         await page.reload()
         await page.wait_for_selector("#scout-q")
         cur["msg"] = msg
+        if first:  # S53: Ask and Clear on the student side before any conversation; Clear waits for text
+            labels = await page.locator(".scout-ask-row button").all_inner_texts()
+            off = await page.locator("[data-key=scout-clear]").is_disabled()
+            await page.fill("#scout-q", cur["q"])
+            on = not await page.locator("[data-key=scout-clear]").is_disabled()
+            w.check("scout_ask_and_clear", [x.strip() for x in labels] == ["Ask", "Clear"] and off and on,
+                    f"labels {labels}, disabled when empty {off}, enabled with text {on}")
+            await page.click("[data-key=scout-clear]")
+            w.check("scout_clear_empties_box", await page.input_value("#scout-q") == "", "box not emptied")
+            hold = asyncio.Event()
+
+            async def slow(route: Route, hold: asyncio.Event = hold) -> None:  # hold the answer to measure the working state
+                await hold.wait()
+                await stub(route)
+            await page.route(re.compile(r".*/briefs/[^/?]+/scout(\?.*)?$"), slow)
         await page.fill("#scout-q", cur["q"])
         await page.click(".scout-ask button[type=submit]")
+        if first:  # S53: the box glows while Scout works, and stops after
+            await page.wait_for_selector(".scout-ask-row.working")
+            look = """() => { const cs = getComputedStyle(document.querySelector('#scout-q'));
+              return { anim: cs.animationName, shadow: cs.boxShadow }; }"""
+            still = await page.evaluate(look)  # the walk's browser asks for reduced motion
+            await page.emulate_media(reduced_motion="no-preference")
+            moving = await page.evaluate(look)
+            await page.emulate_media(reduced_motion="reduce")
+            w.check("scout_glow_while_working", still["shadow"] != "none" and still["anim"] == "none"
+                    and moving["anim"] == "scout-glow", f"reduced {still}, motion {moving}")
+            hold.set()
+            await page.unroute(re.compile(r".*/briefs/[^/?]+/scout(\?.*)?$"), slow)
         await page.wait_for_selector(".scout-x .notice.warn, .scout-x .scout-answer")
+        if first:
+            idle = await page.evaluate("() => !document.querySelector('.scout-ask-row.working') && getComputedStyle(document.querySelector('#scout-q')).animationName === 'none'")
+            w.check("scout_no_glow_when_idle", idle, "glow left on after the answer")
+            first = False
         if w.plant == "mark_sr_text" and name == "unsupported":
             await page.evaluate("document.querySelectorAll('mark.unsupported .sr-only').forEach((e) => e.remove())")
         await w.snap(page, tag, f"scout-{name}")
