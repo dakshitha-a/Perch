@@ -557,3 +557,36 @@ def test_a_brief_whose_job_ended_without_it_stops_the_page(env, pg_clean, tmp_pa
     assert UserBriefStore(env.ud, env.uid, "researcher", bid).load()
     env.session.user_id = new_user(pg_clean)
     assert c.post(f"/briefs/{bid}/cancel").status_code == 404
+
+
+def test_a_repeated_brief_poll_reads_no_public_record_again(env, pg_clean, tmp_path,
+                                                            monkeypatch):
+    """S49 B9: every 1.5 s poll re-read every Award, the overrides file and each lead's record.
+    Public records are now kept per process for a short while; the brief itself is not."""
+    from perch import awards as aw
+    from perch.store.sqlite import SQLiteRepository
+
+    c, svc = brief_client(env, tmp_path, monkeypatch)
+    r = c.post("/briefs", json={"author_id": "A5026494099", "as_of": "2026-10-28"})
+    bid = r.json()["id"]
+    jobs.set_brief_service(lambda: svc)
+    try:
+        run_worker(pg_clean, ["brief"],
+                   lambda: c.get(f"/briefs/{bid}").json()["brief"]["status"] == "done")
+    finally:
+        jobs._brief_service = None
+    first = c.get(f"/briefs/{bid}").json()
+    assert first["leads"]
+    calls = []
+    real_get, real_list, real_ov = SQLiteRepository.get, SQLiteRepository.list, aw.load_overrides
+    monkeypatch.setattr(SQLiteRepository, "get",
+                        lambda self, cls, i: calls.append(("get", cls.kind)) or
+                        real_get(self, cls, i))
+    monkeypatch.setattr(SQLiteRepository, "list",
+                        lambda self, cls, **k: calls.append(("list", cls.kind)) or
+                        real_list(self, cls, **k))
+    monkeypatch.setattr(aw, "load_overrides",
+                        lambda *a, **k: calls.append(("overrides",)) or real_ov(*a, **k))
+    again = c.get(f"/briefs/{bid}").json()
+    assert again["leads"] == first["leads"] and again["awards"] == first["awards"]
+    assert calls == []
