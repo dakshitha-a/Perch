@@ -19,7 +19,7 @@ The notes themselves are in `S48_UI_NOTES.md`.
    - **Card:** a visible card "Add your CV (optional)" above Build brief, with the hint "Used for cover-letter points and Scout. Stored encrypted. Contact details are blanked before a model reads it."
    - **Route:** it reuses POST /me/docs?audience=researcher. A saved document is ticked into the brief.
    - **Guests:** they see "Sign in to add your CV."
-   - **Fork for Dakshitha:** optional (recommended) or required.
+   - **Decided by Dakshitha:** optional.
 4. **Change details and run again, both sides.**
    - **Where:** a "Change details and run again" button in the brief header and on each My Perch row, for signed-in users.
    - **What it does:** it opens the start screen prefilled from the brief's options and stored documents. Running again makes a new brief; the old one stays in My Perch with its saved leads.
