@@ -899,11 +899,15 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await page.wait_for_timeout(600)
     cards = await page.locator("#panel li.card.lead:not(:has([data-key^=restore]))").count()
     btns = await page.locator("#panel li.card.lead button[data-key^=cover-]").count()
-    hint0 = await page.locator(f"[data-cover='{first}'] > .hint").first.inner_text()
+    # S50 B4: the hint is said once above the list, never on a card
+    hint0 = await page.locator("#panel [data-cover-line]").first.inner_text() if await page.locator("#panel [data-cover-line]").count() else ""
+    card_hints = await page.locator("#panel [data-cover] :text('A model writes these')").count()
     w.check("cover_button_on_every_card", cards > 0 and btns == cards
             and (await page.locator(f"button[data-key='cover-{first}']").inner_text()) == "Cover-letter points",
             f"{cards} cards not dismissed, {btns} buttons")
-    w.check("cover_student_hint", hint0 == "A model writes these from your CV and entries. You put them in your own words.", repr(hint0))
+    w.check("cover_student_hint", hint0.strip() == "A model writes these from your CV and entries. You put them in your own words."
+            and await page.locator("#panel [data-cover-line]").count() == 1 and card_hints == 0,
+            f"list line {hint0!r}; {card_hints} card hints")
     w.check("cover_restore_is_one_get", seen["gets"] == [{"record_id": restored_rid}]
             and await page.locator(f"[data-cover='{restored_rid}'] .scout-points").count() == 1
             and await page.locator(f"button[data-key='cover-{restored_rid}']").inner_text() == "Points again"
@@ -938,7 +942,9 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
       .filter((t) => /^[a-z_]+:[\\w.-]+$/i.test(t) || t === rid)""", first)
     w.check("cover_cites_are_titles", not ids_shown, f"chips showing an id: {ids_shown[:3]}")
     w.check("cover_result_focus_and_announce", res["focusSummary"] and res["live"] == "The points are ready below.", f"{res}")
-    w.check("cover_hint_hidden_with_result", not any(x.startswith("A model writes these") for x in res["hints"]), f"{res['hints']}")
+    after = await page.locator("#panel [data-cover] :text('A model writes these')").count()
+    w.check("cover_hint_hidden_with_result", not any(x.startswith("A model writes these") for x in res["hints"]) and after == 0
+            and await page.locator("#panel [data-cover-line]").count() == 1, f"{res['hints']}; {after} card hints")
     w.check("cover_post_sends_csrf", bool(seen["posts"]) and seen["posts"][0][:2] == (first, "walk-csrf"), f"{seen['posts']}")
     await show(page, f"[data-cover='{first}']")
     await w.snap(page, tag, "cover-result", full=False)
@@ -986,7 +992,7 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await show(page, f"[data-cover='{quota_rid}']")
     await w.snap(page, tag, "cover-error", full=False)
     # a redraw (the sort switch) keeps the result: the state is held outside the card
-    await page.locator("[data-key=sort-closing]").click()
+    await page.locator("#sort-pick").select_option("closing")
     await page.wait_for_timeout(500)
     w.check("cover_result_survives_redraw", await page.locator(f"[data-cover='{first}'] .scout-points").count() == 1
             and await page.locator(f"[data-cover='{quota_rid}'] .quota-hint").count() == 1
@@ -1019,9 +1025,10 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await page.evaluate("(id) => { location.hash = '#/brief/' + encodeURIComponent(id) + '/routes'; }", rbid)
     await page.wait_for_selector("#panel li.card.lead button[data-key^=cover-]", timeout=20_000)
     rid = await page.locator("#panel [data-cover]").first.get_attribute("data-cover")
-    rhint = await page.locator(f"[data-cover='{rid}'] > .hint").first.inner_text()
+    rhint = (await page.locator("#panel [data-cover-line]").first.inner_text()).strip() if await page.locator("#panel [data-cover-line]").count() else ""
+    rcard = await page.locator("#panel [data-cover] :text('A model writes these')").count()
     w.check("cover_researcher_hint", rhint == "A model writes these from your CV, entries and the papers the record cites. You put them in your own words."
-            and not rseen["gets"], f"{rhint!r} gets {rseen['gets']}")
+            and rcard == 0 and not rseen["gets"], f"{rhint!r}; {rcard} card hints; gets {rseen['gets']}")
     await show(page, f"[data-cover='{rid}']")
     await w.snap(page, tag, "cover-researcher-button", full=False)
     await page.locator(f"button[data-key='cover-{rid}']").click()

@@ -314,9 +314,10 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         for q in (q1, q2):
             await page.locator(f"button[data-key='cover-{q}']").click()
             await page.wait_for_timeout(900)
-        notes = await page.locator("#list-notices .notice").count()
+        # S50: other notes (a withheld-reasons line) may share the slot; the quota line is said once
+        notes = await page.locator("#list-notices [data-cover-line]").count()
         card_err = await page.locator(".cover .notice.error").count()
-        text = await page.locator("#list-notices").inner_text()
+        text = await page.locator("#list-notices [data-cover-line]").first.inner_text() if notes else ""
         w.check("s49_quota_once", notes == 1 and card_err == 0 and "SYNTHETIC: you have used" in text and "comes back at" in text,
                 f"[mock slot, mock 429] {notes} notices above the list, {card_err} card errors, {text[:90]!r}")
         await page.evaluate("document.querySelector('#list-notices').scrollIntoView({ block: 'center' })")
