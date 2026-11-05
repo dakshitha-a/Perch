@@ -677,17 +677,22 @@ def draft_handoff(ctx: ScoutContext, office: str | None = None,
     # The same call as the Compare tab's draft (service.handoff): the model may read the
     # user's own documents, after the consent given at sign-up.
     docs = _user_docs(ctx)
-    d = draft(off, res, items, papers, ctx.handoff or s._audited("handoff", s.models.handoff_spec),
-              user_docs=docs or None)
+    try:
+        d = draft(off, res, items, papers,
+                  ctx.handoff or s._audited("handoff", s.models.handoff_spec),
+                  user_docs=docs or None)
+    except LookupError as e:  # Q3: only Temple internal calls, which name their own contact
+        raise ToolError(str(e)) from None
     for x, rec in items:
-        if rec:
+        if rec and x.id not in d.left_out:
             ctx.see(rec)
         if x.route == "B":
             ctx.see(x)
     return {"office": off.name, "office_page": off.url, "to": "", "subject": d.subject,
             "body": d.body, "opening_withheld": d.flagged, "opening_by": d.opening_by,
             "note": "A draft only. Perch never sends it. Show it to the user to edit and send; "
-            "the To line is for them to fill in from the office page."}
+            "the To line is for them to fill in from the office page.",
+            **({"left_out_note": d.left_out_note} if d.left_out_note else {})}
 
 
 # --- cover points (S33, skill 4) ---

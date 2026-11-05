@@ -93,6 +93,22 @@ class Draft:
     errors: list[str] = field(default_factory=list)
     model: str | None = None
     opening_by: str = "code"  # F7: "model" when a model wrote the opening paragraph
+    # Q3 (S50): kept Temple internal calls left out of the draft, and the code line why
+    left_out: list[str] = field(default_factory=list)
+    left_out_note: str | None = None
+
+
+# Q3 (S50): Temple's own internal calls name their contact on each call's page; they are not
+# Research Development's to discuss, so a draft leaves them out and says so in this line.
+TEMPLE_OWN_CONTACT = ("Temple's own calls name their contact on each call's page, so they "
+                      "are not in this draft.")
+
+
+def split_internal(items: list[tuple[Lead, Record | None]]
+                   ) -> tuple[list[tuple[Lead, Record | None]], list[Lead]]:
+    """(the items a draft may hold, the Temple internal leads left out)."""
+    keep = [(x, r) for x, r in items if x.group != "temple_internal"]
+    return keep, [x for x, _ in items if x.group == "temple_internal"]
 
 
 def lead_key(lead: Lead) -> str:
@@ -208,7 +224,21 @@ def draft_handoff(office: Office, researcher: Researcher,
     """items: the kept leads for this office with their opportunity or organisation.
     `user_docs`: the signed-in user's own documents, which the model may cite. They reach
     the model only after the user's consent at sign-up (standing rule 5), with contact
-    details blanked first; the draft is the user's own and nothing is sent."""
+    details blanked first; the draft is the user's own and nothing is sent. Temple internal
+    leads are left out (Q3); with nothing else, LookupError, as for no kept leads."""
+    items, internal = split_internal(items)
+    if not items:
+        raise LookupError(TEMPLE_OWN_CONTACT)
+    d = _draft_handoff(office, researcher, items, papers, provider, user_docs)
+    if internal:
+        d.left_out, d.left_out_note = [x.id for x in internal], TEMPLE_OWN_CONTACT
+    return d
+
+
+def _draft_handoff(office: Office, researcher: Researcher,
+                   items: list[tuple[Lead, Record | None]], papers: list[Work],
+                   provider: AuditedProvider | None,
+                   user_docs: list[Work] | None = None) -> Draft:
     papers = [w for w in papers if w.source != "user"][:MAX_PAPERS]
     lead_ids = [x.id for x, _ in items]
     subject = subject_for(items)
