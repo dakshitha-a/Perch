@@ -2,7 +2,8 @@
 // page with the delete-my-data dialog (#/account) and My Perch with the past briefs (#/me).
 // The consent text is whatever the server sends, shown as written (GET /auth/session).
 
-import { fill, h, icon } from "./dom.js";
+import { evMark, fill, h, icon } from "./dom.js";
+import { owl } from "./owl.js";
 import * as f from "./format.js";
 
 const needSignIn = (ctx, what) => h("div", { class: "screen" },
@@ -57,15 +58,13 @@ export function renderWelcome(root, ctx, returnTo) {
   function paint() {
     const sidesDone = state.student || state.researcher;
     const ready = sidesDone && state.agreed && !state.busy;
-    // DRAFT copy (S43): the screen's headings and field labels, for Dakshitha to review.
-    // The consent text itself is the server's, shown as sent.
     fill(root, h("div", { class: "screen welcome" },
       h("div", {}, h("h1", { class: "page", id: "acct-title", tabindex: "-1", text: "Welcome to Perch" }),
         h("p", { class: "page-sub", text: "Two short steps, then you are in." })),
       h("section", { class: "box", "aria-labelledby": "w1" },
         h("h2", { class: "section-title", id: "w1", text: "1. What brings you here?" }),
         row("student", "I am a student"), row("researcher", "I am a researcher"),
-        h("p", { class: "hint", text: "You can pick both." }),
+        h("p", { class: "hint", text: "You can pick both. Graduate students: pick Student for fellowships, and Researcher too if you have published papers." }),
         state.researcher ? h("div", { class: "oa-field" },
           h("label", { for: "oa-id", class: "big", text: "Your OpenAlex author id (optional)" }),
           h("input", { id: "oa-id", type: "text", value: state.oa, autocomplete: "off", placeholder: "A5023888391",
@@ -76,7 +75,6 @@ export function renderWelcome(root, ctx, returnTo) {
         h("div", { class: "consent-text", tabindex: "0", role: "region", "aria-label": "Consent text" },
           // One paragraph per sentence, so it reads in steps; the words are the server's, unchanged.
           ...String(c.text || "").split(/(?<=[.!?])\s+/).filter(Boolean).map((t) => h("p", { text: t }))),
-        h("p", { class: "hint", text: `Consent text, version ${c.current_version ?? ""}.` }),
         h("label", { class: "check-row" },
           h("input", { type: "checkbox", "data-key": "agree", checked: state.agreed,
             onchange: (e) => { state.agreed = e.target.checked; draw(); } }),
@@ -86,7 +84,6 @@ export function renderWelcome(root, ctx, returnTo) {
         h("button", { class: "btn primary big", type: "button", "data-key": "continue", disabled: !ready,
           "aria-busy": state.busy ? "true" : null, onclick: submit }, h("span", { text: state.busy ? "Saving" : "Continue" })),
         !ready && !state.busy ? h("p", { class: "hint", text: !sidesDone ? "Choose at least one side to continue." : "Tick “I agree” to continue." }) : null),
-      // DRAFT copy (S43 S12): a way out that needs no agreement.
       h("p", { class: "hint welcome-out" },
         h("a", { href: "#/awards", text: "Not now: browse Temple awards" }), h("span", { text: " · " }),
         h("button", { class: "linklike", type: "button", "data-key": "welcome-signout", onclick: async () => {
@@ -153,8 +150,6 @@ export async function renderAccount(root, ctx) {
   const dlg = h("dialog", { class: "del-dialog", "aria-labelledby": "del-title" },
     h("form", { method: "dialog", onsubmit: (e) => e.preventDefault() },
       h("h2", { id: "del-title", class: "section-title", text: "Delete my data" }),
-      // DRAFT copy (S43): the dialog text, for Dakshitha to review. It follows the consent
-      // text and the delete route: CV and entries, briefs, account and key, 35-day backups.
       h("p", { id: "del-help", text: "This deletes your CV and entries, your briefs, your saved awards and leads, your hand-off drafts and cover points, and your account. You will be signed out. Your key is destroyed, so nothing stored under it can be read again. After you delete your data, backups clear within 35 days. If you do nothing for 12 months, Perch deletes your data anyway." }),
       h("label", { for: "del-word", class: "big", text: "Type delete to confirm" }), word, err,
       h("div", { class: "dlg-actions" },
@@ -179,9 +174,6 @@ export async function renderAccount(root, ctx) {
   });
 
   // ----- withdraw consent: a confirm that says what it blocks (S43 M6) -----
-  // DRAFT copy: what withdrawing does, from the server's behaviour. It stops the jobs that
-  // read the CV or entries and new documents; it deletes nothing; browsing, viewing and
-  // deleting stay open; agreeing again restores everything.
   const wdErr = h("p", { class: "notice error", role: "alert", hidden: true });
   const wdGo = h("button", { class: "btn danger", type: "button", id: "wd-go" }, h("span", { text: "Withdraw consent" }));
   const wdDlg = h("dialog", { class: "del-dialog", "aria-labelledby": "wd-title" },
@@ -211,7 +203,7 @@ export async function renderAccount(root, ctx) {
     h("div", {}, h("h1", { class: "page", id: "acct-title", tabindex: "-1", text: "Account and data" })),
     h("dl", { class: "fields acct-facts" },
       h("div", { class: "field" }, h("dt", { text: "Signed in as" }), h("dd", { text: sess.display_name || "your account" })),
-      h("div", { class: "field" }, h("dt", { text: "Your sides" }), h("dd", { text: roles.map(sideWord).join(" and ") || "None chosen" })),
+      h("div", { class: "field" }, h("dt", { text: "Using Perch as" }), h("dd", { text: roles.map(sideWord).join(" and ") || "None chosen" })),
       sess.consent ? h("div", { class: "field" }, h("dt", { text: "Consent" }),
         h("dd", {}, h("span", { text: sess.consent.required ? "Not agreed to the current text. " : `Version ${sess.consent.accepted_version}, agreed. ` }),
           sess.consent.required
@@ -229,16 +221,58 @@ export async function renderAccount(root, ctx) {
   await loadDocs();
 }
 
-// ---------- My Perch: past briefs ----------
+// ---------- My Perch: the signed-in home ----------
 
-export async function renderMyPerch(root, ctx) {
+const PLURAL_DOCS = (n) => `${n} other ${n === 1 ? "document" : "documents"}`;
+
+// One row of the "Kept and saved" card. The date is written by code from the record's own field.
+function keptRow(it, side, ctx, onRemove) {
+  const r = it.record;
+  const from = [it.saved_id ? "Saved from the list" : null,
+    ...(it.kept_in || []).slice(0, 1).map((k) => `Kept in your brief of ${f.formatDate(k.built_at)}`)].filter(Boolean).join(" · ");
+  const remove = it.saved_id ? h("button", { class: "btn quiet", type: "button", "data-key": `unsave-${it.saved_id}`,
+    "aria-label": `Remove ${r ? (r.name || r.title || "this record") : "this record"} from the saved list`,
+    onclick: () => onRemove(it) }, h("span", { text: "Remove" })) : null;
+  if (!r) {
+    return h("li", { class: "kept-row gone" }, h("div", { class: "kept-main" },
+      h("p", { class: "hint", text: "This record is no longer in Perch’s data." })), remove);
+  }
+  const opp = r.kind === "opportunity";
+  const title = (opp ? r.title : r.name) || (opp ? "Untitled opportunity" : "Untitled award");
+  const date = r.deadline || (opp ? r.close_date : null);
+  const today = f.localToday();
+  let when;
+  if (date && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+    const d = String(date).slice(0, 10);
+    if (d >= today) {
+      when = h("span", {}, h("span", { text: `Closes ${f.formatDate(d)}` }), h("span", { class: "rel", text: f.closesIn(f.daysBetween(today, d)) }));
+    } else {
+      when = h("span", {}, h("span", { text: f.formatDate(d) }),
+        h("span", { class: `tag ${opp ? "closed" : "past"}`, text: opp ? "Closed" : "Past date on the page" }));
+    }
+  } else if (r.deadline_quote) when = h("span", { class: "quote-date", text: `The page says: “${r.deadline_quote}”` });
+  else when = h("span", { class: "missing", text: "No date on the record" });
+  return h("li", { class: "kept-row", "data-id": it.record_id }, h("div", { class: "kept-main" },
+    h("button", { class: "title-btn", type: "button", onclick: (e) => ctx.openEvidence(r, e.currentTarget) },
+      h("span", { text: title }), evMark()),
+    h("div", { class: "kept-date" }, when),
+    from ? h("p", { class: "kept-from", text: from }) : null), remove);
+}
+
+const briefTitle = (b, side) => {
+  if (side === "student") return `Options checked ${f.formatDate(b.created_at)}`;
+  return b.topics && b.topics.length ? b.topics.slice(0, 3).join(", ") : `Researcher brief, ${f.formatDate(b.created_at)}`;
+};
+
+export async function renderMyPerch(root, ctx, opts = {}) {
+  const { home = false } = opts;
   const sess = ctx.session();
   document.title = "My Perch — Perch";
   if (sess.guest) {
     fill(root, h("div", { class: "screen" },
-      h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
+      home ? null : h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
       h("div", {}, h("h1", { class: "page", id: "acct-title", tabindex: "-1", text: "My Perch" }),
-        h("p", { class: "page-sub", text: "Sign in to keep briefs and saved awards." })),
+        h("p", { class: "page-sub", text: "Sign in to keep awards, their dates and your briefs." })),
       h("p", {}, h("a", { class: "btn primary", href: ctx.signIn(), text: "Sign in" }))));
     return;
   }
@@ -246,32 +280,84 @@ export async function renderMyPerch(root, ctx) {
   const roles = (sess.roles || []).filter((r) => r === "student" || r === "researcher");
   const both = roles.length > 1;
   const side = sess.audience || roles[0] || "student";
-  const listEl = h("div", { class: "brief-list", "aria-busy": "true" }, h("div", { class: "shimmer-card" }));
-  const sideWord = side === "student" ? "student" : "researcher";
+  const student = side === "student";
+  const noun = student ? "awards" : "calls";
+  const keptEl = h("div", { "aria-busy": "true" }, h("div", { class: "shimmer-card" }));
+  const briefsEl = h("div", { "aria-busy": "true" }, h("div", { class: "shimmer-card" }));
+  const docsEl = h("div", { "aria-busy": "true" }, h("div", { class: "shimmer-card" }));
+  const browse = student ? { href: "#/awards", text: "Browse Temple awards" } : { href: "#/funding", text: "Browse funding" };
+  const startHref = student ? "#/student" : "#/start";
   fill(root, h("div", { class: "screen my-perch" },
-    h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
+    home ? null : h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page", id: "acct-title", tabindex: "-1", text: "My Perch" }),
-        h("p", { class: "page-sub", text: `Your past ${sideWord} briefs.` })),
-      both ? h("div", { class: "seg", role: "group", "aria-label": "Side" },
+        h("p", { class: "page-sub", text: `Your kept ${noun}, their dates and your briefs.` })),
+      both ? h("div", { class: "seg", role: "group", "aria-label": "Using Perch as" },
         roles.map((r) => h("button", { type: "button", "aria-pressed": String(r === side), "data-key": `side-${r}`,
-          onclick: async () => { if (r === side) return; try { await ctx.api.setAudience(r); await ctx.refresh(); renderMyPerch(root, ctx); } catch (e) { ctx.announce(e.message); } } },
+          onclick: async () => { if (r === side) return; try { await ctx.api.setAudience(r); await ctx.refresh(); renderMyPerch(root, ctx, opts); } catch (e) { ctx.announce(e.message); } } },
         h("span", { text: r === "student" ? "Student" : "Researcher" })))) : null),
-    h("h2", { class: "section-title", text: "Briefs" }), listEl));
-  document.getElementById("acct-title").focus({ preventScroll: true });
-  try {
-    const rows = await ctx.api.myBriefs(side);
-    rows.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
-    listEl.setAttribute("aria-busy", "false");
-    fill(listEl, rows.length ? h("ul", { class: "leads" }, rows.map((b) => h("li", { class: "card lead brief-row", "data-id": b.id },
-      h("div", {}, h("p", { class: "lead-title", text: side === "student" ? "Student brief" : (b.topics && b.topics.length ? b.topics.slice(0, 3).join(", ") : "Researcher brief") }),
-        h("p", { class: "hint", text: `Built ${f.formatDate(b.created_at)} · ${f.plural(b.leads, "lead")}${b.sample_leads ? ` · ${b.sample_leads} sample` : ""} · ${b.status}` })),
-      h("a", { class: "btn", href: `#/brief/${encodeURIComponent(b.id)}/routes` },
-        h("span", { text: "Open" }), h("span", { class: "sr-only", text: ` the brief built ${f.formatDate(b.created_at)}` })))))
-      : h("div", { class: "empty-list" }, h("p", { class: "lede", text: "No briefs yet." }),
-        h("a", { class: "btn", href: side === "student" ? "#/student" : "#/" }, h("span", { text: side === "student" ? "Check my fit" : "Find a researcher" }))));
-  } catch (e) {
-    listEl.setAttribute("aria-busy", "false");
-    fill(listEl, h("p", { class: "notice warn" }, icon("warn"), h("span", { text: e.code === "consent_required" ? "Agree to the consent first." : `Your briefs could not be loaded. ${e.message}` })));
+    h("div", { class: "start-row" },
+      h("a", { class: "btn primary", href: student ? "#/awards" : "#/start", text: student ? "Browse Temple awards" : "Find a researcher" }),
+      h("a", { class: "btn", href: student ? "#/student" : "#/funding", text: student ? "Check my fit" : "Browse funding" })),
+    h("div", { class: "home-grid" },
+      h("section", { class: "box home-kept", "aria-labelledby": "kept-h" }, h("h2", { class: "section-title", id: "kept-h", text: "Kept and saved" }), keptEl),
+      h("section", { class: "box home-briefs", "aria-labelledby": "briefs-h" }, h("h2", { class: "section-title", id: "briefs-h", text: "Briefs" }), briefsEl),
+      h("aside", { class: "box home-docs", "aria-labelledby": "docs-h" }, h("h2", { class: "section-title", id: "docs-h", text: "Your documents" }), docsEl))));
+  const title = document.getElementById("acct-title");
+  if (!home) title.focus({ preventScroll: true });
+
+  const failure = (e, what) => h("p", { class: "notice warn" }, icon("warn"),
+    h("span", { text: e.code === "consent_required" ? "Agree to the consent first." : `${what} could not be loaded. ${e.message}` }));
+
+  // ----- kept and saved -----
+  let items = [];
+  const drawKept = () => {
+    keptEl.setAttribute("aria-busy", "false");
+    fill(keptEl, items.length ? h("ul", { class: "kept-list" }, items.map((it) => keptRow(it, side, ctx, remove)))
+      : h("div", { class: "empty-list" }, owl("look", "owl-sm"),
+        h("p", { class: "lede", text: `Nothing kept yet. Press Keep on ${student ? "an award" : "a call"} and it shows here with its date.` }),
+        h("a", { class: "btn", href: browse.href, text: browse.text })));
+  };
+  async function remove(it) {
+    try {
+      await ctx.api.unsave(it.saved_id);
+      // a record that is also kept in a brief stays listed, without the saved mark
+      if ((it.kept_in || []).length) Object.assign(it, { saved_id: null }); else items = items.filter((x) => x !== it);
+      drawKept();
+      ctx.announce("Removed from the saved list.");
+      const t = document.getElementById("kept-h"); if (t) { t.tabIndex = -1; t.focus(); }
+    } catch (e) { ctx.announce(e.message); }
   }
+  ctx.api.saved(side).then((got) => { items = got.items; drawKept(); },
+    (e) => { keptEl.setAttribute("aria-busy", "false"); fill(keptEl, failure(e, "Your kept list")); });
+
+  // ----- briefs -----
+  ctx.api.myBriefs(side).then((rows) => {
+    rows.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+    briefsEl.setAttribute("aria-busy", "false");
+    fill(briefsEl, rows.length ? h("ul", { class: "brief-list-rows" }, rows.map((b) => {
+      const busy = b.status === "queued" || b.status === "running";
+      const status = busy ? "Still building" : b.status === "failed" ? "Stopped" : null;
+      const meta = `${f.plural(b.leads, "lead")} · ${b.kept || 0} kept${b.sample_leads ? ` · ${b.sample_leads} sample` : ""}${status ? ` · ${status}` : ""}`;
+      return h("li", { class: "brief-line brief-row", "data-id": b.id },
+        h("div", { class: "brief-main" }, h("p", { class: "brief-title", text: briefTitle(b, side) }), h("p", { class: "brief-meta", text: meta })),
+        h("div", { class: "brief-acts" },
+          h("a", { class: "btn", href: `#/brief/${encodeURIComponent(b.id)}/routes` },
+            h("span", { text: "Open" }), h("span", { class: "sr-only", text: ` the brief built ${f.formatDate(b.created_at)}` })),
+          h("a", { class: "quiet-link", href: `#/rerun/${encodeURIComponent(b.id)}`, text: "Change details and run again" })));
+    })) : h("div", { class: "empty-list" }, h("p", { class: "lede", text: "No briefs yet." }),
+      h("a", { class: "btn", href: startHref, text: student ? "Check my fit" : "Find a researcher" })));
+  }, (e) => { briefsEl.setAttribute("aria-busy", "false"); fill(briefsEl, failure(e, "Your briefs")); });
+
+  // ----- documents -----
+  ctx.api.docs(side).then((docs) => {
+    docsEl.setAttribute("aria-busy", "false");
+    const cv = docs.find((d) => d.kind === "cv");
+    const others = docs.length - (cv ? 1 : 0);
+    fill(docsEl,
+      cv ? h("p", { class: "doc-line", text: `CV stored: ${cv.name || cv.label || "CV"}` })
+        : h("p", {}, h("span", { text: "No CV stored. " }), h("a", { class: "quiet-link", href: startHref, text: "Add your CV" })),
+      others > 0 ? h("p", { class: "hint", text: PLURAL_DOCS(others) }) : null,
+      h("p", {}, h("a", { class: "quiet-link", href: "#/account", text: "Manage in Account and data" })));
+  }, (e) => { docsEl.setAttribute("aria-busy", "false"); fill(docsEl, failure(e, "Your documents")); });
 }

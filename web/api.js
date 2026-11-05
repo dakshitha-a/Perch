@@ -20,10 +20,10 @@ const ERROR_WORDS = {
   audience_not_held: "That side is not on your account.",
   rate_limited: "You have reached your limit for now. Try again later.",
   quota_exceeded: "You have reached your limit for now. Try again later.",
-  // DRAFT copy (S43 S13): the key is already destroyed when this one comes back.
+  // The key is already destroyed when this one comes back.
   delete_incomplete: "Your key is destroyed, so your data can no longer be read. Clean-up did not finish. Press Delete again to finish it.",
 };
-// DRAFT copy (S43 S17): plain words for a student, not for the person running the server.
+// Plain words for a student, not for the person running the server.
 const UNREACHABLE = "Perch could not be reached. Check your connection and try again.";
 const UNKNOWN = "Something went wrong on Perch's side. Try again in a minute.";
 
@@ -188,7 +188,7 @@ export function liveApi(base = "") {
     // The public lists need no session. `kind` is "awards" or "opportunities".
     list: (kind, params = {}) => call(base, `/${kind}${query(params)}`),
     filters: (audienceName) => call(base, `/filters?audience=${encodeURIComponent(audienceName)}`),
-    samples: (audienceName, cursor = null) => call(base, `/samples${query({ audience: audienceName, cursor })}`),
+    samples: (audienceName, cursor = null, limit = null) => call(base, `/samples${query({ audience: audienceName, cursor, limit })}`),
     setRoles: (roles) => post("/me/roles", { roles }),
     setAudience: (side) => post("/me/audience", { audience: side }),
     consent: (version) => post("/me/consent", { version }),
@@ -198,6 +198,11 @@ export function liveApi(base = "") {
     addDoc: (body, side = null) => post(`/me/docs${query({ audience: side })}`, body),
     removeDoc: (id) => p(`/me/docs/${encodeURIComponent(id)}`, { method: "DELETE" }),
     myBriefs: (side = null) => p(`/me/briefs${query({ audience: side })}`),
+    // The saved list (S49): saved awards and kept leads together, in the server's order.
+    saved: (side = null) => p(`/me/saved${query({ audience: side })}`),
+    save: (recordId, side = null) => post(`/me/saved${query({ audience: side })}`, { record_id: recordId }),
+    unsave: (savedId) => p(`/me/saved/${encodeURIComponent(savedId)}`, { method: "DELETE" }),
+    usage: () => p("/usage"),
     deleteMe: async () => {
       const out = await post("/me/delete", { confirm: "delete" });
       csrf = null; audience = null; guest = false; epoch += 1;
