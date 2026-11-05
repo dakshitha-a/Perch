@@ -15,7 +15,7 @@ Do these on the morning of the demo, in this order.
 - **Pre-build the researcher brief on that account.** Wait for Ready. Keep two individual-lab leads and draft the hand-off. Ask one Scout question so the thread already holds an answer.
 - **Pre-build the student brief on that account.** Use Try a sample student. Open the Samples tab and find where the card that fails on GPA sits.
 - **Keep two windows.** One is signed in on My Perch. One is a private window, signed out, which shows what the audience sees.
-- **Load the films.** The presentation shows three films: the researcher side, the student side, and Scout on the student side. Check that each plays from the slides.
+- **Load the films.** The files are in `docs/films`. The presentation shows the researcher film, the student film and the Scout film, which are 47, 58 and 46 seconds. A fourth, `quick-student`, runs 30 seconds at 1.5 times speed for a short slide. Check that each plays from the slides.
 - **Stay signed in.** A session ends after 30 idle minutes, so use the app at least every 25 minutes.
 
 ## Audience sign-in
@@ -32,7 +32,7 @@ Do these on the morning of the demo, in this order.
 
 ## Who is on the projector
 
-A live researcher brief shows a real researcher's name, and its hand-off is written in the first person in that name. Question 51 in `bridge/QUESTIONS.md` asks Dakshitha to decide. The default is the aliased example brief, with the researcher shown as PI-4. Do not search a stranger's name live.
+A live researcher brief shows a real researcher's name, and its hand-off is written in the first person in that name. Question 51 in `bridge/QUESTIONS.md` asks Dakshitha to decide. The default is the aliased example brief, with the researcher shown as PI-1. Do not search a stranger's name live.
 
 ## The click path
 
@@ -51,8 +51,8 @@ Five minutes. The presenter has a laptop on the projector and the audience has p
 
 ## If something fails
 
-- **Sign-in fails:** do steps 2 to 7 on the example pages. They need no sign-in and call no model.
-- **The deploy is down:** show the three films and the example pages. The fallback build is offline since 5 Nov (S54); it stays at the tag `v0.1-demo-fallback` as history.
+- **Sign-in fails:** do steps 2 to 7 on the example pages. They need no sign-in and call no model. The audience can still use Try as a guest.
+- **The deploy is down:** show the four films and the example pages. The fallback build is offline since 5 Nov (S54); it stays at the tag `v0.1-demo-fallback` as history.
 - **Guests see empty reasons:** the guest budget is used. The lists, dates and rules still work. Say so and move on.
 - **Slow steps to avoid live:** a fresh researcher brief takes about 38 to 50 seconds. Cover points can take up to two minutes. An open Scout question and Run again are also slow.
 
@@ -72,4 +72,4 @@ tailscale funnel status
 - **Check it:** sign in once on the public address and open a brief before the demo starts.
 - **The presenter can use a hotspot:** only the presenter needs the sign-in port, which is 10000.
 - **Never remove the Keycloak container:** do not run `docker rm` on it. Its users live inside it.
-- **Question 52** in `bridge/QUESTIONS.md` records why v1 moved to 443; it is closed.
+- **Question 52** in `bridge/QUESTIONS.md` records why v1 moved to 443.

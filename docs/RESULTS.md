@@ -37,7 +37,7 @@ Every model sentence passes a citation validator, and a second grounding check l
 - **Grounding model check:** on 40 swapped-record pairs, Clef separated them with AUC 0.998 and MiniCheck with 0.925. Both missed 0.1 of the swaps and falsely flagged none (`bench/results/SUMMARY.md`). This is a proxy set, not real model output.
 - **Not rerun since S8:** these pass rates predate the S27 to S31 changes.
 
-## Scout
+## Scout (fallback build, local models)
 
 Scripted follow-up questions, checked for the right tool, the right arguments and a validated answer (`bench/results/scout_summary.csv`, `bench/results/RESULTS.md`). Wrong-tool rate is wrong calls over all calls.
 
@@ -56,13 +56,13 @@ Scripted follow-up questions, checked for the right tool, the right arguments an
 - **Cause of the earlier failures:** the demo model's 8,192-token context truncated Scout's rules. History compaction now keeps every call under 6,400 tokens, and 0 of 3,502 calls were truncated in round 5 (`docs/sessions/S31.md`, `docs/design/qa/CYCLE_5.md`).
 - **Small sets.** 28 of 29 says these follow-ups work. It does not estimate a failure rate.
 
-## Speed and cost
+## Speed and cost (fallback build; v1 numbers are in the S38 and S47 sections)
 
 - **Warm brief (v0, fallback build only; warm briefs are retired in v1):** the demo researchers' briefs are held in memory and open in 17 ms. The full warm click path (5 screens, 14 clicks, a hand-off draft and a Scout answer) took 17.6 s wall (`docs/TRACKER.md` S24 row; `docs/design/WORKFLOW_REVIEW.md`, path tables).
 - **Live brief:** 41.9 s after the S30 fixes, from 46.6 s (`docs/TRACKER.md`, S30 row). The QA rounds saw 36 s on a quiet server and 41 s beside another build (`docs/design/qa/CYCLE_5.md`). Under load a second brief waits in line. Live build time on the rebuilt demo: 38.7 s for a live brief on a phone through the public URL after the rebuild, with the researcher's record already cached (`docs/sessions/S32.md`).
 - **Two model slots:** the same brief took 42.7 s with one slot and 38.6 s with two, measured on a spare card (`docs/design/WORKFLOW_REVIEW.md`, P1 measurement). The demo unit now runs two slots (`docs/sessions/S32.md`).
 - **S30 speed changes:** student polls fell from 8.06 MB to 0.41 MB, static files from 326 KB to 95 KB, and a cached rerank takes about 1 ms (`docs/TRACKER.md`, S30 row).
-- **Cost per 10-lead brief:** $0.0915 on claude-sonnet-5-5 ($0.0792 explanations, $0.0123 summary), $0 on local models (`bench/results/cost.csv`). The demo runs local by default. Scout's 28-task bench cost $0.46 on Sonnet (`bench/results/scout_s28/`). Anthropic spend to date: $2.09 of $100 (`docs/TRACKER.md`, key numbers, as of 2026-10-29).
+- **Cost per 10-lead brief:** $0.0915 on claude-sonnet-5-5 ($0.0792 explanations, $0.0123 summary), $0 on local models (`bench/results/cost.csv`). The demo runs local by default. Scout's 28-task bench cost $0.46 on Sonnet (`bench/results/scout_s28/`). Anthropic spend was $2.09 of $100 on 2026-10-29 (`docs/TRACKER.md`, key numbers at that date). It is $12.45 of $100 on the main ledger on 5 Nov 2026 (`docs/TRACKER.md`, key numbers).
 
 ## Student mode (SYNTHETIC, mechanism test)
 
@@ -118,7 +118,8 @@ Every number is copied from the file named in its row. The back-test is NIH only
 | Dense against hybrid | Dense is at least as good on every metric, by one to four awards. Recall@200 is 0.500 dense and 0.417 hybrid. | same |
 | Grounding proxy set, 40 pairs, MiniCheck on CPU | AUC 0.922, false-flag rate 0.0, miss rate 0.1, 0.362 s per claim. | `bench/results/s38_grounding/grounders_cpu.csv` |
 | Grounding proxy set, 40 pairs, MiniCheck on GPU 3 (fp32) | AUC 0.922, false-flag rate 0.0, miss rate 0.1, 0.017 s per claim. Same AUC as CPU. | `bench/results/s38_grounding/grounders_cuda.csv` |
-| Cost per researcher brief, real provider, `cloud-gpu` (2026-11-04) | 5 briefs for 5 distinct public researchers, 10 leads each, all succeeded. Per brief: 11 to 13 calls (Haiku 5.5 profile summary, Sonnet 5.5 fit explanations with regenerations), mean $0.0833 (min $0.0766, max $0.0957); mean tokens 12,500 input, 7,076 output, 31,492 cache read, 3,322 cache write; wall time median 37.7 s, max 50.3 s, after a warm-up brief. Hand-off and cover points are not in these numbers. At the start tier's 400K output tokens a minute, 7,076 output tokens per brief allows about 56 briefs a minute (arithmetic). Student briefs: NOT YET MEASURED; the v1 student path lands in Phases 5 and 6. | `bench/results/s38_cost/researcher_briefs.txt` |
+| Cost per researcher brief, real provider, `cloud-gpu` (2026-11-04) | 5 briefs for 5 distinct public researchers, 10 leads each, all succeeded. Per brief: 11 to 13 calls (Haiku 5.5 profile summary, Sonnet 5.5 fit explanations with regenerations), mean $0.0833 (min $0.0766, max $0.0957); mean tokens 12,500 input, 7,076 output, 31,492 cache read, 3,322 cache write; wall time median 37.7 s, max 50.3 s, after a warm-up brief. Hand-off and cover points are not in these numbers. At the start tier's 400K output tokens a minute, 7,076 output tokens per brief allows about 56 briefs a minute (arithmetic). Student briefs were measured later, in S46: see the next section. | `bench/results/s38_cost/researcher_briefs.txt` |
+| Cost per student brief, real provider, `cloud-gpu` (S46) | 3 SYNTHETIC personas, 20 leads explained each, all done. Per brief: 20 to 22 calls, mean $0.1135 (min $0.1063, max $0.1199), mean 2,586 input and 10,296 output tokens, wall time 29 to 41 s. Of 60 explanations 59 were shown and 1 was withheld after two failed drafts. The grounding check marked 45 shown statements as unsupported while the cards were still shown. Invented personas, so this is a cost and a mechanism check, not a result about real students. | `bench/results/s46_student_real/counts.csv`, `summary.md` |
 | Scout bench on `cloud-gpu`, Sonnet 5.5 (2026-11-04) | 30/30 completed, 22/22 tasks, 8/8 restraint, 0/34 wrong calls, 0 flagged, 85,494 tokens, $0.4175, median 8.05 s. The task set has grown since the last recorded Sonnet row (20 cases: 20/20, 14/14 tasks, 6/6 restraint, 0/27 wrong calls, $0.4074, median 8.1 s), so the two rows are not the same set. | `bench/results/scout_s38_cloudgpu/scout_anthropic-claude-sonnet-5-5.csv`, `bench/results/scout_summary.csv` |
 
 The grounding set is a proxy built from saved explanations, not human labels. It has 40 pairs, so one pair moves the miss rate by 0.025.
@@ -211,6 +212,14 @@ These counts come from the session file `docs/sessions/S50.md`. No separate resu
 - **Duplicates:** groups of duplicate copies of one award went from 19 to 2.
 - **Rule lines:** every student card now carries code-written rule checks. This is a mechanism, not a measure.
 - **Suites on 5 Nov:** unit 1051, pg 91, redis 117, keys 67, user 135. The walk covered 228 states each in light and dark, with 0 errors and 0 axe violations.
+
+## S51 to S54: shared account, picks and later checks
+
+- **Shared demo account budget:** the account `demo` is one account, so it has one daily model budget. At 5.00 USD a day, the measured student brief cost of $0.1135 and Scout question cost of $0.0139 (`docs/COST_MODEL.md`) give about 44 student briefs. That is arithmetic from two measured means, not a measured count.
+- **Citizenship and state picks (S53):** these are a mechanism, a closed-phrase reader in code that moves a listing lower with a quoted note. They have no back-test and no measured recall. That is UNVERIFIED.
+- **Suites and walk (S54):** unit 1151, user 152, Postgres 92. The browser walk had 28 states in light and dark at 1280 and 360 wide, with 0 errors and 0 axe violations (`docs/TRACKER.md`, key numbers).
+- **Nightly wipe:** run once on 5 Nov 2026. It wiped 1 of 1 shared accounts, and the account kept its roles and banner (`docs/sessions/S54.md`).
+- **Scout and the back-test:** not re-run after S50.
 
 ## Limits
 

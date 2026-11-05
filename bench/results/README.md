@@ -60,6 +60,15 @@ answer is useful comes only from a person.
 - **`completed`:** the answer passed the citation check, the expected tools ran with matching
   arguments and no wrong tool ran. `False` can mean an empty or flagged answer.
 
+## The v1 runs
+
+- **`s38_*`:** the v1 rebuild's CPU and GPU timings, the back-test and the grounding check, each folder with its own README.
+- **`s46_student_real/`:** the cost of three student briefs on the real model, for SYNTHETIC personas. `counts.csv` has one row per persona and `summary.md` the reading.
+- **`s47_load/`:** the load tests. `report.md` has the tables.
+- **`s50_backtest/`:** the NIH back-test run again on the later code. It has its own README.
+- **`cost_model/`:** a snapshot of the spend-ledger statistics that `scripts/cost_model.py` reads to write `docs/COST_MODEL.md`.
+- **`make bench`:** runs the v1 back-test on Postgres and writes to `build/bench/v1_backtest`. `make bench-v0` runs the fallback's matrix, which is what `RESULTS.md` here was rendered from.
+
 ## The rest
 
 - **`RESULTS.md`:** the back-test and cost tables with the reading notes.

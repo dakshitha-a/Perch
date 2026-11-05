@@ -18,7 +18,7 @@ This page is for the person who runs Perch. Every command was checked against th
 - **Model calls:** the explainer, gate, hand-off, cover points and Scout call Anthropic from the worker. Embedding, reranking and grounding run on the worker's GPU.
 - **Ports:** every published port is bound to 127.0.0.1. Put a TLS reverse proxy in front of `web`.
 - **Client addresses:** the host's proxy reaches `web` through the published port, so every request arrives from the Compose network's gateway. Compose pins the network to `172.29.190.0/24` and sets `PERCH_TRUSTED_PROXIES` to the gateway `172.29.190.1/32`, so `X-Forwarded-For` counts and the per-address limits see each visitor. The app reads the rightmost hop outside the trusted range, which is the address the proxy appended, so a value the visitor sent cannot stand in for it. If the subnet clashes on a host, change it and the variable together. That the peer is the gateway holds for Docker's default userland proxy; it is `UNVERIFIED` against a running v1 stack. Any process on the host that can reach the port can set the header, so keep the port on 127.0.0.1.
-- **The live fallback demo is separate:** the root `docker-compose.yml` on port 8090 never shares a file with `deploy/compose/docker-compose.v1.yml`. See section 12.
+- **The fallback demo is separate and offline:** the root `docker-compose.yml` never shares a file with `deploy/compose/docker-compose.v1.yml`. It has been offline since 5 Nov 2026. See section 12.
 
 ### Daily jobs (S49)
 
@@ -42,6 +42,7 @@ Copy `.env.example` to `.env`. Never commit `.env` and never paste a value into 
 - **Model and cost:** `ANTHROPIC_API_KEY`, `PERCH_ANTHROPIC_BUDGET_USD` (default 100), `PERCH_LLM_DEFAULT`, `PERCH_MODEL_SLOTS`, `PERCH_MODEL_SLOT_TIMEOUT`, `PERCH_ANTHROPIC_TIMEOUT`. `PERCH_DAILY_BUDGET_USD` is read by `perch/redisx.py` (default 0.50 per account per UTC day) but is not listed in `.env.example`.
 - **Accounts and guests (S51):** `PERCH_ACCOUNTS_OPEN` (default 1; `0` turns self-registration off, and the landing page and the walls then lead guests to the sample and the example). `PERCH_GUEST_DAILY_BUDGET_USD` (default 0.10, per guest session), `PERCH_GUEST_ADDR_DAILY_BUDGET_USD` (default 0.30, per client address) and `PERCH_GUEST_GLOBAL_DAILY_BUDGET_USD` (default 3.00, all guests). `PERCH_GUEST_SESSIONS_PER_ADDRESS_HOUR` (default 60) and `PERCH_GUEST_TTL_S` (default 3600).
 - **Per-address limits are deploy settings:** `PERCH_RATE_LIMITS` is a JSON object that maps a scope name to a count and a window in seconds, such as `{"api_read": [3000, 60]}`. It overrides `RATE_DEFAULTS` in `perch/redisx.py` for the scopes it names. A malformed value breaks every rate-limited route, so check the JSON before a restart. It needs `PERCH_TRUSTED_PROXIES`, or every visitor shares one address. The values the test deploy uses sit in its untracked environment file, and the DECISIONS entry of 2026-11-05 records them.
+- **Shared demo account (S54):** `PERCH_SHARED_ACCOUNTS` lists sign-in names that many people use at once. Every screen then shows a shared-account notice for them. `PERCH_SHARED_SUBJECTS` lists the identity provider's ids of the same accounts, and only the nightly wipe reads it. `PERCH_ADMIN_DATABASE_URL` is the superuser or BYPASSRLS URL that `perch user wipe-data` and `perch user prepare-shared` use. Their comments in `.env.example` say more.
 - **Worker threads (S51):** `PERCH_WORKER_CONCURRENCY` (default 16) sets the job threads of a worker. `PERCH_WORKER_FAST_THREADS` (default 2) reserves some of them for Scout, cover points, hand-offs and purges, as described in Daily jobs.
 - **Worker schedule (S49):** `PERCH_SCHEDULER` (default on; `0` turns it off), `PERCH_PURGE_AT` (default `03:00` UTC), `PERCH_PRECACHE_AT` (default `02:00` UTC), `PERCH_PRECACHE_CONCURRENCY` (default 1). See Daily jobs in section 1. All four are listed in `.env.example`.
 - **Keys:** `PERCH_KEYSTORE`, `PERCH_MASTER_KEY`, `PERCH_MASTER_KEY_ID`, `PERCH_MASTER_KEY_PREV`, `PERCH_MASTER_KEY_PREV_ID`, `PERCH_KMS_KEY_URI`, `PERCH_KEYS_DATABASE_URL`.
@@ -263,7 +264,7 @@ Most of these scripts read a database or Redis address from the environment, so 
 - **`scripts/smoke_deploy.py`:** builds one guest student brief and one guest researcher brief through a deploy's public URL and prints one line per step. It takes `--base`, `--author` and `--no-researcher`, and exits 0 when every step passes. A researcher brief spends from the deploy's model budget.
 - **`scripts/live_capture.py`:** captures what the real model writes for a SYNTHETIC signed-in user, into `build/s50_live/`. It stops unless `PERCH_LIVE_BASE` holds the deploy's address, and it needs the Keycloak admin password in the environment. It takes `capture` or `render`.
 - **`scripts/demo_reset.py`:** counts, and with `--apply` deletes, the guest rate windows and the guest model budgets for today in the deploy's Redis. It never touches sessions, signed-in budgets, the monthly total or the spend ledger. Run it before a demo or a filming run. See [DEMO.md](DEMO.md).
-- **`scripts/export_replay.py`:** saves one finished brief as a replay file. The example brief pages play such files from `web/example/researcher.json` and `student.json`, which are gitignored and served only by a deploy that has them. A script named `export_example.py` does not exist in the repository.
+- **`scripts/export_replay.py`:** saves one finished brief as a replay file. The example brief pages play such files from `web/example/researcher.json` and `student.json`, which are gitignored and served only by a deploy that has them. `scripts/export_example.py` builds both example files over HTTP from a deploy, swapping every real researcher name for its alias, and `scripts/build_ui_example.py` stages the example page for the tracker.
 
 ## 11. Upgrades and rollbacks
 
@@ -273,13 +274,13 @@ Most of these scripts read a database or Redis address from the environment, so 
 - **Rollback of the whole product:** the fallback is the tag `v0.1-demo-fallback` (branch `fallback/v0.1-demo`). It runs on SQLite and LanceDB with no accounts. Check it out in a separate directory and use its own `make demo`; it does not share a store with v1.
 - **Never** run `docker compose down -v` on a live stack. It deletes the data, backup and key volumes.
 
-## 12. The fallback demo
+## 12. The fallback demo (offline since 5 Nov 2026)
 
-The fallback is the root `docker-compose.yml` on `127.0.0.1:8090`, brought up with `make demo-v0` on a node with two GPUs, Docker and llama.cpp. Stop it with `make demo-v0-down`. (`make demo` now starts the v1 demo stack, section 3d.) Its models run as systemd user units rendered from `deploy/systemd/demo/`. For the public address, `tailscale funnel --bg 8090` publishes it, and `tailscale funnel --https=443 off` stops that. These commands came from the previous version of this page and were not re-run for this rewrite.
+The fallback is offline. The public address on port 443 serves v1, and the fallback's model services are stopped and disabled. It is kept as history: the tag, the image, a copy of its store and the ZIP. The text below says how it was run. The fallback was the root `docker-compose.yml` on `127.0.0.1:8090`, brought up with `make demo-v0` on a node with two GPUs, Docker and llama.cpp. Stop it with `make demo-v0-down`. (`make demo` now starts the v1 demo stack, section 3d.) Its models run as systemd user units rendered from `deploy/systemd/demo/`. For the public address, `tailscale funnel --bg 8090` publishes it, and `tailscale funnel --https=443 off` stops that. These commands came from the previous version of this page and were not re-run for this rewrite. Do not run `tailscale funnel --https=443 off`, because that port now serves v1.
 
-If the node is down on Demo Day, `uv run python scripts/build_ui_preview.py` writes `build/artifacts/ui.html`, a replay page with no server and no network.
+If the node is down on Demo Day, the four films and the example pages are the first fallback. `uv run python scripts/build_ui_preview.py` also writes `build/artifacts/ui.html`, a replay page with no server and no network.
 
-The Demo Day run sheet, including how to move the app to port 443 and back, is [DEMO.md](DEMO.md).
+The Demo Day run sheet, including the ports and what to do if the venue blocks the sign-in port, is [DEMO.md](DEMO.md).
 
 ## 13. Incident basics
 

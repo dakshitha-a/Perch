@@ -23,7 +23,7 @@ Code at HEAD of rebuild/v1 (includes S50 G3 notices rule and G5 level and Temple
 Run time: keyword 137 s, dense + 0.6B 95 s (including model loads). Logs: `keyword.log`, `dense_06b.log`; per-row CSVs in the subfolders.
 
 ## Command
-    PERCH_LIMIT_GPU=3 PERCH_LIMIT_LOCK=/run/user/1002/perch-bench.lock scripts/run_limited.sh .venv/bin/python -m bench.backtest \
+    PERCH_LIMIT_GPU=3 PERCH_LIMIT_LOCK=$XDG_RUNTIME_DIR/perch-bench.lock scripts/run_limited.sh .venv/bin/python -m bench.backtest \
       --store postgres --dsn <perch_backtest> --rerank-in 100 --strata targeted parent \
       --configs dense+rerank --reranker Qwen/Qwen3-Reranker-0.6B --rerank-cache <fresh>.db --out bench/results/s50_backtest/dense_06b
     (keyword: --configs keyword-only)
