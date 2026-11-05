@@ -160,3 +160,40 @@ def test_a_student_card_is_given_one_closest_record():
     explain_leads([o], prof, works, p, audience="student")
     prompt = p.inner.calls[0]["messages"][0].content
     assert "closest first: [user:achievement-a]." in prompt
+
+
+# --- H6: a merged award keeps an amount a dropped copy states ---
+
+def _copies(keep_extra: dict | None = None):
+    keep = sch("keep", name="SYNTHETIC Diamond Research Scholars Program",
+               purpose="Supports SYNTHETIC undergraduate research.", sponsor="SYNTHETIC Office",
+               field_of_study=["Biology"], award_type="scholarship",
+               level_of_study=["bachelor's"], international_ok=True, **(keep_extra or {}))
+    other = sch("other", name="SYNTHETIC Diamond Research Scholars", amount_max=4000.0,
+                amount_quote="Scholars receive a $4,000 stipend.",
+                details_url="https://example.temple.edu/other/details", details_fetched_at=T)
+    return keep, other
+
+
+def test_a_merged_award_keeps_the_amount_a_dropped_copy_states():
+    from perch.student import student_pool
+
+    keep, other = _copies()
+    pool, also = student_pool([keep, other])
+    (got,) = pool
+    assert got.id == keep.id and also[keep.id] == [other.source_url]
+    assert got.amount_max == 4000.0 and got.amount_quote == other.amount_quote
+    assert got.details_url == other.details_url and got.details_fetched_at == T
+
+
+def test_no_amount_is_carried_when_the_kept_copy_cites_another_page_for_its_deadline():
+    from datetime import date
+
+    from perch.student import student_pool
+
+    keep, other = _copies({"deadline": date(2027, 3, 1),
+                           "deadline_quote": "Apply by March 1, 2027.",
+                           "details_url": "https://example.temple.edu/keep/details",
+                           "details_fetched_at": T})
+    (got,) = student_pool([keep, other])[0]
+    assert got.amount_max is None and got.details_url == keep.details_url

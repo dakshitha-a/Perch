@@ -669,7 +669,33 @@ def student_pool(records: list[Scholarship]) -> tuple[list[Scholarship], dict[st
         others = [s for s in group if s.id != keep.id]
         drop |= {s.id for s in others}
         also[keep.id] = [s.source_url for s in others]
+        if (with_amount := _carry_amount(keep, others)) is not keep:
+            pool = [with_amount if s.id == keep.id else s for s in pool]
     return [s for s in pool if s.id not in drop], also
+
+
+def _carry_amount(keep: Scholarship, others: list[Scholarship]) -> Scholarship:
+    """S51 H6: the kept copy of a merged award states no amount but the dropped copies agree
+    on one: carry it over with its sentence and page, as temple_dedupe.merge does at build
+    time. Not when the kept copy already cites another page (its deadline's), since one
+    details_url cannot hold both; the record validator still checks the result (rule 3)."""
+    if keep.amount_min is not None or keep.amount_max is not None:
+        return keep
+    have = [s for s in others if s.amount_min is not None or s.amount_max is not None]
+    if not have or len({(s.amount_min, s.amount_max) for s in have}) != 1:
+        return keep
+    src = have[0]
+    url = src.details_url or src.source_url
+    if keep.details_url and keep.details_url != url:
+        return keep
+    try:
+        return Scholarship.model_validate({
+            **keep.model_dump(), "amount_min": src.amount_min, "amount_max": src.amount_max,
+            "amount_quote": src.amount_quote, "details_url": url,
+            "details_fetched_at": keep.details_fetched_at or src.details_fetched_at
+            or src.fetched_at})
+    except ValueError:
+        return keep
 
 
 def student_profile(facts: StudentFacts, interests: UserDoc | None, achieved: list[UserDoc],
