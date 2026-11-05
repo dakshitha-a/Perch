@@ -216,6 +216,7 @@ def test_tabs_open_on_current_in_reader_order(tmp_path):
     )
     order = re.findall(r'<a id="tab-([a-z]+)"', p)
     assert order == [
+        "readme",
         "ui",
         "architecture",
         "current",
@@ -224,16 +225,16 @@ def test_tabs_open_on_current_in_reader_order(tmp_path):
         "archive",
         "ux",
         "bench",
-        "readme",
         "persona",
     ]
     assert re.findall(r'data-view="([a-z]+)"', p) == order
-    assert '<a id="tab-ui" href="#ui" aria-current="page">UI</a>' in p
-    assert '<section id="view-ui" class="view" data-view="ui">' in p
+    assert '<a id="tab-readme" href="#readme" aria-current="page">README</a>' in p
+    assert '<section id="view-readme" class="view" data-view="readme">' in p
+    assert "https://github.com/dakshitha-a/Perch" in p
     assert '<section id="view-current" class="view" data-view="current" hidden>' in p
     assert "Perch finds every route to fund your work" in p
     assert "Built in 3 sessions with Claude Code" in p
-    assert 'href="#readme">Read the README' in p and "quick-student.mp4" in p
+    assert ">View on GitHub</a>" in p and "quick-student.mp4" in p
     # without a UI tab, Current is the landing tab
     q = rt.render_page(MASTER, {})
     assert '<a id="tab-current" href="#current" aria-current="page">Current</a>' in q

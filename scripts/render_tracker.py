@@ -1512,11 +1512,14 @@ def view_persona(files: dict[str, str], note: str) -> str:
     return "\n".join(out)
 
 
+GITHUB_URL = "https://github.com/dakshitha-a/Perch"  # the public repository (S55, Dakshitha)
+
+
 def view_readme(src: str, note: str) -> str:
     s = esc(src)
     return f"""<div><div class="eyebrow">The repository's README, as GitHub shows it</div><h1>README</h1></div>
 {note}
-<p class="lead">The repository's README.md as GitHub will show it, with its clips and the architecture figure.</p>
+<p class="lead">The repository's README.md, with its clips and the architecture figure. The code is public: <a href="{GITHUB_URL}" target="_blank" rel="noopener"><b>view the repository on GitHub</b></a>.</p>
 <div class="ui-tools"><a href="{s}" target="_blank" rel="noopener">Open on its own</a></div>
 <iframe id="readme-frame" class="readme-frame" src="{s}" loading="lazy" title="README preview"></iframe>"""
 
@@ -1569,7 +1572,7 @@ FILMS = (("quick-student", "Student, quick tour", "30 s"), ("researcher", "Resea
 
 def audience_strip(n_sessions: int, has_readme: bool) -> str:
     built = f" Built in {n_sessions} sessions with Claude Code." if n_sessions else ""
-    read = '<a href="#readme">Read the README</a> · ' if has_readme else ""
+    read = f'<a href="{GITHUB_URL}" target="_blank" rel="noopener">View on GitHub</a> · '  # S55: README is the landing tab
     return ('<div class="strip"><div class="wrap">'
             f"<span>Perch finds every route to fund your work, each claim cited to a public record.{built}</span>"
             f'<span class="strip-links">{read}'
@@ -1626,7 +1629,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
         ("persona", "Personas", lambda: view_persona(
             persona, note("data/synthetic/persona-1/README.md", check=False)), persona),
     ) if t[3]]
-    tabs.sort(key=lambda t: {"ui": 0, "architecture": 1}.get(t[0], 2))  # UI lands first, then Architecture; stable
+    tabs.sort(key=lambda t: {"readme": 0, "ui": 1, "architecture": 2}.get(t[0], 3))  # README lands first, then UI and Architecture (S55, Dakshitha); stable
     nav = "\n".join(f'<a id="tab-{k}" href="#{k}"{" aria-current=\"page\"" if i == 0 else ""}>'
                     f"{label}</a>" for i, (k, label, _, _) in enumerate(tabs))
     views = "\n".join(f'<section id="view-{k}" class="view" data-view="{k}"'
