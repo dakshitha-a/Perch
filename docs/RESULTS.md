@@ -1,6 +1,6 @@
 # Perch results
 
-Written 2026-11-01 (S32) for the Demo Day deck and extended on 2026-11-04 with the v1 sections (S38 and S47). The sections before "S38 rebuild" measure the fallback build (tag `v0.1-demo-fallback`: local models, in-memory sessions, SQLite). They are not measurements of the v1 stack with accounts, except where a row says `cloud-gpu`. Every number below is copied from the file named beside it. Where a number is not in the record, the page says UNVERIFIED.
+Written 2026-11-01 (S32) for the Demo Day deck and extended on 2026-11-04 with the v1 sections (S38 and S47) and on 2026-11-05 with the S49 and S50 re-runs. The sections before "S38 rebuild" measure the fallback build (tag `v0.1-demo-fallback`: local models, in-memory sessions, SQLite). They are not measurements of the v1 stack with accounts, except where a row says `cloud-gpu`. Every number below is copied from the file named beside it. Where a number is not in the record, the page says UNVERIFIED.
 
 Perch reads a Temple researcher's public papers, or a student's CV, and lays out the routes to fund the work: open federal grants and industry leads for a researcher, fellowships and scholarships for a student, every claim cited to its record, then a hand-off draft or note for the right Temple office. Nothing is sent. This page reports four things that were measured (retrieval on an NIH back-test, citation grounding, the Scout agent, speed and cost) and two that are mechanism tests on invented data (student mode, draft review). The student side has its own section of equal weight; its numbers are mechanism checks on SYNTHETIC data and never mix with the measured tables (standing rule 11). The keyword-only baseline sits beside every retrieval number.
 
@@ -165,6 +165,52 @@ Measured on this shared node with the `cloud-gpu` profile on one RTX 5000 Ada (3
 - **At 250 users, the target since 4 Nov (Dakshitha), on one web process, 120 s: met.** 58 requests a second; browse p95 132 to 190 ms, account pages p95 116 to 270 ms; 2 errors in 7,125 requests; 48 briefs offered, the queue peaked at 3. Brief polls p95 2.4 s. At 24 briefs a minute this implies about 170,000 output tokens a minute, computed from the S38 per-brief mean, inside the 400,000 start tier. The 250-user run was 120 s, shorter than the 300 s runs at 1,000.
 - **Queue:** the worker drained 38 to 40 briefs a minute with 0 failures; the queue peaked at 52 to 68 with 24 running.
 - **Provider tier:** the offered peak implies about 474,000 output tokens a minute, above the 400,000 start tier noted in the S38 section. Higher tiers' limits are UNVERIFIED.
+
+## S49 and S50 re-runs (v1 rebuild, Phase 12 rounds 1 and 2)
+
+Measured on 4 and 5 Nov 2026. These re-runs test that the fixes of rounds 1 and 2 did not break what was measured before. None of them is a new gain.
+
+### Scout open-question bench, real model
+
+Same 63 questions as the S45 section: 34 in scope, 24 out of scope, 5 distress. Sonnet 5.5 answers and Haiku 5.5 gates. "Layer 1 pass" means the answer passed every rule on its first or second draft. Usefulness is still not graded by a person.
+
+| Run | What changed | In scope: Layer 1 pass / flagged | MiniCheck flags | Out of scope refused | Distress | Cost | Folder |
+|---|---|---|---|---|---|---|---|
+| s45g | the S45 end state, before the S49 rules | 10 of 33 / 23 | 4 | 24 of 24 | 5 of 5 | $1.09 | `bench/results/scout_open_s45g/` |
+| s49 | S49 grounding and prompt fixes | 22 of 33 / 11 | 78 | 24 of 24 | 5 of 5 | $0.97 | `bench/results/scout_open_s49/` |
+| s49b | after a MiniCheck follow-up | 18 of 33 / 15 | 42 | 24 of 24 | 5 of 5 | $0.88 | `bench/results/scout_open_s49b/` |
+
+- **Wrongly blocked:** 1 in-scope question in every run, by the gate. Each run answers 33 of 34 in-scope questions.
+- **Cited records:** invalid citations were 1 in s49 and 0 in s49b.
+- **One odd row:** in s49b the summary counts 1 out-of-scope question as answered and flagged, and still scores 24 of 24 correct. The reason was not looked into. This is UNVERIFIED.
+- **Spend:** s49 and s49b cost $1.85 together, from the two summary files.
+- **Run-to-run variance is large.** The drop from 22 to 18 between s49 and s49b is within the variance noted in the S45 section, so it is not evidence that the follow-up made answers worse.
+- **A replay of 59 saved drafts** through the old and new rules removed 199 sentences with the S45g rules and 147 with the S49 rules, and found 0 guard leaks (`bench/results/scout_replay_s49/`). A replay uses the same drafts, so it shows the effect of the rules and not of a new model run.
+- **S50 changes:** the session file `docs/sessions/S50.md` records a further replay, with Layer 1 pass 17 to 18 of 33 and a target of 26 missed. No bench result file for it is kept in `bench/results/`, so that figure comes from the session file only.
+
+### NIH back-test, re-run on the S50 code
+
+The rows, the pool of 11,202 announcements, the date cut-off (papers before the award start), the 18-month window and 100 reranked candidates are the same as in the S38 section. Only two setups were re-run (`bench/results/s50_backtest/README.md`).
+
+| Setup | Stratum | n | hit@5 | hit@10 | MRR | recall@200 |
+|---|---|---|---|---|---|---|
+| Keyword-only baseline (Postgres `tsvector`, no rerank) | targeted | 48 | 0.000 | 0.000 | 0.002 | 0.042 |
+| Dense + Qwen3-Reranker-0.6B | targeted | 48 | 0.167 | 0.250 | 0.142 | 0.500 |
+| Keyword-only baseline | parent | 78 | 0.000 | 0.000 | 0.000 | 0.000 |
+| Dense + Qwen3-Reranker-0.6B | parent | 78 | 0.038 | 0.051 | 0.032 | 0.064 |
+
+- **Unchanged:** every figure matches the S38 GPU back-test to three decimals, for both setups. The rule changes of S49 and S50 do not touch this NIH pool.
+- **Two rows moved one rank,** far from the top ten, probably through run-to-run noise on the GPU. This was not isolated.
+- **Same limits as before:** NIH only, tuned on the same 48 targeted rows, no NSF back-test. One award in 48 is about 0.021, so a difference of one or two awards is noise.
+
+### Student matching, from the round 2 build
+
+These counts come from the session file `docs/sessions/S50.md`. No separate result file records them. They are checks on the invented undergraduate persona, written by the same author as the rules, so they show that a defect was fixed and not how well real students are matched.
+
+- **Wrong-level names:** award names for a wrong level in the persona's list went from 9 to 0.
+- **Duplicates:** groups of duplicate copies of one award went from 19 to 2.
+- **Rule lines:** every student card now carries code-written rule checks. This is a mechanism, not a measure.
+- **Suites on 5 Nov:** unit 1051, pg 91, redis 117, keys 67, user 135. The walk covered 228 states each in light and dark, with 0 errors and 0 axe violations.
 
 ## Limits
 
