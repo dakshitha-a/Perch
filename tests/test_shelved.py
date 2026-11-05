@@ -1,7 +1,8 @@
-"""Shelved code (S23) still imports, so it can be reconnected later."""
+"""The weekly watch was shelved in S23 and removed from rebuild/v1 in S49 (B28). It is kept
+on the fallback tag v0.1-demo-fallback."""
+
+import importlib.util
 
 
-def test_shelved_monitor_still_imports():
-    from perch.shelved.monitor import monitor
-
-    assert callable(monitor.run) and callable(monitor.refresh_opportunities)
+def test_the_shelved_monitor_is_gone_from_the_package():
+    assert importlib.util.find_spec("perch.shelved") is None
