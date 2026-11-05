@@ -1,11 +1,12 @@
 # HANDOFF.md — state for the next context window
 
-Rewritten 2026-11-05 at about 14:00 EST, at the close of S53 and S54. Demo Day is Friday 6 November 2026; the submission is due at 12:00 pm.
+Rewritten 2026-11-05 at about 14:00 EST, at the close of S53 and S54; updated at about 15:10 EST at the close of S55 (docs walkthrough, README and tracker review, code freeze: tag `v1.1-demo-day`, ZIP in dist/). Demo Day is Friday 6 November 2026; the submission is due at 12:00 pm.
 
 ## Read this first
 
 - **v1 is the submission and the demo (Dakshitha, S54).** `main` and `rebuild/v1` point at the same commit. The fallback build is offline; it stays at the tag `v0.1-demo-fallback` as history.
 - **The public address serves v1 on port 443.** Port 8443 is closed. Sign-in is on port 10000. The address and the operator notes are in CLAUDE.local.md.
+- **The tracker opens on the UI tab** with an audience strip; Architecture is second (Dakshitha, S55).
 - **Two links go to the audience:** the live site and the build tracker (link in CLAUDE.local.md). Every tracker tab is current; it was read for operator details before sharing.
 - **The audience account is `demo` / `demo`.** It is shared: every screen says so and says not to paste a real CV. Its data is wiped each night at 03:30 by a user timer. Lockout is realm-wide: after 10 wrong passwords the wait is 1 to 15 minutes.
 - **The films are in `docs/films/`:** `researcher.mp4` (47 s, PI-1 by alias), `student.mp4` (58 s, the SYNTHETIC persona-demo), `scout.mp4` (46 s) and the slide film `quick-student.mp4` (30 s at 1.5x, with a Scout section). Each has a WebP beside it. Re-run them with `scripts/tour/demo_films.py` (see its header).
