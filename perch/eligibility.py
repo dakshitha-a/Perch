@@ -65,6 +65,18 @@ EPSCOR = re.compile(r"\bD?EPSCoR\b|Established Program to Stimulate Competitive 
 HOME_STATE = "Pennsylvania"
 
 
+# G3 (S50): a notice of intent, a request for information or a sources-sought notice funds
+# nothing; in S49 a request for information was a bench's top lead. Always left out, with
+# include_restricted too. The acronyms are matched in capitals only.
+NOTICE_RE = re.compile(r"(?i:\brequest for information\b|\bnotice of intent\b|\bsources sought\b)"
+                       r"|\bRFI\b|\bNOI\b")
+NOTICE_REASON = "a notice, not a funding call"
+
+
+def is_notice(o: Opportunity) -> bool:
+    return bool(NOTICE_RE.search(o.title or ""))
+
+
 def career_stage_restricted(o: Opportunity) -> bool:
     return bool(re.search(CAREER_STAGE, o.title, re.IGNORECASE))
 
@@ -144,6 +156,8 @@ def date_reasons(o: Opportunity, as_of: date) -> list[str]:
 
 def check(o: Opportunity, c: Constraints) -> list[str]:
     """Reasons the opportunity is ineligible; empty means eligible."""
+    if is_notice(o):  # G3: nothing else about a notice matters
+        return [NOTICE_REASON]
     reasons = []
     if c.check_dates:
         if o.status == "forecasted" and not c.include_forecasted:
@@ -236,6 +250,7 @@ def check_temple_internal(o: Opportunity, c: Constraints) -> tuple[list[str], li
 # Every reason `check` writes falls in one of these groups, matched in this order. The counts
 # are of records, each in the group of its first reason, so they add up to the hidden total.
 HIDDEN_GROUPS: tuple[tuple[str, str, str], ...] = (
+    ("notice", "notices and requests for information, not funding calls", r"^a notice, "),
     ("closed", "closed or no close date", r"^closed |no close date|^opens "),
     ("forecast", "forecast, not open yet", r"^forecasted"),
     ("applicant", "not open to universities", r"applicant types|higher education are not"),
