@@ -49,7 +49,7 @@ This part runs the same way every time. It is what the back-test measures. No mo
 
 ## Bounded model jobs
 
-Models do a short list of jobs. Each goes through the provider layer in `perch/llm/`, which is the only place that imports a model SDK. The table gives the defaults of the `cloud-gpu` profile, which is the default profile. An environment variable can override a role, so the running deploy's own setting is UNVERIFIED here.
+Models do a short list of jobs. Each goes through the provider layer in `perch/llm/`, which is the only place that imports a model SDK. The table gives the defaults of the `cloud-gpu` profile, which is the default profile. An environment variable can override a role. The Demo Day deploy sets none, so it runs these defaults (checked 5 Nov 2026, S54).
 
 | Role | Job | Model |
 |---|---|---|
