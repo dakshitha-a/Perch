@@ -26,12 +26,16 @@ FROM base AS web
 RUN uv sync --frozen --no-dev --extra anthropic --no-install-project
 COPY perch ./perch
 COPY web ./web
+# The SYNTHETIC sample scholarships behind GET /samples (perch/scholarships.py SAMPLE_JSONL).
+COPY data/synthetic/scholarships.jsonl ./data/synthetic/scholarships.jsonl
 COPY deploy/compose/migrate.py ./deploy/compose/migrate.py
 RUN uv sync --frozen --no-dev --extra anthropic
 RUN useradd --system --uid 10001 perch \
-    && mkdir -p /var/lib/perch/spend /var/lib/perch/shred-ledger \
+    && mkdir -p /var/lib/perch/spend /var/lib/perch/shred-ledger /var/lib/perch/samples \
     && chown -R perch /var/lib/perch
 USER perch
+# The app builds its SYNTHETIC sample store at start; /app is read-only to the perch user.
+ENV PERCH_SAMPLE_DB=/var/lib/perch/samples/sample.db
 EXPOSE 8000
 CMD ["/opt/venv/bin/perch", "serve", "--host", "0.0.0.0", "--port", "8000"]
 

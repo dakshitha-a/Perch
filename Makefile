@@ -1,6 +1,7 @@
 UV ?= uv
 
-.PHONY: v1-up v1-down test test-pg test-keys test-redis test-user demodemo-units demo-seed demo-down demo-status gpus bench tracker package hooks \
+.PHONY: v1-up v1-down test test-pg test-keys test-redis test-user demo demo-down demo-clean demo-status \
+	demo-env demo-v0 demo-v0-units demo-v0-seed demo-v0-down demo-v0-status gpus bench bench-v0 tracker package hooks \
 	decide-up decide-down decide-status
 
 test:
@@ -36,20 +37,81 @@ test-user:
 		tests/test_scout_v2_account.py tests/test_scout_s45_account.py tests/test_scout_cover_account.py \
 		tests/test_spend_meter.py tests/test_restore_safety.py tests/test_handoff_job.py tests/test_s48_limits.py -p no:cacheprovider
 
-# The demo (S9, deploy-2gpu, hybrid): models as systemd user units on two GPUs, the app
-# in Docker on 127.0.0.1:8090. One command: `make demo`. GPUs default to 6 and 7.
+# The demo: the v1 stack (deploy/compose) as its own Compose project, perch-demo, with the
+# CPU worker, so no GPU is needed. One command: `make demo`. `make demo GPU=1` uses the GPU
+# worker instead; that needs the NVIDIA container toolkit, and DEMO_WORKER_GPU picks the index.
+# Host ports on 127.0.0.1 default away from the fallback (8090) and the v1 deploy (8190, 8200,
+# 5433, 6380, 8180). Secrets: .env.demo, made once with dev-only random values (gitignored).
+DEMO_PROJECT ?= perch-demo
+DEMO_ENV ?= .env.demo
+DEMO_WEB_PORT ?= 8300
+DEMO_PG_PORT ?= 5434
+DEMO_REDIS_PORT ?= 6381
+DEMO_KC_PORT ?= 8181
+DEMO_WORKER_GPU ?= 3
+GPU ?=
+DEMO_FILES = -f deploy/compose/docker-compose.v1.yml \
+	$(if $(GPU),,-f deploy/compose/docker-compose.cpu.yml) -f deploy/compose/docker-compose.demo.yml
+DEMO_COMPOSE = DEMO_WEB_PORT=$(DEMO_WEB_PORT) DEMO_PG_PORT=$(DEMO_PG_PORT) \
+	DEMO_REDIS_PORT=$(DEMO_REDIS_PORT) DEMO_KC_PORT=$(DEMO_KC_PORT) \
+	PERCH_WORKER_GPU=$(DEMO_WORKER_GPU) DEMO_WORKER_TAG=$(if $(GPU),gpu,cpu) \
+	docker compose -p $(DEMO_PROJECT) $(DEMO_FILES) --env-file $(DEMO_ENV)
+DEMO_URL = http://127.0.0.1:$(DEMO_WEB_PORT)
+
+demo: demo-env
+	@for p in $(DEMO_WEB_PORT) $(DEMO_PG_PORT) $(DEMO_REDIS_PORT) $(DEMO_KC_PORT); do \
+	  if (exec 3<>/dev/tcp/127.0.0.1/$$p) 2>/dev/null && \
+	     ! $(DEMO_COMPOSE) ps --format '{{.Ports}}' 2>/dev/null | grep -q ":$$p->"; then \
+	    echo "Port $$p is used by something else. Set DEMO_WEB_PORT, DEMO_PG_PORT," \
+	      "DEMO_REDIS_PORT or DEMO_KC_PORT."; exit 1; fi; done
+	$(DEMO_COMPOSE) up -d --build postgres redis keycloak migrate web worker
+	$(DEMO_COMPOSE) run --rm --no-deps seed
+	@for i in $$(seq 1 180); do curl -sf $(DEMO_URL)/health >/dev/null && break; sleep 2; done; \
+	  if ! curl -sf $(DEMO_URL)/health; then echo "The web did not answer /health."; \
+	    $(DEMO_COMPOSE) logs --tail 40 web keycloak; exit 1; fi
+	@echo
+	@echo "Perch demo (v1, Compose project $(DEMO_PROJECT)): $(DEMO_URL)"
+	@echo "Loaded: the public Temple awards dataset from data/temple/dataset."
+	@echo "The SYNTHETIC sample scholarships are served from data/synthetic."
+	@echo "Federal listings (Grants.gov, NIH, NSF) are not loaded: that corpus is copied from the fallback stores"
+	@echo "(data/perch.db and data/lance) with perch db migrate-corpus, docs/deploy.md section 5."
+	@echo "Guest browsing works. Browser sign-in does not: the OIDC issuer is internal (keycloak:8080)."
+	@echo "Stop: make demo-down. Remove its data too: make demo-clean."
+
+# Dev-only secrets for the demo stack, made once. Passwords are hex so they fit in URLs.
+demo-env:
+	@test -f $(DEMO_ENV) || { umask 077; { \
+	  for n in POSTGRES_PASSWORD PERCH_OWNER_PASSWORD PERCH_WEB_PASSWORD PERCH_WORKER_PASSWORD \
+	    PERCH_KEYS_PASSWORD KEYCLOAK_ADMIN_PASSWORD PERCH_OIDC_CLIENT_SECRET; do \
+	    echo "$$n=$$(openssl rand -hex 24)"; done; \
+	  for n in PERCH_MASTER_KEY PERCH_PEPPER PERCH_PEPPER_GUEST PERCH_AUDIT_KEY; do \
+	    echo "$$n=$$(openssl rand -base64 32)"; done; \
+	  echo "PERCH_MASTER_KEY_ID=demo1"; } > $(DEMO_ENV); echo "Wrote $(DEMO_ENV) (dev-only secrets)."; }
+
+# Only the perch-demo project: containers and network. Volumes are kept.
+demo-down:
+	$(DEMO_COMPOSE) --profile seed down --remove-orphans
+
+demo-clean:
+	$(DEMO_COMPOSE) --profile seed down --remove-orphans --volumes
+
+demo-status:
+	@$(DEMO_COMPOSE) ps
+
+# The fallback demo (v0, S9, deploy-2gpu, hybrid): models as systemd user units on two GPUs,
+# the app in Docker on 127.0.0.1:8090. One command: `make demo-v0`. GPUs default to 6 and 7.
 DEMO_GPU_A ?= 6
 DEMO_GPU_B ?= 7
 DEMO_UNITS = perch-demo-ollama.service perch-demo-clef-flash.service \
 	perch-demo-clef.service perch-demo-models.service
 DEMO_CHAT = gemma4:26b-a4b
 
-demo: demo-units demo-seed
+demo-v0: demo-v0-units demo-v0-seed
 	PERCH_UID=$$(id -u) PERCH_GID=$$(id -g) docker compose up -d --build
 	@for i in $$(seq 1 60); do curl -sf 127.0.0.1:8090/health >/dev/null && break; sleep 2; done
 	@curl -sf 127.0.0.1:8090/health && echo && echo "Perch demo: http://127.0.0.1:8090"
 
-demo-units:
+demo-v0-units:
 	mkdir -p $(HOME)/.config/systemd/user
 	for u in $(DEMO_UNITS); do sed -e "s|@GPU_A@|$(DEMO_GPU_A)|g" -e "s|@GPU_B@|$(DEMO_GPU_B)|g" \
 	  -e "s|@REPO@|$(CURDIR)|g" -e "s|@UV@|$$(command -v $(UV))|g" \
@@ -63,15 +125,15 @@ demo-units:
 	curl -sf 127.0.0.1:11437/api/generate -d '{"model": "$(DEMO_CHAT)", "keep_alive": -1}' >/dev/null
 
 # A separate demo store, seeded once from the dev store (briefs, caches, the index).
-demo-seed:
+demo-v0-seed:
 	@test -f data/demo/perch.db || { mkdir -p data/demo && cp data/perch.db data/demo/ && \
 	  cp -r data/cache data/lance data/demo/ && echo "seeded data/demo from data/"; }
 
-demo-down:
+demo-v0-down:
 	docker compose down
 	systemctl --user disable --now $(DEMO_UNITS)
 
-demo-status:
+demo-v0-status:
 	@systemctl --user --no-pager status $(DEMO_UNITS) | grep -E 'Loaded|Active|service -' || true
 	@docker compose ps
 
@@ -79,9 +141,26 @@ demo-status:
 gpus:
 	@$(UV) run python scripts/gpus.py
 
-# Back-test matrix and results table (bench/run.py). Needs the bench corpus
-# (python -m bench.corpus) and, for the Clef rows, `make decide-up`.
+# The v1 back-test (bench/backtest.py --store postgres), as in bench/results/s50_backtest:
+# NIH-only, papers before award start, the keyword-only baseline beside the shipped
+# dense + Qwen3-Reranker-0.6B path, on pgvector. Needs the `perch_backtest` database
+# (11,202 announcements, 5,644 works, Qwen3-Embedding-0.6B vectors; built in S38 with
+# `perch db migrate` and `perch db migrate-corpus` from the bench store) and the bench window
+# file data/bench/grants_gov_hits.json (gitignored). BENCH_DSN points at the database.
+# Per-row CSVs and rerank latencies go to BENCH_OUT. Uses a GPU when one is visible.
+BENCH_DSN ?= postgresql://postgres:perchtest@127.0.0.1:55432/perch_backtest
+BENCH_PY ?= $(UV) run --extra ml python
+BENCH_OUT ?= build/bench/v1_backtest
+BENCH_RERANK_CACHE ?= data/bench/cache/rerank_v1.db
 bench:
+	mkdir -p $(BENCH_OUT) $(dir $(BENCH_RERANK_CACHE)) data/cache
+	$(BENCH_PY) -m bench.backtest --store postgres --dsn $(BENCH_DSN) --rerank-in 100 \
+		--strata targeted parent --configs keyword-only dense+rerank \
+		--reranker Qwen/Qwen3-Reranker-0.6B --rerank-cache $(BENCH_RERANK_CACHE) --out $(BENCH_OUT)
+
+# The fallback's matrix and results table (bench/run.py) on the SQLite and LanceDB bench
+# stores (data/bench, python -m bench.corpus); the Clef rows need `make decide-up`.
+bench-v0:
 	$(UV) run --extra ml python -m bench.run
 
 # docs/tracker.html for the browser; build/artifacts/tracker.html is the page published as
