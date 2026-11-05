@@ -31,6 +31,7 @@ exists. Standing rules 11 and 12 (CLAUDE.md) govern it.
 | `persona-ug` | a third-year undergraduate in environmental science | 0001 to 0008 |
 | `persona-masters` | a part-time MPH student in epidemiology | 0009 to 0016 |
 | `persona-phd` | a full-time neuroscience PhD candidate | 0017 to 0024 |
+| `persona-demo` | a third-year Temple biology student with a Pell Grant who plans study abroad (used for the Demo Day films, `scripts/tour/demo_films.py`) | none; it reads the public Temple awards |
 
 Each folder has a CV, an interests note, three achievements and an answer key. Every
 file holds its own canary token (`PERCH-CANARY-UG-…`, `-MS-…`, `-PHD-…`).
