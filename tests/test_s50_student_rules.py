@@ -195,3 +195,12 @@ def test_sample_text_names_the_sample_students_documents():
     assert tidy_sample_text("Your interests note mentions streams; your entry shows a poster.") == (
         "The sample student's interests note mentions streams; the sample student's entry shows"
         " a poster.")
+
+
+def test_sample_text_drops_a_title_used_as_a_noun():
+    from perch.student import tidy_sample_text
+
+    t = "Your stream science the sample student's interests note and plans fit the listing."
+    assert tidy_sample_text(t) == "Your stream science interests and plans fit the listing."
+    keep = "As described in the sample student's interests note, the work is local."
+    assert tidy_sample_text(keep) == keep

@@ -772,6 +772,11 @@ SAMPLE_TIDY = [
      lambda m: ("T" if m.group(1) == "Y" else "t") + m.group(2)[1:]),
     (re.compile(r"\b(interests note|entry) \1\b"), r"\1"),
     (re.compile(r"\binterests note note\b"), "interests note"),
+    # "Your stream science the sample student's interests note and plans fit …": the model wrote
+    # the document's title as a noun; "interests" alone reads as intended.
+    (re.compile(r"(?<=[a-z]) the sample student's interests note"
+                r"(?= (?:and|fit|fits|match|matches|align|aligns)\b)"),
+     " interests"),
 ]
 
 
