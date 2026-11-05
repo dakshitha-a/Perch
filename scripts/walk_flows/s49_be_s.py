@@ -7,59 +7,64 @@ checks and failed on the untouched build (the base commit is in the commit messa
 
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 
 FLAGGED_COUNT = 3  # leads the flow marks as withheld, to see the list say it once
 
 
 def register(U):  # noqa: ANN001, ANN201 - U is the ux_walk module
     async def sample_brief(w, browser, base, tag, view):
-        """A guest builds the sample student's brief (fake model), then the flow patches the
-        brief it reads so three visible fellowship leads are flagged."""
+        """A signed-in student's stored brief (a SYNTHETIC fixture built from the real models,
+        scripts/walk_flows/s49_student_brief.json) with three flagged fellowship leads. The
+        walk server cannot build a brief here, so the brief view is answered by the flow."""
+        body = json.loads((Path(__file__).parent / "s49_student_brief.json").read_text())
+        flagged = [x["id"] for x in body["leads"] if x["flagged"]]
+        flag = {"on": True, "kept": set()}  # off: no withheld reasons; kept: lead ids shown as kept
         page = await U.new_page(browser, w, tag, view, base)
+        state = {"roles": ["student"], "consented": True, "gone": False, "deleted_with": None}
+        await U.stub_signed_in(page, state)
+
+        async def brief(route):
+            path = route.request.url.split("?")[0]
+            if route.request.method == "GET" and path.endswith("/briefs/b1"):
+                shown = {**body, "leads": [{**x, "flagged": x["flagged"] and flag["on"],
+                                            "status": "kept" if x["id"] in flag["kept"] else x["status"]} for x in body["leads"]]}
+                return await route.fulfill(json=shown)
+            if "/briefs/b1/" in path:
+                return await route.fulfill(status=404, json={"detail": "not in this walk"})
+            await route.continue_()
+
+        await page.route("**/briefs/b1**", brief)
         await page.goto(base + "/")
-        await page.click("[data-key=seg-s]")
-        await page.click("[data-key=fit]")
-        await page.click("[data-key=st-build]", timeout=8000)
-        status = await U.build_wait(page)
-        w.check("s49_student_brief_built", status == "done", f"status {status}")
-        flagged: list[str] = []
-
-        async def patch(route):
-            if route.request.method != "GET" or not re.search(r"/briefs/[^/?]+$", route.request.url.split("?")[0]):
-                return await route.continue_()
-            headers = {k: v for k, v in route.request.headers.items() if k.lower() != "if-none-match"}
-            resp = await route.fetch(headers=headers)
-            body = await resp.json()
-            n = 0
-            for lead in body.get("leads", []):
-                if n < FLAGGED_COUNT and lead["route"] == "F" and lead["status"] != "dismissed" \
-                        and lead.get("verdict") != "not eligible":
-                    lead["flagged"], lead["explanation"], lead["inference"] = True, None, None
-                    flagged.append(lead["id"])
-                    n += 1
-            await route.fulfill(response=resp, json=body)
-
-        await page.route("**/briefs/*", patch)
-        await page.evaluate("location.hash = location.hash.replace(/\\/[a-z]+$/, '/routes')")
-        await page.reload()
+        await page.evaluate("location.hash = '#/brief/b1/routes'")
         await page.wait_for_selector("#panel .lead", timeout=30_000)
         await page.wait_for_timeout(500)
-        return page, flagged
+        return page, flagged, flag
 
     async def flow_student_list(w, browser, base, tag, view):
-        page, flagged = await sample_brief(w, browser, base, tag, view)
+        page, flagged, flag = await sample_brief(w, browser, base, tag, view)
+        flag["on"] = False  # the preamble is measured with no list notice in the way
+        await page.reload()
+        await page.wait_for_selector("#panel .lead", timeout=30_000)
+        await page.wait_for_timeout(800)  # fonts and the card's late lines settle first
+        gap = await page.evaluate("""() => {
+          const t = document.querySelector('#routes-title').getBoundingClientRect();
+          const l = document.querySelector('#panel .lead').getBoundingClientRect();
+          return Math.round(l.top - t.bottom); }""")
+        limit = 120 if view["width"] >= 600 else 160  # at 360 the Sort switch wraps under the heading
+        w.check("s49_student_preamble_folded", gap <= limit, f"first card starts {gap} px under the heading (limit {limit})")
+        await w.snap(page, tag, "s49-student-list-clean")
+        flag["on"] = True
+        await page.reload()
+        await page.wait_for_selector("#panel .lead", timeout=30_000)
         await w.snap(page, tag, "s49-student-list")
         notes = await page.locator("#panel .list-note").count()
         amber = await page.locator("#panel .lead .notice.warn").count()
         lines = await page.locator("#panel .lead .withheld-line").count()
         w.check("s49_student_withheld_once", notes == 1 and amber == 0 and lines == len(flagged) >= 2,
                 f"{notes} list notes, {amber} amber boxes on cards, {lines} withheld lines for {len(flagged)} flagged")
-        gap = await page.evaluate("""() => {
-          const t = document.querySelector('#routes-title').getBoundingClientRect();
-          const l = document.querySelector('#panel .lead').getBoundingClientRect();
-          return Math.round(l.top - t.bottom); }""")
-        w.check("s49_student_preamble_folded", gap <= 120, f"first card starts {gap} px under the heading")
         more = await page.locator("#panel details.about-list").count()
         opened = await page.locator("#panel details.about-list[open]").count()
         w.check("s49_student_about_list_closed", more == 1 and opened == 0, f"{more} About this list, {opened} open")
@@ -71,6 +76,20 @@ def register(U):  # noqa: ANN001, ANN201 - U is the ux_walk module
         cards = await page.locator("#panel ol.leads > li.lead").count()
         w.check("s49_student_two_facts_every_card", cards > 0 and mini == 2 * cards,
                 f"{mini} facts on {cards} cards")
+        await page.context.close()
+
+    async def flow_student_compare(w, browser, base, tag, view):
+        page, _, flag = await sample_brief(w, browser, base, tag, view)
+        flag["kept"] = {"b1:4", "b1:5"}
+        await page.evaluate("location.hash = '#/brief/b1/compare'")
+        await page.reload()
+        await page.wait_for_selector("#panel .compare-group, #panel .empty", timeout=20_000)
+        await page.wait_for_timeout(500)
+        order = await page.evaluate("""() => { const p = document.querySelector('#panel');
+          const t = p.querySelector('.compare-group'), n = p.querySelector('section.handoff');
+          return Boolean(t && n && (t.compareDocumentPosition(n) & Node.DOCUMENT_POSITION_FOLLOWING)); }""")
+        w.check("s49_student_compare_tables_before_note", order, "the tables come before the note section")
+        await w.snap(page, tag, "s49-student-compare")
         await page.context.close()
 
     async def flow_load_sample(w, browser, base, tag, view):
@@ -126,6 +145,6 @@ def register(U):  # noqa: ANN001, ANN201 - U is the ux_walk module
         w.check("s49_no_load_sample_when_a_cv_is_stored", n == 0, f"{n} buttons")
         await page.context.close()
 
-    flows = {"s49_student_list": flow_student_list, "s49_load_sample": flow_load_sample,
+    flows = {"s49_student_list": flow_student_list, "s49_student_compare": flow_student_compare, "s49_load_sample": flow_load_sample,
              "s49_load_sample_hidden": flow_load_sample_hidden}
     return flows, []

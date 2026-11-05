@@ -304,7 +304,7 @@ export function studentRoutes(panel, ctx) {
     : `Checked against ${cvWords()} by rule. “May be eligible” means the record asks for something ${SAMPLE_STUDENT ? "that CV does" : "your CV does"} not show.`;
   fill(panel, h("div", { class: "route-row" }, sw),
     route === "S" ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }), h("span", { text: ` ${SAMPLE_NOTE}` })) : null,
-    h("div", { class: "list-head" },
+    h("div", { class: "list-head", style: "display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px" },
       h("h2", { class: "section-title", id: "routes-title",
         text: route === "S" ? `${f.plural(ok.length, "sample option")} (invented, for demonstration)`
           : `${f.plural(ok.length, "option")} you may apply for` }),
