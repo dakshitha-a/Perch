@@ -24,6 +24,7 @@ from perch.datefmt import (
     from_page_note,
     no_deadline,
     placeholder_close,
+    placeholder_text,
 )
 from perch.llm import Tool
 from perch.schemas import Lead, Opportunity, Record, Scholarship
@@ -74,10 +75,10 @@ def facts_of(rec: Record | None) -> dict:
     if isinstance(rec, Opportunity):
         out = {"title": rec.title, "sponsor": rec.agency,
                "amount": f"${rec.award_ceiling:,.0f}" if rec.award_ceiling else NOT_STATED}
+        if rec.close_date and placeholder_close(rec):  # the record's own words (G8)
+            return {**out, "deadline": placeholder_text(rec)}
         if rec.close_date and expires_only(rec):  # F3, T17: an expiry is not a deadline
             return {**out, "announcement_expires": day(rec.close_date)}
-        if rec.close_date and placeholder_close(rec):  # the record's own words
-            return {**out, "deadline": rec.close_date_note}
         return {**out, "deadline": day(rec.close_date) if rec.close_date else NOT_STATED}
     return {"title": None, "deadline": NOT_STATED, "amount": NOT_STATED}
 
