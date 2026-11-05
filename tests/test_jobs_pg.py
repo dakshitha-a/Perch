@@ -182,6 +182,45 @@ def test_a_result_just_past_the_deadline_is_kept(clean, monkeypatch):
     assert st.state == JobState.SUCCEEDED and st.result_ref == "ok"
 
 
+def test_a_wait_for_the_model_slot_does_not_count_against_the_timeout(clean, monkeypatch):
+    """S50 C1: the 1 s clock ran while the job queued behind another job's model call, so a
+    busy slot ended the brief as `timeout`. Time spent waiting for the slot is left out."""
+    from perch import compute
+
+    monkeypatch.setenv("PERCH_MODEL_SLOTS", "1")
+    compute.reset_slots()
+    held, release = threading.Event(), threading.Event()
+
+    def holder():
+        with compute.model_slot():
+            held.set()
+            release.wait(10)
+
+    def h(ctx):
+        with compute.model_slot():  # waits about 2 s for the holder
+            pass
+        assert not ctx.cancelled()
+        return "ok"
+
+    reg(monkeypatch, "precache", h, timeout_s=1)
+    hold = threading.Thread(target=holder)
+    hold.start()
+    held.wait(5)
+    threading.Timer(2.0, release.set).start()
+    r = mk(clean["worker"])
+    jid = r.submit("precache", pre(1), None, "k")
+    stop, t = start(r)
+    try:
+        st = r.wait(jid, 15)
+    finally:
+        release.set()
+        stop.set()
+        t.join()
+        hold.join()
+        compute.reset_slots()
+    assert st.state == JobState.SUCCEEDED and st.result_ref == "ok"
+
+
 def test_retries_then_dead_letter(clean, monkeypatch):
     monkeypatch.setattr(jobs, "backoff_s", lambda n: 0.0)
     calls = []

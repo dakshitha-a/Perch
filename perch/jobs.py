@@ -252,8 +252,35 @@ class JobContext:
         self.payload: Mapping[str, Any] = dict(row["payload"])
         self.lease_owner = owner
         self._deadline = deadline
+        # A wait for the model slot does not count against the timeout (S50 C1), up to a hard
+        # limit of three timeouts in all, so a job that keeps waiting still ends.
+        self._hard_deadline = time.monotonic() + 3 * (deadline - time.monotonic())
+        self._wait_lock = threading.Lock()
+        self._waiting = 0
+        self._wait_since = 0.0
         self._cancel = threading.Event()
         self._timed_out = False
+
+    def wait_begin(self) -> None:
+        """A thread of this job starts waiting for a model slot (perch.compute)."""
+        with self._wait_lock:
+            if self._waiting == 0:
+                self._wait_since = time.monotonic()
+            self._waiting += 1
+
+    def wait_end(self) -> None:
+        with self._wait_lock:
+            self._waiting -= 1
+            if self._waiting == 0:
+                self._deadline += time.monotonic() - self._wait_since
+
+    def past_deadline(self) -> bool:
+        """True once the job has run longer than its timeout, not counting slot waits."""
+        now = time.monotonic()
+        if now > self._hard_deadline:
+            return True
+        with self._wait_lock:
+            return self._waiting == 0 and now > self._deadline
 
     @property
     def pool(self) -> ConnectionPool:
@@ -283,7 +310,7 @@ class JobContext:
 
     def cancelled(self) -> bool:
         """True when the lease is lost, the owner cancelled, or the hard timeout passed."""
-        return self._cancel.is_set() or time.monotonic() > self._deadline
+        return self._cancel.is_set() or self.past_deadline()
 
     def save_partial(self, ref: str) -> None:
         self._fenced("UPDATE jobs SET result_ref = %s WHERE " + _FENCE, [ref])
@@ -523,7 +550,7 @@ class PostgresRunner(JobRunner):
 
         def beat() -> None:
             while not done.wait(self.timing.heartbeat_s):
-                if time.monotonic() > ctx._deadline:
+                if ctx.past_deadline():
                     # S49 B6: end the job as failed with `timeout` now. The handler's next
                     # fenced write raises LeaseLost, so a second attempt never runs beside it.
                     ctx._timed_out = True
@@ -548,11 +575,15 @@ class PostgresRunner(JobRunner):
         hb = threading.Thread(target=beat, daemon=True, name="perch-heartbeat")
         hb.start()
         try:
+            from perch.compute import slot_wait_observer
+
+            watching = slot_wait_observer.set(ctx)
             try:
                 if spec is None:
                     raise PermanentError("no_handler")
                 ref = spec.handler(ctx)
             finally:
+                slot_wait_observer.reset(watching)
                 done.set()
                 hb.join(timeout=5)
             if ctx._cancel.is_set():  # stale: the reaper, the owner or the timeout acted
@@ -565,7 +596,7 @@ class PostgresRunner(JobRunner):
         except Exception as e:  # noqa: BLE001 - the class name and a fixed code are all we keep
             code = getattr(e, "code", "handler_error")
             code = code if code in ERROR_CODES else "handler_error"
-            if time.monotonic() > ctx._deadline:  # the handler stopped itself at the deadline
+            if ctx.past_deadline():  # the handler stopped itself at the deadline
                 code = "timeout"
             log.warning("error job=%s kind=%s attempt=%s err=%s code=%s",
                         ctx.job_id, ctx.kind, ctx.attempt, type(e).__name__, code)
