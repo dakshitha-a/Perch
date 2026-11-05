@@ -232,6 +232,9 @@ class Line:
 class Graded:
     lines: list[Line]
     general_lines: list[Line] = field(default_factory=list)
+    # G9 (S50): each search:N record's code-written text as the turn saw it, so the bench can
+    # log it and the replay rebuild the search exactly (its count included).
+    search_records: dict[str, str] = field(default_factory=dict)
 
     @property
     def sentences(self) -> list[Sentence]:
@@ -900,6 +903,8 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
     for the sentence, so MiniCheck is not spent on a sentence that will be regenerated."""
     grounded, general = split_general(normalise_cites(text, seen))
     g = Graded(parse(grounded), parse(general) if general else [])
+    g.search_records = {k: getattr(v, "abstract", "") or "" for k, v in seen.items()
+                        if k.startswith("search:")}
     for li, ln in enumerate(g.lines):
         for si, s in enumerate(ln.sentences):
             h = is_heading(s, ln) or bold_title(s, ln, cited_below(g.lines, li, seen))
