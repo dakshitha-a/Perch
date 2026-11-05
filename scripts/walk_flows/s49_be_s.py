@@ -114,10 +114,10 @@ def register(U):  # noqa: ANN001, ANN201 - U is the ux_walk module
             await page.click("[data-key=load-sample]")
         text = await page.input_value("#cv-text") if have else ""
         tagged = await page.locator("span.tag.sample", has_text="SYNTHETIC example").count()
-        w.check("s49_load_sample", have == 1 and "SYNTHETIC" in text and "Canary:" in text and tagged == 1,
+        w.check("s49_load_sample", have == 1 and "SYNTHETIC" in text and "Canary:" not in text and tagged == 1,
                 f"button {have}, cv text {len(text)} chars, tag {tagged}")
         both = [await page.input_value(s) for s in ("#st-interests", "#st-ach")]
-        w.check("s49_load_sample_fills_all_three", all("Canary:" in t for t in both), f"{[len(t) for t in both]}")
+        w.check("s49_load_sample_fills_all_three", all("SYNTHETIC" in t and "Canary:" not in t for t in both), f"{[len(t) for t in both]}")
         banned = re.compile(r"@|https?://|\d{3}[-. ]\d{3}[-. ]\d{4}|Tamsin|Quell")
         w.check("s49_sample_text_has_no_contact_or_name", not any(banned.search(t) for t in [text, *both]), "")
         await w.snap(page, tag, "s49-load-sample-after")

@@ -131,3 +131,7 @@ ul.award-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0
 
 /* ---------- B9 Scout ---------- */
 .scout-opt { margin-top: 12px; }
+
+/* S51 W30: air above the My Perch heading; W17: the wide fact reads as a plain sentence. */
+.my-perch .title-row { padding-top: 24px; }
+.fact-wide dd { font-weight: 400; }

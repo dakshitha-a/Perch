@@ -61,7 +61,7 @@ function sortSelect(columns, redraw) {
         C.sort = key ? { key, dir: Number(dir) } : { key: null, dir: 1 };
         redraw("compare-sort");
       } },
-    h("option", { value: "", selected: !value, text: "Perch’s order" }),
+    h("option", { value: "", selected: !value, text: "Best match" }),
     ...cols.flatMap((c) => [1, -1].map((d) => h("option", { value: `${c.key}:${d}`, selected: value === `${c.key}:${d}`,
       text: `${c.label}, ${d > 0 ? "A to Z or low to high" : "Z to A or high to low"}` })))));
 }

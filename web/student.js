@@ -37,8 +37,9 @@ const checkItem = (c) => h("li", { class: "check", "data-outcome": c.outcome, ..
   h("span", { class: "check-mk", "aria-hidden": "true", text: OUTCOME[c.outcome][0] }),
   h("span", { class: "sr-only", text: OUTCOME[c.outcome][1] }), h("span", { text: c.text }));
 // Lines every card repeats are said once above the list, so a card leaves them out.
-function rulesBlock(l, skip) {
-  const items = ruleItems(l).filter((c) => !skip.has(c.text));
+function rulesBlock(l, skip, noDeadline = false) {
+  // S51 W16: a card whose facts already say there is no deadline does not repeat it as a check.
+  const items = ruleItems(l).filter((c) => !skip.has(c.text) && !(noDeadline && c.rule === "deadline" && c.outcome === "unknown"));
   const cls = { eligible: "eligible", "may be eligible": "may", "not eligible": "not" }[l.verdict] || "";
   return h("div", { class: "rules", "data-verdict": cls },
     verdictChip(l.verdict),
@@ -51,10 +52,25 @@ function sharedRules(cards) {
   const [first, ...rest] = cards.map((l) => ruleItems(l).map((c) => c.text));
   return [...new Set(first)].filter((t) => rest.every((x) => x.includes(t)));
 }
+// S51 W18: the note above the list names only what is not met or not known; a met rule stays on its card.
+function sharedUnmet(cards) {
+  const met = new Set(cards.flatMap((l) => ruleItems(l).filter((c) => c.outcome === "pass").map((c) => c.text)));
+  return sharedRules(cards).filter((t) => !met.has(t));
+}
 // Model-written and stored text shows without the test canary; the stored text keeps it (Q17).
 const CANARY_TAIL = /\s*SYNTHETIC sample record, canary \S+$/;
 const CANARY_LINE = /\s*Canary:\s*PERCH-CANARY-\S+/g;
 const noCanary = (t) => String(t || "").replace(CANARY_LINE, "").replace(CANARY_TAIL, "").trim();
+
+// The sample student's boxes show no canary line; a save puts the box's token back on the first
+// line, so the stored text keeps it (S51 B1). The tokens are read from the sample, not copied.
+const SAMPLE_OPEN = /^SYNTHETIC example student \(invented\)\./;
+const sampleToken = (key) => ((SAMPLE_TEXT[key] || "").match(/Canary:\s*(PERCH-CANARY-\S+)/) || [])[1] || "";
+export function withCanary(key, text) {
+  const t = String(text || "").trim(), token = sampleToken(key);
+  if (!token || !SAMPLE_OPEN.test(t) || /Canary:/.test(t)) return t;
+  return t.replace(SAMPLE_OPEN, (m) => `${m} Canary: ${token}`);
+}
 
 const D = { busy: false, error: null };
 // The brief on screen is the guest's invented sample student (options.persona); the wording
@@ -62,6 +78,8 @@ const D = { busy: false, error: null };
 let SAMPLE_STUDENT = false;
 const setSample = (brief) => { SAMPLE_STUDENT = Boolean(brief && brief.brief && brief.brief.options && brief.brief.options.persona); };
 const cvWords = () => (SAMPLE_STUDENT ? "the sample student's CV" : "your CV");
+const BUDGET_DETAIL = "withheld: the daily model budget"; // the stage's own detail, written by code (perch)
+const BUDGET_LINE = "Written reasons are paused: this session’s model budget for today is used. The list, dates, amounts and rule results are not affected.";
 const NOT_STATED = "Not stated in the record";
 const MISSING = "Not stated"; // a card fact with nothing behind it (S49)
 const WITHHELD_LINE = "Written reason withheld: it failed the citation check.";
@@ -155,11 +173,11 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
     rd.readAsDataURL(file);
   }
   // The boxes that hold text no press has saved yet: the CV (when none is stored), interests, an achievement.
-  const val = (sel) => { const el = root.querySelector(sel); return el ? el.value.trim() : ""; };
+  const val = (sel, key) => { const el = root.querySelector(sel); return el ? (key ? withCanary(key, el.value) : el.value.trim()) : ""; };
   const unsaved = () => [
-    !cv && val("#cv-text") ? ["cv", { text: val("#cv-text"), filename: "cv.txt" }] : null,
-    val("#st-interests") ? ["interests", { text: val("#st-interests") }] : null,
-    val("#st-ach") ? ["entry", { text: val("#st-ach"), label: "Achievement" }] : null,
+    !cv && val("#cv-text") ? ["cv", { text: val("#cv-text", "cv"), filename: "cv.txt" }] : null,
+    val("#st-interests") ? ["interests", { text: val("#st-interests", "interests") }] : null,
+    val("#st-ach") ? ["entry", { text: val("#st-ach", "achievement"), label: "Achievement" }] : null,
   ].filter(Boolean);
   const buildBtn = () => root.querySelector('[data-key="st-build"]');
   function syncBuild() {
@@ -220,7 +238,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
           h("textarea", { id: "cv-text", rows: 6, maxlength: 60000, value: field.text, oninput: (e) => { field.text = e.target.value; } }),
           h("div", { class: "file-row" },
             h("button", { class: "btn", type: "button", "data-key": "cv-save", disabled: D.busy,
-              onclick: () => { const t = root.querySelector("#cv-text").value.trim(); if (t) add("cv", { text: t, filename: "cv.txt" }); else announce("Paste your CV text first."); } },
+              onclick: () => { const t = withCanary("cv", root.querySelector("#cv-text").value); if (t) add("cv", { text: t, filename: "cv.txt" }); else announce("Paste your CV text first."); } },
             h("span", { text: "Save my CV" })),
             h("label", { class: "btn", for: "cv-file" }, h("span", { text: "Or upload a file" })),
             h("input", { id: "cv-file", class: "sr-only", type: "file", accept: ".pdf,.docx,.txt,.md",
@@ -233,11 +251,11 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
         h("button", { class: "btn", type: "button", "data-key": `rm-${d.id}`, onclick: () => remove(d), "aria-label": `Remove ${d.label || d.kind}` }, h("span", { text: "Remove" }))))) : null,
       h("label", { class: "big", for: "st-interests", text: "What you are interested in" }),
       h("textarea", { id: "st-interests", rows: 3, maxlength: 4000 }),
-      h("button", { class: "btn", type: "button", disabled: D.busy, onclick: () => { const t = root.querySelector("#st-interests").value.trim(); if (t) add("interests", { text: t }); } },
+      h("button", { class: "btn", type: "button", disabled: D.busy, onclick: () => { const t = withCanary("interests", root.querySelector("#st-interests").value); if (t) add("interests", { text: t }); } },
         h("span", { text: "Save interests" })),
       h("label", { class: "big", for: "st-ach", text: "An achievement" }),
       h("textarea", { id: "st-ach", rows: 3, maxlength: 4000 }),
-      h("button", { class: "btn", type: "button", disabled: D.busy, onclick: () => { const t = root.querySelector("#st-ach").value.trim(); if (t) add("entry", { text: t, label: "Achievement" }); } },
+      h("button", { class: "btn", type: "button", disabled: D.busy, onclick: () => { const t = withCanary("achievement", root.querySelector("#st-ach").value); if (t) add("entry", { text: t, label: "Achievement" }); } },
         h("span", { text: "Add achievement" }))),
     D.error ? h("p", { class: "notice error go-error", id: "st-error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null,
     h("div", { class: "welcome-go" },
@@ -254,8 +272,8 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
   const slot = (c) => root.querySelector(`.${c}`);
   function clearTag() { const s = slot("sample-slot"); if (s) s.replaceChildren(); }
   function fillSample() {
-    for (const [el, text] of boxes()) if (el) el.value = text;
-    field.text = SAMPLE_TEXT.cv;
+    for (const [el, text] of boxes()) if (el) el.value = noCanary(text);
+    field.text = noCanary(SAMPLE_TEXT.cv);
     const s = slot("sample-slot");
     if (s) s.replaceChildren(h("span", { class: "tag sample", text: "SYNTHETIC example" }));
     syncBuild();
@@ -371,12 +389,15 @@ export function studentRoutes(panel, ctx) {
   const out = leads.filter((l) => l.verdict === "not eligible");
   const gone = leads.filter((l) => l.verdict !== "not eligible" && l.status === "dismissed");
   // The cards' context: the same object cover.js takes, so its list line and each card agree.
-  const cctx = { ...ctx, audience: "student", stored: (ctx.brief && ctx.brief.cover_points) || [] };
+  const cctx = { ...ctx, audience: "student", sample: SAMPLE_STUDENT, stored: (ctx.brief && ctx.brief.cover_points) || [] };
   const flaggedN = ok.filter((l) => l.flagged).length;
-  const shared = sharedRules(ok);
+  const shared = sharedUnmet(ok);
   const cards = { ...ctx, withheldNote: flaggedN >= 2, sharedRules: new Set(shared) };
   const cardsAll = { ...ctx, withheldNote: flaggedN >= 2 };
   const coverLine = coverListLine(cctx);
+  // S51 D16: the explanation stage was skipped by the model budget; code says so once, above the list.
+  const exStage = brief.brief.stages.find((x) => x.name === "student_explanations");
+  const budget = Boolean(exStage && exStage.status === "skipped" && String(exStage.detail || "").startsWith(BUDGET_DETAIL));
   const source = route === "F"
     ? "Public listings: Temple's public award pages, Temple's Scholar Development and Fellowships Advising list and NIH fellowships. Their own pages set the full rules, so the best verdict here is “may be eligible”."
     : `Checked against ${cvWords()} by rule. “May be eligible” means the record asks for something ${SAMPLE_STUDENT ? "that CV does" : "your CV does"} not show.`;
@@ -392,7 +413,8 @@ export function studentRoutes(panel, ctx) {
     h("details", { class: "about-list" }, h("summary", { text: "About this list" }),
       h("p", { class: "hint", text: source })),
     h("div", { id: "list-notices" },
-      flaggedN >= 2 ? h("p", { class: "notice info list-note", "data-withheld": "" }, icon("info"), h("span", { text: FLAGGED_NOTE })) : null,
+      budget ? h("p", { class: "notice info list-note", "data-budget": "" }, icon("info"), h("span", { text: BUDGET_LINE })) : null,
+      flaggedN >= 2 && !budget ? h("p", { class: "notice info list-note", "data-withheld": "" }, icon("info"), h("span", { text: FLAGGED_NOTE })) : null,
       // The lines every card shares sit in one note, one item each, not a box per line (S50 QA).
       shared.length === 1
         ? h("p", { class: "notice info list-note", "data-shared-rule": "" }, icon("info"), h("span", { text: `Every option below: ${shared[0]}` }))
@@ -461,8 +483,8 @@ function card(l, ctx) {
     : amount !== NOT_STATED ? [amount, fromPage(r) ? h("span", { class: "from-page", text: ` ${FROM_PAGE}` }) : null]
       : [h("span", { class: "missing", text: MISSING })];
   // G7: a Temple fellowships-list record with neither a date nor an amount says so once.
-  const neither = r.source === "temple_sdfa" && sch && !deadline && !r.deadline_quote && amount === NOT_STATED;
-  const cover = l.status === "dismissed" ? null : coverBlock({ ...ctx, audience: "student", stored: (ctx.brief && ctx.brief.cover_points) || [] }, ctx.briefId, l.record_id);
+  const neither = ["temple_sdfa", "temple_pages"].includes(r.source) && sch && !deadline && !r.deadline_quote && amount === NOT_STATED;
+  const cover = l.status === "dismissed" ? null : coverBlock({ ...ctx, audience: "student", sample: SAMPLE_STUDENT, stored: (ctx.brief && ctx.brief.cover_points) || [] }, ctx.briefId, l.record_id);
   return h("li", { class: `card lead${l.sample ? " is-sample" : ""}${l.status === "kept" ? " kept" : ""}`, "data-id": l.id },
     h("div", { class: "lead-top" },
       h("div", { class: "lead-name" },
@@ -472,11 +494,11 @@ function card(l, ctx) {
       l.match_score != null ? h("div", { class: "lead-pill" }, matchPill(l.match_score, f.fitBand(l.match_score), "your interests and CV")) : null),
     h("dl", { class: "facts facts-2" },
       neither ? h("div", { class: "fact fact-wide" }, h("dt", { text: "Deadline and amount" }),
-        h("dd", { text: "The fellowships list gives neither. Check the award’s own page." })) : [
+        h("dd", { text: `${r.source === "temple_pages" ? "The page" : "The fellowships list"} gives neither. Check the award’s own page.` })) : [
         // G17: an expiry sits under its own label, as on the researcher card (F20)
         h("div", { class: "fact" }, h("dt", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? "Announcement" : "Deadline" }), h("dd", {}, when)),
         h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, money))]),
-    rulesBlock(l, skip),
+    rulesBlock(l, skip, !deadline && !r.deadline_quote),
     l.gaps.length ? h("div", { class: "reason" }, h("b", { text: "Still needed: " }), h("span", { text: l.gaps.map(f.lowerFirst).join("; ") })) : null, // R17
     // Plain sentences the server wrote, such as a past-date line, shown muted as they came.
     ...(l.notes || []).map((n) => h("p", { class: "hint lead-note", text: n })),
@@ -484,9 +506,10 @@ function card(l, ctx) {
     l.flagged ? (ctx.withheldNote ? null : h("p", { class: "hint withheld-line", text: WITHHELD_LINE }))
       : parsed ? fitReason(l) : null,
     // G19: sentences the citation check could not match to a source, as on the researcher card.
-    l.unsupported && l.unsupported.length ? h("div", { class: "notice warn" }, icon("warn"),
-      h("div", {}, h("p", { text: "This statement could not be matched to its source:" }),
-        h("ul", {}, l.unsupported.map((u) => h("li", { text: u }))))) : null,
+    // S51 W19: a quiet fold, not an amber box; the sentences stay as they came.
+    l.unsupported && l.unsupported.length ? h("details", { class: "unsupported-fold" },
+      h("summary", { "data-key": "unsupported", text: l.unsupported.length === 1 ? "1 sentence could not be matched to its source" : `${l.unsupported.length} sentences could not be matched to their source` }),
+      h("ul", {}, l.unsupported.map((u) => h("li", { text: u })))) : null,
     // S46: on every lead card, a not-eligible one included; a dismissed card has none.
     h("div", { class: "lead-foot" }, cover ? h("div", { class: "cover" }, cover) : null, actions));
 }
@@ -529,7 +552,7 @@ function you(text) {
 function plainExplanation(text) {
   const who = SAMPLE_STUDENT ? "the sample student's" : "your";
   return String(text || "").replace(/\s*\[[^\]]*\]/g, "")
-    .replace(/\b(?:user:)?achievement-([a-e])\b/g, (_, c) => `${who} achievement ${c.toUpperCase()}`)
+    .replace(/\b(?:user:)?achievement-[a-e]\b/g, () => `one of ${who} entries`)
     .replace(/\b(?:user:)?interests\b/g, `${who} interests note`)
     .replace(/\bCited work:/, "Your work:").trim()
     .replace(/^./, (c) => c.toUpperCase());
