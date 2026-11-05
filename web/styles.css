@@ -208,6 +208,8 @@ details[open] > summary::before { transform: rotate(45deg); }
 .notice.warn { background: var(--ember-soft); color: var(--ink); }
 .notice.warn .icon { color: var(--ember); }
 .notice ul { margin: 6px 0 0; padding-left: 18px; }
+.shared-rules p { margin: 0; }
+.shared-rules ul { margin-top: 4px; }
 .notice-ended { align-items: center; }
 .notice-ended p { flex: 1; margin: 0; line-height: 1.5; }
 .notice-ended .x { width: 44px; height: 44px; flex: none; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-size: 20px; cursor: pointer; }
@@ -1577,7 +1579,8 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
 .rules { display: grid; gap: 6px; justify-items: start; }
 .rules[data-verdict] { min-width: 0; }
 ul.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: var(--fs-14); }
-li.check { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; color: var(--ink-2); }
+li.check { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; color: var(--ink-2);
+  min-height: 0; padding: 0; cursor: auto; } /* a rule line, not the .check checkbox label above */
 /* The same lines in a compare cell, under the chip (FE-C): no list indent. */
 td .checks { margin: 6px 0 0; padding: 0; }
 table.compare.stack td > .checks { grid-column: 2; margin-top: 0; }
@@ -1585,7 +1588,7 @@ table.compare.stack td > .checks { grid-column: 2; margin-top: 0; }
 li.check[data-outcome="pass"] .check-mk { color: var(--ok-ink); }
 li.check[data-outcome="fail"] .check-mk { color: var(--no-ink); }
 li.check[data-outcome="unknown"] .check-mk { color: var(--may-ink); }
-details.checks-more > summary { font-size: var(--fs-14); color: var(--ink-2); min-height: 32px; }
+details.checks-more > summary { font-size: var(--fs-14); color: var(--ink-2); min-height: 44px; }
 
 /* ---------- S49 A5: the brief header folds once ready (U37, S8, U55, U11) ---------- */
 .brief { gap: 16px; }

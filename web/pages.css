@@ -47,7 +47,7 @@ ul.award-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0
 .award-row:hover { border-color: var(--ink-3); }
 .ar-main { min-width: 0; }
 .ar-title { margin: 0; font: 600 17px/1.3 var(--serif); }
-.ar-title .title-btn { text-align: left; }
+.ar-title .title-btn { text-align: left; padding: 2px 0; } /* inline padding lifts the 22 px text box past 24 px (WCAG 2.5.8); the line box is unchanged */
 .ar-sub { margin: 2px 0 0; font-size: var(--fs-13, 13px); color: var(--ink-3); overflow-wrap: anywhere; }
 .ar-sub .tag { margin-right: 6px; }
 .ar-quote { margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--line); font-size: var(--fs-14, 14px); color: var(--ink-2);

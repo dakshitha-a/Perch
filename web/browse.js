@@ -69,7 +69,9 @@ const farOff = (r) => {
 
 function deadlineText(r) {
   if (r.kind === "opportunity") {
-    if (r.close_text) return r.close_text;  // the server's words for the close date; a placeholder date never shows
+    // The server's words for the close date; a placeholder date never shows. With no date at all
+    // the record's own words are quoted below as "The page says" (V29), so close_text is not used.
+    if (r.close_text && (r.close_date || r.placeholder_close_date)) return r.close_text;
     if (r.close_date_note && (f.standardDates(r) || farOff(r))) return r.close_date_note;
     if (!r.close_date) return NOT_STATED; // the page's own words, if any, show as a quote (V29)
     return `${f.expiresOnly(r) ? "Expires " : ""}${f.formatDate(r.close_date)}`;

@@ -393,7 +393,12 @@ export function studentRoutes(panel, ctx) {
       h("p", { class: "hint", text: source })),
     h("div", { id: "list-notices" },
       flaggedN >= 2 ? h("p", { class: "notice info list-note", "data-withheld": "" }, icon("info"), h("span", { text: FLAGGED_NOTE })) : null,
-      shared.map((t) => h("p", { class: "notice info list-note", "data-shared-rule": "" }, icon("info"), h("span", { text: `Every option below: ${t}` }))),
+      // The lines every card shares sit in one note, one item each, not a box per line (S50 QA).
+      shared.length === 1
+        ? h("p", { class: "notice info list-note", "data-shared-rule": "" }, icon("info"), h("span", { text: `Every option below: ${shared[0]}` }))
+        : shared.length ? h("div", { class: "notice info list-note shared-rules" }, icon("info"),
+          h("div", {}, h("p", { text: "Every option below:" }),
+            h("ul", {}, shared.map((t) => h("li", { "data-shared-rule": "", text: t }))))) : null,
       coverLine),
     h("ol", { class: "leads", "aria-labelledby": "routes-title" }, ok.map((l) => card(l, cards))),
     samplesLink,
