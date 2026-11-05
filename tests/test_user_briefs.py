@@ -163,12 +163,12 @@ def test_guest_brief_lives_in_redis_for_an_hour_and_has_no_user_row(pg_clean, tm
         assert svc.run(b.id) == "done"
     ttl = r.ttl(f"perch:gres:{job}")
     assert 0 < ttl <= 3600
-    got = read_guest_result(r, job)
+    got = read_guest_result(r, job, gsid)
     assert got.brief.status == "done" and got.leads
     assert rows(pg_clean, "SELECT count(*) FROM user_data") == [(0,)]
     assert rows(pg_clean, "SELECT count(*) FROM users") == [(0,)]
     r.delete(f"perch:gres:{job}")  # the hour is up
-    assert read_guest_result(r, job) is None
+    assert read_guest_result(r, job, gsid) is None
     r.flushdb()
     r.close()
 
@@ -390,7 +390,7 @@ def test_a_guest_keep_while_the_brief_runs_is_not_lost(tmp_path):
     svc._run_explanations = keep_then_explain
     with using_store(store):
         assert svc.run(b.id) == "done"
-    got = read_guest_result(r, job)
+    got = read_guest_result(r, job, gh)
     assert got.brief.status == "done"
     assert {x.id: x.status for x in got.leads}[kept["lead"]] == "kept"
     r.flushdb()
@@ -517,3 +517,54 @@ def test_a_pending_retry_leaves_the_brief_queued(pg_clean, ud, tmp_path, keys):
         assert svc.run(b.id) == "failed"
     got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
     assert got.brief.status == "failed" and "ConnectError" in got.brief.error
+
+
+@needs_pg
+@needs_redis
+def test_a_guest_brief_in_redis_is_sealed(pg_clean, tmp_path, web_pool, monkeypatch):
+    """S49 Q50: a guest's brief sat in Redis as plain JSON. Now every value is sealed under the
+    guest session's own key: no record title and no typed direction in any raw value."""
+    import json
+
+    import redis as redis_lib
+
+    from perch.jobs import PostgresRunner, Timing
+    from perch.schemas import Opportunity
+    from perch.user.briefs import guest_hash, load_brief, set_lead_status, submit_brief
+
+    r = redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    r.flushdb()
+    _, svc = make(tmp_path)
+    with svc.repo() as repo:
+        titles = [o.title for o in repo.list(Opportunity)]
+    assert titles and all(titles)
+    s = _session(None, "g-q50")
+    gh = guest_hash(s.sid)
+    direction = "SYNTHETIC-Q50 coral reef acoustics direction"
+    web = PostgresRunner(pool=web_pool, timing=Timing())
+    bid, job = submit_brief(svc, web, None, r, s, "A5026494099", as_of=AS_OF,
+                            context={"direction": direction})
+    store = GuestBriefStore(r, gh, bid, job)
+    assert store.load()
+    with using_store(store):
+        assert svc.run(bid) == "done"
+    got = load_brief(None, r, s, bid)
+    assert got.brief.status == "done" and got.leads
+    assert set_lead_status(None, r, s, bid, got.leads[0].id, "kept").status == "kept"
+    assert load_brief(None, r, s, bid).leads[0].status == "kept"
+    values = {k: r.get(k) for k in r.scan_iter("*") if r.type(k) == "string"}
+    briefs = {k: v for k, v in values.items() if ":brief:" in k or k.startswith("perch:gres:")}
+    assert len(briefs) == 2  # the state before the job and the job's result
+    everything = " ".join(str(v) for v in values.values())
+    for v in briefs.values():
+        assert v.startswith("g1:")
+        with pytest.raises(ValueError):
+            json.loads(v)
+    for needle in [*titles, direction, "SYNTHETIC-Q50", "A5026494099", bid]:
+        assert needle not in everything
+    # another guest session cannot open it, and the value is bound to its key
+    assert load_brief(None, r, _session(None, "g-other"), bid) is None
+    r.delete(f"perch:gsess:{gh}:bkey")
+    assert load_brief(None, r, s, bid) is None
+    r.flushdb()
+    r.close()

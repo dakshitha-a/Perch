@@ -2,8 +2,10 @@
 
 * Signed-in user: one encrypted `user_data` row of kind `brief` holding the Brief and its Leads.
   The row id is the brief id. It is written at creation and at every stage (partial saves).
-* Guest: JSON in Redis. State before the job runs sits at `perch:gsess:<gsid_hash>:brief:<id>`
-  and the result at `perch:gres:<job_id>`, one hour TTL. Nothing in Postgres but the `jobs` row.
+* Guest: in Redis, sealed with AES-GCM under a random key of the guest session
+  (`perch:gsess:<gsid_hash>:bkey`; S49 Q50). State before the job runs sits at
+  `perch:gsess:<gsid_hash>:brief:<id>` and the result at `perch:gres:<job_id>`, one hour TTL.
+  Nothing in Postgres but the `jobs` row.
 * Fallback profiles and tests: no store; `BriefService` keeps using its SQLite repository.
 
 `BriefService.repo()` asks `current_store` for a store and, when there is one, returns an
@@ -415,6 +417,71 @@ class MemoryBriefStore(BriefStore):
 
 # --- guest: Redis, public inputs only ---
 
+SEALED = "g1:"  # prefix of a sealed guest brief value (S49 Q50)
+
+
+def _guest_key_name(gh: str) -> str:
+    return f"perch:gsess:{gh}:bkey"
+
+
+def _guest_key(r: redis.Redis, gh: str, *, create: bool = False) -> bytes | None:
+    """The guest session's own random brief key (32 bytes, base64 in Redis). The worker knows
+    only the session hash, so the key sits beside the briefs under that hash; it lives as long
+    as the longest brief value, and a dump of the brief values alone reads nothing."""
+    import base64
+    import secrets
+
+    name = _guest_key_name(gh)
+    if create:
+        life = max(int(env("PERCH_GUEST_TTL_S", str(GUEST_TTL_DEFAULT_S))
+                       or GUEST_TTL_DEFAULT_S), GRES_TTL_S) + 300
+        r.set(name, base64.b64encode(secrets.token_bytes(32)).decode(), nx=True, ex=life)
+        r.expire(name, life)
+    got = r.get(name)
+    if not got:
+        return None
+    return base64.b64decode(got if isinstance(got, bytes) else got.encode())
+
+
+def seal_guest(r: redis.Redis, gh: str, slot: str, sb: StoredBrief) -> str:
+    """AES-GCM under the session's brief key, bound to the Redis key it is written to."""
+    import base64
+    import secrets
+
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    key = _guest_key(r, gh, create=True)
+    assert key is not None
+    nonce = secrets.token_bytes(12)
+    ct = AESGCM(key).encrypt(nonce, sb.model_dump_json().encode(), slot.encode())
+    return SEALED + base64.b64encode(nonce + ct).decode()
+
+
+def open_guest(r: redis.Redis, gh: str, slot: str, raw: str | bytes | None
+               ) -> StoredBrief | None:
+    """The brief in a sealed value, or None when it is missing or cannot be opened (its key
+    expired). A plain JSON value written before S49 is still read for its last hour."""
+    import base64
+
+    from cryptography.exceptions import InvalidTag
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    if not raw:
+        return None
+    text = raw.decode() if isinstance(raw, bytes) else raw
+    if not text.startswith(SEALED):
+        return StoredBrief.model_validate_json(text)
+    key = _guest_key(r, gh)
+    if key is None:
+        return None
+    blob = base64.b64decode(text[len(SEALED):])
+    try:
+        plain = AESGCM(key).decrypt(blob[:12], blob[12:], slot.encode())
+    except InvalidTag:
+        return None
+    return StoredBrief.model_validate_json(plain)
+
+
 class GuestBriefStore(BriefStore):
     """No CV, no entries, no rows in Postgres. `job_id` is known in the worker; at creation the
     state goes to the session key, and from the first worker write on to `perch:gres:<job_id>`."""
@@ -447,10 +514,13 @@ class GuestBriefStore(BriefStore):
         return f"redis:{self.result_key}"
 
     def load(self) -> bool:
-        raw = (self.r.get(self.result_key) if self.job_id else None) or self.r.get(self.state_key)
-        if not raw:
+        sb = None
+        for slot in ([self.result_key] if self.job_id else []) + [self.state_key]:
+            sb = open_guest(self.r, self.gsid_hash, slot, self.r.get(slot))
+            if sb is not None:
+                break
+        if sb is None:
             return False
-        sb = StoredBrief.model_validate_json(raw)
         self.brief = sb.brief
         self.leads = {x.id: x for x in sb.leads}
         self._remember(sb.leads)
@@ -472,12 +542,14 @@ class GuestBriefStore(BriefStore):
             for _ in range(WRITE_TRIES):
                 try:
                     p.watch(*watched)
-                    raw = next((v for v in (p.get(k) for k in watched) if v), None)
-                    if raw:
-                        self._remember(StoredBrief.model_validate_json(raw).leads)
+                    stored = next((x for x in (open_guest(self.r, self.gsid_hash, k, p.get(k))
+                                               for k in watched) if x), None)
+                    if stored is not None:
+                        self._remember(stored.leads)
                     out = self._keep_statuses(sb)
+                    sealed = seal_guest(self.r, self.gsid_hash, key, out)
                     p.multi()
-                    p.set(key, out.model_dump_json(), ex=ex)
+                    p.set(key, sealed, ex=ex)
                     p.execute()
                     self._remember(out.leads)
                     return
@@ -486,10 +558,10 @@ class GuestBriefStore(BriefStore):
         raise RuntimeError("the guest brief kept changing")
 
 
-def read_guest_result(r: redis.Redis, job_id: UUID | str) -> StoredBrief | None:
+def read_guest_result(r: redis.Redis, job_id: UUID | str, gh: str) -> StoredBrief | None:
     """The guest brief a job wrote, or None after the hour is up."""
-    raw = r.get(f"perch:gres:{job_id}")
-    return StoredBrief.model_validate_json(raw) if raw else None
+    slot = f"perch:gres:{job_id}"
+    return open_guest(r, gh, slot, r.get(slot))
 
 
 # --- creation and the job's store ---
@@ -810,11 +882,11 @@ def load_brief(ud: UserData, r: redis.Redis, session: Session, brief_id: str
     gh = guest_hash(session.sid)
     job = r.get(f"perch:gsess:{gh}:job:{brief_id}")
     if job:
-        got = read_guest_result(r, job)
+        got = read_guest_result(r, job, gh)
         if got is not None:
             return got
-    raw = r.get(f"perch:gsess:{gh}:brief:{brief_id}")
-    return StoredBrief.model_validate_json(raw) if raw else None
+    slot = f"perch:gsess:{gh}:brief:{brief_id}"
+    return open_guest(r, gh, slot, r.get(slot))
 
 
 # --- keep, dismiss, restore on the session path (section 7.4, S43 fork F3) ---
@@ -860,17 +932,17 @@ def set_lead_status(ud: UserData, r: redis.Redis, session: Session, brief_id: st
             for _ in range(WRITE_TRIES):  # the worker may write the same key meanwhile (B2)
                 try:
                     p.watch(key)
-                    raw = p.get(key)
-                    if not raw:
+                    sb = open_guest(r, gh, key, p.get(key))
+                    if sb is None:
                         break
-                    sb = StoredBrief.model_validate_json(raw)
                     lead = next((x for x in sb.leads if x.id == lead_id), None)
                     if lead is None:
                         return None
                     new = lead.model_copy(update={"status": status})
                     sb.leads = [new if x.id == lead_id else x for x in sb.leads]
+                    sealed = seal_guest(r, gh, key, sb)
                     p.multi()
-                    p.set(key, sb.model_dump_json(), keepttl=True)
+                    p.set(key, sealed, keepttl=True)
                     p.execute()
                     return new
                 except redis.WatchError:
