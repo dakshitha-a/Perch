@@ -94,6 +94,55 @@ def test_pdf_parse_failures_are_input_errors(monkeypatch):
         parse_bytes("a.pdf", buf.getvalue())
 
 
+def _blank_pdf(pages: int) -> bytes:
+    from pypdf import PdfWriter
+
+    buf = io.BytesIO()
+    w = PdfWriter()
+    for _ in range(pages):
+        w.add_blank_page(width=200, height=200)
+    w.write(buf)
+    return buf.getvalue()
+
+
+def test_a_pdf_is_bounded_in_pages_characters_and_time(monkeypatch):
+    """S48 S6: a SYNTHETIC many-page PDF is refused with a plain sentence; a PDF whose text is
+    too long stops at the cap; a parse past the time limit is an InputError, not a hang."""
+    import time
+
+    import pypdf
+
+    from perch.user import inputs
+
+    assert parse_bytes("ok.pdf", _blank_pdf(inputs.MAX_PDF_PAGES)).strip() == ""  # 30 is fine
+    with pytest.raises(InputError, match=f"has 31 pages.*up to {inputs.MAX_PDF_PAGES} pages"):
+        parse_bytes("long.pdf", _blank_pdf(31))
+    read: list[int] = []
+
+    def wordy(self, *a, **k):
+        read.append(1)
+        return "SYNTHETIC words " * 2000  # 32,000 characters a page
+
+    monkeypatch.setattr(pypdf.PageObject, "extract_text", wordy)
+    with pytest.raises(InputError, match="longer than 60,000 characters"):
+        parse_bytes("wordy.pdf", _blank_pdf(10))
+    assert len(read) == 3  # it stopped reading once the text could not fit
+
+    def slow(self, *a, **k):
+        time.sleep(0.5)
+        return "SYNTHETIC"
+
+    monkeypatch.setattr(pypdf.PageObject, "extract_text", slow)
+    t = time.monotonic()
+    with pytest.raises(InputError, match="took too long"):
+        inputs.pdf_text(_blank_pdf(1), "slow.pdf", timeout_s=0.1)
+    assert time.monotonic() - t < 0.4
+    time.sleep(0.5)  # the abandoned parse ends and gives its slot back
+    assert inputs._PDF_SLOTS.acquire(timeout=1) and inputs._PDF_SLOTS.acquire(timeout=1)
+    inputs._PDF_SLOTS.release()
+    inputs._PDF_SLOTS.release()
+
+
 def test_a_file_perch_cannot_read_gets_a_plain_sentence_with_its_name():
     """R4: each error is a sentence that names the file and says what to do."""
     cases = [("cv.txt", "SYNTHETIC café".encode("latin-1"),

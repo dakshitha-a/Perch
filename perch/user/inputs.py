@@ -2,13 +2,16 @@
 perch/private/inputs.py in S41; contact details are blanked at parse time).
 
 No temp files: DOCX is a zip read from a BytesIO, PDF goes through pypdf from a BytesIO.
-Each input has a size cap, checked before parsing.
+Each input has a size cap, checked before parsing; a PDF is also capped in pages, characters
+and time.
 """
 
 from __future__ import annotations
 
+import concurrent.futures
 import io
 import re
+import threading
 import zipfile
 from dataclasses import dataclass
 from xml.etree import ElementTree
@@ -34,6 +37,13 @@ MAX_CHARS = 60_000  # one document's text after parsing
 # upload cap alone lets one request inflate gigabytes (review S2).
 MAX_XML_BYTES = 10_000_000
 FORMATS = (".txt", ".md", ".docx", ".pdf")
+# PDF bounds (S48 S6): pages, seconds, and parses at once (each on its own thread).
+MAX_PDF_PAGES = 30
+PDF_TIMEOUT_S = 15.0
+PDF_PARALLEL = 2
+_PDF_SLOTS = threading.BoundedSemaphore(PDF_PARALLEL)
+_PDF_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=PDF_PARALLEL,
+                                                  thread_name_prefix="perch-pdf")
 W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
 
@@ -119,15 +129,58 @@ def docx_text(data: bytes, shown: str = "That file") -> str:
     return "\n".join(paras)
 
 
-def pdf_text(data: bytes, shown: str = "That file") -> str:
+def _pdf_extract(data: bytes, shown: str) -> str:
     from pypdf import PdfReader
 
     try:
         reader = PdfReader(io.BytesIO(data))
-        return "\n\n".join(page.extract_text() or "" for page in reader.pages)
+        n = len(reader.pages)
+        if n > MAX_PDF_PAGES:
+            raise InputError(f"{shown} has {n} pages. Perch reads PDFs of up to "
+                             f"{MAX_PDF_PAGES} pages: add the pages that matter, or paste the "
+                             "text.")
+        parts: list[str] = []
+        total = 0
+        for page in reader.pages:  # stop as soon as the text is too long to keep
+            t = page.extract_text() or ""
+            parts.append(t)
+            total += len(t) + 2
+            if total > MAX_CHARS + MAX_CHARS // 2:  # clean() trims some; this much never fits
+                raise InputError(f"{shown} is longer than {MAX_CHARS:,} characters: shorten "
+                                 "it, then add it again.")
+        return "\n\n".join(parts)
+    except InputError:
+        raise
     except Exception as e:  # noqa: BLE001 - any parser failure is a bad upload (review S3)
         raise InputError(f"{shown} could not be read as a PDF: save it again, or as Word or "
                          "text.") from e
+
+
+def pdf_text(data: bytes, shown: str = "That file", *, timeout_s: float | None = None) -> str:
+    """Text of a PDF, bounded in pages, characters and time (S48 S6). pypdf runs on a small
+    pool of its own threads. A Python thread cannot be stopped, so a parse past the time limit
+    is abandoned, not killed: it keeps its slot until it ends, and with every slot held new
+    PDFs are refused at once rather than queued, so slow files cannot pile up."""
+    if not _PDF_SLOTS.acquire(timeout=1.0):
+        raise InputError("Perch is reading other PDFs just now: try again in a minute, or "
+                         "paste the text.")
+
+    def run() -> str:
+        try:
+            return _pdf_extract(data, shown)
+        finally:
+            _PDF_SLOTS.release()
+
+    try:
+        fut = _PDF_POOL.submit(run)
+    except RuntimeError:
+        _PDF_SLOTS.release()
+        raise
+    try:
+        return fut.result(timeout=PDF_TIMEOUT_S if timeout_s is None else timeout_s)
+    except concurrent.futures.TimeoutError:
+        raise InputError(f"{shown} took too long to read as a PDF: save it again, or as Word "
+                         "or text.") from None
 
 
 @dataclass
