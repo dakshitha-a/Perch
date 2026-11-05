@@ -1479,3 +1479,20 @@ html:has(body[data-screen="brief"]) { scroll-padding-top: calc(var(--bar-h, 56px
   :root:not([data-theme="light"]) .sample-note, :root:not([data-theme="light"]) .notice.sample-note { background: var(--surface); border: 1px dashed var(--ember); }
 }
 :root[data-theme="dark"] .sample-note, :root[data-theme="dark"] .notice.sample-note { background: var(--surface); border: 1px dashed var(--ember); }
+
+/* ---------- S49 A2: the landing fits one laptop screen (D1) ---------- */
+.landing { gap: 16px; }
+.landing .hero-art { height: 96px; }
+.landing .owl-hero { width: 72px; height: 72px; left: calc(37.5% - 36px); top: 12px; }
+.landing h1 { font-size: clamp(36px, 4.6vw, 48px); margin-top: 0; }
+.landing .lede { margin-top: -6px; }
+@media (max-height: 740px) {
+  .landing .hero-art .scene { display: none; }
+  .landing .hero-art { height: 64px; }
+  .landing .owl-hero { width: 56px; height: 56px; left: calc(50% - 28px); top: 4px; }
+}
+/* The three promises: one row on a laptop, on the page's left edge (U7). */
+.foot .promises { max-width: calc(var(--page) + 32px); padding: 16px 16px 0; gap: 8px 32px; font-size: var(--fs-14); }
+body[data-screen="landing"] .foot .promises { display: flex; flex-wrap: wrap; }
+@media (min-width: 1024px) { body[data-screen="landing"] .foot .promises { flex-wrap: nowrap; } }
+@media (max-width: 599px) { body[data-screen="landing"] .foot .promises { flex-direction: column; } }
