@@ -21,6 +21,9 @@ const ERROR_WORDS = {
   rate_limited: "You have reached your limit for now. Try again later.",
   quota_exceeded: "You have reached your limit for now. Try again later.",
   // The key is already destroyed when this one comes back.
+  sample_not_saved: "Sample records are not saved. They are invented, for showing how Perch works.",
+  saved_full: "Your saved list is full (200 items). Remove some to save more.",
+  not_found: "That item is no longer there.",
   delete_incomplete: "Your key is destroyed, so your data can no longer be read. Clean-up did not finish. Press Delete again to finish it.",
 };
 // Plain words for a student, not for the person running the server.
