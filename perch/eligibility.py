@@ -46,6 +46,10 @@ EXCLUDED_ACTIVITY = {
 }
 
 
+# S51 H8: part of the precache key (perch/precache.py), which stores the federal
+# eligibility split. Bump it with every change to a rule, so a deploy recomputes the split.
+RULES_VERSION = "2026-11-05.1"
+
 # S51 H7 (docs/design/S51_DESIGN.md section 1): centre and programme grants, which an
 # institution applies for, get their own group on route A. Exactly these four codes; any other
 # needs NIH's public activity-codes page read first, with its URL in docs/SOURCES.md.
