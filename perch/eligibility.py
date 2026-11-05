@@ -215,6 +215,13 @@ def check(o: Opportunity, c: Constraints) -> list[str]:
 TEMPLE_INTERNAL_SOURCE = "temple_pages"
 TEMPLE_INTERNAL_AUDIENCES = (None, "faculty", "postdoc", "mixed")
 PAST_CYCLE_DAYS = 31
+# G5 (S50): a page date more than about 13 months old is not last year's cycle but a page
+# left up (6 of 26 pages carried dates from 2021 to 2024): the page is left out, with
+# "page last dated X" as its reason. A page named for an NIH mechanism (K01, K08) describes
+# federal money, and a page named for students is not researcher funding.
+PAST_CYCLE_MAX_DAYS = 396
+NIH_CODE = re.compile(r"\b[DFKPRTU]\d{2}\b")
+STUDENT_WORDS = re.compile(r"\bstudents?\b|\bhonors\b", re.I)
 
 
 def past_cycle_line(d: date) -> str:
@@ -231,8 +238,17 @@ def check_temple_internal(o: Opportunity, c: Constraints) -> tuple[list[str], li
         return ["not a Temple internal funding page"], []
     if o.audience_level not in TEMPLE_INTERNAL_AUDIENCES:
         reasons.append(f"the page lists it for {o.audience_level} students, not researchers")
+    if NIH_CODE.search(o.title):
+        reasons.append("the page describes an NIH mechanism, not Temple funding")
+    if STUDENT_WORDS.search(o.title):
+        reasons.append("the page names a student award, not researcher funding")
     if c.check_dates and o.close_date and o.close_date < c.as_of:
-        if (c.as_of - o.close_date).days > PAST_CYCLE_DAYS:
+        age = (c.as_of - o.close_date).days
+        if age > PAST_CYCLE_MAX_DAYS:
+            from perch.datefmt import day
+
+            reasons.append(f"page last dated {day(o.close_date)}")
+        elif age > PAST_CYCLE_DAYS:
             notes.append(past_cycle_line(o.close_date))
         else:
             reasons.append(f"closed {o.close_date.isoformat()}")
