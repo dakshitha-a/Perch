@@ -696,8 +696,30 @@ def choose(scored: list[Scored], top: int = TOP, ruled_out: int = RULED_OUT_SHOW
     return ok + out
 
 
+# A guest's brief reads the SYNTHETIC sample student's CV, not the viewer's: its rule lines
+# say so (S43 S8, S50 QA). Ordered: the longer phrases first.
+SAMPLE_WORDS = [
+    (re.compile(r"\byour CV does not say yours\b"), "the sample student's CV does not say theirs"),
+    (re.compile(r"\byour CV\b"), "the sample student's CV"),
+    (re.compile(r"\bYour CV\b"), "The sample student's CV"),
+    (re.compile(r"\byour (year|school|level of study)\b"), r"their \1"),
+    (re.compile(r"\bwhich you are\b"), "which they are"),
+    (re.compile(r"\brules you out\b"), "rules them out"),
+    (re.compile(r"\bYou must graduate\b"), "The sample student must graduate"),
+]
+
+
+def for_sample(text: str) -> str:
+    """A rule line reworded for the sample student: "your CV" becomes theirs."""
+    for pat, rep in SAMPLE_WORDS:
+        text = pat.sub(rep, text)
+    return text
+
+
 def to_leads(brief_id: str, route: str, chosen: list[Scored], facts: StudentFacts,
-             start: int = 1) -> list[Lead]:
+             start: int = 1, sample: bool = False) -> list[Lead]:
+    """`sample`: the facts are the SYNTHETIC sample student's, so the lines name them."""
+    say = for_sample if sample else (lambda t: t)
     leads = []
     for i, x in enumerate(chosen, start):
         s, v = x.record, x.verdict
@@ -708,8 +730,9 @@ def to_leads(brief_id: str, route: str, chosen: list[Scored], facts: StudentFact
             fetched_at=src.fetched_at, brief_id=brief_id, route=route, record_id=src.id,
             rank=i, rerank_score=round(x.score, 4), match_score=match_score(x.score),
             verdict=v.verdict,
-            verdict_reason=v.reason, verdict_lines=v.lines, checks=v.checks,
-            gaps=[t for _, t in g],
+            verdict_reason=v.reason, verdict_lines=[say(t) for t in v.lines],
+            checks=[{**c, "text": say(c["text"])} for c in v.checks],
+            gaps=[say(t) for _, t in g],
             gap_keys=[k for k, _ in g], sample=s.synthetic,
             notes=[f"Also listed on {u}" for u in x.also_on]))
     return leads

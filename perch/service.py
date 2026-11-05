@@ -671,7 +671,7 @@ class BriefService:
         for x in scored:
             x.opp = nih[x.record.id][1] if x.record.id in nih else None
         chosen = choose(scored, b.options.get("top", 10))
-        leads = to_leads(b.id, route, chosen, ctx["facts"])
+        leads = to_leads(b.id, route, chosen, ctx["facts"], sample=_has_sample_route(b))
         ok = sum(x.verdict.verdict != "not eligible" for x in chosen)
         return leads, ok
 
