@@ -99,6 +99,23 @@ docker compose -f deploy/compose/docker-compose.v1.yml -f deploy/compose/docker-
 - **What changes:** the worker builds the `worker` target (CPU torch wheel), sets `PERCH_PROFILE=cloud-cpu`, hides the GPU, and drops the GPU reservation.
 - **Cost:** reranking 100 candidates takes about 53 s on CPU and about 0.8 s on GPU (S38, `docs/DECISIONS.md`). Use the CPU profile as a fallback, not for load.
 
+### 3d. A local demo in one command: `make demo`
+
+```sh
+make demo          # build, start, load the Temple dataset, wait for /health, print the URL
+make demo-status   # docker compose ps for the demo project
+make demo-down     # stop and remove the demo containers; volumes are kept
+make demo-clean    # the same, and remove the demo volumes
+```
+
+- **What it runs:** the v1 stack as its own Compose project, `perch-demo`: `docker-compose.v1.yml`, then `docker-compose.cpu.yml`, then `docker-compose.demo.yml`. It starts Postgres, Redis, Keycloak, `migrate`, `web` and the CPU `worker`. It does not start `backup`.
+- **Kept apart from a real deploy:** other host ports, its own subnet (`172.29.191.0/24`), its own image names (`perch-demo-v1-*`) and its own volumes.
+- **Ports:** on `127.0.0.1`, web 8300, Postgres 5434, Redis 6381, Keycloak 8181. Change them with `DEMO_WEB_PORT`, `DEMO_PG_PORT`, `DEMO_REDIS_PORT` and `DEMO_KC_PORT`. The target stops if a port is already taken by something else.
+- **Secrets:** the first run writes `.env.demo` with random dev-only values (gitignored, mode 600). It never reads `.env`.
+- **Data:** the one-shot `seed` service loads the committed Temple dataset (`temple_awards_v3.jsonl`; `DEMO_DATASET` picks another file). The SYNTHETIC sample scholarships are read from `data/synthetic` and need no load. Federal listings from Grants.gov, NIH and NSF are not loaded, because that corpus is copied from the fallback stores (section 5, step 3). A run on 5 Nov 2026 loaded 310 Temple records; `/awards` listed 50 and `/opportunities` 26.
+- **Sign-in:** guest browsing works. Browser sign-in does not, because the OIDC issuer is the internal address `http://keycloak:8080`.
+- **GPU worker:** `make demo GPU=1` uses the GPU worker image on `DEMO_WORKER_GPU` (default 3). It needs the NVIDIA container toolkit and was not run on the lab node, which has none.
+
 ## 4. Many hosts: managed Postgres and Redis
 
 Everything below follows the design in `ARCHITECTURE_V1.md`. A multi-host deployment has not been run; treat each step as `UNVERIFIED` until it has.
@@ -257,7 +274,7 @@ Most of these scripts read a database or Redis address from the environment, so 
 
 ## 12. The fallback demo
 
-The fallback is the root `docker-compose.yml` on `127.0.0.1:8090`, brought up with `make demo` on a node with two GPUs, Docker and llama.cpp. Stop it with `make demo-down`. Its models run as systemd user units rendered from `deploy/systemd/demo/`. For the public address, `tailscale funnel --bg 8090` publishes it, and `tailscale funnel --https=443 off` stops that. These commands came from the previous version of this page and were not re-run for this rewrite.
+The fallback is the root `docker-compose.yml` on `127.0.0.1:8090`, brought up with `make demo-v0` on a node with two GPUs, Docker and llama.cpp. Stop it with `make demo-v0-down`. (`make demo` now starts the v1 demo stack, section 3d.) Its models run as systemd user units rendered from `deploy/systemd/demo/`. For the public address, `tailscale funnel --bg 8090` publishes it, and `tailscale funnel --https=443 off` stops that. These commands came from the previous version of this page and were not re-run for this rewrite.
 
 If the node is down on Demo Day, `uv run python scripts/build_ui_preview.py` writes `build/artifacts/ui.html`, a replay page with no server and no network.
 
