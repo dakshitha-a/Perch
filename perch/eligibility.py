@@ -236,7 +236,7 @@ def check_temple_internal(o: Opportunity, c: Constraints) -> tuple[list[str], li
 # Every reason `check` writes falls in one of these groups, matched in this order. The counts
 # are of records, each in the group of its first reason, so they add up to the hidden total.
 HIDDEN_GROUPS: tuple[tuple[str, str, str], ...] = (
-    ("closed", "closed or no close date", r"^closed |no close date|^opens |^closes "),
+    ("closed", "closed or no close date", r"^closed |no close date|^opens "),
     ("forecast", "forecast, not open yet", r"^forecasted"),
     ("applicant", "not open to universities", r"applicant types|higher education are not"),
     ("small_business", "for small businesses", r"SBIR/STTR"),
@@ -244,8 +244,8 @@ HIDDEN_GROUPS: tuple[tuple[str, str, str], ...] = (
      r"postdoctoral transition|dissertation award"),
     ("restricted", "limited to named applicants, institutions or states",
      r"limited competition|undergraduate-focused|EPSCoR"),
-    ("your_filters", "outside your filters", r"award ceiling|activity code .* (?:excluded|not "
-     r"in)|keyword|agency .* (?:not in|excluded)"),
+    ("your_filters", "outside your filters", r"^closes |award ceiling|keyword"
+     r"|activity code .* (?:excluded|not in)|agency .* (?:not in|excluded)"),
 )
 
 

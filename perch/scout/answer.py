@@ -403,6 +403,8 @@ RANK_WORD_RE = re.compile(
     r"(first|second|third|fourth|fifth)\s+(?:lead|pick|choice|result|match)|"
     r"ranked\s+(first|second|third|fourth|fifth)|(first|second|third|fourth|fifth)[- ]ranked)\b",
     re.I)
+EMPTY_BRIEF_RE = re.compile(r"\b(?:no leads|(?:brief|it) is empty|has nothing|holds nothing)\b",
+                            re.I)
 KEPT_RE = re.compile(r"\b(kept|shortlist(?:ed)?)\b", re.I)
 SAVED_RE = re.compile(r"\bsaved\b", re.I)
 NEG_RE = re.compile(r"\b(?:not|never|nothing|none|no)\b|n['’]t\b", re.I)
@@ -455,6 +457,15 @@ def code_check(text: str, ids: list[str], seen: dict[str, Record], tools: ReadTo
     if tools is None:
         return None
     rows = [i for i in ids if not i.startswith("user:")]
+    if not rows and "user:brief" in ids and tools.brief_read and \
+            not is_placeholder("user:brief", seen):
+        # The brief as a record (Q2): an "empty brief" claim is false when it has leads, and a
+        # rank or kept claim is checked on the leads whose titles the sentence names.
+        if EMPTY_BRIEF_RE.search(body):
+            return not tools.ranks
+        low = body.lower()
+        rows = [i for i in tools.ranks
+                if (t := str(facts(seen[i], as_of).get("title") or "").lower()) and t in low]
     if not rows:
         return None
     ordered = sorted(tools.ranks, key=lambda k: tools.ranks[k])

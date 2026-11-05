@@ -135,7 +135,10 @@ SPREAD = False
 
 def load_brief(path: Path) -> tuple[Brief, list[Lead]]:
     doc = json.loads(path.read_text())
-    return Brief.model_validate(doc["brief"]), [Lead.model_validate(x) for x in doc["leads"]]
+    nested = ("opportunity", "organisation", "record")  # lead_json adds the record to a lead
+    leads = [Lead.model_validate({k: v for k, v in x.items() if k not in nested})
+             for x in doc["leads"]]
+    return Brief.model_validate(doc["brief"]), leads
 
 
 def shortlist(service: BriefService, audience: str, as_of: date, n: int = SHORTLIST,

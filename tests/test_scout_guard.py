@@ -75,3 +75,27 @@ def test_replay_regrades_a_stored_draft_with_no_model(tmp_path):
     s = summary(t)
     assert s["removed_rows"] == 1 and s["drafts_differing_from_stored"] == 0
     assert s["reasons"] == {"layer1_number": 1} and s["guard_leaks"] == 0  # Q3: inherited
+
+
+def test_q15_bench_reads_a_stored_brief_and_spreads_the_shortlist(tmp_path):
+    import json
+    from datetime import date
+
+    from bench.scout_guard import OPP, OPP2, T
+    from bench.scout_open import load_brief, shortlist
+    from bench.scout_replay import MemRepo, _Service
+    from perch.schemas import Brief, Lead
+
+    b = Brief(id="b", source="perch", source_url="perch://b", fetched_at=T, researcher_id="A1")
+    lead = Lead(id="b:1", source="grants_gov", source_url="u", fetched_at=T, brief_id="b",
+                route="A", record_id=OPP.id, rank=1)
+    doc = {"brief": b.model_dump(mode="json"),  # the shape of GET /briefs/{id}
+           "leads": [lead.model_dump(mode="json") | {"opportunity": OPP.model_dump(mode="json")}]}
+    (tmp_path / "b.json").write_text(json.dumps(doc))
+    got_b, got_leads = load_brief(tmp_path / "b.json")
+    assert got_b.id == "b" and [x.record_id for x in got_leads] == [OPP.id]
+    same = OPP.model_copy(update={"id": "grants_gov:SYN-GUARD-3"})
+    svc = _Service(MemRepo([OPP, same, OPP2]))
+    _, leads = shortlist(svc, "researcher", date(2026, 11, 4), spread=True)
+    assert len(leads) == 2  # one record per close date
+    assert len(shortlist(svc, "researcher", date(2026, 11, 4), spread=False)[1]) == 3

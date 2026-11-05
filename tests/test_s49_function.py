@@ -287,7 +287,8 @@ def test_f2_hidden_counts_group_every_rejected_record_once():
                 "d": ["institutions of higher education are not eligible applicants",
                       "closed 2026-01-01"],
                 "e": ["restricted by career stage, which public records cannot confirm"],
-                "f": ["mentions excluded keyword 'mouse'"], "g": ["something new"]}
+                "f": ["mentions excluded keyword 'mouse'"], "g": ["something new"],
+                "h": ["closes 2027-01-01, after 2026-12-01"]}
     got = hidden_counts(rejected)
     assert got == [
         {"key": "closed", "label": "closed or no close date", "count": 3,
@@ -296,8 +297,8 @@ def test_f2_hidden_counts_group_every_rejected_record_once():
          "record_ids": ["c"]},
         {"key": "career_stage", "label": "limited by career stage", "count": 1,
          "record_ids": ["e"]},
-        {"key": "your_filters", "label": "outside your filters", "count": 1,
-         "record_ids": ["f"]},
+        {"key": "your_filters", "label": "outside your filters", "count": 2,
+         "record_ids": ["f", "h"]},
         {"key": "other", "label": "other reasons", "count": 1, "record_ids": ["g"]}]
     assert sum(x["count"] for x in got) == len(rejected)
 

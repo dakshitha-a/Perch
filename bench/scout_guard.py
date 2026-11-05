@@ -75,6 +75,11 @@ CASES: list[tuple[str, str, str]] = [
      "Program, which pays $500,000.", "pays", "a disclaimer tail with a claim"),
     ("Your saved list is empty, so you qualify for everything [user:saved].", "qualify",
      "an empty-state template with a conclusion"),
+    ("Rank 2 is the SYNTHETIC Kidney Repair Program [user:brief].", "Rank 2",
+     "a wrong rank cited to the brief record"),
+    ("Your brief has no leads [user:brief].", "no leads", "a false empty-brief claim"),
+    ("The SYNTHETIC Marsh Ecology Program is kept [user:brief].", "kept",
+     "a wrong kept claim cited to the brief record"),
     ("**1. SYNTHETIC Kidney Repair Program pays $900,000**\n"
      f"- It closes 17 Nov 2026 {C1}.", "$900,000", "a bold numbered line with a claim"),
 ]
