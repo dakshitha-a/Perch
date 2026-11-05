@@ -183,10 +183,10 @@ async def logout(request: Request) -> Response:
 async def session_info(request: Request) -> Response:
     s = await session_optional(request)
     if s is None:
-        return _json({"signed_in": False})
+        return _json({"signed_in": False, "accounts_open": settings.accounts_open()})
     out: dict = {"signed_in": not s.guest, "guest": s.guest, "roles": sorted(s.roles),
                  "audience": s.audience, "csrf": s.csrf, "display_name": s.display_name,
-                 "expires_at": s.abs_exp}
+                 "expires_at": s.abs_exp, "accounts_open": settings.accounts_open()}
     if s.guest:
         out["notice"] = "Nothing is saved in a guest session. It ends in an hour."
     else:

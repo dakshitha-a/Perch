@@ -45,6 +45,12 @@ def public_origin() -> str | None:
     return f"{p.scheme}://{p.netloc}"
 
 
+def accounts_open() -> bool:
+    """PERCH_ACCOUNTS_OPEN (default 1). 0 when self-registration is off: the landing and the
+    walls then lead guests to the sample and the example (S51 D4)."""
+    return (env("PERCH_ACCOUNTS_OPEN", "1") or "1").strip() != "0"
+
+
 def consent_version() -> int:
     return int(env("PERCH_CONSENT_VERSION", "1") or 1)
 

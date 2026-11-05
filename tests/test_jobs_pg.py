@@ -577,3 +577,39 @@ def test_the_cli_reads_postgres_and_never_the_sqlite_file(clean, tmp_path, monke
         assert "repo_factory=" in src, cmd.__name__
     monkeypatch.delenv("PERCH_DATABASE_URL")
     assert cli.v1_repo_factory() is None  # the fallback keeps its SQLite store
+
+
+def test_s51_a_fast_job_is_claimed_while_every_brief_thread_is_busy(clean, monkeypatch):
+    """S51 E2: every thread took every kind, so with all threads on briefs the presenter's
+    Scout turn waited for a brief to finish. Two threads now take only the fast kinds."""
+    monkeypatch.setenv("PERCH_PRECACHE_CONCURRENCY", "10")  # let the slow side fill up
+    monkeypatch.setenv("PERCH_WORKER_FAST_THREADS", "2")
+    release = threading.Event()
+    lock = threading.Lock()
+    busy = {"now": 0, "max": 0}
+
+    def slow(ctx):
+        with lock:
+            busy["now"] += 1
+            busy["max"] = max(busy["max"], busy["now"])
+        release.wait(20)
+        with lock:
+            busy["now"] -= 1
+        return "ok"
+
+    reg(monkeypatch, "precache", slow)
+    reg(monkeypatch, "purge", lambda ctx: "ok")
+    r = mk(clean["worker"])
+    ids = [r.submit("precache", pre(i), None, f"k{i}") for i in range(6)]
+    stop, t = start(r, kinds=("precache", "purge"), concurrency=4)
+    try:
+        time.sleep(0.5)
+        pid = r.submit("purge", {"action": "jobs"}, None, "p")
+        assert r.wait(pid, 5).state == JobState.SUCCEEDED  # the slow jobs still run
+        assert busy["max"] == 2  # the two fast threads never took a slow job
+    finally:
+        release.set()
+        for j in ids:
+            r.wait(j, 20)
+        stop.set()
+        t.join()

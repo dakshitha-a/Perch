@@ -62,7 +62,10 @@ def public_profile_hash(p: Profile) -> str:
 
 
 def precache_key(p: Profile, epoch: int) -> str:
-    return cache_key("precache", p.researcher_id, public_profile_hash(p), str(epoch))
+    from perch import eligibility  # read at call time: a bumped version is a new key (S51 H8)
+
+    return cache_key("precache", p.researcher_id, public_profile_hash(p), str(epoch),
+                     eligibility.RULES_VERSION)
 
 
 def profile_is_public(p: Profile) -> bool:

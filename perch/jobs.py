@@ -615,6 +615,7 @@ class PostgresRunner(JobRunner):
         if not use:
             return
         wake = threading.Event()
+        fast_n = fast_threads(concurrency, use)
         # S50 C2: the nightly precache queues one job per researcher, and every one of them
         # waits on the same model slot as a user's brief. At most PERCH_PRECACHE_CONCURRENCY
         # (default 1) job threads of this worker run precache at once; the rest stay free.
@@ -622,9 +623,10 @@ class PostgresRunner(JobRunner):
 
         def loop(n: int) -> None:
             owner = f"{worker_id}/{n}"
+            kinds_n = thread_kinds(n, use, fast_n)  # S51 E2: the first fast_n take fast kinds
             while not stop.is_set():
-                held = "precache" in use and bulk.acquire(blocking=False)
-                mine = use if held else [k for k in use if k != "precache"]
+                held = "precache" in kinds_n and bulk.acquire(blocking=False)
+                mine = kinds_n if held else [k for k in kinds_n if k != "precache"]
                 try:
                     row = self.claim(owner, mine) if mine else None
                 except Exception as e:  # noqa: BLE001
@@ -699,6 +701,30 @@ class PostgresRunner(JobRunner):
                 c.execute("DELETE FROM worker_heartbeat WHERE worker = %s", (worker_id,))
         except Exception:  # noqa: BLE001
             pass
+
+
+# S51 E2: the presenter's Scout turn, cover points and hand-off, and the purges. Every thread
+# used to claim every kind, so with all threads on audience briefs a Scout turn waited for a
+# brief to finish. PERCH_WORKER_FAST_THREADS (default 2) threads claim only these kinds.
+FAST_KINDS = frozenset({"scout_turn", "cover_points", "handoff", "purge"})
+FAST_THREADS_DEFAULT = 2
+
+
+def fast_threads(concurrency: int, kinds: Sequence[str]) -> int:
+    """How many of a worker's job threads take only FAST_KINDS. None when the worker runs only
+    one side, and always at least one thread left for briefs and precache."""
+    if not any(k in FAST_KINDS for k in kinds) or all(k in FAST_KINDS for k in kinds):
+        return 0
+    try:
+        want = int(os.environ.get("PERCH_WORKER_FAST_THREADS") or FAST_THREADS_DEFAULT)
+    except ValueError:
+        want = FAST_THREADS_DEFAULT
+    return max(0, min(want, concurrency - 1))
+
+
+def thread_kinds(n: int, kinds: Sequence[str], fast_n: int) -> list[str]:
+    """The kinds job thread `n` claims: the fast kinds alone for the first `fast_n`."""
+    return [k for k in kinds if k in FAST_KINDS] if n < fast_n else list(kinds)
 
 
 def precache_concurrency() -> int:

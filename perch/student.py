@@ -433,7 +433,7 @@ def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
     staff = audience_of(s) in NOT_STUDENTS or norm_name(s.name) in STAFF_AWARDS
     note("staff_only", "fail" if staff else "pass",
          "Staff only: listed for staff or faculty, not students." if staff
-         else "Staff only: not listed as a staff or faculty award.")
+         else "Students: not a staff or faculty award.")
     checks.sort(key=lambda c: CHECK_RULES.index(c["rule"]))
     if broken:
         broken.sort(key=lambda b: RULES.index(b[0]))
@@ -542,20 +542,41 @@ def achievements(text: str) -> list[str]:
     return items[:5]
 
 
+ENTRY_TITLE = "Your entry"
+ENTRIES_TITLE = "One of your entries"
+INTERESTS_TITLE = "Your interests note"
+
+
 def achievement_docs(items: list[str], fetched_at: datetime | None = None) -> list[UserDoc]:
     """One citable record per achievement (`user:achievement-a`, ...). `items` are the
-    achievements as separate texts, such as a user's entries; `fetched_at` is their time."""
+    achievements as separate texts, such as a user's entries; `fetched_at` is their time.
+    S51 H9: the title the text shows is "Your entry", or "One of your entries" when there
+    are several; "Your achievement A" named a letter the student never sees."""
     at = fetched_at or utcnow()
+    title = ENTRY_TITLE if len(items[:5]) == 1 else ENTRIES_TITLE
     return [UserDoc(id=f"user:achievement-{chr(97 + i)}", source="user",
                     source_url="perch://user", fetched_at=at,
-                    title=f"Your achievement {chr(65 + i)}", type="user", abstract=a)
+                    title=title, type="user", abstract=a)
             for i, a in enumerate(items[:5])]
+
+
+# S51 H4: 43 Temple pages give only an award's name. A model asked about one wrote "The
+# record names ... and gives no further detail", which MiniCheck flagged every time. Such a
+# listing gets this code-written line instead of a model call.
+NAME_ONLY_NOTE = "This listing gives only the award’s name. Read its page for what it funds."
+CANARY_TAIL = re.compile(r"\s*SYNTHETIC sample record, canary \S+$")
+
+
+def name_only(s: Scholarship) -> bool:
+    """No purpose (after the canary tail), no eligibility notes and no field of study."""
+    return not (CANARY_TAIL.sub("", s.purpose or "").strip() or (s.eligibility.notes or "").strip()
+                or s.field_of_study)
 
 
 def record_text(s: Scholarship) -> str:
     """What is embedded and reranked: name, sponsor, purpose without its canary line,
     fields and the page notes."""
-    purpose = re.sub(r"\s*SYNTHETIC sample record, canary \S+$", "", s.purpose or "")
+    purpose = CANARY_TAIL.sub("", s.purpose or "")
     parts = [s.name, s.sponsor or "", purpose, ", ".join(s.field_of_study),
              ", ".join(s.level_of_study), s.eligibility.notes or ""]
     return ". ".join(p for p in parts if p)
@@ -648,7 +669,33 @@ def student_pool(records: list[Scholarship]) -> tuple[list[Scholarship], dict[st
         others = [s for s in group if s.id != keep.id]
         drop |= {s.id for s in others}
         also[keep.id] = [s.source_url for s in others]
+        if (with_amount := _carry_amount(keep, others)) is not keep:
+            pool = [with_amount if s.id == keep.id else s for s in pool]
     return [s for s in pool if s.id not in drop], also
+
+
+def _carry_amount(keep: Scholarship, others: list[Scholarship]) -> Scholarship:
+    """S51 H6: the kept copy of a merged award states no amount but the dropped copies agree
+    on one: carry it over with its sentence and page, as temple_dedupe.merge does at build
+    time. Not when the kept copy already cites another page (its deadline's), since one
+    details_url cannot hold both; the record validator still checks the result (rule 3)."""
+    if keep.amount_min is not None or keep.amount_max is not None:
+        return keep
+    have = [s for s in others if s.amount_min is not None or s.amount_max is not None]
+    if not have or len({(s.amount_min, s.amount_max) for s in have}) != 1:
+        return keep
+    src = have[0]
+    url = src.details_url or src.source_url
+    if keep.details_url and keep.details_url != url:
+        return keep
+    try:
+        return Scholarship.model_validate({
+            **keep.model_dump(), "amount_min": src.amount_min, "amount_max": src.amount_max,
+            "amount_quote": src.amount_quote, "details_url": url,
+            "details_fetched_at": keep.details_fetched_at or src.details_fetched_at
+            or src.fetched_at})
+    except ValueError:
+        return keep
 
 
 def student_profile(facts: StudentFacts, interests: UserDoc | None, achieved: list[UserDoc],
@@ -704,7 +751,11 @@ SAMPLE_WORDS = [
     (re.compile(r"\bYour CV\b"), "The sample student's CV"),
     (re.compile(r"\byour (year|school|level of study)\b"), r"their \1"),
     (re.compile(r"\bwhich you are\b"), "which they are"),
-    (re.compile(r"\brules you out\b"), "rules them out"),
+    (re.compile(r"\brules you out\b"), "rules the sample student out"),
+    (re.compile(r"\bOne of your entries\b"), "One of the sample student's entries"),
+    (re.compile(r"\bone of your entries\b"), "one of the sample student's entries"),
+    (re.compile(r"\bYour entry\b"), "The sample student's entry"),
+    (re.compile(r"\bYour interests note\b"), "The sample student's interests note"),
     (re.compile(r"\bYou must graduate\b"), "The sample student must graduate"),
 ]
 

@@ -24,7 +24,13 @@ from perch import precache
 from perch.brief import route_a, temple_internal
 from perch.cache import InputContext, PublicCache, cache_key, is_public_input, text_profile_hash
 from perch.config import env
-from perch.eligibility import Constraints, agency_text, career_stage_restricted, hidden_counts
+from perch.eligibility import (
+    Constraints,
+    agency_text,
+    career_stage_restricted,
+    centre_note,
+    hidden_counts,
+)
 from perch.embed import Embedder
 from perch.grounding import Grounder
 from perch.llm import Provider, get_provider, spec_for_role
@@ -451,7 +457,11 @@ class BriefService:
                           fetched_at=x.opportunity.fetched_at, brief_id=b.id, route="A",
                           record_id=x.opportunity.id, rank=i,
                           rerank_score=round(x.rerank_score, 4), match_score=match_score(adj),
-                          matched_thread=x.candidate.best_thread, notes=notes)
+                          matched_thread=x.candidate.best_thread,
+                          # S51 H7: a centre or programme grant keeps its rank and Match and
+                          # is shown in its own fold; fresh and pre-cached briefs alike.
+                          group="centre" if (cn := centre_note(x.opportunity)) else None,
+                          notes=[*notes, cn] if cn else notes)
                      for i, (adj, x, notes) in enumerate(ranked, 1)]
             # Temple internal funding: its own group, ranked 1..n within it (S49 M9). A brief
             # from the nightly pre-cache has not run it yet.
@@ -566,7 +576,7 @@ class BriefService:
             works = self._works(r, b)
             # Temple internal leads get no paid explanation (S49 M9: spend stays flat).
             leads = [x for x in (r.get(Lead, i) for i in b.lead_ids)
-                     if x and x.route == "A" and x.group is None]
+                     if x and x.route == "A" and x.group != "temple_internal"]
             opps = [r.get(Opportunity, x.record_id) for x in leads]
         profile = self._ctx[b.id]["profile"]
         spec = self.models.fit_spec or spec_for_role("fit_explainer")
@@ -642,17 +652,31 @@ class BriefService:
             raise InputProblem("Add your CV first.") from e
 
     def _run_student_profile(self, b: Brief) -> tuple[str, bool]:
-        from perch.student import achievement_docs, parse_student_cv, student_profile
+        from perch.student import (
+            INTERESTS_TITLE,
+            achievement_docs,
+            for_sample,
+            parse_student_cv,
+            student_profile,
+        )
 
         inp = self._inputs()
         facts = parse_student_cv(inp.cv)
         achieved = achievement_docs(inp.entries)
         if not inp.interests and not achieved:
             raise InputProblem("Add your interests or achievements too.")
-        p = student_profile(facts, inp.interests, achieved, self.models.get("embedder"),
+        # S51 H9: the titles the explanations show; a note saved before S51 is "Your
+        # interests". The guest's sample is the sample student's, not the viewer's.
+        interests = (inp.interests.model_copy(update={"title": INTERESTS_TITLE})
+                     if inp.interests else None)
+        if _has_sample_route(b):
+            achieved = [d.model_copy(update={"title": for_sample(d.title)}) for d in achieved]
+            if interests:
+                interests = interests.model_copy(update={"title": for_sample(interests.title)})
+        p = student_profile(facts, interests, achieved, self.models.get("embedder"),
                             date.fromisoformat(b.options["as_of"]))
         self._ctx.setdefault(b.id, {}).update(profile=p, facts=facts, achieved=achieved,
-                                              interests=inp.interests)
+                                              interests=interests)
         b.threads = [{"index": t.index, "label": t.label, "weight": 1.0,
                       "work_ids": t.work_ids, "private": True} for t in p.threads]
         b.work_ids = p.work_ids
@@ -705,7 +729,7 @@ class BriefService:
 
     def _run_student_explanations(self, b: Brief) -> tuple[str, bool]:
         from perch.schemas import Scholarship
-        from perch.student import as_opportunity
+        from perch.student import NAME_ONLY_NOTE, as_opportunity, name_only
 
         if not b.options.get("explain"):
             return "explanations off", True
@@ -716,8 +740,17 @@ class BriefService:
         with self.repo() as r:
             leads = [x for x in (r.get(Lead, i) for i in b.lead_ids)
                      if x and x.verdict != "not eligible"]
-            opps = [r.get(Opportunity, x.record_id)
-                    or as_opportunity(r.get(Scholarship, x.record_id)) for x in leads]
+            recs = [r.get(Opportunity, x.record_id) or r.get(Scholarship, x.record_id)
+                    for x in leads]
+            # S51 H4: a listing that gives only the award's name gets a code line, no call.
+            bare = [x for x, s in zip(leads, recs, strict=True)
+                    if isinstance(s, Scholarship) and name_only(s)]
+            r.upsert([x.model_copy(update={"notes": [*x.notes, NAME_ONLY_NOTE]})
+                      for x in bare if NAME_ONLY_NOTE not in x.notes])
+            keep = [(x, s) for x, s in zip(leads, recs, strict=True) if x not in bare]
+            leads = [x for x, _ in keep]
+            opps = [s if isinstance(s, Opportunity) else as_opportunity(s) for _, s in keep]
+        named = f", {len(bare)} name only" if bare else ""
         lock = threading.Lock()
         store = current_store.get()  # the explanation callbacks run on pool threads
 
@@ -741,9 +774,9 @@ class BriefService:
                                     grounder=self.models.get("grounder"), on_result=save,
                                     audience="student")
         except QuotaExceeded:  # explanations saved so far stay (S48 M2)
-            return BUDGET_DETAIL, True
+            return BUDGET_DETAIL + named, True
         flagged = sum(v.flagged for v in results)
-        return f"{len(results) - flagged} explained, {flagged} withheld", False
+        return f"{len(results) - flagged} explained, {flagged} withheld{named}", False
 
 
 def _text_hash(profile) -> str:  # noqa: ANN001 - a perch.profile.Profile

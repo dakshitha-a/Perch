@@ -46,6 +46,26 @@ EXCLUDED_ACTIVITY = {
 }
 
 
+# S51 H8: part of the precache key (perch/precache.py), which stores the federal
+# eligibility split. Bump it with every change to a rule, so a deploy recomputes the split.
+RULES_VERSION = "2026-11-05.1"
+
+# S51 H7 (docs/design/S51_DESIGN.md section 1): centre and programme grants, which an
+# institution applies for, get their own group on route A. Exactly these four codes; any other
+# needs NIH's public activity-codes page read first, with its URL in docs/SOURCES.md.
+CENTRE_CODES = frozenset({"P30", "P01", "P50", "U54"})
+
+
+def centre_note(o: Opportunity) -> str | None:
+    """The code-written card line for a centre or programme grant, else None."""
+    code = (o.activity_code or "").upper()
+    if code not in globals()["CENTRE_CODES"]:  # read at call time, so a test can narrow it
+        return None
+    return (f"Centre or programme grant (activity code {code}). An institution applies for "
+            "these for a centre or a group of projects, so Perch lists them below the "
+            "single-lab grants.")
+
+
 # Restrictions the title states outright. Excluded by default because Perch cannot
 # confirm them from public records (career stage needs the CV: private context, S13).
 CAREER_STAGE = (r"\bearly[- ]career\b|\bearly[- ]stage investigator|\bearly investigator"

@@ -94,28 +94,46 @@ class Evidence:
     numbers: set[str] = field(default_factory=set)
 
 
+# Ids are not facts: a random brief id such as "x-9abQ" once let "9 works" pass (the flaky
+# Route B test, S27 to QA round 3). Skipped at every depth of a nested field (S51 H5).
+# A merged record's field_sources holds page URLs, and a brief's timings_ms is not a fact.
+NOT_FACTS = ("fetched_at", "source_url", "id", "brief_id", "record_id", "field_sources",
+             "timings_ms")
+
+
 def evidence(r: Record) -> Evidence:
     parts: list[str] = []
     dates: set[date] = set()
     nums: set[str] = set()
-    for name, value in r.model_dump().items():
-        # Ids are not facts: a random brief id such as "x-9abQ" once let "9 works" pass
-        # (the flaky Route B test, S27 to QA round 3).
-        if name in ("fetched_at", "source_url", "id", "brief_id", "record_id"):
-            continue
+
+    def scalar(value: object) -> None:
         if isinstance(value, datetime):
             dates.add(value.date())
         elif isinstance(value, date):
             dates.add(value)
         elif isinstance(value, bool):
-            continue
+            return
         elif isinstance(value, int | float):
             nums.add(norm_number(f"{value:f}" if isinstance(value, float) else str(value)))
         elif isinstance(value, str):
             parts.append(value)
-        elif isinstance(value, list):
-            parts += [v if isinstance(v, str) else str(v.get("display_name", ""))
-                      for v in value if isinstance(v, str | dict)]
+
+    def walk(fields: dict) -> None:
+        for name, value in fields.items():
+            if name in NOT_FACTS:
+                continue
+            if isinstance(value, dict):  # a nested model, such as a scholarship's eligibility
+                walk(value)
+            elif isinstance(value, list):  # strings, numbers and dates; a dict its name only
+                for v in value:
+                    if isinstance(v, dict):
+                        parts.append(str(v.get("display_name", "")))
+                    else:
+                        scalar(v)
+            else:
+                scalar(value)
+
+    walk(r.model_dump())
     text = " ".join(parts)
     dates |= {d for _, d in find_dates(text) if d}
     nums |= set(find_numbers(text))

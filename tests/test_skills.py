@@ -335,7 +335,8 @@ def test_a_fragment_or_a_missing_item_about_a_gap_in_the_record_is_sent_back_by_
     assert missing_form("missing 1", "Your records show no mentoring plan, which the "
                         "announcement asks for.") == []
     gap = missing_form("missing 1", "The record does not specify a STEM sub-discipline.")
-    assert len(gap) == 2 and "'The record does not'" in gap[1] and "nothing you" in gap[0]
+    assert len(gap) == 2 and "'The record does not'" in gap[1]
+    assert "nothing in your records" in gap[0]  # S51 H12
     assert missing_form("missing 1", "The duration is not stated.")  # a gap, no "you"
     assert missing_form("missing 1", "Chemical Catalysis research.")  # not about you
     assert record_part("The record asks for a plan; nothing you added shows one.") == \
@@ -349,7 +350,7 @@ def test_a_fragment_or_a_missing_item_about_a_gap_in_the_record_is_sent_back_by_
     assert v.attempts == 2 and not v.flagged, v.errors
     fed = p.inner.calls[1]["messages"][0].content
     assert "point 1 asks is a fragment" in fed and "missing 1 says 'The record does not'" in fed
-    assert "nothing you added shows it" in fed
+    assert "nothing in your records shows it" in fed  # S51 H12
     # layer 2 reads the record's part of a missing item, not the fixed clause after ";"
     assert v.value.support["missing 1"] > 0 and not v.value.unsupported
     p, _ = audited([bad, bad])

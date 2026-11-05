@@ -93,7 +93,9 @@ def name_ids(text: str, labels: dict[str, str]) -> str:
 # S50 (3b): the live capture cited the same three papers on almost every card. Code now
 # picks, per lead, the papers whose words best match the opportunity record (tf-idf cosine
 # over the profile's papers, ties in profile order), and the findings may use only those.
-CHOSEN_PAPERS = {"researcher": 3, "student": 2}
+# S51 H10: a student card names its single closest record; with two, every card cited the
+# same pair (achievement A and the interests note).
+CHOSEN_PAPERS = {"researcher": 3, "student": 1}
 
 
 def choose_papers(o: Opportunity, paper_records: dict[str, Record], k: int) -> list[str]:

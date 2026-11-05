@@ -264,9 +264,11 @@ class Lead(Record):
     gaps: list[str] = Field(default_factory=list, description="Requirements the CV lacks")
     gap_keys: list[str] = Field(default_factory=list)
     sample: bool = Field(default=False, description="Points at a SYNTHETIC sample record")
-    group: Literal["temple_internal"] | None = Field(
+    group: Literal["temple_internal", "centre"] | None = Field(
         default=None, description="None: the route's own list. 'temple_internal': Temple's own "
-        "faculty funding, shown as its own group, never in the federal list (S49 M9)")
+        "faculty funding, shown as its own group, never in the federal list (S49 M9). "
+        "'centre': a centre or programme grant (P30, P01, P50, U54), ranked with the route's "
+        "list and shown in its own fold below it (S51 H7)")
 
 
 class Stage(BaseModel):

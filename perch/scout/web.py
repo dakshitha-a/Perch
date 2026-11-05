@@ -325,7 +325,7 @@ def cover_submit(sv: UserServices, uid: UUID, audience: str, brief_id: str, reco
 
 
 COVER_NOTE = ("Points to put in your own words. Each pairs one thing the record asks for with "
-              "one thing from your CV or entries. Check every point before you use it.")
+              "one thing from your CV, entries or papers. Check every point before you use it.")
 
 
 def cover_get(sv: UserServices, uid: UUID, audience: str, brief_id: str, record_id: str,

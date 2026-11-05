@@ -50,7 +50,7 @@ def test_minicheck_passage_gains_eligibility_notes_and_requirements():
     assert "Eligibility: Open to juniors in any major." in doc
     assert "Application requirements: transcript, 2 letters of recommendation." in doc
     assert "Eligibility" not in ans.document_for(A, AS_OF)
-    assert "juniors" not in ans.validate.evidence(C).text
+    assert "juniors" in ans.validate.evidence(C).text  # S51 H5: nested fields are evidence
 
 
 def test_rank_claims_are_checked_against_the_rows_read():

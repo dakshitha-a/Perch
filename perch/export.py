@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from perch import datefmt
-from perch.compare import COLUMNS, Row, award_size, lower_first
+from perch.compare import Row, award_size, columns_for, lower_first
 from perch.offices import RESEARCH_SECURITY, SUBMISSION_NOTE, SUBMISSION_URL, for_route
 from perch.schemas import Brief, Lead, Opportunity, Organisation, Researcher, Scholarship, Work
 from perch.score import band, match_text
@@ -250,7 +250,7 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     kept = [x for x in leads if x.status == "kept"]
     if compare_rows:
         out.append(Block("h2", f"Kept leads compared ({len(compare_rows)})"))
-        cols = [c for c in COLUMNS if c[0] != "office"]
+        cols = [c for c in columns_for(compare_rows) if c[0] != "office"]
 
         def lead_table(rows: list, label: object) -> list:
             table = [["Lead", *[lbl for _, lbl in cols], "Office"]]
@@ -262,7 +262,7 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
                                 for k, _ in cols], r.cells["office"].text])
             return table
 
-        main_rows = [r for r in compare_rows if r.group is None]
+        main_rows = [r for r in compare_rows if r.group != "temple_internal"]
         internal_rows = [r for r in compare_rows if r.group == "temple_internal"]
         if main_rows:
             out.append(Block("table", rows=lead_table(
@@ -273,7 +273,8 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
 
     shown = [x for x in leads if x.status != "dismissed"]
     gone = [x for x in leads if x.status == "dismissed"]
-    a = [x for x in shown if x.route == "A" and x.group is None and x.record_id in opps]
+    a = [x for x in shown if x.route == "A" and x.group != "temple_internal"
+         and x.record_id in opps]  # centre grants (S51 H7) are ranked grants
     temple = [x for x in shown if x.group == "temple_internal" and x.record_id in opps]
     b = [x for x in shown if x.route == "B"]
     out.append(Block("h2", f"Grants ({len(a)})"))
