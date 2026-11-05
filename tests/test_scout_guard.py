@@ -13,6 +13,45 @@ def test_no_guard_sentence_leaks():
     assert leaks() == []
 
 
+def _grade(text):
+    from bench import scout_guard as sg
+    from perch.scout import answer as ans
+
+    t = sg.tools()
+    return ans.grade(text, t.seen, ans.name_index([sg.OPP, sg.OPP2, sg.SMP]), sg.AS_OF, None, t)
+
+
+def test_q4_to_q11_shapes_now_pass():
+    """Each shape the s45g replay removed and Q49 allows. All SYNTHETIC."""
+    from bench.scout_guard import C1, C2
+
+    ok = [
+        f"What the record asks for\n- It closes 17 Nov 2026 {C1}.",  # Q4: no colon
+        f"**1. SYNTHETIC Kidney Repair Program**\n- It closes 17 Nov 2026 {C1}.",  # Q5
+        f"**1. SYNTHETIC Kidney Repair Program** {C1}",  # Q5: the number is a list mark
+        "Perch does not confirm personal eligibility, so check with the sponsor or a Temple "
+        "office.",  # Q6
+        f"## Differences\n- It closes 17 Nov 2026 {C1}.",  # Q9
+        "Would you like me to read the SYNTHETIC Marsh Ecology Program record in full?",  # Q10
+        "Or should I compare either record with your CV?",  # Q10
+        "You have no entries to add context [user:entries].",  # Q11
+    ]
+    for text in ok:
+        g = _grade(text)
+        assert g.ok, (text, g.removed(detail=True))
+    long = ("SYNTHETIC Kidney Repair Program For Very Long Titles That Run On Past The Usual "
+            "Word Limit Of A Heading")
+    from bench import scout_guard as sg
+    from perch.scout import answer as ans
+
+    opp = sg.OPP.model_copy(update={"title": long})
+    t = sg.tools()
+    t.seen[opp.id] = opp
+    g = ans.grade(f"**{long}**\n- It closes 17 Nov 2026 {C1}.", t.seen, set(), sg.AS_OF, None, t)
+    assert g.ok, g.removed(detail=True)  # Q5: a bold record title of any length
+    assert not _grade(f"**{long}**\n- It closes 9 Dec 2026 {C2}.").ok  # not the cited record
+
+
 def test_replay_regrades_a_stored_draft_with_no_model(tmp_path):
     """Q0: the replay rebuilds `seen` from the brief and the cited ids, then re-grades."""
     import json

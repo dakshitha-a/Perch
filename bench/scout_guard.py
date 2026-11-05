@@ -67,6 +67,16 @@ CASES: list[tuple[str, str, str]] = [
     (f"The SYNTHETIC Marsh Ecology Program closes 9 Dec 2026 {C2}. It closes after the "
      "SYNTHETIC Kidney Repair Program, on 1 Jan 2027.", "1 Jan 2027",
      "a date carried on to the next sentence"),
+    (f"**Your top lead**\n- The SYNTHETIC Marsh Ecology Program closes 9 Dec 2026 {C2}.",
+     "top lead", "an uncited rank heading"),
+    ("Would you like me to read the SYNTHETIC Marsh Ecology Program, your best match?",
+     "best match", "an offer naming a returned record with a fit word"),
+    ("Perch does not confirm personal eligibility, so check the SYNTHETIC Kidney Repair "
+     "Program, which pays $500,000.", "pays", "a disclaimer tail with a claim"),
+    ("Your saved list is empty, so you qualify for everything [user:saved].", "qualify",
+     "an empty-state template with a conclusion"),
+    ("**1. SYNTHETIC Kidney Repair Program pays $900,000**\n"
+     f"- It closes 17 Nov 2026 {C1}.", "$900,000", "a bold numbered line with a claim"),
 ]
 
 
@@ -94,6 +104,8 @@ def tools() -> ReadTools:
     data = ScoutData(repo=lambda: nullcontext(repo), as_of=AS_OF, brief=lambda: (b, leads))
     t = ReadTools(data)
     t.read_brief()
+    t.read_saved()  # empty: [user:saved] is returned
+    t.read_entries()  # empty: [user:entries] is returned
     return t
 
 

@@ -110,6 +110,7 @@ class Tally:
     questions: dict[str, dict[str, Any]] = field(default_factory=dict)
     stored_rows: int = 0
     mismatched_drafts: int = 0
+    detail: list[dict[str, Any]] = field(default_factory=list)  # each removed sentence
 
 
 def replay(run_dir: Path, records: list[Record], as_of: date | None = None) -> Tally:
@@ -145,6 +146,9 @@ def replay(run_dir: Path, records: list[Record], as_of: date | None = None) -> T
             t.removed_sentences += g.n_removed
             t.drafts_with_removals += bool(rem)
             t.reasons.update(r["reason"] for r in rem)
+            t.detail += [{"id": qid, "attempt": d["attempt"], "kind": s.kind,
+                          "reasons": [c for c, _ in s.reasons], "text": s.text}
+                         for s in g.sentences + g.general_sentences if s.errors]
             res["attempts"].append({"attempt": d["attempt"], "removed": g.n_removed,
                                     "ok": g.ok, "stored": len(d["removed"])})
         t.questions[qid] = res
@@ -173,6 +177,8 @@ def main() -> None:
                     "scholarship.jsonl; default the local store")
     ap.add_argument("--as-of", default=None, help="YYYY-MM-DD; default 2026-11-04")
     ap.add_argument("--out", default=None, help="write the summary JSON here")
+    ap.add_argument("--detail", default=None, help="write each removed sentence here (JSONL); "
+                    "it holds draft text, so keep it out of the repo")
     a = ap.parse_args()
     recs = load_records(Path(a.records)) if a.records else store_records()
     t = replay(Path(a.run_dir), recs, date.fromisoformat(a.as_of) if a.as_of else None)
@@ -181,6 +187,8 @@ def main() -> None:
     print(text)
     if a.out:
         Path(a.out).write_text(text + "\n")
+    if a.detail:
+        Path(a.detail).write_text("".join(json.dumps(x) + "\n" for x in t.detail))
 
 
 if __name__ == "__main__":

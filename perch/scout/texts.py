@@ -141,6 +141,10 @@ STRUCTURAL_HEADINGS = (
     r"(?:your )?shortlist", r"(?:your )?saved list", r"grants", r"industry(?: leads)?",
     r"grants and foundations", r"sources", r"records read",
     r"which (?:lead|leads|record|records|option|options) could use (?:it|this|them)",
+    # S49 Q9: section names the s45g drafts used; none states a result. "Your top lead" stays
+    # out: uncited, it is a rank claim on the record under it (S45 fix round 3).
+    r"differences", r"similarities",
+    r"who (?:may|can) apply,? per the records?", r"what the records? (?:do )?says?",
     # groups of records by where they come from (S45 fix round 3 replay)
     r"(?:federal|temple|temple-listed|foundation|industry|other|public|sample) (?:fellowship |"
     r"scholarship |award |grant )?(?:opportunities|fellowships|scholarships|awards|grants|"
@@ -169,6 +173,7 @@ EMPTY_TEMPLATES = (
     r"you have (?:nothing saved|no (?:saved (?:items|awards|records)|(?:typed )?entries|leads|"
     r"cv|brief|saved list))(?: yet)?",
     r"you have not (?:saved anything|added any entries|added a cv|built a brief)(?: yet)?",
+    r"you have typed no entries(?: yet)?", r"(?:your )?entries are empty",
     r"nothing is saved(?: yet)?",
     r"there are no leads in your brief(?: yet)?",
 )
