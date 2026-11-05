@@ -522,13 +522,17 @@ class PublicReads:
         self._d: dict[tuple, tuple[float, object]] = {}
         self._lock = threading.Lock()
 
-    def _get(self, key: tuple, load: Callable[[], object]) -> object:
+    def _get(self, key: tuple, load: Callable[[], object],
+             keep: Callable[[object], bool] = lambda _: True) -> object:
+        """The cached value, or `load()`; stored only when `keep(value)` holds."""
         now = time.monotonic()
         with self._lock:
             hit = self._d.get(key)
             if hit is not None and hit[0] > now:
                 return hit[1]
         value = load()
+        if not keep(value):
+            return value
         with self._lock:
             if len(self._d) >= self.max_items:
                 self._d.clear()
@@ -551,12 +555,11 @@ class _CachedRepo:
         return self.cache._get(("get", cls.kind, id), lambda: self.base.get(cls, id))
 
     def get_any(self, id: str) -> object:
-        got = self.cache._get(("any", id), lambda: self.base.get_any(id))
-        if got is not None and getattr(got, "kind", None) not in PUBLIC_KINDS:
-            with self.cache._lock:  # a brief or a lead: never kept
-                self.cache._d.pop(("any", id), None)
-            return self.base.get_any(id)
-        return got
+        # S50 C10: the kind is checked before the record is stored, so a brief or a lead is
+        # never in the process-wide dict, not even for a moment (standing rule 5).
+        return self.cache._get(("any", id), lambda: self.base.get_any(id),
+                               keep=lambda got: got is None
+                               or getattr(got, "kind", None) in PUBLIC_KINDS)
 
     def list(self, cls: type, **kw: object) -> list:
         if cls.kind not in PUBLIC_KINDS:
