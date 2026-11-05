@@ -65,17 +65,17 @@ def register(U):  # noqa: N803 - the module handed in by the loader
           const wait = () => new Promise((r) => setTimeout(r, 80));
           const first = (el) => { const b = el.querySelector('.btn.primary'); return b ? b.getAttribute('data-key') : null; };
           const out = {};
-          const panel = document.createElement('div'); panel.id = 'wall-s'; document.body.append(panel);
+          const panel = document.createElement('div'); panel.id = 'wall-s'; document.getElementById('main').append(panel);
           renderScout(panel, { api: { scoutStart() {}, exampleAvailable: async () => true }, briefId: 'w1', done: true, student: false, signedIn: false, signIn: '#/signin', accountsOpen: false, openEvidence() {}, announce() {}, label: () => null });
           await wait();
           out.scout = { primary: first(panel), href: (panel.querySelector('[data-key=example-scout]') || {}).href, signinPrimary: Boolean(panel.querySelector('a.btn.primary[href="#/signin"]')) };
-          const box = document.createElement('div'); box.id = 'wall-h'; document.body.append(box);
+          const box = document.createElement('div'); box.id = 'wall-h'; document.getElementById('main').append(box);
           renderHandoff(box, { api: { exampleAvailable: async () => true }, briefId: 'w2', kept: [{ id: 'F1', route: 'A', title: 'SYNTHETIC grant' }], offices, announce() {}, redraw() {}, guest: true, signIn: '#/signin', accountsOpen: false });
           await wait();
           out.hand = { primary: first(box), signinPrimary: Boolean(box.querySelector('a.btn.primary[href="#/signin"]')) };
           const line = coverListLine({ api: { mode: 'live', coverStart() {} }, guest: true, signIn: '#/signin', audience: 'student', accountsOpen: false });
           out.cover = line ? line.textContent : null;
-          const open = document.createElement('div'); open.id = 'wall-o'; document.body.append(open);
+          const open = document.createElement('div'); open.id = 'wall-o'; document.getElementById('main').append(open);
           renderScout(open, { api: { scoutStart() {}, exampleAvailable: async () => true }, briefId: 'w3', done: true, student: false, signedIn: false, signIn: '#/signin', openEvidence() {}, announce() {}, label: () => null });
           out.open = first(open);
           return out; }""")
