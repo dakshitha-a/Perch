@@ -13,8 +13,8 @@
 .level-pick select { min-height: 44px; }
 .switch-row { display: flex; flex-wrap: wrap; gap: 8px 12px; }
 .tag-row { flex-wrap: wrap; overflow: visible; padding-bottom: 2px; }
-.keep-line { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ink-3); }
-.keep-line .icon { flex: none; color: var(--moss); }
+.keep-line { margin: 0; color: var(--ink-3); }
+.keep-line .icon { display: inline-block; vertical-align: -4px; margin-right: 8px; color: var(--moss); }
 .keep-line a { font-weight: 600; }
 .list-screen .sample-note { margin-top: 0; }
 
@@ -36,7 +36,8 @@ ul.award-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0
 .ar-facts dd { margin: 0; font-size: var(--fs-14, 14px); font-weight: 600; overflow-wrap: anywhere; }
 .ar-facts dd .tag { margin-left: 6px; vertical-align: 1px; }
 .ar-facts .missing { font-weight: 500; color: var(--ink-3); margin: 0; font-size: var(--fs-14, 14px); }
-.quote-date { font-size: 13px; font-weight: 400; color: var(--ink-3); }
+.quote-date { font-size: 13px; font-weight: 400; color: var(--ink-3); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.kept-date .quote-date, .award-row .ar-facts dd .quote-date { overflow-wrap: anywhere; }
 .ar-src { margin: 6px 0 0; font-size: var(--fs-12, 12px); color: var(--ink-3); }
 .ar-acts { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 .award-row.is-sample { border-style: dashed; border-color: var(--ember); }
@@ -60,16 +61,21 @@ ul.award-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0
   padding: 12px 0; border-top: 1px solid var(--line); }
 .kept-list > li:first-child, .brief-list-rows > li:first-child { border-top: 0; padding-top: 0; }
 .kept-main, .brief-main { min-width: 0; flex: 1 1 260px; display: grid; gap: 2px; }
-.kept-main .title-btn { text-align: left; font: 600 16px/1.3 var(--serif); }
+.kept-main .title-btn { min-height: 28px; text-align: left; font: 600 16px/1.3 var(--serif); }
 .kept-date { font-size: var(--fs-14, 14px); }
 .kept-date .rel { color: var(--ink-3); margin-left: 6px; }
+.kept-date .tag { margin-left: 8px; }
 .kept-from, .brief-meta { margin: 0; font-size: var(--fs-13, 13px); color: var(--ink-3); }
 .brief-title { margin: 0; font: 600 16px/1.3 var(--serif); }
 .brief-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .quiet-link { font-size: var(--fs-14, 14px); font-weight: 600; }
 .home-docs p { margin: 0 0 8px; }
+.home-docs .quiet-link { padding: 0; justify-content: flex-start; }
 .home-docs .doc-line { font-weight: 600; }
 .my-perch .empty-list { padding: 8px 0; justify-items: start; text-align: left; }
+@media (max-width: 600px) {
+  .kept-row .btn.quiet, .brief-acts .quiet-link { padding-left: 0; justify-content: flex-start; }
+}
 @media (max-width: 900px) {
   .home-grid { grid-template-columns: 1fr; }
   .home-grid > .home-kept, .home-grid > .home-briefs, .home-grid > .home-docs { grid-column: 1; grid-row: auto; }
@@ -88,9 +94,9 @@ ul.award-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0
 /* ---------- B7 Cover-letter points ---------- */
 .scout-points > summary { flex-wrap: nowrap; }
 .scout-points > summary > span:first-child { flex: 1; min-width: 0; }
-.list-note { display: flex; align-items: center; gap: 8px; margin: 0; font-size: var(--fs-14, 14px); color: var(--ink-3); }
+.list-note { margin: 0; font-size: var(--fs-14, 14px); color: var(--ink-3); }
 .list-note a { font-weight: 600; }
-.list-note .icon { flex: none; }
+.list-note .icon { display: inline-block; vertical-align: -4px; margin-right: 8px; }
 .cover .quota-hint { margin: 4px 0 0; }
 
 /* ---------- B8 account and welcome ---------- */

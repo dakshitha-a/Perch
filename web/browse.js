@@ -125,7 +125,7 @@ export function recordRow(r, { openEvidence }, keep = null) {
         : h("dl", {},
           h("dt", { text: "Amount" }), h("dd", {}, h("span", { class: amount === NOT_STATED ? "missing" : null, text: amount === NOT_STATED ? "Not stated" : amount })),
           h("dt", { text: dateLabel }), h("dd", {},
-            pageSays ? h("span", { class: "quote-date", text: pageSays })
+            pageSays ? h("span", { class: "quote-date", title: pageSays, text: pageSays })
               : h("span", { class: noDate ? "missing" : null, text: noDate ? "Not stated" : due }),
             past ? h("span", { class: `tag ${opp ? "closed" : "past"}`, text: opp ? "Closed" : "Past date on the page" }) : null)),
       h("p", { class: "ar-src", text: `Source: ${SOURCE_WORDS[r.source] || r.source}` })),

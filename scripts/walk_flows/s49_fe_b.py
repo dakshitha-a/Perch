@@ -156,14 +156,17 @@ def register(U):  # noqa: N803 - the module handed in by the loader
                 and not any(re.search(r"\bdone\b", t) for t in titles) and "Options checked" in titles[0], f"[mock] {[t[:60] for t in titles]}")
         await w.snap(page, tag, "s49b-my-perch")
         # remove a saved row
-        await page.locator(".kept-row button:has-text('Remove')").first.click()
+        try:
+            await page.locator(".kept-row button:has-text('Remove')").first.click(timeout=3000)
+        except Exception:  # noqa: BLE001 - the old page has no kept rows; the check below then fails
+            pass
         await page.wait_for_timeout(500)
         w.check("s49_kept_remove", saved["deletes"] == ["sv-1"], f"[mock] deletes {saved['deletes']}")
         # Keep on a list row
         await page.evaluate("location.hash = '#/awards'")
-        await page.wait_for_selector(".award-row", timeout=30_000)
+        await page.wait_for_selector("li.award", timeout=30_000)
         await page.wait_for_timeout(600)
-        rid = await page.locator(".award-row").first.get_attribute("data-id")
+        rid = await page.locator("li.award").first.get_attribute("data-id")
         btn = page.locator(".award-row .keep").first
         has_keep = await btn.count()
         if has_keep:
