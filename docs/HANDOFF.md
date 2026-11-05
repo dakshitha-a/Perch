@@ -1,49 +1,44 @@
 # HANDOFF.md — state for the next context window
 
-Rewritten 2026-11-05 at about 00:55 EST, at the close of S49. Dakshitha delegated every decision for S49 to S52 and asked for all remaining phases to run without stopping. The same orchestrating context continues into S50; this file is for a fresh context if one is needed.
+Rewritten 2026-11-05 at about 09:10 EST, at the close of S52 (the release). Dakshitha delegated every decision for S49 to S52 and asked for all remaining phases to run without stopping. Phase 12 (S49 to S51) and the release (S52) are done.
 
 ## Read this first
 
-- **Branch:** work on `rebuild/v1`. `main` is not developed.
-- **Plan:** `docs/REBUILD_PLAN.md`, Phase 12 (rounds S49 to S51) and Release (S52).
-- **Next:** S52, the release. Its task list is `docs/sessions/S52.md` (written early; task 3 done). Phase 12 is closed: S49, S50 and S51 each ran four fresh reviews, a design, builders, QA and a re-check.
-- **S51 in short:** round 3 closed (`docs/sessions/S51.md`). The README's Known limits come verbatim from section 5 of `docs/design/S51_DESIGN.md`. A docs sweep (SOURCES, RESULTS, ARCHITECTURE_V1, SPEC, AI use log) is already merged; README, running, deploy and Help remain. The deploy runs the S51 code with Demo Day settings (accounts closed, per-address limits raised, guest session budget $0.30).
-- **The gate:** Thursday 5 Nov at 6:00 pm. A one-shot reminder is set for 17:31 in this context. Write the submission decision to `bridge/QUESTIONS.md` and DECISIONS.md.
-- **The fallback:** frozen at d6f6210 (tag `v0.1-demo-fallback`), served on 8090 through the Funnel on 443. Never touch it.
-- **Compute rules:** heavy jobs only through `scripts/run_limited.sh`. GPU 3 only, with a lock file of its own for anything beside the deploy worker (`PERCH_LIMIT_LOCK=/run/user/1002/perch-walk.lock` for the walk, `perch-bench.lock` for benches). Never GPUs 0, 6 or 7. Never ports 8090, 8093, 8097, 8098, 8200.
+- **`main` is now v1.** `rebuild/v1` was merged into `main` and tagged `v1.0-deploy`. The earlier hybrid build stays at the tag `v0.1-demo-fallback` and the branch `fallback/v0.1-demo`.
+- **The gate passed** (bridge/QUESTIONS.md Q53, decided at 07:15 EST on 5 Nov). The v1 rebuild is the submitted prototype; the fallback is linked.
+- **Demo Day:** the run sheet is `docs/DEMO.md`. Before the demo, run `scripts/demo_reset.py --apply` with the deploy's env file sourced, test the deploy's URL from a phone, and sign in once as `demo-presenter`.
+- **Open for Dakshitha:** Q51 (a real researcher on the projector: recommendation, use the example brief) and Q52 (port 8443 on venue Wi-Fi: DEMO.md has the commands to move v1 to 443; only Dakshitha runs `tailscale funnel`).
+- **The fallback:** served on 8090 through the Funnel on 443. Never touch it.
+- **Compute rules:** heavy jobs only through `scripts/run_limited.sh`; GPU 3 only, with its own lock file beside the deploy worker. Never GPUs 0, 6 or 7. Never ports 8090, 8093, 8097, 8098, 8200.
 - **Commit trailer:** only `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never a `Claude-Session:` line.
-- **Use `.venv/bin/ruff` and `.venv/bin/python -m pytest`,** not `uv run`, in the main checkout: a bare `uv run` re-syncs the venv, and the deploy runs from it.
-- **pkill patterns:** a pattern that appears in your own command line kills your shell. Run `pkill -f "scripts/[w]alk_server.py"` in a command of its own.
+- **In the main checkout use `.venv/bin/python` and `.venv/bin/ruff`,** not a bare `uv run`: the deploy runs from that venv. Never `git checkout main` there; use a worktree.
 
-## What S49 did
+## What S49 to S52 did
 
-- **Reviews:** four fresh Opus reviews in `docs/design/S49_*_REVIEW.md`, 184 items, 28 must-fix. A design in `docs/design/S49_DESIGN.md`.
-- **Built,** by five builders in worktrees, merged on `rebuild/v1`:
-  - **Front end:** landing in one laptop screen; a new lead card; the brief header folds into a Ready chip; researcher CV card; "Change details and run again"; dense lists with Keep, sort and closed calls; a saved list; My Perch as the signed-in home; Load sample for students; a Temple internal group.
-  - **Back end:** a dead job no longer polls forever; Keep during a run is safe; worker threads survive a database blip; double clicks make one brief; a scheduler in the worker runs the daily purges and the nightly precache; guest briefs encrypted in Redis (Q50); past-cycle Temple dates give "may be eligible"; open-anytime calls kept; Temple internal funding reaches researcher briefs; staff awards out of the student pool.
-  - **Scout grounding (Q49):** offline replay first, then fixes. Real-model bench: layer 1 pass 10 of 33 in S45, 18 of 33 now; MiniCheck flags 42; out of scope 24 of 24, distress 5 of 5.
-- **QA:** walk 171 states in light and dark at 1280 and 360 with real sign-in, 0 errors, 0 axe, 0 small targets. Suites: unit 996, pg 88, redis 117, keys 67, user 132 (with the leak check).
-- **A deploy bug, found by the new `scripts/smoke_deploy.py`:** Anthropic refused the explanation call (reasoning_extraction), and the refusal failed the whole brief. Fixed: a refusal withholds that one explanation, and the prompts no longer ask for "private reasoning".
-- **Re-check:** `docs/design/S49_RECHECK.md`. 37 of 41 must-fix closed; the no-worker message fixed after; P6 carried; M6 (refresh the federal snapshot) is in S52.
+- **Three review rounds:** each ran four fresh Opus reviews (UI/UX, product and flow, back-end correctness, back-end function), a design, builders in worktrees, a QA fixer and a fresh re-check. Files: `docs/design/S49_*`, `S50_*`, `S51_*`. No must-fix item is open in code.
+- **Release (S52):** the docs were rewritten and checked against the code (README with a "See it" line, the tour and Known limits; SOURCES, RESULTS, ARCHITECTURE_V1, SPEC, running, deploy, DEMO, AI use log). The README tour was filmed from the deploy (seven clips), and `docs/screenshots/` was regenerated alias-only (48 images). The example briefs were re-exported. `make demo` now starts a local v1 demo without a GPU, and `make bench` runs the v1 back-test. The version is 1.0.0.
+- **Measured:** the full walk has 258 states each in light and dark, with 0 errors and 0 axe. Suites: unit 1114, pg 92, redis 120, keys 67, user 135. The back-test is unchanged since S38 (bench/results/s50_backtest). The Scout bench layer 1 pass went from 10 of 33 (S45) to 18 of 33 (s49b). Cover points in the last live capture had 0 unsupported sentences (5 of 5 before S51).
+- **Spend:** the main ledger is $12.45 of $100. The deploy's own ledger is $2.50 of its $15 cap.
 
-## The test deploy (live, on the S49 code)
+## The test deploy (live, on the final code)
 
-- **App:** the test deploy's URL (in CLAUDE.local.md) (Funnel 8443 to 127.0.0.1:8200). Sign-in through the dev Keycloak on Funnel 10000.
-- **Accounts:** SYNTHETIC `demo-presenter`, `demo-researcher`, `demo-student`; passwords only in `.env.deploy`.
-- **Guest budget for Demo Day:** $1.50 an address and $6.00 a day (raised in S49, `.env.deploy`), because an audience on one venue network shares one address. The Funnel does pass each visitor's address (checked in S49).
-- **Updating it:** commit, then `systemctl --user restart perch-v1-web perch-v1-worker`. Edits under `web/` are live at once. After a change to `perch/store/denorm.py`, run `scripts/redenorm.py --dsn-env PERCH_WORKER_DATABASE_URL` with `.env.deploy` sourced.
-- **Smoke:** `.venv/bin/python scripts/smoke_deploy.py --base <the test deploy's URL, in CLAUDE.local.md>` (add `--no-researcher` to save about $0.10).
-- **Logs:** the worker writes nothing to the journal; read a brief's own `error` through `GET /briefs/{id}`.
+- **Where:** the URL is in CLAUDE.local.md (Funnel 8443 to 127.0.0.1:8200; sign-in on Funnel 10000).
+- **Settings for Demo Day:** accounts are closed (`PERCH_ACCOUNTS_OPEN=0`, so the walls point to the example brief). Per-address limits are about ten times the defaults. The guest budget is $0.30 a session, $4.00 an address and $8.00 a day. The precache runs at 08:00 UTC, one brief at a time. All of these are in `.env.deploy`.
+- **Updating it:** commit, then `systemctl --user restart perch-v1-web perch-v1-worker`. Edits under `web/` are live at once.
+- **Scripts:** `scripts/smoke_deploy.py` (smoke), `scripts/live_capture.py` (real-model text; needs `PERCH_LIVE_BASE`), `scripts/export_example.py` (the example briefs), `scripts/refresh_v1.py` (federal records), `scripts/redenorm.py` (filter columns), `scripts/demo_reset.py` (guest limits).
+- **The SYNTHETIC e2e user** in the shared realm is disabled between test runs. `scripts/e2e_oidc_login.py` enables it and sets a fresh random password for a run. After a walk, disable it again with the Keycloak admin API (`PUT /admin/realms/perch/users/<id>` with `{"enabled": false}`), as done in S52.
+- **A database password was printed** into one reviewer agent's local transcript in S51 (the deploy worker's role). Rotate it after the demo.
 
 ## Worth knowing
 
-- **Walk server:** set up with `scripts/walk_server.py --setup` (resets the walk databases and role passwords; run it while no server runs). Start it from the checkout you want served, with `PERCH_OIDC_CLIENT_SECRET` from `.env`, `PERCH_GUEST_SESSIONS_PER_ADDRESS_HOUR=1000`, and the walk lock. Walk with `--login-helper scripts/e2e_oidc_login.py` and `KEYCLOAK_ADMIN_PASSWORD` from `.env`.
-- **Shared test databases:** the Postgres and Redis suites reset role passwords and flush Redis DB 15. Never run them while a walk server or another builder's suite runs.
-- **Walk flows:** each build package keeps its own flows in `scripts/walk_flows/<name>.py`; `ux_walk.py` loads them.
-- **Spend:** main ledger $12.45 of $100. The deploy's own ledger is capped at $15.
+- **Walk server:** `scripts/walk_server.py --setup` resets the walk databases and role passwords; run it while no server runs. Start it with `PERCH_OIDC_CLIENT_SECRET`, `OPENALEX_API_KEY`, `PERCH_SCHEDULER=0` and `PERCH_GUEST_SESSIONS_PER_ADDRESS_HOUR=1000`, under the walk lock.
+- **Shared test databases:** the Postgres and Redis suites reset role passwords; never run them while a walk server runs.
+- **pkill:** a pattern in your own command line kills your shell; run `pkill -f "scripts/[w]alk_server.py"` alone.
+- **A stray walk worker** from S49 could not be stopped by the agent (a safety check blocked the kill); it is idle and harmless. Dakshitha can stop it.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 
 - **Q47 (not blocking):** pg_search's AGPL licence matters only if keyword ranking returns.
-- **Q49 (in progress):** Scout grounding, 18 of 33 now pass layer 1; round 2 continues.
-- **Grading:** Dakshitha grades Scout usefulness in `bench/results/scout_open_s49b/grades.csv` when she can.
+- **Q49 (in progress):** Scout grounding, 18 of 33 pass layer 1.
+- **Q51 (for Dakshitha):** a real researcher on the projector.
+- **Q52 (for Dakshitha):** port 8443 on venue Wi-Fi.
