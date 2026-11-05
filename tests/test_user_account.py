@@ -482,3 +482,27 @@ def test_purge_jobs_removes_dead_rows_past_thirty_days(pg_clean, worker_pool):
     run_worker(pg_clean, ["purge"], lambda: job_state(pg_clean, jid) == "succeeded")
     left = {r[0] for r in sql(pg_clean, "SELECT id FROM jobs WHERE kind = 'precache'")}
     assert left == {ids["queued"], fresh}
+
+
+def brief_client(env, tmp_path, monkeypatch, audience="researcher"):
+    """The api app wired to the account services, as `perch serve` builds it."""
+    from perch.api import create_app
+    from perch.jobs import InlineRunner
+
+    monkeypatch.setenv("PERCH_REDIS_URL", REDIS_URL)
+    _, svc = make(tmp_path)
+    app = create_app(svc, InlineRunner(), stored_briefs=True, web_dir=None)
+    app.state.user_services = env.client.app.state.user_services
+    app.dependency_overrides[deps.session_optional] = lambda request: env.session
+    app.dependency_overrides[deps.require_csrf] = lambda: None
+    env.session.audience = audience
+    return TestClient(app), svc
+
+
+def test_opening_a_document_id_as_a_brief_is_a_404(env, tmp_path, monkeypatch):
+    """S49 B20: the id of the user's own CV row decrypted as a brief and gave a 500."""
+    c, _ = brief_client(env, tmp_path, monkeypatch)
+    cv = env.ud.put(env.uid, "cv", "researcher", CvDoc(text="SYNTHETIC CV text"))
+    r = c.get(f"/briefs/{cv}")
+    assert r.status_code == 404, r.text
+    assert UserBriefStore(env.ud, env.uid, "researcher", str(cv)).load() is False

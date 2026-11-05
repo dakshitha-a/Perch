@@ -113,13 +113,14 @@ class UserData:
         return got[0] if got else None
 
     def get_row(self, user_id: UUID, row_id: UUID, model_cls: type[M], *,
-                conn: psycopg.Connection | None = None
+                conn: psycopg.Connection | None = None, kind: str | None = None
                 ) -> tuple[M, datetime, str, str] | None:
-        """(model, updated_at, kind, audience), or None for a missing or foreign id."""
+        """(model, updated_at, kind, audience), or None for a missing or foreign id, or for a
+        row of another kind than `kind` when one is given (checked before any decryption)."""
         with self._tx(user_id, conn) as c:
             row = c.execute("SELECT kind, audience, blob, updated_at FROM user_data "
                             "WHERE id = %s AND user_id = %s", (row_id, user_id)).fetchone()
-        if row is None:
+        if row is None or (kind is not None and row[0] != kind):
             return None
         kind, audience, blob, updated = row
         plain = crypto.decrypt_field(user_id, bytes(blob), aad_for(user_id, row_id, kind, audience))

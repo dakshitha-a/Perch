@@ -263,7 +263,7 @@ class UserBriefStore(BriefStore):
 
     def load(self) -> bool:
         with self._conn() as c:
-            got = self.ud.get_row(self.user_id, self.row_id, StoredBrief, conn=c)
+            got = self.ud.get_row(self.user_id, self.row_id, StoredBrief, conn=c, kind="brief")
         if got is None:
             return False
         sb, self._ts = got[0], got[1]
@@ -277,7 +277,8 @@ class UserBriefStore(BriefStore):
         with self._conn() as c:
             if self._ts is None:
                 self.ud.put(self.user_id, "brief", self.audience, sb, row_id=self.row_id, conn=c)
-                got = self.ud.get_row(self.user_id, self.row_id, StoredBrief, conn=c)
+                got = self.ud.get_row(self.user_id, self.row_id, StoredBrief, conn=c,
+                                      kind="brief")
                 self._ts = got[1] if got else None
             else:
                 self._ts = self.ud.update(self.user_id, self.row_id, sb,
@@ -477,9 +478,10 @@ def read_user_brief(ud: UserData, user_id: UUID, brief_id: str) -> StoredBrief |
     except ValueError:
         return None
     try:
-        return ud.get(user_id, row, StoredBrief)
+        got = ud.get_row(user_id, row, StoredBrief, kind="brief")
     except NotFound:
         return None
+    return got[0] if got else None
 
 
 # --- the two calls the web layer makes (api.py): submit a brief, read a brief ---
@@ -653,7 +655,7 @@ def set_lead_status(ud: UserData, r: redis.Redis, session: Session, brief_id: st
             return None
         for _ in range(3):
             try:
-                got = ud.get_row(session.user_id, row, StoredBrief)
+                got = ud.get_row(session.user_id, row, StoredBrief, kind="brief")
             except NotFound:
                 return None
             if got is None:
