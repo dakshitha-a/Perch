@@ -108,7 +108,10 @@ def draft_json(d: Draft) -> dict:
     return {"office": {"key": d.office.key, "name": d.office.name, "url": d.office.url},
             "to": "", "subject": d.subject, "body": d.body, "lead_ids": d.lead_ids,
             "cited_ids": d.cited_ids, "flagged": d.flagged, "model": d.model,
-            "opening_by": d.opening_by}
+            "opening_by": d.opening_by,
+            # S50 Q3: kept leads left out of this office's draft, and the code-written reason.
+            "left_out": list(getattr(d, "left_out", []) or []),
+            "left_out_note": getattr(d, "left_out_note", None) or None}
 
 
 class BriefRequest(BriefOptions):
