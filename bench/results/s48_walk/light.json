@@ -1,0 +1,1838 @@
+{
+ "checks": [
+  {
+   "name": "old_copy_gone",
+   "ok": true,
+   "detail": "landing"
+  },
+  {
+   "name": "landing_student_first",
+   "ok": true,
+   "detail": "Student chosen, Browse Temple awards present"
+  },
+  {
+   "name": "guest_banner",
+   "ok": true,
+   "detail": "on every guest screen, with the server's notice"
+  },
+  {
+   "name": "old_copy_gone_guest",
+   "ok": true,
+   "detail": "guest"
+  },
+  {
+   "name": "awards_toggle_rule",
+   "ok": true,
+   "detail": "total 360, temple_total 360: toggle hidden and the title says Temple awards"
+  },
+  {
+   "name": "tag_row_chips_44",
+   "ok": true,
+   "detail": "17 chips, shortest 44 px, page overflow 0"
+  },
+  {
+   "name": "counts_from_server",
+   "ok": true,
+   "detail": "15 chips; differ: []"
+  },
+  {
+   "name": "no_sample_in_awards",
+   "ok": true,
+   "detail": "cards with a sample id or badge: []"
+  },
+  {
+   "name": "school_two_groups",
+   "ok": true,
+   "detail": "['CST (25)', 'Open across Temple (207)']"
+  },
+  {
+   "name": "show_more",
+   "ok": true,
+   "detail": "25 cards, then more"
+  },
+  {
+   "name": "clear_filters",
+   "ok": true,
+   "detail": "cards return"
+  },
+  {
+   "name": "funding_toggle_off",
+   "ok": true,
+   "detail": "off by default"
+  },
+  {
+   "name": "focus_order_lists",
+   "ok": true,
+   "detail": "toggle > search > level > tag > card"
+  },
+  {
+   "name": "no_sample_in_funding",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "badge_on_every_sample",
+   "ok": true,
+   "detail": "50 of 50 cards badged"
+  },
+  {
+   "name": "samples_note",
+   "ok": true,
+   "detail": "sample note present"
+  },
+  {
+   "name": "guest_researcher_brief",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "guest_keep_compare_researcher",
+   "ok": true,
+   "detail": "2 kept"
+  },
+  {
+   "name": "guest_researcher_draft_is_signin",
+   "ok": true,
+   "detail": "a guest sees Sign in to draft a note to the office, not a Draft the email button"
+  },
+  {
+   "name": "guest_sample_persona_brief",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "student_fellowship_sources",
+   "ok": true,
+   "detail": "stage says: None; F leads come from ['grants_gov', 'temple_pages', 'temple_sdfa']"
+  },
+  {
+   "name": "sample_brief_not_your_cv",
+   "ok": true,
+   "detail": "the sample brief names the sample student's CV, not yours"
+  },
+  {
+   "name": "guest_keep_compare_student",
+   "ok": true,
+   "detail": "2 kept"
+  },
+  {
+   "name": "guest_student_note_is_signin",
+   "ok": true,
+   "detail": "a guest sees Sign in to draft a note to the office, and no note"
+  },
+  {
+   "name": "signed_in_new_goes_to_welcome",
+   "ok": true,
+   "detail": "http://127.0.0.1:8191/#/welcome"
+  },
+  {
+   "name": "welcome_continue_guarded",
+   "ok": true,
+   "detail": "disabled before both steps"
+  },
+  {
+   "name": "consent_text_not_clipped",
+   "ok": true,
+   "detail": "scrollable overflow 0 px"
+  },
+  {
+   "name": "public_lists_open_without_welcome",
+   "ok": true,
+   "detail": "http://127.0.0.1:8191/#/awards"
+  },
+  {
+   "name": "welcome_continue_enabled",
+   "ok": true,
+   "detail": "enabled after both steps"
+  },
+  {
+   "name": "withdraw_consent",
+   "ok": true,
+   "detail": "the account page stays and offers Agree again"
+  },
+  {
+   "name": "withdrawn_can_browse",
+   "ok": true,
+   "detail": "http://127.0.0.1:8191/#/funding"
+  },
+  {
+   "name": "consent_again",
+   "ok": true,
+   "detail": "agreeing again works"
+  },
+  {
+   "name": "delete_failure_words",
+   "ok": true,
+   "detail": "Your key is destroyed, so your data can no longer be read. Clean-up did not finish. Press Delete again to finish it."
+  },
+  {
+   "name": "delete_takes_focus",
+   "ok": true,
+   "detail": "del-word|true"
+  },
+  {
+   "name": "delete_guard",
+   "ok": true,
+   "detail": "empty disabled True, 'delet' disabled True, 'delete' enabled True"
+  },
+  {
+   "name": "delete_escape_returns_focus",
+   "ok": true,
+   "detail": "focus on del-open"
+  },
+  {
+   "name": "delete_sends_confirm_and_ends",
+   "ok": true,
+   "detail": "Your data was deleted.\n\u00d7"
+  },
+  {
+   "name": "retry_after_failed_filters_student",
+   "ok": true,
+   "detail": "2 /filters calls; list and bar back: True"
+  },
+  {
+   "name": "retry_after_failed_filters_researcher",
+   "ok": true,
+   "detail": "2 /filters calls; list and bar back: True"
+  },
+  {
+   "name": "header_one_row",
+   "ok": true,
+   "detail": "header 65 px at 1280 px"
+  },
+  {
+   "name": "focus_not_under_header",
+   "ok": true,
+   "detail": "focus tops under the header: []"
+  },
+  {
+   "name": "signin_failure_lands_on_app /auth/login",
+   "ok": true,
+   "detail": "hash '#/'; banner: Sign-in is not available right now. You can still try a sample student.\n\u00d7"
+  },
+  {
+   "name": "signin_unavailable_offers_sample",
+   "ok": true,
+   "detail": "fit button 'Try a sample student'; header sign-in links 0"
+  },
+  {
+   "name": "signin_failure_lands_on_app /auth/callback",
+   "ok": true,
+   "detail": "hash '#/'; banner: Sign-in is not available right now. You can still try a sample student.\n\u00d7"
+  },
+  {
+   "name": "scoutmarks_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "scout_guest_sees_signin",
+   "ok": true,
+   "detail": "guest Scout panel"
+  },
+  {
+   "name": "scout_clean_nothing_flagged",
+   "ok": true,
+   "detail": "cites 2, notes [], checked 'Model text Written by a model; checked against the records it cites.'"
+  },
+  {
+   "name": "scout_mark_screen_reader_text",
+   "ok": true,
+   "detail": "[{'text': 'SYNTHETIC sample claim that the sample award covers travel costs.? (not confirmed by the cited record)', 'sr': '(not confirmed by the cited record)', 'glyph': '?', 'glyphHidden': 'true', 'line': 'underline', 'style': 'dotted'}]"
+  },
+  {
+   "name": "scout_mark_not_colour_only",
+   "ok": true,
+   "detail": "glyph '?', underline underline dotted"
+  },
+  {
+   "name": "scout_mark_only_matched_sentence",
+   "ok": true,
+   "detail": "1 mark"
+  },
+  {
+   "name": "scout_notice_unsupported",
+   "ok": true,
+   "detail": "'Scout could not confirm 2 sentences against the cited records. 1 underlined above, 1 listed here. Open the record before'; list ['SYNTHETIC sample claim that was cut from the text and cannot be found in it.']"
+  },
+  {
+   "name": "scout_checked_marked",
+   "ok": true,
+   "detail": "'Model text Written by a model. Some sentences could not be confirmed; they are marked.'"
+  },
+  {
+   "name": "scout_general_only_in_unsupported",
+   "ok": true,
+   "detail": "'General advice, not from records'"
+  },
+  {
+   "name": "scout_notice_flagged",
+   "ok": true,
+   "detail": "'This answer did not pass the citation check twice. 2 sentences were removed. What remains is shown, '; checked 'Model text Written by a model. It failed the citation check; sentences were removed.'"
+  },
+  {
+   "name": "scout_withheld_all",
+   "ok": true,
+   "detail": "notes [\"Scout's answer did not pass the citation check twice, so none of it is shown. Records Scout read: Evidence Evidence\"], cites 2, model tag False"
+  },
+  {
+   "name": "cover_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "cover_guest_sees_signin_link",
+   "ok": true,
+   "detail": "18 cards, 18 sign-in links, 0 buttons"
+  },
+  {
+   "name": "cover_hidden_on_dismissed",
+   "ok": true,
+   "detail": "card 5i_gPa6rEr2X:F10"
+  },
+  {
+   "name": "cover_walk_has_cards",
+   "ok": true,
+   "detail": "9 public cards"
+  },
+  {
+   "name": "cover_button_on_every_card",
+   "ok": true,
+   "detail": "17 cards not dismissed, 17 buttons"
+  },
+  {
+   "name": "cover_student_hint",
+   "ok": true,
+   "detail": "'A model writes these from your CV and entries. You put them in your own words.'"
+  },
+  {
+   "name": "cover_restore_is_one_get",
+   "ok": true,
+   "detail": "[{'record_id': 'temple_pages:nrsa-senior-postdoctoral-fellowship-f33-c5432c'}]"
+  },
+  {
+   "name": "cover_busy_status",
+   "ok": true,
+   "detail": "'A model is reading the record and your CV. This takes up to two minutes\u2026' live 'A model is reading the record and your CV. This takes up to two minutes\u2026' {'focus': True, 'disabledAttr': False, 'aria': 'true', 'busy': 'true'}"
+  },
+  {
+   "name": "cover_result_card",
+   "ok": true,
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'hints': [], 'live': 'The points are ready below.'}"
+  },
+  {
+   "name": "cover_result_focus_and_announce",
+   "ok": true,
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'hints': [], 'live': 'The points are ready below.'}"
+  },
+  {
+   "name": "cover_hint_hidden_with_result",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "cover_post_sends_csrf",
+   "ok": true,
+   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', False)]"
+  },
+  {
+   "name": "cover_again_sends_again",
+   "ok": true,
+   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', False), ('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', True)]"
+  },
+  {
+   "name": "cover_sample_result_badge",
+   "ok": true,
+   "detail": "sample:sch-0001 ['Sample data']"
+  },
+  {
+   "name": "cover_consent_403_wording",
+   "ok": true,
+   "detail": "'Agree to the consent first.' #/welcome"
+  },
+  {
+   "name": "cover_quota_alert",
+   "ok": true,
+   "detail": "\"SYNTHETIC: you have used today's allowance.\""
+  },
+  {
+   "name": "cover_result_survives_redraw",
+   "ok": true,
+   "detail": "result and error kept"
+  },
+  {
+   "name": "cover_researcher_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "cover_researcher_hint",
+   "ok": true,
+   "detail": "'A model writes these from your CV, entries and the papers the record cites. You put them in your own words.' gets []"
+  },
+  {
+   "name": "cover_researcher_result",
+   "ok": true,
+   "detail": "[('grants_gov:26-519', 'walk-csrf', False)]"
+  },
+  {
+   "name": "handoff_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "handoff_button_for_signed_in",
+   "ok": true,
+   "detail": "2 kept"
+  },
+  {
+   "name": "handoff_busy_status",
+   "ok": true,
+   "detail": "A model is writing the opening paragraph. This can take up to two minutes\u2026"
+  },
+  {
+   "name": "handoff_draft_rendered",
+   "ok": true,
+   "detail": "posts [('research_development', 'walk-csrf')], polls 2"
+  },
+  {
+   "name": "handoff_error_alert",
+   "ok": true,
+   "detail": "'The draft could not be made: You have reached your limit for now. Try again later.'"
+  },
+  {
+   "name": "old_copy_gone",
+   "ok": true,
+   "detail": "landing"
+  },
+  {
+   "name": "landing_student_first",
+   "ok": true,
+   "detail": "Student chosen, Browse Temple awards present"
+  },
+  {
+   "name": "guest_banner",
+   "ok": true,
+   "detail": "on every guest screen, with the server's notice"
+  },
+  {
+   "name": "old_copy_gone_guest",
+   "ok": true,
+   "detail": "guest"
+  },
+  {
+   "name": "awards_toggle_rule",
+   "ok": true,
+   "detail": "total 360, temple_total 360: toggle hidden and the title says Temple awards"
+  },
+  {
+   "name": "tag_row_chips_44",
+   "ok": true,
+   "detail": "17 chips, shortest 44 px, page overflow 0"
+  },
+  {
+   "name": "tag_row_contained",
+   "ok": true,
+   "detail": "row scroll 2633 > client 328, page overflow 0"
+  },
+  {
+   "name": "counts_from_server",
+   "ok": true,
+   "detail": "15 chips; differ: []"
+  },
+  {
+   "name": "no_sample_in_awards",
+   "ok": true,
+   "detail": "cards with a sample id or badge: []"
+  },
+  {
+   "name": "school_two_groups",
+   "ok": true,
+   "detail": "['CST (25)', 'Open across Temple (207)']"
+  },
+  {
+   "name": "show_more",
+   "ok": true,
+   "detail": "25 cards, then more"
+  },
+  {
+   "name": "clear_filters",
+   "ok": true,
+   "detail": "cards return"
+  },
+  {
+   "name": "funding_toggle_off",
+   "ok": true,
+   "detail": "off by default"
+  },
+  {
+   "name": "focus_order_lists",
+   "ok": true,
+   "detail": "toggle > search > level > tag > card"
+  },
+  {
+   "name": "no_sample_in_funding",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "badge_on_every_sample",
+   "ok": true,
+   "detail": "50 of 50 cards badged"
+  },
+  {
+   "name": "samples_note",
+   "ok": true,
+   "detail": "sample note present"
+  },
+  {
+   "name": "guest_researcher_brief",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "guest_keep_compare_researcher",
+   "ok": true,
+   "detail": "2 kept"
+  },
+  {
+   "name": "guest_researcher_draft_is_signin",
+   "ok": true,
+   "detail": "a guest sees Sign in to draft a note to the office, not a Draft the email button"
+  },
+  {
+   "name": "guest_sample_persona_brief",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "student_fellowship_sources",
+   "ok": true,
+   "detail": "stage says: None; F leads come from ['grants_gov', 'temple_pages', 'temple_sdfa']"
+  },
+  {
+   "name": "sample_brief_not_your_cv",
+   "ok": true,
+   "detail": "the sample brief names the sample student's CV, not yours"
+  },
+  {
+   "name": "guest_keep_compare_student",
+   "ok": true,
+   "detail": "2 kept"
+  },
+  {
+   "name": "guest_student_note_is_signin",
+   "ok": true,
+   "detail": "a guest sees Sign in to draft a note to the office, and no note"
+  },
+  {
+   "name": "signed_in_new_goes_to_welcome",
+   "ok": true,
+   "detail": "http://127.0.0.1:8191/#/welcome"
+  },
+  {
+   "name": "welcome_continue_guarded",
+   "ok": true,
+   "detail": "disabled before both steps"
+  },
+  {
+   "name": "consent_text_not_clipped",
+   "ok": true,
+   "detail": "scrollable overflow 0 px"
+  },
+  {
+   "name": "public_lists_open_without_welcome",
+   "ok": true,
+   "detail": "http://127.0.0.1:8191/#/awards"
+  },
+  {
+   "name": "welcome_continue_enabled",
+   "ok": true,
+   "detail": "enabled after both steps"
+  },
+  {
+   "name": "withdraw_consent",
+   "ok": true,
+   "detail": "the account page stays and offers Agree again"
+  },
+  {
+   "name": "withdrawn_can_browse",
+   "ok": true,
+   "detail": "http://127.0.0.1:8191/#/funding"
+  },
+  {
+   "name": "consent_again",
+   "ok": true,
+   "detail": "agreeing again works"
+  },
+  {
+   "name": "delete_failure_words",
+   "ok": true,
+   "detail": "Your key is destroyed, so your data can no longer be read. Clean-up did not finish. Press Delete again to finish it."
+  },
+  {
+   "name": "delete_takes_focus",
+   "ok": true,
+   "detail": "del-word|true"
+  },
+  {
+   "name": "delete_guard",
+   "ok": true,
+   "detail": "empty disabled True, 'delet' disabled True, 'delete' enabled True"
+  },
+  {
+   "name": "delete_escape_returns_focus",
+   "ok": true,
+   "detail": "focus on del-open"
+  },
+  {
+   "name": "delete_sends_confirm_and_ends",
+   "ok": true,
+   "detail": "Your data was deleted.\n\u00d7"
+  },
+  {
+   "name": "retry_after_failed_filters_student",
+   "ok": true,
+   "detail": "2 /filters calls; list and bar back: True"
+  },
+  {
+   "name": "retry_after_failed_filters_researcher",
+   "ok": true,
+   "detail": "2 /filters calls; list and bar back: True"
+  },
+  {
+   "name": "header_one_row",
+   "ok": true,
+   "detail": "header 61 px at 360 px"
+  },
+  {
+   "name": "focus_not_under_header",
+   "ok": true,
+   "detail": "focus tops under the header: []"
+  },
+  {
+   "name": "signin_failure_lands_on_app /auth/login",
+   "ok": true,
+   "detail": "hash '#/'; banner: Sign-in is not available right now. You can still try a sample student.\n\u00d7"
+  },
+  {
+   "name": "signin_unavailable_offers_sample",
+   "ok": true,
+   "detail": "fit button 'Try a sample student'; header sign-in links 0"
+  },
+  {
+   "name": "signin_failure_lands_on_app /auth/callback",
+   "ok": true,
+   "detail": "hash '#/'; banner: Sign-in is not available right now. You can still try a sample student.\n\u00d7"
+  },
+  {
+   "name": "scoutmarks_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "scout_guest_sees_signin",
+   "ok": true,
+   "detail": "guest Scout panel"
+  },
+  {
+   "name": "scout_clean_nothing_flagged",
+   "ok": true,
+   "detail": "cites 2, notes [], checked 'Model text Written by a model; checked against the records it cites.'"
+  },
+  {
+   "name": "scout_mark_screen_reader_text",
+   "ok": true,
+   "detail": "[{'text': 'SYNTHETIC sample claim that the sample award covers travel costs.? (not confirmed by the cited record)', 'sr': '(not confirmed by the cited record)', 'glyph': '?', 'glyphHidden': 'true', 'line': 'underline', 'style': 'dotted'}]"
+  },
+  {
+   "name": "scout_mark_not_colour_only",
+   "ok": true,
+   "detail": "glyph '?', underline underline dotted"
+  },
+  {
+   "name": "scout_mark_only_matched_sentence",
+   "ok": true,
+   "detail": "1 mark"
+  },
+  {
+   "name": "scout_notice_unsupported",
+   "ok": true,
+   "detail": "'Scout could not confirm 2 sentences against the cited records. 1 underlined above, 1 listed here. Open the record before'; list ['SYNTHETIC sample claim that was cut from the text and cannot be found in it.']"
+  },
+  {
+   "name": "scout_checked_marked",
+   "ok": true,
+   "detail": "'Model text Written by a model. Some sentences could not be confirmed; they are marked.'"
+  },
+  {
+   "name": "scout_general_only_in_unsupported",
+   "ok": true,
+   "detail": "'General advice, not from records'"
+  },
+  {
+   "name": "scout_notice_flagged",
+   "ok": true,
+   "detail": "'This answer did not pass the citation check twice. 2 sentences were removed. What remains is shown, '; checked 'Model text Written by a model. It failed the citation check; sentences were removed.'"
+  },
+  {
+   "name": "scout_withheld_all",
+   "ok": true,
+   "detail": "notes [\"Scout's answer did not pass the citation check twice, so none of it is shown. Records Scout read: Evidence Evidence\"], cites 2, model tag False"
+  },
+  {
+   "name": "cover_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "cover_guest_sees_signin_link",
+   "ok": true,
+   "detail": "18 cards, 18 sign-in links, 0 buttons"
+  },
+  {
+   "name": "cover_hidden_on_dismissed",
+   "ok": true,
+   "detail": "card kodcswztsTdM:F10"
+  },
+  {
+   "name": "cover_walk_has_cards",
+   "ok": true,
+   "detail": "9 public cards"
+  },
+  {
+   "name": "cover_button_on_every_card",
+   "ok": true,
+   "detail": "17 cards not dismissed, 17 buttons"
+  },
+  {
+   "name": "cover_student_hint",
+   "ok": true,
+   "detail": "'A model writes these from your CV and entries. You put them in your own words.'"
+  },
+  {
+   "name": "cover_restore_is_one_get",
+   "ok": true,
+   "detail": "[{'record_id': 'temple_pages:nrsa-senior-postdoctoral-fellowship-f33-c5432c'}]"
+  },
+  {
+   "name": "cover_busy_status",
+   "ok": true,
+   "detail": "'A model is reading the record and your CV. This takes up to two minutes\u2026' live 'A model is reading the record and your CV. This takes up to two minutes\u2026' {'focus': True, 'disabledAttr': False, 'aria': 'true', 'busy': 'true'}"
+  },
+  {
+   "name": "cover_result_card",
+   "ok": true,
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'hints': [], 'live': 'The points are ready below.'}"
+  },
+  {
+   "name": "cover_result_focus_and_announce",
+   "ok": true,
+   "detail": "{'tag': 'Model text', 'copy': True, 'items': 3, 'focusSummary': True, 'label': 'Points again', 'hints': [], 'live': 'The points are ready below.'}"
+  },
+  {
+   "name": "cover_hint_hidden_with_result",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "cover_post_sends_csrf",
+   "ok": true,
+   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', False)]"
+  },
+  {
+   "name": "cover_again_sends_again",
+   "ok": true,
+   "detail": "[('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', False), ('temple_pages:nrsa-individual-predoctoral-fellowship-f31-c5432c', 'walk-csrf', True)]"
+  },
+  {
+   "name": "cover_sample_result_badge",
+   "ok": true,
+   "detail": "sample:sch-0001 ['Sample data']"
+  },
+  {
+   "name": "cover_consent_403_wording",
+   "ok": true,
+   "detail": "'Agree to the consent first.' #/welcome"
+  },
+  {
+   "name": "cover_quota_alert",
+   "ok": true,
+   "detail": "\"SYNTHETIC: you have used today's allowance.\""
+  },
+  {
+   "name": "cover_result_survives_redraw",
+   "ok": true,
+   "detail": "result and error kept"
+  },
+  {
+   "name": "cover_researcher_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "cover_researcher_hint",
+   "ok": true,
+   "detail": "'A model writes these from your CV, entries and the papers the record cites. You put them in your own words.' gets []"
+  },
+  {
+   "name": "cover_researcher_result",
+   "ok": true,
+   "detail": "[('grants_gov:26-519', 'walk-csrf', False)]"
+  },
+  {
+   "name": "handoff_brief_built",
+   "ok": true,
+   "detail": "status done"
+  },
+  {
+   "name": "handoff_button_for_signed_in",
+   "ok": true,
+   "detail": "2 kept"
+  },
+  {
+   "name": "handoff_busy_status",
+   "ok": true,
+   "detail": "A model is writing the opening paragraph. This can take up to two minutes\u2026"
+  },
+  {
+   "name": "handoff_draft_rendered",
+   "ok": true,
+   "detail": "posts [('research_development', 'walk-csrf')], polls 2"
+  },
+  {
+   "name": "handoff_error_alert",
+   "ok": true,
+   "detail": "'The draft could not be made: You have reached your limit for now. Try again later.'"
+  },
+  {
+   "name": "no_dead_modules",
+   "ok": true,
+   "detail": "requests: []"
+  },
+  {
+   "name": "targets_44_every_state",
+   "ok": true,
+   "detail": "0 targets under 44 px: []"
+  },
+  {
+   "name": "no_sideways_scroll",
+   "ok": true,
+   "detail": "[]"
+  },
+  {
+   "name": "axe_clean_every_state",
+   "ok": true,
+   "detail": "[]"
+  }
+ ],
+ "errors": [],
+ "states": [
+  {
+   "tag": "w1280",
+   "name": "landing",
+   "shot": "w1280-landing.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "landing-guest",
+   "shot": "w1280-landing-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "awards",
+   "shot": "w1280-awards.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "awards-school",
+   "shot": "w1280-awards-school.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "awards-empty",
+   "shot": "w1280-awards-empty.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "funding",
+   "shot": "w1280-funding.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Research funding \u2014 Perch",
+   "hash": "#/funding",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "funding-temple",
+   "shot": "w1280-funding-temple.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Research funding \u2014 Perch",
+   "hash": "#/funding",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "samples",
+   "shot": "w1280-samples.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Sample records \u2014 Perch",
+   "hash": "#/samples/student",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "brief-researcher",
+   "shot": "w1280-brief-researcher.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/YSEo_1VaMmgl/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "brief-researcher-export",
+   "shot": "w1280-brief-researcher-export.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/YSEo_1VaMmgl/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "brief-researcher-profile",
+   "shot": "w1280-brief-researcher-profile.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/YSEo_1VaMmgl/profile",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "brief-researcher-scout",
+   "shot": "w1280-brief-researcher-scout.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/YSEo_1VaMmgl/scout",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "brief-researcher-compare",
+   "shot": "w1280-brief-researcher-compare.png",
+   "small": [
+    {
+     "el": "Research Development contacts on research.temple.e",
+     "w": 413,
+     "h": 19,
+     "under24": true
+    },
+    {
+     "el": "Find your research administrator",
+     "w": 212,
+     "h": 17,
+     "under24": true
+    }
+   ],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/YSEo_1VaMmgl/compare",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "brief-student",
+   "shot": "w1280-brief-student.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/AGZM5CaMivfK/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "brief-student-export",
+   "shot": "w1280-brief-student-export.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/AGZM5CaMivfK/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "brief-student-profile",
+   "shot": "w1280-brief-student-profile.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/AGZM5CaMivfK/profile",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "brief-student-scout",
+   "shot": "w1280-brief-student-scout.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/AGZM5CaMivfK/scout",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "brief-student-compare",
+   "shot": "w1280-brief-student-compare.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/AGZM5CaMivfK/compare",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "welcome",
+   "shot": "w1280-welcome.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Welcome \u2014 Perch",
+   "hash": "#/welcome",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "after-welcome",
+   "shot": "w1280-after-welcome.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "my-perch",
+   "shot": "w1280-my-perch.png",
+   "small": [],
+   "overflow": 0,
+   "title": "My Perch \u2014 Perch",
+   "hash": "#/me",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "account",
+   "shot": "w1280-account.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "withdraw-dialog",
+   "shot": "w1280-withdraw-dialog.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "account-withdrawn",
+   "shot": "w1280-account-withdrawn.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "delete-failed",
+   "shot": "w1280-delete-failed.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "delete-dialog",
+   "shot": "w1280-delete-dialog.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "after-delete",
+   "shot": "w1280-after-delete.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "student-list-error",
+   "shot": "w1280-student-list-error.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "researcher-list-error",
+   "shot": "w1280-researcher-list-error.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Research funding \u2014 Perch",
+   "hash": "#/funding",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "signin-unavailable",
+   "shot": "w1280-signin-unavailable.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "scout-guest",
+   "shot": "w1280-scout-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/NPMQlNb4qg3t/scout",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "scout-clean",
+   "shot": "w1280-scout-clean.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/NPMQlNb4qg3t/scout",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "scout-unsupported",
+   "shot": "w1280-scout-unsupported.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/NPMQlNb4qg3t/scout",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "scout-flagged",
+   "shot": "w1280-scout-flagged.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/NPMQlNb4qg3t/scout",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "scout-withheld_all",
+   "shot": "w1280-scout-withheld_all.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/NPMQlNb4qg3t/scout",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-guest",
+   "shot": "w1280-cover-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/5i_gPa6rEr2X/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-button",
+   "shot": "w1280-cover-button.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/5i_gPa6rEr2X/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-result",
+   "shot": "w1280-cover-result.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/5i_gPa6rEr2X/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-sample",
+   "shot": "w1280-cover-sample.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/5i_gPa6rEr2X/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-consent",
+   "shot": "w1280-cover-consent.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/5i_gPa6rEr2X/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-error",
+   "shot": "w1280-cover-error.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/5i_gPa6rEr2X/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-researcher-button",
+   "shot": "w1280-cover-researcher-button.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/6oDaGLtCOSfo/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "cover-researcher-result",
+   "shot": "w1280-cover-researcher-result.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/6oDaGLtCOSfo/routes",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "handoff-ready",
+   "shot": "w1280-handoff-ready.png",
+   "small": [
+    {
+     "el": "Research Development contacts on research.temple.e",
+     "w": 413,
+     "h": 19,
+     "under24": true
+    },
+    {
+     "el": "Find your research administrator",
+     "w": 212,
+     "h": 17,
+     "under24": true
+    }
+   ],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/qx_CEsV8Xesv/compare",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "handoff-busy",
+   "shot": "w1280-handoff-busy.png",
+   "small": [
+    {
+     "el": "Research Development contacts on research.temple.e",
+     "w": 413,
+     "h": 19,
+     "under24": true
+    },
+    {
+     "el": "Find your research administrator",
+     "w": 212,
+     "h": 17,
+     "under24": true
+    }
+   ],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/qx_CEsV8Xesv/compare",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "handoff-draft",
+   "shot": "w1280-handoff-draft.png",
+   "small": [
+    {
+     "el": "Research Development contacts on research.temple.e",
+     "w": 413,
+     "h": 19,
+     "under24": true
+    },
+    {
+     "el": "Find your research administrator",
+     "w": 212,
+     "h": 17,
+     "under24": true
+    }
+   ],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/qx_CEsV8Xesv/compare",
+   "axe": []
+  },
+  {
+   "tag": "w1280",
+   "name": "handoff-error",
+   "shot": "w1280-handoff-error.png",
+   "small": [
+    {
+     "el": "Research Development contacts on research.temple.e",
+     "w": 413,
+     "h": 19,
+     "under24": true
+    },
+    {
+     "el": "Find your research administrator",
+     "w": 212,
+     "h": 17,
+     "under24": true
+    }
+   ],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/qx_CEsV8Xesv/compare",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "landing",
+   "shot": "w360-landing.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "landing-guest",
+   "shot": "w360-landing-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "awards",
+   "shot": "w360-awards.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "awards-school",
+   "shot": "w360-awards-school.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "awards-empty",
+   "shot": "w360-awards-empty.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "funding",
+   "shot": "w360-funding.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Research funding \u2014 Perch",
+   "hash": "#/funding",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "funding-temple",
+   "shot": "w360-funding-temple.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Research funding \u2014 Perch",
+   "hash": "#/funding",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "samples",
+   "shot": "w360-samples.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Sample records \u2014 Perch",
+   "hash": "#/samples/student",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "brief-researcher",
+   "shot": "w360-brief-researcher.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/8dFrGcDMKtML/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "brief-researcher-export",
+   "shot": "w360-brief-researcher-export.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/8dFrGcDMKtML/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "brief-researcher-profile",
+   "shot": "w360-brief-researcher-profile.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/8dFrGcDMKtML/profile",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "brief-researcher-scout",
+   "shot": "w360-brief-researcher-scout.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/8dFrGcDMKtML/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "brief-researcher-compare",
+   "shot": "w360-brief-researcher-compare.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/8dFrGcDMKtML/compare",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "brief-student",
+   "shot": "w360-brief-student.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/g2iyvaZc4Q6o/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "brief-student-export",
+   "shot": "w360-brief-student-export.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/g2iyvaZc4Q6o/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "brief-student-profile",
+   "shot": "w360-brief-student-profile.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/g2iyvaZc4Q6o/profile",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "brief-student-scout",
+   "shot": "w360-brief-student-scout.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/g2iyvaZc4Q6o/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "brief-student-compare",
+   "shot": "w360-brief-student-compare.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/g2iyvaZc4Q6o/compare",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "welcome",
+   "shot": "w360-welcome.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Welcome \u2014 Perch",
+   "hash": "#/welcome",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "after-welcome",
+   "shot": "w360-after-welcome.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "my-perch",
+   "shot": "w360-my-perch.png",
+   "small": [],
+   "overflow": 0,
+   "title": "My Perch \u2014 Perch",
+   "hash": "#/me",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "account",
+   "shot": "w360-account.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "withdraw-dialog",
+   "shot": "w360-withdraw-dialog.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "account-withdrawn",
+   "shot": "w360-account-withdrawn.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "delete-failed",
+   "shot": "w360-delete-failed.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "delete-dialog",
+   "shot": "w360-delete-dialog.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Account and data \u2014 Perch",
+   "hash": "#/account",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "after-delete",
+   "shot": "w360-after-delete.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "student-list-error",
+   "shot": "w360-student-list-error.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Temple awards \u2014 Perch",
+   "hash": "#/awards",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "researcher-list-error",
+   "shot": "w360-researcher-list-error.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Research funding \u2014 Perch",
+   "hash": "#/funding",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "signin-unavailable",
+   "shot": "w360-signin-unavailable.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Perch",
+   "hash": "#/",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "scout-guest",
+   "shot": "w360-scout-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/_0lQ4T4jZfne/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "scout-clean",
+   "shot": "w360-scout-clean.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/_0lQ4T4jZfne/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "scout-unsupported",
+   "shot": "w360-scout-unsupported.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/_0lQ4T4jZfne/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "scout-flagged",
+   "shot": "w360-scout-flagged.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/_0lQ4T4jZfne/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "scout-withheld_all",
+   "shot": "w360-scout-withheld_all.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/_0lQ4T4jZfne/scout",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-guest",
+   "shot": "w360-cover-guest.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/kodcswztsTdM/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-button",
+   "shot": "w360-cover-button.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/kodcswztsTdM/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-result",
+   "shot": "w360-cover-result.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/kodcswztsTdM/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-sample",
+   "shot": "w360-cover-sample.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/kodcswztsTdM/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-consent",
+   "shot": "w360-cover-consent.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/kodcswztsTdM/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-error",
+   "shot": "w360-cover-error.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Your options \u2014 Perch",
+   "hash": "#/brief/kodcswztsTdM/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-researcher-button",
+   "shot": "w360-cover-researcher-button.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/_THFM8OQvmZB/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "cover-researcher-result",
+   "shot": "w360-cover-researcher-result.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/_THFM8OQvmZB/routes",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "handoff-ready",
+   "shot": "w360-handoff-ready.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/lzBNSzBtRtlg/compare",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "handoff-busy",
+   "shot": "w360-handoff-busy.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/lzBNSzBtRtlg/compare",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "handoff-draft",
+   "shot": "w360-handoff-draft.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/lzBNSzBtRtlg/compare",
+   "axe": []
+  },
+  {
+   "tag": "w360",
+   "name": "handoff-error",
+   "shot": "w360-handoff-error.png",
+   "small": [],
+   "overflow": 0,
+   "title": "Axel Kohlmeyer \u2014 Perch",
+   "hash": "#/brief/lzBNSzBtRtlg/compare",
+   "axe": []
+  }
+ ],
+ "plant": null
+}

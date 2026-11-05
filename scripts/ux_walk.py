@@ -985,6 +985,84 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await page.context.close()
 
 
+async def flow_handoff(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
+    """S48: the researcher hand-off as a worker job. A guest brief with two kept leads, a stubbed signed-in
+    session, and the hand-off routes stubbed: POST answers 202 with a poll, the first poll is pending and the
+    second brings a SYNTHETIC draft; a second Draft again gets a 429. Checks the busy status (role=status),
+    the draft with its "never sends it" line and the error (role=alert); targets and axe come from the walk's totals."""
+    page = await new_page(browser, w, tag, view, base)
+    await page.goto(base + "/")
+    await page.click("[data-key=guest-start]")
+    await page.wait_for_selector("[data-key=guest-banner]")
+    await page.click("[data-key=seg-r]")
+    await page.fill("#q", AUTHOR)
+    await page.click(".searchbox button[type=submit]")
+    await page.wait_for_selector("[data-key=build], .cand button", timeout=60_000)
+    if not await page.locator("[data-key=build]").count():
+        await page.click(".cand button")
+    await page.click("[data-key=build]")
+    status = await build_wait(page)
+    w.check("handoff_brief_built", status == "done", f"status {status}")
+    bid = await page.evaluate("decodeURIComponent(location.hash.split('/')[2])")
+    await page.evaluate("location.hash = location.hash.replace(/\\/[a-z]+$/, '/routes')")
+    await page.wait_for_selector("#panel .btn.keep")
+    kept = await keep_two(page)
+    seen: dict = {"posts": [], "gets": [], "fail": False}
+    jid = "44444444-4444-4444-4444-444444444444"
+
+    async def session(route: Route) -> None:
+        await route.fulfill(json={"signed_in": True, "guest": False, "roles": ["researcher"], "audience": "researcher",
+                                  "csrf": "walk-csrf", "display_name": "Sam Example Walker", "expires_at": 9999999999,
+                                  "consent": {"required": False, "current_version": 1, "accepted_version": 1,
+                                              "provider_name": "SYNTHETIC Provider", "text": CONSENT},
+                                  "needs_welcome": False})
+
+    async def handoff(route: Route) -> None:
+        req = route.request
+        if req.method == "POST":
+            body = json.loads(req.post_data or "{}")
+            seen["posts"].append((body.get("office"), req.headers.get("x-csrf-token")))
+            if seen["fail"]:
+                return await route.fulfill(status=429, json={"detail": {"error": "quota_exceeded",
+                                           "message": "SYNTHETIC: you have used today's allowance.", "usage": {}}})
+            return await route.fulfill(status=202, json={"job_id": jid, "status": "queued", "poll": "x"})
+        seen["gets"].append(req.url)
+        if len(seen["gets"]) % 2 == 1:
+            return await route.fulfill(json={"result": None, "job": {"id": jid, "state": "running"}})
+        office = dict(urllib.parse.parse_qsl(req.url.split("?", 1)[1])).get("office")
+        draft = {"office": {"key": office, "name": "SYNTHETIC Office", "url": "https://example.invalid/"}, "to": "",
+                 "subject": "SYNTHETIC: leads to discuss", "flagged": False, "model": "SYNTHETIC model", "lead_ids": ["x1", "x2"],
+                 "cited_ids": [], "opening_by": "model",
+                 "body": "SYNTHETIC opening paragraph.\n\n- SYNTHETIC lead one\n- SYNTHETIC lead two\n\nThis draft is a sample."}
+        await route.fulfill(json={"result": draft, "job": {"id": jid, "state": "succeeded"}})
+    await page.route("**/auth/session", session)
+    await page.route(re.compile(r".*/briefs/[^/?]+/handoff(\?.*)?$"), handoff)
+    await page.goto(base + "/")
+    await page.evaluate("(id) => { location.hash = '#/brief/' + encodeURIComponent(id) + '/compare'; }", bid)
+    await page.wait_for_selector("[data-key=handoff-make]", timeout=20_000)
+    w.check("handoff_button_for_signed_in", kept > 0 and await page.locator("[data-key=handoff-signin]").count() == 0, f"{kept} kept")
+    await w.snap(page, tag, "handoff-ready")
+    await page.locator("[data-key=handoff-make]").click()
+    await page.wait_for_selector(".handoff [role=status]", timeout=5000)
+    busy = await page.locator(".handoff [role=status]").inner_text()
+    w.check("handoff_busy_status", busy.startswith("A model is writing the opening paragraph. This can take up to two minutes")
+            and await page.locator("[data-key=handoff-make]").is_disabled(), busy)
+    await w.snap(page, tag, "handoff-busy", full=False)
+    await page.wait_for_selector("[data-key=handoff-subject]", timeout=20_000)
+    sent = await page.locator(".handoff").inner_text()
+    w.check("handoff_draft_rendered", "Perch never sends it" in sent and len(seen["gets"]) == 2
+            and await page.locator("[data-key=handoff-body]").input_value() != "" and seen["posts"][0][1] == "walk-csrf",
+            f"posts {seen['posts']}, polls {len(seen['gets'])}")
+    await w.snap(page, tag, "handoff-draft")
+    seen["fail"] = True
+    await page.locator("[data-key=handoff-make]").click()
+    await page.wait_for_selector(".handoff [role=alert]", timeout=10_000)
+    alert = await page.locator(".handoff [role=alert]").inner_text()
+    w.check("handoff_error_alert", "The draft could not be made" in alert, repr(alert))
+    await w.snap(page, tag, "handoff-error", full=False)
+    await page.context.close()
+
+
 async def show(page: Page, selector: str) -> None:
     """Scroll a card to the top of the view, so the picture shows it and not the top of the page."""
     await page.evaluate("(s) => document.querySelector(s).closest('li.card').scrollIntoView({ block: 'start' })", selector)
@@ -1043,7 +1121,8 @@ async def stub_cover(page: Page, bid: str, titles: dict, audience: str) -> dict:
 
 FLOWS = {"landing": flow_landing, "awards": flow_awards, "funding": flow_funding, "samples": flow_samples,
          "briefs": flow_briefs, "mocked": flow_mocked, "retry": flow_retry, "header": flow_header,
-         "signinfail": flow_signinfail, "scoutmarks": flow_scoutmarks, "cover": flow_cover}
+         "signinfail": flow_signinfail, "scoutmarks": flow_scoutmarks, "cover": flow_cover,
+         "handoff": flow_handoff}
 
 
 async def main(a: argparse.Namespace) -> int:
