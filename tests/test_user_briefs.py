@@ -568,6 +568,10 @@ def test_a_guest_brief_in_redis_is_sealed(pg_clean, tmp_path, web_pool, monkeypa
         assert needle not in everything
     # another guest session cannot open it, and the value is bound to its key
     assert load_brief(None, r, _session(None, "g-other"), bid) is None
+    # S50 C24: a plain JSON value is never read as a brief
+    from perch.user.briefs import open_guest
+
+    assert open_guest(r, gh, "slot", got.model_dump_json()) is None
     r.delete(f"perch:gsess:{gh}:bkey")
     assert load_brief(None, r, s, bid) is None
     r.flushdb()

@@ -460,8 +460,8 @@ def seal_guest(r: redis.Redis, gh: str, slot: str, sb: StoredBrief) -> str:
 
 def open_guest(r: redis.Redis, gh: str, slot: str, raw: str | bytes | None
                ) -> StoredBrief | None:
-    """The brief in a sealed value, or None when it is missing or cannot be opened (its key
-    expired). A plain JSON value written before S49 is still read for its last hour."""
+    """The brief in a sealed value, or None when it is missing, not sealed, or cannot be
+    opened (its key expired). Plain values from before S49 expired long ago (S50 C24)."""
     import base64
 
     from cryptography.exceptions import InvalidTag
@@ -471,7 +471,7 @@ def open_guest(r: redis.Redis, gh: str, slot: str, raw: str | bytes | None
         return None
     text = raw.decode() if isinstance(raw, bytes) else raw
     if not text.startswith(SEALED):
-        return StoredBrief.model_validate_json(text)
+        return None
     key = _guest_key(r, gh)
     if key is None:
         return None
