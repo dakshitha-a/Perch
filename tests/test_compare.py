@@ -80,6 +80,22 @@ def test_compare_and_scout_show_the_cards_match():
     assert "85" not in summarise("explain_fit", {"fit": 85, "match_on_card": None})
 
 
+def test_a_row_holds_the_title_alone_and_the_number_apart():
+    """S49 V4: `title` is the title; `number` is the opportunity number, or None."""
+    from dataclasses import asdict
+
+    from perch.compare import route_a_row
+    from perch.schemas import Lead
+
+    lead = Lead(id="b:1", source="grants_gov", source_url="u", fetched_at=T, brief_id="b",
+                route="A", record_id="grants_gov:SYN-1", rank=1)
+    row = route_a_row(lead, opp(), date(2026, 10, 29))
+    assert (row.title, row.number) == ("SYNTHETIC", "SYN-1")
+    assert asdict(row)["number"] == "SYN-1"
+    gone = route_a_row(lead, None, date(2026, 10, 29))
+    assert gone.number is None and gone.title == "grants_gov:SYN-1"
+
+
 def test_record_phrases_read_lower_case_mid_sentence():
     """R17: "U.S. National Science Foundation; Proposals accepted anytime; award size ...",
     "Still needed: A transcript; An essay", "an award ceiling of Up to $250,000"."""

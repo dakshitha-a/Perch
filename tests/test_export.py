@@ -223,3 +223,27 @@ def test_the_researcher_export_carries_the_era_note_once_under_the_grants_headin
 def test_html_export_wraps_long_urls_on_a_phone() -> None:
     """A plain-text DOI or record URL in a Cites line must wrap, not scroll the page sideways."""
     assert "overflow-wrap: anywhere" in ex.CSS.split("body {", 1)[1].split("}", 1)[0]
+
+
+def test_kept_temple_internal_leads_get_their_own_section_in_compare_and_export():
+    """Temple's own funding is never listed among the grants (S49 M9)."""
+    from perch.compare import compare
+    from perch.store.sqlite import SQLiteRepository
+
+    brief, leads, opps, works = _inputs()
+    leads[2].group = "temple_internal"
+    for x in leads:
+        x.status = "kept"
+    with SQLiteRepository() as repo:
+        repo.upsert(opps.values())
+        rows = compare(brief, leads, repo, "kept")
+    assert [(r.number, r.group) for r in rows] == [("SYN-1", None), ("SYN-2", None),
+                                                   ("SYN-3", "temple_internal")]
+    assert rows[2].cells["office"].text == "Named on the call’s page"
+    md = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, rows))
+    head, _, internal = md.partition("### Temple internal")
+    assert "Grant: SYN-1" in head and "Grant: SYN-3" not in head
+    assert "Temple internal: SYN-3" in internal and "Grant: SYN-1" not in internal
+    # with no internal lead there is no empty section
+    plain = ex.to_markdown(ex.blocks(brief, None, leads, opps, {}, works, rows[:2]))
+    assert "Temple internal" not in plain.replace("Temple internal funding", "")
