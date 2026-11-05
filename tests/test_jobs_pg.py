@@ -315,3 +315,34 @@ def test_brief_handler_runs_by_id_and_worker_row_is_written(clean):
     assert st.state == JobState.SUCCEEDED
     assert st.result_ref == "brief:b9"
     assert seen["id"] == "b9"
+
+
+def test_a_database_error_in_finish_does_not_end_the_job_thread(clean, monkeypatch):
+    """S49 B3: an OperationalError from the terminal write used to escape `execute` and end
+    the thread for good while the heartbeat row stayed fresh."""
+    def h(ctx):
+        if ctx.payload["author_id"] == "A1":
+            raise RetryableError("provider_error")
+        return "ok"
+
+    reg(monkeypatch, "precache", h)
+    calls = []
+
+    def broken(self, ctx, code, permanent):
+        calls.append(ctx.job_id)
+        raise psycopg.OperationalError("connection lost")
+
+    monkeypatch.setattr(PostgresRunner, "finish_error", broken)
+    r = mk(clean["worker"])
+    first = r.submit("precache", pre(1), None, "k1")
+    stop, t = start(r, ["precache"], 1)
+    try:
+        end = time.monotonic() + 10
+        while not calls and time.monotonic() < end:
+            time.sleep(0.05)
+        second = r.submit("precache", pre(2), None, "k2")
+        assert r.wait(second, 10).state == JobState.SUCCEEDED
+    finally:
+        stop.set()
+        t.join()
+    assert calls == [first]

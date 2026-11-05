@@ -583,7 +583,12 @@ class PostgresRunner(JobRunner):
                     wake.wait(self.timing.poll_s)
                     wake.clear()
                     continue
-                self.execute(row, owner)
+                try:
+                    self.execute(row, owner)
+                except Exception as e:  # noqa: BLE001 - a database blip must not end the thread
+                    # (S49 B3): the job's lease runs out and the reaper retries it.
+                    log.warning("execute failed err=%s", type(e).__name__)
+                    stop.wait(self.timing.poll_s)
 
         def maintain() -> None:
             last_reap = 0.0
