@@ -1583,3 +1583,22 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
 /* The banner is one 44 px row: its link is the target, no padding above or below it. */
 .banner p.banner-line { padding-top: 2px; padding-bottom: 2px; }
 #acct-slot { align-self: center; }
+
+/* ---------- S49 A7, A8: the CV card on the pick screen; rerun ---------- */
+.cv-box { gap: 10px; }
+.cv-box .section-title { font-size: 17px; }
+.cv-box > .hint { margin-top: -4px; }
+.cv-docs { display: grid; gap: 4px; }
+.cv-box .file-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cv-box .file-input:focus-visible + label { outline: 3px solid var(--focus); outline-offset: 2px; }
+.cv-box label.btn[aria-disabled="true"] { opacity: .65; cursor: progress; }
+.cv-paste > summary { min-height: 44px; font-size: var(--fs-14); font-weight: 600; color: var(--ink-2); }
+.cv-paste[open] { display: grid; gap: 8px; }
+.cv-paste textarea { width: 100%; }
+.cv-paste .btn { justify-self: start; }
+.back-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+/* The candidate's meta line is plain text, so the ORCID link is a link inside a sentence. */
+.cand-meta2 { display: block; }
+/* In the 760 px form column the Build box sits under the title, on the same left edge. */
+body[data-screen="form"] .build-box { justify-items: start; max-width: none; width: 100%; }
+body[data-screen="form"] .explain-check { min-height: 44px; }

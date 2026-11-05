@@ -181,6 +181,12 @@ function route() {
     window.scrollTo(0, 0);
     return;
   }
+  if (parts[0] === "rerun" && parts[1]) {
+    leaveBrief();
+    screen("form");
+    rerun(decodeURIComponent(parts[1]));
+    return;
+  }
   if (parts[0] === "brief" && parts[1]) {
     const id = decodeURIComponent(parts[1]);
     screen("brief");
@@ -549,9 +555,13 @@ function renderPick() {
       : n === 1 && !atTemple(F.candidates[0]) ? "This profile does not list Temple University. An ID finds anyone, so check that it is the right person. Nothing runs until you pick it."
         : `${f.plural(n, "Temple author", "Temple authors")} in OpenAlex ${n === 1 ? "matches" : "match"}. Nothing runs until you pick one.`;
   const back = c
-    ? h("button", { class: "back btn quiet", type: "button", "data-key": "unpick",
-      onclick: () => { F.picked = null; renderPick(); const t = $("#pick-title"); if (t) t.focus(); } },
-    icon("back"), h("span", { text: "Back to the matches" }))
+    ? h("div", { class: "back-row" },
+      h("button", { class: "back btn quiet", type: "button", "data-key": "unpick",
+        onclick: () => { F.picked = null; renderPick(); const t = $("#pick-title"); if (t) t.focus(); } },
+      icon("back"), h("span", { text: "Back to the matches" })),
+      // D4: a signed-in user may start over with another person.
+      S.session.signed_in ? h("a", { class: "quiet-link", "data-key": "choose-else", href: "#/start" },
+        h("span", { text: "Choose someone else" })) : null)
     : h("a", { class: "back", href: "#/start" }, icon("back"), h("span", { text: "Back" }));
   const again = c ? null : h("form", { role: "search", onsubmit: (e) => { e.preventDefault(); search(); } },
     h("label", { for: "q", class: "sr-only", text: "Find a Temple researcher" }),
@@ -574,6 +584,7 @@ function renderPick() {
     note ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: note })) : null,
     F.busy ? h("div", { class: "shimmer-card" }) : null,
     list.length ? h("ul", { class: "cand-list" }, list.map((x, i) => candidateCard(x, i === 0 && !c && n > 1))) : null,
+    c ? cvBox() : null,
     c ? contextPanel(c) : null));
 }
 
@@ -639,27 +650,97 @@ function contextPanel(c) {
         h("label", { class: "big", for: "ctx-min", text: "Leave out awards smaller than (US dollars)" }),
         h("input", { id: "ctx-min", type: "number", inputmode: "numeric", min: "0", step: "any", placeholder: "Any",
           value: F.minAmount, "aria-describedby": "min-hint", oninput: (e) => { F.minAmount = e.target.value; } }),
-        h("p", { class: "note", id: "min-hint", text: "Compared with the award ceiling in each record. Records that state no amount stay in." })),
-      cvBox())));
+        h("p", { class: "note", id: "min-hint", text: "Compared with the award ceiling in each record. Records that state no amount stay in." })))));
 }
 
-// A signed-in researcher can attach stored documents; a guest is pointed to sign-in.
-
+// The researcher's CV card (S49 D3, M4): on the pick screen under the picked person, not
+// folded. A signed-in user ticks stored documents, uploads a file or pastes text; a guest is
+// pointed to sign-in; a signed-out visitor sees nothing.
 function cvBox() {
   const F = S.find;
-  if (S.session.guest) return h("div", { class: "box" }, h("p", { class: "note", text: "Sign in to add your CV." }));
-  if (!S.session.signed_in || api.mode === "replay") return null;
-  const box = h("div", { class: "box" }, h("h3", { class: "big", text: "Your stored documents" }));
-  const draw = () => fill(box, h("h3", { class: "big", text: "Your stored documents" }),
-    F.docs && F.docs.length ? F.docs.map((d) => h("label", { class: "check" },
-      h("input", { type: "checkbox", checked: F.docIds.has(d.id), onchange: (e) => { if (e.target.checked) F.docIds.add(d.id); else F.docIds.delete(d.id); } }),
-      h("span", { text: `${d.name || d.label || d.kind} (${d.kind})` })))
-      : h("p", { class: "note", text: F.docs ? "You have no stored documents. Add a CV on the Check my fit page." : "Loading your documents" }));
+  if (api.mode === "replay" || (!S.session.signed_in && !S.session.guest)) return null;
+  const head = () => [h("h2", { class: "section-title", id: "cv-h", text: "Add your CV (optional)" })];
+  const box = h("section", { class: "box cv-box fade-in", "aria-labelledby": "cv-h" });
+  if (S.session.guest) {
+    fill(box, ...head(), h("p", { class: "note" }, h("span", { text: "Sign in to add your CV. " }),
+      h("a", { href: signInHref(), text: "Sign in" })));
+    return box;
+  }
+  const status = h("p", { class: "hint cv-status", role: "status" });
+  // A new document is ticked: it is what the user just added for this brief.
+  async function save(body) {
+    F.cvBusy = true; draw();
+    const before = new Set((F.docs || []).map((d) => d.id));
+    try {
+      await api.addDoc({ kind: "cv", ...body }, "researcher");
+      F.docs = await api.docs("researcher");
+      for (const d of F.docs) if (!before.has(d.id)) F.docIds.add(d.id);
+      F.cvText = "";
+      status.textContent = "Saved. It is ticked for this brief.";
+      announce("CV saved.");
+    } catch (e) {
+      status.textContent = e.code === "consent_required" ? "Agree to the consent first, on your account page." : e.message;
+    }
+    F.cvBusy = false; draw();
+  }
+  function upload(file) {
+    if (!file) return;
+    const rd = new FileReader();
+    rd.onload = () => save({ filename: file.name, data: String(rd.result).split(",")[1] || "" });
+    rd.readAsDataURL(file);
+  }
+  function draw() {
+    const docs = F.docs && F.docs.length ? h("div", { class: "cv-docs" }, F.docs.map((d) => h("label", { class: "check" },
+      h("input", { type: "checkbox", checked: F.docIds.has(d.id),
+        onchange: (e) => { if (e.target.checked) F.docIds.add(d.id); else F.docIds.delete(d.id); } }),
+      h("span", { text: `${d.name || d.label || d.kind} (${d.kind})` }))))
+      : h("p", { class: "note", text: F.docs ? "No stored documents yet." : "Loading your documents" });
+    const text = h("textarea", { id: "r-cv-text", rows: 6, maxlength: 60000, value: F.cvText || "",
+      oninput: (e) => { F.cvText = e.target.value; } });
+    fill(box, ...head(),
+      h("p", { class: "hint", text: "Used for cover-letter points and Scout. Stored encrypted. Contact details are blanked before a model reads it." }),
+      docs,
+      h("div", { class: "file-row" },
+        h("input", { id: "r-cv-file", class: "sr-only file-input", type: "file", accept: ".pdf,.docx,.txt,.md", disabled: F.cvBusy,
+          onchange: (e) => upload(e.target.files[0]) }),
+        h("label", { class: "btn", for: "r-cv-file", "aria-disabled": F.cvBusy ? "true" : null },
+          icon("paper"), h("span", { text: F.cvBusy ? "Saving" : "Upload a file" }))),
+      h("details", { class: "cv-paste", open: Boolean(F.cvText) },
+        h("summary", { "data-key": "cv-paste", text: "Paste text instead" }),
+        h("label", { class: "sr-only", for: "r-cv-text", text: "Your CV as text" }),
+        text,
+        h("button", { class: "btn", type: "button", "data-key": "cv-save", disabled: F.cvBusy,
+          onclick: () => { if ((F.cvText || "").trim()) save({ text: F.cvText, filename: "cv.txt" }); } },
+        h("span", { text: "Save my CV" }))),
+      status);
+  }
   draw();
   if (!F.docs) {
-    api.docs("researcher").then((d) => { F.docs = d; draw(); }).catch((e) => { F.docs = []; fill(box, h("p", { class: "note", text: e.code === "consent_required" ? "Agree to the consent first." : e.message })); });
+    api.docs("researcher").then((d) => { F.docs = d; draw(); })
+      .catch((e) => { F.docs = []; draw(); status.textContent = e.code === "consent_required" ? "Agree to the consent first, on your account page." : e.message; });
   }
   return box;
+}
+
+// "Change details and run again" (D4): load a brief and go back to its form with its details
+// filled in. A student brief goes to the start screen, which shows the stored CV and entries.
+async function rerun(id) {
+  fill(main(), h("div", { class: "loading" }, owl("work", "owl-md"), h("p", { text: "Opening the brief's details" })));
+  let d;
+  try { d = await api.brief(id); } catch (e) { renderMissing(id, e.message); return; }
+  if (!location.hash.startsWith("#/rerun/")) return; // the user went elsewhere meanwhile
+  if (isStudent(d)) { goReplace("#/student"); return; }
+  const r = d.researcher || {};
+  const o = (d.brief && d.brief.options) || {};
+  const cand = { id: r.id, display_name: r.display_name, institutions: r.institutions || [], orcid: r.orcid,
+    works_count: r.works_count, cited_by_count: r.cited_by_count, topics: [] };
+  const list = (v) => (Array.isArray(v) ? v.join(", ") : "");
+  Object.assign(S.find, { q: r.display_name || "", candidates: [cand], picked: cand, searched: r.display_name || "",
+    busy: false, error: null, badOrcid: false, badId: false, unknownId: false,
+    direction: o.direction || "", include: list(o.include_keywords), exclude: list(o.exclude_keywords),
+    stage: o.career_stage || "", minAmount: o.min_amount != null ? String(o.min_amount) : "",
+    explain: o.explain != null ? Boolean(o.explain) : S.find.explain, docIds: new Set(o.doc_ids || []) });
+  goReplace("#/find");
 }
 
 // One build call: the api makes sure a session exists, then starts the brief.
