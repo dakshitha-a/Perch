@@ -115,11 +115,27 @@ class Constraints:
     check_dates: bool = True  # the back-test sets False and applies its own time window
 
 
+# A posted call with no close date that says it takes proposals at any time is open (S49
+# M1, decided 2026-11-04). It is kept only with a posted date in the last ten years, so a
+# listing left up long after its programme ended (Ocean Drilling, posted 2014) stays out.
+# The card shows the record's own words as the deadline.
+ANYTIME_RE = re.compile(
+    r"\b(?:proposals|applications)\s+(?:are\s+)?accepted\s+(?:at\s+)?any\s?time\b"
+    r"|\b(?:remains\s+)?open until superseded\b", re.IGNORECASE)
+ANYTIME_MAX_AGE_DAYS = 3653
+
+
+def open_anytime(o: Opportunity, as_of: date) -> bool:
+    return (o.close_date is None and o.status == "posted" and o.open_date is not None
+            and 0 <= (as_of - o.open_date).days <= ANYTIME_MAX_AGE_DAYS
+            and bool(ANYTIME_RE.search(o.close_date_note or "")))
+
+
 def date_reasons(o: Opportunity, as_of: date) -> list[str]:
     reasons = []
     if o.open_date and o.open_date > as_of:
         reasons.append(f"opens {o.open_date.isoformat()}, after {as_of.isoformat()}")
-    if o.close_date is None and o.status != "forecasted":
+    if o.close_date is None and o.status != "forecasted" and not open_anytime(o, as_of):
         reasons.append("no close date in the record")
     elif o.close_date and o.close_date < as_of:
         reasons.append(f"closed {o.close_date.isoformat()}")
