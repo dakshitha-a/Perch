@@ -262,7 +262,7 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
                                 for k, _ in cols], r.cells["office"].text])
             return table
 
-        main_rows = [r for r in compare_rows if r.group is None]
+        main_rows = [r for r in compare_rows if r.group != "temple_internal"]
         internal_rows = [r for r in compare_rows if r.group == "temple_internal"]
         if main_rows:
             out.append(Block("table", rows=lead_table(
@@ -273,7 +273,8 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
 
     shown = [x for x in leads if x.status != "dismissed"]
     gone = [x for x in leads if x.status == "dismissed"]
-    a = [x for x in shown if x.route == "A" and x.group is None and x.record_id in opps]
+    a = [x for x in shown if x.route == "A" and x.group != "temple_internal"
+         and x.record_id in opps]  # centre grants (S51 H7) are ranked grants
     temple = [x for x in shown if x.group == "temple_internal" and x.record_id in opps]
     b = [x for x in shown if x.route == "B"]
     out.append(Block("h2", f"Grants ({len(a)})"))

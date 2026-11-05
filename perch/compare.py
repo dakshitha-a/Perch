@@ -162,7 +162,8 @@ def compare(brief: Brief, leads: list[Lead], r: Repository, status: str | None =
     chosen = [x for x in leads if (status is None or x.status == status)
               and x.route in ("A", "B")]  # student leads compare in the browser (S18)
     # Route A's own list first, then Temple internal as its own section, then route B.
-    chosen.sort(key=lambda x: (x.route, x.group is not None, x.rank or 0))
+    # A centre or programme grant (S51 H7) is ranked with the grants, so it sorts with them.
+    chosen.sort(key=lambda x: (x.route, x.group == "temple_internal", x.rank or 0))
     rows = []
     for x in chosen:
         if x.route == "A":

@@ -383,7 +383,8 @@ class ReadTools:
                 if x.status == "kept":
                     self.kept.add(rec.id)
         for x in sorted((x for x in leads if x.status != "dismissed" and x.route != "B"
-                         and x.group is None), key=lambda x: x.rank or 0)[:MAX_LEADS]:
+                         and x.group != "temple_internal"), key=lambda x: x.rank or 0
+                        )[:MAX_LEADS]:
             rec = self._get(x.record_id)
             if rec is None:
                 continue
@@ -399,6 +400,8 @@ class ReadTools:
                 row["verdict"] = x.verdict
             if x.gaps:
                 row["gaps"] = x.gaps[:4]
+            if x.group == "centre":  # its code-written line (S51 H7)
+                row["notes"] = x.notes
             rows.append(row)
             if x.status == "kept" and not row.get("sample"):
                 k = {"rank": x.rank, "id": row["id"], "title": row["title"],

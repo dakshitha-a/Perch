@@ -24,7 +24,13 @@ from perch import precache
 from perch.brief import route_a, temple_internal
 from perch.cache import InputContext, PublicCache, cache_key, is_public_input, text_profile_hash
 from perch.config import env
-from perch.eligibility import Constraints, agency_text, career_stage_restricted, hidden_counts
+from perch.eligibility import (
+    Constraints,
+    agency_text,
+    career_stage_restricted,
+    centre_note,
+    hidden_counts,
+)
 from perch.embed import Embedder
 from perch.grounding import Grounder
 from perch.llm import Provider, get_provider, spec_for_role
@@ -451,7 +457,11 @@ class BriefService:
                           fetched_at=x.opportunity.fetched_at, brief_id=b.id, route="A",
                           record_id=x.opportunity.id, rank=i,
                           rerank_score=round(x.rerank_score, 4), match_score=match_score(adj),
-                          matched_thread=x.candidate.best_thread, notes=notes)
+                          matched_thread=x.candidate.best_thread,
+                          # S51 H7: a centre or programme grant keeps its rank and Match and
+                          # is shown in its own fold; fresh and pre-cached briefs alike.
+                          group="centre" if (cn := centre_note(x.opportunity)) else None,
+                          notes=[*notes, cn] if cn else notes)
                      for i, (adj, x, notes) in enumerate(ranked, 1)]
             # Temple internal funding: its own group, ranked 1..n within it (S49 M9). A brief
             # from the nightly pre-cache has not run it yet.
@@ -566,7 +576,7 @@ class BriefService:
             works = self._works(r, b)
             # Temple internal leads get no paid explanation (S49 M9: spend stays flat).
             leads = [x for x in (r.get(Lead, i) for i in b.lead_ids)
-                     if x and x.route == "A" and x.group is None]
+                     if x and x.route == "A" and x.group != "temple_internal"]
             opps = [r.get(Opportunity, x.record_id) for x in leads]
         profile = self._ctx[b.id]["profile"]
         spec = self.models.fit_spec or spec_for_role("fit_explainer")
