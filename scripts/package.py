@@ -89,10 +89,12 @@ the repository contents, so skip the `git clone` line and run the rest from this
 
 ## Where to read more
 
-- **Architecture:** `docs/ARCHITECTURE.md`.
-- **Results:** `bench/results/SUMMARY.md`, with the method behind each number.
+- **Architecture:** `docs/ARCHITECTURE_V1.md` (the v1 build); `docs/ARCHITECTURE.md` describes the
+  earlier hybrid build, kept at the tag `v0.1-demo-fallback`.
+- **Results:** `docs/RESULTS.md`, with the method and the result folder behind each number.
 - **AI-use log:** `docs/AI_USE_LOG.md`.
-- **Running every command:** `docs/running.md`. **The two-GPU demo:** `docs/deploy.md`.
+- **Running every command:** `docs/running.md`. **Deploying v1:** `docs/deploy.md`.
+  **The Demo Day run sheet:** `docs/DEMO.md`.
 """
 
 
