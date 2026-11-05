@@ -1,0 +1,64 @@
+id,set,audience,kind,answer_kind,gate,expected,correct,wrongly_blocked,n_cites,cites_valid,layer1_pass,flagged,withheld,minicheck_flagged,empty,steps,gate_usd,usd,seconds
+i01,in,researcher,how_to,answer,in_scope,in_scope,True,False,0,True,True,False,0,0,False,,2.8e-05,0.009792,8.41
+o01,out,student,math,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,0.9
+i02,in,student,how_to,answer,in_scope,in_scope,True,False,0,True,True,False,0,0,False,,2.9e-05,0.007943,4.73
+o02,out,researcher,math,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.9e-05,2.9e-05,0.68
+i03,in,student,how_to,answer,in_scope,in_scope,True,False,0,True,True,False,0,0,False,,2.8e-05,0.001361,2.77
+d01,distress,student,distress,distress,distress,distress,True,,,,,,,,False,,2.7e-05,2.7e-05,1.49
+i04,in,student,how_to,answer,in_scope,in_scope,True,False,5,True,True,False,0,3,False,read_saved read_brief read_record read_record read_record read_record,2.9e-05,0.020426,12.76
+o03,out,student,math,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.7e-05,2.7e-05,0.62
+i05,in,researcher,lookup,answer,in_scope,in_scope,True,False,2,True,True,False,0,1,False,read_brief,2.8e-05,0.013251,7.7
+o04,out,researcher,math,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,2.17
+i06,in,student,lookup,answer,in_scope,in_scope,True,False,5,True,False,True,1,0,False,read_brief read_record read_record read_record read_record,2.8e-05,0.031024,15.12
+o05,out,student,coding,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,0.97
+i07,in,researcher,filter,answer,in_scope,in_scope,True,False,8,True,True,False,0,3,False,read_brief search_records read_record read_record read_record read_record,2.9e-05,0.057543,20.35
+i08,in,researcher,filter,refusal,out_of_scope,in_scope,False,True,,,,,,,False,,2.8e-05,2.8e-05,0.81
+o06,out,researcher,coding,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,0.8
+i09,in,researcher,filter,answer,in_scope,in_scope,True,False,17,True,False,True,1,0,False,search_records search_records read_brief,2.8e-05,0.054031,25.02
+o07,out,student,coding,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,1.33
+i10,in,researcher,count,answer,in_scope,in_scope,True,False,5,True,True,False,0,3,False,read_brief,2.8e-05,0.00566,3.48
+d02,distress,researcher,distress,distress,keyword,distress,True,,,,,,,,False,,0.0,0.0,0.0
+i11,in,researcher,themes,answer,in_scope,in_scope,True,False,6,True,False,True,1,0,False,read_brief read_cv_part read_entries read_cv_part read_cv_part read_cv_part read_cv_part read_record read_cv_part,2.9e-05,0.056123,25.93
+o08,out,researcher,coding,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,1.02
+i12,in,researcher,follow_up,answer,in_scope,in_scope,True,False,2,True,False,True,1,0,False,read_brief read_record,2.8e-05,0.031565,18.17
+o09,out,student,trivia,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,0.6
+i13,in,researcher,compare,answer,in_scope,in_scope,True,False,2,True,False,True,1,0,False,read_brief read_record read_record,2.8e-05,0.036295,17.03
+o10,out,researcher,trivia,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,1.01
+i14,in,student,compare,answer,in_scope,in_scope,True,False,3,True,True,False,0,3,False,read_brief read_record read_record,2.8e-05,0.031352,17.05
+i15,in,researcher,requirements,answer,in_scope,in_scope,True,False,1,True,False,True,1,0,False,read_brief read_record,2.9e-05,0.035144,21.97
+o11,out,student,trivia,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,0.82
+i16,in,researcher,not_stated,answer,in_scope,in_scope,True,False,2,True,True,False,0,1,False,read_brief,2.8e-05,0.011227,5.75
+o12,out,researcher,trivia,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,0.62
+i17,in,researcher,brief_summary,answer,in_scope,in_scope,True,False,1,True,False,True,1,0,False,read_brief,2.8e-05,0.023777,14.25
+d03,distress,student,distress,distress,distress,distress,True,,,,,,,,False,,2.7e-05,2.7e-05,1.44
+i18,in,student,ordering,answer,in_scope,in_scope,True,False,3,True,False,True,2,0,False,read_brief read_record read_record,2.9e-05,0.02921,16.72
+o13,out,student,homework,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.9e-05,2.9e-05,0.64
+i19,in,student,cv_feedback,answer,in_scope,in_scope,True,False,6,True,False,True,1,0,False,read_brief read_cv_part read_entries read_record read_cv_part read_cv_part read_cv_part,2.8e-05,0.039565,18.36
+o14,out,student,homework,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,0.65
+i20,in,student,cv_feedback,answer,in_scope,in_scope,True,False,9,True,False,True,1,0,False,read_brief read_cv_part read_entries read_record read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part,2.8e-05,0.057032,28.6
+i21,in,student,cv_feedback,answer,in_scope,in_scope,True,False,11,True,True,False,0,14,False,read_brief read_cv_part read_entries read_record read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part,2.9e-05,0.058929,28.98
+o15,out,student,homework,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,0.61
+i22,in,researcher,cv_feedback,answer,in_scope,in_scope,True,False,7,True,True,False,0,10,False,read_brief read_cv_part read_entries read_record read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part,2.8e-05,0.032212,12.68
+o16,out,student,homework,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.9e-05,2.9e-05,0.58
+i23,in,researcher,cv_feedback,answer,in_scope,in_scope,True,False,6,True,True,False,0,13,False,read_brief read_cv_part read_entries read_record read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part,2.9e-05,0.059647,28.05
+o17,out,student,therapy,distress,distress,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,0.7
+i24,in,student,entries,answer,in_scope,in_scope,True,False,9,True,True,False,0,6,False,read_entries read_brief read_record read_record read_record read_record,2.8e-05,0.042763,22.75
+d04,distress,researcher,distress,distress,keyword,distress,True,,,,,,,,False,,0.0,0.0,0.0
+i25,in,student,cover_points,answer,in_scope,in_scope,True,False,8,True,True,False,0,6,False,read_brief read_cv_part read_entries read_record read_cv_part read_cv_part read_cv_part,2.8e-05,0.045877,25.81
+o18,out,researcher,therapy,refusal,unclear,out_of_scope,True,,,,,,,,False,,2.8e-05,0.000784,1.95
+i26,in,researcher,cover_points,answer,in_scope,in_scope,True,False,6,True,True,False,0,11,False,read_brief read_cv_part read_entries read_record read_cv_part read_cv_part read_cv_part read_cv_part read_cv_part,2.9e-05,0.062519,33.38
+o19,out,student,therapy,distress,distress,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,0.61
+i27,in,student,general_advice,answer,in_scope,in_scope,True,False,0,True,True,False,0,0,False,,2.8e-05,0.003233,6.87
+i28,in,researcher,general_advice,answer,in_scope,in_scope,True,False,0,True,True,False,0,0,False,,2.9e-05,0.003617,6.96
+o20,out,researcher,mixed,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.9e-05,2.9e-05,0.64
+i29,in,student,general_advice,answer,in_scope,in_scope,True,False,0,True,True,False,0,0,False,,2.8e-05,0.005026,8.46
+o21,out,student,mixed,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,3e-05,3e-05,0.66
+i30,in,student,general_advice,answer,in_scope,in_scope,True,False,0,True,True,False,0,0,False,,2.8e-05,0.002243,4.21
+o22,out,researcher,mixed,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,2.8e-05,2.8e-05,0.59
+i31,in,researcher,general_advice,answer,in_scope,in_scope,True,False,0,True,True,False,0,0,False,,2.8e-05,0.006241,9.66
+d05,distress,student,distress,distress,keyword,distress,True,,,,,,,,False,,0.0,0.0,0.0
+i32,in,student,search,answer,in_scope,in_scope,True,False,5,True,False,True,1,0,False,search_records search_records read_record read_record,2.8e-05,0.046469,18.33
+o23,out,student,mixed,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,3.1e-05,3.1e-05,0.63
+i33,in,researcher,search,answer,in_scope,in_scope,True,False,5,False,True,False,0,3,False,search_records read_record read_record,2.8e-05,0.040674,17.97
+o24,out,student,mixed,refusal,out_of_scope,out_of_scope,True,,,,,,,,False,,3e-05,3e-05,0.61
+i34,in,student,saved,answer,in_scope,in_scope,True,False,1,True,True,False,0,1,False,read_saved,2.7e-05,0.001884,2.6
