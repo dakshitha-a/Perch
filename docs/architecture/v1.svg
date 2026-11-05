@@ -46,7 +46,7 @@
     <text x="512" y="110">OpenID Connect, PKCE</text>
     <text x="512" y="126">holds the passwords, not Perch</text>
     <text x="272" y="210">a table in Postgres, ids only</text>
-    <text x="512" y="210">no account, nothing saved</text>
+    <text x="512" y="210">no account; kept one hour, sealed</text>
   </g>
   <g stroke="currentColor" stroke-opacity="0.6" fill="none" marker-end="url(#oa)">
     <path d="M220 103 H258"/>
