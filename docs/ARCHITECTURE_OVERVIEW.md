@@ -27,6 +27,7 @@ Perch reads a Temple researcher's public papers, or a student's CV, and lays out
 - **The session:** the browser holds one cookie with the host prefix, and every write carries a CSRF token. The session itself lives in Redis.
 - **Guests:** a visitor can browse, build a brief for a public OpenAlex author, or build one for a built-in sample student, then compare and export. A guest cannot upload a CV, use Scout, draft a hand-off or save anything.
 - **Guest storage:** no user row is created. A guest brief is sealed in Redis under a key held for that guest session, and it expires after an hour.
+- **Shared demo account:** for Demo Day the operator can list a SYNTHETIC sign-in as shared. Everyone who uses it sees what the last visitor saved, the app warns against pasting a real CV, and a nightly job wipes its data and keeps its spend ledger.
 - **Consent:** a signed-in user gives one consent at sign-up. It covers storing their CV and entries encrypted and sending text to the deployment's cloud model provider.
 
 ## Encrypted user data

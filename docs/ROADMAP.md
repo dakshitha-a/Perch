@@ -90,6 +90,7 @@ Every line below is taken from the repository's own record. Where the record doe
 - **Backups after a delete:** the consent text promises that backups clear within 35 days. Backups are kept 35 days. A tombstone stops a restored backup from bringing a deleted key back.
 - **The shred ledger:** a third copy of each tombstone is kept outside both databases. Putting it on an object store with object lock is UNVERIFIED and is not built.
 - **An honest limit:** the web process and the worker both hold the key database credentials. The separate role guards against a data query bug, not against code inside a process.
+- **Shared demo account:** a SYNTHETIC account can be shared in public for Demo Day. Everyone who signs in sees what the last visitor saved, so the app warns against a real CV, and a nightly job wipes its data. Whether such an account suits a real pilot is not decided, so that is UNVERIFIED.
 - **Hand-offs:** Perch sends nothing. Every hand-off is a draft that a person sends.
 - **Who must review it:** a Temple privacy and security review, UNVERIFIED which office, would need the encryption design, the consent text, the provider contract and the retention rules.
 - **Student data:** whether education-record rules apply to a student's CV is UNVERIFIED, since the record names no law or office for it.
@@ -108,7 +109,7 @@ Every line below is taken from the repository's own record. Where the record doe
 - **Name-only Temple listings:** these get no written reason. The card points to the award's page instead.
 - **Match is not odds:** the Match number measures text similarity and is not the chance of funding.
 - **Scout:** many open answers are flagged by the citation check, and run-to-run variance is large. Scout tuning is open.
-- **Two shortlists:** saves on the browse lists and keeps in a brief are separate lists.
+- **One saved list:** the saved list in My Perch merges the records a user saved on the browse lists with the leads kept in a brief, one entry per record.
 - **Same-day repeats:** asking for the same brief again on the same day returns the earlier build.
 - **The office note:** it can take up to two minutes to appear.
 - **Draft review:** a check of a student's letter against a record was evaluated and not built.
