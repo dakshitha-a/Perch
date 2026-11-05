@@ -98,7 +98,9 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
         d = copy.deepcopy(raw)
         d["brief"]["id"] = RB
         d["brief"]["status"] = "done"
-        a = sorted([x for x in d["leads"] if (x.get("route") or "A") == "A"], key=lambda x: x.get("rank", 0))
+        # the routes list's own grant leads: a Temple internal call (group temple_internal) shows on its own tab
+        a = sorted([x for x in d["leads"] if (x.get("route") or "A") == "A" and x.get("group") != "temple_internal"],
+                   key=lambda x: x.get("rank", 0))
         if a:  # a lead whose record names no agency, code or status (M1)
             o = a[0].setdefault("opportunity", {})
             o.update(agency=None, parent_agency=None, activity_code=None, status="posted")
@@ -197,7 +199,7 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
                 return len(vals) == 4 and max(vals) - min(vals) <= 1
             w.check("s49_left_edges_1280", even(e1) and even(e2), f"awards {e1}; brief {e2}")
             top = await page.evaluate("() => { const c = document.querySelector('#panel li.card.lead'); return c ? Math.round(c.getBoundingClientRect().top + scrollY) : null; }")
-            w.check("s49_first_lead_top", top is not None and top <= 500, f"first lead top {top} px")
+            w.check("s49_first_lead_top", top is not None and top <= 600, f"first lead top {top} px (target 600, round 1)")
             c = await page.evaluate(CENTRES)
             w.check("s49_sort_on_count_row", c["sort"] is not None and c["title"] is not None and abs(c["sort"] - c["title"]) <= 12,
                     f"researcher: sort centre {c['sort']}, title centre {c['title']} (the student half is BE-S S3)")

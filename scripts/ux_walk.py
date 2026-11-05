@@ -463,6 +463,10 @@ async def stub_signed_in(page: Page, state: dict) -> None:
             return await route.fulfill(status=202, json={"ok": True})
         if "/me/docs" in url:
             return await route.fulfill(json=[{"id": "d1", "kind": "cv", "label": "CV", "chars": 900, "name": "cv.md"}])
+        if "/me/saved" in url:  # S49: lists and My Perch read the saved list; an empty one here
+            if route.request.method == "GET":
+                return await route.fulfill(json={"audience": state["roles"][0] if state["roles"] else "student", "total": 0, "items": []})
+            return await route.fulfill(status=201, json={"saved_id": "sv-walk", "record_id": "", "saved_at": "2026-11-04T21:10:00+00:00"})
         if "/me/briefs" in url:
             return await route.fulfill(json=[{"id": "b1", "status": "done", "researcher_id": "you", "created_at": "2026-11-03T12:00:00",
                                               "leads": 12, "topics": []}])
@@ -492,7 +496,9 @@ async def flow_mocked(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.check("[data-key=agree]")
     w.check("welcome_continue_enabled", await go_btn.is_enabled(), "enabled after both steps")
     await go_btn.click()
-    await page.wait_for_selector(".landing h1, #acct-title")
+    # S49: a signed-in user's home is My Perch (its h1 shares #acct-title with the welcome, so wait on the text)
+    await page.wait_for_selector("h1#acct-title:text-is('My Perch')")
+    w.check("welcome_lands_on_my_perch", page.url.endswith("#/"), page.url)
     await w.snap(page, tag, "after-welcome")
     await page.evaluate("location.hash = '#/me'")
     await page.wait_for_selector(".brief-row")
@@ -517,7 +523,7 @@ async def flow_mocked(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.wait_for_selector("[data-key=agree]")
     await page.check("[data-key=agree]")
     await page.click("[data-key=continue]")
-    await page.wait_for_selector(".landing h1, #acct-title")
+    await page.wait_for_selector("h1#acct-title:text-is('My Perch')")
     w.check("consent_again", state["consented"], "agreeing again works")
     await page.evaluate("location.hash = '#/account'")
     await page.wait_for_selector("#del-open")
@@ -647,14 +653,21 @@ async def flow_header(w: Walk, browser: Browser, base: str, tag: str, view: dict
 
 async def flow_signinfail(w: Walk, browser: Browser, base: str, tag: str, view: dict) -> None:
     """M1: a sign-in that cannot start or finish lands on the app, with a message."""
-    for path, want in (("/auth/login", "not available"), ("/auth/callback?code=x&state=y", "available")):
+    # the callback with a made-up code: "did not finish" with a provider set (the walk server), "not available" without
+    for path, want in (("/auth/login", ("not available",)), ("/auth/callback?code=x&state=y", ("did not finish", "not available"))):
         page = await new_page(browser, w, tag, view, base)
+        if path == "/auth/login":
+            # The walk server has sign-in on (for the real sign-in flow), so /auth/login would go to the
+            # identity provider. Answer it as perch/auth/routes.py does when no provider is set.
+            async def unavailable(route: Route) -> None:
+                await route.fulfill(status=302, headers={"Location": "/#/?signin=unavailable", "Cache-Control": "no-store"})
+            await page.route(re.compile(r".*/auth/login(\?.*)?$"), unavailable)
         await page.goto(base + path)
         await page.wait_for_selector(".landing h1")
         await page.wait_for_selector("[data-key=flash-banner]")
         text = await page.evaluate("document.body.innerText")
         raw = text.strip().startswith("{") or '"detail"' in text or '"error"' in text
-        w.check(f"signin_failure_lands_on_app {path.split('?')[0]}", not raw and want in text and "?signin" not in page.url,
+        w.check(f"signin_failure_lands_on_app {path.split('?')[0]}", not raw and any(x in text for x in want) and "?signin" not in page.url,
                 f"hash {await page.evaluate('location.hash')!r}; banner: {(await page.locator('[data-key=flash-banner]').inner_text()).strip()}")
         if path == "/auth/login":
             fit = (await page.locator("[data-key=fit]").inner_text()).strip()
