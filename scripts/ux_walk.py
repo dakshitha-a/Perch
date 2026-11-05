@@ -265,13 +265,15 @@ async def flow_awards(w: Walk, browser: Browser, base: str, tag: str, view: dict
           c.style.height = '30px'; c.style.minHeight = '0'; c.querySelector('span').textContent += ' with a very long label added'; }""")
         tags = await page.evaluate(TAGS)
     if w.plant == "tag_row_contained":
-        await page.evaluate("document.querySelector('.tag-row').style.flexWrap = 'nowrap'")
+        await page.evaluate("document.querySelector('.tag-row').style.flexWrap = 'wrap'")
         tags = await page.evaluate(TAGS)
     low = [c for c in tags["chips"] if c["h"] < 44]
     w.check("tag_row_chips_44", not low and tags["pageOver"] <= 0, f"{len(tags['chips'])} chips, shortest {min(c['h'] for c in tags['chips'])} px, page overflow {tags['pageOver']}")
     if view["width"] < 600:
-        # S49 (S11): the school chips wrap onto as many lines as they need; no sideways scroller, nothing cut off
-        w.check("tag_row_contained", tags["lines"] > 1 and tags["sw"] <= tags["cw"] and tags["outside"] == 0 and tags["pageOver"] <= 0,
+        # S50 (decided, V9/V40/Q14): on a phone the school chips are one row that scrolls sideways inside
+        # itself; the page never scrolls sideways, and the row can reach every chip
+        w.check("tag_row_contained", tags["lines"] == 1 and (tags["sw"] <= tags["cw"] or tags["ox"] in ("auto", "scroll"))
+                and tags["pageOver"] <= 0,
                 f"{tags['lines']} chip lines, row scroll {tags['sw']} vs client {tags['cw']}, {tags['outside']} chips outside, page overflow {tags['pageOver']}")
     flt2 = await page.evaluate("fetch('/filters?audience=student').then(r => r.json())")
     shown = {c["label"]: c["count"] for c in tags["chips"] if c["count"] is not None}
@@ -293,7 +295,10 @@ async def flow_awards(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.click("[data-key^=more-]")
     await until(page, "(n) => document.querySelectorAll('.award').length > n", before)
     w.check("show_more", True, f"{before} cards, then more")
-    await page.fill("#list-q", "zzzzqqxx")
+    # focus as a user does (the browser honours scroll-padding under the sticky bar); Playwright's
+    # fill scrolls the box to the very top, under the bar, which axe then reports as covered (S50 QA)
+    await page.locator("#list-q").focus()
+    await page.keyboard.type("zzzzqqxx")
     await page.wait_for_selector(".empty-list")
     await w.snap(page, tag, "awards-empty")
     await page.click("[data-key=clear]")
