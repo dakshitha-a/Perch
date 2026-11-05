@@ -115,6 +115,18 @@ def test_the_saved_list_is_per_side_and_delete_removes_the_row(pub):
     assert pub.client.delete(f"/me/saved/{sid}").status_code == 404
 
 
+def test_unsave_removes_a_twin_row_from_a_double_click(pub):
+    """S50 C4: two saves at once both inserted; the list showed one, and unsave left the
+    other, so the item stayed saved."""
+    from perch.user.models import SavedItem
+
+    sid = post(pub, "temple_pages:far").json()["saved_id"]
+    pub.ud.put(pub.uid, "saved_item", "student", SavedItem(record_id="temple_pages:far"))
+    assert pub.client.get("/me/saved?audience=student").json()["total"] == 1
+    assert pub.client.delete(f"/me/saved/{sid}").json() == {"ok": True}
+    assert pub.client.get("/me/saved?audience=student").json()["total"] == 0
+
+
 def test_delete_leaves_other_kinds_of_rows_alone(pub):
     bid = kept_lead(pub, "temple_pages:far")
     assert pub.client.delete(f"/me/saved/{bid}").status_code == 404

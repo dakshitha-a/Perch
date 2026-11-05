@@ -64,7 +64,15 @@ def save(ud: UserData, repo_factory: Callable[[], Repository], uid: UUID, side: 
 
 
 def remove(ud: UserData, uid: UUID, saved_id: UUID) -> bool:
-    return ud.delete(uid, saved_id, kinds=("saved_item",))
+    """Delete the saved row and any twin for the same record on the same side. Two saves
+    that arrive together can both insert, and the list shows only one of them (S50 C4)."""
+    got = ud.get_row(uid, saved_id, SavedItem, kind="saved_item")
+    if got is None:
+        return False
+    row, _, _, side = got
+    twins = [rid for rid, x in _rows(ud, uid, side) if x.record_id == row.record_id]
+    gone = [ud.delete(uid, rid, kinds=("saved_item",)) for rid in {saved_id, *twins}]
+    return any(gone)
 
 
 def _order_key(entry: dict, today: date) -> tuple:
