@@ -49,6 +49,12 @@ def test_a_guest_student_brief_reads_the_sample_persona_and_stores_nothing(
         "SYNTHETIC")
     assert {x["route"] for x in got["leads"]} == {"F", "S"}
     assert all(x["sample"] for x in got["leads"] if x["route"] == "S")
+    # S49 V5: the two student offices come from perch/offices.py
+    from perch.offices import for_route
+
+    assert {k: v["name"] for k, v in got["offices"].items()} == {
+        "F": for_route("F").name, "S": for_route("S").name}
+    assert got["offices"]["S"]["url"] == for_route("S").url
     assert sql(env.pg, "SELECT count(*) FROM user_data") == [(0,)]  # a guest stores nothing
     assert guest_hash(guest.sid) in "".join(env.r.keys("perch:gsess:*"))
     # a guest has no hand-off, no Scout and no documents

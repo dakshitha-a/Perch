@@ -13,7 +13,7 @@ import { verdictChip } from "./student.js";
 
 // Fixed notes, word for word as perch/offices.py writes them (tests/test_web.py compares).
 const SUBMISSION_URL = "https://research.temple.edu/researchadministration/contact-us/find-your-res-administrator";
-const COVER_HELP = "On a lead card, Cover-letter points asks a model to pair what the record asks for with what your CV, entries and papers show, each line cited. It needs an account, it is model text to put in your own words, and it is never sent or added to an export.";
+const COVER_HELP = "On a lead card, Cover-letter points asks a model to pair what the record asks for with what your CV, entries and papers show, each line cited. It needs an account, it is model text to put in your own words, and it is never sent or added to an export. When today’s allowance is used, one note above the list says so, with the time it comes back.";
 const SUBMISSION_NOTE = "Before anything goes to a sponsor, Temple routes it through ERA for institutional review and approval. That covers every grant proposal and any company agreement that brings Temple funding. Your assigned research administrator supports that step.";
 const FOUNDATION_NOTE = "Foundations are not covered yet. When they are, foundation leads will go to Temple's Office of Corporate and Foundation Relations, through your school's or college's development team, as that office's page asks.";
 const RESEARCH_SECURITY = "Companies outside the United States may need a research-security review before any contact; the office makes that check.";
@@ -117,21 +117,21 @@ function anatomy() {
   const n = (i) => h("span", { class: "callout", text: String(i) });
   const art = h("figure", { class: "fig anat", "aria-hidden": "true" },
     card(
+      h("div", { class: "pic-row" }, n(1), h("span", { class: "anat-title", text: "Opportunity title" })),
       h("div", { class: "pic-row between" },
-        h("span", { class: "pic-row" }, n(1), h("span", { class: "fit strong" }, h("span", { class: "fit-k", text: "Match" }), h("b", { text: "86" }))),
-        h("span", { class: "pic-row" }, n(2), btn("Keep", "ghost", "keep"), btn("Dismiss", "ghost", "dismiss"))),
-      h("div", { class: "pic-row" }, n(3), h("span", { class: "anat-title", text: "Opportunity title" })),
+        h("span", { class: "pic-row" }, n(2), h("span", { class: "fit strong" }, h("span", { class: "fit-k", text: "Match" }), h("b", { text: "86" }))),
+        h("span", { class: "pic-row" }, n(3), btn("Keep", "ghost", "keep"), btn("Dismiss", "ghost", "dismiss"))),
       h("dl", { class: "facts" },
-        h("div", { class: "fact amber" }, h("dt", { text: "Closes" }), h("dd", {}, n(4), ph(60))),
-        h("div", { class: "fact" }, h("dt", { text: "Award" }), h("dd", {}, ph(50)))),
+        h("div", { class: "fact" }, h("dt", { text: "Closes" }), h("dd", {}, n(4), ph(60))),
+        h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, ph(50)))),
       h("div", { class: "pic-row" }, n(5), h("span", { class: "tag model", text: "Model text" }), ph(50)),
       h("div", { class: "pic-row" }, h("b", { text: "Why it fits" }), icon("back"))));
   const items = [
+    ["The title", " comes first, then the agency and code. The title opens the full record."],
     ["Match", " is how closely the listing’s text matches the papers, from 0 to 100: strong is 80 or more, good 60 to 79, partial 40 to 59, weak below 40."],
     ["Keep or Dismiss", ": keep what is worth a closer look and dismiss the rest. A dismissed lead can be restored."],
-    ["The title", " opens the full record."],
-    ["Dates and amounts", " are copied from the record. Amber means it closes within 30 days."],
-    ["Model text", " is tagged. Open Why it fits to see the papers it cites."],
+    ["Closes and Amount", " are always shown. Not stated means the record leaves it blank. The page says means the date is in the page’s words, not a date field."],
+    ["Model text", " marks a model’s sentence, checked against the records it cites. When a sentence fails that check twice, the card says so in one line and keeps only the fields copied from the record."],
   ];
   return h("div", { class: "anatomy" }, art,
     h("ol", { class: "callouts" }, items.map(([b, t]) => h("li", {}, h("span", {}, h("b", { text: b }), t)))));
@@ -161,7 +161,6 @@ function researcher() {
 }
 
 function student() {
-  // DRAFT copy (S43): the student steps below were rewritten for the new flow.
   return steps("h-student", "If you are a student", [
     ["Browse Temple awards", "Choose Student, then press Browse Temple awards. You need no account to look through the list. Every card links to the page it came from.", figWho()],
     ["Narrow the list", "Pick a school tag to see that school’s awards first, then the awards open across Temple. The search box and the level menu narrow it further.", figTags()],
@@ -169,6 +168,20 @@ function student() {
     ["Read the verdicts", "Each option shows a rule check: Eligible, May be eligible or Not eligible. Still needed lists what the record asks for and your CV does not show.", figVerdicts()],
     ["Compare and send the note", "Keep options, then Compare them and pick the Temple office. Code writes a short note for you to copy or open in your mail app. A guest can keep and compare; the note needs an account.", figHandoff(true)],
   ]);
+}
+
+function keeping() {
+  const items = [
+    ["Keep from the lists.", " On Temple awards and Research funding, Keep saves a record to your account. Kept and saved records collect on My Perch with their dates. Sample records cannot be kept."],
+    ["Sort and closed calls.", " Sort a list A to Z, by the soonest date or by the largest amount. Records that state no date or amount come last. Research funding hides calls whose close date has passed; turn on Show closed calls to see them."],
+    ["A past date on an award.", " Many Temple awards recur each year. When an award’s page shows a date that has passed, the card says Past date on the page, and a check of your fit says may be eligible, with the date from the page. Check the page for this year’s date."],
+    ["My Perch is your home.", " When you are signed in, Perch opens on My Perch: what you kept and saved, sorted by date, your briefs, and your documents. Start a new search from there."],
+    ["Change details and run again.", " It opens the start screen with your details filled in. Running it makes a new brief; the old one stays on My Perch."],
+    ["A researcher CV.", " A researcher may add a CV before building a brief. It is optional. Perch uses it for cover-letter points and Scout, stores it encrypted, and blanks contact details before a model reads it."],
+  ];
+  return h("section", { class: "help-block", "aria-labelledby": "h-keep" },
+    h("h2", { id: "h-keep", class: "section-title", text: "Keeping and My Perch" }),
+    h("ul", { class: "plain-list" }, items.map(([b, t]) => h("li", {}, h("b", { text: b }), h("span", { text: t })))));
 }
 
 function leadCard() {
@@ -272,8 +285,6 @@ function architecture() {
 // ----- privacy and good to know -----
 
 function privacy() {
-  // DRAFT copy (S43): the privacy items, each checked against the code (the guest notice,
-  // the consent text and the delete route).
   const items = [
     ["person", "A guest session saves nothing.", " It ends after an hour. Hand-off drafts, notes to an office and Scout need an account."],
     ["lock", "A CV you add is stored encrypted.", " Contact details are blanked before any text goes to the model provider named in the consent."],
@@ -297,7 +308,7 @@ function goodToKnow() {
         h("a", { href: SUBMISSION_URL, target: "_blank", rel: "noopener", text: "Find your research administrator" }),
         h("span", { text: "." })),
       h("li", { text: FOUNDATION_NOTE }),
-      h("li", { text: "A Sample data badge marks invented SYNTHETIC records. They are not real, and they live on their own screen, linked at the foot of each list and from a signed-in student's brief. The guest's sample student brief has a marked sample tab of its own." })),
+      h("li", { text: "A Sample data badge marks invented SYNTHETIC records. They are not real, and they live on their own screen, linked at the foot of each list and from a signed-in student's brief. The guest's sample student brief has a marked sample tab of its own. Sample records cannot be kept or saved." })),
     h("p", { class: "help-scout", text: "The full technical description is in the project’s docs." }));
 }
 
@@ -312,5 +323,5 @@ export function renderHelp(container, { back }) {
         h("h1", { class: "who", text: "Help" }),
         h("p", { class: "lede", text: "Perch reads a researcher’s public papers, or a student’s CV, and lays out the funding that fits. Every claim links to its record." })),
       hello),
-    researcher(), student(), leadCard(), architecture(), privacy(), goodToKnow()));
+    researcher(), student(), keeping(), leadCard(), architecture(), privacy(), goodToKnow()));
 }

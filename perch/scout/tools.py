@@ -614,7 +614,8 @@ def compare(ctx: ScoutContext, ids: list[str] | None = None) -> dict:
             cells[label] = f"{text} ({c.note})" if c.note and key != "evidence" else text
         rid = ctx.see(rec) if rec else row.record_id
         out = {"kind": "grant" if row.route == "A" else "industry lead",  # F11: no route code
-               "title": row.title, "record": rid, "kept": lead.status == "kept", **cells,
+               "title": row.title, "number": getattr(row, "number", None),
+               "record": rid, "kept": lead.status == "kept", **cells,
                **_why(lead)}
         if lead.route == "A":
             # F5: the count is code-written from the brief's lead, so an answer citing this

@@ -17,23 +17,28 @@ export const COVER_FAILED = "The points could not be made. Try again.";
 export const COVER_NOT_DONE = "Cover points start once the brief has finished.";
 export const COVER_SLOW = "Still running. Try again in a minute.";
 export const COVER_CONSENT = "Agree to the consent first.";
+export const COVER_QUOTA_CARD = "Today’s allowance is used. See the note above the list.";
+const QUOTA_DEFAULT = "You have used today’s model allowance.";
 const POLL_MS = 2000;
 const POLL_MAX_MS = 150000;
 
-// key -> { busy, error, signin, consent, slow, jobId, result, tried }; each drawn block rebuilds itself from it.
+// key -> { busy, error, quota, signin, consent, slow, jobId, result, tried }; each drawn block rebuilds itself from it.
 const STATE = new Map();
 const NODES = new Map();
+// The daily-allowance note for this page view: { text, resetsAt } once a points request is refused.
+let QUOTA = null;
 let UI = null; // the latest context: { api, announce, openEvidence, label }
 
 const keyOf = (briefId, recordId) => `${briefId}|${recordId}`;
 const st = (k) => {
-  if (!STATE.has(k)) STATE.set(k, { busy: false, error: null, signin: false, consent: false, slow: false, jobId: null, result: null, tried: false });
+  if (!STATE.has(k)) STATE.set(k, { busy: false, error: null, quota: false, signin: false, consent: false, slow: false, jobId: null, result: null, tried: false });
   return STATE.get(k);
 };
 
 export function resetCover() {
   STATE.clear();
   NODES.clear();
+  QUOTA = null;
 }
 
 // The stored set has record_id, title and sample; pointsBlock reads them under `for`.
@@ -42,7 +47,7 @@ function asPoints(r) {
 }
 
 export function coverError(e) {
-  if (e && e.status === 429 && e.code === "quota_exceeded") return { text: e.serverMessage || e.message };
+  if (e && e.status === 429 && e.code === "quota_exceeded") return { quota: true, text: e.serverMessage || QUOTA_DEFAULT };
   if (e && e.status === 429) {
     const n = Number.parseInt(e.retryAfter, 10);
     return { text: Number.isFinite(n) && n > 0 ? `Too many requests. Try again in ${n} seconds.`
@@ -72,7 +77,7 @@ async function run(k, briefId, recordId) {
   const s = st(k);
   if (s.busy) return;
   const again = Boolean(s.result) && !s.jobId; // a finished set asks for a fresh one; a slow job is resumed
-  Object.assign(s, { busy: true, error: null, signin: false, consent: false, slow: false });
+  Object.assign(s, { busy: true, error: null, quota: false, signin: false, consent: false, slow: false });
   draw(k, "button");
   const { api, announce } = UI;
   announce(COVER_WAIT);
@@ -96,7 +101,15 @@ async function run(k, briefId, recordId) {
   } catch (e) {
     const c = coverError(e);
     if (!c.slow) s.jobId = null; // a slow job keeps its id, so the next press resumes it
-    Object.assign(s, { busy: false, error: c.text || null, signin: Boolean(c.signin), consent: Boolean(c.consent), slow: Boolean(c.slow) });
+    Object.assign(s, { busy: false, error: c.text || null, quota: false, signin: Boolean(c.signin), consent: Boolean(c.consent), slow: Boolean(c.slow) });
+    // One note above the list says the allowance is used; the card keeps a short pointer to it (U6).
+    if (c.quota) {
+      QUOTA = { text: c.text, resetsAt: QUOTA ? QUOTA.resetsAt : null };
+      if (!QUOTA.resetsAt && api.usage) {
+        try { QUOTA.resetsAt = (await api.usage()).resets_at || null; } catch { /* the note then has no time */ }
+      }
+      if (drawListNotice()) Object.assign(s, { quota: true, error: null });
+    }
     draw(k, "button");
   }
 }
@@ -112,44 +125,76 @@ async function restore(k, briefId, recordId, api) {
   } catch { /* no access: the button stays */ }
 }
 
+// The time the allowance comes back, in local time. A date comes first when it is not today.
+function backAt(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const same = d.toDateString() === new Date().toDateString();
+  return same ? time : `${d.toLocaleDateString([], { day: "numeric", month: "short" })} ${time}`;
+}
+
+const quotaLine = () => {
+  const at = QUOTA.resetsAt ? backAt(QUOTA.resetsAt) : "";
+  return h("p", { class: "notice info list-note", role: "status", "data-cover-line": "" }, icon("clock"),
+    h("span", { text: `${QUOTA.text}${at ? ` It comes back at ${at}.` : ""}` }));
+};
+
+// Redraw the cover line inside #list-notices, leaving the other notices there alone.
+// False when the page has no such slot, so the card shows the error itself.
+function drawListNotice() {
+  const slot = document.getElementById("list-notices");
+  if (!slot) return false;
+  slot.querySelectorAll("[data-cover-line]").forEach((n) => n.remove());
+  if (QUOTA) slot.append(quotaLine());
+  return true;
+}
+
+// The one line above a list. A guest is told once, not on every card; after a refused request the
+// allowance note replaces it. `ctx` is the object coverBlock takes.
+export function coverListLine(ctx) {
+  if (QUOTA) return quotaLine();
+  if (ctx && ctx.guest && ctx.api && ctx.api.mode === "live") {
+    return h("p", { class: "list-note", "data-cover-line": "" }, icon("pen"),
+      h("span", {}, h("span", { text: "Cover-letter points need an account. " }), h("a", { href: ctx.signIn, text: "Sign in" })));
+  }
+  return null;
+}
+
 // The block for one card. `ctx`: { api, announce, openEvidence, guest, signIn, audience, stored }.
 // `stored` is the brief's cover_points list: record ids that have points saved.
 export function coverBlock(ctx, briefId, recordId) {
   if (!ctx.api || ctx.api.mode !== "live" || !ctx.api.coverStart) return null;
+  if (ctx.guest) return null; // a guest is told once above the list (coverListLine), not on every card (U16)
   UI = ctx;
   const k = keyOf(briefId, recordId);
   const s = st(k);
   const build = () => {
-    if (ctx.guest) {
-      return [h("a", { class: "btn", href: ctx.signIn, "data-key": `cover-${recordId}`, text: COVER_SIGNIN })];
-    }
-    const out = [h("div", { class: "actions" },
+    const act = h("div", { class: "actions" },
       h("button", { class: "btn", type: "button", "data-key": `cover-${recordId}`,
         "aria-disabled": s.busy ? "true" : null, "aria-busy": s.busy ? "true" : null,
         onclick: () => run(k, briefId, recordId) },
-      icon("pen"), h("span", { text: s.result ? "Points again" : "Cover-letter points" }))),
-    ];
+      icon("pen"), h("span", { text: s.result ? "Points again" : "Cover-letter points" })));
+    // With a result, the points come first and the action to ask again sits under them (U14).
+    const out = s.result ? [pointsBlock(asPoints(s.result), ctx, { short: true }), act] : [act];
     if (!s.result) out.push(h("p", { class: "hint", text: COVER_HINT[ctx.audience === "student" ? "student" : "researcher"] }));
     if (s.busy) out.push(h("p", { class: "hint", "data-cover-wait": "", text: COVER_WAIT }));
     else if (s.consent) {
       out.push(h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: COVER_CONSENT })),
         h("div", { class: "actions" }, h("a", { class: "btn", href: "#/welcome", text: "Agree to the consent" })));
     } else if (s.slow) out.push(h("p", { class: "hint", role: "status", text: COVER_SLOW }));
+    else if (s.quota) out.push(h("p", { class: "hint quota-hint", text: COVER_QUOTA_CARD }));
     else if (s.signin) {
       out.push(h("p", { class: "notice error", role: "alert" }, icon("warn"),
         h("span", {}, h("span", { text: "Sign in to get cover-letter points. " }),
           h("a", { href: ctx.signIn, text: "Sign in" }))));
     } else if (s.error) out.push(h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: s.error })));
-    if (s.result) out.push(pointsBlock(asPoints(s.result), ctx));
     return out;
   };
   const box = h("div", { class: "cover", "data-cover": recordId });
   if (!NODES.has(k)) NODES.set(k, new Map());
   NODES.get(k).set(box, build);
   box.replaceChildren(...build());
-  if (!ctx.guest && (ctx.stored || []).includes(recordId)) restore(k, briefId, recordId, ctx.api);
+  if ((ctx.stored || []).includes(recordId)) restore(k, briefId, recordId, ctx.api);
   return box;
 }
-
-// S49 step 0: FE-B replaces the body; FE-A and student.js import it.
-export function coverListLine() { return null; }

@@ -137,12 +137,13 @@ function welcome(ctx) {
   const examples = ctx.api.recordedQuestion ? [ctx.api.recordedQuestion] : ctx.student ? STUDENT_EXAMPLES : EXAMPLES;
   return h("div", { class: "scout-hello" }, owl("idle", "owl-sm", { button: true }),
     h("div", { class: "scout-hello-body" },
-      h("p", { class: "lede", text: ctx.student ? "Hello. Ask about your options in plain words. I can use Perch’s own tools:"
-        : "Hello. Ask about this brief in plain words. I can use Perch’s own tools:" }),
-      h("ul", { class: "scout-can" }, CAN_USE[ctx.student ? "student" : "researcher"].map((x) => h("li", { text: x }))),
+      h("p", { class: "lede", text: ctx.student ? `Hello. Ask about your options in plain words.${T.data ? "" : " Try one of these:"}`
+        : `Hello. Ask about this brief in plain words.${T.data ? "" : " Try one of these:"}` }),
       ctx.api.recordedQuestion ? h("p", { class: "hint", text: "This preview plays back one recorded question. Tap it below." }) : null,
       !T.data ? h("ul", { class: "chips scout-try", "aria-label": "Example questions" }, ...examples.map((q) => h("li", {},
         h("button", { class: "chip", type: "button", onclick: () => { T.draft = q; send(ctx); } }, q)))) : null,
+      h("details", { class: "scout-limits scout-opt" }, h("summary", { text: "What I can do" }),
+        h("ul", { class: "scout-can" }, CAN_USE[ctx.student ? "student" : "researcher"].map((x) => h("li", { text: x })))),
       h("details", { class: "scout-limits" }, h("summary", { text: "What I will not do" }),
         h("p", { text: ctx.student
           ? "I cite records. A date or amount not in a cited record is rewritten once, then withheld. I stop after a fixed number of tool steps for one question, cannot browse the web, send anything or change a record. A model reads a part of your CV, your entries or your saved list when it opens them to answer a question. Contact details are blanked first. Sample scholarships stay marked as samples. Scout has a daily budget; when it is spent, it resets each day."
@@ -284,13 +285,15 @@ function draftBlock(d, ctx) {
 // Cover-letter points from cover_points (S33): what the record asks, what the person's
 // own records show, each sentence cited. Shown in full to copy; never sent, never exported.
 const POINTS_HINT = "Perch never sends this, and it never enters an export or a hand-off draft.";
-export function pointsBlock(p, ctx) {
-  const title = p.for.title || p.for.id;
-  const cite = (id) => pointCite(id, p, ctx);
+// `short`: the cover points on a lead card put "Cover-letter points" in the summary; the record
+// is the card's own title there. Scout's call keeps the long heading (U15).
+export function pointsBlock(p, ctx, { short = false } = {}) {
+  const title = p.for.title || "Untitled opportunity";
+  const cite = (id) => pointCite(id, p, ctx, short);
   const text = pointsText(p);
   const flagged = new Set(p.unsupported || []);
   return h("details", { class: "scout-points", open: true },
-    h("summary", {}, h("span", { text: `Points for your cover letter: ${title}` }),
+    h("summary", {}, h("span", { text: short ? "Cover-letter points" : `Points for your cover letter: ${title}` }),
       p.for.sample ? h("span", { class: "sample-badge", text: "Sample data" }) : null),
     p.status === "withheld" ? null : h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Model text" }),
       h("span", { text: "Written by a model and checked against the records it cites. Put them in your own words." })),
@@ -323,15 +326,25 @@ function pointsText(p) {
   for (const m of p.missing || []) lines.push(`Still missing: ${m}`);
   const used = [...new Set(p.points.flatMap((pt) => [...pt.asks_ids, ...pt.you_ids]))];
   lines.push(`Each point cites: ${used.map((id) => `${id}: ${(p.sources || {})[id] || id}`).join("; ")}`);
-  return `Points for your cover letter: ${p.for.title || p.for.id}${p.for.sample ? " (sample data)" : ""}\n\n${lines.join("\n")}`;
+  return `Points for your cover letter: ${p.for.title || "Untitled opportunity"}${p.for.sample ? " (sample data)" : ""}\n\n${lines.join("\n")}`;
 }
 
 // A citation chip for a point, labelled by the source's title (the id is the tooltip).
 // The user's own document ("user:interests") shows a lock and opens nothing; a public record opens
 // in the evidence panel, as the answer's citations do.
-function pointCite(id, p, ctx) {
-  const full = (p.sources || {})[id] || id;
-  const short = full.length > 56 ? `${full.slice(0, 54).replace(/\s+\S*$/, "")}…` : full;
+// The label is never a bare record id (S49): without a title in `sources`, the card's own record
+// reads by its title and any other record as the brief names it.
+function sourceTitle(id, p, ctx) {
+  const known = ctx.label ? ctx.label(id) : null;
+  return (p.sources || {})[id] || (id === p.for.id && p.for.title) || (known && (known.full || known.name))
+    || (id.startsWith("user:") ? "Your document" : "The record");
+}
+
+// On a lead card (`onCard`) the card's own record is the title just above, so its chip reads "Evidence".
+function pointCite(id, p, ctx, onCard = false) {
+  const full = sourceTitle(id, p, ctx);
+  const short = onCard && id === p.for.id ? "Evidence"
+    : full.length > 56 ? `${full.slice(0, 54).replace(/\s+\S*$/, "")}…` : full;
   if (id.startsWith("user:")) {
     return h("span", { class: "cite own", title: id }, icon("lock"), h("span", { text: short }),
       h("span", { class: "sr-only", text: `, from ${full}, your own document` }));
@@ -378,7 +391,7 @@ function answer(x, ctx, thinking) {
     }
     const marked = markUnsupported(x.answer, m.unsupported || []);
     const n = (m.unsupported || []).length;
-    const checked = m.flagged ? "Written by a model. It failed the citation check; sentences were removed."
+    const checked = m.flagged ? "Written by a model."
       : n ? "Written by a model. Some sentences could not be confirmed; they are marked."
         : "Written by a model; checked against the records it cites.";
     const plural = (k) => `${k} sentence${k === 1 ? "" : "s"}`;

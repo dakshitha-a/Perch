@@ -243,11 +243,12 @@ class StoreRepository(Repository):
                audience_level: Sequence[str] = (), q: str | None = None,
                closes_after: date | None = None, limit: int = 50,
                cursor: str | None = None, scopes: Sequence[str] = (),
-               exclude_schools: Sequence[str] = ()) -> Page[R]:
+               exclude_schools: Sequence[str] = (), **more: object) -> Page[R]:
+        # S49: sort, open_only and today pass through to the base store unchanged.
         return self.base.browse(cls, temple_only=temple_only, schools=schools,
                                 audience_level=audience_level, q=q, closes_after=closes_after,
                                 limit=limit, cursor=cursor, scopes=scopes,
-                                exclude_schools=exclude_schools)
+                                exclude_schools=exclude_schools, **more)
 
     def facets(self, cls: type[R]) -> Facets:
         return self.base.facets(cls)

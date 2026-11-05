@@ -51,11 +51,13 @@ class HybridRepository(Repository):
                audience_level: Sequence[str] = (), q: str | None = None,
                closes_after: date | None = None, limit: int = 50,
                cursor: str | None = None, scopes: Sequence[str] = (),
-               exclude_schools: Sequence[str] = ()) -> Page[R]:
+               exclude_schools: Sequence[str] = (), sort: str = "name",
+               open_only: bool = False, today: date | None = None) -> Page[R]:
         return self.pg.browse(cls, temple_only=temple_only, schools=schools,
                               audience_level=audience_level, q=q, closes_after=closes_after,
                               limit=limit, cursor=cursor, scopes=scopes,
-                              exclude_schools=exclude_schools)
+                              exclude_schools=exclude_schools, sort=sort, open_only=open_only,
+                              today=today)
 
     def facets(self, cls: type[R]) -> Facets:
         return self.pg.facets(cls)

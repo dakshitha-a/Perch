@@ -5,7 +5,7 @@ import { liveApi, replayApi } from "./api.js";
 import { add, evMark, fill, h, icon } from "./dom.js";
 import { renderHelp } from "./help.js";
 import { compareOffices, loadCompare, renderCompare } from "./compare.js";
-import { coverBlock } from "./cover.js";
+import { coverBlock, coverListLine } from "./cover.js";
 import { renderHandoff } from "./handoff.js";
 import { renderScout } from "./scout.js";
 import * as f from "./format.js";
@@ -80,6 +80,15 @@ function announce(msg) {
 
 function screen(name) {
   document.body.dataset.screen = name;
+  syncHomeLink();
+}
+
+// The header's My Perch link says when My Perch is the screen shown (S49 P8).
+function syncHomeLink() {
+  const a = $("#my-perch-link");
+  if (!a) return;
+  if (document.body.dataset.screen === "home") a.setAttribute("aria-current", "page");
+  else a.removeAttribute("aria-current");
 }
 
 function leaveBrief() {
@@ -135,10 +144,12 @@ function route() {
     window.scrollTo(0, 0);
     return;
   }
-  if (parts[0] === "me") {
+  // My Perch is a signed-in user's home (S49 P-D1, U41): #/ and #/me both show it.
+  if (parts[0] === "me" || (!parts.length && sess.signed_in && api.mode !== "replay")) {
     leaveBrief();
-    screen("form");
-    renderMyPerch(main(), rt);
+    screen("home");
+    document.title = "My Perch — Perch";
+    renderMyPerch(main(), rt, { home: true });
     window.scrollTo(0, 0);
     return;
   }
@@ -168,6 +179,12 @@ function route() {
     screen("form");
     renderPick();
     window.scrollTo(0, 0);
+    return;
+  }
+  if (parts[0] === "rerun" && parts[1]) {
+    leaveBrief();
+    screen("form");
+    rerun(decodeURIComponent(parts[1]));
     return;
   }
   if (parts[0] === "brief" && parts[1]) {
@@ -258,9 +275,10 @@ function drawWho() {
   const sess = S.session;
   document.body.classList.toggle("signed-in", Boolean(sess.signed_in));
   if (!sess.signed_in) {
+    // A guest signs in from the banner's link, so the header has no second one (S49 U17).
     fill(who,
       sess.guest ? h("span", { class: "chip guest-chip", text: "Guest" }) : null,
-      S.signinDown ? null : h("a", { class: "btn quiet", id: "sign-in", href: signInHref(), text: "Sign in" }));
+      S.signinDown || sess.guest ? null : h("a", { class: "btn quiet", id: "sign-in", href: signInHref(), text: "Sign in" }));
     return;
   }
   const roles = sess.roles || [];
@@ -273,7 +291,7 @@ function drawWho() {
   };
   const item = (el) => h("li", {}, el);
   const menu = h("ul", { id: "acct-menu", class: "acct-menu", hidden: true },
-    item(h("a", { href: "#/me", onclick: () => close(false), text: "My Perch" })),
+    item(h("a", { href: "#/", onclick: () => close(false), text: "My Perch" })),
     item(h("a", { href: "#/account", onclick: () => close(false), text: "Account and data" })),
     both ? item(h("button", { type: "button", "data-key": "switch-side", onclick: async () => {
       try {
@@ -309,7 +327,9 @@ function drawWho() {
   const wrap = h("div", { class: "acct",
     onkeydown: (e) => { if (e.key === "Escape" && !menu.hidden) { e.stopPropagation(); close(true); } },
     onfocusout: (e) => { if (!menu.hidden && !wrap.contains(e.relatedTarget)) close(false); } }, btn, menu);
-  fill(who, wrap);
+  // At 480 px and wider My Perch has its own link; under that the menu holds it (S49 P8).
+  fill(who, h("a", { class: "btn quiet", id: "my-perch-link", href: "#/", text: "My Perch" }), wrap);
+  syncHomeLink();
   syncThemeItem();
 }
 
@@ -369,7 +389,7 @@ function renderFind() {
         h("p", { text: "After you pick the person, you can tell Perch where your research is going, keywords to search for or leave out, a career stage and a smallest award size. All of it is optional." }))));
   const sess = S.session;
   const replay = api.mode === "replay";
-  // DRAFT copy (S43): the landing buttons and the guest line, for Dakshitha to review.
+  // The landing buttons and the guest line (S43).
   const fitButton = sess.signed_in
     ? h("button", { class: "btn", type: "button", "data-key": "fit", onclick: () => go("#/student") },
       h("span", { text: "Check my fit with my CV" }))
@@ -391,13 +411,14 @@ function renderFind() {
     h("a", { class: "btn primary", "data-key": "browse-awards", href: replay ? null : "#/awards",
       "aria-disabled": replay ? "true" : null }, h("span", { text: "Browse Temple awards" })),
     replay ? h("span", { class: "hint", text: "The preview has no server." }) : fitButton,
-    guestLine);
+    // With sign-in down, "Try a sample student" is already the guest path (S49 U19, R5).
+    S.signinDown ? null : guestLine);
   const browseFunding = replay ? null : h("a", { class: "quiet-link", "data-key": "browse-funding", href: "#/funding" },
     h("span", { text: "Browse funding" }));
   fill(main(), h("div", { class: "landing" },
     heroArt(),
     h("h1", { text: "Find funding that fits." }),
-    // DRAFT copy (S43): the sub-line, for Dakshitha to review.
+    // The sub-line (S43).
     h("p", { class: "lede", text: "Temple scholarships and research funding, every claim linked to its record." }),
     S.notice ? h("div", { class: `notice ${S.noticeEnded ? "info" : "warn"} notice-ended`, role: "status" }, icon("warn"),
       h("p", { text: S.notice }),
@@ -517,7 +538,7 @@ const atTemple = (c) => (c.institutions || []).some((i) => /temple university/i.
 
 function renderPick() {
   const F = S.find;
-  if (!F.candidates && !F.error && !F.busy) { goReplace("#/"); return; }
+  if (!F.candidates && !F.error && !F.busy) { goReplace("#/start"); return; }
   document.title = "Pick the researcher — Perch";
   const c = F.picked;
   const list = c ? [c] : (F.candidates || []);
@@ -534,10 +555,14 @@ function renderPick() {
       : n === 1 && !atTemple(F.candidates[0]) ? "This profile does not list Temple University. An ID finds anyone, so check that it is the right person. Nothing runs until you pick it."
         : `${f.plural(n, "Temple author", "Temple authors")} in OpenAlex ${n === 1 ? "matches" : "match"}. Nothing runs until you pick one.`;
   const back = c
-    ? h("button", { class: "back btn quiet", type: "button", "data-key": "unpick",
-      onclick: () => { F.picked = null; renderPick(); const t = $("#pick-title"); if (t) t.focus(); } },
-    icon("back"), h("span", { text: "Back to the matches" }))
-    : h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" }));
+    ? h("div", { class: "back-row" },
+      h("button", { class: "back btn quiet", type: "button", "data-key": "unpick",
+        onclick: () => { F.picked = null; renderPick(); const t = $("#pick-title"); if (t) t.focus(); } },
+      icon("back"), h("span", { text: "Back to the matches" })),
+      // D4: a signed-in user may start over with another person.
+      S.session.signed_in ? h("a", { class: "quiet-link", "data-key": "choose-else", href: "#/start" },
+        h("span", { text: "Choose someone else" })) : null)
+    : h("a", { class: "back", href: "#/start" }, icon("back"), h("span", { text: "Back" }));
   const again = c ? null : h("form", { role: "search", onsubmit: (e) => { e.preventDefault(); search(); } },
     h("label", { for: "q", class: "sr-only", text: "Find a Temple researcher" }),
     h("div", { class: "searchbox small" },
@@ -559,6 +584,7 @@ function renderPick() {
     note ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: note })) : null,
     F.busy ? h("div", { class: "shimmer-card" }) : null,
     list.length ? h("ul", { class: "cand-list" }, list.map((x, i) => candidateCard(x, i === 0 && !c && n > 1))) : null,
+    c ? cvBox() : null,
     c ? contextPanel(c) : null));
 }
 
@@ -624,27 +650,97 @@ function contextPanel(c) {
         h("label", { class: "big", for: "ctx-min", text: "Leave out awards smaller than (US dollars)" }),
         h("input", { id: "ctx-min", type: "number", inputmode: "numeric", min: "0", step: "any", placeholder: "Any",
           value: F.minAmount, "aria-describedby": "min-hint", oninput: (e) => { F.minAmount = e.target.value; } }),
-        h("p", { class: "note", id: "min-hint", text: "Compared with the award ceiling in each record. Records that state no amount stay in." })),
-      cvBox())));
+        h("p", { class: "note", id: "min-hint", text: "Compared with the award ceiling in each record. Records that state no amount stay in." })))));
 }
 
-// A signed-in researcher can attach stored documents; a guest is pointed to sign-in.
-// DRAFT copy (S43): the labels in this box.
+// The researcher's CV card (S49 D3, M4): on the pick screen under the picked person, not
+// folded. A signed-in user ticks stored documents, uploads a file or pastes text; a guest is
+// pointed to sign-in; a signed-out visitor sees nothing.
 function cvBox() {
   const F = S.find;
-  if (S.session.guest) return h("div", { class: "box" }, h("p", { class: "note", text: "Sign in to add your CV." }));
-  if (!S.session.signed_in || api.mode === "replay") return null;
-  const box = h("div", { class: "box" }, h("h3", { class: "big", text: "Your stored documents" }));
-  const draw = () => fill(box, h("h3", { class: "big", text: "Your stored documents" }),
-    F.docs && F.docs.length ? F.docs.map((d) => h("label", { class: "check" },
-      h("input", { type: "checkbox", checked: F.docIds.has(d.id), onchange: (e) => { if (e.target.checked) F.docIds.add(d.id); else F.docIds.delete(d.id); } }),
-      h("span", { text: `${d.name || d.label || d.kind} (${d.kind})` })))
-      : h("p", { class: "note", text: F.docs ? "You have no stored documents. Add a CV on the Check my fit page." : "Loading your documents" }));
+  if (api.mode === "replay" || (!S.session.signed_in && !S.session.guest)) return null;
+  const head = () => [h("h2", { class: "section-title", id: "cv-h", text: "Add your CV (optional)" })];
+  const box = h("section", { class: "box cv-box fade-in", "aria-labelledby": "cv-h" });
+  if (S.session.guest) {
+    fill(box, ...head(), h("p", { class: "note" }, h("span", { text: "Sign in to add your CV. " }),
+      h("a", { href: signInHref(), text: "Sign in" })));
+    return box;
+  }
+  const status = h("p", { class: "hint cv-status", role: "status" });
+  // A new document is ticked: it is what the user just added for this brief.
+  async function save(body) {
+    F.cvBusy = true; draw();
+    const before = new Set((F.docs || []).map((d) => d.id));
+    try {
+      await api.addDoc({ kind: "cv", ...body }, "researcher");
+      F.docs = await api.docs("researcher");
+      for (const d of F.docs) if (!before.has(d.id)) F.docIds.add(d.id);
+      F.cvText = "";
+      status.textContent = "Saved. It is ticked for this brief.";
+      announce("CV saved.");
+    } catch (e) {
+      status.textContent = e.code === "consent_required" ? "Agree to the consent first, on your account page." : e.message;
+    }
+    F.cvBusy = false; draw();
+  }
+  function upload(file) {
+    if (!file) return;
+    const rd = new FileReader();
+    rd.onload = () => save({ filename: file.name, data: String(rd.result).split(",")[1] || "" });
+    rd.readAsDataURL(file);
+  }
+  function draw() {
+    const docs = F.docs && F.docs.length ? h("div", { class: "cv-docs" }, F.docs.map((d) => h("label", { class: "check" },
+      h("input", { type: "checkbox", checked: F.docIds.has(d.id),
+        onchange: (e) => { if (e.target.checked) F.docIds.add(d.id); else F.docIds.delete(d.id); } }),
+      h("span", { text: `${d.name || d.label || d.kind} (${d.kind})` }))))
+      : h("p", { class: "note", text: F.docs ? "No stored documents yet." : "Loading your documents" });
+    const text = h("textarea", { id: "r-cv-text", rows: 6, maxlength: 60000, value: F.cvText || "",
+      oninput: (e) => { F.cvText = e.target.value; } });
+    fill(box, ...head(),
+      h("p", { class: "hint", text: "Used for cover-letter points and Scout. Stored encrypted. Contact details are blanked before a model reads it." }),
+      docs,
+      h("div", { class: "file-row" },
+        h("input", { id: "r-cv-file", class: "sr-only file-input", type: "file", accept: ".pdf,.docx,.txt,.md", disabled: F.cvBusy,
+          onchange: (e) => upload(e.target.files[0]) }),
+        h("label", { class: "btn", for: "r-cv-file", "aria-disabled": F.cvBusy ? "true" : null },
+          icon("paper"), h("span", { text: F.cvBusy ? "Saving" : "Upload a file" }))),
+      h("details", { class: "cv-paste", open: Boolean(F.cvText) },
+        h("summary", { "data-key": "cv-paste", text: "Paste text instead" }),
+        h("label", { class: "sr-only", for: "r-cv-text", text: "Your CV as text" }),
+        text,
+        h("button", { class: "btn", type: "button", "data-key": "cv-save", disabled: F.cvBusy,
+          onclick: () => { if ((F.cvText || "").trim()) save({ text: F.cvText, filename: "cv.txt" }); } },
+        h("span", { text: "Save my CV" }))),
+      status);
+  }
   draw();
   if (!F.docs) {
-    api.docs("researcher").then((d) => { F.docs = d; draw(); }).catch((e) => { F.docs = []; fill(box, h("p", { class: "note", text: e.code === "consent_required" ? "Agree to the consent first." : e.message })); });
+    api.docs("researcher").then((d) => { F.docs = d; draw(); })
+      .catch((e) => { F.docs = []; draw(); status.textContent = e.code === "consent_required" ? "Agree to the consent first, on your account page." : e.message; });
   }
   return box;
+}
+
+// "Change details and run again" (D4): load a brief and go back to its form with its details
+// filled in. A student brief goes to the start screen, which shows the stored CV and entries.
+async function rerun(id) {
+  fill(main(), h("div", { class: "loading" }, owl("work", "owl-md"), h("p", { text: "Opening the brief's details" })));
+  let d;
+  try { d = await api.brief(id); } catch (e) { renderMissing(id, e.message); return; }
+  if (!location.hash.startsWith("#/rerun/")) return; // the user went elsewhere meanwhile
+  if (isStudent(d)) { goReplace("#/student"); return; }
+  const r = d.researcher || {};
+  const o = (d.brief && d.brief.options) || {};
+  const cand = { id: r.id, display_name: r.display_name, institutions: r.institutions || [], orcid: r.orcid,
+    works_count: r.works_count, cited_by_count: r.cited_by_count, topics: [] };
+  const list = (v) => (Array.isArray(v) ? v.join(", ") : "");
+  Object.assign(S.find, { q: r.display_name || "", candidates: [cand], picked: cand, searched: r.display_name || "",
+    busy: false, error: null, badOrcid: false, badId: false, unknownId: false,
+    direction: o.direction || "", include: list(o.include_keywords), exclude: list(o.exclude_keywords),
+    stage: o.career_stage || "", minAmount: o.min_amount != null ? String(o.min_amount) : "",
+    explain: o.explain != null ? Boolean(o.explain) : S.find.explain, docIds: new Set(o.doc_ids || []) });
+  goReplace("#/find");
 }
 
 // One build call: the api makes sure a session exists, then starts the brief.
@@ -727,13 +823,16 @@ function renderMissing(id, msg) {
   fill(main(), h("div", { class: "empty" }, owl("worry", "owl-md"),
     h("div", {}, h("p", { class: "lede", text: "This brief could not be opened." }),
       h("p", { class: "hint", text: msg }),
-      h("a", { class: "btn", href: "#/" }, icon("back"), h("span", { text: "Find a researcher" })))));
+      h("a", { class: "btn", href: "#/" }, icon("back"), h("span", { text: "Back to the start" })))));
 }
 
 const leadsOf = () => (S.brief ? S.brief.leads : []);
 const stage = (name) => S.brief.brief.stages.find((s) => s.name === name) || { status: "pending" };
 const isDone = (name) => ["done", "skipped"].includes(stage(name).status);
-const routeLeads = (r) => leadsOf().filter((l) => (l.route || "A") === r);
+// Temple internal funding is its own list, route "T" on screen: the back end marks those
+// leads group "temple_internal" on route A (S49 FM9). They never join the federal list.
+const routeOf = (l) => (l.group === "temple_internal" ? "T" : l.route || "A");
+const routeLeads = (r) => leadsOf().filter((l) => routeOf(l) === r);
 const explainedCount = () => routeLeads("A").filter((l) => l.explanation || l.flagged).length;
 
 function renderBrief() {
@@ -743,10 +842,10 @@ function renderBrief() {
   const name = student ? "Your options" : r.display_name || "Your brief";
   document.title = `${name} — Perch`;
   if (student && !["F", "S"].includes(S.route)) S.route = "F";
-  if (!student && !["A", "B"].includes(S.route)) S.route = "A";
+  if (!student && !["A", "B", "T"].includes(S.route)) S.route = "A";
   // F23: the date's parts never part at a line end ("1" / "Nov 2026").
   const asOf = f.formatDate(d.brief.options.as_of).replace(/ /g, "\u00a0");
-  // DRAFT copy: a guest's sample brief says whose CV it checks (S43 S8).
+  // A guest's sample brief says whose CV it checks (S43 S8).
   const sampleBrief = Boolean(d.brief.options.persona);
   const meta = student ? (sampleBrief ? `Temple awards, fellowships and sample scholarships, checked against the sample student's CV by rule · as of ${asOf}`
       : `Temple awards and fellowships, checked against your CV by rule · as of ${asOf}`)
@@ -754,14 +853,16 @@ function renderBrief() {
   // Back: a student returns to the start screen, a researcher to the matches.
   const back = student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Back" }))
     : h("a", { class: "back", href: S.find.candidates ? "#/find" : "#/" }, icon("back"), h("span", { text: "Back" }));
+  // S3: the second tab is "What Perch read" on both sides.
   const tabs = h("div", { class: `tabs${student ? " student" : ""}`, role: "tablist", "aria-label": "Brief sections" },
     tabButton("routes", student ? "Your options" : "Routes", student ? "Options" : "Routes"),
-    tabButton("profile", student ? "What Perch read" : "Profile", student ? "Read" : "Profile"),
+    tabButton("profile", "What Perch read", "Read"),
     tabButton("compare", "Compare", "Compare"), tabButton("scout", "Ask Scout", "Scout"));
   fill(main(), h("div", { class: "brief screen" }, back,
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page who", text: name }), h("p", { class: "brief-meta", text: meta })),
-      exportMenu()),
+      // S49 (U37, S8, D4): the ready chip, Change details and Export share one group.
+      h("div", { class: "brief-tools" }, h("div", { id: "ready-slot" }), rerunLink("rerun-wide"), exportMenu(student))),
     sampleSteered()
       ? h("p", { class: "notice sample-note", role: "note" },
       h("span", { class: "sample-badge", text: "Sample data" }),
@@ -780,9 +881,17 @@ function renderBrief() {
   renderPanel();
 }
 
-// The Export button: a menu with the three exports. A saved preview has nothing to
-// download (review W12), so it has no menu.
-function exportMenu() {
+// "Change details and run again" (D4): a signed-in user's way back to the form with this
+// brief's details filled in. Under 700 px it is the Export menu's first row instead.
+function rerunLink(cls) {
+  if (!S.session.signed_in || api.mode === "replay") return null;
+  return h("a", { class: `btn quiet ${cls}`, "data-key": cls, href: `#/rerun/${encodeURIComponent(S.briefId)}` },
+    h("span", { text: "Change details and run again" }));
+}
+
+// The Export button: a menu with the exports. A saved preview has nothing to download
+// (review W12), so it has no menu. A student brief has no "Records as JSON" (S49 R2).
+function exportMenu(student = false) {
   if (!api.exportFile) return null;
   const err = h("p", { class: "hint", role: "status" });
   async function download(kind) {
@@ -798,9 +907,10 @@ function exportMenu() {
   }
   const pop = h("section", { class: "export-bar" },
     h("p", { class: "export" },
+      rerunLink("rerun-narrow"),
       h("button", { class: "btn quiet", onclick: () => download("html") }, icon("paper"), h("span", { text: "Print or save as PDF" })),
       h("button", { class: "btn quiet", onclick: () => download("md") }, icon("download"), h("span", { text: "Markdown" })),
-      h("button", { class: "btn quiet", onclick: () => download("json") }, icon("download"), h("span", { text: "Records as JSON" }))),
+      student ? null : h("button", { class: "btn quiet", onclick: () => download("json") }, icon("download"), h("span", { text: "Records as JSON" }))),
     err);
   const det = h("details", { class: "export-menu" },
     h("summary", { "data-key": "export" }, icon("download"), h("span", { text: "Export" })),
@@ -892,6 +1002,30 @@ function renderProgress() {
     if (s.name === "explanations" && isDone("route_a")) detail += ` · ${explainedCount()} of ${routeLeads("A").length} explained`;
   }
   const pct = b.status === "done" ? 100 : (doneN / Math.max(stages.length, 1)) * 100;
+  // S49 (U37, S8): once the brief is ready, the progress card folds into a chip beside
+  // Export, "Ready · 7 s", which opens the Steps. While it builds or after it fails, the
+  // full card stays. The saved preview keeps its card, which holds "Replay the build".
+  const slot = $("#ready-slot");
+  if (b.status === "done" && slot && api.mode !== "replay") {
+    box.replaceChildren();
+    box.hidden = true;
+    let chip = slot.querySelector(".ready-chip");
+    if (!chip) {
+      const summary = h("summary", { "data-key": "ready-chip" }, owl("done", "owl-xs"), h("span", { class: "ready-word" }));
+      chip = h("details", { class: "ready-chip" }, summary, h("div", { class: "ready-pop" }));
+      chip.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && chip.open) { chip.open = false; summary.focus(); e.stopPropagation(); }
+      });
+      fill(slot, chip);
+    }
+    const word = `Ready · ${f.elapsed(lastEnd - t0)}`;
+    chip.querySelector(".ready-word").textContent = word;
+    chip.querySelector("summary").setAttribute("aria-label", `Brief ready, built in ${f.elapsed(lastEnd - t0)}. Show the steps`);
+    fill(chip.querySelector(".ready-pop"), h("p", { class: "ready-pop-head", text: `${stages.length} of ${stages.length} steps done` }), stepsList(stages));
+    return;
+  }
+  if (slot) slot.replaceChildren();
+  box.hidden = false;
   let card = box.querySelector(".pcard");
   if (!card) {
     card = h("section", { class: "pcard", role: "status", "aria-label": "Progress" },
@@ -919,13 +1053,19 @@ function renderProgress() {
     api.mode === "replay" && b.status === "done" ? h("button", { class: "btn link", type: "button", onclick: replayBuild }, h("span", { text: "Replay the build" })) : null);
   const steps = h("details", { class: "steps", open: S.stepsOpen,
     ontoggle: (e) => { S.stepsOpen = e.target.open; } },
-  h("summary", {}, h("span", { text: "Steps" }), h("span", { class: "steps-n", text: `(${doneN} of ${stages.length} done)` })),
-  h("ol", {}, stages.map((s) => h("li", { "data-status": s.status },
+  // U8: the count is live progress, so it shows only while the brief builds.
+  h("summary", {}, h("span", { text: "Steps" }),
+    b.status === "done" ? null : h("span", { class: "steps-n", text: `(${doneN} of ${stages.length} done)` })),
+  stepsList(stages));
+  fill(card.querySelector(".progress-steps"), steps);
+}
+
+function stepsList(stages) {
+  return h("ol", { class: "steps-list" }, stages.map((s) => h("li", { "data-status": s.status },
     h("span", { class: "step-dot", "aria-hidden": "true" }),
     h("span", { class: "step-name" }, h("b", { text: f.STAGES[s.name] || s.name }),
       h("span", { class: "sr-only", text: `, ${stepWord(s.status)}` })),
-    h("span", { class: "step-detail", text: stepDetail(s) })))));
-  fill(card.querySelector(".progress-steps"), steps);
+    h("span", { class: "step-detail", text: stepDetail(s) }))));
 }
 
 async function replayBuild() {
@@ -954,7 +1094,7 @@ function stepDetail(s) {
 
 async function rebuild() {
   if (api.mode === "replay") replayBuild();
-  else go(isStudent(S.brief) ? "#/student" : S.find.picked ? "#/find" : "#/");
+  else go(isStudent(S.brief) ? "#/student" : S.find.picked ? "#/find" : "#/start");
 }
 
 // ---------- panels ----------
@@ -1004,7 +1144,7 @@ function syncWarnings() {
 
 // The right rail on the list tab: the shortlist card above the evidence panel. Under
 // 900 px the rail hides and a floating keep pill takes the shortlist's place.
-const KIND_SHORT = { A: "Grant", B: "Industry", F: "Award", S: "Sample" };
+const KIND_SHORT = { A: "Grant", T: "Temple", B: "Industry", F: "Award", S: "Sample" };
 
 function leadTitle(l) {
   return (l.opportunity && l.opportunity.title) || (l.organisation && l.organisation.name)
@@ -1033,7 +1173,7 @@ function drawRail() {
       card.classList.toggle("has", kept.length > 0);
       const focusKey = card.contains(document.activeElement) ? "sl-compare" : null;
       const item = (l) => h("li", { class: "fade-in" },
-        h("span", { class: "kind-short", text: KIND_SHORT[l.route || "A"] || "Lead" }),
+        h("span", { class: "kind-short", text: KIND_SHORT[routeOf(l)] || "Lead" }),
         h("span", { class: "sl-title", text: leadTitle(l), title: leadTitle(l) }),
         h("button", { class: "x", type: "button", "aria-label": `Remove from shortlist: ${leadTitle(l)}`,
           onclick: () => setLead(l.id, "restore") }, "×"));
@@ -1046,9 +1186,12 @@ function drawRail() {
         kept.length ? groups.map(([t, ls]) => [t ? h("p", { class: "sl-group", text: t }) : null, h("ul", {}, ls.map(item))])
           : h("p", { text: student ? "Keep fellowships or scholarships and they collect here, ready to compare."
             : "Keep grants or industry leads and they collect here, ready to compare and hand off." }),
-        h("button", { class: "btn primary", type: "button", "data-key": "sl-compare", disabled: !kept.length,
+        // U11: one label on both sides; with nothing kept, an outline button and a hint.
+        h("button", { class: `btn ${kept.length ? "primary" : "outline"}`, type: "button", "data-key": "sl-compare",
+          disabled: !kept.length, "aria-describedby": kept.length ? null : "sl-hint",
           onclick: () => go(`#/brief/${encodeURIComponent(S.briefId)}/compare`) },
-        h("span", { text: student ? "Compare and draft a note" : "Compare and hand off" })));
+        h("span", { text: "Compare and draft" })),
+        kept.length ? null : h("p", { class: "hint sl-hint", id: "sl-hint", text: "Keep a lead first" }));
       if (focusKey) { const b = card.querySelector(`[data-key="${focusKey}"]`); if (b && !b.disabled) b.focus(); }
     }
   }
@@ -1101,7 +1244,7 @@ function renderStudentPanel(panel) {
   if (panel.dataset.sig === sig) return;
   panel.dataset.sig = sig;
   const ctx = { brief: d, route: S.route, papers: d.papers || {}, openEvidence, setLead, announce, api,
-    offices: api.studentOffices, guest: Boolean(S.session.guest), signIn: signInHref(),
+    offices: d.offices || api.studentOffices, guest: Boolean(S.session.guest), signIn: signInHref(),
     briefId: S.briefId, setRoute: switchRoute,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) };
   if (S.tab === "profile") keepFocus(() => fill(panel, ...studentProfile(d, ctx)));
@@ -1382,17 +1525,21 @@ function sortedLeads() {
   return leads;
 }
 
-// Grants and industry leads sit side by side as two equal routes; a switch picks one.
+// Grants, Temple internal calls (when the brief has any) and industry leads sit side by side
+// as equal routes; a switch picks one.
 function routeSwitch() {
   const n = (r) => routeLeads(r).filter((l) => l.status !== "dismissed").length;
   const btn = (r, label) => {
-    const ready = isDone(r === "A" ? "route_a" : "route_b");
+    const ready = isDone(r === "B" ? "route_b" : "route_a"); // T is found with the grants
     return h("button", { class: "route-btn", "data-key": `route-${r}`, "aria-pressed": String(S.route === r),
       onclick: () => switchRoute(r) },
-    h("span", { text: label }), ready ? h("span", { class: "route-n", text: String(n(r)) }) : null);
+    // On a phone "Temple internal" reads "Temple", so three routes fit one row.
+    r === "T" ? [h("span", { class: "route-long", text: label }), h("span", { class: "route-short", "aria-hidden": "true", text: "Temple" })]
+      : h("span", { text: label }),
+    ready ? h("span", { class: "route-n", text: String(n(r)) }) : null);
   };
   return h("div", { class: "route-switch", role: "group", "aria-label": "Route" },
-    btn("A", "Grants"), btn("B", "Industry"));
+    btn("A", "Grants"), routeLeads("T").length ? btn("T", "Temple internal") : null, btn("B", "Industry"));
 }
 
 // The sort order as the same segmented pill as Grants | Industry, smaller (S27).
@@ -1410,7 +1557,7 @@ function sortSwitch() {
 }
 
 function updateSwitch(panel) {
-  for (const r of ["A", "B"]) {
+  for (const r of ["A", "T", "B"]) {
     const el = panel.querySelector(`[data-key="route-${r}"] .route-n`);
     if (el) el.textContent = String(routeLeads(r).filter((l) => l.status !== "dismissed").length);
   }
@@ -1441,15 +1588,20 @@ function renderRoutes(panel) {
   const dismissed = leads.filter((l) => l.status === "dismissed");
   const explaining = stage("explanations").status === "running" || stage("explanations").status === "pending";
 
-  const sig = `routes:${isDone("route_b")}`;
+  const sig = `routes:${S.route}:${isDone("route_b")}:${routeLeads("T").length > 0}`;
   if (panel.dataset.sig !== sig) {
     panel.dataset.sig = sig;
-    // The sort switch shares the Grants | Industry row (Dakshitha, S27); the title and its
-    // note sit under both, so the switch never moves when the note changes length.
-    fill(panel, h("div", { class: "route-row" }, routeSwitch(), sortSwitch()),
-      h("div", { class: "routes-bar" },
-        h("div", {}, h("h2", { class: "section-title", id: "routes-title" }),
-          h("p", { class: "hint routes-sub" }))),
+    // S49 (U10, A6): the route row holds the route switch alone; the count heading and Sort
+    // share the list's head row, and the notices sit under it, said once for the list.
+    fill(panel, h("div", { class: "route-row" }, routeSwitch()),
+      h("div", { class: "list-head" },
+        h("h2", { class: "section-title", id: "routes-title" }),
+        sortSwitch()),
+      h("p", { class: "hint routes-sub" }),
+      S.route === "T" ? h("p", { class: "hint route-hint", text: "Temple’s own funding calls for faculty, kept apart from federal grants. Each call’s page says whom to contact." })
+        : hiddenLine(),
+      h("p", { class: "hint model-line", text: "Model text is a model’s reading of the fit, checked against the records it cites." }),
+      h("div", { id: "list-notices" }),
       h("div", { class: "filter-box" }),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
       h("div", { class: "weak-box" }),
@@ -1459,9 +1611,10 @@ function renderRoutes(panel) {
   for (const b of panel.querySelectorAll(".sort-switch button")) {
     b.setAttribute("aria-pressed", String(b.dataset.key === `sort-${S.sort}`));
   }
+  const noun = S.route === "T" ? ["Temple internal call", "Temple internal calls"] : ["open opportunity", "open opportunities"];
   panel.querySelector("#routes-title").textContent = active.length === open.length
-    ? f.plural(open.length, "open opportunity", "open opportunities")
-    : `${active.length} of ${f.plural(open.length, "open opportunity", "open opportunities")}`;
+    ? f.plural(open.length, ...noun)
+    : `${active.length} of ${f.plural(open.length, ...noun)}`;
   drawFilters(panel.querySelector(".filter-box"), open);
   // The kept count shows in the shortlist, the floating pill and the Compare tab (W3).
   const subBits = [];
@@ -1470,6 +1623,9 @@ function renderRoutes(panel) {
   const sub = panel.querySelector(".routes-sub");
   sub.textContent = subBits.length ? `${subBits.join(". ")}.` : "";
   sub.hidden = !subBits.length;
+  // U43: what model text is, said once above the list, when the list holds any.
+  panel.querySelector(".model-line").hidden = !open.some((l) => l.explanation);
+  drawNotices(panel.querySelector("#list-notices"), active);
 
   if (!leads.length) {
     fill(panel.querySelector(".leads"), h("li", { class: "empty" }, owl("worry", "owl-md"),
@@ -1505,7 +1661,29 @@ function renderRoutes(panel) {
   syncList(det.querySelector("ol"), dismissed);
 }
 
-const RESEARCH_SECURITY = "Companies outside the United States may need a research-security review before any contact; the office makes that check.";
+// What the rules left out (S49 F2), one quiet line; the labels and counts are the server's.
+function hiddenLine() {
+  const hid = (S.brief.brief.hidden || S.brief.hidden || []).filter((x) => x && x.label && x.count);
+  if (!hid.length) return null;
+  return h("p", { class: "hint hidden-line", text: `Hidden: ${hid.map((x) => `${x.label} (${x.count})`).join(", ")}` });
+}
+
+// The list's notices (S49 U3, U16): the withheld-reason note once for the list when two or
+// more cards on it are flagged, and cover.js's one line. Empty, the slot takes no room.
+function drawNotices(box, shown) {
+  if (!box) return;
+  const flagged = shown.filter((l) => l.flagged).length;
+  const items = [
+    flagged >= 2 ? h("p", { class: "notice info list-note" }, icon("help"),
+      h("span", { text: "Some written reasons failed Perch’s citation check, so they are left out. Every date, amount and rule result on the cards is still copied from the record." })) : null,
+    coverListLine(coverCtx())].filter(Boolean);
+  const sig = JSON.stringify([flagged >= 2, items.map((x) => x.textContent)]);
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  fill(box, ...items);
+}
+
+const RESEARCH_SECURITY ="Companies outside the United States may need a research-security review before any contact; the office makes that check.";
 const OPEN_FIRST = 5; // cards shown open before the Weaker matches fold (Q6)
 
 // One-click filters (U25), built only from the values on the leads themselves: each
@@ -1715,28 +1893,35 @@ function leadCard(l) {
     fit = h("span", { class: "fit pending" }, owl("work", "owl-xs"), h("span", { text: "Reading" }));
   }
 
-  const tags = h("span", { class: "tags" },
-    h("span", { class: "tag", text: f.agencyShort(o.agency, o.parent_agency) }),
-    o.activity_code ? h("span", { class: "tag", text: o.activity_code }) : null,
-    o.status && o.status !== "posted" ? h("span", { class: "tag ember", text: o.status === "forecasted" ? "Forecast" : o.status }) : null);
+  // S49 (M1, R3): the line under the title holds the agency, the activity code and a status
+  // word, each only when the record has it, so no empty tag is ever drawn. The opportunity
+  // number stays in the evidence panel.
+  const subText = [f.agencyShort(o.agency, o.parent_agency), o.activity_code].filter((x) => x && String(x).trim()).join(" · ");
+  const status = o.status && o.status !== "posted" ? (o.status === "forecasted" ? "Forecast" : o.status) : null;
+  const sub = subText || status ? h("p", { class: "lead-sub" }, subText ? h("span", { text: subText }) : null,
+    status ? h("span", { class: "tag ember", text: status }) : null) : null;
 
   // NSF dates its open-anytime programs decades out: past ten years the record's own
   // words stand in place of the date (U3, Q3). Evidence keeps both fields.
   const far = Boolean(o.close_date_note && days !== null && days > 3650) || f.standardDates(o);
   const expires = f.expiresOnly(o);  // T17: a parent announcement's date is its expiry
-  const facts = h("dl", { class: `facts${size ? "" : " one"}` },
+  // FM3: with no date, the page's own deadline words are shown in quotes, never "Not stated".
+  const quote = !o.close_date && !far ? (o.deadline_quote || (l.record && l.record.deadline_quote) || null) : null;
+  const missing = () => h("span", { class: "missing", text: "Not stated" });
+  // D5: always two facts, the date and the amount, so every card has the same shape.
+  const facts = h("dl", { class: "facts facts-2" },
     // F20: an expiry date sits under its own label, not under "Closes".
-    h("div", { class: `fact close ${urg}` }, h("dt", { text: expires && !far ? "Announcement" : "Closes" }),
+    h("div", { class: `fact close ${urg}` }, h("dt", { text: quote ? "Deadline" : expires && !far ? "Announcement" : "Closes" }),
       h("dd", {}, far ? h("span", { text: o.close_date_note })
-        : o.close_date ? h("span", { text: `${expires ? "Expires " : ""}${f.formatDate(o.close_date)}` }) : h("span", { class: "missing", text: "Not stated in the record" }),
+        : o.close_date ? h("span", { text: `${expires ? "Expires " : ""}${f.formatDate(o.close_date)}` })
+          : quote ? h("span", { class: "quote-date", text: `The page says: “${quote}”` }) : missing(),
         !far && !expires && days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),
-    size ? h("div", { class: "fact" }, h("dt", { text: "Award size" }), h("dd", {}, h("span", { text: size }))) : null);
-  const noSize = size ? null : h("p", { class: "hint no-size", text: "Award size: not stated in the record." });
+    h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, size ? h("span", { text: size }) : missing())));
 
   let explain = null;
   if (l.flagged) {
-    explain = h("p", { class: "notice warn" }, icon("warn"), h("span", {
-      text: "The explanation was withheld because it failed the citation checks twice. The fields above are copied from the record." }));
+    // U3: one quiet line on the card; the list says why once, above the cards.
+    explain = h("p", { class: "hint withheld-line", text: "Written reason withheld: it failed the citation check." });
   } else if (pending) {
     explain = h("div", { class: "writing" }, skeleton(2), h("p", { class: "hint", text: "Writing a cited explanation" }));
   } else if (parsed) {
@@ -1760,36 +1945,36 @@ function leadCard(l) {
   for (const b of actions) b.setAttribute("aria-describedby", `t-${cssId(l.id)}`);
   return h("li", { class: `card lead${l.status === "kept" ? " kept" : ""}${l.status === "dismissed" ? " gone" : ""}`,
     "data-id": l.id },
-  cardHead(tags, fit, actions),
-  h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
-    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: o.title || l.record_id }), evMark())),
-  h("p", { class: "opp-num", text: o.opportunity_number || "" }),
-  facts, noSize, leadNotes(l), explain,
+  // The title comes first (S49 D5); the Match pill and the actions sit at the end of its row.
+  h("div", { class: "lead-top" },
+    h("div", { class: "lead-name" },
+      h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
+        onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: o.title || "Untitled opportunity" }), evMark())),
+      sub),
+    h("div", { class: "lead-end" }, fit || null, h("div", { class: "actions" }, actions))),
+  facts, leadNotes(l), explain,
   // S46: cover-letter points, on every grant lead that is not dismissed.
-  l.status === "dismissed" ? null : coverBlock({ api, announce, openEvidence, guest: Boolean(S.session.guest),
-    signIn: signInHref(), audience: "researcher", stored: (S.brief && S.brief.cover_points) || [] }, S.briefId, l.record_id));
+  l.status === "dismissed" ? null : coverBlock(coverCtx(), S.briefId, l.record_id));
 }
 
-// The card head: tags on the left; the Match pill and the actions on the right, so Keep
-// is in reach without scrolling past the explanation (review W2).
-function cardHead(tags, fit, actions) {
-  return h("div", { class: "lead-head" }, tags,
-    h("div", { class: "head-end" }, fit || null, h("div", { class: "actions" }, actions)));
+// What cover.js needs for a researcher card and for the list's one line (S49 U16).
+function coverCtx() {
+  return { api, announce, openEvidence, guest: Boolean(S.session.guest), signIn: signInHref(), audience: "researcher",
+    stored: (S.brief && S.brief.cover_points) || [] };
 }
 
 // Rule notes written by code: a career-stage unlock, a past sponsor, what the user said.
 function leadNotes(l) {
   if (!l.notes || !l.notes.length) return null;
-  return h("ul", { class: "lead-notes" }, l.notes.map((n) => h("li", {},
-    h("span", { class: "tag", text: "Rule" }),
-    h("span", { text: ` ${n}` }))));
+  // Each note is a plain line written by code, such as a past date on the page (S49).
+  return h("ul", { class: "lead-notes" }, l.notes.map((n) => h("li", { text: n })));
 }
 
 function explanationBlock(l, parsed, o) {
   const papers = S.brief.papers || {};
   if (parsed.raw) {
-    return h("div", { class: "explain" }, modelTag(),
-      h("p", { class: "what" }, renderSegs(parsed.raw, ownIds(o))), inferenceBox(l, o));
+    return h("div", { class: "explain" },
+      h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.raw, ownIds(o))), inferenceBox(l, o));
   }
   // With the researcher's CV or current research in the brief, the reasons start open
   // (S27, Dakshitha), as they do for a student.
@@ -1818,14 +2003,8 @@ function explanationBlock(l, parsed, o) {
     h("div", {}, h("p", { text: "This statement could not be matched to its source:" }),
       h("ul", {}, l.unsupported.map((u) => h("li", { text: u }))))) : null,
   eligibilityRows(o));
-  return h("div", { class: "explain" }, modelTag(),
-    h("p", { class: "what" }, renderSegs(parsed.opportunity, ownIds(o))), why);
-}
-
-// The tag on model text: the model's reading, checked against the records it cites.
-function modelTag() {
-  return h("p", { class: "provenance" }, modelWord(),
-    h("span", { text: "Checked against the records it cites." }));
+  return h("div", { class: "explain" },
+    h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.opportunity, ownIds(o))), why);
 }
 
 function modelWord() {
@@ -1876,7 +2055,8 @@ function renderSegs(segs, skip = new Set()) {
     const next = segs[i + 1];
     const m = typeof next === "string" ? next.match(/^[.,;:)]+/) : null;
     if (m) segs[i + 1] = next.slice(m[0].length);
-    out.push(cite(s.cite, papers), m ? m[0] : null);
+    // the punctuation after a chip stays on its line (S49: the chip itself does not wrap)
+    out.push(m ? h("span", { class: "nowrap" }, cite(s.cite, papers), m[0]) : cite(s.cite, papers));
   }
   return out;
 }
@@ -2277,15 +2457,12 @@ function init() {
   // A real click outside the open Export menu closes it; a download clicks a link of its
   // own. One listener for every brief drawn (review W17).
   document.addEventListener("click", (e) => {
-    for (const det of document.querySelectorAll("details.export-menu[open]")) {
+    for (const det of document.querySelectorAll("details.export-menu[open], details.ready-chip[open]")) {
       if (e.isTrusted && !det.contains(e.target)) det.open = false;
     }
   });
-  // The page's scroll bar shows only while the pointer is near it (S27, Dakshitha: a bar
-  // that is always there distracts). It keeps its width, so nothing moves when it shows.
-  const root = document.documentElement;
-  document.addEventListener("mousemove", (e) => root.classList.toggle("bar-near", e.clientX >= root.clientWidth - 8));
-  root.addEventListener("mouseleave", () => root.classList.remove("bar-near"));
+  // The page's scroll bar is always visible (S49 U4): a bar that appears only near the
+  // pointer hid how long the page is.
   const setBar = () => document.documentElement.style.setProperty("--bar-h", `${$(".bar").offsetHeight}px`);
   setBar();
   window.addEventListener("resize", setBar);
@@ -2303,7 +2480,6 @@ function init() {
   const signin = new URLSearchParams(location.hash.split("?")[1] || "").get("signin");
   if (signin) {
     history.replaceState(null, "", "#/");
-    // DRAFT copy
     S.signinDown = signin === "unavailable";
     S.flash = signin === "unavailable"
       ? "Sign-in is not available right now. You can still try a sample student."

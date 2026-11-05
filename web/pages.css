@@ -1,1 +1,109 @@
 /* S49: page styles owned by FE-B. Loaded after styles.css. */
+/* Type sizes use FE-A's tokens (--fs-*, --s-*) with the literal value as the fallback. */
+
+/* ---------- B3 lists: filter bar ---------- */
+.filter-row { align-items: flex-end; gap: 12px 14px; }
+.filter-row .searchbox { flex: 1 1 280px; align-self: flex-end; }
+.filter-row .searchbox.small input,
+.filter-row .searchbox.small .btn { min-height: 44px; }
+.filter-row .searchbox { padding: 0 6px 0 0; }
+.field-pick { display: grid; gap: 4px; flex: 0 1 200px; min-width: 0; }
+.field-pick label { font-size: var(--fs-13, 13px); color: var(--ink-3); }
+.field-pick select { min-height: 44px; font-size: var(--fs-16, 16px); width: 100%; }
+.level-pick select { min-height: 44px; }
+.switch-row { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+.tag-row { flex-wrap: wrap; overflow: visible; padding-bottom: 2px; }
+.keep-line { margin: 0; color: var(--ink-3); }
+.keep-line .icon { display: inline-block; vertical-align: -4px; margin-right: 8px; color: var(--moss); }
+.keep-line a { font-weight: 600; }
+.list-screen .sample-note { margin-top: 0; }
+
+/* ---------- B3 lists: dense rows ---------- */
+ul.award-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0; }
+.award-row { display: grid; grid-template-columns: minmax(0, 1fr) 220px auto; gap: 4px 24px; align-items: start; padding: 14px 18px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card, 14px); }
+.award-row:hover { border-color: var(--ink-3); }
+.ar-main { min-width: 0; }
+.ar-title { margin: 0; font: 600 17px/1.3 var(--serif); }
+.ar-title .title-btn { text-align: left; }
+.ar-sub { margin: 2px 0 0; font-size: var(--fs-13, 13px); color: var(--ink-3); overflow-wrap: anywhere; }
+.ar-sub .tag { margin-right: 6px; }
+.ar-quote { margin: 6px 0 0; padding-left: 10px; border-left: 2px solid var(--line); font-size: var(--fs-14, 14px); color: var(--ink-2);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.ar-facts { min-width: 0; }
+.ar-facts dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; align-items: baseline; }
+.ar-facts dt { font-size: var(--fs-12, 12px); text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); }
+.ar-facts dd { margin: 0; font-size: var(--fs-14, 14px); font-weight: 600; overflow-wrap: anywhere; }
+.ar-facts dd .tag { margin-left: 6px; vertical-align: 1px; }
+.ar-facts .missing { font-weight: 500; color: var(--ink-3); margin: 0; font-size: var(--fs-14, 14px); }
+.quote-date { font-size: 13px; font-weight: 400; color: var(--ink-3); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.kept-date .quote-date, .award-row .ar-facts dd .quote-date { overflow-wrap: anywhere; }
+.ar-src { margin: 6px 0 0; font-size: var(--fs-12, 12px); color: var(--ink-3); }
+.ar-acts { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.award-row.is-sample { border-style: dashed; border-color: var(--ember); }
+.tag.past { background: var(--chip); color: var(--ink-2); }
+@media (max-width: 600px) {
+  .award-row { grid-template-columns: 1fr; padding: 14px; gap: 8px; }
+  .ar-acts { justify-content: space-between; }
+  .field-pick { flex: 1 1 100%; }
+}
+
+/* ---------- B4 My Perch ---------- */
+.my-perch .start-row { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 24px; }
+.home-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.home-grid > .home-kept { grid-column: 1; grid-row: 1; }
+.home-grid > .home-briefs { grid-column: 1; grid-row: 2; }
+.home-grid > .home-docs { grid-column: 2; grid-row: 1 / span 2; }
+.home-grid .box { margin: 0; }
+.home-grid h2 { margin-top: 0; }
+.kept-list, .brief-list-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.kept-row, .brief-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px;
+  padding: 12px 0; border-top: 1px solid var(--line); }
+.kept-list > li:first-child, .brief-list-rows > li:first-child { border-top: 0; padding-top: 0; }
+.kept-main, .brief-main { min-width: 0; flex: 1 1 260px; display: grid; gap: 2px; }
+.kept-main .title-btn { min-height: 28px; text-align: left; font: 600 16px/1.3 var(--serif); }
+.kept-date { font-size: var(--fs-14, 14px); }
+.kept-date .rel { color: var(--ink-3); margin-left: 6px; }
+.kept-date .tag { margin-left: 8px; }
+.kept-from, .brief-meta { margin: 0; font-size: var(--fs-13, 13px); color: var(--ink-3); }
+.brief-title { margin: 0; font: 600 16px/1.3 var(--serif); }
+.brief-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.quiet-link { font-size: var(--fs-14, 14px); font-weight: 600; }
+.home-docs p { margin: 0 0 8px; }
+.home-docs .quiet-link { padding: 0; justify-content: flex-start; }
+.home-docs .doc-line { font-weight: 600; }
+.my-perch .empty-list { padding: 8px 0; justify-items: start; text-align: left; }
+@media (max-width: 600px) {
+  .kept-row .btn.quiet, .brief-acts .quiet-link { padding-left: 0; justify-content: flex-start; }
+}
+@media (max-width: 900px) {
+  .home-grid { grid-template-columns: 1fr; }
+  .home-grid > .home-kept, .home-grid > .home-briefs, .home-grid > .home-docs { grid-column: 1; grid-row: auto; }
+}
+
+/* ---------- B5 Compare ---------- */
+.row-num { display: block; font-size: var(--fs-13, 13px); color: var(--ink-3); font-weight: 400; }
+.compare.stack td .verdict, .compare.stack td .fit { justify-self: start; width: auto; }
+
+/* ---------- B6 Hand-off ---------- */
+.office-opt.off { opacity: 1; }
+.office-opt.off input, .office-opt.off b { opacity: .55; }
+.office-opt.off .hint { color: var(--ink-3); }
+.handoff .progress-leads { margin: 6px 0 0; padding-left: 18px; font-size: var(--fs-14, 14px); color: var(--ink-2); }
+
+/* ---------- B7 Cover-letter points ---------- */
+.scout-points > summary { flex-wrap: nowrap; }
+.scout-points > summary > span:first-child { flex: 1; min-width: 0; }
+.list-note { margin: 0; font-size: var(--fs-14, 14px); color: var(--ink-3); }
+.list-note a { font-weight: 600; }
+.list-note .icon { display: inline-block; vertical-align: -4px; margin-right: 8px; }
+.cover .quota-hint { margin: 4px 0 0; }
+
+/* ---------- B8 account and welcome ---------- */
+.screen.welcome, .screen.account { max-width: 760px; margin-inline: auto; }
+.screen.welcome { padding-top: 44px; }
+#del-go { background: var(--brick); border-color: var(--brick); color: var(--bg); }
+#del-go:disabled { opacity: .5; }
+
+/* ---------- B9 Scout ---------- */
+.scout-opt { margin-top: 12px; }

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import json
 from abc import ABC, abstractmethod
 from collections import Counter
 from collections.abc import Iterable, Sequence
@@ -31,6 +33,25 @@ class Facets(BaseModel):
     levels: list[str]
     total: int
     temple_total: int
+
+
+SORTS = ("name", "closing", "amount")  # browse orders (S49 V1); "name" is the default
+
+
+def offset_cursor(n: int) -> str:
+    """The cursor of a closing or amount page: how many rows came before it. The lists hold
+    under 1,000 rows, so an offset is enough (S49 section 3.2)."""
+    return base64.urlsafe_b64encode(json.dumps({"o": n}).encode()).decode()
+
+
+def read_offset(cursor: str | None) -> int:
+    """The offset in a cursor made by `offset_cursor`; ValueError for any other cursor."""
+    if not cursor:
+        return 0
+    got = json.loads(base64.urlsafe_b64decode(cursor.encode()).decode())
+    if not (isinstance(got, dict) and isinstance(got.get("o"), int) and got["o"] >= 0):
+        raise ValueError("bad cursor")
+    return got["o"]
 
 
 def sorted_counts(c: Counter[str]) -> list[tuple[str, int]]:
@@ -68,8 +89,12 @@ class Repository(ABC):
                audience_level: Sequence[str] = (), q: str | None = None,
                closes_after: date | None = None, limit: int = 50,
                cursor: str | None = None, scopes: Sequence[str] = (),
-               exclude_schools: Sequence[str] = ()) -> Page[R]:
-        """Filtered, paged listing of public records ordered by id. Samples never appear.
+               exclude_schools: Sequence[str] = (), sort: str = "name",
+               open_only: bool = False, today: date | None = None) -> Page[R]:
+        """Filtered, paged listing of public records ordered by name, or by `sort`: "closing"
+        (dates today or later ascending, then past dates newest first, then no date) or "amount"
+        (amount_max, largest first, none last). `open_only` keeps a null deadline or one today
+        or later. Samples never appear.
         `temple_only` keeps records listed on a Temple page (their source decides, fork F1).
         `scopes` keeps records whose derived scope is in the list; `schools` keeps records that
         name any of the schools. Empty means no filter."""

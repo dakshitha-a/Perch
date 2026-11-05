@@ -251,7 +251,8 @@ def test_compare_shows_kept_leads_with_a_record_behind_every_cell(tmp_path):
     assert [x["key"] for x in got["columns"]] == ["money", "closes", "code", "kind",
                                                   "evidence", "office"]
     ra, rb = got["rows"]
-    assert ra["route"] == "A" and ra["title"].startswith("PAR-25-268")
+    assert ra["route"] == "A" and ra["number"].startswith("PAR-25-268")  # S49 V4: number apart
+    assert not ra["title"].startswith("PAR-25-268")
     assert ra["cells"]["office"]["text"] == "Research Development"
     assert ra["cells"]["closes"]["record_id"] == ra["record_id"]
     assert rb["title"] == "SYNTHETIC Co"

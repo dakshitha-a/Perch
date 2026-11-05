@@ -96,7 +96,12 @@ export function renderCompare(panel, { keptCount, openEvidence, goRoutes, redraw
     return;
   }
   const { rows } = C.data;
-  const columns = C.data.columns.filter((c) => c.key !== "office"); // shown in the row heading
+  const all = C.data.columns.filter((c) => c.key !== "office"); // shown in the row heading
+  // A column where no kept record states anything is left out and named under the table (U45).
+  const none = C.data.none;
+  const blank = (c) => rows.every((r) => r.cells[c.key].text === none);
+  const columns = all.some((c) => !blank(c)) ? all.filter((c) => !blank(c)) : all;
+  const hidden = columns === all ? [] : all.filter(blank);
   const sortAria = (key) => (C.sort.key === key ? (C.sort.dir > 0 ? "ascending" : "descending") : null);
   const head = h("tr", {}, h("th", { scope: "col", "aria-sort": sortAria("lead") }, sortButton({ key: "lead", label: "Lead" }, redraw)),
     ...columns.map((c) => h("th", { scope: "col", "aria-sort": C.sort.key === c.key
@@ -104,6 +109,7 @@ export function renderCompare(panel, { keptCount, openEvidence, goRoutes, redraw
   const body = sorted(rows).map((r) => h("tr", { class: r.route === "B" ? "row-b" : null },
     h("th", { scope: "row" }, h("span", { class: "route-tag", text: r.route === "B" ? "Industry" : "Grant" }),
       h("span", { class: "row-title", text: r.title }),
+      r.number ? h("span", { class: "row-num", text: r.number }) : null,
       h("span", { class: "cell-note", text: `Office: ${r.cells.office.text}` })),
     ...columns.map((c) => cellView(c.key, r.cells[c.key], r.title, c.label, openEvidence))));
   const hasB = rows.some((r) => r.route === "B");
@@ -113,8 +119,6 @@ export function renderCompare(panel, { keptCount, openEvidence, goRoutes, redraw
       h("p", { class: "hint" }, h("span", { text: "Every cell is copied from its record or counted from it by code. Press a cell to see the record." }),
         h("span", { class: "sort-hint-wide", text: " Press a column name to sort." })),
       sortSelect(columns, redraw))),
-    // The hand-off comes before the table, so drafting needs no scroll (review W2).
-    handoff ? h("div", { class: "handoff-box" }) : null,
     hasB ? h("p", { class: "notice" }, icon("warn"), h("span", { text: "Industry leads are inferred "
       + "from public signals and not verified. Their records hold no amount or deadline." })) : null,
     // The table scrolls sideways only when it is a table; stacked into cards on a phone it
@@ -122,8 +126,11 @@ export function renderCompare(panel, { keptCount, openEvidence, goRoutes, redraw
     h("div", { class: "compare-wrap", role: "region", "aria-labelledby": "compare-title",
       tabindex: window.matchMedia("(max-width: 600px)").matches ? null : "0" },
       labelCells(h("table", { class: "compare stack" }, h("thead", {}, head), h("tbody", {}, ...body)))),
+    ...hidden.map((c) => h("p", { class: "hint", text: `${c.label}: none of these records state one.` })),
     h("p", { class: "hint", text: "Money and dates are as each record states them. "
-      + "The office under each lead is the Temple office that handles that route." }));
+      + "The office under each lead is the Temple office that handles that route." }),
+    // The table comes first: it is what the page is for. The hand-off follows it (P5).
+    handoff ? h("div", { class: "handoff-box" }) : null);
 }
 
 export function compareOffices() {

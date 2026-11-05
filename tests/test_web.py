@@ -349,18 +349,22 @@ def test_tag_chip_wraps_instead_of_widening_the_page() -> None:
 
 
 def test_the_find_form_has_no_personal_text_field_and_build_starts_one_brief_call():
-    """The landing has no personal-text field and the pick screen's boxes are the plain option
-    fields (direction, keywords, career stage, smallest award); no CV or proposal box and no
-    upload exist in the web app. Build is one call: api.create(req, "researcher")."""
+    """The landing has no personal-text field and the pick screen's option boxes are the plain
+    fields (direction, keywords, career stage, smallest award). The researcher's CV is added
+    only in its own card, for a signed-in user, and is stored through /me/docs (S49 A7).
+    Build is one call: api.create(req, "researcher")."""
     app = (WEB_DIR / "app.js").read_text()
     find = app[app.index("function renderFind()"):app.index("function heroArt()")]
-    ctx = app[app.index("function contextPanel("):app.index("// One build call")]
+    ctx = app[app.index("function contextPanel("):app.index("// The researcher's CV card")]
     for part in (find, ctx):
         fields = re.findall(r'h\("(?:textarea|input)", \{[^}]*\}', part)
         assert not [x for x in fields if re.search(r"\b(cv|interests|achievements|proposal)\b",
                                                   x, re.I)]
         assert 'type: "file"' not in part
-    build = app[app.index("async function build(c)"):app.index("// ---------- Brief ----------")]
+    cv = app[app.index("function cvBox()"):app.index("// One build call")]
+    assert 'api.addDoc({ kind: "cv", ...body }, "researcher")' in cv
+    assert cv.index("if (S.session.guest)") < cv.index('type: "file"')  # a guest gets a link only
+    build =app[app.index("async function build(c)"):app.index("// ---------- Brief ----------")]
     assert 'api.create(req, "researcher")' in build
     student = (WEB_DIR / "student.js").read_text()
     start = student[student.index("export async function renderStudentStart("):
@@ -495,7 +499,8 @@ def test_cover_points_button_is_wired_on_every_lead_card():
     student = (WEB_DIR / "student.js").read_text()
     assert 'l.status === "dismissed" ? null : coverBlock({ ...ctx, audience: "student"' in student
     app = (WEB_DIR / "app.js").read_text()
-    assert 'l.status === "dismissed" ? null : coverBlock({ api, announce, openEvidence' in app
+    assert 'l.status === "dismissed" ? null : coverBlock(coverCtx(), S.briefId, l.record_id)' in app
+    assert 'return { api, announce, openEvidence, guest: Boolean(S.session.guest)' in app
     assert "verdict !== \"not eligible\"" not in student.split("coverBlock({ ...ctx")[1][:80]
     mods = (ROOT / "scripts/build_ui_preview.py").read_text()
     assert mods.index('"scout.js"') < mods.index('"cover.js"') < mods.index('"student.js"')
@@ -531,3 +536,28 @@ console.log(JSON.stringify({ a, b, c, polls }));
     assert out["a"]["subject"] == "SYNTHETIC subject" and out["b"] == out["a"]
     assert out["polls"] == [["b1", "research_development", "j1"]] * 2
     assert "consent" in out["c"]
+
+
+def test_s49_brief_screen_contracts_in_the_app_shell():
+    """S49 FE-A: the routes, the Temple internal group, the card and the base styles, as the
+    design spec names them. The walk (scripts/walk_flows/s49_fe_a.py) checks them on screen."""
+    app = (WEB_DIR / "app.js").read_text()
+    css = (WEB_DIR / "styles.css").read_text()
+    # routes: My Perch is a signed-in user's home; the landing has its own address; rerun
+    assert 'parts[0] === "rerun"' in app and 'goReplace("#/start")' in app
+    assert 'screen("home")' in app
+    # Temple internal funding is its own list, never mixed into the federal one
+    assert 'l.group === "temple_internal" ? "T"' in app and '"Temple internal"' in app
+    # the card: title first, no opportunity-number line, a fallback title that is not an id
+    assert '"Untitled opportunity"' in app and 'text: o.opportunity_number' not in app
+    card = app[app.index("function leadCard(l)"):app.index("function coverCtx()")]
+    assert 'text: "Not stated"' in card and "Not stated in the record" not in card
+    assert '"What Perch read", "Read"' in app and '"Compare and draft"' in app
+    # the page scroll bar is always visible (U4); a citation chip is inline (M2)
+    assert "bar-near" not in app and "bar-near" not in css
+    assert "scrollbar-color: transparent" not in css
+    assert re.search(r"^\.cite \{ display: inline;", css, re.M)
+    assert len(re.findall(r"^\.cite \{", css, re.M)) == 1
+    assert len(re.findall(r"^\.tag\.sample \{", css, re.M)) == 1
+    assert "--page: 1180px" in css and "--form: 760px" in css
+    assert "DRAFT copy" not in app

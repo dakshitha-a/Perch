@@ -15,6 +15,7 @@ from uuid import UUID
 
 import redis
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse
 from psycopg_pool import ConnectionPool
 from pydantic import BaseModel, Field
 
@@ -22,7 +23,7 @@ from perch import redisx
 from perch.auth import deps
 from perch.auth.session import Session
 from perch.jobs import JobRunner
-from perch.user import docs, quota
+from perch.user import docs, quota, saved
 from perch.user.data import BadBlob, UserData
 from perch.user.delete import delete_account
 from perch.user.inputs import MAX_BYTES, MAX_CHARS, InputError
@@ -53,6 +54,10 @@ class DocAdd(BaseModel):
     text: str | None = Field(None, max_length=MAX_CHARS * 2)
     filename: str | None = Field(None, max_length=200)
     data: str | None = Field(None, max_length=MAX_BYTES * 4 // 3 + 8)  # base64 of a file
+
+
+class SavedAdd(BaseModel):
+    record_id: str = Field(min_length=1, max_length=200)
 
 
 class DeleteConfirm(BaseModel):
@@ -117,6 +122,49 @@ def remove_doc(doc_id: UUID, s: Session = Depends(deps.require_user),
     return {"ok": True}
 
 
+# --- saved awards and funding calls (S49 V2) ---
+
+def _public_repo(request: Request):  # noqa: ANN202
+    f = getattr(request.app.state, "public_repo", None)
+    if f is None:
+        raise HTTPException(503, "The account service is not configured.")
+    return f
+
+
+@router.get("/me/saved")
+def list_saved(request: Request, audience: str | None = None,
+               s: Session = Depends(deps.require_user),
+               sv: UserServices = Depends(services)) -> dict:
+    return saved.listing(sv.ud, _public_repo(request), _uid(s), _side(s, audience))
+
+
+@router.post("/me/saved", dependencies=[Depends(deps.require_csrf)])
+def add_saved(req: SavedAdd, request: Request, audience: str | None = None,
+              s: Session = Depends(deps.require_user),
+              sv: UserServices = Depends(services)) -> JSONResponse:
+    _consented(s)
+    uid, side = _uid(s), _side(s, audience)
+    _limit(sv, uid, "api_write")
+    try:
+        sid, row, created = saved.save(sv.ud, _public_repo(request), uid, side, req.record_id)
+    except saved.SampleRefused:
+        raise HTTPException(422, {"error": "sample_not_saved"}) from None
+    except saved.NotFound:
+        raise HTTPException(404, {"error": "not_found"}) from None
+    except saved.Full:
+        raise HTTPException(409, {"error": "saved_full"}) from None
+    return JSONResponse({"saved_id": str(sid), "record_id": row.record_id,
+                         "saved_at": row.saved_at.isoformat()}, status_code=201 if created else 200)
+
+
+@router.delete("/me/saved/{saved_id}", dependencies=[Depends(deps.require_csrf)])
+def remove_saved(saved_id: UUID, s: Session = Depends(deps.require_user),
+                 sv: UserServices = Depends(services)) -> dict:
+    if not saved.remove(sv.ud, _uid(s), saved_id):
+        raise HTTPException(404, {"error": "not_found"})
+    return {"ok": True}
+
+
 # --- delete-my-data ---
 
 @router.post("/me/delete", status_code=202, dependencies=[Depends(deps.require_csrf)])
@@ -141,6 +189,9 @@ def _summary(rid: UUID, sb: StoredBrief) -> dict:
             # Public and SYNTHETIC sample leads are counted apart (standing rule 11).
             "leads": sum(not x.sample for x in sb.leads),
             "sample_leads": sum(bool(x.sample) for x in sb.leads),
+            # Kept leads, public and sample apart, for My Perch (S49 V3).
+            "kept": sum(x.status == "kept" and not x.sample for x in sb.leads),
+            "sample_kept": sum(x.status == "kept" and bool(x.sample) for x in sb.leads),
             "topics": b.topics[:5]}
 
 

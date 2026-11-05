@@ -821,6 +821,13 @@ def create_app(service: BriefService, runner: ClosureRunner,
                 "papers": papers,
                 "leads": out, "notice": grants_gov.ATTRIBUTION}
         view["papers"].update(user_records(b))
+        if b.options.get("student"):
+            # S49 V5: the two student offices, copied from perch/offices.py, so the screen
+            # names them without a second request.
+            from perch.offices import for_route
+
+            view["offices"] = {k: {"key": o.key, "name": o.name, "url": o.url}
+                               for k, o in ((k, for_route(k)) for k in ("F", "S"))}
         if b.options.get("student"):  # what the CV parse read, for the Profile screen
             from perch.student import parse_student_cv
             from perch.user.briefs import current_store
@@ -1247,6 +1254,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
     from perch.user.routes import router as user_router
 
     app.include_router(user_router)  # /me/docs, /me/delete, /me/briefs, /usage (S41 part B)
+    app.state.public_repo = service.repo  # /me/saved reads the public store (S49 V2)
 
     from perch.browse.routes import make_router as browse_router
 
