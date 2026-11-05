@@ -83,7 +83,7 @@ make v1-down             # stop, keeping the volumes
 - **Model text:** the worker needs an `ANTHROPIC_API_KEY` for the profile summary, fit explanations, hand-offs, cover points, the scope gate and Scout.
 - **Loading the data:** the public corpus and the Temple awards dataset go into Postgres with `perch db migrate-corpus` and `perch temple load-dataset`. Details are in [docs/running.md](docs/running.md).
 - **Not a production setup.** The Compose file is for development. Its key store reads a master key from the environment, which production refuses.
-- **Single command:** `make v1-up` is one command once `.env` is filled in. A one-command first-run that also loads the data does not exist yet (UNVERIFIED that the data load is documented end to end).
+- **Single command:** `make demo` starts a local v1 demo with no GPU and no real secrets: Postgres, Redis, Keycloak, the web app and a CPU worker, with the Temple dataset loaded, on http://127.0.0.1:8300. `make demo-down` stops it. It loads no federal listings. `make v1-up` runs the full stack once `.env` is filled in.
 
 ### Tests
 

@@ -66,7 +66,7 @@ Award links are matched by name. Fix a wrong or missed match in `data/overrides/
 
 An OpenAlex API key is optional; see `.env.example`.
 
-`make bench` runs the back-test and bench matrix (results in `bench/results/`). `make package` builds the submission ZIP in S28.
+`make bench` runs the v1 back-test on Postgres (the S50 setup, results in `bench/results/`). `make bench-v0` runs the old bench matrix of the fallback build. `make demo` starts a local v1 demo without a GPU, and `make demo-v0` starts the fallback build. `make package` builds the submission ZIP.
 
 ## Settings and scripts for a v1 deploy
 
