@@ -298,7 +298,12 @@ details.unsupported-fold
 
 #### BE correctness items: added by the orchestrator
 
-- *(Slot. The separate back-end correctness review is still running. The orchestrator adds its must-fix items here, with files and tests, before the BE builder starts or as a second brief.)*
+From `docs/design/S51_BACKEND_REVIEW.md`. E1 (guest session budget) and E3 (realm lockout and password) are already done by the orchestrator; E6 too.
+
+- **E2 (must-fix, 30 minutes):** reserve worker capacity for the presenter. Of the worker's threads, keep at least two that take only `scout`, `cover_points` and `handoff` jobs (and purges), so a queue of audience briefs never delays them. Make the split a setting with that default (`PERCH_WORKER_FAST_THREADS=2`), document it in `.env.example` and docs/deploy.md, and test that a fast job is claimed while every brief thread is busy. Files: `perch/jobs.py`, `perch/cli.py`, `.env.example`, `docs/deploy.md`.
+- **E4 (should-fix, 20 minutes):** a guest brief with explanations off must still count against the guest's limits, and the `guest_job` limit must be per address as the Demo Day decision assumed (or a second per-address scope added); test both. Files: `perch/api.py` (the brief submit path only), `perch/redisx.py`.
+- **E5 (should-fix, 10 minutes):** Scout's `get_record` must never show "None (the record's own words)": with a placeholder date and no note, say the record states no closing date. Test on a record with a far-future date and no note. File: `perch/scout/read_tools.py` (this item only).
+- **Other E-items:** do the remaining should-fix items in the review's order only if time is left after the H-items; list the rest for the Limits section.
 
 ### 3.4 Package FE-A: researcher brief, card, landing, example page, base styles (Tier A about 65 minutes)
 
