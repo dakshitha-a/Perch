@@ -392,6 +392,22 @@ def test_q2_a_search_is_a_citable_record():
     assert t.search_records("kidney")["id"] == "search:2"
 
 
+# --- F6: the card's one-line why-not is the first line, written by code from the rule ---
+
+def test_f6_the_first_verdict_line_names_the_rule_in_verdict_reason():
+    from perch.student import Scored, StudentFacts, check, to_leads
+
+    f = StudentFacts(level="bachelor's")
+    gpa = sch(id="temple_pages:g", eligibility={"gpa_min": 3.0}, audience_level="undergraduate")
+    grad = sch(id="temple_pages:h", audience_level="graduate")
+    xs = [Scored(s, None, 0.5, check(s, f, AS_OF)) for s in (gpa, grad)]
+    a, b = to_leads("b", "F", xs, f)
+    assert (a.verdict, a.verdict_reason) == ("may be eligible", "gpa_unstated")
+    assert a.verdict_lines[0] == "Asks for a GPA of at least 3.00; your CV does not state one."
+    assert (b.verdict, b.verdict_reason) == ("not eligible", "level")
+    assert b.verdict_lines[0] == "Open to graduate students; your CV says bachelor's."
+
+
 # --- S15: the fit explainer no longer asks for a 0-100 number ---
 
 def test_s15_the_fit_skill_asks_for_no_number():
