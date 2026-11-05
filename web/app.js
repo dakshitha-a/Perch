@@ -2281,11 +2281,8 @@ function init() {
       if (e.isTrusted && !det.contains(e.target)) det.open = false;
     }
   });
-  // The page's scroll bar shows only while the pointer is near it (S27, Dakshitha: a bar
-  // that is always there distracts). It keeps its width, so nothing moves when it shows.
-  const root = document.documentElement;
-  document.addEventListener("mousemove", (e) => root.classList.toggle("bar-near", e.clientX >= root.clientWidth - 8));
-  root.addEventListener("mouseleave", () => root.classList.remove("bar-near"));
+  // The page's scroll bar is always visible (S49 U4): a bar that appears only near the
+  // pointer hid how long the page is.
   const setBar = () => document.documentElement.style.setProperty("--bar-h", `${$(".bar").offsetHeight}px`);
   setBar();
   window.addEventListener("resize", setBar);

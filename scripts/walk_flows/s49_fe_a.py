@@ -213,7 +213,9 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
             low = [(c["id"][-6:], c["titleTop"], c["actTop"]) for c in live if c["titleTop"] is None or c["actTop"] is None or c["titleTop"] >= c["actTop"]]
             w.check("s49_phone_title_top", bool(live) and not low, f"title not above the actions on {low[:3]}")
         cites = await page.evaluate(CITES)
-        bad = [x for x in cites if x["d"] != "inline" or x["h"] > x["max"]]
+        # a <button> set to display: inline computes inline-block in Chromium, so both pass; the
+        # old chip was inline-flex and 44 px tall
+        bad = [x for x in cites if x["d"] not in ("inline", "inline-block") or x["h"] > x["max"]]
         w.check(f"s49_cite_inline_{tag}", bool(cites) and not bad, f"{len(cites)} cites; off: {bad[:3]}")
         # the brief header once ready
         chip = page.locator(".ready-chip")
