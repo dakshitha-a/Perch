@@ -122,10 +122,11 @@ def test_a_call_that_timed_out_is_charged_its_hold(env, worker_pool):  # noqa: F
     from perch.user.spend import ESTIMATE_MICRO, SpendMeter
 
     class Slow:
-        name, model = "fake", "fake-1"
+        name, model = "anthropic", "claude-haiku-5-5"
 
-        def __init__(self, err):
+        def __init__(self, err, name=None):
             self.err = err
+            self.name = name or self.name
 
         def chat(self, messages, **kw):
             raise self.err
@@ -142,6 +143,13 @@ def test_a_call_that_timed_out_is_charged_its_hold(env, worker_pool):  # noqa: F
         == [("fit_explainer", held / 1_000_000)]
     with pytest.raises(ValueError):
         meter.call("fit_explainer", Slow(ValueError("bad")), [Message("user", "x")])
+    assert redisx.spent_micro(env.r, scope) - before == held
+    # S50 C7: a local model server costs nothing, so its timeout is not charged either
+    for local in ("ollama", "openai-compatible"):
+        slow = Slow(httpx.ReadTimeout("slow"), name=local)
+        slow.model = "qwen-local"
+        with pytest.raises(httpx.ReadTimeout):
+            meter.call("fit_explainer", slow, [Message("user", "x")])
     assert redisx.spent_micro(env.r, scope) - before == held
     assert not env.r.exists(f"perch:inflight:u:{env.uid}:{day()}") \
         or int(env.r.get(f"perch:inflight:u:{env.uid}:{day()}") or 0) == 0
