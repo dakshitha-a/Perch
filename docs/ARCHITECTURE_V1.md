@@ -4,6 +4,25 @@ Phase 1, task 5 of `docs/REBUILD_PLAN.md`. Written 2026-11-03. Later implementat
 
 Reads with: `docs/REBUILD_PLAN.md`, `docs/v1/REUSE_MAP.md`, `docs/v1/PROVIDER_AND_SSO.md`. Anything those files mark UNVERIFIED stays UNVERIFIED here.
 
+## As built after S48 (read this first)
+
+This file is the design contract written on 2026-11-03. Where the code differs, the code on `rebuild/v1` is the truth, and this list says how. Each line was checked against the code on 2026-11-04.
+
+- **Health route.** There is no `/ready` route. Readiness is `GET /health?ready=true`, which checks Postgres, Redis and the keys database and answers 503 when one is down. Plain `GET /health` is liveness. `GET /health?deep=true` checks model services. `GET /metrics` answers loopback callers only. Wherever this file says `/ready`, read `/health?ready=true`.
+- **Default profile.** The default is `cloud-gpu`, not `cloud-cpu` (`DEFAULT_PROFILE` in `perch/profiles.py`, set 2026-11-04). `cloud-cpu` stays as the no-GPU profile with 14 candidates reranked. The profiles `dev`, `deploy-2gpu` and `deploy-1gpu` and the `systemone` grounder entries are still in `perch/profiles.py`; section 1.2 says they are removed, and that has not been done.
+- **Compose files.** The services are in `deploy/compose/docker-compose.v1.yml` and one `deploy/compose/Dockerfile.v1` with targets `web`, `worker` and `worker-gpu`. The `docker/*.Dockerfile` paths in section 1.1 do not exist. The Compose `worker` uses the GPU image and reserves one GPU by index; `docker-compose.cpu.yml` is the CPU override. A `backup` service is in the stack. `pgbouncer` is not in the Compose file.
+- **Native demo worker.** The demo node has no NVIDIA container runtime, so its worker runs natively on one GPU against the Compose services. See `docs/deploy.md` section 3b.
+- **One brief service per process.** The worker builds one `BriefService` per process and shares it across job threads (`cmd_worker` in `perch/cli.py`). A new service per job failed at four or more concurrent briefs in the S47 load test.
+- **Scheduler.** There is no `perch scheduler` command in the code. Ingest and precache are run by hand. Sections 3.1 and 3.6 describe the design.
+- **Rate limits.** The per-address `RateLimiter` in `perch/api.py` is still used for hand-offs. Section 4.2 says the Redis limiter replaces it everywhere; that is true for the quota path only.
+- **Spend metering.** Every paid call goes through the adapter's spend meter and ledger, with the spend ledger on the `spend` volume. Guests have a per-session and a global daily budget (`PERCH_GUEST_DAILY_BUDGET_USD` default 0.10, `PERCH_GUEST_GLOBAL_DAILY_BUDGET_USD` default 5.00).
+- **Hand-offs.** For a signed-in account, `POST /briefs/{id}/handoff` admits the draft, queues a worker job of kind `handoff` and answers 202. The browser then reads the draft with `GET /briefs/{id}/handoff`. Other callers (the fallback path without accounts) draft in the web process under the per-address limiter.
+- **Logs and metrics.** `PERCH_LOG_FORMAT=json` writes one JSON object a line. User text is not logged.
+- **Backups and restore.** Backups are kept 35 days (`BACKUP_RETENTION_DAYS`, `deploy/compose/backup.sh`). The restore marker is the file `RESTORE_PENDING` on the shred-ledger volume, written by `perch restore-mark`. The worker reconciles at start and clears it, and while it exists `/health?ready=true` fails. Section 6.6 has the detail.
+- **Key operations.** `perch keys rekey` re-encrypts blobs under each user's newest key, and `perch keys tombstones purge` removes old tombstones (dry run unless `--apply`).
+- **Identity provider.** The Keycloak realm in `deploy/compose/keycloak/perch-realm.json` imports no user. The SYNTHETIC end-to-end user is created by `scripts/e2e_oidc_login.py`.
+- **Concurrent users.** The target is 250 (Dakshitha, 2026-11-04), not 1,000. See the note under section 4.2.1.
+
 ## 0. Rules this design must keep
 
 - **Public data only in the repo.** Tests of user data use SYNTHETIC text with a canary token.
@@ -19,11 +38,11 @@ Reads with: `docs/REBUILD_PLAN.md`, `docs/v1/REUSE_MAP.md`, `docs/v1/PROVIDER_AN
 
 | Service | Image or build | Port inside | Host port in dev | Role |
 |---|---|---|---|---|
-| `web` | `docker/web.Dockerfile` | 8000 | 8090 | Async FastAPI. Stateless. Serves `web/` static files. Never loads a model and never calls a model provider. |
-| `worker` | `docker/worker.Dockerfile` | none | none | `perch worker`. Loads the three CPU models once per process. Runs jobs. Calls the cloud provider. |
+| `web` | `deploy/compose/Dockerfile.v1`, target `web` | 8000 | 8090 | Async FastAPI. Stateless. Serves `web/` static files. Never loads a model and never calls a model provider. |
+| `worker` | `deploy/compose/Dockerfile.v1`, target `worker-gpu` (or `worker` on CPU) | none | none | `perch worker`. Loads the three CPU models once per process. Runs jobs. Calls the cloud provider. |
 | `postgres` | `pgvector/pgvector:0.8.0-pg16` | 5432 | 5433 | Postgres 16 with pgvector 0.8. Two databases: `perch` and `perch_keys`. |
 | `redis` | `redis:7` | 6379 | 6380 | Sessions, quotas, rate limits, response cache. Append-only file on, no user text stored. In prod: a Redis ACL user per service and TLS, `rediss://`. |
-| `keycloak` | `quay.io/keycloak/keycloak` pinned in Phase 2 | 8080 | 8180 | Development identity provider only. Realm `perch` is imported from `docker/keycloak/perch-realm.json`. |
+| `keycloak` | `quay.io/keycloak/keycloak` pinned in Phase 2 | 8080 | 8180 | Development identity provider only. Realm `perch` is imported from `deploy/compose/keycloak/perch-realm.json`, which ships no user. |
 | `migrate` | same image as `web` | none | none | One-shot `perch migrate`. Runs as `perch_owner`. `web` and `worker` depend on it finishing. |
 | `pgbouncer` | pinned in Phase 2 | 6432 | none | Connection pooler in front of `postgres`, transaction mode. Optional in dev, required at scale. `LISTEN` does not go through it, see section 3.3. |
 
@@ -34,11 +53,11 @@ Reads with: `docs/REBUILD_PLAN.md`, `docs/v1/REUSE_MAP.md`, `docs/v1/PROVIDER_AN
 - **Scaling.** Add `web` copies behind any load balancer. Add `worker` copies, optionally split by `--kinds` so that `ingest` and `precache` do not starve interactive jobs.
 - **Worker capacity.** Briefs per minute is `processes x threads x 60 / seconds_per_brief`, and in-flight briefs is `processes x threads`. At the plan's 40 briefs a minute and 60 seconds a brief, 40 briefs are in flight, so 3 processes of 16 threads would carry it. Those two inputs are placeholders. The CPU stages of a brief hold a lock per model, so the real limit is CPU seconds per brief. Phase 3 records memory per process, CPU seconds per brief and seconds per brief, and Phase 10 sizes the pool from them. Threads that wait on the provider hold no model lock, which is why the default thread count is 16.
 - **CPU threads.** Each process calls `torch.set_num_threads(PERCH_TORCH_THREADS)` at start, so several processes on one host do not each take every core. Default: cores divided by processes, set in the Compose file.
-- **Health.** `web` serves `GET /health` for liveness and `GET /ready` for readiness, which checks Postgres, Redis and the keys database. `worker` writes a heartbeat row, see section 3.
+- **Health.** `web` serves `GET /health` for liveness and `GET /health?ready=true` for readiness, which checks Postgres, Redis and the keys database. `worker` writes a heartbeat row, see section 3.
 
 ### 1.2 Profile
 
-`perch/profiles.py` gains the profile `cloud-cpu` and makes it the default. The `dev`, `deploy-1gpu` and `deploy-2gpu` profiles and the `systemone:` grounder entries are removed.
+`perch/profiles.py` gains the profile `cloud-cpu` and makes it the default (design; as built the default is `cloud-gpu`, see the status list at the top). The `dev`, `deploy-1gpu` and `deploy-2gpu` profiles and the `systemone:` grounder entries are removed.
 
 ```python
 _CLOUD_CPU = ModelProfile(
@@ -61,7 +80,7 @@ Status column: **exists** is in `.env.example` today and stays; **changed** exis
 | Variable | Status | Used by | Meaning |
 |---|---|---|---|
 | `PERCH_ENV` | new | all | `dev`, `test` or `prod`. `prod` refuses the Env key store, refuses `PERCH_COOKIE_INSECURE`, and refuses start without TLS settings. |
-| `PERCH_PROFILE` | changed | worker | Model profile. Value `cloud-cpu` is the default. Old values are removed. |
+| `PERCH_PROFILE` | changed | worker | Model profile. The design default is `cloud-cpu`; as built it is `cloud-gpu`. Old values are removed. |
 | `PERCH_DATABASE_URL` | new | web, worker, migrate | Postgres URL for database `perch`. Each process gets the URL for its own role: `perch_web`, `perch_worker`, or `perch_owner` for migrate. |
 | `PERCH_KEYS_DATABASE_URL` | new | web, worker | Postgres URL for database `perch_keys`, role `perch_keys`. Read only by `perch/keystore.py`. |
 | `PERCH_REDIS_URL` | new | web, worker | Redis URL. In prod it must be `rediss://` with an ACL user. |
@@ -729,6 +748,8 @@ Every input marked placeholder is a design value and not a measurement. The poin
 | Guest session budget | 0.10 USD | Placeholder |
 | Guest global ceiling per day | 5.00 USD | Placeholder, equals 50 guest sessions at full budget |
 
+**250-user figures (Dakshitha, 2026-11-04).** The target is 250 concurrent users, so U is 250 here. Plain arithmetic from the table above, with B and the caps unchanged: worst-case day U x B is 250 x 0.50 = 125 USD. Worst-case month is 125 x 30 = 3,750 USD. The utilisation that fits the Start tier is 500 / 3,750 = 0.133 and the Build tier is 1,000 / 3,750 = 0.267. The 100 USD default global cap is 100 / 125 = 0.8 of one worst-case day. The 1,000-user rows above are superseded; they are kept to show the method. Measured load figures are in `docs/RESULTS.md` and `docs/deploy.md`, not here.
+
 - **Consistency check.** The deployment is consistent only if `U x B x u x 30 <= min(global cap, tier monthly cap)` and `guest global ceiling x 30` fits inside what is left. With the placeholders it holds only when `u` is at most 0.033 on the Start tier. So B is not fixed. Phase 3 measures cost per brief and Phase 5 sets `B = cap / (U x u x 30)` from a measured or agreed `u`, and the global cap is set to the contract number.
 - **Both guards.** The per-account budget protects against one user. The global monthly cap protects against all users together. Both must hold.
 
@@ -753,7 +774,7 @@ These numbers are placeholders chosen for the design and are not measured. Phase
 
 ### 4.4 Response cache and invalidation
 
-- **What is cached.** Only routes whose output depends on no user: `GET /awards`, `GET /opportunities`, `GET /filters`, `GET /records/{id}`, which serves public kinds only. `GET /health` and `GET /ready` are never cached, so liveness reflects the live process.
+- **What is cached.** Only routes whose output depends on no user: `GET /awards`, `GET /opportunities`, `GET /filters`, `GET /records/{id}`, which serves public kinds only. `GET /health` is never cached, so liveness reflects the live process.
 - **Key.** `perch:rc:<epoch>:<route>:<sha256(canonical query string)>`. The request must carry no session-specific variation, so these routes never read the session, and the response has no `Set-Cookie`.
 - **TTL.** 300 seconds by default.
 - **Invalidation.** The `ingest` job ends with `Repository.bump_epoch()`, which increments the epoch in Postgres and copies it to `perch:epoch`. The epoch is part of every key, so old entries become unreachable at once and expire by TTL. There is no key scan.
@@ -1110,7 +1131,7 @@ All routes sit under one FastAPI app. "Auth" is the weakest allowed session: `no
 
 | Route today | Verdict | Note |
 |---|---|---|
-| `GET /health` | kept | Adds `GET /ready`. |
+| `GET /health` | kept | Adds `?ready=true` for readiness. |
 | `GET /authors/resolve` | kept | Auth `session`. Rate limited. Runs in `web` with the OpenAlex key and a single-host egress rule, D-13. Results are cached in Redis for the author cache TTL. |
 | `POST /briefs` | changed | Body gains `audience`. Returns `JobAccepted`. Auth `session`. |
 | `GET /briefs/{id}` | changed | Reads the encrypted `brief` row. Auth `session`. Guest reads Redis. |
@@ -1270,7 +1291,7 @@ Each finding in `docs/v1/DESIGN_REVIEW.md`, with its answer. Fixed means the tex
 | 13 | SHOULD | Fixed | 2.2 and 11.2. Two indexes, sparse query defined, code reading recorded. |
 | 14 | SHOULD | Fixed | 2.2. `schools[]`, `scope`, column source table. |
 | 15 | SHOULD | Fixed | 2.1, 2.2, 6.6. Step 1b, partial unique index, tables cleared are listed. |
-| 16 | SHOULD | Fixed | 6.1, 6.6, 1.3. Honest backup statement, object-store ledger, `/ready` restore marker. |
+| 16 | SHOULD | Fixed | 6.1, 6.6, 1.3. Honest backup statement, object-store ledger, `/health?ready=true` restore marker. |
 | 17 | SHOULD | Fixed | 6.4. `ON CONFLICT DO NOTHING`, tombstone trigger. |
 | 18 | SHOULD | Fixed | 6.4 `UserData` class and model table, `ud_one_cv`, Digest dropped in 2.2. |
 | 19 | SHOULD | Fixed | 1.2 enforcement point in `AuditedProvider.chat`, test. |

@@ -49,7 +49,7 @@ Then open http://127.0.0.1:8100 in a browser.
 
 ### Run the full v1 stack
 
-The full stack is a Docker Compose file, `deploy/compose/docker-compose.v1.yml`. It starts Postgres with pgvector, Redis, a Keycloak identity provider for development, a one-shot migration, the web app and the worker.
+The full stack is a Docker Compose file, `deploy/compose/docker-compose.v1.yml`. It starts Postgres with pgvector, Redis, a Keycloak identity provider for development, a one-shot migration, the web app, the worker and a backup service. The Keycloak realm ships no user.
 
 ```bash
 cp .env.example .env     # fill in the variables under "v1 Compose stack" and the key section
@@ -58,7 +58,8 @@ make v1-down             # stop, keeping the volumes
 ```
 
 - **Web app:** it listens on http://127.0.0.1:8190.
-- **Worker profile today:** the Compose worker is set to `cloud-cpu`. It runs the embedder, reranker and MiniCheck on the CPU and reranks 14 candidates. The CUDA worker image does not exist yet, so Compose cannot run `cloud-gpu`. The `cloud-gpu` profile is the v1 default in `perch/profiles.py`, and the GPU numbers below were measured with it.
+- **Worker profile:** the Compose worker is the GPU image (`worker-gpu`) on the `cloud-gpu` profile, which is the v1 default in `perch/profiles.py`. It reserves one GPU, chosen with `PERCH_WORKER_GPU`. A host with no GPU adds `deploy/compose/docker-compose.cpu.yml`, which switches to `cloud-cpu` and reranks 14 candidates.
+- **Hosts without the NVIDIA container runtime:** the worker can run natively on one GPU against the Compose services. The demo node does this. See [docs/deploy.md](docs/deploy.md).
 - **Model text:** the worker needs an `ANTHROPIC_API_KEY` for the profile summary, fit explanations, hand-offs, cover points, the scope gate and Scout.
 - **Loading the data:** the public corpus and the Temple awards dataset go into Postgres with `perch db migrate-corpus` and `perch temple load-dataset`. Details are in [docs/running.md](docs/running.md).
 - **Not a production setup.** The Compose file is for development. Its key store reads a master key from the environment, which production refuses.
@@ -86,7 +87,8 @@ Every command is in [docs/running.md](docs/running.md).
 - **Sign-in:** accounts use OpenID Connect (OIDC). The Compose stack uses a Keycloak stand-in. Temple single sign-on is meant to replace it through the same interface. That has not been done, and whether Temple will provide it is UNVERIFIED.
 - **Roles:** a person chooses student or researcher. One account can hold both and switch with one control, each side with its own saved items.
 - **Guest mode:** a guest can browse, build a brief and compare leads without an account. A guest brief runs on a public researcher id or on a SYNTHETIC persona, never on a CV. It lives in Redis for one hour and is then gone.
-- **What needs an account:** adding a CV and entries, saved items, office notes and hand-off drafts, and the cover-letter points button. A guest sees a sign-in link instead.
+- **What needs an account:** adding a CV and entries, saved items, office notes, hand-off drafts, cover-letter points and Ask Scout. A guest sees "Ask Scout needs an account" with a sign-in link, and "Sign in to get cover-letter points" on the cover-letter button. The button is on grant and award cards.
+- **Spend limits:** every paid model call is metered. A guest has a per-session budget of 0.10 USD a day and all guests share 5.00 USD a day by default. These are placeholders, not measured.
 - **Consent:** you are asked once, at sign-up. The text says that your CV and entries may be sent to the deployment's cloud model provider, that contact details are blanked first, and that you can withdraw at any time.
 
 ## What is stored and how it is protected
@@ -96,7 +98,7 @@ Every command is in [docs/running.md](docs/running.md).
 - **Keys:** the wrapped data keys sit in a separate key database. The master key that wraps them comes from the environment in development. The production key service is not chosen yet (UNVERIFIED).
 - **Not in logs:** user text is not written to logs, caches or the audit log in plain text. A leak check in the tests looks for a planted marker string.
 - **Sent out:** only to the deployment's contracted model provider, and only after the sign-up consent. Emails, phone numbers and links are blanked before any text is sent.
-- **Delete my data:** the account page has Delete my data. It deletes the user's keys first, so the rows are unreadable at once, and then clears the rows. The consent text says backups clear within 35 days. That backup period is UNVERIFIED until the runbook sets it.
+- **Delete my data:** the account page has Delete my data. It deletes the user's keys first, so the rows are unreadable at once, and then clears the rows. The consent text says backups clear within 35 days. Backups are kept 35 days by default (`BACKUP_RETENTION_DAYS`). A restore test script is in `deploy/compose/`; whether the restore was run end to end on the demo node is UNVERIFIED.
 - **Inactivity:** accounts with no activity for 12 months are deleted.
 - **Nothing is sent by the app:** Perch sends no email and writes to no outside system.
 - **Retired:** private mode, the Local and Cloud switch, warm briefs, masks and the egress filter belong to the fallback build only. The old page is kept as history in [docs/private-mode.md](docs/private-mode.md).
@@ -130,12 +132,12 @@ The full tables are in [docs/RESULTS.md](docs/RESULTS.md). The back-test is NIH 
 - **Setups are not compared as gains.** The 4B reranker and the hybrid setup were compared with the kept setup. The 4B was not measurably better, so the 0.6B stayed.
 - **The student numbers are mechanism checks.** They use invented personas and sample scholarships. They say nothing about real students.
 - **Temple awards dataset:** a fresh-context reviewer's hand-check found 7.4 percent of 203 field rows wrong or missing in v1, and 16.6 percent of 217 in v2. v3 was rebuilt to fix the causes. Its error rate is not measured (UNVERIFIED).
-- **Computed, not measured:** about 33 briefs a minute on one GPU is arithmetic from one-at-a-time timings. A load test with concurrent briefs is planned.
+- **Load test:** on one GPU with a fake provider that sleeps for real call times, the worker drained 38 to 40 briefs a minute at 24 in flight with 0 failed. No real model calls were made in it. One web process met the 250-user target (browse p95 132 to 190 ms). The numbers are in [docs/RESULTS.md](docs/RESULTS.md).
 - **Not yet graded by a person:** whether Scout's answers are useful.
 
 ## Known limits
 
-- **A branch under test.** The Compose worker is on `cloud-cpu`, the load test is not run, and the production key service is not chosen.
+- **A branch under test.** The production key service is not chosen. The load test ran at 250 concurrent users, the target since 4 November; the 1,000-user target was not met (see [docs/RESULTS.md](docs/RESULTS.md)).
 - **Strict checking costs answers.** In the Scout bench most in-scope answers had some sentences removed because the model wrote them without a citation.
 - **MiniCheck marks cards that still show.** On the real model the citation checks almost never withheld an explanation, but MiniCheck marked a share of statements unsupported.
 - **The Temple dataset is incomplete.** 142 of 461 inventoried Temple pages were read. Many amounts and deadlines are not on the pages, and Perch shows them as not stated.
@@ -143,7 +145,7 @@ The full tables are in [docs/RESULTS.md](docs/RESULTS.md). The back-test is NIH 
 - **Some scholarships are synthetic.** Sample scholarships are invented, badged **Sample data**, and kept out of every number.
 - **No Temple single sign-on yet.** Sign-in goes through OIDC with a development identity provider.
 - **Industry leads** were judged once, by the agent that built them. A person has not checked them.
-- **No monitoring.** The weekly watch is shelved in `perch/shelved/monitor/`.
+- **Light monitoring only.** `GET /health?ready=true`, a loopback-only `GET /metrics` and optional JSON logs exist. There is no alerting. The weekly watch is shelved in `perch/shelved/monitor/`.
 
 ## The fallback
 
@@ -152,11 +154,11 @@ The earlier build is the tag `v0.1-demo-fallback`, also the branch `fallback/v0.
 ## Learn more
 
 - [Running Perch](docs/running.md): setup, the command line, keys and data sources.
-- [Deploying](docs/deploy.md): the fallback demo's two-GPU layout.
+- [Deploying](docs/deploy.md): the v1 stack, health, backups, restore and capacity.
 - [Architecture, v1](docs/ARCHITECTURE_V1.md): the contract for the v1 build. [Architecture, v0](docs/ARCHITECTURE.md) describes the fallback.
 - [Rebuild plan](docs/REBUILD_PLAN.md) and [decisions](docs/DECISIONS.md).
 - [Results](docs/RESULTS.md) and [bench results](bench/results/SUMMARY.md).
-- [MCP server](docs/mcp.md): the fallback build's researcher tools in Claude Code or any MCP client.
+- [MCP server](docs/mcp.md): the researcher tools, on the single-user store, in Claude Code or any MCP client.
 - [Sources](docs/SOURCES.md): every endpoint, field, limit and term, verified live.
 - [Specification](docs/SPEC.md) and [plan](docs/PLAN.md).
 - [Private mode, retired](docs/private-mode.md): the fallback's privacy model, as history.

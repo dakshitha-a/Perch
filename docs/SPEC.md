@@ -4,6 +4,8 @@
 
 Temple AI Build Challenge, Fall 2026. Owner: Dakshitha. Public data only. Items marked **[verify]** are believed true and must be checked against the source before Demo Day. The published HTML version of this spec is the canonical one; its source is `docs/design/spec.html` (v2.0, as built, S33), and this Markdown copy is for Claude Code.
 
+> **Status on `rebuild/v1` (checked against the code, 4 Nov 2026).** This specification describes the product and the fallback build at the tag `v0.1-demo-fallback`. The v1 build differs as follows. Section 4 (private mode) is retired. In section 6 and section 11 the demo store, the demo layout and the GPU profiles `deploy-1gpu`, `deploy-2gpu` and `dev` belong to the fallback. The v1 stack is Postgres with pgvector, Redis, a Postgres job queue, a web process and a worker, with the Anthropic API for text and the embedder, reranker and MiniCheck on the worker's one GPU (default profile `cloud-gpu`; `cloud-cpu` without a GPU). The web app is plain JavaScript modules in `web/` with no npm dependencies, not React and Vite. Sign-in is OIDC with Keycloak for development; Temple single sign-on is not built and is UNVERIFIED. The decision-model section (Clef, Jev, `decide`) is fallback history: the v1 `ROLES` have no `decide`. The v1 contract is `docs/ARCHITECTURE_V1.md`; operations are in `docs/deploy.md`. The v1 concurrent-user target is 250 (Dakshitha, 4 Nov 2026).
+
 ## 1. Users, working backwards
 
 The question nobody at Temple can answer quickly today: *if this lab's federal line ends or is cut, what else fits this specific body of work, and what is the evidence?* Pivot-RP and SPIN answer "which calls match these keywords?". Perch answers the question above, from the researcher's own papers, with a measured hit rate.
@@ -125,7 +127,7 @@ Grants.gov + NIH Guide · SBIR.gov         provenance on every row              
 
 Only the model layer runs a language model, and the agent inside it can call nothing but the deterministic functions. Every arrow into the store carries provenance; every arrow out of the model layer passes the validator.
 
-**Stack:** Python 3.12, httpx, pydantic v2; Postgres 16 + pgvector (+ pg_search) in production, SQLite + LanceDB for the demo, behind one repository interface; embeddings chosen by the block benchmark (default Qwen3-Embedding-0.6B, challenger SPECTER2); provider layer `perch/llm/` with three primitives, chat, embed and decide (§8); own 200-line agent loop; MCP server on the official Python SDK **[verify version]**; FastAPI + job runner; React + Vite; Docker Compose with `make demo`. Reuse from NextTex/NexusQC limited to infrastructure, disclosed in the AI-use log; the approve-every-action pattern borrowed for Scout in S10 was removed in S28 (`docs/design/SCOUT_SPEC.md`).
+**Stack:** Python 3.12, httpx, pydantic v2; Postgres 16 + pgvector in v1 (pg_search is not used), SQLite + LanceDB in the fallback demo, SQLite kept behind the same repository interface for unit tests; embeddings chosen by the block benchmark (default Qwen3-Embedding-0.6B, challenger SPECTER2); provider layer `perch/llm/` with three primitives, chat, embed and decide (§8); own 200-line agent loop; MCP server on the official Python SDK **[verify version]**; FastAPI + a Postgres job queue and worker; plain JavaScript modules for the web app; Docker Compose with `make v1-up` (`make demo` is the fallback). Reuse from NextTex/NexusQC limited to infrastructure, disclosed in the AI-use log; the approve-every-action pattern borrowed for Scout in S10 was removed in S28 (`docs/design/SCOUT_SPEC.md`).
 
 **API:** `POST /briefs` · `GET /briefs/{id}` (status + partial results) · `POST /briefs/{id}/leads/{lead}/keep` · `POST /briefs/{id}/handoff` · `GET /records/{id}`. Audit log per model call: prompt hash, model, version, tokens, cost, validator result.
 
@@ -200,7 +202,7 @@ Dropped: SEC filings, job postings, press releases.
 
 ## 11. Deployment
 
-**Demo Day:** Docker Compose on the lab node; SQLite + LanceDB; API key server-side only; public HTTPS via an outbound tunnel **[check lab network policy]**; fallback 1 laptop + phone hotspot, fallback 2 recorded video; demo personas precomputed with one live stage; anonymous rate limit 10 briefs/hour.
+**Demo Day (fallback build; the v1 deployment is in `docs/deploy.md`):** Docker Compose on the lab node; SQLite + LanceDB; API key server-side only; public HTTPS via an outbound tunnel **[check lab network policy]**; fallback 1 laptop + phone hotspot, fallback 2 recorded video; demo personas precomputed with one live stage; anonymous rate limit 10 briefs/hour.
 
 **GPU profiles.** The deployment target is one 32 GB GPU, two at most. The 8-GPU layout is for development and `make bench` only. `PERCH_PROFILE` selects the profile.
 

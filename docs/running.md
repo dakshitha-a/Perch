@@ -1,6 +1,6 @@
 # Running Perch
 
-> **v1 and the fallback.** `uv run perch serve --models fake` runs the app on SQLite with no accounts. The v1 stack (Postgres with pgvector, Redis, Keycloak for development, the web app and the worker) runs with `make v1-up` from `deploy/compose/docker-compose.v1.yml`; its worker is on the `cloud-cpu` profile today. Operations (health, backups, capacity, upgrades) are in [deploy.md](deploy.md). Parts of this page, such as the sample store and private mode, describe the fallback build at the tag `v0.1-demo-fallback`.
+> **v1 and the fallback.** `uv run perch serve --models fake` runs the app on SQLite with no accounts. The v1 stack (Postgres with pgvector, Redis, Keycloak for development, the web app and the worker) runs with `make v1-up` from `deploy/compose/docker-compose.v1.yml`; its worker is the GPU image on the `cloud-gpu` profile, and `docker-compose.cpu.yml` switches it to `cloud-cpu` on a host with no GPU. A host with no NVIDIA container runtime runs the worker natively (see deploy.md section 3b). Operations (health, backups, capacity, upgrades) are in [deploy.md](deploy.md). Parts of this page, such as the sample store and private mode, describe the fallback build at the tag `v0.1-demo-fallback`.
 
 [Back to the README](../README.md)
 
@@ -32,7 +32,18 @@ uv run perch fetch temple      # Temple SDFA's public fellowship list into the p
 uv run perch samples           # the SYNTHETIC sample scholarships into their own store
 ```
 
-The sample store is `data/sample.db` (`PERCH_SAMPLE_DB`). This is the fallback build's way of loading it. In v1 the Temple awards dataset is loaded into Postgres with `perch temple load-dataset` (see below), and the SYNTHETIC samples are a separate screen.
+The sample store is `data/sample.db` (`PERCH_SAMPLE_DB`). This is the fallback build's way of loading it. In v1 the Temple awards dataset is loaded into Postgres with `perch temple load-dataset` (see "Loading the v1 data" below), and the SYNTHETIC samples are a separate screen.
+
+## Loading the v1 data
+
+The v1 stack reads its public records from Postgres. Both loads need the write URL of the `perch` database in `--dsn` or `PERCH_DATABASE_URL`.
+
+```sh
+uv run perch db migrate-corpus --dsn <write url>      # public records, vectors, SYNTHETIC samples, embedding cache
+uv run perch temple load-dataset data/temple/dataset/temple_awards_v3.jsonl --dsn <write url>
+```
+
+`migrate-corpus` copies from the fallback stores (`data/perch.db` and `data/lance`) and exits 1 when row counts differ. Building the index without those stores is UNVERIFIED. The worker is started with `uv run --extra ml --extra anthropic perch worker`; `perch worker --check` exits 0 when a heartbeat is under 90 seconds old. Backups, restore and the key commands (`perch keys rekey`, `perch keys tombstones purge`, `perch reconcile-shreds`, `perch restore-mark`) are in [deploy.md](deploy.md).
 
 Route A leads use local models (Qwen3-Embedding-0.6B and Qwen3-Reranker-0.6B) from the optional `ml` extra:
 
