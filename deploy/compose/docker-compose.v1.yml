@@ -178,6 +178,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 120s
+    # The worker drains for 30 s on SIGTERM (perch/jobs.py Timing.drain_s); Docker's default
+    # 10 s grace killed in-flight jobs on every deploy (S49 B13).
+    stop_grace_period: 45s
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     restart: unless-stopped
