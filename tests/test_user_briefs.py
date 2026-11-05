@@ -311,3 +311,90 @@ def test_two_identical_clicks_return_the_brief_that_runs(pg_clean, ud, tmp_path,
     assert len(r.keys("perch:gsess:*:brief:*")) == 1
     r.flushdb()
     r.close()
+
+
+def _session(user, sid):
+    import time
+
+    from perch.auth.session import Session
+
+    return Session(sid=sid, user_id=user, guest=user is None, roles=frozenset(),
+                   audience="researcher", csrf="c", display_name=None, created=time.time(),
+                   abs_exp=time.time() + 3600)
+
+
+@needs_pg
+@needs_redis
+def test_a_keep_while_the_brief_runs_neither_fails_it_nor_is_lost(pg_clean, ud, tmp_path):
+    """S49 B2: a Keep changed the row's updated_at, the worker's next write raised Conflict,
+    the brief failed, and a rerun rebuilt the leads as `new`."""
+    import redis as redis_lib
+
+    from perch.user.briefs import set_lead_status
+
+    r = redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    uid = new_user(pg_clean)
+    s = _session(uid, "u-b2")
+    _, svc = make(tmp_path)
+    b = create_user_brief(svc, ud, uid, "researcher", "A5026494099", as_of=AS_OF)
+    store = UserBriefStore(ud, uid, "researcher", b.id)
+    assert store.load()
+    real = svc._run_route_b
+    kept = {}
+
+    def route_b_then_keep(brief):  # the user keeps the top grant while route B runs
+        out = real(brief)
+        lead = brief.lead_ids[0]
+        kept["lead"] = set_lead_status(ud, r, s, b.id, lead, "kept").id
+        return out
+
+    svc._run_route_b = route_b_then_keep
+    with using_store(store):
+        assert svc.run(b.id) == "done"
+    got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
+    assert got.brief.status == "done"
+    assert {x.id: x.status for x in got.leads}[kept["lead"]] == "kept"
+    # a retry of the job rebuilds the same leads: the keep stays
+    svc._run_route_b = real
+    again = UserBriefStore(ud, uid, "researcher", b.id)
+    assert again.load()
+    with using_store(again):
+        assert svc.run(b.id) == "done"
+    got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
+    assert {x.id: x.status for x in got.leads}[kept["lead"]] == "kept"
+    r.close()
+
+
+@needs_redis
+def test_a_guest_keep_while_the_brief_runs_is_not_lost(tmp_path):
+    """S49 B2, guest side: the worker wrote the whole brief from memory and dropped the keep."""
+    import redis as redis_lib
+
+    from perch.user.briefs import guest_hash, set_lead_status
+
+    r = redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    r.flushdb()
+    _, svc = make(tmp_path)
+    s = _session(None, "g-b2")
+    gh = guest_hash(s.sid)
+    b = create_guest_brief(svc, r, gh, "A5026494099", as_of=AS_OF)
+    job = uuid.uuid4()
+    r.set(f"perch:gsess:{gh}:job:{b.id}", str(job))
+    store = GuestBriefStore(r, gh, b.id, job)
+    assert store.load()
+    real = svc._run_route_b
+    kept = {}
+
+    def route_b_then_keep(brief):
+        out = real(brief)
+        kept["lead"] = set_lead_status(None, r, s, b.id, brief.lead_ids[0], "kept").id
+        return out
+
+    svc._run_route_b = route_b_then_keep
+    with using_store(store):
+        assert svc.run(b.id) == "done"
+    got = read_guest_result(r, job)
+    assert got.brief.status == "done"
+    assert {x.id: x.status for x in got.leads}[kept["lead"]] == "kept"
+    r.flushdb()
+    r.close()

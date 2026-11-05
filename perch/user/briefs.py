@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from perch.service import BriefService
 
 GRES_TTL_S = 3600
+WRITE_TRIES = 5  # a stale brief write re-reads the user's lead statuses and tries again
 GUEST_TTL_DEFAULT_S = 3600
 
 current_store: ContextVar[BriefStore | None] = ContextVar("perch_brief_store", default=None)
@@ -96,6 +97,10 @@ class BriefStore(ABC):
         self.brief: Brief | None = None
         self.leads: dict[str, Lead] = {}
         self._lock = threading.RLock()
+        # Lead id -> (record id, status) as last read from storage. A lead's status is the
+        # user's (keep, dismiss, restore on the web); the job never sets one, so every write
+        # carries the stored status over to the lead with the same id and record (S49 B2).
+        self._status: dict[str, tuple[str, str]] = {}
 
     @property
     @abstractmethod
@@ -128,6 +133,20 @@ class BriefStore(ABC):
             if self.brief is None:
                 return
             self._write(StoredBrief(brief=self.brief, leads=list(self.leads.values())))
+
+    def _remember(self, leads: Iterable[Lead]) -> None:
+        self._status = {x.id: (x.record_id, x.status) for x in leads}
+
+    def _keep_statuses(self, sb: StoredBrief) -> StoredBrief:
+        """`sb` with the stored statuses on its leads (the in-memory leads take them too)."""
+        out = []
+        for x in sb.leads:
+            got = self._status.get(x.id)
+            if got is not None and got[0] == x.record_id and got[1] != x.status:
+                x = x.model_copy(update={"status": got[1]})
+                self.leads[x.id] = x
+            out.append(x)
+        return StoredBrief(brief=sb.brief, leads=out)
 
     def wrap(self, base: Repository) -> Repository:
         return StoreRepository(base, self)
@@ -269,20 +288,40 @@ class UserBriefStore(BriefStore):
         sb, self._ts = got[0], got[1]
         self.brief = sb.brief
         self.leads = {x.id: x for x in sb.leads}
+        self._remember(sb.leads)
         self._doc_ids = [UUID(i) for i in sb.brief.options.get("user_data") or []]
         self.reads_user_data = bool(self._doc_ids) or bool(sb.brief.options.get("student"))
         return True
 
     def _write(self, sb: StoredBrief) -> None:
-        with self._conn() as c:
-            if self._ts is None:
+        from perch.user.data import Conflict
+
+        if self._ts is None:
+            with self._conn() as c:
                 self.ud.put(self.user_id, "brief", self.audience, sb, row_id=self.row_id, conn=c)
                 got = self.ud.get_row(self.user_id, self.row_id, StoredBrief, conn=c,
                                       kind="brief")
-                self._ts = got[1] if got else None
-            else:
-                self._ts = self.ud.update(self.user_id, self.row_id, sb,
-                                          expect_updated_at=self._ts, conn=c)
+            self._ts = got[1] if got else None
+            self._remember(sb.leads)
+            return
+        for _ in range(WRITE_TRIES):
+            with self._conn() as c:
+                out = self._keep_statuses(sb)
+                try:
+                    self._ts = self.ud.update(self.user_id, self.row_id, out,
+                                              expect_updated_at=self._ts, conn=c)
+                    self._remember(out.leads)
+                    return
+                except Conflict:  # the user kept or dismissed a lead meanwhile: take theirs
+                    pass
+            with self._conn() as c:
+                got = self.ud.get_row(self.user_id, self.row_id, StoredBrief, conn=c,
+                                      kind="brief")
+            if got is None:
+                raise Conflict("the brief is gone")
+            self._ts = got[1]
+            self._remember(got[0].leads)
+        raise Conflict("the brief kept changing")
 
     def cancelled(self) -> bool:
         return bool(self.ctx is not None and self.ctx.cancelled())
@@ -405,15 +444,34 @@ class GuestBriefStore(BriefStore):
         sb = StoredBrief.model_validate_json(raw)
         self.brief = sb.brief
         self.leads = {x.id: x for x in sb.leads}
+        self._remember(sb.leads)
         return True
 
     def _write(self, sb: StoredBrief) -> None:
-        data = sb.model_dump_json()
+        """Read, merge the guest's lead statuses, write: in one WATCH transaction, so a keep
+        made while the job runs is never overwritten (S49 B2)."""
         if self.job_id is None:
-            ttl = int(env("PERCH_GUEST_TTL_S", str(GUEST_TTL_DEFAULT_S)) or GUEST_TTL_DEFAULT_S)
-            self.r.set(self.state_key, data, ex=ttl)
+            key = self.state_key
+            ex = int(env("PERCH_GUEST_TTL_S", str(GUEST_TTL_DEFAULT_S)) or GUEST_TTL_DEFAULT_S)
         else:
-            self.r.set(self.result_key, data, ex=GRES_TTL_S)
+            key, ex = self.result_key, GRES_TTL_S
+        watched = [key] if key == self.state_key else [key, self.state_key]
+        with self.r.pipeline() as p:
+            for _ in range(WRITE_TRIES):
+                try:
+                    p.watch(*watched)
+                    raw = next((v for v in (p.get(k) for k in watched) if v), None)
+                    if raw:
+                        self._remember(StoredBrief.model_validate_json(raw).leads)
+                    out = self._keep_statuses(sb)
+                    p.multi()
+                    p.set(key, out.model_dump_json(), ex=ex)
+                    p.execute()
+                    self._remember(out.leads)
+                    return
+                except redis.WatchError:
+                    continue
+        raise RuntimeError("the guest brief kept changing")
 
 
 def read_guest_result(r: redis.Redis, job_id: UUID | str) -> StoredBrief | None:
@@ -694,15 +752,25 @@ def set_lead_status(ud: UserData, r: redis.Redis, session: Session, brief_id: st
     job = r.get(f"perch:gsess:{gh}:job:{brief_id}")
     keys = ([f"perch:gres:{job.decode() if isinstance(job, bytes) else job}"] if job else [])
     for key in [*keys, f"perch:gsess:{gh}:brief:{brief_id}"]:
-        raw = r.get(key)
-        if not raw:
-            continue
-        sb = StoredBrief.model_validate_json(raw)
-        lead = next((x for x in sb.leads if x.id == lead_id), None)
-        if lead is None:
-            return None
-        new = lead.model_copy(update={"status": status})
-        sb.leads = [new if x.id == lead_id else x for x in sb.leads]
-        r.set(key, sb.model_dump_json(), keepttl=True)
-        return new
+        with r.pipeline() as p:
+            for _ in range(WRITE_TRIES):  # the worker may write the same key meanwhile (B2)
+                try:
+                    p.watch(key)
+                    raw = p.get(key)
+                    if not raw:
+                        break
+                    sb = StoredBrief.model_validate_json(raw)
+                    lead = next((x for x in sb.leads if x.id == lead_id), None)
+                    if lead is None:
+                        return None
+                    new = lead.model_copy(update={"status": status})
+                    sb.leads = [new if x.id == lead_id else x for x in sb.leads]
+                    p.multi()
+                    p.set(key, sb.model_dump_json(), keepttl=True)
+                    p.execute()
+                    return new
+                except redis.WatchError:
+                    continue
+            else:
+                raise Conflict("the brief kept changing")
     return None
