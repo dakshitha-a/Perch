@@ -93,8 +93,8 @@ INSTRUCTIONS = (
     "one fact from it, as ‘Your paper reports …’. Do not add a judgment after it, such as "
     f"‘which shows …’. missing lists up to {MAX_MISSING} things "
     "the target record asks for or rewards that no applicant record shows. Each item is one "
-    "full sentence in this form: \"The record asks for a mentoring plan; nothing you added "
-    "shows one.\" It names what the record wants and says that the applicant's records do "
+    "full sentence in this form: \"The record asks for a mentoring plan; nothing in your "
+    "records shows one.\" It names what the record wants and says that the applicant's records do "
     "not show it; it never says what the record lacks, leaves out or does not specify. Put "
     "ids in asks_ids, you_ids and "
     "cited_ids, not inside the sentences. Never judge the applicant's chances or odds, never "
@@ -287,11 +287,11 @@ def missing_form(where: str, text: str) -> list[str]:
     errs = []
     if not ABOUT_YOU.search(text):
         errs.append(f"{where} ({text!r}) does not say that nothing the applicant added shows "
-                    "it: write \"The record asks for X; nothing you added shows it\"")
+                    "it: write \"The record asks for X; nothing in your records shows it\"")
     if m := RECORD_GAP.search(text):
         errs.append(f"{where} says {m.group(0)!r}, a gap in the record: missing lists what "
                     "the record asks for that the applicant's records do not show, in the "
-                    "form \"The record asks for X; nothing you added shows it\"")
+                    "form \"The record asks for X; nothing in your records shows it\"")
     return errs
 
 

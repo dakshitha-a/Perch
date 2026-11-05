@@ -54,6 +54,20 @@ def test_a_you_point_citing_one_paper_passes():
     assert v.attempts == 1 and not v.flagged, v.errors
 
 
+def test_the_cover_wording_does_not_assume_a_cv():
+    """S51 H12: the live points came from papers, with no CV added."""
+    from perch.scout.web import COVER_NOTE
+    from perch.skills.cover import INSTRUCTIONS, missing_form
+
+    assert "one thing from your CV, entries or papers" in COVER_NOTE
+    assert "nothing in your records shows one" in INSTRUCTIONS
+    assert "nothing you added" not in INSTRUCTIONS
+    errs = missing_form("missing 1", "The record asks for a plan.")
+    assert errs and "nothing in your records shows it" in errs[0]
+    assert not missing_form("missing 1", "The record asks for a plan; nothing in your records "
+                            "shows one.")
+
+
 def test_the_prompt_asks_for_one_paper_and_one_fact():
     from perch.skills.cover import INSTRUCTIONS
 
