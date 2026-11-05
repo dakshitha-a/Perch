@@ -498,7 +498,7 @@ function card(l, ctx) {
         // G17: an expiry sits under its own label, as on the researcher card (F20)
         h("div", { class: "fact" }, h("dt", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? "Announcement" : "Deadline" }), h("dd", {}, when)),
         h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, money))]),
-    rulesBlock(l, skip, neither),
+    rulesBlock(l, skip, !deadline && !r.deadline_quote),
     l.gaps.length ? h("div", { class: "reason" }, h("b", { text: "Still needed: " }), h("span", { text: l.gaps.map(f.lowerFirst).join("; ") })) : null, // R17
     // Plain sentences the server wrote, such as a past-date line, shown muted as they came.
     ...(l.notes || []).map((n) => h("p", { class: "hint lead-note", text: n })),
