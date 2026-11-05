@@ -112,9 +112,13 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
                 a[1]["cited_ids"] = [wid]
                 a[1]["flagged"] = False
         if route_t and len(a) > 3:
-            for x in a[-2:]:
-                x["route"] = "T"
+            # the back end's contract (95c8508): route "A", group "temple_internal", ranks from 1
+            for i, x in enumerate(a[-2:], 1):
+                x["group"] = "temple_internal"
+                x["rank"] = i
                 x["opportunity"]["title"] = "SYNTHETIC Temple internal call " + x["id"][-4:]
+        # what the rules left out, as GET /briefs/<id> gives it (S49 F2)
+        d["brief"]["hidden"] = [{"key": "synthetic", "label": "SYNTHETIC hidden reason", "count": 3, "record_ids": []}]
         if direction is not None:
             d["brief"]["options"]["direction"] = direction
         return d
@@ -233,6 +237,8 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
         w.check(f"s49_ready_chip_{tag}", await chip.count() == 1 and not pcard and steps_ok,
                 f"chip {await chip.count()}, progress card visible {pcard}, steps shown {steps_ok}")
         tr = await page.locator("#tab-profile").get_attribute("aria-label")
+        hid = await page.evaluate("() => { const p = document.querySelector('#panel .hidden-line'); return p && p.offsetParent !== null ? p.innerText : null; }")
+        w.check(f"s49_hidden_line_{tag}", bool(hid) and "SYNTHETIC hidden reason (3)" in hid, f"{hid!r}")
         # route T: two leads moved to T; the switch shows them apart from Grants
         await serve(page, RB, researcher_variant(raw_r, route_t=True))
         await page.evaluate("location.hash = '#/'")

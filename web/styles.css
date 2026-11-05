@@ -1496,3 +1496,7 @@ html:has(body[data-screen="brief"]) { scroll-padding-top: calc(var(--bar-h, 56px
 body[data-screen="landing"] .foot .promises { display: flex; flex-wrap: wrap; }
 @media (min-width: 1024px) { body[data-screen="landing"] .foot .promises { flex-wrap: nowrap; } }
 @media (max-width: 599px) { body[data-screen="landing"] .foot .promises { flex-direction: column; } }
+
+/* ---------- S49 A3: the header's My Perch link (P8) ---------- */
+#my-perch-link[aria-current="page"] { color: var(--ink); background: var(--sunk); }
+@media (max-width: 479px) { #my-perch-link { display: none; } }

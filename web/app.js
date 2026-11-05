@@ -80,6 +80,15 @@ function announce(msg) {
 
 function screen(name) {
   document.body.dataset.screen = name;
+  syncHomeLink();
+}
+
+// The header's My Perch link says when My Perch is the screen shown (S49 P8).
+function syncHomeLink() {
+  const a = $("#my-perch-link");
+  if (!a) return;
+  if (document.body.dataset.screen === "home") a.setAttribute("aria-current", "page");
+  else a.removeAttribute("aria-current");
 }
 
 function leaveBrief() {
@@ -135,10 +144,12 @@ function route() {
     window.scrollTo(0, 0);
     return;
   }
-  if (parts[0] === "me") {
+  // My Perch is a signed-in user's home (S49 P-D1, U41): #/ and #/me both show it.
+  if (parts[0] === "me" || (!parts.length && sess.signed_in && api.mode !== "replay")) {
     leaveBrief();
-    screen("form");
-    renderMyPerch(main(), rt);
+    screen("home");
+    document.title = "My Perch — Perch";
+    renderMyPerch(main(), rt, { home: true });
     window.scrollTo(0, 0);
     return;
   }
@@ -258,9 +269,10 @@ function drawWho() {
   const sess = S.session;
   document.body.classList.toggle("signed-in", Boolean(sess.signed_in));
   if (!sess.signed_in) {
+    // A guest signs in from the banner's link, so the header has no second one (S49 U17).
     fill(who,
       sess.guest ? h("span", { class: "chip guest-chip", text: "Guest" }) : null,
-      S.signinDown ? null : h("a", { class: "btn quiet", id: "sign-in", href: signInHref(), text: "Sign in" }));
+      S.signinDown || sess.guest ? null : h("a", { class: "btn quiet", id: "sign-in", href: signInHref(), text: "Sign in" }));
     return;
   }
   const roles = sess.roles || [];
@@ -273,7 +285,7 @@ function drawWho() {
   };
   const item = (el) => h("li", {}, el);
   const menu = h("ul", { id: "acct-menu", class: "acct-menu", hidden: true },
-    item(h("a", { href: "#/me", onclick: () => close(false), text: "My Perch" })),
+    item(h("a", { href: "#/", onclick: () => close(false), text: "My Perch" })),
     item(h("a", { href: "#/account", onclick: () => close(false), text: "Account and data" })),
     both ? item(h("button", { type: "button", "data-key": "switch-side", onclick: async () => {
       try {
@@ -309,7 +321,9 @@ function drawWho() {
   const wrap = h("div", { class: "acct",
     onkeydown: (e) => { if (e.key === "Escape" && !menu.hidden) { e.stopPropagation(); close(true); } },
     onfocusout: (e) => { if (!menu.hidden && !wrap.contains(e.relatedTarget)) close(false); } }, btn, menu);
-  fill(who, wrap);
+  // At 480 px and wider My Perch has its own link; under that the menu holds it (S49 P8).
+  fill(who, h("a", { class: "btn quiet", id: "my-perch-link", href: "#/", text: "My Perch" }), wrap);
+  syncHomeLink();
   syncThemeItem();
 }
 
@@ -369,7 +383,7 @@ function renderFind() {
         h("p", { text: "After you pick the person, you can tell Perch where your research is going, keywords to search for or leave out, a career stage and a smallest award size. All of it is optional." }))));
   const sess = S.session;
   const replay = api.mode === "replay";
-  // DRAFT copy (S43): the landing buttons and the guest line, for Dakshitha to review.
+  // The landing buttons and the guest line (S43).
   const fitButton = sess.signed_in
     ? h("button", { class: "btn", type: "button", "data-key": "fit", onclick: () => go("#/student") },
       h("span", { text: "Check my fit with my CV" }))
@@ -391,13 +405,14 @@ function renderFind() {
     h("a", { class: "btn primary", "data-key": "browse-awards", href: replay ? null : "#/awards",
       "aria-disabled": replay ? "true" : null }, h("span", { text: "Browse Temple awards" })),
     replay ? h("span", { class: "hint", text: "The preview has no server." }) : fitButton,
-    guestLine);
+    // With sign-in down, "Try a sample student" is already the guest path (S49 U19, R5).
+    S.signinDown ? null : guestLine);
   const browseFunding = replay ? null : h("a", { class: "quiet-link", "data-key": "browse-funding", href: "#/funding" },
     h("span", { text: "Browse funding" }));
   fill(main(), h("div", { class: "landing" },
     heroArt(),
     h("h1", { text: "Find funding that fits." }),
-    // DRAFT copy (S43): the sub-line, for Dakshitha to review.
+    // The sub-line (S43).
     h("p", { class: "lede", text: "Temple scholarships and research funding, every claim linked to its record." }),
     S.notice ? h("div", { class: `notice ${S.noticeEnded ? "info" : "warn"} notice-ended`, role: "status" }, icon("warn"),
       h("p", { text: S.notice }),
@@ -517,7 +532,7 @@ const atTemple = (c) => (c.institutions || []).some((i) => /temple university/i.
 
 function renderPick() {
   const F = S.find;
-  if (!F.candidates && !F.error && !F.busy) { goReplace("#/"); return; }
+  if (!F.candidates && !F.error && !F.busy) { goReplace("#/start"); return; }
   document.title = "Pick the researcher — Perch";
   const c = F.picked;
   const list = c ? [c] : (F.candidates || []);
@@ -537,7 +552,7 @@ function renderPick() {
     ? h("button", { class: "back btn quiet", type: "button", "data-key": "unpick",
       onclick: () => { F.picked = null; renderPick(); const t = $("#pick-title"); if (t) t.focus(); } },
     icon("back"), h("span", { text: "Back to the matches" }))
-    : h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" }));
+    : h("a", { class: "back", href: "#/start" }, icon("back"), h("span", { text: "Back" }));
   const again = c ? null : h("form", { role: "search", onsubmit: (e) => { e.preventDefault(); search(); } },
     h("label", { for: "q", class: "sr-only", text: "Find a Temple researcher" }),
     h("div", { class: "searchbox small" },
@@ -629,7 +644,7 @@ function contextPanel(c) {
 }
 
 // A signed-in researcher can attach stored documents; a guest is pointed to sign-in.
-// DRAFT copy (S43): the labels in this box.
+
 function cvBox() {
   const F = S.find;
   if (S.session.guest) return h("div", { class: "box" }, h("p", { class: "note", text: "Sign in to add your CV." }));
@@ -727,7 +742,7 @@ function renderMissing(id, msg) {
   fill(main(), h("div", { class: "empty" }, owl("worry", "owl-md"),
     h("div", {}, h("p", { class: "lede", text: "This brief could not be opened." }),
       h("p", { class: "hint", text: msg }),
-      h("a", { class: "btn", href: "#/" }, icon("back"), h("span", { text: "Find a researcher" })))));
+      h("a", { class: "btn", href: "#/" }, icon("back"), h("span", { text: "Back to the start" })))));
 }
 
 const leadsOf = () => (S.brief ? S.brief.leads : []);
@@ -746,7 +761,7 @@ function renderBrief() {
   if (!student && !["A", "B"].includes(S.route)) S.route = "A";
   // F23: the date's parts never part at a line end ("1" / "Nov 2026").
   const asOf = f.formatDate(d.brief.options.as_of).replace(/ /g, "\u00a0");
-  // DRAFT copy: a guest's sample brief says whose CV it checks (S43 S8).
+  // A guest's sample brief says whose CV it checks (S43 S8).
   const sampleBrief = Boolean(d.brief.options.persona);
   const meta = student ? (sampleBrief ? `Temple awards, fellowships and sample scholarships, checked against the sample student's CV by rule · as of ${asOf}`
       : `Temple awards and fellowships, checked against your CV by rule · as of ${asOf}`)
@@ -954,7 +969,7 @@ function stepDetail(s) {
 
 async function rebuild() {
   if (api.mode === "replay") replayBuild();
-  else go(isStudent(S.brief) ? "#/student" : S.find.picked ? "#/find" : "#/");
+  else go(isStudent(S.brief) ? "#/student" : S.find.picked ? "#/find" : "#/start");
 }
 
 // ---------- panels ----------
@@ -1101,7 +1116,7 @@ function renderStudentPanel(panel) {
   if (panel.dataset.sig === sig) return;
   panel.dataset.sig = sig;
   const ctx = { brief: d, route: S.route, papers: d.papers || {}, openEvidence, setLead, announce, api,
-    offices: api.studentOffices, guest: Boolean(S.session.guest), signIn: signInHref(),
+    offices: d.offices || api.studentOffices, guest: Boolean(S.session.guest), signIn: signInHref(),
     briefId: S.briefId, setRoute: switchRoute,
     goRoutes: () => go(`#/brief/${encodeURIComponent(S.briefId)}/routes`) };
   if (S.tab === "profile") keepFocus(() => fill(panel, ...studentProfile(d, ctx)));
@@ -2300,7 +2315,6 @@ function init() {
   const signin = new URLSearchParams(location.hash.split("?")[1] || "").get("signin");
   if (signin) {
     history.replaceState(null, "", "#/");
-    // DRAFT copy
     S.signinDown = signin === "unavailable";
     S.flash = signin === "unavailable"
       ? "Sign-in is not available right now. You can still try a sample student."
