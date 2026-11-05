@@ -457,8 +457,7 @@ function card(l, ctx) {
       : [h("span", { class: "missing", text: MISSING })];
   // G7: a Temple fellowships-list record with neither a date nor an amount says so once.
   const neither = r.source === "temple_sdfa" && sch && !deadline && !r.deadline_quote && amount === NOT_STATED;
-  const cover = l.status === "dismissed" ? null
-    : coverBlock({ ...ctx, audience: "student", stored: (ctx.brief && ctx.brief.cover_points) || [] }, ctx.briefId, l.record_id);
+  const cover = l.status === "dismissed" ? null : coverBlock({ ...ctx, audience: "student", stored: (ctx.brief && ctx.brief.cover_points) || [] }, ctx.briefId, l.record_id);
   return h("li", { class: `card lead${l.sample ? " is-sample" : ""}${l.status === "kept" ? " kept" : ""}`, "data-id": l.id },
     h("div", { class: "lead-top" },
       h("div", { class: "lead-name" },
