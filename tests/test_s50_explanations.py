@@ -83,9 +83,9 @@ def test_student_text_names_documents_by_title_never_by_bare_id():
     f = v.value
     visible = f.explanation.replace("[user:achievement-a]", "").replace("[syn-award]", "")
     assert "user:" not in visible and "achievement-a" not in visible
-    assert f.research_sentence == ("Cited work: Your achievement A presented a poster on "
-                                   "stream nitrate [user:achievement-a].")
-    assert f.link_sentence == "As your achievement A shows, the topics match."
+    assert f.research_sentence == ("Cited work: One of your entries presented a poster on "
+                                   "stream nitrate [user:achievement-a].")  # S51 H9
+    assert f.link_sentence == "As one of your entries shows, the topics match."
 
 
 def test_name_ids_leaves_brackets_alone():

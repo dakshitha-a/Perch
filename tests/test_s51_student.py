@@ -57,3 +57,73 @@ def test_a_name_only_listing_makes_no_model_call_and_gets_the_note(tmp_path, mon
         assert got[s.id].notes[-1] == NAME_ONLY
         assert got[s.id].explanation is None and got[s.id].inference is None
     assert NAME_ONLY not in got[full.id].notes and got[full.id].explanation
+
+
+# --- H9: entry labels; H11 and D22: the sample student's rule lines ---
+
+def test_one_entry_is_your_entry_and_several_are_one_of_your_entries():
+    from perch.student import achievement_docs
+    from perch.user.inputs import make_doc
+
+    assert [d.title for d in achievement_docs(["SYNTHETIC poster on stream nitrate"])] == \
+        ["Your entry"]
+    assert {d.title for d in achievement_docs(["SYNTHETIC poster on stream nitrate",
+                                               "SYNTHETIC map of storm outfalls"])} == \
+        {"One of your entries"}
+    assert make_doc("interests", "SYNTHETIC interest in stream ecology").title == \
+        "Your interests note"
+
+
+def test_the_rendered_finding_never_says_achievement_a():
+    from perch.skills.fit import Fit
+    from perch.student import achievement_docs
+
+    docs = achievement_docs(["SYNTHETIC poster on stream nitrate",
+                             "SYNTHETIC map of storm outfalls"])
+    f = Fit(None, "S.", [("user:achievement-a", "presented a poster on stream nitrate")], "",
+            [], "", labels={d.id: d.title for d in docs})
+    assert "achievement A" not in f.research_sentence
+    assert f.research_sentence == ("Cited work: One of your entries presented a poster on "
+                                   "stream nitrate [user:achievement-a].")
+
+
+def test_the_sample_wording_reads_the_sample_student():
+    from perch.student import for_sample
+
+    assert for_sample("One of your entries") == "One of the sample student's entries"
+    assert for_sample("Your entry") == "The sample student's entry"
+    assert for_sample("Your interests note") == "The sample student's interests note"
+    assert for_sample("Perch checked the GPA; nothing there rules you out.") == \
+        "Perch checked the GPA; nothing there rules the sample student out."
+
+
+def test_the_staff_rule_pass_line_speaks_of_students():
+    from datetime import date
+
+    from perch.student import StudentFacts, check
+
+    v = check(sch("s"), StudentFacts(), date(2026, 11, 5))
+    lines = [str(c) for c in v.checks if c["rule"] == "staff_only"]
+    assert lines and "Students: not a staff or faculty award." in lines[0]
+
+
+def test_a_sample_brief_names_the_sample_students_entries(tmp_path):
+    from datetime import date
+
+    from perch.user.briefs import MemoryBriefStore, StudentInputs, using_store
+    from perch.user.inputs import make_doc
+    from tests.test_api import make
+
+    _, svc = make(tmp_path)
+    inp = StudentInputs(cv="SYNTHETIC CV\nUndergraduate, junior, GPA 3.6",
+                        interests=make_doc("interests", "SYNTHETIC interest in streams"),
+                        entries=["SYNTHETIC poster on stream nitrate after storms"])
+    for persona, want in ((None, "Your entry"), ("persona-ug", "The sample student's entry")):
+        b = Brief(id="b", source="perch", source_url="perch://b", fetched_at=T,
+                  researcher_id="user:you",
+                  options={"as_of": date(2026, 11, 5).isoformat(), "persona": persona})
+        with using_store(MemoryBriefStore(student=inp)):
+            svc._run_student_profile(b)
+        ctx = svc._ctx[b.id]
+        assert [d.title for d in ctx["achieved"]] == [want]
+        assert ctx["interests"].title == want.replace("entry", "interests note")

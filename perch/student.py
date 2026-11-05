@@ -433,7 +433,7 @@ def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
     staff = audience_of(s) in NOT_STUDENTS or norm_name(s.name) in STAFF_AWARDS
     note("staff_only", "fail" if staff else "pass",
          "Staff only: listed for staff or faculty, not students." if staff
-         else "Staff only: not listed as a staff or faculty award.")
+         else "Students: not a staff or faculty award.")
     checks.sort(key=lambda c: CHECK_RULES.index(c["rule"]))
     if broken:
         broken.sort(key=lambda b: RULES.index(b[0]))
@@ -542,13 +542,21 @@ def achievements(text: str) -> list[str]:
     return items[:5]
 
 
+ENTRY_TITLE = "Your entry"
+ENTRIES_TITLE = "One of your entries"
+INTERESTS_TITLE = "Your interests note"
+
+
 def achievement_docs(items: list[str], fetched_at: datetime | None = None) -> list[UserDoc]:
     """One citable record per achievement (`user:achievement-a`, ...). `items` are the
-    achievements as separate texts, such as a user's entries; `fetched_at` is their time."""
+    achievements as separate texts, such as a user's entries; `fetched_at` is their time.
+    S51 H9: the title the text shows is "Your entry", or "One of your entries" when there
+    are several; "Your achievement A" named a letter the student never sees."""
     at = fetched_at or utcnow()
+    title = ENTRY_TITLE if len(items[:5]) == 1 else ENTRIES_TITLE
     return [UserDoc(id=f"user:achievement-{chr(97 + i)}", source="user",
                     source_url="perch://user", fetched_at=at,
-                    title=f"Your achievement {chr(65 + i)}", type="user", abstract=a)
+                    title=title, type="user", abstract=a)
             for i, a in enumerate(items[:5])]
 
 
@@ -717,7 +725,11 @@ SAMPLE_WORDS = [
     (re.compile(r"\bYour CV\b"), "The sample student's CV"),
     (re.compile(r"\byour (year|school|level of study)\b"), r"their \1"),
     (re.compile(r"\bwhich you are\b"), "which they are"),
-    (re.compile(r"\brules you out\b"), "rules them out"),
+    (re.compile(r"\brules you out\b"), "rules the sample student out"),
+    (re.compile(r"\bOne of your entries\b"), "One of the sample student's entries"),
+    (re.compile(r"\bone of your entries\b"), "one of the sample student's entries"),
+    (re.compile(r"\bYour entry\b"), "The sample student's entry"),
+    (re.compile(r"\bYour interests note\b"), "The sample student's interests note"),
     (re.compile(r"\bYou must graduate\b"), "The sample student must graduate"),
 ]
 

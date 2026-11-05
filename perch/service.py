@@ -652,17 +652,31 @@ class BriefService:
             raise InputProblem("Add your CV first.") from e
 
     def _run_student_profile(self, b: Brief) -> tuple[str, bool]:
-        from perch.student import achievement_docs, parse_student_cv, student_profile
+        from perch.student import (
+            INTERESTS_TITLE,
+            achievement_docs,
+            for_sample,
+            parse_student_cv,
+            student_profile,
+        )
 
         inp = self._inputs()
         facts = parse_student_cv(inp.cv)
         achieved = achievement_docs(inp.entries)
         if not inp.interests and not achieved:
             raise InputProblem("Add your interests or achievements too.")
-        p = student_profile(facts, inp.interests, achieved, self.models.get("embedder"),
+        # S51 H9: the titles the explanations show; a note saved before S51 is "Your
+        # interests". The guest's sample is the sample student's, not the viewer's.
+        interests = (inp.interests.model_copy(update={"title": INTERESTS_TITLE})
+                     if inp.interests else None)
+        if _has_sample_route(b):
+            achieved = [d.model_copy(update={"title": for_sample(d.title)}) for d in achieved]
+            if interests:
+                interests = interests.model_copy(update={"title": for_sample(interests.title)})
+        p = student_profile(facts, interests, achieved, self.models.get("embedder"),
                             date.fromisoformat(b.options["as_of"]))
         self._ctx.setdefault(b.id, {}).update(profile=p, facts=facts, achieved=achieved,
-                                              interests=inp.interests)
+                                              interests=interests)
         b.threads = [{"index": t.index, "label": t.label, "weight": 1.0,
                       "work_ids": t.work_ids, "private": True} for t in p.threads]
         b.work_ids = p.work_ids
