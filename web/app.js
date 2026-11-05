@@ -769,14 +769,16 @@ function renderBrief() {
   // Back: a student returns to the start screen, a researcher to the matches.
   const back = student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Back" }))
     : h("a", { class: "back", href: S.find.candidates ? "#/find" : "#/" }, icon("back"), h("span", { text: "Back" }));
+  // S3: the second tab is "What Perch read" on both sides.
   const tabs = h("div", { class: `tabs${student ? " student" : ""}`, role: "tablist", "aria-label": "Brief sections" },
     tabButton("routes", student ? "Your options" : "Routes", student ? "Options" : "Routes"),
-    tabButton("profile", student ? "What Perch read" : "Profile", student ? "Read" : "Profile"),
+    tabButton("profile", "What Perch read", "Read"),
     tabButton("compare", "Compare", "Compare"), tabButton("scout", "Ask Scout", "Scout"));
   fill(main(), h("div", { class: "brief screen" }, back,
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page who", text: name }), h("p", { class: "brief-meta", text: meta })),
-      exportMenu()),
+      // S49 (U37, S8, D4): the ready chip, Change details and Export share one group.
+      h("div", { class: "brief-tools" }, h("div", { id: "ready-slot" }), rerunLink("rerun-wide"), exportMenu(student))),
     sampleSteered()
       ? h("p", { class: "notice sample-note", role: "note" },
       h("span", { class: "sample-badge", text: "Sample data" }),
@@ -795,9 +797,17 @@ function renderBrief() {
   renderPanel();
 }
 
-// The Export button: a menu with the three exports. A saved preview has nothing to
-// download (review W12), so it has no menu.
-function exportMenu() {
+// "Change details and run again" (D4): a signed-in user's way back to the form with this
+// brief's details filled in. Under 700 px it is the Export menu's first row instead.
+function rerunLink(cls) {
+  if (!S.session.signed_in || api.mode === "replay") return null;
+  return h("a", { class: `btn quiet ${cls}`, "data-key": cls, href: `#/rerun/${encodeURIComponent(S.briefId)}` },
+    h("span", { text: "Change details and run again" }));
+}
+
+// The Export button: a menu with the exports. A saved preview has nothing to download
+// (review W12), so it has no menu. A student brief has no "Records as JSON" (S49 R2).
+function exportMenu(student = false) {
   if (!api.exportFile) return null;
   const err = h("p", { class: "hint", role: "status" });
   async function download(kind) {
@@ -813,9 +823,10 @@ function exportMenu() {
   }
   const pop = h("section", { class: "export-bar" },
     h("p", { class: "export" },
+      rerunLink("rerun-narrow"),
       h("button", { class: "btn quiet", onclick: () => download("html") }, icon("paper"), h("span", { text: "Print or save as PDF" })),
       h("button", { class: "btn quiet", onclick: () => download("md") }, icon("download"), h("span", { text: "Markdown" })),
-      h("button", { class: "btn quiet", onclick: () => download("json") }, icon("download"), h("span", { text: "Records as JSON" }))),
+      student ? null : h("button", { class: "btn quiet", onclick: () => download("json") }, icon("download"), h("span", { text: "Records as JSON" }))),
     err);
   const det = h("details", { class: "export-menu" },
     h("summary", { "data-key": "export" }, icon("download"), h("span", { text: "Export" })),
@@ -907,6 +918,30 @@ function renderProgress() {
     if (s.name === "explanations" && isDone("route_a")) detail += ` · ${explainedCount()} of ${routeLeads("A").length} explained`;
   }
   const pct = b.status === "done" ? 100 : (doneN / Math.max(stages.length, 1)) * 100;
+  // S49 (U37, S8): once the brief is ready, the progress card folds into a chip beside
+  // Export, "Ready · 7 s", which opens the Steps. While it builds or after it fails, the
+  // full card stays. The saved preview keeps its card, which holds "Replay the build".
+  const slot = $("#ready-slot");
+  if (b.status === "done" && slot && api.mode !== "replay") {
+    box.replaceChildren();
+    box.hidden = true;
+    let chip = slot.querySelector(".ready-chip");
+    if (!chip) {
+      const summary = h("summary", { "data-key": "ready-chip" }, owl("done", "owl-xs"), h("span", { class: "ready-word" }));
+      chip = h("details", { class: "ready-chip" }, summary, h("div", { class: "ready-pop" }));
+      chip.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && chip.open) { chip.open = false; summary.focus(); e.stopPropagation(); }
+      });
+      fill(slot, chip);
+    }
+    const word = `Ready · ${f.elapsed(lastEnd - t0)}`;
+    chip.querySelector(".ready-word").textContent = word;
+    chip.querySelector("summary").setAttribute("aria-label", `Brief ready, built in ${f.elapsed(lastEnd - t0)}. Show the steps`);
+    fill(chip.querySelector(".ready-pop"), h("p", { class: "ready-pop-head", text: `${stages.length} of ${stages.length} steps done` }), stepsList(stages));
+    return;
+  }
+  if (slot) slot.replaceChildren();
+  box.hidden = false;
   let card = box.querySelector(".pcard");
   if (!card) {
     card = h("section", { class: "pcard", role: "status", "aria-label": "Progress" },
@@ -934,13 +969,19 @@ function renderProgress() {
     api.mode === "replay" && b.status === "done" ? h("button", { class: "btn link", type: "button", onclick: replayBuild }, h("span", { text: "Replay the build" })) : null);
   const steps = h("details", { class: "steps", open: S.stepsOpen,
     ontoggle: (e) => { S.stepsOpen = e.target.open; } },
-  h("summary", {}, h("span", { text: "Steps" }), h("span", { class: "steps-n", text: `(${doneN} of ${stages.length} done)` })),
-  h("ol", {}, stages.map((s) => h("li", { "data-status": s.status },
+  // U8: the count is live progress, so it shows only while the brief builds.
+  h("summary", {}, h("span", { text: "Steps" }),
+    b.status === "done" ? null : h("span", { class: "steps-n", text: `(${doneN} of ${stages.length} done)` })),
+  stepsList(stages));
+  fill(card.querySelector(".progress-steps"), steps);
+}
+
+function stepsList(stages) {
+  return h("ol", { class: "steps-list" }, stages.map((s) => h("li", { "data-status": s.status },
     h("span", { class: "step-dot", "aria-hidden": "true" }),
     h("span", { class: "step-name" }, h("b", { text: f.STAGES[s.name] || s.name }),
       h("span", { class: "sr-only", text: `, ${stepWord(s.status)}` })),
-    h("span", { class: "step-detail", text: stepDetail(s) })))));
-  fill(card.querySelector(".progress-steps"), steps);
+    h("span", { class: "step-detail", text: stepDetail(s) }))));
 }
 
 async function replayBuild() {
@@ -1061,9 +1102,12 @@ function drawRail() {
         kept.length ? groups.map(([t, ls]) => [t ? h("p", { class: "sl-group", text: t }) : null, h("ul", {}, ls.map(item))])
           : h("p", { text: student ? "Keep fellowships or scholarships and they collect here, ready to compare."
             : "Keep grants or industry leads and they collect here, ready to compare and hand off." }),
-        h("button", { class: "btn primary", type: "button", "data-key": "sl-compare", disabled: !kept.length,
+        // U11: one label on both sides; with nothing kept, an outline button and a hint.
+        h("button", { class: `btn ${kept.length ? "primary" : "outline"}`, type: "button", "data-key": "sl-compare",
+          disabled: !kept.length, "aria-describedby": kept.length ? null : "sl-hint",
           onclick: () => go(`#/brief/${encodeURIComponent(S.briefId)}/compare`) },
-        h("span", { text: student ? "Compare and draft a note" : "Compare and hand off" })));
+        h("span", { text: "Compare and draft" })),
+        kept.length ? null : h("p", { class: "hint sl-hint", id: "sl-hint", text: "Keep a lead first" }));
       if (focusKey) { const b = card.querySelector(`[data-key="${focusKey}"]`); if (b && !b.disabled) b.focus(); }
     }
   }
@@ -2323,7 +2367,7 @@ function init() {
   // A real click outside the open Export menu closes it; a download clicks a link of its
   // own. One listener for every brief drawn (review W17).
   document.addEventListener("click", (e) => {
-    for (const det of document.querySelectorAll("details.export-menu[open]")) {
+    for (const det of document.querySelectorAll("details.export-menu[open], details.ready-chip[open]")) {
       if (e.isTrusted && !det.contains(e.target)) det.open = false;
     }
   });

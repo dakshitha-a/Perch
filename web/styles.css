@@ -1067,7 +1067,7 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
 .cols > .main-col { flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
 .cols > .rail { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px; position: sticky; top: calc(var(--bar-h, 64px) + 16px); }
-#panel { gap: 14px; }
+#panel { gap: 12px; }
 .shortlist { border-radius: 14px; background: var(--surface); border: 1px solid var(--line); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
 .shortlist.has { border-color: var(--accent); }
 .shortlist-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
@@ -1546,3 +1546,40 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
   .list-head .sort-group .sort-switch { display: inline-flex; width: auto; }
   .sort-switch .route-btn { min-height: 44px; padding: 0 14px; }
 }
+
+/* ---------- S49 A5: the brief header folds once ready (U37, S8, U55, U11) ---------- */
+.brief { gap: 16px; }
+.brief > .back + .title-row { margin-top: -8px; }
+.brief-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.brief-tools .rerun-wide { color: var(--ink-2); }
+.export-pop .rerun-narrow { display: none; }
+@media (max-width: 699px) {
+  .brief-tools .rerun-wide { display: none; }
+  .export-pop .rerun-narrow { display: inline-flex; }
+}
+.ready-chip { position: relative; }
+.ready-chip > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px 0 8px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: var(--fs-14); font-weight: 600; cursor: pointer; list-style: none; }
+.ready-chip > summary::-webkit-details-marker { display: none; }
+.ready-chip > summary::before { display: none; }
+.ready-chip > summary:hover, .ready-chip[open] > summary { border-color: var(--ink-3); }
+.ready-chip .owl-xs { width: 28px; height: 28px; }
+.ready-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 8; width: min(360px, calc(100vw - 32px)); padding: 14px 16px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+  display: grid; gap: 10px; text-align: left; }
+.ready-pop-head { font-size: var(--fs-12); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+.ready-pop ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ready-pop li { display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 8px; font-size: var(--fs-14); }
+.ready-pop .step-detail { grid-column: 2; color: var(--ink-2); font-size: 13px; }
+.ready-pop li[data-status="done"] .step-dot, .ready-pop li[data-status="skipped"] .step-dot { background: var(--branch); border-color: var(--branch); }
+@media (max-width: 699px) {
+  .brief-tools { position: static; }
+  .ready-chip { position: static; }
+  .ready-pop { left: 0; right: 0; width: auto; }
+}
+#progress:empty { display: none; }
+.shortlist .sl-hint { margin-top: -4px; font-size: 13px; text-align: center; }
+.shortlist .btn.outline[disabled] { opacity: 1; color: var(--ink-3); border-color: var(--line); }
+/* The banner is one 44 px row: its link is the target, no padding above or below it. */
+.banner p.banner-line { padding-top: 2px; padding-bottom: 2px; }
+#acct-slot { align-self: center; }
