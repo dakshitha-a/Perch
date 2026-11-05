@@ -1512,11 +1512,12 @@ html:has(body[data-screen="brief"]) { scroll-padding-top: calc(var(--bar-h, 56px
   .landing .hero-art { height: 64px; }
   .landing .owl-hero { width: 56px; height: 56px; left: calc(50% - 28px); top: 4px; }
 }
-/* The three promises: one row on a laptop, on the page's left edge (U7). */
+/* The three promises: one row on a laptop, centred with the notice under them (S53, Dakshitha). */
 .foot .promises { max-width: calc(var(--page) + 32px); padding: 16px 16px 0; gap: 8px 32px; font-size: var(--fs-14); }
-body[data-screen="landing"] .foot .promises { display: flex; flex-wrap: wrap; }
+body[data-screen="landing"] .foot .promises { display: flex; flex-wrap: wrap; justify-content: center; }
+.foot p { text-align: center; }
 @media (min-width: 1024px) { body[data-screen="landing"] .foot .promises { flex-wrap: nowrap; } }
-@media (max-width: 599px) { body[data-screen="landing"] .foot .promises { flex-direction: column; } }
+@media (max-width: 599px) { body[data-screen="landing"] .foot .promises { flex-direction: column; align-items: center; } }
 
 /* ---------- S49 A3: the header's My Perch link (P8) ---------- */
 #my-perch-link[aria-current="page"] { color: var(--ink); background: var(--sunk); }
