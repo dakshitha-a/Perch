@@ -99,3 +99,32 @@ def test_q15_bench_reads_a_stored_brief_and_spreads_the_shortlist(tmp_path):
     _, leads = shortlist(svc, "researcher", date(2026, 11, 4), spread=True)
     assert len(leads) == 2  # one record per close date
     assert len(shortlist(svc, "researcher", date(2026, 11, 4), spread=False)[1]) == 3
+
+
+def test_layer2_code_decides_brief_facts_and_minicheck_still_reads_record_text():
+    """S49 MiniCheck review: counts, soonest-closing and lead-ins are decided by code; a
+    paraphrase of record text still goes to MiniCheck, without a "Strong:" label."""
+    from bench import scout_guard as sg
+    from bench.scout_guard import C1
+    from bench.scout_replay import Recorder
+    from perch.scout import answer as ans
+
+    def run(text):
+        t, rec = sg.tools(), Recorder()
+        g = ans.grade(text, t.seen, set(), sg.AS_OF, rec, t)
+        return g, rec.claims
+
+    g, sent = run("Your brief has two leads [user:brief].")
+    assert g.sentences[0].supported is True and sent == []
+    g, sent = run(f"Your soonest-closing lead is the SYNTHETIC Kidney Repair Program {C1}.")
+    assert g.sentences[0].supported is True and sent == []
+    g, sent = run(f"It closes 17 Nov 2026 {C1}. The sponsors are:")
+    assert g.ok and g.sentences[1].kind == "heading" and sent == ["It closes 17 Nov 2026."]
+    g, sent = run(f"Strong: it supports kidney repair research {C1}.")
+    assert sent == ["it supports kidney repair research."]
+
+
+def test_a_search_id_counts_as_a_valid_cite_in_the_bench():
+    from bench.scout_open import resolves
+
+    assert resolves(None, "search:1") and resolves(None, "user:cv:education")  # type: ignore[arg-type]

@@ -249,6 +249,8 @@ cites a record or is left out.
 FEEDBACK. When asked how the user's CV or entries match a record, read the record and the \
 user's material, then say what the record asks for, what the user's material shows, and what \
 it does not show yet. Cite the record for the first, the CV part or entry for the second. \
+Write each point as the fact alone under its heading; do not add a judgment such as \
+"which fits ..." or "a strong match" to a cited fact. \
 Do not predict whether the user will win.
 
 GENERAL ADVICE AND HELP. Guidance that is not about one record or about the user, such as how \

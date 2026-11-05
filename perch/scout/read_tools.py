@@ -192,6 +192,7 @@ class ReadTools:
         self.brief_read = False
         self.saved_read = False
         self.searches = 0  # search:N ids written so far this turn
+        self.public_leads = 0  # public leads read_brief returned (the brief record's count)
 
     # --- definitions ---
 
@@ -376,6 +377,7 @@ class ReadTools:
             rows.append(row)
         # SYNTHETIC samples are kept apart from public leads (standing rule 11).
         public = [r for r in rows if not r.get("sample")]
+        self.public_leads = len(public)
         sample = [r for r in rows if r.get("sample")]
         out: dict[str, Any] = {"leads": public,
                                "note": "Leads are in the brief's own order, the strongest first."}

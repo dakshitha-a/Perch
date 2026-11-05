@@ -405,6 +405,50 @@ RANK_WORD_RE = re.compile(
     re.I)
 EMPTY_BRIEF_RE = re.compile(r"\b(?:no leads|(?:brief|it) is empty|has nothing|holds nothing)\b",
                             re.I)
+NUMBER_NAMES = {w: i for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve".split())}
+LEAD_COUNT_RE = re.compile(r"\b(?:has|have|holds?|lists?|with|of|all|the)\s+(\d{1,2}|"
+                           + "|".join(NUMBER_NAMES) + r")\s+leads\b", re.I)
+SOONEST_RE = re.compile(r"\b(?:soonest|earliest|first to close|closes? (?:first|soonest)|"
+                        r"(latest|last to close|closes? last))\b", re.I)
+
+
+def lead_count(body: str) -> int | None:
+    """The number of leads a sentence says the brief has, or None."""
+    m = LEAD_COUNT_RE.search(body)
+    if not m:
+        return None
+    w = m.group(1).lower()
+    return int(w) if w.isdigit() else NUMBER_NAMES[w]
+
+
+def _closes_first(rid: str, seen: dict[str, Record], tools: ReadTools, *, latest: bool
+                  ) -> bool | None:
+    def when(i: str) -> date | None:
+        r = seen.get(i)
+        return getattr(r, "close_date", None) or getattr(r, "deadline", None)
+
+    dates = {i: when(i) for i in tools.ranks  # public leads only (rule 11)
+             if getattr(seen.get(i), "source", "") != "synthetic"}
+    mine = dates.get(rid)
+    known = [d for d in dates.values() if d is not None]
+    if mine is None or not known:
+        return None
+    return mine == (max(known) if latest else min(known))
+
+
+# A short label before a claim ("Strong: ...", "Gap: ..."): the claim is what follows it.
+CLAIM_LABEL_RE = re.compile(r"^\s*(?:[*_]{0,2})(?:strong|strength|strengths|gap|gaps|weak|"
+                            r"weakness|missing|not shown(?: yet)?|shown|to add|partial)"
+                            r"(?:[*_]{0,2})\s*:\s*(?:[*_]{0,2})", re.I)
+
+
+def minicheck_claim(text: str) -> str:
+    """What MiniCheck scores: the sentence without its citations and without a short
+    evaluative label, which names the section and is not a fact in the record."""
+    return CLAIM_LABEL_RE.sub("", strip_cites(text)).strip()
+
+
 KEPT_RE = re.compile(r"\b(kept|shortlist(?:ed)?)\b", re.I)
 SAVED_RE = re.compile(r"\bsaved\b", re.I)
 NEG_RE = re.compile(r"\b(?:not|never|nothing|none|no)\b|n['’]t\b", re.I)
@@ -463,11 +507,17 @@ def code_check(text: str, ids: list[str], seen: dict[str, Record], tools: ReadTo
         # rank or kept claim is checked on the leads whose titles the sentence names.
         if EMPTY_BRIEF_RE.search(body):
             return not tools.ranks
+        if (n := lead_count(body)) is not None:  # "The brief has six leads"
+            return n == tools.public_leads
         low = body.lower()
         rows = [i for i in tools.ranks
                 if (t := str(facts(seen[i], as_of).get("title") or "").lower()) and t in low]
     if not rows:
         return None
+    if tools.brief_read and len(rows) == 1 and (m := SOONEST_RE.search(body)):
+        # "Your soonest-closing lead is X [id]": the record holds its own date, not the
+        # others', so code compares the close dates of the leads the brief returned.
+        return _closes_first(rows[0], seen, tools, latest=bool(m.group(1)))
     ordered = sorted(tools.ranks, key=lambda k: tools.ranks[k])
     claim = None
     if tools.brief_read and (m := RANK_WORD_RE.search(body)):
@@ -831,6 +881,13 @@ def inherit(s: Sentence, prev: Sentence | None, seen: dict[str, Record],
     body = strip_cites(s.text)
     if FIT_WORDS.search(body) or ELIGIBILITY.search(body) or OFFER_FIT_RE.search(body.lower()):
         return
+    if body.rstrip("*_ ").endswith(":"):
+        # A short lead-in after a cited sentence ("The sponsors are:") states nothing: it is
+        # kept as a heading, with no record and nothing for MiniCheck to score.
+        if len(body.split()) <= 6 and not (validate.find_numbers(body)
+                                           or validate.find_dates(body)):
+            s.errors, s.reasons, s.kind = [], [], "heading"
+        return
     s.errors, s.reasons = [], []
     s.cites, s.kind = list(prev.cites), "inherited"
     for e in validate.check(_rank_checked(body, s.cites, tools), s.cites, seen).errors:
@@ -865,7 +922,7 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
                 s.support, s.supported = (1.0 if v else 0.0), v
             elif grounder is not None:
                 doc = "\n\n".join(document_for(seen[c], as_of) for c in s.cites)
-                p = grounder.support(doc, [strip_cites(s.text)])[0]  # whole claim, not re-split
+                p = grounder.support(doc, [minicheck_claim(s.text)])[0]  # whole, not re-split
                 s.support, s.supported = p, p > THRESHOLD
     return g
 
