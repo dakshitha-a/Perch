@@ -113,7 +113,10 @@ function route() {
     document.title = "Help — Perch";
     renderHelp(main(), { back: S.lastHash && S.lastHash !== location.hash ? S.lastHash : "#/" });
     window.scrollTo(0, 0);
-    main().focus({ preventScroll: true });
+    // Focus lands on the page heading, as on other screens (S50 A1), not on the whole <main>,
+    // which drew a focus ring round the page (S50 QA).
+    const h1 = main().querySelector("h1");
+    if (h1) { h1.tabIndex = -1; h1.focus({ preventScroll: true }); } else main().focus({ preventScroll: true });
     return;
   }
   S.lastHash = location.hash || "#/";
@@ -1385,7 +1388,8 @@ function recordLabel(id) {
   const full = leadTitle(l);
   // S50 (V17): a chip never says "Evidence" alone: the record's title, cut to 32 characters, or
   // with no title its source and number, such as "Grants.gov PAR-25-442".
-  const title = (l.opportunity && l.opportunity.title) || (l.record && l.record.title) || null;
+  // a student lead's record is a scholarship: its title is `name` (S50 QA)
+  const title = (l.opportunity && l.opportunity.title) || (l.record && (l.record.title || l.record.name)) || null;
   const text = title ? clipTitle(title, 32) : sourceLabel(l);
   if (l.sample) return { text: `${text} (sample)`, full: `${full}, sample data`, sample: true, name: `${full} (sample)` };
   if (l.route === "B") return null;
@@ -1395,7 +1399,7 @@ function recordLabel(id) {
 // A record's source and number, for a chip with no title to show (S50 V17).
 function sourceLabel(l) {
   const o = l.opportunity || {};
-  const key = o.source || l.source_kind || String(l.record_id || "").split(":")[0];
+  const key = o.source || (l.record && l.record.source) || l.source_kind || String(l.record_id || "").split(":")[0];
   const src = SOURCES[key] || "Record";
   return `${src} ${o.opportunity_number || f.shortId(l.record_id)}`;
 }

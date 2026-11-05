@@ -244,6 +244,9 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         await page.goto(base + "/#/help")
         await page.wait_for_selector("article.help h1", timeout=20_000)
         await page.wait_for_timeout(300)
+        ring = await page.evaluate("() => { const a = document.activeElement; return [a.tagName, getComputedStyle(a).outlineStyle]; }")
+        # S50 QA: focus lands on the Help heading with no ring, not on <main> with a ring round the page
+        w.check("s50b_help_focus", ring == ["H1", "none"], f"focus on {ring[0]}, outline {ring[1]}")
         text = await page.locator("article.help").inner_text()
         figs = await page.locator("article.help .anatomy figure").count()
         need = ["Keep, Dismiss and Cover-letter points sit in the card’s bottom row.", "A check mark means the rule was met", "Closing soonest puts the nearest date first",

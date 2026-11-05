@@ -815,6 +815,7 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
         await route.fulfill(json=signed)
     await page.route("**/auth/session", session_stub)
     res: dict[str, dict] = {}
+    chips: list[str] = []
     for name, msg in states.items():
         cur["msg"] = None
         await page.goto(base + f"/#/brief/{bid}/scout")
@@ -828,6 +829,11 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
             await page.evaluate("document.querySelectorAll('mark.unsupported .sr-only').forEach((e) => e.remove())")
         await w.snap(page, tag, f"scout-{name}")
         res[name] = await page.evaluate(MARKS)
+        if name == "clean":
+            chips = await page.locator(".scout-x .scout-answer .cite").all_inner_texts()
+    # S50 QA: a student answer's chip reads as the option's name, never "Record <source:id>"
+    bad = [t for t in chips if t.startswith("Record ") or re.search(r"[a-z_]+:[\w.-]+", t)]
+    w.check("scout_cites_are_names", len(chips) == 2 and not bad, f"chips {chips}")
     c, u, f, a = res["clean"], res["unsupported"], res["flagged"], res["withheld_all"]
     w.check("scout_clean_nothing_flagged", not c["marks"] and not c["notes"] and not c["general"] and c["cites"] == 2
             and c["checked"].endswith(CHECKED_OK), f"cites {c['cites']}, notes {c['notes']}, checked {c['checked']!r}")
