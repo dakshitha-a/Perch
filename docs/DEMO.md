@@ -18,6 +18,15 @@ Do these on the morning of the demo, in this order.
 - **Load the films.** The presentation shows three films: the researcher side, the student side, and Scout on the student side. Check that each plays from the slides.
 - **Stay signed in.** A session ends after 30 idle minutes, so use the app at least every 25 minutes.
 
+## Audience sign-in
+
+- **Account:** the audience signs in as `demo`, password `demo`. It is one SYNTHETIC account that everyone shares.
+- **What they see:** a notice on every screen, and again beside the CV boxes: "Shared demo account. Everyone who signs in sees what you save here. Do not paste a real CV." They land straight in the app, with no Welcome step.
+- **Cleared nightly:** a timer wipes the account's CV, entries, documents, briefs, kept leads, hand-offs, cover points and Scout sessions at 03:30 local time. The account, its consent and its roles stay. Its spend record stays too, so the wipe does not reset the budget. Run the wipe by hand before the demo if the account has been used.
+- **Lockout:** after 10 failed sign-in tries the sign-in service locks the account. It unlocks by itself after 1 to 15 minutes. Presenters should not type the password wrong in front of the audience.
+- **Presenter account:** `demo-presenter` stays separate and unshared, so the pre-built briefs on it are not wiped.
+- **Operator setup:** the steps are in the comments of `.env.example` (PERCH_SHARED_ACCOUNTS) and `deploy/systemd/v1/perch-demo-wipe.service`.
+
 ## Who is on the projector
 
 A live researcher brief shows a real researcher's name, and its hand-off is written in the first person in that name. Question 51 in `bridge/QUESTIONS.md` asks Dakshitha to decide. The default is the aliased example brief, with the researcher shown as PI-4. Do not search a stranger's name live.

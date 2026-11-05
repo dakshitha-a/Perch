@@ -2,7 +2,7 @@
 // Plain DOM, no build step. Every value from a record goes in through textContent.
 
 import { liveApi, replayApi } from "./api.js";
-import { add, evMark, fill, h, icon } from "./dom.js";
+import { SHARED_NOTICE, add, evMark, fill, h, icon, sharedWarn } from "./dom.js";
 import { renderHelp } from "./help.js";
 import { compareOffices, loadCompare, renderCompare } from "./compare.js";
 import { coverBlock, coverListLine } from "./cover.js";
@@ -258,6 +258,10 @@ function drawBanner() {
     lines.push(h("p", { class: "banner-line", "data-key": "guest-banner" }, icon("info"),
       h("span", { text: sess.notice || "Nothing is saved in a guest session. It ends in an hour." }),
       h("a", { href: signInHref(), text: "Sign in" })));
+  }
+  if (sess.shared) {
+    lines.push(h("p", { class: "banner-line", "data-key": "shared-banner" }, icon("info"),
+      h("span", { text: SHARED_NOTICE })));
   }
   if (S.flash) {
     // S50 (V26): a done thing ("Your data was deleted.") gets a check; anything else, info.
@@ -759,6 +763,7 @@ function cvBox() {
     const text = h("textarea", { id: "r-cv-text", rows: 6, maxlength: 60000, value: F.cvText || "",
       oninput: (e) => { F.cvText = e.target.value; } });
     fill(box, ...head(),
+      sharedWarn(S.session),
       h("p", { class: "hint", text: "Used for cover-letter points and Scout. Stored encrypted. Contact details are blanked before a model reads it." }),
       docs,
       h("div", { class: "file-row" },

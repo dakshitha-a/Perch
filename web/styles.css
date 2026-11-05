@@ -1760,3 +1760,8 @@ details.threads-how > summary { min-height: 44px; font-size: var(--fs-14); font-
 @media (max-width: 599px) { .wide-600 { display: none; } }
 /* The award horizon as a sentence at the section-title size (W33). */
 .horizon-date .horizon-line { font-size: 19px; font-weight: 650; letter-spacing: -.005em; color: var(--ink); }
+
+/* Shared demo account: the short warning beside a CV box (the banner reuses .banner-line). */
+.shared-warn { display: flex; align-items: flex-start; gap: 8px; margin: 6px 0; color: var(--ink-2); }
+.shared-warn .icon { flex: none; margin-top: 2px; }
+.shared-warn span { min-width: 0; }

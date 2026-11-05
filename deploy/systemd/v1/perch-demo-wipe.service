@@ -1,0 +1,17 @@
+# Nightly wipe of the shared demo account's data (docs/DEMO.md, Audience sign-in).
+# It deletes the CV, entries, documents, briefs, kept leads, hand-offs, cover points, Scout
+# sessions and profile picks of every account listed in PERCH_SHARED_SUBJECTS. The account,
+# its consent, its roles and its spend ledger stay. Run by perch-demo-wipe.timer.
+# Needs in perch.env: PERCH_SHARED_SUBJECTS, PERCH_ADMIN_DATABASE_URL (a superuser or BYPASSRLS role),
+# PERCH_OIDC_ISSUER and PERCH_PEPPER. Install as for perch-web.service.
+[Unit]
+Description=Perch shared demo account nightly wipe
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/perch
+EnvironmentFile=/etc/perch/perch.env
+ExecStart=/opt/perch/.venv/bin/perch user wipe-data --all-shared
+NoNewPrivileges=yes
+PrivateTmp=yes
