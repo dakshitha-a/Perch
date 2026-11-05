@@ -10,6 +10,7 @@ export const COVER_HINT = {
   student: "A model writes these from your CV and entries. You put them in your own words.",
   researcher: "A model writes these from your CV, entries and the papers the record cites. You put them in your own words.",
 };
+const COVER_HINT_SAMPLE = "A model writes these from the sample student's CV and entries. You put them in your own words.";
 export const COVER_WAIT = "A model is reading the record and your CV. This takes up to two minutes…";
 export const COVER_READY = "The points are ready below.";
 export const COVER_SIGNIN = "Sign in to get cover-letter points";
@@ -160,7 +161,11 @@ export function coverListLine(ctx) {
   if (QUOTA) return quotaLine();
   if (ctx && !ctx.guest && ctx.api && ctx.api.mode === "live" && ctx.api.coverStart) {
     return h("p", { class: "list-note", "data-cover-line": "" }, icon("pen"),
-      h("span", { text: COVER_HINT[ctx.audience === "student" ? "student" : "researcher"] }));
+      h("span", { text: ctx.audience === "student" && ctx.sample ? COVER_HINT_SAMPLE : COVER_HINT[ctx.audience === "student" ? "student" : "researcher"] }));
+  }
+  if (ctx && ctx.guest && ctx.api && ctx.api.mode === "live" && ctx.accountsOpen === false) {
+    return h("p", { class: "list-note", "data-cover-line": "" }, icon("pen"),
+      h("span", { text: "Cover-letter points need an account, and accounts are not open yet." }));
   }
   if (ctx && ctx.guest && ctx.api && ctx.api.mode === "live") {
     return h("p", { class: "list-note", "data-cover-line": "" }, icon("pen"),

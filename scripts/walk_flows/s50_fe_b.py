@@ -252,7 +252,10 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         need = ["Keep, Dismiss and Cover-letter points sit in the card’s bottom row.", "A check mark means the rule was met", "Closing soonest puts the nearest date first",
                 "See an example brief opens a saved brief", "press Stop", "On a phone, Filters opens the level, sort and school choices.",
                 "A note to Research Development lists kept federal grants only.", "One line above the list says how points are written.",
-                "one note above the list says so, and those cards show no reason."]
+                "one note above the list says so, and those cards show no reason.",
+                "Centre and programme grants, such as a P30 or a P01, sit in their own fold under the single-lab grants.",
+                "When this session’s model budget for the day is used, written reasons pause.", "Run again opens the start screen with your details filled in.",
+                "While accounts are not open, Ask Scout and the note to the office point to the example brief."]
         missing = [n for n in need if n not in text.replace("\n", " ")]
         w.check("s50b_help", figs == 1 and not missing and "Ready · 0 s" not in text, f"anatomy figures {figs}, missing {[m[:30] for m in missing]}")
         s = await w.snap(page, tag, "s50b-help")

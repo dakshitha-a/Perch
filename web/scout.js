@@ -82,16 +82,23 @@ export function renderScout(panel, ctx) {
   if (ctx.signedIn === false) {
     // Every Scout route needs an account (perch/api.py signed_in), so a guest gets the reason
     // and the way in, not a question box that cannot send (S46 QA round 2).
-    fill(panel, h("div", { class: "empty" }, owl("look", "owl-md"), h("div", {},
+    // S51 D5: while accounts are closed, the example leads and the sign-in link is quiet.
+    const closed = ctx.accountsOpen === false;
+    fill(panel, h("div", { class: "empty scout-wall" }, owl("look", "owl-md"), h("div", {},
       h("p", { class: "lede", text: "Ask Scout needs an account." }),
-      h("p", { class: "hint", text: "Scout reads your brief, the records and your CV to answer, so it works once you sign in." }),
-      h("p", {}, h("a", { class: "btn primary", href: ctx.signIn, "data-key": "scout-signin", text: "Sign in to ask Scout" })),
+      h("p", { class: "hint", text: closed ? "Accounts are not open yet. See what a signed-in user gets in the example."
+        : "Scout reads your brief, the records and your CV to answer, so it works once you sign in." }),
+      closed ? h("p", { class: "example-slot" }, h("a", { class: "quiet-link", href: ctx.signIn, "data-key": "scout-signin", text: "Sign in" }))
+        : h("p", {}, h("a", { class: "btn primary", href: ctx.signIn, "data-key": "scout-signin", text: "Sign in to ask Scout" })),
       // A guest may read a saved example answer, when the deploy has one (Q7).
-      h("p", { class: "example-slot" }))));
+      closed ? null : h("p", { class: "example-slot" }))));
     const slot = panel.querySelector(".example-slot");
     if (ctx.api.exampleAvailable) {
       ctx.api.exampleAvailable("researcher").then((ok) => {
-        if (ok && slot && slot.isConnected) slot.append(h("a", { class: "quiet-link", "data-key": "example-scout", href: "example.html?tab=scout", text: "Or see an example answer" }));
+        if (!ok || !slot || !slot.isConnected) return;
+        if (closed) {
+          slot.parentNode.insertBefore(h("p", {}, h("a", { class: "btn primary", "data-key": "example-scout", href: `example.html?tab=scout`, text: "See an example answer" })), slot);
+        } else slot.append(h("a", { class: "quiet-link", "data-key": "example-scout", href: `example.html?tab=scout`, text: "Or see an example answer" }));
       }, () => {});
     }
     return;
