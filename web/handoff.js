@@ -90,7 +90,7 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
     }));
 
   const status = H.busy === office.key
-    ? h("p", { class: "hint", role: "status", text: "A model is writing the opening paragraph. This takes a few seconds…" })
+    ? h("p", { class: "hint", role: "status", text: "A model is writing the opening paragraph. This can take up to two minutes…" })
     : H.error ? h("p", { class: "notice error", role: "alert" }, icon("warn"), h("span", { text: H.error })) : null;
 
   async function makeDraft(focusKey = "handoff-subject") {

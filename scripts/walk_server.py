@@ -81,7 +81,9 @@ def environment() -> None:
         PERCH_MASTER_KEY=base64.b64encode(secrets.token_bytes(32)).decode(),
         PERCH_MASTER_KEY_ID="walk",
         PERCH_CONSENT_PROVIDER_NAME="SYNTHETIC Provider", PERCH_CONSENT_VERSION="1",
-        PERCH_BRIEFS_PER_HOUR="1000", PERCH_PROFILE=os.environ.get("PERCH_PROFILE", "cloud-gpu"))
+        PERCH_BRIEFS_PER_HOUR="1000", PERCH_PROFILE=os.environ.get("PERCH_PROFILE", "cloud-gpu"),
+        # S48 M3: web and worker need a writable shred ledger; the walk gets a scratch one.
+        PERCH_SHRED_LEDGER_URI=tempfile.mkdtemp(prefix="perch-walk-ledger-"))
     for k in ("PERCH_ENV", "ANTHROPIC_API_KEY", "PERCH_MODEL_SERVER"):
         os.environ.pop(k, None)
     if os.environ.get("PERCH_OIDC_CLIENT_SECRET"):  # set by the caller for the sign-in walk only
