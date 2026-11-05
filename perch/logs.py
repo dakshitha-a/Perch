@@ -27,6 +27,20 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(out, ensure_ascii=False)
 
 
+class AccessFilter(logging.Filter):
+    """Rewrites uvicorn access lines to `METHOD path status`: no query string (it carries the
+    OIDC code and state on /auth/callback) and no client address."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        a = record.args
+        if isinstance(a, tuple) and len(a) >= 5:
+            method, path, status = a[1], str(a[2]).split("?", 1)[0], a[4]
+            record.msg, record.args = "%s %s %s", (method, path, status)
+        else:  # an unknown shape is dropped rather than risk logging a query
+            return False
+        return True
+
+
 def json_mode() -> bool:
     return (env("PERCH_LOG_FORMAT", "") or "").lower() == "json"
 
@@ -48,7 +62,12 @@ def uvicorn_log_config(level: str) -> dict | None:
     lv = level.upper()
     return {"version": 1, "disable_existing_loggers": False,
             "formatters": {"json": {"()": "perch.logs.JsonFormatter"}},
-            "handlers": {"h": {"class": "logging.StreamHandler", "formatter": "json"}},
+            "filters": {"access": {"()": "perch.logs.AccessFilter"}},
+            "handlers": {"h": {"class": "logging.StreamHandler", "formatter": "json"},
+                         "acc": {"class": "logging.StreamHandler", "formatter": "json",
+                                 "filters": ["access"]}},
             "loggers": {"uvicorn": {"handlers": ["h"], "level": lv, "propagate": False},
-                        "uvicorn.error": {"level": lv}, "uvicorn.access": {"level": lv}},
+                        "uvicorn.error": {"level": lv},
+                        "uvicorn.access": {"handlers": ["acc"], "level": lv,
+                                           "propagate": False}},
             "root": {"handlers": ["h"], "level": lv}}

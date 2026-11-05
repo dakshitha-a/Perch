@@ -265,10 +265,13 @@ def spent_micro(r: redis.Redis, scope: Scope) -> int:
 
 # --- rate limits (4.3) ---
 
+# The two *_global caps are only a runaway backstop. Set low, a few addresses could lock out
+# everyone (S2); the per-address limits do the real work, and they need PERCH_TRUSTED_PROXIES
+# set behind a proxy, else every visitor shares one address.
 RATE_DEFAULTS: dict[str, tuple[int, int]] = {
-    "login_start": (600, 600), "login_callback": (5, 600), "login_global": (1200, 600),
+    "login_start": (600, 600), "login_callback": (5, 600), "login_global": (100000, 600),
     "api_read": (300, 60), "api_write": (60, 60), "submit_job": (10, 60), "upload": (20, 600),
-    "guest_job": (5, 600), "guest_new_global": (600, 3600),
+    "guest_job": (5, 600), "guest_new_global": (100000, 3600),
 }
 
 _RL = """
@@ -420,4 +423,6 @@ def client_addr(request: Any) -> str:  # noqa: ANN401
 def hash_subject(value: str, pepper: str | None = None) -> str:
     """Key for a rate limit: sha256(PERCH_PEPPER_GUEST + value), hex."""
     p = pepper if pepper is not None else (env("PERCH_PEPPER_GUEST", "") or "")
+    if not p:
+        raise RuntimeError("PERCH_PEPPER_GUEST is not set")  # an empty pepper makes keys reversible
     return hashlib.sha256((p + value).encode()).hexdigest()

@@ -93,3 +93,16 @@ def test_worker_check_reads_this_hosts_heartbeat(pg_clean, monkeypatch) -> None:
     with psycopg.connect(pg_clean.admin, autocommit=True) as c:
         c.execute("UPDATE worker_heartbeat SET at = now() WHERE worker = %s", (f"{host}-1",))
     assert cli.worker_check() == 0
+
+
+def test_access_log_drops_query_and_address() -> None:
+    import logging
+
+    from perch.logs import AccessFilter, JsonFormatter
+    rec = logging.LogRecord("uvicorn.access", logging.INFO, "", 0, '%s - "%s %s HTTP/%s" %d',
+                            ("203.0.113.9:5555", "GET", "/auth/callback?code=SECRETCODE&state=s",
+                             "1.1", 302), None)
+    assert AccessFilter().filter(rec)
+    line = JsonFormatter().format(rec)
+    assert "SECRETCODE" not in line and "203.0.113.9" not in line and "code=" not in line
+    assert "/auth/callback" in line and "302" in line
