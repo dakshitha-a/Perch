@@ -591,19 +591,20 @@ function renderPick() {
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page", id: "pick-title", tabindex: "-1", text: title }),
         sub ? h("p", { class: "page-sub" }, sub) : null),
-      // Explain each lead sets how the brief is built, so it sits with the Build button (U42).
-      c ? h("div", { class: "build-box fade-in" },
-        h("button", { class: "btn primary big", type: "button", "data-key": "build", disabled: F.building,
-          onclick: () => build(c) }, h("span", { text: F.building ? "Starting" : "Build brief" })),
-        h("label", { class: "check explain-check" },
-          h("input", { type: "checkbox", checked: F.explain, onchange: (e) => { F.explain = e.target.checked; } }),
-          h("span", {}, h("b", { text: "Explain each lead" }),
-            h("span", { class: "hint", text: " A model writes a short, cited reason for every lead. This is the slow step." })))) : null),
+      c ? h("div", { class: "build-box fade-in" }, buildButton(c, "build")) : null),
     note ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: note })) : null,
     F.busy ? h("div", { class: "shimmer-card" }) : null,
     list.length ? h("ul", { class: "cand-list" }, list.map((x, i) => candidateCard(x, i === 0 && !c && n > 1))) : null,
     c ? cvBox() : null,
-    c ? contextPanel(c) : null));
+    c ? contextPanel(c) : null,
+    // S50 (V32, Q13): a second Build button where the form ends, so a long form needs no scroll back.
+    c ? h("div", { class: "build-foot" }, buildButton(c, "build-foot")) : null));
+}
+
+function buildButton(c, key) {
+  const F = S.find;
+  return h("button", { class: "btn primary big", type: "button", "data-key": key, disabled: F.building,
+    onclick: () => build(c) }, h("span", { text: F.building ? "Starting" : "Build brief" }));
 }
 
 // An error that opens with the heading's own words says the rest only (R15).
@@ -648,6 +649,11 @@ function contextPanel(c) {
     h("summary", { "data-key": "more-ctx" }, h("h2", { id: "more-h", text: "Tell Perch more (optional)" })),
     h("div", { class: "more-body" },
     h("p", { class: "page-sub", text: "Everything here steers the search. All of it is optional." }),
+    // S50 (Q31): Explain each lead sits with the other options; it stays ticked by default.
+    h("label", { class: "check explain-check" },
+      h("input", { type: "checkbox", "data-key": "explain", checked: F.explain, onchange: (e) => { F.explain = e.target.checked; } }),
+      h("span", {}, h("b", { text: "Explain each lead" }),
+        h("span", { class: "hint", text: " A model writes a short, cited reason for every lead. This is the slow step." }))),
     h("div", { class: "box-grid" },
       h("div", { class: "box" },
         h("label", { class: "big", for: "ctx-direction", text: "Where your research is going" }),
@@ -734,7 +740,13 @@ function cvBox() {
   }
   draw();
   if (!F.docs) {
-    api.docs("researcher").then((d) => { F.docs = d; draw(); })
+    api.docs("researcher").then((d) => {
+      F.docs = d;
+      // S50 (Q19): a stored CV is ticked by default, unless this form already chose its documents.
+      if (!F.docIds.size && !F.docsChosen) for (const x of d) if (x.kind === "cv") F.docIds.add(x.id);
+      F.docsChosen = true;
+      draw();
+    })
       .catch((e) => { F.docs = []; draw(); status.textContent = e.code === "consent_required" ? "Agree to the consent first, on your account page." : e.message; });
   }
   return box;
@@ -1536,11 +1548,20 @@ function threadsNote() {
   if (!n) return null;
   const all = (d.researcher || {}).works_count;
   const shown = distinctPapers(Object.values(d.papers || {}).filter((w) => !isOwnDoc(w))).length;
-  return h("p", { class: "hint threads-note", text: [
+  // S50 (V48): the first sentence shows; the rest opens under "How threads work".
+  return foldNote([
+    `These threads group ${f.plural(n, "work")} on file by what they are about.`,
     all != null ? `OpenAlex counts ${f.plural(all, "work")} for this researcher.` : null,
-    `These threads group ${f.plural(n, "work")} on file by what they are about: research output, such as articles, preprints and chapters, dated on or before the brief date. Labels are the words that set each group apart.`,
+    "The works are research output, such as articles, preprints and chapters, dated on or before the brief date. Labels are the words that set each group apart.",
     shown ? `Key papers picks from the ${shown} this brief shows: each thread’s top papers and those the explanations cite.` : null,
-  ].filter(Boolean).join(" ") });
+  ].filter(Boolean));
+}
+
+function foldNote(sentences) {
+  const [first, ...rest] = sentences;
+  return h("div", { class: "threads-note" }, h("p", { class: "hint", text: first }),
+    rest.length ? h("details", { class: "threads-how" }, h("summary", { "data-key": "threads-how", text: "How threads work" }),
+      h("p", { class: "hint", text: rest.join(" ") })) : null);
 }
 
 function threadsSection() {
@@ -1548,10 +1569,10 @@ function threadsSection() {
   const title = h("h2", { class: "section-title", text: "Research threads" });
   if (!isDone("profile")) return h("section", { class: "block" }, title, skeleton(3));
   return h("section", { class: "block" }, title,
-    threadsNote() || h("p", { class: "hint", text: b.work_ids.length
-      ? `${f.plural(b.work_ids.length, "paper")} grouped by what they are about. Labels are the words that set each group apart.`
-      : "No public papers on file. Labels are the most frequent words." }),
-    h("ol", { class: "threads" }, b.threads.map((t) => {
+    threadsNote() || foldNote(b.work_ids.length
+      ? [`${f.plural(b.work_ids.length, "paper")} grouped by what they are about.`, "Labels are the words that set each group apart."]
+      : ["No public papers on file.", "Labels are the most frequent words."]),
+    h("ol", { class: "threads" }, b.threads.map((t, i) => {
       const papers = distinctPapers((t.work_ids || []).map((id) => d.papers[id]).filter(Boolean)).slice(0, 5);
       const meter = h("span", { class: "meter", "aria-hidden": "true" },
         h("span", { style: `width:${Math.max(t.weight * 100, 2)}%` }));
@@ -1564,11 +1585,15 @@ function threadsSection() {
           h("p", { class: "hint", text: "From what you said. Used as a search query, never as a fact." }),
           h("ul", { class: "papers" }, papers.map(paperRow)));
       }
+      // S50 (V48): "Thread 1 · 73 %" over the label's words as chips; the share is the server's
+      // weight, with recent papers counting more (G23).
+      const words = String(t.label || "").split(",").map((x) => x.trim()).filter(Boolean);
       return h("li", { class: "thread" },
         h("div", { class: "thread-head" },
-          h("h3", { text: t.label }),
-          // G23: the share is of the weight, with recent papers counting more
-          h("span", { class: "share", text: `${Math.round(t.weight * 100)}% of the weight, recent papers counting more` })),
+          h("h3", { text: `Thread ${i + 1} · ${Math.round(t.weight * 100)} %` }),
+          h("span", { class: "share", text: "of the weight, recent papers counting more" })),
+        words.length ? h("p", { class: "thread-words" }, h("span", { class: "sr-only", text: "Words: " }),
+          words.map((x) => h("span", { class: "chip", text: x }))) : null,
         meter,
         h("p", { class: "hint", text: `${f.plural(t.work_ids.length, "paper")}. Most recent first:` }),
         h("ul", { class: "papers" }, papers.map(paperRow)));
@@ -1753,11 +1778,15 @@ function renderRoutes(panel) {
   syncList(det.querySelector("ol"), dismissed);
 }
 
-// What the rules left out (S49 F2), one quiet line; the labels and counts are the server's.
+// What the rules left out (S49 F2; S50 V44): one short summary that opens to a line per rule.
+// The labels and counts are the server's.
 function hiddenLine() {
   const hid = (S.brief.brief.hidden || S.brief.hidden || []).filter((x) => x && x.label && x.count);
   if (!hid.length) return null;
-  return h("p", { class: "hint hidden-line", text: `Hidden: ${hid.map((x) => `${x.label} (${x.count})`).join(", ")}` });
+  const total = hid.reduce((n, x) => n + x.count, 0);
+  return h("details", { class: "hidden-fold" },
+    h("summary", { "data-key": "hidden-fold", text: `${total} hidden by the rules` }),
+    h("ul", { class: "hidden-list" }, hid.map((x) => h("li", { text: `${x.label}: ${x.count}` }))));
 }
 
 // The list's notices (S49 U3, U16): the withheld-reason note once for the list when two or
@@ -1998,7 +2027,11 @@ function leadCard(l) {
 
   // NSF dates its open-anytime programs decades out: past ten years the record's own
   // words stand in place of the date (U3, Q3). Evidence keeps both fields.
-  const far = Boolean(o.close_date_note && days !== null && days > 3650) || f.standardDates(o);
+  // S50 (G8, BE-G): the record's own words, when it has them, stand in for a date ten years out
+  // or for no date at all (a placeholder date reaches the page as null).
+  const words = o.close_text || o.close_date_note || null;
+  const far = Boolean(words && ((days !== null && days > 3650)
+    || (!o.close_date && !o.deadline_quote && !(l.record && l.record.deadline_quote)))) || f.standardDates(o);
   const expires = f.expiresOnly(o);  // T17: a parent announcement's date is its expiry
   // FM3: with no date, the page's own deadline words are shown in quotes, never "Not stated".
   const quote = !o.close_date && !far ? (o.deadline_quote || (l.record && l.record.deadline_quote) || null) : null;
@@ -2007,7 +2040,7 @@ function leadCard(l) {
   const facts = h("dl", { class: "facts facts-2" },
     // F20: an expiry date sits under its own label, not under "Closes".
     h("div", { class: `fact close ${urg}` }, h("dt", { text: quote ? "Deadline" : expires && !far ? "Announcement" : "Closes" }),
-      h("dd", {}, far ? h("span", { text: o.close_date_note })
+      h("dd", {}, far ? h("span", { text: words || o.close_date_note })
         : o.close_date ? h("span", { text: `${expires ? "Expires " : ""}${f.formatDate(o.close_date)}` })
           : quote ? h("span", { class: "quote-date", text: `The page says: “${quote}”` }) : missing(),
         !far && !expires && days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),

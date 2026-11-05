@@ -1575,8 +1575,12 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
 /* The rule block on a student card (S50 contract 3.2; FE-C emits it). The chip sits on the lines
    that explain it; each line has its mark and the record's words. */
 .rules { display: grid; gap: 6px; justify-items: start; }
-.rules ul.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: var(--fs-14); }
-.rules li.check { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; color: var(--ink-2); }
+.rules[data-verdict] { min-width: 0; }
+ul.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: var(--fs-14); }
+li.check { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; color: var(--ink-2); }
+/* The same lines in a compare cell, under the chip (FE-C): no list indent. */
+td .checks { margin: 6px 0 0; padding: 0; }
+table.compare.stack td > .checks { grid-column: 2; margin-top: 0; }
 .check-mk { font-weight: 700; text-align: center; }
 li.check[data-outcome="pass"] .check-mk { color: var(--ok-ink); }
 li.check[data-outcome="fail"] .check-mk { color: var(--no-ink); }
@@ -1675,3 +1679,16 @@ dialog::backdrop { background: rgba(10, 16, 14, .55); }
 .example-banner .banner-line > .tag { flex: none; }
 .example-missing { padding: 48px 0; }
 .example-missing .lede { margin: 8px 0 20px; }
+/* What the rules left out (S50 V44): a quiet disclosure under the list head. */
+details.hidden-fold > summary { min-height: 44px; font-size: var(--fs-14); color: var(--ink-3); font-weight: 600; }
+.hidden-list { margin: 0 0 4px; padding-left: 22px; font-size: var(--fs-14); color: var(--ink-3); display: grid; gap: 2px; }
+#panel .hidden-fold { margin: -16px 0 -6px; }
+/* The pick screen's second Build button, at the foot of the form (S50 V32). */
+.build-foot { display: flex; justify-content: flex-end; }
+@media (max-width: 699px) { .build-foot .btn { width: 100%; } }
+.more-body > .explain-check { margin: 4px 0 8px; }
+/* Research threads (S50 V48): the thread's number and share, its label words as chips. */
+.thread-words { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.thread-words .chip { display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; background: var(--chip); color: var(--ink-2); font-size: var(--fs-14); }
+.threads-note { display: grid; gap: 2px; }
+details.threads-how > summary { min-height: 44px; font-size: var(--fs-14); font-weight: 600; color: var(--ink-2); }

@@ -73,6 +73,9 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
         if flag_two:
             for x in a[:3]:
                 x.update(flagged=True, explanation=None, cited_ids=[])
+        if len(a) > 3:  # BE-G: a placeholder date reaches the page as null, with the record's own words
+            o = a[3].setdefault("opportunity", {})
+            o.update(close_date=None, close_date_note=None, deadline_quote=None, close_text="SYNTHETIC: proposals accepted at any time")
         if instant:  # a brief served from the cache: every step starts and ends at once
             for s in d["brief"]["stages"]:
                 s["started_at"] = s["finished_at"] = "2026-11-05T04:42:55.852147Z"
@@ -214,6 +217,15 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
                     f"second fact left edges {sorted(set(lefts))[:6]}")
         above = [c["id"][-6:] for c in cards if c["keepTop"] is None or c["factsBottom"] is None or c["keepTop"] < c["factsBottom"] or not c["inFoot"]]
         w.check(f"s50a_actions_footer_{tag}", bool(cards) and not above, f"{len(cards)} cards; Keep not in the footer under the facts on {above[:4]}")
+        # the record's own date words stand in for a missing date (G8, BE-G close_text)
+        words = await page.evaluate("() => [...document.querySelectorAll('#panel li.card.lead .fact.close dd')].map((d) => d.textContent)")
+        w.check(f"s50a_close_text_{tag}", any("SYNTHETIC: proposals accepted at any time" in x for x in words), f"{words[:6]}")
+        # what the rules left out, as a disclosure (Tier B, V44)
+        hid = [x for x in (raw_r["brief"].get("hidden") or []) if x.get("label") and x.get("count")]
+        fold = await page.evaluate("""() => { const d = document.querySelector('#panel details.hidden-fold'); if (!d) return null;
+          return [d.querySelector('summary').textContent, [...d.querySelectorAll('li')].map((li) => li.textContent)]; }""")
+        want = [f"{sum(x['count'] for x in hid)} hidden by the rules", [f"{x['label']}: {x['count']}" for x in hid]]
+        w.check(f"s50a_hidden_fold_{tag}", bool(hid) and fold == want, f"got {fold}, want {want}"[:240])
         chip = await page.evaluate("() => { const c = document.querySelector('.ready-chip .ready-word'); return c ? c.textContent : null; }")
         if wide:
             w.check("s50a_ready_zero", chip == "Ready", f"chip text {chip!r}")
@@ -281,6 +293,15 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
             detail = f"Match numbers top to bottom {m}"
             await w.snap(page, tag, "s50a-route-t")
         w.check(f"s50a_sort_order_{tag}", ok, detail)
+        # research threads: "Thread 1 · 73 %" over the label's words as chips (Tier B, V48)
+        await page.evaluate("(id) => { location.hash = '#/brief/' + id + '/profile'; }", RB)
+        await page.wait_for_timeout(1000)
+        th = await page.evaluate("""() => [...document.querySelectorAll('#panel li.thread:not(.said)')].map((t) => [t.querySelector('h3').textContent,
+          t.querySelectorAll('.thread-words .chip').length])""")
+        how = await page.locator("#panel details.threads-how").count()
+        w.check(f"s50a_threads_{tag}", bool(th) and all(re.fullmatch(r"Thread \d+ · \d+ %", a) and n > 0 for a, n in th) and how == 1,
+                f"threads {th}, How threads work {how}")
+        await w.snap(page, tag, "s50a-threads")
         # the student compare, stacked into cards on a phone
         if not wide:
             await serve(page, SB, student(raw_s, kept=2))
@@ -409,4 +430,31 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
         await w.snap(page, tag, "s50a-example-missing")
         await page.context.close()
 
-    return {"s50a_styles": flow_styles, "s50a_cards": flow_cards, "s50a_building": flow_building, "s50a_example": flow_example}, []
+    # ---------- s50a_pick (Tier B: Q19, Q31, V32, Q13) ----------
+
+    async def flow_pick(w, browser, base, tag, view) -> None:
+        page = await U.new_page(browser, w, tag, view, base)
+        state = {"roles": ["researcher"], "consented": True, "gone": False, "deleted_with": None}
+        await U.stub_signed_in(page, state)  # /me/docs answers one stored CV, id d1
+        await page.goto(base + "/#/start")
+        await page.wait_for_selector("[data-key=seg-r]")
+        await page.click("[data-key=seg-r]")
+        await page.fill("#q", U.AUTHOR)
+        await page.click(".searchbox button[type=submit]")
+        await page.wait_for_selector("[data-key=build], .cand button", timeout=60_000)
+        if not await page.locator("[data-key=build]").count():
+            await page.click(".cand button")
+        await page.wait_for_selector("[data-key=build]")
+        await page.wait_for_timeout(800)
+        got = await page.evaluate("""() => { const cv = document.querySelector('.cv-docs input[type=checkbox]');
+          const ex = [...document.querySelectorAll('.explain-check input')];
+          return { cvTicked: cv ? cv.checked : null, explainIn: ex.length === 1 && Boolean(ex[0].closest('details.more-panel')),
+            explainOn: ex.length ? ex[0].checked : null, foot: document.querySelectorAll('[data-key=build-foot]').length,
+            footText: (document.querySelector('[data-key=build-foot]') || {}).textContent || null }; }""")
+        ok = got["cvTicked"] is True and got["explainIn"] and got["explainOn"] is True and got["foot"] == 1 and got["footText"] == "Build brief"
+        w.check(f"s50a_pick_{tag}", ok, f"{got}")
+        await w.snap(page, tag, "s50a-pick")
+        await page.context.close()
+
+    return {"s50a_styles": flow_styles, "s50a_cards": flow_cards, "s50a_building": flow_building, "s50a_example": flow_example,
+            "s50a_pick": flow_pick}, []
