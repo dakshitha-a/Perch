@@ -1,0 +1,60 @@
+{
+ "deploy": {
+  "by_model": {
+   "claude-haiku-5-5": {
+    "mean": 0.00029266111111111114,
+    "median": 2.7950000000000002e-05,
+    "n": 18,
+    "total": 0.005267900000000001
+   },
+   "claude-sonnet-5-5": {
+    "mean": 0.005348880793650794,
+    "median": 0.0035151999999999996,
+    "n": 630,
+    "total": 3.3697949
+   }
+  },
+  "fields": [
+   "at",
+   "cache_read_tokens",
+   "cache_write_tokens",
+   "cost_usd",
+   "input_tokens",
+   "model",
+   "output_tokens"
+  ],
+  "first": "2026-11-05",
+  "last": "2026-11-05",
+  "n": 648,
+  "total": 3.3750628
+ },
+ "main": {
+  "by_model": {
+   "claude-haiku-5-5": {
+    "mean": 0.0006160945366795367,
+    "median": 8.173e-05,
+    "n": 777,
+    "total": 0.478705455
+   },
+   "claude-sonnet-5-5": {
+    "mean": 0.007743638033635187,
+    "median": 0.006105600000000001,
+    "n": 1546,
+    "total": 11.9716644
+   }
+  },
+  "fields": [
+   "at",
+   "cache_read_tokens",
+   "cache_write_tokens",
+   "cost_usd",
+   "input_tokens",
+   "model",
+   "output_tokens"
+  ],
+  "first": "2026-10-29",
+  "last": "2026-11-05",
+  "n": 2323,
+  "total": 12.450369855
+ }
+}
