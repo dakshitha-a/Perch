@@ -70,9 +70,13 @@ def load_records(folder: Path) -> list[Record]:
 
 
 def store_records() -> list[Record]:
+    from perch.cli import default_client
+    from perch.config import load_dotenv
     from perch.service import BriefService, Clients, default_models
 
-    svc = BriefService("data/perch.db", default_models(True, Path("data")), Clients())
+    load_dotenv()  # the store is Postgres when .env says so, as in bench/scout_open.py
+    svc = BriefService("data/perch.db", default_models(True, Path("data")),
+                       Clients(openalex=default_client))
     with svc.repo() as r:
         return [*r.list(Opportunity), *r.list(Scholarship)]
 
