@@ -26,3 +26,24 @@ Fresh-context Opus review, read-only, 2026-11-04, at 86647a9.
 
 ## Clean
 Encryption (AES-256-GCM with bound AAD, tombstone checked before decrypt, no recreation of a shredded key), sign-in (state, nonce, PKCE, binder cookie, new session ids, `__Host-` cookies, CSRF and Origin on every POST), authorization (forced row-level security, narrow definer functions, session-scoped routes), rendering (textContent only, `safeUrl`), and the new metrics, worker check, cover-points `again` path and shared brief service.
+
+## Re-check (fresh-context Opus, 2026-11-04)
+
+No item is NOT FIXED and there is no new must-fix. Verdicts:
+- **Fixed:** M1, M2, S1, S2, S4, S5, S9, N1 and N4.
+- **Partly fixed:** M3, S6 and S7.
+- **Fixed with limits:** S3 on the account path, and S8 in JSON mode.
+
+Must-fix for safety:
+- **The forgotten restore marker (M3):** a restore without `restore-mark` leaves a deleted user live until the daily reconcile.
+
+Should-fix:
+- Never restore the ledger volume.
+- A per-address guest spend cap, with the guest day times 30 below the month.
+- An HMAC prompt hash.
+- Compose refuses a missing pepper.
+- The access filter in plain mode.
+- Worst-case reserves.
+- The PDF decompression bound.
+
+A follow-up agent is fixing the first six. Open for Dakshitha: Q50, guest briefs in Redis as plain JSON for an hour.

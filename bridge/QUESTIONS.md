@@ -26,6 +26,8 @@ Dakshitha delegated every product and design decision to Perch-dev on 2026-10-31
 
 49. **Scout: strict grounding against useful answers (raised 2026-11-04, S45; not blocking).** On the final bench, 23 of 33 in-scope answers failed their checks twice and were shown with sentences removed and a notice; none was empty, and every out-of-scope and distress question was handled. Most removals are sentences the model wrote without a citation. Recommendation: keep the rules as they are for the demo, and in S46 tune the prompt and add fixed templates for process sentences ("I did not read your activities part"), measured offline on stored drafts before any real run. Say if you would rather loosen a rule instead.
 
+50. **Guest briefs in Redis (raised 2026-11-04, S48; not blocking).** A guest's brief lives in Redis as plain JSON for one hour: the leads, the fit text and the direction the guest typed. It holds no CV, because a guest's student brief reads the SYNTHETIC sample and a researcher brief reads public papers. A signed-in user's brief is encrypted. Recommendation: keep it for the demo, and encrypt guest briefs with a per-session key after the demo. Say if you want it encrypted now.
+
 ## Answered
 
 33. **Standing-rule change to apply (raised 2026-10-30; narrowed in S24).** Standing rules are yours to edit; Perch-dev never edits them. Your answer to Q30 needs this change in `CLAUDE.md`:
