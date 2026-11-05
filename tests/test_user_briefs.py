@@ -268,3 +268,46 @@ def test_submit_and_load_for_a_user_and_for_a_guest(pg_clean, ud, tmp_path, web_
         submit_brief(svc, web, ud, r, guest_s, "A5026494099", doc_ids=[uuid.uuid4()])
     r.flushdb()
     r.close()
+
+
+@needs_pg
+@needs_redis
+def test_two_identical_clicks_return_the_brief_that_runs(pg_clean, ud, tmp_path, web_pool, keys,
+                                                         monkeypatch):
+    """S49 B4: two requests that both passed the idempotency check made two briefs, and the
+    second caller got the second brief with the first job, which never runs it."""
+    import time
+
+    import redis as redis_lib
+
+    from perch.auth.session import Session
+    from perch.jobs import PostgresRunner, Timing
+    from perch.user import briefs as ub
+
+    r = redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    r.flushdb()
+    uid = new_user(pg_clean)
+    _, svc = make(tmp_path)
+    web = PostgresRunner(pool=web_pool, timing=Timing())
+
+    def sess(user, sid):
+        return Session(sid=sid, user_id=user, guest=user is None, roles=frozenset(),
+                       audience="researcher", csrf="c", display_name=None, created=time.time(),
+                       abs_exp=time.time() + 3600)
+
+    for s in (sess(uid, "u-2"), sess(None, "g-2")):
+        first = ub.submit_brief(svc, web, ud, r, s, "A5026494099", as_of=AS_OF)
+        real, calls = ub._existing, []
+
+        def late(*a, _real=real, _calls=calls):  # the twin's check ran before the first insert
+            _calls.append(1)
+            return None if len(_calls) == 1 else _real(*a)
+
+        monkeypatch.setattr(ub, "_existing", late)
+        second = ub.submit_brief(svc, web, ud, r, s, "A5026494099", as_of=AS_OF)
+        monkeypatch.setattr(ub, "_existing", real)
+        assert second == first
+    assert rows(pg_clean, "SELECT count(*) FROM user_data WHERE kind = 'brief'") == [(1,)]
+    assert len(r.keys("perch:gsess:*:brief:*")) == 1
+    r.flushdb()
+    r.close()

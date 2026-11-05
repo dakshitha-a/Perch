@@ -565,6 +565,10 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
                               doc_ids=doc_ids, **options)
         job = runner.submit("brief", {"brief_id": b.id}, session.user_id, key,
                             audience=session.audience)
+        won = _same_request_won(runner, key, session.user_id, None, b.id, job)
+        if won is not None:  # a twin request created its brief first: drop ours (S49 B4)
+            ud.delete(session.user_id, UUID(b.id), kinds=("brief",))
+            return won
         return b.id, job
     if doc_ids:
         raise PermissionError("a guest cannot use documents")
@@ -590,8 +594,22 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     b = create_guest_brief(svc, r, gh, author_id, audience=session.audience, **options)
     job = runner.submit("brief", {"brief_id": b.id}, None, key,
                         audience=session.audience, guest_sid_hash=bytes.fromhex(gh))
+    won = _same_request_won(runner, key, None, bytes.fromhex(gh), b.id, job)
+    if won is not None:  # a twin request created its brief first: drop ours (S49 B4)
+        r.delete(GuestBriefStore(r, gh, b.id).state_key)
+        return won
     r.set(f"perch:gsess:{gh}:job:{b.id}", str(job), ex=ttl)  # brief id -> job id, for the read
     return b.id, job
+
+
+def _same_request_won(runner: JobRunner, key: str, user_id: UUID | None, guest: bytes | None,
+                      brief_id: str, job: UUID) -> tuple[str, UUID] | None:
+    """After the submit: when two identical requests raced past `_existing`, the unique index
+    hands both the first job. Then the (brief, job) pair that job runs, else None (S49 B4)."""
+    got = _existing(runner, key, user_id, guest)
+    if got is None or got[0] == brief_id:
+        return None
+    return got if got[1] == job else None
 
 
 def _existing(runner: JobRunner, key: str, user_id: UUID | None, guest: bytes | None
