@@ -68,8 +68,12 @@ class StudentInputs:
     cv: str
     interests: UserDoc | None = None
     entries: list[str] = field(default_factory=list)
+    # S53: the optional picks. Compared with a listing's own rule by code; never sent to a model.
+    citizenship: str | None = None
+    residency_state: str | None = None
 
 
+PERSONA_CITIZENSHIP = "international"  # the SYNTHETIC sample student ticks "international"
 PERSONAS = {"persona-ug": "SYNTHETIC persona-ug"}  # the guest's student sample (ARCH 7.4)
 SYNTHETIC_DIR = Path(__file__).resolve().parents[2] / "data/synthetic"
 
@@ -86,7 +90,8 @@ def persona_inputs(name: str) -> StudentInputs:
                          interests=make_doc("interests",
                                             (d / "interests.md").read_text(encoding="utf-8")),
                          entries=achievements((d / "achievements.md").read_text(
-                             encoding="utf-8")))
+                             encoding="utf-8")),
+                         citizenship=PERSONA_CITIZENSHIP, residency_state=None)
 
 
 class BriefStore(ABC):
@@ -134,6 +139,12 @@ class BriefStore(ABC):
     def student_inputs(self) -> StudentInputs:
         """The CV, interests and achievements a student brief reads."""
         raise LookupError("this brief has no student inputs")
+
+    def profile_picks(self) -> tuple[str | None, str | None]:
+        """(citizenship, residency_state) the user chose to give, else (None, None). A guest's
+        researcher brief carries them in its own sealed options (S53)."""
+        o = self.brief.options if self.brief is not None else {}
+        return o.get("citizenship") or None, o.get("residency_state") or None
 
     def flush(self) -> None:
         with self._lock:
@@ -379,8 +390,25 @@ class UserBriefStore(BriefStore):
         if not cvs:
             raise ValueError("student mode needs a CV")
         interests = next((d for _, d in docs if d.id == "user:interests"), None)
+        cit, res = self.profile_picks()
         return StudentInputs(cv=cvs[0][1].text, interests=interests,
-                             entries=[e.text for _, e in reversed(entries)])
+                             entries=[e.text for _, e in reversed(entries)],
+                             citizenship=cit, residency_state=res)
+
+    def profile_picks(self) -> tuple[str | None, str | None]:
+        """The side's stored picks. In a job they are read only while the consent stands."""
+        from perch.user import profile
+
+        with self._conn() as c:
+            if self.ctx is not None:
+                from perch.auth.accounts import consent_version_of
+                from perch.config import env
+
+                if consent_version_of(c, self.user_id) < int(
+                        env("PERCH_CONSENT_VERSION", "1") or 1):
+                    return None, None
+            p = profile.read(self.ud, self.user_id, self.audience, conn=c)
+        return p.citizenship, p.residency_state
 
 
 class MemoryBriefStore(BriefStore):
@@ -691,6 +719,7 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     if session.user_id is not None:
         from perch.auth.deps import require_consent
 
+        options.pop("picks", None)  # a signed-in user's picks are read from the profile row
         ctx_opt = options.get("context") or {}
         if (doc_ids or session.audience == "student"
                 or (isinstance(ctx_opt, dict) and (ctx_opt.get("direction") or "").strip())):
@@ -720,6 +749,11 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     if doc_ids:
         raise PermissionError("a guest cannot use documents")
     options.pop("context", None)  # direction text is user text: no user text in Redis (4.1)
+    # S53: a guest's picks are two closed values, not text. They ride in the brief's options,
+    # which are sealed under the guest session's own key like the rest of the brief.
+    picks = options.pop("picks", None) or {}
+    if session.audience == "researcher" and any(picks.values()):
+        options["context"] = {k: v for k, v in picks.items() if v}
     from perch.redisx import rate_limit
 
     gh = guest_hash(session.sid)

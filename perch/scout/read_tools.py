@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
+from perch.citizenship import without_picks
 from perch.compare import award_size
 from perch.datefmt import amount_text, day, deadline
 from perch.llm import Tool
@@ -379,7 +380,7 @@ class ReadTools:
             if (rec := self._get(x.record_id)) is not None:
                 temple.append(facts(self._see(rec), self.data.as_of)
                               | {"kept": x.status == "kept"}
-                              | ({"notes": x.notes} if x.notes else {}))
+                              | ({"notes": n} if (n := without_picks(x.notes)) else {}))
                 if x.status == "kept":
                     self.kept.add(rec.id)
         for x in sorted((x for x in leads if x.status != "dismissed" and x.route != "B"
@@ -401,7 +402,7 @@ class ReadTools:
             if x.gaps:
                 row["gaps"] = x.gaps[:4]
             if x.group == "centre":  # its code-written line (S51 H7)
-                row["notes"] = x.notes
+                row["notes"] = without_picks(x.notes)
             rows.append(row)
             if x.status == "kept" and not row.get("sample"):
                 k = {"rank": x.rank, "id": row["id"], "title": row["title"],

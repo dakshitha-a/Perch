@@ -67,6 +67,7 @@ from perch import compare as cmp
 from perch import export as ex
 from perch import redisx
 from perch.auth.wiring import install_auth, readiness
+from perch.citizenship import CITIZENSHIP_VALUES, STATE_CODES
 from perch.config import env
 from perch.jobs import ClosureRunner
 from perch.metrics import Counting, local_only, render
@@ -120,6 +121,10 @@ class BriefRequest(BriefOptions):
     agencies: list[str] = Field(default_factory=list)
     audience: Literal["researcher", "student"] | None = None  # v1: the session's side decides
     doc_ids: list[UUID] = Field(default_factory=list, max_length=20)  # signed in: user_data rows
+    # S53: a guest's optional picks for a researcher brief (a signed-in user's are read from
+    # the stored profile row, so these are ignored for an account). Never sent to a model.
+    citizenship: Literal[CITIZENSHIP_VALUES] | None = None  # type: ignore[valid-type]
+    residency_state: Literal[STATE_CODES] | None = None  # type: ignore[valid-type]
 
 
 async def account_session(request: Request) -> object | None:
@@ -243,6 +248,29 @@ def lead_json(lead: Lead, r: Repository) -> dict:
     opp = r.get(Opportunity, lead.record_id)
     return {**lead.model_dump(mode="json"),
             "opportunity": opp.model_dump(mode="json", exclude={"description"}) if opp else None}
+
+
+def citizenship_counts(leads: list[dict]) -> dict:
+    """S53: how many of the shown public funding listings state a citizenship or residency
+    rule in a closed phrase Perch can read: {"stated": N, "total": M}. SYNTHETIC sample leads
+    and industry leads are not counted (standing rule 11)."""
+    from perch import citizenship as cz
+
+    stated = total = 0
+    for x in leads:
+        if x.get("sample") or x.get("route") == "B":
+            continue
+        rec = x.get("record") or x.get("opportunity")
+        if not rec:
+            continue
+        total += 1
+        e = rec.get("eligibility") or {}
+        quotes = rec.get("field_quotes") or {}
+        stated += cz.stated([("eligibility.notes", e.get("notes")),
+                             ("eligibility_notes", rec.get("eligibility_notes")),
+                             ("field_quotes.eligibility", quotes.get("eligibility")),
+                             ("eligibility.citizenship", e.get("citizenship"))])
+    return {"stated": stated, "total": total}
 
 
 def _student(lead: Lead, r: Repository) -> dict:
@@ -720,7 +748,9 @@ def create_app(service: BriefService, runner: ClosureRunner,
                                                    if sess.guest else None),
                                         as_of=req.as_of, top=req.top, explain=req.explain,
                                         min_amount=req.min_amount, agencies=req.agencies,
-                                        context=req.context())
+                                        context=req.context(),
+                                        picks={"citizenship": req.citizenship,
+                                               "residency_state": req.residency_state})
             except RateLimited as e:
                 raise HTTPException(429, {"error": "rate_limited"},
                                     headers={"Retry-After": str(e.retry_after)}) from None
@@ -822,7 +852,8 @@ def create_app(service: BriefService, runner: ClosureRunner,
                    "record_id": (s.end_record or s.records[0]).id,
                    "matched_by_initial": s.matched_by_initial}
                   for s in aw.summarise(linked, res, ov) if s.key in set(b.award_ids)]
-        view = {"brief": b.model_dump(mode="json"),
+        view = {"citizenship_rules": citizenship_counts(out),
+                "brief": b.model_dump(mode="json"),
                 "researcher": record_json(res) if res else None, "awards": awards,
                 "papers": papers,
                 "leads": out, "notice": grants_gov.ATTRIBUTION}

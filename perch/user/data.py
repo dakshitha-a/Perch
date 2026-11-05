@@ -91,7 +91,7 @@ class UserData:
 
     def put(self, user_id: UUID, kind: UserKind, audience: Audience, model: BaseModel, *,
             row_id: UUID | None = None, conn: psycopg.Connection | None = None) -> UUID:
-        """Insert one row; return its id. A new CV replaces the old one for that audience."""
+        """Insert one row; return its id. A new CV or profile replaces the old one for that side."""
         expected = MODEL_FOR_KIND.get(kind)
         if expected is None or not isinstance(model, expected):
             raise UserDataError("model does not match the kind")
@@ -99,9 +99,9 @@ class UserData:
         plain = _dump(model)
         with self._tx(user_id, conn) as c:
             blob = self._encrypt(c, user_id, plain, aad_for(user_id, rid, kind, audience))
-            if kind == "cv":
+            if kind in ("cv", "profile"):  # one per side
                 c.execute("DELETE FROM user_data WHERE user_id = %s AND audience = %s "
-                          "AND kind = 'cv'", (user_id, audience))
+                          "AND kind = %s", (user_id, audience, kind))
             c.execute("INSERT INTO user_data (id, user_id, kind, audience, key_version, blob) "
                       "VALUES (%s, %s, %s, %s, %s, %s)",
                       (rid, user_id, kind, audience, crypto.key_version_of(blob), blob))

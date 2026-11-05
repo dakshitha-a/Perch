@@ -166,7 +166,7 @@ function student() {
     ["Browse Temple awards", "Choose Student, then press Browse Temple awards. You need no account to look through the list. Every card links to the page it came from.", figWho()],
     ["Narrow the list", "Pick a school tag to see that school’s awards first, then the awards open across Temple. The search box and the level menu narrow it further.", figTags()],
     ["Check my fit", "Sign in, save your CV and press Find awards that fit. With no account, press Try a sample student: it is an invented SYNTHETIC student, labelled as sample data.", figDocs()],
-    ["Read the verdicts", "Each option shows a rule check: Eligible, May be eligible or Not eligible. Still needed lists what the record asks for and your CV does not show.", figVerdicts()],
+    ["Read the verdicts", "Each option shows a rule check: Eligible, May be eligible or Not eligible. Still needed lists what the record asks for and your CV does not show. If you chose to enter a citizenship status or state, a listing whose own written rule you do not meet moves lower, with the sentence quoted and the page it came from. It is never hidden.", figVerdicts()],
     ["Compare and send the note", "Keep options, then Compare them and pick the Temple office. Code writes a short note for you to copy or open in your mail app. A guest can keep and compare; the note needs an account.", figHandoff(true)],
   ]);
 }
@@ -315,7 +315,7 @@ function goodToKnow() {
   return h("section", { class: "help-block", "aria-labelledby": "h-know" },
     h("h2", { id: "h-know", class: "section-title", text: "Good to know" }),
     h("ul", { class: "plain-list" },
-      h("li", { text: "A brief is a starting point, not advice. Perch does not confirm your personal eligibility, such as career stage or citizenship. Read each record." }),
+      h("li", { text: "A brief is a starting point, not advice. Perch does not confirm your eligibility. If you enter a citizenship status or state, Perch compares it only with a listing's own written rule, and moves a listing you do not meet lower. Read each record." }),
       h("li", {}, h("span", { text: "Industry leads are inferences from public signals, not verified interest. " + RESEARCH_SECURITY })),
       h("li", {}, h("span", { text: SUBMISSION_NOTE + " " }),
         h("a", { href: SUBMISSION_URL, target: "_blank", rel: "noopener", text: "Find your research administrator" }),

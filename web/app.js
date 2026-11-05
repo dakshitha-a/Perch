@@ -12,6 +12,7 @@ import * as f from "./format.js";
 import { hop, owl, poke, setOwl } from "./owl.js";
 import { renderAccount, renderMyPerch, renderWelcome } from "./account.js";
 import { renderList, renderSamples } from "./browse.js";
+import { profilePicks } from "./profile_picks.js";
 import { isStudent, keptWords, matchPill, requestSample, resetStudent, renderStudentStart, studentCompare, studentProfile, studentRoutes, STUDENT_ROUTES } from "./student.js";
 
 const api = window.PERCH_REPLAY ? replayApi(window.PERCH_REPLAY) : liveApi(window.PERCH_API || "");
@@ -604,6 +605,7 @@ function renderPick() {
     F.busy ? h("div", { class: "shimmer-card" }) : null,
     list.length ? h("ul", { class: "cand-list" }, list.map((x, i) => candidateCard(x, i === 0 && !c && n > 1))) : null,
     c ? cvBox() : null,
+    c ? picksBox() : null,
     c ? contextPanel(c) : null,
     // S50 (V32, Q13): a second Build button where the form ends, so a long form needs no scroll back.
     c ? h("div", { class: "build-foot" }, buildButton(c, "build-foot")) : null));
@@ -683,6 +685,30 @@ function contextPanel(c) {
         h("input", { id: "ctx-min", type: "number", inputmode: "numeric", min: "0", step: "any", placeholder: "Any",
           value: F.minAmount, "aria-describedby": "min-hint", oninput: (e) => { F.minAmount = e.target.value; } }),
         h("p", { class: "note", id: "min-hint", text: "Compared with the award ceiling in each record. Records that state no amount stay in." })))));
+}
+
+// The optional citizenship and state picks (S53), under the CV box. A signed-in user's are
+// stored with the rest of their inputs and saved when the brief starts; a guest's go with the
+// request and are kept only in the guest's own brief.
+function picksBox() {
+  const F = S.find;
+  if (api.mode === "replay" || (!S.session.signed_in && !S.session.guest)) return null;
+  if (!F.picks) F.picks = { citizenship: null, residency_state: null };
+  const box = h("section", { class: "box picks-box fade-in", "aria-label": "Optional citizenship and state" },
+    profilePicks({ prefix: "r-pick", value: F.picks }));
+  if (S.session.signed_in && !F.picksLoaded) {
+    F.picksLoaded = true;
+    api.profile("researcher").then((p) => {
+      F.picksStored = { citizenship: p.citizenship || null, residency_state: p.residency_state || null };
+      if (!F.picks.citizenship && !F.picks.residency_state) {
+        Object.assign(F.picks, F.picksStored);
+        for (const [id, v] of [["r-pick-citizenship", F.picks.citizenship], ["r-pick-state", F.picks.residency_state]]) {
+          const el = document.getElementById(id); if (el) el.value = v || "";
+        }
+      }
+    }).catch(() => { F.picksStored = { citizenship: null, residency_state: null }; });
+  }
+  return box;
 }
 
 // The researcher's CV card (S49 D3, M4): on the pick screen under the picked person, not
@@ -795,8 +821,18 @@ async function build(c) {
   const min = parseFloat(F.minAmount);
   if (Number.isFinite(min) && min > 0) req.min_amount = min;
   F.building = true; F.error = null;
+  if (S.session.guest && F.picks) {  // a guest's picks ride with the request (S53)
+    if (F.picks.citizenship) req.citizenship = F.picks.citizenship;
+    if (F.picks.residency_state) req.residency_state = F.picks.residency_state;
+  }
   keepFocus(renderPick);
   try {
+    if (S.session.signed_in && F.picks && F.picksStored !== undefined
+        && ((F.picks.citizenship || null) !== (F.picksStored.citizenship || null)
+          || (F.picks.residency_state || null) !== (F.picksStored.residency_state || null))) {
+      await api.saveProfile({ citizenship: F.picks.citizenship, residency_state: F.picks.residency_state }, "researcher");
+      F.picksStored = { ...F.picks };
+    }
     if (S.session.signed_in && S.session.audience !== "researcher" && (S.session.roles || []).includes("researcher")) {
       await api.setAudience("researcher");  // a brief is built on the side the session is on
       await refreshSession();
@@ -1655,7 +1691,8 @@ function sortedLeads() {
   if (S.sort === "closing") leads.sort((a, b) => close(a).localeCompare(close(b)) || a.rank - b.rank);
   // S50 (V3, V42): Best match is the Match score, highest first, with the server's rank as the
   // tie-break; a lead with no score goes last.
-  else leads.sort((a, b) => score(b) - score(a) || a.rank - b.rank);
+  // S53: a listing whose own citizenship or state rule the pick does not meet follows the others.
+  else leads.sort((a, b) => (a.demoted ? 1 : 0) - (b.demoted ? 1 : 0) || score(b) - score(a) || a.rank - b.rank);
   return leads;
 }
 
@@ -2168,7 +2205,10 @@ function accountsOpen() {
 function leadNotes(l) {
   if (!l.notes || !l.notes.length) return null;
   // Each note is a plain line written by code, such as a past date on the page (S49).
-  return h("ul", { class: "lead-notes" }, l.notes.map((n) => h("li", { text: n })));
+  // S53: a note that quotes a listing's own citizenship or state rule links the page it came from.
+  const src = l.citizenship_rule && l.citizenship_rule.quote ? l.citizenship_rule.source_url : null;
+  return h("ul", { class: "lead-notes" }, l.notes.map((n) => h("li", {}, n,
+    src && /the listing asks for/.test(n) ? [" ", h("a", { class: "pick-source", href: src, target: "_blank", rel: "noopener noreferrer", text: "Source page" })] : null)));
 }
 
 function explanationBlock(l, parsed, o) {

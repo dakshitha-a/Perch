@@ -261,6 +261,12 @@ class Lead(Record):
     checks: list[RuleCheck] = Field(
         default_factory=list, description="Student mode: every rule checked and its outcome, "
         "in card order (S50 Q1)")
+    demoted: bool = Field(default=False, description="S53: the listing's own citizenship or "
+                          "residency rule is not met by the user's optional pick, so the lead is "
+                          "ordered after the others of its list; never hidden")
+    citizenship_rule: dict | None = Field(
+        default=None, description="S53: where the rule was found: {record_id, source_url, "
+        "field, where, quote, outcome pass|fail|none, has_text}; None when no pick was given")
     gaps: list[str] = Field(default_factory=list, description="Requirements the CV lacks")
     gap_keys: list[str] = Field(default_factory=list)
     sample: bool = Field(default=False, description="Points at a SYNTHETIC sample record")
