@@ -1435,11 +1435,19 @@ def view_architecture(src: Source, root: Path, newest: tuple[datetime | None, st
     return "\n".join(out)
 
 
-def view_roadmap(src: Source, newest: tuple[datetime | None, str]) -> str:
-    """docs/ROADMAP.md: what a real deployment needs; every section is a short bullet list."""
+def view_roadmap(src: Source, newest: tuple[datetime | None, str], root: Path | None = None) -> str:
+    """docs/ROADMAP.md: what a real deployment needs; every section is a short bullet list.
+    A ![caption](file.svg) figure is inlined from root above the sections (S54)."""
     doc = parse(src.text)
     out = ['<div><div class="eyebrow">Beyond the demo</div>'
            f"<h1>{inline(doc.title or 'Roadmap')}</h1></div>", source_note([src], newest)]
+    figs = [b for b in doc.blocks if b[0] == "fig" and b[2].endswith(".svg")]
+    doc.blocks[:] = [b for b in doc.blocks if b not in figs]
+    for b in figs:
+        f = (root / b[2]) if root else None
+        svg = f.read_text(encoding="utf-8").strip() if f and f.is_file() else ""
+        if svg:
+            out.append(f'<figure class="panel diagram">{svg}<figcaption>{inline(b[1])}</figcaption></figure>')
     return "\n".join(out + fold_sections(doc))
 
 
@@ -1544,7 +1552,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
         ("bench", "Bench", lambda: view_bench(bench, newest), bench),
         ("readme", "README", lambda: view_readme(readme, note("README.md")), readme),
         ("architecture", "Architecture", lambda: view_architecture(arch, arch_root, newest), arch),
-        ("roadmap", "Roadmap", lambda: view_roadmap(roadmap, newest), roadmap),
+        ("roadmap", "Roadmap", lambda: view_roadmap(roadmap, newest, arch_root), roadmap),
         ("persona", "Persona", lambda: view_persona(
             persona, note("data/synthetic/persona-1/README.md", check=False)), persona),
     ) if t[3]]

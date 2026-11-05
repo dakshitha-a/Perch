@@ -2,6 +2,8 @@
 
 Every line below is taken from the repository's own record. Where the record does not settle a point, the line says UNVERIFIED. Nothing here is a promise, a price or a date.
 
+![Roadmap in one picture. Six areas, each in three steps: what is built and running today, what Temple must provide or decide, and what is still to build or measure.](architecture/roadmap.svg)
+
 ## 1. Hardware and hosting
 
 - **What runs today:** the test deploy runs a web process, a worker, Postgres with pgvector and Redis on one lab node.

@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 592" class="arch" role="img" font-family="system-ui, sans-serif" aria-label="Roadmap in one picture. Six areas, each in three steps: what is built and running today, what Temple must provide or decide, and what is still to build or measure.">
+<defs><marker id="ra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+<text x="480" y="44" text-anchor="middle" font-size="26" font-weight="700" fill="currentColor">From demo to a real Temple deployment</text>
+<text x="480" y="72" text-anchor="middle" font-size="15" fill="currentColor" opacity="0.75">Each line is taken from the roadmap below. Nothing here is a date or a price.</text>
+<rect x="176" y="96" width="244" height="36" rx="18" fill="#dcefe8" stroke="#1f6f5c" stroke-width="1.5" class="k-local"/>
+<text x="298" y="119" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">Built and running today</text>
+<rect x="436" y="96" width="244" height="36" rx="18" fill="#f6ead8" stroke="#a15c07" stroke-width="1.5" stroke-dasharray="6 4" class="k-cloud"/>
+<text x="558" y="119" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">Temple provides or decides</text>
+<rect x="696" y="96" width="244" height="36" rx="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-opacity="0.45" stroke-dasharray="2 4"/>
+<text x="818" y="119" text-anchor="middle" font-size="13" font-weight="700" fill="currentColor">Still to build or measure</text>
+<line x1="422" y1="114" x2="432" y2="114" stroke="currentColor" stroke-width="2" marker-end="url(#ra)"/>
+<line x1="682" y1="114" x2="692" y2="114" stroke="currentColor" stroke-width="2" marker-end="url(#ra)"/>
+<text x="24" y="184" font-size="15" font-weight="700" fill="currentColor">Hosting</text>
+<rect x="176" y="154" width="244" height="52" rx="8" fill="#dcefe8" stroke="#1f6f5c" stroke-width="1.2" class="k-local"/>
+<text x="190" y="175" font-size="13" fill="currentColor">One GPU node runs the web app,</text>
+<text x="190" y="194" font-size="13" fill="currentColor">worker, Postgres and Redis.</text>
+<rect x="436" y="154" width="244" height="52" rx="8" fill="#f6ead8" stroke="#a15c07" stroke-width="1.2" stroke-dasharray="6 4" class="k-cloud"/>
+<text x="450" y="175" font-size="13" fill="currentColor">A Temple host, a TLS proxy</text>
+<text x="450" y="194" font-size="13" fill="currentColor">and a hosting budget.</text>
+<rect x="696" y="154" width="244" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.45" stroke-dasharray="2 4"/>
+<text x="710" y="175" font-size="13" fill="currentColor">Alerting, a multi-host run</text>
+<text x="710" y="194" font-size="13" fill="currentColor">and a tested full restore.</text>
+<text x="24" y="246" font-size="15" font-weight="700" fill="currentColor">Sign-in</text>
+<rect x="176" y="216" width="244" height="52" rx="8" fill="#dcefe8" stroke="#1f6f5c" stroke-width="1.2" class="k-local"/>
+<text x="190" y="237" font-size="13" fill="currentColor">OpenID Connect sign-in</text>
+<text x="190" y="256" font-size="13" fill="currentColor">on a stand-in server.</text>
+<rect x="436" y="216" width="244" height="52" rx="8" fill="#f6ead8" stroke="#a15c07" stroke-width="1.2" stroke-dasharray="6 4" class="k-cloud"/>
+<text x="450" y="237" font-size="13" fill="currentColor">Register Perch with</text>
+<text x="450" y="256" font-size="13" fill="currentColor">Temple single sign-on.</text>
+<rect x="696" y="216" width="244" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.45" stroke-dasharray="2 4"/>
+<text x="710" y="237" font-size="13" fill="currentColor">Test sign-in against</text>
+<text x="710" y="256" font-size="13" fill="currentColor">Temple's own provider.</text>
+<text x="24" y="308" font-size="15" font-weight="700" fill="currentColor">Data</text>
+<rect x="176" y="278" width="244" height="52" rx="8" fill="#dcefe8" stroke="#1f6f5c" stroke-width="1.2" class="k-local"/>
+<text x="190" y="299" font-size="13" fill="currentColor">Four live APIs checked;</text>
+<text x="190" y="318" font-size="13" fill="currentColor">142 Temple pages read.</text>
+<rect x="436" y="278" width="244" height="52" rx="8" fill="#f6ead8" stroke="#a15c07" stroke-width="1.2" stroke-dasharray="6 4" class="k-cloud"/>
+<text x="450" y="299" font-size="13" fill="currentColor">Offices' permission to</text>
+<text x="450" y="318" font-size="13" fill="currentColor">show their award pages.</text>
+<rect x="696" y="278" width="244" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.45" stroke-dasharray="2 4"/>
+<text x="710" y="299" font-size="13" fill="currentColor">A refresh schedule and a</text>
+<text x="710" y="318" font-size="13" fill="currentColor">measured dataset error rate.</text>
+<text x="24" y="370" font-size="15" font-weight="700" fill="currentColor">Models and cost</text>
+<rect x="176" y="340" width="244" height="52" rx="8" fill="#dcefe8" stroke="#1f6f5c" stroke-width="1.2" class="k-local"/>
+<text x="190" y="361" font-size="13" fill="currentColor">Cloud models behind spend</text>
+<text x="190" y="380" font-size="13" fill="currentColor">caps and one consent.</text>
+<rect x="436" y="340" width="244" height="52" rx="8" fill="#f6ead8" stroke="#a15c07" stroke-width="1.2" stroke-dasharray="6 4" class="k-cloud"/>
+<text x="450" y="361" font-size="13" fill="currentColor">A provider contract and</text>
+<text x="450" y="380" font-size="13" fill="currentColor">who pays for it.</text>
+<rect x="696" y="340" width="244" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.45" stroke-dasharray="2 4"/>
+<text x="710" y="361" font-size="13" fill="currentColor">The cost of a student</text>
+<text x="710" y="380" font-size="13" fill="currentColor">brief, measured.</text>
+<text x="24" y="432" font-size="15" font-weight="700" fill="currentColor">Privacy</text>
+<rect x="176" y="402" width="244" height="52" rx="8" fill="#dcefe8" stroke="#1f6f5c" stroke-width="1.2" class="k-local"/>
+<text x="190" y="423" font-size="13" fill="currentColor">Per-user encryption, delete,</text>
+<text x="190" y="442" font-size="13" fill="currentColor">12-month retention.</text>
+<rect x="436" y="402" width="244" height="52" rx="8" fill="#f6ead8" stroke="#a15c07" stroke-width="1.2" stroke-dasharray="6 4" class="k-cloud"/>
+<text x="450" y="423" font-size="13" fill="currentColor">A privacy and security</text>
+<text x="450" y="442" font-size="13" fill="currentColor">review and a key service.</text>
+<rect x="696" y="402" width="244" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.45" stroke-dasharray="2 4"/>
+<text x="710" y="423" font-size="13" fill="currentColor">An outside security test,</text>
+<text x="710" y="442" font-size="13" fill="currentColor">not only AI reviews.</text>
+<text x="24" y="494" font-size="15" font-weight="700" fill="currentColor">Evaluation</text>
+<rect x="176" y="464" width="244" height="52" rx="8" fill="#dcefe8" stroke="#1f6f5c" stroke-width="1.2" class="k-local"/>
+<text x="190" y="485" font-size="13" fill="currentColor">NIH back-test: 0.250 hit@10,</text>
+<text x="190" y="504" font-size="13" fill="currentColor">keyword-only 0.000.</text>
+<rect x="436" y="464" width="244" height="52" rx="8" fill="#f6ead8" stroke="#a15c07" stroke-width="1.2" stroke-dasharray="6 4" class="k-cloud"/>
+<text x="450" y="485" font-size="13" fill="currentColor">Researchers and students</text>
+<text x="450" y="504" font-size="13" fill="currentColor">for a pilot.</text>
+<rect x="696" y="464" width="244" height="52" rx="8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-opacity="0.45" stroke-dasharray="2 4"/>
+<text x="710" y="485" font-size="13" fill="currentColor">People check eligibility</text>
+<text x="710" y="504" font-size="13" fill="currentColor">and facts in a pilot.</text>
+<text x="480" y="552" text-anchor="middle" font-size="13.5" fill="currentColor" opacity="0.75">Points the record does not settle are marked UNVERIFIED in the sections below.</text>
+</svg>
