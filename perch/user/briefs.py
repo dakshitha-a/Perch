@@ -864,6 +864,25 @@ def job_overlay(brief: dict, job: dict) -> None:
         brief["error"] = JOB_ENDED.get(job.get("error_code") or "", JOB_ENDED_DEFAULT)
 
 
+def overlay_summaries(ud: UserData, user_id: UUID, summaries: list[dict]) -> None:
+    """`job_overlay` for a list of brief summaries, with one read of the jobs table (S50 C3):
+    My Perch shows a brief whose job ended without it as failed, as the brief page does."""
+    open_ = [x for x in summaries if x.get("status") in ("queued", "running")]
+    if not open_:
+        return
+    from perch.store import pg
+
+    with pg.user_tx(ud.pool, user_id) as c:
+        rows = c.execute(
+            "SELECT DISTINCT ON (payload->>'brief_id') payload->>'brief_id', state, error_code "
+            "FROM jobs WHERE user_id = %s AND kind = 'brief' AND payload->>'brief_id' = ANY(%s) "
+            "ORDER BY payload->>'brief_id', created_at DESC",
+            (user_id, [x["id"] for x in open_])).fetchall()
+    jobs_by_brief = {bid: {"state": st, "error_code": code} for bid, st, code in rows}
+    for x in open_:
+        job_overlay(x, jobs_by_brief.get(x["id"], {"state": "missing"}))
+
+
 def cancel_brief(runner: JobRunner, ud: UserData, r: redis.Redis, session: Session,
                  brief_id: str) -> bool | None:
     """Cancel the job that builds this brief. None when the brief is not the session's;

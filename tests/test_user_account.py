@@ -563,6 +563,28 @@ def test_a_brief_whose_job_ended_without_it_stops_the_page(env, pg_clean, tmp_pa
     assert c.post(f"/briefs/{bid}/cancel").status_code == 404
 
 
+def test_my_perch_lists_a_brief_whose_job_ended_as_failed(env, pg_clean, tmp_path,
+                                                         monkeypatch):
+    """S50 C3: /me/briefs read the stored status only, so a brief whose job timed out, died
+    or was cancelled stayed "running" on My Perch while its own page said failed."""
+    from perch.user.briefs import JOB_ENDED, JOB_GONE
+
+    c, _ = brief_client(env, tmp_path, monkeypatch)
+    ids = []
+    for n in (1, 2, 3):
+        r = c.post("/briefs", json={"author_id": "A5026494099", "as_of": f"2026-10-{n:02d}"})
+        assert r.status_code == 202, r.text
+        ids.append((r.json()["id"], r.json()["job_id"]))
+    (b1, j1), (b2, j2), (b3, _) = ids
+    sql(pg_clean, "UPDATE jobs SET state = 'failed', error_code = 'timeout', "
+        "finished_at = now() WHERE id = %s", j1)
+    sql(pg_clean, "DELETE FROM jobs WHERE id = %s", j2)
+    got = {x["id"]: x for x in env.client.get("/me/briefs").json()}
+    assert got[b1]["status"] == "failed" and got[b1]["error"] == JOB_ENDED["timeout"]
+    assert got[b2]["status"] == "failed" and got[b2]["error"] == JOB_GONE
+    assert got[b3]["status"] == "queued" and "error" not in got[b3]  # its job still waits
+
+
 def test_a_repeated_brief_poll_reads_no_public_record_again(env, pg_clean, tmp_path,
                                                             monkeypatch):
     """S49 B9: every 1.5 s poll re-read every Award, the overrides file and each lead's record.
