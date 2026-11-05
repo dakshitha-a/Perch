@@ -68,6 +68,18 @@ def profile_hash(author_id: str, work_ids: list[str], as_of: str,
                           ).hexdigest()
 
 
+def text_profile_hash(author_id: str, work_ids: list[str],
+                      thread_work_ids: list[list[str]]) -> str:
+    """`profile_hash` without the as-of date, for the keys of model text (the profile summary
+    and the fit explanations). That text reads the works and threads, not the date, so the
+    same papers keep the same text from one day to the next (S49 M5). The pre-cache key of a
+    ranking keeps the date."""
+    doc = {"author": author_id, "work_ids": sorted(work_ids),
+           "threads": sorted(sorted(t) for t in thread_work_ids)}
+    return hashlib.sha256(json.dumps(doc, sort_keys=True, separators=(",", ":")).encode()
+                          ).hexdigest()
+
+
 class PublicCache:
     """`public_cache` rows with an optional Redis hot copy. Failures are misses, never errors."""
 
