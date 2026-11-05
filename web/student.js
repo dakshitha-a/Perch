@@ -4,9 +4,10 @@
 // copied from the record; nothing here is a model's claim.
 
 import { evMark, fill, h, icon, labelCells } from "./dom.js";
-import { coverBlock } from "./cover.js";
+import { coverBlock, coverListLine } from "./cover.js";
 import { copy, mailto } from "./handoff.js";
 import * as f from "./format.js";
+import { SAMPLE_STUDENT as SAMPLE_TEXT } from "./sample_student.js";
 
 // The sample tab holds fellowships and prizes as well as scholarships (S22, audit S9).
 export const STUDENT_ROUTES = { F: "Temple awards and fellowships (public)", S: "Scholarships and awards (sample)" };
@@ -27,6 +28,9 @@ let SAMPLE_STUDENT = false;
 const setSample = (brief) => { SAMPLE_STUDENT = Boolean(brief && brief.brief && brief.brief.options && brief.brief.options.persona); };
 const cvWords = () => (SAMPLE_STUDENT ? "the sample student's CV" : "your CV");
 const NOT_STATED = "Not stated in the record";
+const MISSING = "Not stated"; // a card fact with nothing behind it (S49)
+const WITHHELD_LINE = "Written reason withheld: it failed the citation check.";
+const FLAGGED_NOTE = "Some written reasons failed Perch’s citation check, so they are left out. Every date, amount and rule result on the cards is still copied from the record.";
 const SHUT = new Set(); // cards whose "More on why it may fit" was closed; it starts open (S27, Dakshitha)
 
 // Forget what this module held for the brief that was on screen (S27).
@@ -70,7 +74,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
     }
   }
   if (!sess.signed_in) {
-    // DRAFT copy (S43): the start screen for a visitor without an account.
+    // The start screen for a visitor without an account.
     fill(root, h("div", { class: "screen student-start" },
       h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
       h("div", {}, h("h1", { class: "page", text: "Check my fit." }),
@@ -130,13 +134,20 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
       announce(e.message);
     }
   }
-  // DRAFT copy (S43): the headings, labels and privacy line on this screen.
+  // The headings, labels and privacy line on this screen.
   fill(root, h("div", { class: "screen student-start" },
     h("a", { class: "back", href: "#/" }, icon("back"), h("span", { text: "Back" })),
     h("div", {}, h("h1", { class: "page", id: "st-title", tabindex: "-1", text: "Tell Perch about you." }),
       h("p", { class: "page-sub", text: "Perch checks each award against your CV by rule and shows what is still needed." })),
     h("section", { class: "box", "aria-labelledby": "cv-h" },
-      h("h2", { class: "section-title", id: "cv-h", text: "Your CV" }),
+      h("div", { class: "box-head", style: "flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 4px 12px" },
+        h("h2", { class: "section-title", id: "cv-h", text: "Your CV" }),
+        h("span", { class: "sample-slot" }),
+        // S49 S6: an invented student fills the boxes; nothing is saved until Save.
+        cv ? null : h("button", { class: "btn quiet", type: "button", "data-key": "load-sample", onclick: () => loadSample() },
+          h("span", { text: "Load sample" }))),
+      cv ? null : h("p", { class: "hint", text: "Fills the boxes with an invented student. Nothing is saved until you press Save." }),
+      h("div", { class: "sample-ask-slot" }),
       cv ? h("div", { class: "added" }, h("span", { text: `${cv.name || "Your CV"} is stored.` }),
         h("button", { class: "btn", type: "button", "data-key": "rm-cv", onclick: () => remove(cv) }, h("span", { text: "Remove" })))
         : [h("label", { class: "big", for: "cv-text", text: "Paste your CV text" }),
@@ -169,9 +180,43 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
       !ready ? h("p", { class: "hint", text: "Save your CV first." }) : null)));
   const t = root.querySelector("#st-title");
   if (t && !D.busy) t.focus({ preventScroll: true });
+
+  // ---- Load sample (S49 S6): the three boxes, the tag that says it is invented, and the ask.
+  const boxes = () => [["#cv-text", SAMPLE_TEXT.cv], ["#st-interests", SAMPLE_TEXT.interests], ["#st-ach", SAMPLE_TEXT.achievement]]
+    .map(([sel, text]) => [root.querySelector(sel), text]);
+  const slot = (c) => root.querySelector(`.${c}`);
+  function clearTag() { const s = slot("sample-slot"); if (s) s.replaceChildren(); }
+  function fillSample() {
+    for (const [el, text] of boxes()) if (el) el.value = text;
+    field.text = SAMPLE_TEXT.cv;
+    const s = slot("sample-slot");
+    if (s) s.replaceChildren(h("span", { class: "tag sample", text: "SYNTHETIC example" }));
+  }
+  function loadSample() {
+    const typed = boxes().some(([el]) => el && el.value.trim());
+    const ask = slot("sample-ask-slot");
+    if (!typed || !ask) { fillSample(); announce("Sample loaded. Nothing is saved until you press Save."); return; }
+    const done = () => { ask.replaceChildren(); const b = root.querySelector('[data-key="load-sample"]'); if (b) b.focus(); };
+    ask.replaceChildren(h("div", { class: "inline-confirm", role: "group", "aria-label": "Replace what you typed" },
+      h("span", { text: "Replace what you typed with the sample?" }),
+      h("button", { class: "btn", type: "button", onclick: () => { fillSample(); done(); announce("Sample loaded. Nothing is saved until you press Save."); } }, h("span", { text: "Replace" })),
+      h("button", { class: "btn quiet", type: "button", onclick: done }, h("span", { text: "Keep mine" }))));
+    const keep = ask.querySelector(".btn.quiet"); if (keep) keep.focus();
+  }
+  for (const [el] of boxes()) if (el) el.addEventListener("input", clearTag);
 }
 
 // ----- profile -----
+
+// A text longer than `n` characters ends at the last space before `n`, then "…" (S49 S4).
+function cutAtWord(text, n) {
+  if (text.length <= n) return text;
+  const at = text.lastIndexOf(" ", n);
+  return `${text.slice(0, at > 0 ? at : n).replace(/[\s,;:.]+$/, "")}…`;
+}
+
+// Values the rules write ("graduate", "full-time") start with a capital; what the CV said does not change (U49).
+const CODE_WRITTEN = new Set(["Level of study", "Enrollment"]);
 
 export function studentProfile(d, { openEvidence }) {
   const rows = d.student || [];
@@ -181,15 +226,16 @@ export function studentProfile(d, { openEvidence }) {
   // The documents the options cite: the interests note and the achievements.
   const ref = ([id, w]) => h("li", { class: "fade-in" }, h("button", { class: "paper", type: "button", onclick: (e) => openEvidence(id, e.currentTarget) },
     h("span", { class: "paper-title", text: w.title }),
-    w.text ? h("span", { class: "paper-meta", text: w.text.replace(/^#.*$/gm, "").replace(/\s+/g, " ").trim().slice(0, 220) }) : null));
+    w.text ? h("span", { class: "paper-meta", text: cutAtWord(w.text.replace(/^#.*$/gm, "").replace(/\s+/g, " ").trim(), 220) }) : null));
   return [h("div", { class: "prof-cols" },
     h("div", { class: "left" }, h("section", { class: "pblock" },
       h("h2", { class: "section-title", text: "What the rules read from your CV" }),
-      rows.length ? h("dl", { class: "fields" }, rows.map(([k, v]) => h("div", { class: "field" }, h("dt", { text: k }), h("dd", { text: v }))))
+      rows.length ? h("dl", { class: "fields" }, rows.map(([k, v]) => h("div", { class: "field" }, h("dt", { text: k }), h("dd", { text: CODE_WRITTEN.has(k) ? v.replace(/^./, (c) => c.toUpperCase()) : v }))))
         : h("div", { class: "skeleton" }, h("span", { style: "width:80%" }), h("span", { style: "width:60%" })),
       h("p", { class: "hint", text: "Read by code, not by a model." }))),
     h("div", { class: "right" }, h("section", { class: "pblock" },
       h("h2", { class: "section-title", text: "What steers the search" }),
+      h("h3", { class: "mini", text: "Your interests" }),
       interests.length ? h("ul", { class: "papers" }, interests.map(ref)) : h("p", { class: "hint", text: "No interests note." }),
       h("h3", { class: "mini", text: "Your achievements" }),
       achievements.length ? h("ul", { class: "papers" }, achievements.map(ref)) : h("p", { class: "hint", text: "None added." }),
@@ -240,7 +286,6 @@ export function studentRoutes(panel, ctx) {
     h("span", { class: "lbl-long", "aria-hidden": "true", text: r === "F" ? "Temple awards and fellowships" : "Scholarships and awards" }), h("span", { class: "lbl-short", "aria-hidden": "true", text: r === "F" ? "Awards" : "Samples" }),
     r === "S" ? h("span", { class: "tag sample lbl-long", text: SAMPLE }) : null,
     done(r === "F" ? "fellowships" : "scholarships") ? h("span", { class: "route-n", text: String(n(r)) }) : null)));
-  // DRAFT copy
   const samplesLink = hasS ? null : h("p", { class: "hint" }, h("a", { href: "#/samples/student", text: "See how Perch works with sample records" }),
     h("span", { text: ". They are invented and open on their own screen." }));
   if (!ready) {
@@ -249,26 +294,30 @@ export function studentRoutes(panel, ctx) {
   }
   const ok = sortLeads(leads.filter((l) => l.verdict !== "not eligible" && l.status !== "dismissed"));
   const out = leads.filter((l) => l.verdict === "not eligible");
-  // A line most cards repeat word for word is said once above the list instead (U20).
-  const counts = new Map();
-  for (const l of ok) for (const x of new Set(cardLines(l))) counts.set(x, (counts.get(x) || 0) + 1);
-  const common = ok.length >= 3 ? [...counts].filter(([, n]) => n >= 3 && n > ok.length / 2).map(([x]) => x) : [];
   const gone = leads.filter((l) => l.verdict !== "not eligible" && l.status === "dismissed");
-  fill(panel, h("div", { class: "route-row" }, sw, sortSwitch(() => studentRoutes(panel, ctx))),
+  // The cards' context: the same object cover.js takes, so its list line and each card agree.
+  const cctx = { ...ctx, audience: "student", stored: (ctx.brief && ctx.brief.cover_points) || [] };
+  const flaggedN = ok.filter((l) => l.flagged).length;
+  const coverLine = coverListLine(cctx);
+  const source = route === "F"
+    ? "Public listings: Temple's public award pages, Temple's Scholar Development and Fellowships Advising list and NIH fellowships. Their own pages set the full rules, so the best verdict here is “may be eligible”."
+    : `Checked against ${cvWords()} by rule. “May be eligible” means the record asks for something ${SAMPLE_STUDENT ? "that CV does" : "your CV does"} not show.`;
+  fill(panel, h("div", { class: "route-row" }, sw),
     route === "S" ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }), h("span", { text: ` ${SAMPLE_NOTE}` })) : null,
-    h("h2", { class: "section-title", id: "routes-title",
-      text: route === "S" ? `${f.plural(ok.length, "sample option")} (invented, for demonstration)`
-        : `${f.plural(ok.length, "option")} you may apply for` }),
-    // DRAFT copy: the sources are the ones the Fellowships stage reads (_run_fellowships):
-    // every public scholarship row in the store (Temple's public award pages and the
-    // Scholar Development and Fellowships Advising list) and NIH fellowships.
-    h("p", { class: "hint", text: route === "F"
-      ? "Public listings: Temple's public award pages, Temple's Scholar Development and Fellowships Advising list and NIH fellowships. Their own pages set the full rules, so the best verdict here is “may be eligible”."
-      : `Checked against ${cvWords()} by rule. “May be eligible” means the record asks for something ${SAMPLE_STUDENT ? "that CV does" : "your CV does"} not show.` }),
+    h("div", { class: "list-head" },
+      h("h2", { class: "section-title", id: "routes-title",
+        text: route === "S" ? `${f.plural(ok.length, "sample option")} (invented, for demonstration)`
+          : `${f.plural(ok.length, "option")} you may apply for` }),
+      sortSwitch(() => studentRoutes(panel, ctx))),
+    // The sources are the ones the Fellowships stage reads (_run_fellowships): every public
+    // scholarship row in the store and NIH fellowships. Folded so the cards start high (U42).
+    h("details", { class: "about-list" }, h("summary", { text: "About this list" }),
+      h("p", { class: "hint", text: source })),
+    h("div", { id: "list-notices" },
+      flaggedN >= 2 ? h("p", { class: "notice info list-note" }, icon("warn"), h("span", { text: FLAGGED_NOTE })) : null,
+      coverLine),
+    h("ol", { class: "leads", "aria-labelledby": "routes-title" }, ok.map((l) => card(l, ctx))),
     samplesLink,
-    common.length ? h("div", { class: "common-lines" }, h("p", { class: "mini", text: "Unless a card says otherwise" }),
-      h("ul", {}, common.map((x) => h("li", { text: x === NO_FACTS ? "The listing states no deadline or amount." : x })))) : null,
-    h("ol", { class: "leads", "aria-labelledby": "routes-title" }, ok.map((l) => card(l, ctx, common))),
     gone.length ? h("details", { class: "dismissed" }, h("summary", { text: `Dismissed (${gone.length})` }),
       h("ol", { class: "leads" }, gone.map((l) => card(l, ctx)))) : null,
     out.length ? h("details", { class: "dismissed" }, h("summary", { text: `Not eligible by rule (${out.length})` }),
@@ -283,7 +332,6 @@ export function matchPill(score, band, what = "the papers") {
     h("span", { class: "sr-only", text: ` out of 100: how closely the listing’s text matches ${what}, not the odds of funding` }));
 }
 
-const NO_FACTS = "no-facts";
 // A public fellowship's deadline or amount was copied by code from the award's own page.
 const FROM_PAGE = "from the award's page";
 const fromPage = (r) => r.kind === "scholarship" && ["temple_sdfa", "temple_pages"].includes(r.source) && Boolean(r.details_url);
@@ -295,15 +343,7 @@ function dueText(r, d) {
   if (r.kind !== "scholarship" && f.standardDates(r)) return r.close_date_note;
   return r.kind !== "scholarship" && f.expiresOnly(r) ? `Expires ${f.formatDate(d)}` : f.formatDate(d);
 }
-// The lines of a card that can repeat word for word: no deadline or amount, and the rule lines.
-function cardLines(l) {
-  const r = l.record || {};
-  const sch = r.kind === "scholarship";
-  const none = !(sch ? r.deadline : r.close_date) && (!sch || amountText(r) === NOT_STATED);
-  return [none ? NO_FACTS : null, ...(l.verdict_lines.length === 1 ? l.verdict_lines : [])].filter(Boolean);
-}
-
-function card(l, ctx, common = []) {
+function card(l, ctx) {
   const { openEvidence, setLead } = ctx;
   const r = l.record || {};
   const sch = r.kind === "scholarship";
@@ -320,30 +360,43 @@ function card(l, ctx, common = []) {
         onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") }, icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
       l.verdict !== "not eligible" ? h("button", { class: "btn", "data-key": `dismiss-${l.id}`, onclick: () => setLead(l.id, "dismiss") }, icon("dismiss"), h("span", { text: "Dismiss" })) : null],
   );
+  // Line under the title: sponsor, type, NIH code, then the forecast tag (S49 S1).
+  const sub = [
+    l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null,
+    sch && r.sponsor ? r.sponsor : null,
+    sch && r.award_type ? r.award_type : null,
+    !sch && r.activity_code ? `NIH ${r.activity_code}` : null,
+    !sch && r.status === "forecasted" ? h("span", { class: "tag ember", text: "Forecast: not open yet" }) : null,
+  ].filter(Boolean);
+  const subLine = sub.flatMap((x, i) => (i ? [" · ", x] : [x])).map((x) => (typeof x === "string" ? h("span", { text: x }) : x));
+  // Closes and Amount are always there; a fact with nothing behind it says so (M1, S49 3.2).
+  const when = deadline ? [dueText(r, deadline), fromPage(r) ? h("span", { class: "from-page", text: ` ${FROM_PAGE}` }) : null]
+    : r.deadline_quote ? [h("span", { class: "quote-date", text: `The page says: “${r.deadline_quote}”` })]
+      : [h("span", { class: "missing", text: MISSING })];
+  const money = !sch ? [h("span", { class: "missing", text: "See the record" })]
+    : amount !== NOT_STATED ? [amount, fromPage(r) ? h("span", { class: "from-page", text: ` ${FROM_PAGE}` }) : null]
+      : [h("span", { class: "missing", text: MISSING })];
   return h("li", { class: `card lead${l.sample ? " is-sample" : ""}${l.status === "kept" ? " kept" : ""}`, "data-id": l.id },
-    h("div", { class: "lead-head" }, h("span", { class: "tags" },
-      l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null,
-      verdictChip(l.verdict),
-      l.match_score != null ? matchPill(l.match_score, f.fitBand(l.match_score), "your interests and CV") : null,
-      sch && r.award_type ? h("span", { class: "tag", text: r.award_type }) : null,
-      !sch && r.activity_code ? h("span", { class: "tag", text: `NIH ${r.activity_code}` }) : null,
-      !sch && r.status === "forecasted" ? h("span", { class: "tag ember", text: "Forecast: not open yet" }) : null),
-    h("div", { class: "head-end" }, actions)),
-    h("h3", { class: "lead-title" }, h("button", { class: "title-btn", onclick: (e) => openEvidence(l.record_id, e.currentTarget) },
-      h("span", { text: name || l.record_id }), evMark())),
-    sch && r.sponsor ? h("p", { class: "opp-num", text: r.sponsor }) : null,
-    // A listing that states neither field gets one line, not two empty boxes (S22, audit S6).
-    !deadline && (!sch || amount === NOT_STATED)
-      ? (common.includes(NO_FACTS) ? null : h("p", { class: "hint no-size", text: sch ? "Deadline and amount: not stated in the record." : "Deadline: not stated in the record." }))
-      : h("dl", { class: "facts" },
-        // G17: an expiry sits under its own label, as on the researcher card (F20)
-        h("div", { class: "fact" }, h("dt", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? "Announcement" : "Deadline" }), h("dd", {}, dueText(r, deadline), deadline && fromPage(r) ? h("span", { class: "from-page", text: ` ${FROM_PAGE}` }) : null)),
-        sch ? h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, amount, amount !== NOT_STATED && fromPage(r) ? h("span", { class: "from-page", text: ` ${FROM_PAGE}` }) : null)) : null),
-    l.verdict_lines.length && !(l.verdict_lines.length === 1 && common.includes(l.verdict_lines[0])) ? h("div", { class: "reason" }, h("b", { text: l.verdict === "not eligible" ? "Why not: " : "To check: " }), // T23: not a second "Why"
+    h("div", { class: "lead-top" },
+      h("div", { class: "lead-name" },
+        h("h3", { class: "lead-title" }, h("button", { class: "title-btn", onclick: (e) => openEvidence(l.record_id, e.currentTarget) },
+          h("span", { text: name || "Untitled opportunity" }), evMark())),
+        subLine.length ? h("p", { class: "lead-sub" }, subLine) : null),
+      h("div", { class: "lead-end" },
+        verdictChip(l.verdict),
+        l.match_score != null ? matchPill(l.match_score, f.fitBand(l.match_score), "your interests and CV") : null,
+        actions)),
+    h("dl", { class: "facts facts-2" },
+      // G17: an expiry sits under its own label, as on the researcher card (F20)
+      h("div", { class: "fact" }, h("dt", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? "Announcement" : "Deadline" }), h("dd", {}, when)),
+      h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, money))),
+    l.verdict_lines.length ? h("div", { class: "reason" }, h("b", { text: l.verdict === "not eligible" ? "Why not: " : "To check: " }), // T23: not a second "Why"
       l.verdict_lines.length === 1 ? h("span", { text: l.verdict_lines[0] })
         : h("ul", { class: "notes" }, l.verdict_lines.map((x) => h("li", { text: x })))) : null,
     l.gaps.length ? h("div", { class: "reason" }, h("b", { text: "Still needed: " }), h("span", { text: l.gaps.map(f.lowerFirst).join("; ") })) : null, // R17
-    l.flagged ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: "The explanation was withheld because it failed the citation checks twice." }))
+    // Plain sentences the server wrote, such as a past-date line, shown muted as they came.
+    ...(l.notes || []).map((n) => h("p", { class: "hint lead-note", text: n })),
+    l.flagged ? h("p", { class: "hint withheld-line", text: WITHHELD_LINE }) // said once above the list too (U3)
       : parsed ? fitReason(l) : null,
     // S46: on every lead card, a not-eligible one included; a dismissed card has none.
     l.status === "dismissed" ? null : coverBlock({ ...ctx, audience: "student", stored: (ctx.brief && ctx.brief.cover_points) || [] }, ctx.briefId, l.record_id));
@@ -450,7 +503,14 @@ export function studentCompare(panel, ctx) {
   fill(panel,
     kept.some((l) => l.sample) ? h("p", { class: "notice warn sample-note", role: "note" }, h("span", { class: "tag sample", text: SAMPLE }),
       h("span", { text: " Your shortlist includes invented sample scholarships. They are not real." })) : null,
-    // The note comes before the table, so drafting it needs no scroll (review W2).
+    // Public fellowships and SYNTHETIC samples never share a table (U10, standing rule 11).
+    ...routes.map((r) => h("div", { class: "compare-group" }, // the table's region carries the heading as its name
+      h("h2", { class: "section-title", id: `cmp-${r}` }, h("span", { text: STUDENT_ROUTES[r] }),
+        r === "S" ? h("span", { class: "tag sample", text: SAMPLE }) : null),
+      h("div", { class: "table-wrap compare-wrap", role: "region", "aria-labelledby": `cmp-${r}`, tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
+        h("thead", {}, h("tr", {}, [r === "S" ? "Sample option" : "Award or fellowship", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
+        h("tbody", {}, byOffice[r].map(row))))))),
+    // The tables come first and the note after them (S49 P5).
     h("section", { class: "handoff" },
       h("h2", { class: "section-title", text: "Draft a note to a Temple office" }),
       h("fieldset", { class: "office-pick" }, h("legend", { text: "Office" }),
@@ -459,20 +519,13 @@ export function studentCompare(panel, ctx) {
           h("span", {}, h("b", { text: officeName(r) }), h("br"),
             h("span", { class: "hint", text: r === "F" ? "For the kept fellowships" : "For the kept sample scholarships" }))))),
       // Code writes the note at once, so it shows without a Draft press (review W8).
-      // DRAFT copy (decided 2026-11-04): a note to an office needs an account, so a guest gets a link.
+      // A note to an office needs an account, so a guest gets a link.
       ctx.guest ? h("p", {}, h("a", { class: "btn primary", href: ctx.signIn, "data-key": "note-signin", text: "Sign in to draft a note to the office" }))
         : h("p", { class: "hint", text: "Code writes this note; no model. Perch never sends it." }),
       ctx.guest ? null
       : got.note ? note(route, got.note, announce)
         : got.error ? h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The note could not be written: ${got.error}` }))
           : h("p", { class: "hint st-note-wait", role: "status", text: "Writing the note…" })),
-    // Public fellowships and SYNTHETIC samples never share a table (U10, standing rule 11).
-    ...routes.map((r) => h("div", { class: "compare-group" }, // the table's region carries the heading as its name
-      h("h2", { class: "section-title", id: `cmp-${r}` }, h("span", { text: STUDENT_ROUTES[r] }),
-        r === "S" ? h("span", { class: "tag sample", text: SAMPLE }) : null),
-      h("div", { class: "table-wrap compare-wrap", role: "region", "aria-labelledby": `cmp-${r}`, tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
-        h("thead", {}, h("tr", {}, [r === "S" ? "Sample option" : "Award or fellowship", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
-        h("tbody", {}, byOffice[r].map(row))))))),
     h("p", { class: "hint", text: `Each cell is copied from its record or checked against ${cvWords()} by rule. “Not stated in the record” means the listing leaves it blank.` }));
 }
 
@@ -488,7 +541,7 @@ function note(route, n, announce) {
   return h("div", { class: "draft fade-in" },
     n.sample ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }),
       h("span", { text: " This note names invented sample scholarships." })) : null,
-    h("p", { class: "office-link", text: "To: left blank for you." }),
+    h("p", { class: "office-link", text: "To: add the address yourself." }),
     h("label", { class: "field-label", for: "st-subject", text: "Subject" }), subject,
     h("label", { class: "field-label", for: "st-body", text: "Note" }), box,
     h("p", { class: "hint" }, h("a", { href: f.safeUrl(n.office_page), target: "_blank", rel: "noopener", text: `${n.office} (public page)` })),
