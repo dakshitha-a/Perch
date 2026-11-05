@@ -65,6 +65,8 @@ const S = {
   failedPolls: 0,
   seen: { explained: 0, stagesDone: 0 },
   startedHere: false,
+  listWithheld: false, // two or more flagged cards on view: the list note says it once (S50 V5)
+  stoppedId: null, // the brief this page asked to stop, so its failed state reads "Stopped" (S50 Q6)
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -249,12 +251,14 @@ function drawBanner() {
   const sess = S.session;
   const lines = [];
   if (sess.guest) {
-    lines.push(h("p", { class: "banner-line", "data-key": "guest-banner" }, icon("help"),
+    lines.push(h("p", { class: "banner-line", "data-key": "guest-banner" }, icon("info"),
       h("span", { text: sess.notice || "Nothing is saved in a guest session. It ends in an hour." }),
       h("a", { href: signInHref(), text: "Sign in" })));
   }
   if (S.flash) {
-    lines.push(h("p", { class: "banner-line", role: "status", "data-key": "flash-banner" }, icon("help"),
+    // S50 (V26): a done thing ("Your data was deleted.") gets a check; anything else, info.
+    lines.push(h("p", { class: "banner-line", role: "status", "data-key": "flash-banner" },
+      icon(/^Your data was deleted\./.test(S.flash) ? "check" : "info"),
       h("span", { text: S.flash }),
       h("button", { class: "x", type: "button", "aria-label": "Dismiss",
         onclick: () => { S.flash = null; drawBanner(); }, text: "×" })));
@@ -411,6 +415,7 @@ function renderFind() {
     h("a", { class: "btn primary", "data-key": "browse-awards", href: replay ? null : "#/awards",
       "aria-disabled": replay ? "true" : null }, h("span", { text: "Browse Temple awards" })),
     replay ? h("span", { class: "hint", text: "The preview has no server." }) : fitButton,
+    replay ? null : exampleSlot("student"),
     // With sign-in down, "Try a sample student" is already the guest path (S49 U19, R5).
     S.signinDown ? null : guestLine);
   const browseFunding = replay ? null : h("a", { class: "quiet-link", "data-key": "browse-funding", href: "#/funding" },
@@ -428,8 +433,21 @@ function renderFind() {
       h("button", { class: "x", type: "button", "aria-label": "Dismiss", "data-key": "notice-close",
         onclick: () => { S.notice = null; S.noticeEnded = false; keepFocus(renderFind); }, text: "×" })) : null,
     seg("Who is searching", S.who, [["s", "Student"], ["r", "Researcher"]], (k) => { S.who = k; keepFocus(renderFind); }),
-    S.who === "s" ? student : [researcher, browseFunding, guestLine],
+    S.who === "s" ? student : [researcher,
+      replay ? null : h("div", { class: "landing-links" }, exampleSlot("researcher"), browseFunding), guestLine],
     F.error ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: F.error })) : null));
+}
+
+// "See an example brief" (S50 Q22): the slot is drawn empty and filled only when the server
+// holds that side's example file, so the landing moves by one line at most.
+function exampleSlot(side) {
+  const slot = h("span", { class: "example-slot" });
+  api.exampleAvailable(side).then((ok) => {
+    if (!ok || !slot.isConnected) return;
+    fill(slot, h("a", { class: "quiet-link", "data-key": "example-brief", href: side === "student" ? "example.html?side=student" : "example.html" },
+      h("span", { text: side === "student" ? "See an example" : "See an example brief" })));
+  });
+  return slot;
 }
 
 // "Try it as a guest": a session of one hour on the side the visitor chose.
@@ -573,19 +591,20 @@ function renderPick() {
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page", id: "pick-title", tabindex: "-1", text: title }),
         sub ? h("p", { class: "page-sub" }, sub) : null),
-      // Explain each lead sets how the brief is built, so it sits with the Build button (U42).
-      c ? h("div", { class: "build-box fade-in" },
-        h("button", { class: "btn primary big", type: "button", "data-key": "build", disabled: F.building,
-          onclick: () => build(c) }, h("span", { text: F.building ? "Starting" : "Build brief" })),
-        h("label", { class: "check explain-check" },
-          h("input", { type: "checkbox", checked: F.explain, onchange: (e) => { F.explain = e.target.checked; } }),
-          h("span", {}, h("b", { text: "Explain each lead" }),
-            h("span", { class: "hint", text: " A model writes a short, cited reason for every lead. This is the slow step." })))) : null),
+      c ? h("div", { class: "build-box fade-in" }, buildButton(c, "build")) : null),
     note ? h("div", { class: "notice error", role: "alert" }, icon("warn"), h("p", { text: note })) : null,
     F.busy ? h("div", { class: "shimmer-card" }) : null,
     list.length ? h("ul", { class: "cand-list" }, list.map((x, i) => candidateCard(x, i === 0 && !c && n > 1))) : null,
     c ? cvBox() : null,
-    c ? contextPanel(c) : null));
+    c ? contextPanel(c) : null,
+    // S50 (V32, Q13): a second Build button where the form ends, so a long form needs no scroll back.
+    c ? h("div", { class: "build-foot" }, buildButton(c, "build-foot")) : null));
+}
+
+function buildButton(c, key) {
+  const F = S.find;
+  return h("button", { class: "btn primary big", type: "button", "data-key": key, disabled: F.building,
+    onclick: () => build(c) }, h("span", { text: F.building ? "Starting" : "Build brief" }));
 }
 
 // An error that opens with the heading's own words says the rest only (R15).
@@ -630,6 +649,11 @@ function contextPanel(c) {
     h("summary", { "data-key": "more-ctx" }, h("h2", { id: "more-h", text: "Tell Perch more (optional)" })),
     h("div", { class: "more-body" },
     h("p", { class: "page-sub", text: "Everything here steers the search. All of it is optional." }),
+    // S50 (Q31): Explain each lead sits with the other options; it stays ticked by default.
+    h("label", { class: "check explain-check" },
+      h("input", { type: "checkbox", "data-key": "explain", checked: F.explain, onchange: (e) => { F.explain = e.target.checked; } }),
+      h("span", {}, h("b", { text: "Explain each lead" }),
+        h("span", { class: "hint", text: " A model writes a short, cited reason for every lead. This is the slow step." }))),
     h("div", { class: "box-grid" },
       h("div", { class: "box" },
         h("label", { class: "big", for: "ctx-direction", text: "Where your research is going" }),
@@ -716,7 +740,13 @@ function cvBox() {
   }
   draw();
   if (!F.docs) {
-    api.docs("researcher").then((d) => { F.docs = d; draw(); })
+    api.docs("researcher").then((d) => {
+      F.docs = d;
+      // S50 (Q19): a stored CV is ticked by default, unless this form already chose its documents.
+      if (!F.docIds.size && !F.docsChosen) for (const x of d) if (x.kind === "cv") F.docIds.add(x.id);
+      F.docsChosen = true;
+      draw();
+    })
       .catch((e) => { F.docs = []; draw(); status.textContent = e.code === "consent_required" ? "Agree to the consent first, on your account page." : e.message; });
   }
   return box;
@@ -840,7 +870,7 @@ function renderBrief() {
   const r = d.researcher || {};
   const student = isStudent(d);
   const name = student ? "Your options" : r.display_name || "Your brief";
-  document.title = `${name} — Perch`;
+  document.title = window.PERCH_EXAMPLE ? "Example brief — Perch" : `${name} — Perch`;
   if (student && !["F", "S"].includes(S.route)) S.route = "F";
   if (!student && !["A", "B", "T"].includes(S.route)) S.route = "A";
   // F23: the date's parts never part at a line end ("1" / "Nov 2026").
@@ -851,7 +881,9 @@ function renderBrief() {
       : `Temple awards and fellowships, checked against your CV by rule · as of ${asOf}`)
     : [...(r.institutions || []), `Brief as of ${asOf}`].join(" · ");
   // Back: a student returns to the start screen, a researcher to the matches.
-  const back = student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Back" }))
+  // The example brief's Back leaves the example for the app itself (S50 Q22).
+  const back = window.PERCH_EXAMPLE ? h("a", { class: "back", href: "./" }, icon("back"), h("span", { text: "Back to Perch" }))
+    : student ? h("a", { class: "back", href: "#/student" }, icon("back"), h("span", { text: "Back" }))
     : h("a", { class: "back", href: S.find.candidates ? "#/find" : "#/" }, icon("back"), h("span", { text: "Back" }));
   // S3: the second tab is "What Perch read" on both sides.
   const tabs = h("div", { class: `tabs${student ? " student" : ""}`, role: "tablist", "aria-label": "Brief sections" },
@@ -885,8 +917,13 @@ function renderBrief() {
 // brief's details filled in. Under 700 px it is the Export menu's first row instead.
 function rerunLink(cls) {
   if (!S.session.signed_in || api.mode === "replay") return null;
-  return h("a", { class: `btn quiet ${cls}`, "data-key": cls, href: `#/rerun/${encodeURIComponent(S.briefId)}` },
-    h("span", { text: "Change details and run again" }));
+  const href = `#/rerun/${encodeURIComponent(S.briefId)}`;
+  // S50 (V16): beside the ready chip it is a short "Run again"; its name keeps the full words.
+  if (cls === "rerun-wide") {
+    return h("a", { class: `btn quiet ${cls}`, "data-key": cls, href, "aria-label": "Change details and run again" },
+      icon("restore"), h("span", { text: "Run again" }));
+  }
+  return h("a", { class: `btn quiet ${cls}`, "data-key": cls, href }, h("span", { text: "Change details and run again" }));
 }
 
 // The Export button: a menu with the exports. A saved preview has nothing to download
@@ -978,7 +1015,15 @@ function renderProgress() {
   const t0 = Date.parse(stages[0] && stages[0].started_at) || Date.parse(b.created_at);
   const lastEnd = Math.max(...stages.map((s) => Date.parse(s.finished_at) || 0));
   let state = "work", headline, detail, sub = null;
-  if (b.status === "failed") {
+  // S50 (Q6): the server reports a stopped brief as failed; the page remembers that this
+  // reader pressed Stop, and says so in place of the server's sentence.
+  const stopped = b.status === "failed" && S.stoppedId === S.briefId;
+  if (stopped) {
+    state = "look";
+    headline = "Stopped";
+    detail = `${doneN} of ${stages.length} steps`;
+    sub = "You stopped this brief. Run again builds a new one.";
+  } else if (b.status === "failed") {
     state = "droop";
     const s = stages[failedIdx] || {};
     headline = `Stopped at: ${f.STAGES[s.name] || s.name || "a step"}`;
@@ -1028,9 +1073,10 @@ function renderProgress() {
       });
       fill(slot, chip);
     }
-    const word = `Ready · ${f.elapsed(lastEnd - t0)}`;
+    const word = f.readyWord(lastEnd - t0);
     chip.querySelector(".ready-word").textContent = word;
-    chip.querySelector("summary").setAttribute("aria-label", `Brief ready, built in ${f.elapsed(lastEnd - t0)}. Show the steps`);
+    chip.querySelector("summary").setAttribute("aria-label", word === "Ready" ? "Brief ready. Show the steps"
+      : `Brief ready, built in ${f.elapsed(lastEnd - t0)}. Show the steps`);
     fill(chip.querySelector(".ready-pop"), h("p", { class: "ready-pop-head", text: `${stages.length} of ${stages.length} steps done` }), stepsList(stages));
     return;
   }
@@ -1048,7 +1094,7 @@ function renderProgress() {
       h("div", { class: "progress-steps" }));
     fill(box, card);
   }
-  card.classList.toggle("failed", b.status === "failed");
+  card.classList.toggle("failed", b.status === "failed" && !stopped); // a stop the reader asked for is no error
   card.classList.toggle("done", b.status === "done"); // one line on a phone once ready (U5)
   setOwl(card.querySelector(".owl"), state);
   card.querySelector(".owl").classList.toggle("bob", b.status === "running" || b.status === "queued");
@@ -1058,9 +1104,24 @@ function renderProgress() {
   const subEl = card.querySelector(".p-sub");
   subEl.textContent = sub || "";
   subEl.hidden = !sub;
-  fill(card.querySelector(".p-act"),
-    b.status === "failed" ? h("button", { class: "btn primary", onclick: rebuild }, h("span", { text: "Build again" })) : null,
-    api.mode === "replay" && b.status === "done" ? h("button", { class: "btn link", type: "button", onclick: replayBuild }, h("span", { text: "Replay the build" })) : null);
+  // The actions are redrawn only when they change, so a focused Stop survives each poll.
+  const canStop = ["queued", "running"].includes(b.status) && S.session.signed_in && api.mode !== "replay";
+  const stopping = canStop && S.stoppedId === S.briefId;
+  const act = card.querySelector(".p-act");
+  const actSig = `${b.status}:${stopped}:${canStop}:${stopping}:${api.mode}`;
+  if (act.dataset.sig !== actSig) {
+    const hadFocus = act.contains(document.activeElement);
+    act.dataset.sig = actSig;
+    fill(act,
+      stopped ? h("a", { class: "btn primary", "data-key": "rerun-stopped", href: `#/rerun/${encodeURIComponent(S.briefId)}` },
+        icon("restore"), h("span", { text: "Run again" }))
+        : b.status === "failed" ? h("button", { class: "btn primary", onclick: rebuild }, h("span", { text: "Build again" })) : null,
+      // aria-disabled, not disabled, while it stops, so focus stays on the button.
+      canStop ? h("button", { class: "btn quiet", type: "button", "data-key": "stop-brief", "aria-disabled": stopping ? "true" : null,
+        onclick: stopBrief }, icon("stop"), h("span", { text: stopping ? "Stopping" : "Stop" })) : null,
+      api.mode === "replay" && b.status === "done" ? h("button", { class: "btn link", type: "button", onclick: replayBuild }, h("span", { text: "Replay the build" })) : null);
+    if (hadFocus) { const k = act.querySelector("[data-key=stop-brief], [data-key=rerun-stopped]"); if (k) k.focus(); }
+  }
   const steps = h("details", { class: "steps", open: S.stepsOpen,
     ontoggle: (e) => { S.stepsOpen = e.target.open; } },
   // U8: the count is live progress, so it shows only while the brief builds.
@@ -1068,6 +1129,22 @@ function renderProgress() {
     b.status === "done" ? null : h("span", { class: "steps-n", text: `(${doneN} of ${stages.length} done)` })),
   stepsList(stages));
   fill(card.querySelector(".progress-steps"), steps);
+}
+
+// Stop a brief while it builds (S50 Q6): signed-in users only; the cancel route refuses guests.
+// The next poll draws the failed state, which reads "Stopped" for this reader.
+async function stopBrief(e) {
+  if (e.currentTarget.getAttribute("aria-disabled") === "true" || S.stoppedId === S.briefId) return;
+  S.stoppedId = S.briefId;
+  renderProgress();
+  try {
+    await api.cancelBrief(S.briefId);
+    announce("Stopping the brief.");
+  } catch (err) {
+    S.stoppedId = null;
+    renderProgress();
+    announce(err.message || "The brief could not be stopped.");
+  }
 }
 
 function stepsList(stages) {
@@ -1306,10 +1383,24 @@ function recordLabel(id) {
     || (x.opportunity && x.opportunity.opportunity_number === id));
   if (!l) return null;
   const full = leadTitle(l);
-  if (l.sample) return { text: "Evidence (sample)", full: `${full}, sample data`, sample: true, name: `${full} (sample)` };
-  if (l.opportunity && l.opportunity.opportunity_number) return { text: l.opportunity.opportunity_number, full, name: l.opportunity.opportunity_number };
-  return l.route === "B" ? null : { text: "Evidence", full, name: full };
+  // S50 (V17): a chip never says "Evidence" alone: the record's title, cut to 32 characters, or
+  // with no title its source and number, such as "Grants.gov PAR-25-442".
+  const title = (l.opportunity && l.opportunity.title) || (l.record && l.record.title) || null;
+  const text = title ? clipTitle(title, 32) : sourceLabel(l);
+  if (l.sample) return { text: `${text} (sample)`, full: `${full}, sample data`, sample: true, name: `${full} (sample)` };
+  if (l.route === "B") return null;
+  return { text, full, name: title ? full : text };
 }
+
+// A record's source and number, for a chip with no title to show (S50 V17).
+function sourceLabel(l) {
+  const o = l.opportunity || {};
+  const key = o.source || l.source_kind || String(l.record_id || "").split(":")[0];
+  const src = SOURCES[key] || "Record";
+  return `${src} ${o.opportunity_number || f.shortId(l.record_id)}`;
+}
+
+const clipTitle = (t, n) => (t.length > n ? `${t.slice(0, n).trimEnd()}…` : t);
 
 // ----- Profile -----
 
@@ -1457,11 +1548,20 @@ function threadsNote() {
   if (!n) return null;
   const all = (d.researcher || {}).works_count;
   const shown = distinctPapers(Object.values(d.papers || {}).filter((w) => !isOwnDoc(w))).length;
-  return h("p", { class: "hint threads-note", text: [
+  // S50 (V48): the first sentence shows; the rest opens under "How threads work".
+  return foldNote([
+    `These threads group ${f.plural(n, "work")} on file by what they are about.`,
     all != null ? `OpenAlex counts ${f.plural(all, "work")} for this researcher.` : null,
-    `These threads group ${f.plural(n, "work")} on file by what they are about: research output, such as articles, preprints and chapters, dated on or before the brief date. Labels are the words that set each group apart.`,
+    "The works are research output, such as articles, preprints and chapters, dated on or before the brief date. Labels are the words that set each group apart.",
     shown ? `Key papers picks from the ${shown} this brief shows: each thread’s top papers and those the explanations cite.` : null,
-  ].filter(Boolean).join(" ") });
+  ].filter(Boolean));
+}
+
+function foldNote(sentences) {
+  const [first, ...rest] = sentences;
+  return h("div", { class: "threads-note" }, h("p", { class: "hint", text: first }),
+    rest.length ? h("details", { class: "threads-how" }, h("summary", { "data-key": "threads-how", text: "How threads work" }),
+      h("p", { class: "hint", text: rest.join(" ") })) : null);
 }
 
 function threadsSection() {
@@ -1469,10 +1569,10 @@ function threadsSection() {
   const title = h("h2", { class: "section-title", text: "Research threads" });
   if (!isDone("profile")) return h("section", { class: "block" }, title, skeleton(3));
   return h("section", { class: "block" }, title,
-    threadsNote() || h("p", { class: "hint", text: b.work_ids.length
-      ? `${f.plural(b.work_ids.length, "paper")} grouped by what they are about. Labels are the words that set each group apart.`
-      : "No public papers on file. Labels are the most frequent words." }),
-    h("ol", { class: "threads" }, b.threads.map((t) => {
+    threadsNote() || foldNote(b.work_ids.length
+      ? [`${f.plural(b.work_ids.length, "paper")} grouped by what they are about.`, "Labels are the words that set each group apart."]
+      : ["No public papers on file.", "Labels are the most frequent words."]),
+    h("ol", { class: "threads" }, b.threads.map((t, i) => {
       const papers = distinctPapers((t.work_ids || []).map((id) => d.papers[id]).filter(Boolean)).slice(0, 5);
       const meter = h("span", { class: "meter", "aria-hidden": "true" },
         h("span", { style: `width:${Math.max(t.weight * 100, 2)}%` }));
@@ -1485,11 +1585,15 @@ function threadsSection() {
           h("p", { class: "hint", text: "From what you said. Used as a search query, never as a fact." }),
           h("ul", { class: "papers" }, papers.map(paperRow)));
       }
+      // S50 (V48): "Thread 1 · 73 %" over the label's words as chips; the share is the server's
+      // weight, with recent papers counting more (G23).
+      const words = String(t.label || "").split(",").map((x) => x.trim()).filter(Boolean);
       return h("li", { class: "thread" },
         h("div", { class: "thread-head" },
-          h("h3", { text: t.label }),
-          // G23: the share is of the weight, with recent papers counting more
-          h("span", { class: "share", text: `${Math.round(t.weight * 100)}% of the weight, recent papers counting more` })),
+          h("h3", { text: `Thread ${i + 1} · ${Math.round(t.weight * 100)} %` }),
+          h("span", { class: "share", text: "of the weight, recent papers counting more" })),
+        words.length ? h("p", { class: "thread-words" }, h("span", { class: "sr-only", text: "Words: " }),
+          words.map((x) => h("span", { class: "chip", text: x }))) : null,
         meter,
         h("p", { class: "hint", text: `${f.plural(t.work_ids.length, "paper")}. Most recent first:` }),
         h("ul", { class: "papers" }, papers.map(paperRow)));
@@ -1530,8 +1634,11 @@ function sortedLeads() {
   const leads = [...routeLeads(S.route)];
   if (S.route === "B") return leads.sort((a, b) => a.rank - b.rank);
   const close = (l) => (l.opportunity && l.opportunity.close_date) || "9999";
+  const score = (l) => (typeof l.match_score === "number" ? l.match_score : -1);
   if (S.sort === "closing") leads.sort((a, b) => close(a).localeCompare(close(b)) || a.rank - b.rank);
-  else leads.sort((a, b) => a.rank - b.rank);
+  // S50 (V3, V42): Best match is the Match score, highest first, with the server's rank as the
+  // tie-break; a lead with no score goes last.
+  else leads.sort((a, b) => score(b) - score(a) || a.rank - b.rank);
   return leads;
 }
 
@@ -1552,18 +1659,16 @@ function routeSwitch() {
     btn("A", "Grants"), routeLeads("T").length ? btn("T", "Temple internal") : null, btn("B", "Industry"));
 }
 
-// The sort order as the same segmented pill as Grants | Industry, smaller (S27).
-// One score and one order (S27): Perch's order is the Match score; closing date is the
-// only other way to sort.
-const SORTS = [["order", "Score"], ["closing", "Closing date"]];
+// One score and one order (S27): Perch's order is the Match score; closing date is the only
+// other way to sort. S50 (V3, V42): a small labelled select, not a second segmented switch.
+const SORTS = [["order", "Best match"], ["closing", "Closing soonest"]];
 
 function sortSwitch() {
-  // A visible "Sort" label, so the switch does not read as a second filter (U36).
-  return h("div", { class: "sort-group" }, h("span", { class: "sort-label", "aria-hidden": "true", text: "Sort" }),
-    h("div", { class: "route-switch sort-switch", role: "group", "aria-label": "Sort leads by" },
-      ...SORTS.map(([v, label]) => h("button", { class: "route-btn", "data-key": `sort-${v}`,
-        "aria-pressed": String(S.sort === v),
-        onclick: () => { S.sort = v; renderPanel(); panelFocus(`sort-${v}`); } }, label))));
+  const pick = h("select", { id: "sort-pick", class: "sort-pick", "data-key": "sort",
+    onchange: (e) => { S.sort = e.target.value; renderPanel(); panelFocus("sort"); } },
+  ...SORTS.map(([v, label]) => h("option", { value: v, text: label })));
+  pick.value = S.sort;
+  return h("div", { class: "sort-group" }, h("label", { class: "sort-label", for: "sort-pick", text: "Sort" }), pick);
 }
 
 function updateSwitch(panel) {
@@ -1582,13 +1687,14 @@ function renderRoutes(panel) {
   if (S.route === "B") { renderIndustry(panel); return; }
   if (!isDone("route_a")) {
     const failed = S.brief.brief.status === "failed";
-    const sig = `wait:${failed}`;
+    const stopped = failed && S.stoppedId === S.briefId;
+    const sig = `wait:${failed}:${stopped}`;
     if (panel.dataset.sig === sig) return;
     panel.dataset.sig = sig;
-    fill(panel, routeSwitch(), h("div", { class: "empty" }, owl(failed ? "droop" : "look", "owl-md"),
-      h("div", {}, h("p", { class: "lede", text: failed ? "The search for leads did not run."
-        : "Leads appear here when the search finishes." }),
-      h("p", { class: "hint", text: failed ? "See the steps above for what stopped."
+    fill(panel, routeSwitch(), h("div", { class: "empty" }, owl(failed && !stopped ? "droop" : "look", "owl-md"),
+      h("div", {}, h("p", { class: "lede", text: stopped ? "You stopped this brief before the search for leads finished."
+        : failed ? "The search for leads did not run." : "Leads appear here when the search finishes." }),
+      h("p", { class: "hint", text: stopped ? "Run again builds a new one." : failed ? "See the steps above for what stopped."
         : "The profile tab fills in first." }))), skeleton(3), skeleton(3));
     return;
   }
@@ -1618,9 +1724,8 @@ function renderRoutes(panel) {
       h("div", { class: "dismissed-box" }));
   }
   updateSwitch(panel);
-  for (const b of panel.querySelectorAll(".sort-switch button")) {
-    b.setAttribute("aria-pressed", String(b.dataset.key === `sort-${S.sort}`));
-  }
+  const pick = panel.querySelector("#sort-pick");
+  if (pick && pick.value !== S.sort) pick.value = S.sort;
   const noun = S.route === "T" ? ["Temple internal call", "Temple internal calls"] : ["open opportunity", "open opportunities"];
   panel.querySelector("#routes-title").textContent = active.length === open.length
     ? f.plural(open.length, ...noun)
@@ -1635,6 +1740,8 @@ function renderRoutes(panel) {
   sub.hidden = !subBits.length;
   // U43: what model text is, said once above the list, when the list holds any.
   panel.querySelector(".model-line").hidden = !open.some((l) => l.explanation);
+  // S50 (V5): two or more flagged cards on view: the list note says it once, the cards say nothing.
+  S.listWithheld = active.filter((l) => l.flagged).length >= 2;
   drawNotices(panel.querySelector("#list-notices"), active);
 
   if (!leads.length) {
@@ -1671,11 +1778,15 @@ function renderRoutes(panel) {
   syncList(det.querySelector("ol"), dismissed);
 }
 
-// What the rules left out (S49 F2), one quiet line; the labels and counts are the server's.
+// What the rules left out (S49 F2; S50 V44): one short summary that opens to a line per rule.
+// The labels and counts are the server's.
 function hiddenLine() {
   const hid = (S.brief.brief.hidden || S.brief.hidden || []).filter((x) => x && x.label && x.count);
   if (!hid.length) return null;
-  return h("p", { class: "hint hidden-line", text: `Hidden: ${hid.map((x) => `${x.label} (${x.count})`).join(", ")}` });
+  const total = hid.reduce((n, x) => n + x.count, 0);
+  return h("details", { class: "hidden-fold" },
+    h("summary", { "data-key": "hidden-fold", text: `${total} hidden by the rules` }),
+    h("ul", { class: "hidden-list" }, hid.map((x) => h("li", { text: `${x.label}: ${x.count}` }))));
 }
 
 // The list's notices (S49 U3, U16): the withheld-reason note once for the list when two or
@@ -1684,8 +1795,8 @@ function drawNotices(box, shown) {
   if (!box) return;
   const flagged = shown.filter((l) => l.flagged).length;
   const items = [
-    flagged >= 2 ? h("p", { class: "notice info list-note" }, icon("help"),
-      h("span", { text: "Some written reasons failed Perch’s citation check, so they are left out. Every date, amount and rule result on the cards is still copied from the record." })) : null,
+    flagged >= 2 ? h("p", { class: "notice info list-note", "data-withheld": "" }, icon("info"),
+      h("span", { text: WITHHELD_NOTE })) : null,
     coverListLine(coverCtx())].filter(Boolean);
   const sig = JSON.stringify([flagged >= 2, items.map((x) => x.textContent)]);
   if (box.dataset.sig === sig) return;
@@ -1693,6 +1804,8 @@ function drawNotices(box, shown) {
   fill(box, ...items);
 }
 
+// The withheld-reason note, the same on both sides (S50 contract 3.2).
+const WITHHELD_NOTE = "Some written reasons failed Perch’s citation check, so those cards show no reason. Every date, amount and rule result on the cards is still copied from the record.";
 const RESEARCH_SECURITY ="Companies outside the United States may need a research-security review before any contact; the office makes that check.";
 const OPEN_FIRST = 5; // cards shown open before the Weaker matches fold (Q6)
 
@@ -1838,14 +1951,15 @@ function orgCard(l) {
   for (const b of actions) b.setAttribute("aria-describedby", `t-${cssId(l.id)}`);
   return h("li", { class: `card lead org${l.status === "kept" ? " kept" : ""}${l.status === "dismissed" ? " gone" : ""}`,
     "data-id": l.id },
-  cardHead(tags, null, actions),
+  // The tags row stays on top; Keep and Dismiss sit in the footer row, as on a grant card (S50).
+  h("div", { class: "org-tags" }, tags),
   h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
     onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: name }), evMark())),
   // Names merged into this lead, by exact name or by OpenAlex's parent link (U13).
   otherNames(o, name).length ? h("p", { class: "opp-num", text: `Also listed as ${otherNames(o, name).join("; ")}` }) : null,
   h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Inference" }),
     h("span", { text: l.inference || "Inferred from public signals; not verified." })),
-  signals, yours);
+  signals, yours, leadFoot(null, actions));
 }
 
 // The other names merged into an industry lead; the name shown, with or without its
@@ -1862,7 +1976,7 @@ function syncList(ol, leads) {
   for (const [id, el] of have) if (!want.has(id)) el.remove();
   leads.forEach((l, i) => {
     const sig = JSON.stringify([l.status, l.match_score, l.explanation, l.inference, l.flagged,
-      l.unsupported, l.cited_ids.length, isPending(l)]);
+      l.unsupported, l.cited_ids.length, isPending(l), Boolean(l.flagged && S.listWithheld)]);
     let el = have.get(l.id);
     if (!el || el.dataset.sig !== sig) {
       const focusKey = el && el.contains(document.activeElement)
@@ -1913,7 +2027,11 @@ function leadCard(l) {
 
   // NSF dates its open-anytime programs decades out: past ten years the record's own
   // words stand in place of the date (U3, Q3). Evidence keeps both fields.
-  const far = Boolean(o.close_date_note && days !== null && days > 3650) || f.standardDates(o);
+  // S50 (G8, BE-G): the record's own words, when it has them, stand in for a date ten years out
+  // or for no date at all (a placeholder date reaches the page as null).
+  const words = o.close_text || o.close_date_note || null;
+  const far = Boolean(words && ((days !== null && days > 3650)
+    || (!o.close_date && !o.deadline_quote && !(l.record && l.record.deadline_quote)))) || f.standardDates(o);
   const expires = f.expiresOnly(o);  // T17: a parent announcement's date is its expiry
   // FM3: with no date, the page's own deadline words are shown in quotes, never "Not stated".
   const quote = !o.close_date && !far ? (o.deadline_quote || (l.record && l.record.deadline_quote) || null) : null;
@@ -1922,7 +2040,7 @@ function leadCard(l) {
   const facts = h("dl", { class: "facts facts-2" },
     // F20: an expiry date sits under its own label, not under "Closes".
     h("div", { class: `fact close ${urg}` }, h("dt", { text: quote ? "Deadline" : expires && !far ? "Announcement" : "Closes" }),
-      h("dd", {}, far ? h("span", { text: o.close_date_note })
+      h("dd", {}, far ? h("span", { text: words || o.close_date_note })
         : o.close_date ? h("span", { text: `${expires ? "Expires " : ""}${f.formatDate(o.close_date)}` })
           : quote ? h("span", { class: "quote-date", text: `The page says: “${quote}”` }) : missing(),
         !far && !expires && days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),
@@ -1930,8 +2048,9 @@ function leadCard(l) {
 
   let explain = null;
   if (l.flagged) {
-    // U3: one quiet line on the card; the list says why once, above the cards.
-    explain = h("p", { class: "hint withheld-line", text: "Written reason withheld: it failed the citation check." });
+    // U3, S50 V5: when two or more cards on the list are flagged, the list says why once and
+    // the card shows no reason section; a lone flagged card keeps its quiet line.
+    explain = S.listWithheld ? null : h("p", { class: "hint withheld-line", text: "Written reason withheld: it failed the citation check." });
   } else if (pending) {
     explain = h("div", { class: "writing" }, skeleton(2), h("p", { class: "hint", text: "Writing a cited explanation" }));
   } else if (parsed) {
@@ -1955,16 +2074,22 @@ function leadCard(l) {
   for (const b of actions) b.setAttribute("aria-describedby", `t-${cssId(l.id)}`);
   return h("li", { class: `card lead${l.status === "kept" ? " kept" : ""}${l.status === "dismissed" ? " gone" : ""}`,
     "data-id": l.id },
-  // The title comes first (S49 D5); the Match pill and the actions sit at the end of its row.
+  // The title comes first (S49 D5) and keeps the row but for the Match pill (S50 V2).
   h("div", { class: "lead-top" },
     h("div", { class: "lead-name" },
       h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
         onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: o.title || "Untitled opportunity" }), evMark())),
       sub),
-    h("div", { class: "lead-end" }, fit || null, h("div", { class: "actions" }, actions))),
+    fit ? h("div", { class: "lead-pill" }, fit) : null),
   facts, leadNotes(l), explain,
-  // S46: cover-letter points, on every grant lead that is not dismissed.
-  l.status === "dismissed" ? null : coverBlock(coverCtx(), S.briefId, l.record_id));
+  // S50 (V2, V39): one footer row: cover-letter points on the left (S46, every grant lead that
+  // is not dismissed), Keep and Dismiss on the right.
+  leadFoot(l.status === "dismissed" ? null : coverBlock(coverCtx(), S.briefId, l.record_id), actions));
+}
+
+// The card's footer row (S50 contract 3.2): the cover-letter block, when there is one, then the actions.
+function leadFoot(cover, actions) {
+  return h("div", { class: "lead-foot" }, cover || null, h("div", { class: "actions" }, actions));
 }
 
 // What cover.js needs for a researcher card and for the list's one line (S49 U16).
@@ -2453,7 +2578,21 @@ function init() {
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     }
   });
-  if (api.mode === "replay") {
+  if (api.mode === "replay" && window.PERCH_EXAMPLE) {
+    // The example brief (S50 Q22): labelled plainly, the researcher by alias, with its date.
+    const d = window.PERCH_REPLAY;
+    const built = f.formatDate(d.brief.brief.created_at);
+    const b = $("#banner");
+    b.hidden = false;
+    b.classList.add("example-banner");
+    fill(b, h("p", { class: "banner-line", "data-key": "example-banner" }, h("span", { class: "tag ember", text: "Example" }),
+      h("span", { text: d.student
+        ? `A saved brief for an invented SYNTHETIC student, built ${built}: real Temple listings and invented sample scholarships. It plays back from a file: nothing is saved.`
+        : `A saved brief for a Temple researcher, shown as ${(d.candidates[0] || {}).display_name || "a researcher"}, built ${built} from public records. It plays back from a file: nothing here calls a model or saves anything.` }),
+      h("a", { href: "./", text: "Back to Perch" })));
+    document.title = "Example brief — Perch";
+    S.find.q = (d.candidates[0] || {}).display_name || "";
+  } else if (api.mode === "replay") {
     const b = $("#banner");
     b.hidden = false;
     fill(b, h("p", {}, h("b", { text: "Preview. " }),
