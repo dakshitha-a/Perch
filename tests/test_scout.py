@@ -924,6 +924,10 @@ def points_reply(messages, system, schema):
     ids = re.findall(r"^\[([^\]]+)\]", block, re.M)
     you = [ids[0]] if ids else []
     both = ids[:2] if len(ids) > 1 else you
+    # S51 H1: a you sentence cites at most one paper, so the two-record point names the
+    # second record only when it is not a second paper.
+    if len(both) == 2 and all(re.fullmatch(r"W\d+", i) for i in both):
+        both = you
     points = [
         {"asks": "The record describes the work it supports.", "asks_ids": [target],
          "you": "You have work on that topic in your records.", "you_ids": you},
