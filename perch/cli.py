@@ -455,10 +455,25 @@ def cmd_mcp(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
 
     data = Path(args.db).parent
     service = BriefService(args.db, default_models(args.models == "fake", data, args.llm),
-                           Clients(openalex=default_client), Path(args.overrides))
+                           Clients(openalex=default_client), Path(args.overrides),
+                           repo_factory=v1_repo_factory())
     ctx = make_context(service, args.author)
     serve_stdio(create_server(ctx))
     return 0
+
+
+def v1_repo_factory(pool_size: int = 4) -> Callable[[], Repository] | None:
+    """With PERCH_DATABASE_URL (v1): every public record comes from Postgres, and a brief and
+    its leads live in the user's store, so nothing reads or writes the SQLite file (S49 B10,
+    B27). Without this the web read the empty SQLite file and every list was empty on a fresh
+    deployment (S48). None without a database URL: the fallback's SQLite store."""
+    if not env("PERCH_DATABASE_URL"):
+        return None
+    from perch.store import pg
+    from perch.store.postgres import PostgresRepository
+
+    pool = pg.make_pool(env("PERCH_DATABASE_URL"), pool_size)
+    return lambda: PostgresRepository(role="worker", pool=pool)
 
 
 def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
@@ -469,20 +484,9 @@ def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     from perch.service import BriefService, Clients, default_models
 
     data = Path(args.db).parent
-    repo_factory = None
-    if env("PERCH_DATABASE_URL"):
-        # v1: public records (browse lists, lead cards, evidence) come from Postgres, as in the
-        # worker; only scratch briefs stay in SQLite. Without this the web read the empty
-        # SQLite file and every list was empty on a fresh deployment (S48, found on the deploy).
-        from perch.store import pg
-        from perch.store.hybrid import HybridRepository
-
-        pool = pg.make_pool(env("PERCH_DATABASE_URL"), 4)
-        scratch = Path(args.db).with_name("briefs.db")
-        repo_factory = lambda: HybridRepository(pool, scratch)  # noqa: E731
     service = BriefService(args.db, default_models(args.models == "fake", data, args.llm),
                            Clients(openalex=default_client), Path(args.overrides),
-                           repo_factory=repo_factory)
+                           repo_factory=v1_repo_factory())
     from perch.hardening import harden_process
 
     harden_process()
@@ -507,7 +511,8 @@ def cmd_scout(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
 
     data = Path(args.db).parent
     service = BriefService(args.db, default_models(args.models == "fake", data),
-                           Clients(openalex=default_client), Path(args.overrides))
+                           Clients(openalex=default_client), Path(args.overrides),
+                           repo_factory=v1_repo_factory())
     log = ScoutLog(data / "logs/scout.jsonl")
     if args.action == "replay":
         rows = replay(log, args.target, lambda r, a: ScoutContext(
@@ -729,20 +734,19 @@ def cmd_worker(args: argparse.Namespace) -> int:
         from dataclasses import replace
 
         from perch.service import BriefService, Clients, default_models
-        from perch.store.hybrid import HybridRepository
-        from perch.store.postgres import PgVectorIndex
+        from perch.store.postgres import PgVectorIndex, PostgresRepository
 
         models = default_models(False, Path(args.db).parent, None)
-        # Public records and the vector index come from Postgres; briefs stay in scratch
-        # SQLite until they become encrypted user data. Ingest fills the index.
+        # Public records and the vector index come from Postgres; a brief and its leads are
+        # the user's encrypted data (perch/user/briefs.py). Ingest fills the index.
         from perch.profiles import current
 
         models = replace(models, index=lambda: PgVectorIndex(
             index_name="opportunities", embedder=current().embedder, pool=runner.pool))
-        scratch = Path(args.db).with_name("briefs.db")
         svc = BriefService(args.db, models, Clients(openalex=default_client),
                            Path(args.overrides),
-                           repo_factory=lambda: HybridRepository(runner.pool, scratch),
+                           repo_factory=lambda: PostgresRepository(role="worker",
+                                                                   pool=runner.pool),
                            index_new=False)
         from perch.cache import PublicCache
 

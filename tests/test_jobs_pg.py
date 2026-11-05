@@ -451,3 +451,27 @@ def test_the_worker_runs_the_scheduler_in_its_maintenance_thread(clean):
         stop.set()
         t.join()
     assert len(_keys(clean, "purge")) == len(DAILY_PURGES)
+
+
+def test_the_cli_reads_postgres_and_never_the_sqlite_file(clean, tmp_path, monkeypatch):
+    """S49 B10, B27: serve and the worker opened a scratch briefs.db on every repository call,
+    and `perch mcp` and `perch scout` read the empty SQLite store instead of Postgres."""
+    import inspect
+
+    from perch import cli
+    from perch.service import BriefService, Clients
+    from perch.store.postgres import PostgresRepository
+
+    monkeypatch.setenv("PERCH_DATABASE_URL", clean["worker"])
+    factory = cli.v1_repo_factory(2)
+    svc = BriefService(tmp_path / "perch.db", None, Clients(openalex=None),
+                       repo_factory=factory)
+    with svc.repo() as r:
+        assert isinstance(r, PostgresRepository)
+    assert not (tmp_path / "briefs.db").exists() and not (tmp_path / "perch.db").exists()
+    for cmd in (cli.cmd_serve, cli.cmd_mcp, cli.cmd_scout, cli.cmd_worker):
+        src = inspect.getsource(cmd)
+        assert "HybridRepository" not in src and "briefs.db" not in src
+        assert "repo_factory=" in src, cmd.__name__
+    monkeypatch.delenv("PERCH_DATABASE_URL")
+    assert cli.v1_repo_factory() is None  # the fallback keeps its SQLite store

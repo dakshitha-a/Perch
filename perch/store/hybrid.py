@@ -1,8 +1,10 @@
-"""Public records from Postgres, brief working records in a scratch SQLite file.
+"""Public records from Postgres, other kinds in a scratch SQLite file.
 
-In v1 a brief and its leads are user data (encrypted, Phase 3). Until that lands, the worker's
-brief build keeps them in a scratch store and reads every public kind from PostgresRepository.
-Nothing here is used by the web process.
+Not used by the app since S49 (B10): `perch serve`, `perch worker`, `perch mcp` and
+`perch scout` read PostgresRepository directly, because a brief and its leads are the user's
+encrypted data and every other kind is a public record. Kept only for the scripts and bench
+harnesses that still build one (scripts/walk_server.py, scripts/e2e_student_brief.py,
+bench/cpu_timings.py, bench/gpu_timings.py).
 """
 
 from __future__ import annotations

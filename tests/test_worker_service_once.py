@@ -16,5 +16,6 @@ def test_perch_serve_reads_public_records_from_postgres_when_configured():
     """S48 deploy: `perch serve` with PERCH_DATABASE_URL read browse lists and lead records
     from the empty SQLite file. It must use the Postgres-backed repository like the worker."""
     src = inspect.getsource(cli.cmd_serve)
-    assert 'env("PERCH_DATABASE_URL")' in src and "HybridRepository(pool, scratch)" in src
-    assert "repo_factory=repo_factory" in src
+    assert "repo_factory=v1_repo_factory()" in src  # Postgres only since S49 B10
+    factory = inspect.getsource(cli.v1_repo_factory)
+    assert 'env("PERCH_DATABASE_URL")' in factory and "PostgresRepository(" in factory
