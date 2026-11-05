@@ -164,18 +164,15 @@ bench-v0:
 	$(UV) run --extra ml python -m bench.run
 
 # docs/tracker.html for the browser; build/artifacts/tracker.html is the page published as
-# the claude.ai tracker artifact (gitignored), with a UI tab when a replay preview exists
-# (scripts/build_ui_preview.py, also gitignored).
+# the claude.ai tracker artifact (gitignored), with a UI tab when exported example briefs exist
+# (scripts/export_example.py, then build_ui_example.py stages the app in build/artifacts/app).
 tracker:
 	$(UV) run python scripts/render_tracker.py docs/TRACKER.md docs/tracker.html
-	-$(UV) run python scripts/build_ui_preview.py
-	-test -f build/replay/student.json && $(UV) run python scripts/build_ui_preview.py \
-		build/replay/student.json --out build/artifacts/ui-student.html
+	-$(UV) run python scripts/build_ui_example.py
 	-$(UV) run --with markdown python scripts/build_readme_preview.py
 	$(UV) run python scripts/render_tracker.py docs/TRACKER.md build/artifacts/tracker.html --artifact \
-		$$(test -f build/artifacts/ui.html && echo --ui ui.html) \
-		$$(test -f build/artifacts/ui-student.html && echo --ui-student \
-		  "ui-student.html#/brief/$$($(UV) run python -c 'import json;print(json.load(open("build/replay/student.json"))["brief"]["brief"]["id"])')/routes") \
+		$$(test -f build/artifacts/ui.json && echo --ui "app/example.html?side=researcher") \
+		$$(test -f build/artifacts/ui-student.json && echo --ui-student "app/example.html?side=student") \
 		$$(test -f build/artifacts/readme.html && echo --readme readme.html)
 
 package:

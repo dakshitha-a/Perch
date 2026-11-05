@@ -295,7 +295,7 @@ def test_ui_intro_comes_from_the_replay_sidecar():
     )
     p = rt.render_page(MASTER, {}, ui="ui.html", facts=facts)
     v = view(p, "ui")
-    assert "saved on 29 Oct 2026" in v and "build/replay/abc.json" in v and "May be behind" in v
+    assert "exported from the deploy on 29 Oct 2026" in v and "build/replay/abc.json" in v and "May be behind" in v
     assert "S24" not in v and "15 seconds" not in v
     assert v.index('data-size="wide" aria-pressed="true">Laptop') < v.index(
         'data-size="phone" aria-pressed="false">Phone'

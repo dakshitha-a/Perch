@@ -1495,7 +1495,7 @@ def replay_line(meta: dict | None, who: str) -> str:
         return ""
     when = short_date(meta.get("created_at", "")) if meta.get("created_at") else "an unknown date"
     name = f" (<code>{esc(meta['replay'])}</code>)" if meta.get("replay") else ""
-    return f"The {who} replay is a brief saved on {esc(when)}{name}."
+    return f"The {who} example was exported from the deploy on {esc(when)}{name}."
 
 
 def view_ui(src: str, student: str | None, replays: dict[str, dict],
@@ -1512,14 +1512,15 @@ def view_ui(src: str, student: str | None, replays: dict[str, dict],
     dates = [d for d in dates if d]
     if dates and newest[0] and min(dates) < newest[0]:
         stale = (f' <span class="stale">May be behind: a replay is older than the start of {esc(newest[1])}; '
-                 "the app shell is built from <code>web/</code> each time</span>")
+                 "run <code>scripts/export_example.py</code> again</span>")
     built = f'<p class="src">{lines}{stale}</p>' if lines else ""
     return f"""<div><div class="eyebrow">The web app in replay mode</div><h1>UI preview</h1></div>
 {built}
-<p class="lead">The current app from <code>web/</code>, playing a saved brief with the researcher shown by alias.
-Press <b>Find</b>, then <b>This is the one</b> and <b>Build brief</b>, to watch Scout build it.
-{"<b>Student (sample)</b> opens a finished brief for an invented SYNTHETIC student. " if student else ""}Nothing is
-fetched; keep and dismiss work but are not saved.</p>
+<p class="lead">The current v1 app from <code>web/</code>, playing the example brief the live app shows at
+<code>example.html</code>: a finished brief for the researcher shown by alias, with its comparison, hand-off
+draft and Scout answer.
+{"<b>Student (sample)</b> opens a finished brief for an invented SYNTHETIC student, with its picks, Clear and Undo. " if student else ""}Nothing is
+fetched and nothing is saved.</p>
 <div class="ui-tools" role="group" aria-label="Preview size">
 <button type="button" class="btn" data-size="wide" aria-pressed="true">Laptop</button>
 <button type="button" class="btn" data-size="phone" aria-pressed="false">Phone</button>
@@ -1675,7 +1676,7 @@ def main(argv: list[str]) -> int:
     facts.spend = read_spend(root / "data/logs/anthropic_spend.jsonl")
     for key, path in (("ui", args.ui), ("ui-student", args.ui_student)):
         if path:
-            side = dest.parent / Path(path.split("#")[0]).with_suffix(".json")
+            side = dest.parent / f"{key}.json"
             try:
                 facts.replays[key] = json.loads(side.read_text(encoding="utf-8"))
             except (OSError, ValueError):
