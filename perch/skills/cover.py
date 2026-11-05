@@ -89,7 +89,9 @@ INSTRUCTIONS = (
     "led ...\") on what their records show that answers it, from the applicant records named "
     "in you_ids only, which must name at least one. Never give the applicant a role (led, "
     "contributed, wrote, designed) that the records in you_ids do not state; for a paper, say "
-    f"what it reports (\"Your paper reports ...\"). missing lists up to {MAX_MISSING} things "
+    "what it reports (\"Your paper reports ...\"). Each ‘you’ point names one paper and "
+    "one fact from it, as ‘Your paper reports …’. Do not add a judgment after it, such as "
+    f"‘which shows …’. missing lists up to {MAX_MISSING} things "
     "the target record asks for or rewards that no applicant record shows. Each item is one "
     "full sentence in this form: \"The record asks for a mentoring plan; nothing you added "
     "shows one.\" It names what the record wants and says that the applicant's records do "
@@ -252,13 +254,29 @@ def role_claims(where: str, text: str, cited: list[Record]) -> list[str]:
 # MiniCheck flagged "You identified X" against "We identified X". When a point cites papers
 # only, layer 2 scores it with the paper as the subject, as the fit skill does ("The paper
 # ..."). A CV or document line is the applicant's own, so it is scored as written.
-YOU_SUBJECT = re.compile(r"^(?:you|your work|your research)\b", re.I)
+YOU_SUBJECT = re.compile(r"^(?:your (?:papers?|work|research)|you)\b", re.I)
+# S51 H1: "You have work on X" became "The paper have work on X", which MiniCheck scored as
+# unsupported. The verb after the new singular subject agrees with it.
+SINGULAR = {"have": "has", "are": "is", "were": "was", "do": "does"}
+PRESENT = re.compile(r"^The paper (report|show|describe|examine|find|contribute|study|include|"
+                     r"present|propose|use|test|measure|identify|demonstrate|document|provide|"
+                     r"compare|develop|analy[sz]e|explore|address|focus|discuss|evaluate|"
+                     r"assess|investigate|introduce|build|span)\b")
 
 
 def as_record_claim(text: str, cited: list[Record]) -> str:
     if not cited or not all(isinstance(r, Work) and r.source != "user" for r in cited):
         return text
     claim = YOU_SUBJECT.sub("The paper", text.strip(), count=1)
+    if claim.startswith("The paper "):
+        word = claim[10:].split(" ", 1)[0]
+        if word.lower() in SINGULAR:
+            claim = f"The paper {SINGULAR[word.lower()]}{claim[10 + len(word):]}"
+        elif m := PRESENT.match(claim):
+            v = m.group(1)
+            v = v[:-1] + "ies" if v.endswith("y") else v + ("es" if v.endswith(("ss", "s"))
+                                                             else "s")
+            claim = f"The paper {v}{claim[m.end():]}"
     return re.sub(r"\byou\b", "it", re.sub(r"\byour\b", "its", claim))
 
 
@@ -368,6 +386,12 @@ def cover_points(o: Opportunity, cv: Work | None, docs: list[Work], papers: list
                                       [x for x in pt.you_ids if x in applicant])
             errors += role_claims(f"point {i} you", pt.you,
                                   [records[x] for x in pt.you_ids if x in applicant])
+            # S51 H1: a sentence that joins facts from two papers has no single chunk that
+            # supports it, so MiniCheck flags it. One paper per you sentence.
+            if sum(isinstance(records.get(x), Work) and records[x].source != "user"
+                   for x in pt.you_ids) >= 2:
+                errors.append(f"point {i} you cites more than one paper; name one paper and "
+                              "one fact")
         for j, m in enumerate(p.missing, 1):
             errors += sentence_checks(f"missing {j}", m, [target], BANNED_ASKS)
             errors += missing_form(f"missing {j}", m)
