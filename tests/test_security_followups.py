@@ -131,7 +131,15 @@ def test_the_delete_flow_finishes_the_order_then_reports_incomplete(monkeypatch)
     assert calls == ["shred", "cancel", "clear"]  # the whole order ran before it reported
 
     calls.clear()  # the queued purge clears the rows, then asks for a retry of the hooks
-    ctx = mock.Mock(payload={"action": "user", "user_id": str(uid)}, pool=mock.Mock())
+    monkeypatch.setattr(delete, "queue_purge_retry", lambda *a: calls.append("retry"))
+    ctx = mock.Mock(payload={"action": "user", "user_id": str(uid)}, pool=mock.Mock(),
+                    user_id=uid)
+    with pytest.raises(RetryableError):
+        delete.purge_handler(ctx)
+    # S50 C9: its own row went with the user's rows, so an ownerless job carries the retry
+    assert calls == ["shred", "clear", "retry"]
+    calls.clear()
+    ctx.user_id = None  # that ownerless job retries itself
     with pytest.raises(RetryableError):
         delete.purge_handler(ctx)
     assert calls == ["shred", "clear"]
