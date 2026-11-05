@@ -85,7 +85,15 @@ export function renderScout(panel, ctx) {
     fill(panel, h("div", { class: "empty" }, owl("look", "owl-md"), h("div", {},
       h("p", { class: "lede", text: "Ask Scout needs an account." }),
       h("p", { class: "hint", text: "Scout reads your brief, the records and your CV to answer, so it works once you sign in." }),
-      h("p", {}, h("a", { class: "btn primary", href: ctx.signIn, "data-key": "scout-signin", text: "Sign in to ask Scout" })))));
+      h("p", {}, h("a", { class: "btn primary", href: ctx.signIn, "data-key": "scout-signin", text: "Sign in to ask Scout" })),
+      // A guest may read a saved example answer, when the deploy has one (Q7).
+      h("p", { class: "example-slot" }))));
+    const slot = panel.querySelector(".example-slot");
+    if (ctx.api.exampleAvailable) {
+      ctx.api.exampleAvailable("researcher").then((ok) => {
+        if (ok && slot && slot.isConnected) slot.append(h("a", { class: "quiet-link", "data-key": "example-scout", href: "example.html?tab=scout", text: "Or see an example answer" }));
+      }, () => {});
+    }
     return;
   }
   if (!ctx.done) {
@@ -292,6 +300,10 @@ export function pointsBlock(p, ctx, { short = false } = {}) {
   const cite = (id) => pointCite(id, p, ctx, short);
   const text = pointsText(p);
   const flagged = new Set(p.unsupported || []);
+  // A flagged sentence that is already marked on its own line is said once; the rest are listed.
+  const shown = new Set([...(p.status === "withheld" ? [] : p.points.flatMap((pt) => [pt.asks, pt.you])), ...(p.missing || [])]);
+  const loose = [...flagged].filter((u) => !shown.has(u));
+  const inlineFlagged = flagged.size > loose.length;
   return h("details", { class: "scout-points", open: true },
     h("summary", {}, h("span", { text: short ? "Cover-letter points" : `Points for your cover letter: ${title}` }),
       p.for.sample ? h("span", { class: "sample-badge", text: "Sample data" }) : null),
@@ -305,13 +317,14 @@ export function pointsBlock(p, ctx, { short = false } = {}) {
       h("p", { class: `point-line${flagged.has(pt.you) ? " flagged" : ""}` }, h("b", { text: "You have" }),
         h("span", { text: ` ${pt.you} ` }), ...pt.you_ids.map(cite))))),
     p.status !== "withheld" && p.missing && p.missing.length ? h("div", { class: "points-missing" },
-      h("p", { class: "mini", text: "Still missing" }),
+      h("p", { class: "mini", text: "Still needed" }),
       h("p", { class: "hint", text: "What the record asks for that nothing you added shows." }),
       h("ul", {}, ...p.missing.map((m) => h("li", { class: flagged.has(m) ? "flagged" : null }, h("span", { text: `${m} ` }), cite(p.for.id))))) : null,
     // The same flag the fit explanations use: the grounding model could not match the sentence.
     flagged.size ? h("div", { class: "notice warn" }, icon("warn"),
-      h("div", {}, h("p", { text: "This statement could not be matched to its source:" }),
-        h("ul", {}, [...flagged].map((u) => h("li", { text: u }))))) : null,
+      h("div", {}, inlineFlagged ? h("p", { text: "Marked lines could not be matched to their source." }) : null,
+        loose.length ? h("p", { text: inlineFlagged ? "These statements could not be matched either:" : "This statement could not be matched to its source:" }) : null,
+        loose.length ? h("ul", {}, loose.map((u) => h("li", { text: u }))) : null)) : null,
     p.status === "withheld" ? null : h("div", { class: "scout-actions" },
       h("button", { class: "btn points-copy", type: "button", onclick: async () => {
         try { await navigator.clipboard.writeText(text); ctx.announce("The points are copied."); }
@@ -323,7 +336,7 @@ export function pointsBlock(p, ctx, { short = false } = {}) {
 // The points as plain text, for the clipboard.
 function pointsText(p) {
   const lines = p.points.map((pt, i) => `${i + 1}. The record asks: ${pt.asks}\n   You have: ${pt.you}`);
-  for (const m of p.missing || []) lines.push(`Still missing: ${m}`);
+  for (const m of p.missing || []) lines.push(`Still needed: ${m}`);
   const used = [...new Set(p.points.flatMap((pt) => [...pt.asks_ids, ...pt.you_ids]))];
   lines.push(`Each point cites: ${used.map((id) => `${id}: ${(p.sources || {})[id] || id}`).join("; ")}`);
   return `Points for your cover letter: ${p.for.title || "Untitled opportunity"}${p.for.sample ? " (sample data)" : ""}\n\n${lines.join("\n")}`;
@@ -355,6 +368,7 @@ function pointCite(id, p, ctx, onCard = false) {
   h("span", { text: short }));
 }
 
+export { answer as scoutAnswer };  // the walk renders an answer on its own, with a SYNTHETIC message
 function answer(x, ctx, thinking) {
   // Stop ends the question between steps; the steps already done stay (S28).
   const now = x.cards.find((c) => c.status === "proposed");
@@ -387,7 +401,7 @@ function answer(x, ctx, thinking) {
       return h("div", { class: "notice warn" }, icon("warn"), h("div", {},
         h("p", { text: x.answer }),
         read.length ? h("p", { class: "scout-records" }, h("span", { class: "hint", text: "Records Scout read: " }),
-          ...read.map((id) => citeBtn(id, ctx))) : null));
+          ...read.map((id) => citeBtn(id, ctx, true))) : null));
     }
     const marked = markUnsupported(x.answer, m.unsupported || []);
     const n = (m.unsupported || []).length;
@@ -396,6 +410,9 @@ function answer(x, ctx, thinking) {
         : "Written by a model; checked against the records it cites.";
     const plural = (k) => `${k} sentence${k === 1 ? "" : "s"}`;
     return h("div", { class: "scout-answer-wrap" },
+      n && !m.flagged ? h("div", { class: "notice warn" }, icon("warn"), h("div", {},
+        h("p", { text: `Scout could not confirm ${plural(n)} against the cited records. ${noticeWhere(n, marked.missed.length)} Open the record before relying on them.` }),
+        marked.missed.length ? h("ul", {}, marked.missed.map((u) => h("li", { text: u.replace(/\*\*/g, "") }))) : null)) : null,
       m.flagged ? h("p", { class: "notice warn" }, icon("warn"), h("span", {
         text: `This answer did not pass the citation check twice. ${plural(m.withheld || 0)} ${m.withheld === 1 ? "was" : "were"} removed. What remains is shown, but check each claim against its record.` })) : null,
       h("div", { class: "scout-answer" },
@@ -404,10 +421,7 @@ function answer(x, ctx, thinking) {
         m.general ? h("div", { class: "scout-general" },
           h("p", { class: "provenance" }, h("b", { text: "General advice, not from records" }), h("span", { class: "tag", text: "Uncited" })),
           ...withCites(m.general, ctx),
-          h("p", { class: "hint", text: "General guidance from the model. It cites no record and states no date or amount. Check details with the sponsor." })) : null),
-      n && !m.flagged ? h("div", { class: "notice warn" }, icon("warn"), h("div", {},
-        h("p", { text: `Scout could not confirm ${plural(n)} against the cited records. ${noticeWhere(n, marked.missed.length)} Open the record before relying on them.` }),
-        marked.missed.length ? h("ul", {}, marked.missed.map((u) => h("li", { text: u.replace(/\*\*/g, "") }))) : null)) : null);
+          h("p", { class: "hint", text: "General guidance from the model. It cites no record and states no date or amount. Check details with the sponsor." })) : null));
   }
   // A wholly withheld answer always carries its text (perch/scout/turn.py), and v2 has no
   // per-conversation limit, so the old empty-answer and limit notices are gone (S45 R1).
@@ -519,9 +533,15 @@ function inline(text, ctx) {
 
 // A citation reads as the brief shows the record: an opportunity number, an option's
 // name with "(sample)" for a SYNTHETIC record, or an industry lead's number (U8).
-function citeBtn(id, ctx) {
+// `byTitle`: a chip in a list of records reads by the record's title, cut to 32 characters, never as
+// the word "Evidence" alone (V17).
+function citeBtn(id, ctx, byTitle = false) {
   const known = ctx.label ? ctx.label(id) : null;
-  const text = known ? known.text : leadLabel(id) || id.replace(/^grants_gov:/, "");
+  let text = known ? known.text : leadLabel(id) || id.replace(/^grants_gov:/, "");
+  if (byTitle && known && (known.full || known.name)) {
+    const t = String(known.full || known.name).replace(/,\s*sample data$/, "");
+    text = t.length > 32 ? `${t.slice(0, 32).replace(/\s+\S*$/, "") || t.slice(0, 32)}…` : t;
+  }
   return h("button", { class: `cite${known && known.sample ? " sample" : ""}`,
     "aria-label": `Evidence: ${known ? known.full || known.text : id}`, onclick: (e) => ctx.openEvidence(id, e.currentTarget) },
   h("span", { text }));
