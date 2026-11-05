@@ -533,11 +533,10 @@ These are written for the README's Known limits. Each sentence is true of the co
 - Guests cannot paste a CV; the guest student path uses an invented sample student.
 - Each guest session has a small daily model budget, and when it is used the written reasons pause while the list, dates, amounts and rule results still show.
 - Perch folds only NIH activity codes P30, P01, P50 and U54 as centre and programme grants; other institution-level grants are listed with the single-lab grants.
-- Scout and the note to the office do not use the centre-grant label, so Scout may still call a centre grant a strong match.
+- The note to an office does not use the centre-grant label, and Scout reads the label but its wording is not tuned to it.
 - The Match number measures how closely a call's text matches the papers; it is not the odds of funding, and a card's written reason can be weaker than its Match band.
-- Several cards on one brief can cite the same papers when the researcher has few recent papers.
+- Several cards on one brief can cite the same papers.
 - Perch writes no reason for a Temple listing that gives only the award's name; the card points to the award's page instead.
-- A student brief can open on listings that say little, because the order does not consider how much a listing states.
 - The citation check can flag a correct sentence that joins two facts from one listing, and a flagged sentence is shown in a fold with a note.
 - Some cover-letter points can still be marked as not matched to their source.
 - Scout removes a sentence it cannot check, such as a claim that a record lacks a field, and marks the answer when it does.
@@ -550,7 +549,4 @@ These are written for the README's Known limits. Each sentence is true of the co
 - Run again sits in the brief's header and starts a new brief without asking first.
 - Only Grants.gov listings are refreshed on the deploy; other sources are as of their last fetch.
 
-### Depends on Tier B
-
-- **Drop this bullet if H6 shipped:** "When two copies of one Temple award are merged, an amount stated only on the dropped copy is not shown."
-- **Drop this bullet if H13 shipped:** "Scout removes some headings, such as a comparison heading, and marks the answer when it does." If H13 did not ship, keep it and leave the Scout bullet above unchanged.
+(Both Tier B items, H6 and H13, shipped in S51, so their bullets were dropped by the orchestrator after the re-check. The thin-listing order was fixed after the re-check too.)

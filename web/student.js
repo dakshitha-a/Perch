@@ -345,7 +345,10 @@ const deadlineOf = (l) => { const r = l.record || {}; return (r.kind === "schola
 function sortLeads(leads) {
   const out = [...leads];
   if (SORT.by === "closing") return out.sort((a, b) => deadlineOf(a).localeCompare(deadlineOf(b)) || a.rank - b.rank);
-  return out.sort((a, b) => (b.match_score ?? -1) - (a.match_score ?? -1) || a.rank - b.rank);
+  // S51 re-check D6: a listing that gives only an award's name says nothing a student can act on,
+  // so in the default order it follows the listings that do (its Match is unchanged).
+  const thin = (l) => ((l.notes || []).some((n) => String(n).includes("gives only the award")) ? 1 : 0);
+  return out.sort((a, b) => thin(a) - thin(b) || (b.match_score ?? -1) - (a.match_score ?? -1) || a.rank - b.rank);
 }
 
 function sortPick(redraw) {
@@ -634,7 +637,11 @@ export function studentCompare(panel, ctx) {
             h("span", { class: "hint", text: r === "F" ? "For the kept fellowships" : "For the kept sample scholarships" }))))),
       // Code writes the note at once, so it shows without a Draft press (review W8).
       // A note to an office needs an account, so a guest gets a link.
-      ctx.guest ? h("p", {}, h("a", { class: "btn primary", href: ctx.signIn, "data-key": "note-signin", text: "Sign in to draft a note to the office" }))
+      ctx.guest && ctx.accountsOpen === false
+        // S51 re-check D5: with accounts closed, a sign-in button leads nowhere; show the example.
+        ? h("p", {}, h("span", { class: "hint", text: "A note to an office needs an account, and accounts are not open yet. " }),
+          h("a", { class: "quiet-link", "data-key": "note-example", href: "example.html?side=student&tab=compare", text: "See an example" }))
+        : ctx.guest ? h("p", {}, h("a", { class: "btn primary", href: ctx.signIn, "data-key": "note-signin", text: "Sign in to draft a note to the office" }))
         : h("p", { class: "hint", text: "Code writes this note; no model. Perch never sends it." }),
       ctx.guest ? null
       : got.note ? note(route, got.note, announce)

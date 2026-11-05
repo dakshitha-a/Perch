@@ -165,7 +165,8 @@ export function coverListLine(ctx) {
   }
   if (ctx && ctx.guest && ctx.api && ctx.api.mode === "live" && ctx.accountsOpen === false) {
     return h("p", { class: "list-note", "data-cover-line": "" }, icon("pen"),
-      h("span", { text: "Cover-letter points need an account, and accounts are not open yet." }));
+      h("span", {}, h("span", { text: "Cover-letter points need an account, and accounts are not open yet. " }),
+        h("a", { class: "quiet-link", "data-key": "cover-example", href: "example.html", text: "See an example brief" })));
   }
   if (ctx && ctx.guest && ctx.api && ctx.api.mode === "live") {
     return h("p", { class: "list-note", "data-cover-line": "" }, icon("pen"),

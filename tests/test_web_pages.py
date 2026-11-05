@@ -115,3 +115,16 @@ console.log(JSON.stringify([bodyRows(""), bodyRows("a\\nb"), bodyRows(long),
                        capture_output=True, text=True, timeout=30)
     assert r.returncode == 0, r.stderr
     assert re.search(r"\[8,8,18,8\]", r.stdout), r.stdout
+
+
+def test_closed_accounts_never_offer_a_dead_sign_in():
+    """S51 re-check D5: with accounts closed, the student note wall and the cover line point to
+    the example brief; D6: name-only student listings follow the others in the default order."""
+    from pathlib import Path
+
+    web = Path(__file__).resolve().parents[1] / "web"
+    student = (web / "student.js").read_text(encoding="utf-8")
+    cover = (web / "cover.js").read_text(encoding="utf-8")
+    assert 'ctx.guest && ctx.accountsOpen === false' in student and '"note-example"' in student
+    assert '"cover-example"' in cover
+    assert "gives only the award" in student  # the thin-listing sort key
