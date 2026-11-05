@@ -356,8 +356,11 @@ def test_bench_hoists_the_design_change_section():
 def test_ux_paths_cover_the_v1_reviews_and_skip_backend_ones(tmp_path):
     d = tmp_path / "docs/design"
     d.mkdir(parents=True)
-    for n in ("S50_DESIGN.md", "S51_PRODUCT_REVIEW.md", "S50_BACKEND_REVIEW.md", "WORKFLOW_REVIEW.md"):
+    names = ("S50_DESIGN.md", "S51_PRODUCT_REVIEW.md", "S50_BACKEND_REVIEW.md",
+             "WORKFLOW_REVIEW.md")
+    for n in names:
         (d / n).write_text("# x\n")
     got = rt.ux_paths(tmp_path)
     assert "docs/design/S50_DESIGN.md" in got and "docs/design/S51_PRODUCT_REVIEW.md" in got
-    assert "docs/design/WORKFLOW_REVIEW.md" in got and "docs/design/S50_BACKEND_REVIEW.md" not in got
+    assert "docs/design/WORKFLOW_REVIEW.md" in got
+    assert "docs/design/S50_BACKEND_REVIEW.md" not in got
