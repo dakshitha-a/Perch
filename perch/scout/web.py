@@ -20,6 +20,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 
+from perch import redisx
 from perch.jobs import TERMINAL, JobState
 from perch.llm import Provider, spec_for_role
 from perch.llm.contacts import blank_contacts
@@ -159,7 +160,29 @@ def audience_of(brief: Brief) -> str:
     return "student" if brief.options.get("student") else "researcher"
 
 
+def write_limit(sv: UserServices, uid: UUID) -> None:
+    """The account's api_write window (section 4.3), the bucket the account routes share:
+    applied before a Scout session row is created and before a button's rows (S48 S5)."""
+    ok, retry = redisx.rate_limit(sv.redis, "api_write", str(uid))
+    if not ok:
+        raise HTTPException(429, {"error": "rate_limited"}, headers={"Retry-After": str(retry)})
+
+
+DISTRESS_WRITES_PER_HOUR = 12  # distress replies written per account per hour (S48 S5)
+
+
+def distress_write_ok(sv: UserServices, uid: UUID) -> bool:
+    """May the distress path write one more pair of rows this hour? It runs before every other
+    limit, so a person in crisis always gets the care text; this cap and the 60 second quiet
+    period keep it from filling the session with rows. When it says no, nothing is written and
+    the care text already in the session stays the last reply."""
+    table = {**redisx.rate_table(), "distress_write": (DISTRESS_WRITES_PER_HOUR, 3600)}
+    ok, _ = redisx.rate_limit(sv.redis, "distress_write", str(uid), table=table)
+    return ok
+
+
 def start_session(sv: UserServices, uid: UUID, audience: str, brief_id: str | None) -> UUID:
+    write_limit(sv, uid)  # before the row exists (S48 S5)
     return session.create(sv.ud, uid, audience, brief_id)  # type: ignore[arg-type]
 
 
@@ -177,6 +200,7 @@ def ask(sv: UserServices, service: BriefService, uid: UUID, sid: UUID, *,
     if intent:
         if intent not in btn.INTENTS:
             raise HTTPException(422, "Unknown button.")
+        write_limit(sv, uid)  # a button writes two rows with no job behind them (S48 S5)
         data = account_data(sv.ud, uid, audience, service, doc.brief_id)
         draft = handoff_for(service, doc.brief_id, data) if doc.brief_id else None
         deps = TurnDeps(data=data, provider_for=_no_model, meter=Meter(), handoff=draft)
@@ -191,8 +215,8 @@ def ask(sv: UserServices, service: BriefService, uid: UUID, sid: UUID, *,
     if texts.DISTRESS_RE.search(q):
         # Free and first: before the rate limit, the budget and any model. The reply is code-
         # written text with Temple's own services, so a user out of budget still gets it (S45 S1).
-        if recent_distress(doc.messages):
-            return  # the care text is already the last reply; no new rows (S45 S1)
+        if recent_distress(doc.messages) or not distress_write_ok(sv, uid):
+            return  # the care text is already there; no new rows (S45 S1, S48 S5)
         um = user_message(question=q)
         reply = message("assistant", "distress", texts.distress_message(audience),
                         gate="keyword", reply_to=um["id"])
@@ -209,7 +233,7 @@ def ask(sv: UserServices, service: BriefService, uid: UUID, sid: UUID, *,
         # Distress screening is never budget-gated: the gate runs once, unmetered and capped
         # per day, so a crisis message the keyword fast path missed still gets the care text.
         if free_distress(sv, service, uid, q):
-            if not recent_distress(doc.messages):
+            if not recent_distress(doc.messages) and distress_write_ok(sv, uid):
                 um = user_message(question=q)
                 session.append(sv.ud, uid, sid, [um, message(
                     "assistant", "distress", texts.distress_message(audience),

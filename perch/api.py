@@ -52,6 +52,7 @@ from typing import Literal
 from uuid import UUID
 
 import httpx
+import redis as redis_lib
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -64,6 +65,7 @@ from pydantic import Field
 from perch import awards as aw
 from perch import compare as cmp
 from perch import export as ex
+from perch import redisx
 from perch.auth.wiring import install_auth, readiness
 from perch.config import env
 from perch.jobs import ClosureRunner
@@ -577,8 +579,26 @@ def create_app(service: BriefService, runner: ClosureRunner,
     ID_HINT = ("An OpenAlex author ID is an A followed by at least eight digits. Check it, or "
                "search by name or ORCID iD.")
 
+    def read_limited(request: Request) -> None:
+        """The per-address api_read window (section 4.3), as on the browse routes. This route
+        spends the deployment's OpenAlex key, so it is limited before any lookup (S48 S4)."""
+        store = getattr(request.app.state, "sessions", None)
+        if store is None:
+            return
+        try:
+            ok, retry = redisx.rate_limit(store.r, "api_read",
+                                          redisx.hash_subject(redisx.client_addr(request)))
+        except redis_lib.RedisError as e:
+            logging.getLogger("perch").warning("read rate limit skipped err=%s",
+                                               type(e).__name__)
+            return
+        if not ok:
+            raise HTTPException(429, {"error": "rate_limited"},
+                                headers={"Retry-After": str(retry)})
+
     @app.get("/authors/resolve")
-    def resolve(q: str) -> dict:
+    def resolve(q: str, request: Request) -> dict:
+        read_limited(request)
         if not q.strip():  # F25: an empty search found three real authors
             raise HTTPException(422, EMPTY_FIND)
         if (oid := oa.parse_orcid(q)) and not oa.orcid_ok(oid):  # Q18
