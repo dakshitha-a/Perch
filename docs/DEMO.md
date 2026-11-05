@@ -63,7 +63,9 @@ tailscale funnel --bg --https=443 http://127.0.0.1:8090
 ```
 
 - **Guests are fine:** a guest needs no sign-in, so a guest session works on the new port.
-- **Sign-in may break:** the app's public address setting, `PERCH_PUBLIC_URL`, and the sign-in client's allowed return addresses name the port. Whether the presenter can still sign in after the move, without changing them, is UNVERIFIED. Sign in on the new address before the demo and test it.
+- **Sign-in after the move:** the sign-in client already accepts the return address on port 443 (added in S52). Change one setting so the app sends people back there: in the deploy's env file, set `PERCH_PUBLIC_URL` to the same address without `:8443`, then run `systemctl --user restart perch-v1-web`. To undo, put `:8443` back and restart again.
+- **Sign-in uses port 10000:** the sign-in page itself is served on port 10000. If the venue blocks that port too, sign in as `demo-presenter` on mobile data, or before you arrive, and keep the tab open. An idle session ends after 30 minutes, so sign in shortly before you present.
+- **Check it:** after any move, sign in once on the new address and open a brief before the demo starts.
 - **The presenter can use a hotspot:** only the presenter needs the sign-in port, which is 10000.
 - **Never remove the Keycloak container:** do not run `docker rm` on it. Its users live inside it.
 - **Question 52** in `bridge/QUESTIONS.md` records why the move may be needed.
