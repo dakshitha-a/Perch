@@ -8,7 +8,7 @@ This is the run sheet for the five-minute demo on Friday 6 November 2026. The cl
 
 Do these on the morning of the demo, in this order.
 
-- **Check the spend ledger.** The deploy's own ledger should have at least 5 USD left under its cap.
+- **Check the spend ledger.** The deploy's own ledger should have at least 5 USD left under its cap. The cap is 30 USD since 5 Nov (S55); about 5.16 USD was spent before the demo.
 - **Clear the guest limits.** Source the deploy's env file, then run `scripts/demo_reset.py` once to count and once with `--apply` to delete. It clears the guest rate windows and the guest model budgets for today in the deploy's Redis. It does not touch sessions, signed-in budgets or the spend ledger.
 - **Test from a phone on the venue network.** Open the deploy's address on the venue Wi-Fi and again on mobile data. The app is on port 443 and sign-in is on port 10000. Some venue networks allow only port 443, so the sign-in page may not load there; see the port section below.
 - **Sign in once as `demo-presenter`.** This is a SYNTHETIC account. Accept the consent, and set the role. The password is in the operator's private env file, never in this repository.
