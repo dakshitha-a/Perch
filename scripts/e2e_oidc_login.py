@@ -243,6 +243,11 @@ def ensure_user() -> None:
         if reset.status_code not in (200, 204):
             raise RuntimeError(f"Keycloak password reset failed (http {reset.status_code})")
         PASSWORD = fresh
+        # S52: the user is disabled between test runs on the shared realm; a run enables it.
+        if not found.json()[0].get("enabled", True):
+            on = kc.put(f"/admin/realms/perch/users/{uid}", headers=hdr, json={"enabled": True})
+            if on.status_code not in (200, 204):
+                raise RuntimeError(f"Keycloak user enable failed (http {on.status_code})")
     _ENSURED.append(True)
 
 
