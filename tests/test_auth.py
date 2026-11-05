@@ -395,7 +395,8 @@ def test_logout_needs_csrf_destroys_and_returns_the_idp_url(r) -> None:
 
 
 def test_session_route_when_signed_out(r) -> None:
-    assert TestClient(make_app(r)).get("/auth/session").json() == {"signed_in": False}
+    assert TestClient(make_app(r)).get("/auth/session").json() == {
+        "signed_in": False, "accounts_open": True}  # S51 D4
 
 
 def test_readiness_reports_parts(r) -> None:
