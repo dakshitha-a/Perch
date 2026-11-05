@@ -486,24 +486,47 @@ def _filled(s: Scholarship) -> int:
     return len(s.model_dump(exclude_defaults=True))
 
 
+# G2 (S50): copies of one award carry names that differ only in a plural, "Program",
+# "Scholarship(s)" or a bracket ("Diamond Research Scholars" and "Diamond Research Scholars
+# Program"; "Rhodes" and "Rhodes Scholarship"). The key drops those words.
+KEY_WORDS = re.compile(r"\b(?:programs?|scholarships?|scholars?|awards?)\b")
+# Names whose keys match but which may be different awards, reviewed by hand on 2026-11-05
+# from the deploy store's Temple-page records: a Rome-campus programme scholarship and a
+# degree-level one; Temple's need-based grant and the tuition-remission page's entry.
+DISTINCT_AWARDS = frozenset({"bachelor s degree", "temple university grant"})
+
+
+def award_key(name: str) -> str:
+    k = KEY_WORDS.sub(" ", norm_name(name))
+    return " ".join(re.sub(r"s$", "", w) if len(w) > 3 else w for w in k.split())
+
+
+def _keep(group: list[Scholarship]) -> Scholarship:
+    """The copy a merged group shows: the fellowships office's when it lists the award (its
+    level and class year are the reviewed ones, G2), else the copy with the most fields, and
+    on a tie the broader audience, so a narrow page tag never rules a student out alone."""
+    office = [s for s in group if s.source == "temple_sdfa"]
+    return max(office or group, key=lambda s: (_filled(s), s.audience_level in (None, "mixed"),
+                                               s.id))
+
+
 def student_pool(records: list[Scholarship]) -> tuple[list[Scholarship], dict[str, list[str]]]:
     """The records a student brief may rank, and {kept id: other pages listing it}.
-    Leaves out staff and faculty awards (M8). An award listed both on a Temple page and by
-    the fellowships office is one award: the copy with more fields is kept and the other's
-    page is listed under it (S7). A name found on one list only is left to
-    perch/temple_dedupe.py, which keeps same-list copies apart when their fields differ."""
+    Leaves out staff and faculty awards (M8). Copies of one award, on Temple pages or by the
+    fellowships office, under names that share `award_key`, are one award (S7, G2): one copy
+    is kept (`_keep`) and the others' pages are listed under it. DISTINCT_AWARDS stay apart."""
     pool = [s for s in records if audience_of(s) not in NOT_STUDENTS
             and norm_name(s.name) not in STAFF_AWARDS]
     by_name: dict[str, list[Scholarship]] = {}
     for s in pool:
-        if s.source in TEMPLE_SOURCES:
-            by_name.setdefault(norm_name(s.name), []).append(s)
+        if s.source in TEMPLE_SOURCES and (k := award_key(s.name)) not in DISTINCT_AWARDS:
+            by_name.setdefault(k, []).append(s)
     drop: set[str] = set()
     also: dict[str, list[str]] = {}
     for group in by_name.values():
-        if len({s.source for s in group}) < 2:
+        if len(group) < 2:
             continue
-        keep = max(group, key=lambda s: (_filled(s), s.source == "temple_sdfa"))
+        keep = _keep(group)
         others = [s for s in group if s.id != keep.id]
         drop |= {s.id for s in others}
         also[keep.id] = [s.source_url for s in others]

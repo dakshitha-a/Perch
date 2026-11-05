@@ -74,3 +74,34 @@ def test_samples_keep_their_own_rules():
                     source_url="https://example.edu/SYNTHETIC/sample", name="Graduate Example",
                     canary="PERCH-CANARY-S50-TEST", eligibility=ScholarshipEligibility())
     assert check(s, UG, AS_OF).verdict == "eligible"
+
+
+# --- G2: one award listed on several pages is one card ---
+
+def test_looser_name_key_merges_copies_across_and_within_sources():
+    office = sch("Rhodes", source="temple_sdfa", audience=None, sid="rhodes",
+                 level_of_study=["bachelor's"],
+                 eligibility=ScholarshipEligibility(class_year=[4]))
+    page = sch("Rhodes Scholarships", audience="graduate", sid="rhodes-scholarships-1")
+    a = sch("Diamond Research Scholars", audience="undergraduate", sid="drs-1")
+    b = sch("Diamond Research Scholars Program", audience="undergraduate", sid="drs-2")
+    pool, also = student_pool([office, page, a, b])
+    ids = [s.id for s in pool]
+    assert ids.count("temple_sdfa:rhodes") == 1 and "temple_pages:rhodes-scholarships-1" not in ids
+    assert also["temple_sdfa:rhodes"] == [page.source_url]  # the office copy keeps its level
+    assert len([i for i in ids if "drs" in i]) == 1
+    v = check(next(s for s in pool if s.id == "temple_sdfa:rhodes"), UG, AS_OF)
+    assert v.verdict == "not eligible" and v.reason == "class_year"  # one verdict, not two
+
+
+def test_reviewed_look_alike_names_stay_apart():
+    a = sch("Temple University Grant", audience="undergraduate", sid="tug-1")
+    b = sch("Temple University Grant (TUG)", audience="mixed", sid="tug-2")
+    pool, _ = student_pool([a, b])
+    assert len(pool) == 2
+
+
+def test_different_names_are_not_merged():
+    a = sch("SYNTHETIC Peer Teachers", audience="undergraduate", sid="pt")
+    b = sch("SYNTHETIC Peer Mentors", audience="undergraduate", sid="pm")
+    assert len(student_pool([a, b])[0]) == 2
