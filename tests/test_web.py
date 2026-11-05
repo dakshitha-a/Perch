@@ -619,8 +619,9 @@ def test_s51_researcher_card_and_list() -> None:
     # centre and programme grants fold under the single-lab cards; the weak fold reads "Show N more"
     assert 'l.group === "centre"' in app and "Centre and programme grants (${centre.length})" in app
     assert "Show ${folded.length} more" in app and "Weaker matches (" not in app
-    # the verdict sits on the card's face, labelled and tagged; the old inference box is gone
-    assert '"fit-why"' in app and '"How it relates: " : "Why it fits: "' in app
+    # the verdict sits on the card's face, tagged Inference; only the disclosure is labelled
+    assert '"fit-why"' in app and '"How it relates: " : "Why it fits: "' not in app
+    assert 'weakBand ? "How it relates" : "Why it fits"' in app
     assert "function inferenceBox" not in app
     assert "own && l.id === S.firstShown" in app
     # a sentence not matched to a source is a quiet fold, not an amber notice

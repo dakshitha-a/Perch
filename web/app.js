@@ -1799,7 +1799,7 @@ function renderRoutes(panel) {
     if (!cd) {
       cd = h("details", { class: "weak-fold centre-fold", open: S.centreOpen,
         ontoggle: (e) => { S.centreOpen = e.target.open; } }, h("summary", { "data-key": "centre-fold" }),
-      h("p", { class: "hint", text: "Centres and programmes of several projects apply through the institution. Each card says why it is here." }),
+      h("p", { class: "hint", text: "Their Match numbers are not lowered." }),
       h("ol", { class: "leads" }));
       fill(cbox, cd);
     }
@@ -2167,9 +2167,9 @@ function explanationBlock(l, parsed, o) {
   const weakBand = (f.fitBand(l.match_score) || {}).key === "weak";
   if (parsed.raw) {
     return h("div", { class: "explain" },
-      h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.raw, ownIds(o))), fitWhy(l, o, weakBand));
+      h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.raw, ownIds(o))), fitWhy(l, o));
   }
-  const inference = fitWhy(l, o, weakBand);
+  const inference = fitWhy(l, o);
   // With the researcher's CV or current research in the brief, the first card shown starts
   // open (S51 W14; it was every card since S27). The verdict is on every card's face now.
   const own = Object.values(papers).some(isOwnDoc);
@@ -2199,11 +2199,12 @@ function explanationBlock(l, parsed, o) {
     inference || h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.opportunity, ownIds(o))), why);
 }
 
-// The fit verdict on the card's face (S51 W13): the model's inference, labelled as the
-// disclosure's summary is, and tagged Inference. Chips for the card's own record are left out.
-function fitWhy(l, o, weakBand) {
+// The fit verdict on the card's face (S51 W13): the model's inference as one sentence, tagged
+// Inference. The disclosure under it carries the "Why it fits" label, so the face does not repeat
+// it (S51 QA). Chips for the card's own record are left out.
+function fitWhy(l, o) {
   if (!l.inference) return null;
-  return h("p", { class: "fit-why" }, h("b", { text: weakBand ? "How it relates: " : "Why it fits: " }),
+  return h("p", { class: "fit-why" },
     renderSegs(f.segments(f.secondPerson(l.inference), new Set(l.cited_ids), ownIds(o)), ownIds(o)),
     h("span", { class: "tag model", text: "Inference" }));
 }

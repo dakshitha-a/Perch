@@ -131,7 +131,7 @@ function anatomy() {
     ["The title", " comes first, with the Match pill beside it. The title opens the full record."],
     ["Match", " is how closely the listing’s text matches the papers, from 0 to 100: strong is 80 or more, good 60 to 79, partial 40 to 59, weak below 40. It ranks the leads and the text says why; it is not the odds of funding."],
     ["Closes and Amount", " sit in two columns and are always shown. Not stated means the record leaves it blank. The page says means the date is in the page’s words, not a date field."],
-    ["Model text", " marks a model’s sentence, checked against the records it cites. Why it fits, or How it relates for a weaker match, is the model’s reading of the fit, shown under the dates and marked Inference. Open the card for what the call funds and the papers it cites. When a sentence fails that check twice, the card says so in one line and keeps only the fields copied from the record."],
+    ["Model text", " marks a model’s sentence, checked against the records it cites. The line under the dates marked Inference is the model’s reading of the fit. Open Why it fits, or How it relates for a weaker match, for what the call funds and the papers it cites. When a sentence fails that check twice, the card says so in one line and keeps only the fields copied from the record."],
     ["The bottom row.", " Keep, Dismiss and Cover-letter points sit in the card’s bottom row. Keep what is worth a closer look and dismiss the rest. A dismissed lead can be restored."],
   ];
   return h("div", { class: "anatomy" }, art,

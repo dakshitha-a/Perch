@@ -868,6 +868,9 @@ table.compare { border-collapse: collapse; width: 100%; min-width: 640px; font-s
 textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 .model-note { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; margin: 0; }
 .handoff .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* A guest's hand-off (S51 QA): the hint on its own line, then the example and Sign in side by side. */
+.guest-draft { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; flex: 1 1 100%; }
+.guest-draft > .hint { flex-basis: 100%; margin: 0; }
 .scout-draft { margin-top: 8px; }
 .scout-draft summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .draft-text { white-space: pre-wrap; word-break: break-word; font: 14px/1.5 var(--sans); background: var(--leaf); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; margin: 8px 0; max-height: 360px; overflow: auto; }
@@ -1721,7 +1724,6 @@ details.threads-how > summary { min-height: 44px; font-size: var(--fs-14); font-
 }
 /* The fit verdict on the card's face (W13): the model's reading, labelled and tagged. */
 .fit-why { font-size: 15.5px; line-height: 1.55; color: var(--ink); margin: 2px 0 0; padding-left: 12px; border-left: 3px dashed var(--model); }
-.fit-why > b { font-weight: 650; }
 .fit-why > .tag.model { height: 20px; min-height: 20px; margin-left: 6px; vertical-align: 1px; font-size: var(--fs-12, 12px); }
 .why > .what:first-of-type { margin: 4px 0 8px; }
 /* Centre and programme grants, in their own fold under the single-lab cards (H7). */

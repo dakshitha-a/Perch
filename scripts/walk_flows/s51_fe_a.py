@@ -151,7 +151,7 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
         face = await page.evaluate("""() => { const c = document.querySelector('#panel ol.leads > li.card.lead'); if (!c) return null;
           const f = c.querySelector('.fit-why'); const d = c.querySelector('details.why');
           return [Boolean(f && f.getBoundingClientRect().height > 0), d ? d.open : null, f ? f.textContent.slice(0, 60) : null]; }""") if shown else None
-        w.check(f"s51a_fit_on_face_{tag}", bool(face) and face[0] and face[1] is False and face[2].startswith("Why it fits:"),
+        w.check(f"s51a_fit_on_face_{tag}", bool(face) and face[0] and face[1] is False and not face[2].startswith(("Why it fits", "How it relates")) and len(face[2]) > 20,
                 f"fit line visible, details open, text: {face}")
         await w.snap(page, tag, "s51a-fit-face", full=False)
         top = await page.evaluate("() => [...document.querySelectorAll('#panel > ol.leads > li.card.lead')].map((c) => c.textContent.includes('SYNTHETIC Centre core grant'))")
