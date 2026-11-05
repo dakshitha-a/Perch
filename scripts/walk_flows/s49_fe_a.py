@@ -199,9 +199,11 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
                 return len(vals) == 4 and max(vals) - min(vals) <= 1
             w.check("s49_left_edges_1280", even(e1) and even(e2), f"awards {e1}; brief {e2}")
             top = await page.evaluate("() => { const c = document.querySelector('#panel li.card.lead'); return c ? Math.round(c.getBoundingClientRect().top + scrollY) : null; }")
-            # S51 (D16): the budget line, when a guest's budget is used, sits above the list by design.
-            extra = await page.evaluate("() => { const n = document.querySelector('#list-notices [data-budget]'); return n ? Math.round(n.getBoundingClientRect().height + 8) : 0; }")
-            w.check("s49_first_lead_top", top is not None and top <= 600 + extra, f"first lead top {top} px (target 600, round 1; plus {extra} px for the S51 budget line)")
+            # S51 (D16, W22): the budget line, when a guest's budget is used, and the Match hint sit
+            # above the list by design; the target allows for their own height.
+            extra = await page.evaluate("""() => [document.querySelector('#list-notices [data-budget]'), document.querySelector('#panel .match-hint')]
+              .filter(Boolean).reduce((n, e) => n + Math.round(e.getBoundingClientRect().height + 8), 0)""")
+            w.check("s49_first_lead_top", top is not None and top <= 600 + extra, f"first lead top {top} px (target 600, round 1; plus {extra} px for the S51 budget line and Match hint)")
             c = await page.evaluate(CENTRES)
             w.check("s49_sort_on_count_row", c["sort"] is not None and c["title"] is not None and abs(c["sort"] - c["title"]) <= 12,
                     f"researcher: sort centre {c['sort']}, title centre {c['title']} (the student half is BE-S S3)")

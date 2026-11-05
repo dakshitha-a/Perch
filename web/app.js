@@ -986,11 +986,13 @@ function renderTabs() {
     t.tabIndex = on ? 0 : -1;
   }
   const keptLeads = leadsOf().filter((l) => l.status === "kept"), kept = keptLeads.length;
+  // S51 (W23): at 600 px and wider the tab is named as the shortlist's button names it,
+  // "Compare and draft (2)"; the phone keeps "Compare".
   const k = $("#tab-compare .tab-label");
-  if (k) k.textContent = kept ? `Compare (${kept})` : "Compare";
+  if (k) fill(k, "Compare", h("span", { class: "wide-600", text: " and draft" }), kept ? ` (${kept})` : "");
   const kt = $("#tab-compare");
   // A student's count keeps public and sample apart (U10).
-  if (kt) kt.setAttribute("aria-label", !kept ? "Compare" : isStudent(S.brief) ? `Compare, ${keptWords(keptLeads)} kept` : `Compare, ${kept} kept`);
+  if (kt) kt.setAttribute("aria-label", !kept ? "Compare and draft" : isStudent(S.brief) ? `Compare and draft, ${keptWords(keptLeads)} kept` : `Compare and draft, ${kept} kept`);
   $("#panel").setAttribute("aria-labelledby", `tab-${S.tab}`);
 }
 
@@ -1505,9 +1507,11 @@ function horizonSection() {
   const asOf = b.options.as_of;
   const left = b.award_horizon ? f.daysBetween(asOf, b.award_horizon) : null;
   return h("section", { class: "block horizon" }, title,
+    // S51 (W33): a plain sentence at the section-title size, not a large date that reads as an error.
     h("p", { class: "horizon-date" },
-      h("span", { class: "big", text: b.award_horizon ? f.formatDate(b.award_horizon) : "Not stated in the record" }),
-      left !== null ? h("span", { class: "hint", text: left < 0 ? "already passed" : f.until(left) }) : null),
+      h("span", { class: "horizon-line", text: !b.award_horizon ? "The last federal award’s end date is not stated in the record"
+        : `Last federal award ${left !== null && left < 0 ? "ended" : "ends"} ${f.formatDate(b.award_horizon).replace(/ /g, "\u00a0")}` }),
+      left !== null && left >= 0 ? h("span", { class: "hint", text: f.until(left) }) : null),
     h("p", { class: "hint", text:
       `The end date of the last public federal award found, out of ${f.plural(d.awards.length, "award")}. Nothing about lab finances is inferred.` }),
     h("p", { class: "legend", "aria-hidden": "true" },
@@ -1602,7 +1606,7 @@ function threadsSection() {
       return h("li", { class: "thread" },
         h("div", { class: "thread-head" },
           h("h3", { text: `Thread ${i + 1} · ${Math.round(t.weight * 100)} %` }),
-          h("span", { class: "share", text: "of the weight, recent papers counting more" })),
+          h("span", { class: "share", text: `${Math.round(t.weight * 100)} % of the papers’ weight. Newer papers count more.` })),
         words.length ? h("p", { class: "thread-words" }, h("span", { class: "sr-only", text: "Words: " }),
           words.map((x) => h("span", { class: "chip", text: x }))) : null,
         meter,
@@ -1724,6 +1728,8 @@ function renderRoutes(panel) {
       h("div", { class: "list-head" },
         h("h2", { class: "section-title", id: "routes-title" }),
         sortSwitch()),
+      // S51 (W22): what the Match number is, said once for the list.
+      h("p", { class: "hint match-hint", text: "Match: how closely the call’s text matches the papers, out of 100. It is not the odds of funding." }),
       h("p", { class: "hint routes-sub" }),
       S.route === "T" ? h("p", { class: "hint route-hint", text: "Temple’s own funding calls for faculty, kept apart from federal grants. Each call’s page says whom to contact." })
         : hiddenLine(),
@@ -1988,7 +1994,7 @@ function orgCard(l) {
       "aria-pressed": String(l.status === "kept"),
       onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") },
     icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
-    h("button", { class: "btn", "data-key": "dismiss", onclick: () => setLead(l.id, "dismiss") },
+    h("button", { class: "btn quiet", "data-key": "dismiss", onclick: () => setLead(l.id, "dismiss") },
       icon("dismiss"), h("span", { text: "Dismiss" }))];
   for (const b of actions) b.setAttribute("aria-describedby", `t-${cssId(l.id)}`);
   return h("li", { class: `card lead org${l.status === "kept" ? " kept" : ""}${l.status === "dismissed" ? " gone" : ""}`,
@@ -1999,10 +2005,14 @@ function orgCard(l) {
     onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: name }), evMark())),
   // Names merged into this lead, by exact name or by OpenAlex's parent link (U13).
   otherNames(o, name).length ? h("p", { class: "opp-num", text: `Also listed as ${otherNames(o, name).join("; ")}` }) : null,
-  h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Inference" }),
-    h("span", { text: l.inference || "Inferred from public signals; not verified." })),
+  // S51 (W31): the line shows only for the model's own sentence; the list's banner already
+  // says that industry leads are inferred from public signals.
+  l.inference && l.inference !== ORG_FALLBACK ? h("p", { class: "provenance" }, h("span", { class: "tag model", text: "Inference" }),
+    h("span", { text: l.inference })) : null,
   signals, yours, leadFoot(null, actions));
 }
+
+const ORG_FALLBACK = "Inferred from public signals; not verified.";
 
 // The other names merged into an industry lead; the name shown, with or without its
 // country, is not repeated.
@@ -2109,7 +2119,7 @@ function leadCard(l) {
         "aria-pressed": String(l.status === "kept"),
         onclick: () => setLead(l.id, l.status === "kept" ? "restore" : "keep") },
       icon("keep"), h("span", { text: l.status === "kept" ? "Kept" : "Keep" })),
-      h("button", { class: "btn", "data-key": "dismiss", onclick: () => setLead(l.id, "dismiss") },
+      h("button", { class: "btn quiet", "data-key": "dismiss", onclick: () => setLead(l.id, "dismiss") },
         icon("dismiss"), h("span", { text: "Dismiss" }))];
   }
 

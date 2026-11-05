@@ -620,10 +620,12 @@ def test_s51_researcher_card_and_list() -> None:
     assert 'l.group === "centre"' in app and "Centre and programme grants (${centre.length})" in app
     assert "Show ${folded.length} more" in app and "Weaker matches (" not in app
     # the verdict sits on the card's face, labelled and tagged; the old inference box is gone
-    assert '"fit-why"' in app and '"How it relates: " : "Why it fits: "' in app and "function inferenceBox" not in app
+    assert '"fit-why"' in app and '"How it relates: " : "Why it fits: "' in app
+    assert "function inferenceBox" not in app
     assert "own && l.id === S.firstShown" in app
     # a sentence not matched to a source is a quiet fold, not an amber notice
-    assert '"unsupported-fold"' in app and "This statement could not be matched to its source:" not in app
+    assert '"unsupported-fold"' in app
+    assert "This statement could not be matched to its source:" not in app
     assert ".unsupported-fold summary { color: var(--ink-2);" in css
     # the budget line comes first and stands in for the withheld note
     assert 'startsWith("withheld: the daily model budget")' in app and '"data-budget": ""' in app
@@ -633,3 +635,19 @@ def test_s51_researcher_card_and_list() -> None:
     # Run again is hidden while the brief builds and after this reader stopped it
     assert '["queued", "running"].includes(b.status) || stopped' in app
     assert "What Perch read fills in first." in app and "The profile tab fills in first." not in app
+
+
+def test_s51_tier_b_polish() -> None:
+    """S51 FE-A Tier B: the Match hint, a lighter footer, the industry line, the Compare tab's
+    name, the award horizon and the thread subtitle (docs/design/S51_DESIGN.md section 3.4, A5)."""
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
+    assert "Match: how closely the call’s text matches the papers, out of 100." in app
+    assert "It is not the odds of funding." in app
+    assert app.count('class: "btn quiet", "data-key": "dismiss"') == 2
+    assert ".lead-foot:not(:has(> .cover:not(:empty))) { border-top: 0; padding-top: 4px; }" in css
+    assert "l.inference && l.inference !== ORG_FALLBACK" in app
+    assert '"wide-600", text: " and draft"' in app
+    assert "@media (max-width: 599px) { .wide-600 { display: none; } }" in css
+    assert "Last federal award ${" in app and '"already passed"' not in app
+    assert "% of the papers’ weight. Newer papers count more." in app
