@@ -97,6 +97,8 @@ ul.award-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0
 .home-docs .quiet-link { padding: 0; justify-content: flex-start; }
 .home-docs .doc-line { font-weight: 600; }
 .my-perch .empty-list { padding: 8px 0; justify-items: start; text-align: left; }
+/* Open and Run again sit in the same place on every row; a busy row's Stop takes the space after them. */
+@media (min-width: 601px) { .brief-row .brief-acts { min-width: 21rem; flex-wrap: nowrap; } }
 @media (max-width: 600px) {
   .kept-row .btn.quiet, .brief-acts .quiet-link { padding-left: 0; justify-content: flex-start; }
 }
@@ -131,3 +133,7 @@ ul.award-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0
 
 /* ---------- B9 Scout ---------- */
 .scout-opt { margin-top: 12px; }
+
+/* S51 W30: air above the My Perch heading; W17: the wide fact reads as a plain sentence. */
+.my-perch .title-row { padding-top: 24px; }
+.fact-wide dd { font-weight: 400; }

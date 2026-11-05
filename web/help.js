@@ -129,9 +129,9 @@ function anatomy() {
       h("div", { class: "pic-row" }, n(5), btn("Cover-letter points", "ghost", "pen"), btn("Keep", "ghost", "keep"), btn("Dismiss", "ghost", "dismiss"))));
   const items = [
     ["The title", " comes first, with the Match pill beside it. The title opens the full record."],
-    ["Match", " is how closely the listing’s text matches the papers, from 0 to 100: strong is 80 or more, good 60 to 79, partial 40 to 59, weak below 40."],
+    ["Match", " is how closely the listing’s text matches the papers, from 0 to 100: strong is 80 or more, good 60 to 79, partial 40 to 59, weak below 40. It ranks the leads and the text says why; it is not the odds of funding."],
     ["Closes and Amount", " sit in two columns and are always shown. Not stated means the record leaves it blank. The page says means the date is in the page’s words, not a date field."],
-    ["Model text", " marks a model’s sentence, checked against the records it cites. When a sentence fails that check twice, the card says so in one line and keeps only the fields copied from the record."],
+    ["Model text", " marks a model’s sentence, checked against the records it cites. The line under the dates marked Inference is the model’s reading of the fit. Open Why it fits, or How it relates for a weaker match, for what the call funds and the papers it cites. When a sentence fails that check twice, the card says so in one line and keeps only the fields copied from the record."],
     ["The bottom row.", " Keep, Dismiss and Cover-letter points sit in the card’s bottom row. Keep what is worth a closer look and dismiss the rest. A dismissed lead can be restored."],
   ];
   return h("div", { class: "anatomy" }, art,
@@ -178,13 +178,18 @@ function keeping() {
     ["Sort a brief.", " Best match puts the highest Match first. Closing soonest puts the nearest date first; records with no date come last."],
     ["Rule lines.", " On a student card, the chip says what the rules found: eligible, may be eligible or not eligible. Under it, each line says what one rule checked. A check mark means the rule was met, a cross means it was not, and a question mark means the listing or your CV does not say. When every card shares a line, it is said once above the list."],
     ["Withheld reasons.", " When several written reasons fail the citation check, one note above the list says so, and those cards show no reason. Their dates, amounts and rule results are still copied from the record."],
+    ["Centre and programme grants.", " Centre and programme grants, such as a P30 or a P01, sit in their own fold under the single-lab grants. An institution applies for these. Their Match number does not change."],
+    ["A paused budget.", " When this session’s model budget for the day is used, written reasons pause. One line above the list says so. The list, dates, amounts and rule results are not affected."],
+    ["Sentences not matched to a source.", " When a sentence could not be matched to its source, the card says so in a small fold that lists it."],
+    ["Name-only listings.", " When a Temple listing gives only an award’s name, the card says so and points to its page. No model writes a reason for it."],
+    ["The example while accounts are closed.", " While accounts are not open, Ask Scout and the note to the office point to the example brief. It shows what a signed-in user gets."],
     ["Phone filters.", " On a phone, Filters opens the level, sort and school choices. The number on the button counts the filters that are on."],
     ["See an example brief", " opens a saved brief for a Temple researcher, shown by alias. It plays back from a file, so it opens at once and nothing is called or saved. The banner says when it was built."],
-    ["Stop.", " While a brief builds, a signed-in user can press Stop. The brief shows as Stopped on My Perch, and Change details and run again builds a new one."],
+    ["Stop.", " While a brief builds, a signed-in user can press Stop. The brief shows as Stopped on My Perch, and Run again builds a new one."],
     ["Temple’s own calls in a hand-off.", " A note to Research Development lists kept federal grants only. Temple’s own calls name their contact on each call’s page."],
     ["A past date on an award.", " Many Temple awards recur each year. When an award’s page shows a date that has passed, the card says Past date on the page, and a check of your fit says may be eligible, with the date from the page. Check the page for this year’s date."],
     ["My Perch is your home.", " When you are signed in, Perch opens on My Perch: what you kept and saved, sorted by date, your briefs, and your documents. Start a new search from there."],
-    ["Change details and run again.", " It opens the start screen with your details filled in. Running it makes a new brief; the old one stays on My Perch."],
+    ["Run again.", " On My Perch, Run again (read aloud as Change details and run again) opens the start screen with your details filled in. Running it makes a new brief; the old one stays on My Perch."],
     ["A researcher CV.", " A researcher may add a CV before building a brief. It is optional. Perch uses it for cover-letter points and Scout, stores it encrypted, and blanks contact details before a model reads it."],
   ];
   return h("section", { class: "help-block", "aria-labelledby": "h-keep" },

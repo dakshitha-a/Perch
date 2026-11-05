@@ -868,6 +868,10 @@ table.compare { border-collapse: collapse; width: 100%; min-width: 640px; font-s
 textarea:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 .model-note { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; margin: 0; }
 .handoff .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* A guest's hand-off (S51 QA): the hint on its own line, then the example and Sign in side by side. */
+.guest-draft { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; flex: 1 1 100%; }
+.guest-draft > .hint { flex-basis: 100%; margin: 0; }
+@media (max-width: 599px) { .guest-draft .example-slot .quiet-link { padding-left: 0; } }
 .scout-draft { margin-top: 8px; }
 .scout-draft summary { cursor: pointer; font-weight: 600; min-height: 32px; }
 .draft-text { white-space: pre-wrap; word-break: break-word; font: 14px/1.5 var(--sans); background: var(--leaf); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; margin: 8px 0; max-height: 360px; overflow: auto; }
@@ -1686,6 +1690,16 @@ dialog::backdrop { background: rgba(10, 16, 14, .55); }
 details.hidden-fold > summary { min-height: 44px; font-size: var(--fs-14); color: var(--ink-3); font-weight: 600; }
 .hidden-list { margin: 0 0 4px; padding-left: 22px; font-size: var(--fs-14); color: var(--ink-3); display: grid; gap: 2px; }
 #panel .hidden-fold { margin: -16px 0 -6px; }
+/* S51 QA: the rules' count and the budget line share one quiet row under the list head. */
+#panel .list-status { display: flex; flex-wrap: wrap; align-items: center; gap: 0 20px; margin: -16px 0 -6px; }
+#panel .list-status .hidden-fold { margin: 0; }
+#panel .list-status .hidden-fold[open] { flex-basis: 100%; order: 2; }
+#panel .budget-note { display: flex; gap: 8px; align-items: flex-start; flex: 1 1 22rem; margin: 0; font-size: var(--fs-14); color: var(--ink-2); }
+#panel .budget-note .icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--ink-3); }
+@media (max-width: 599px) { #panel .list-status { margin-bottom: 0; } }
+/* The student list's budget line (FE-B) looks the same: quiet text with its icon, not a box. */
+#list-notices > .notice[data-budget] { background: none; padding: 0; gap: 8px; font-size: var(--fs-14); color: var(--ink-2); }
+#list-notices > .notice[data-budget] .icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--ink-3); }
 /* The pick screen's second Build button, at the foot of the form (S50 V32). */
 .build-foot { display: flex; justify-content: flex-end; }
 @media (max-width: 699px) { .build-foot .btn { width: 100%; } }
@@ -1695,3 +1709,49 @@ details.hidden-fold > summary { min-height: 44px; font-size: var(--fs-14); color
 .thread-words .chip { display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; background: var(--chip); color: var(--ink-2); font-size: var(--fs-14); }
 .threads-note { display: grid; gap: 2px; }
 details.threads-how > summary { min-height: 44px; font-size: var(--fs-14); font-weight: 600; color: var(--ink-2); }
+/* ---------- S51 (round 3) ---------- */
+/* The example banner on a phone (W1): the tag and the link share the first row, the sentence
+   takes the full width under them. */
+@media (max-width: 599px) {
+  .example-banner .banner-line { flex-wrap: wrap; row-gap: 0; }
+  .example-banner .banner-line > span:not(.tag) { flex-basis: 100%; order: 3; padding-bottom: 6px; }
+  .example-banner .banner-line > a { margin-left: auto; }
+}
+/* A finished brief's card on a phone (W2): the owl and the headline keep the first row; Replay
+   the build and Steps share the second. */
+@media (max-width: 599px) {
+  .pcard.done .pcard-main { flex: 1 1 calc(100% - 54px); }
+  .pcard.done .pcard-line { flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
+  .pcard.done .p-act:not(:empty) { flex: 1 1 auto; margin-left: 46px; }
+  .pcard.done .p-act .btn.link { padding-left: 0; }
+  .pcard.done .progress-steps { flex: 0 0 auto; margin-left: auto; }
+}
+/* The landing's hint and its disclosure sit on one centre line (W10). */
+.landing .hint-row { align-items: center; }
+/* The brief's chip row is one row that scrolls sideways on a phone (W11). */
+@media (max-width: 599px) {
+  .filter-box .filter-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+  .filter-box .filter-chips::-webkit-scrollbar { display: none; }
+}
+/* The fit verdict on the card's face (W13): the model's reading, labelled and tagged. */
+.fit-why { font-size: 15.5px; line-height: 1.55; color: var(--ink); margin: 2px 0 0; padding-left: 12px; border-left: 3px dashed var(--model); }
+.fit-why > .tag.model { height: 20px; min-height: 20px; margin-left: 6px; vertical-align: 1px; font-size: var(--fs-12, 12px); }
+.why > .what:first-of-type { margin: 4px 0 8px; }
+/* Centre and programme grants, in their own fold under the single-lab cards (H7). */
+.centre-box:empty { display: none; }
+.centre-fold > .hint { margin: 4px 0 8px; font-size: var(--fs-14, 14px); }
+.weak-fold > summary, .centre-fold > summary { min-height: 44px; font-size: var(--fs-14, 14px); font-weight: 600; color: var(--ink-2); }
+/* A sentence that could not be matched to its source: a quiet fold, not an amber box (W19). */
+.unsupported-fold { margin-top: 8px; }
+.unsupported-fold summary { color: var(--ink-2); font-size: var(--fs-14, 14px); min-height: 44px; display: flex; align-items: center; }
+.unsupported-fold ul { margin: 4px 0 0; padding-left: 20px; color: var(--ink-2); }
+.fit-why { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 599px) { .fit-why .cite, .fit-why .nowrap { white-space: normal; } }
+/* What the Match number is, once under the list head (W22). */
+/* A lighter card footer (W15): Dismiss is quiet; no rule when the footer holds no cover block. */
+.lead-foot:not(:has(> .cover:not(:empty))) { border-top: 0; padding-top: 4px; }
+.lead-foot .btn.quiet { min-height: 44px; }
+/* The Compare tab reads "Compare and draft" from 600 px (W23). */
+@media (max-width: 599px) { .wide-600 { display: none; } }
+/* The award horizon as a sentence at the section-title size (W33). */
+.horizon-date .horizon-line { font-size: 19px; font-weight: 650; letter-spacing: -.005em; color: var(--ink); }

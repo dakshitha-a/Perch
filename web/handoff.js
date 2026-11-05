@@ -69,7 +69,7 @@ export function mailto(d) {
   return `mailto:?subject=${subject}&body=${encodeURIComponent("(The draft from Perch is copied. Paste it here.)")}`;
 }
 
-export function renderHandoff(box, { api, briefId, kept, offices, announce, redraw, guest, signIn }) {
+export function renderHandoff(box, { api, briefId, kept, offices, announce, redraw, guest, signIn, accountsOpen }) {
   if (!box || !offices) return;
   const OFFICES = offices.map((o) => ({ ...o, what: WHAT[o.route] }));
   if (H.briefId !== briefId) reset(briefId);
@@ -134,13 +134,19 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
   }
   // A draft needs an account, so a guest gets a link, not a button that fails. Once a draft
   // exists, Draft again sits under it with the other actions (U13).
-  const make = guest
+  const closed = guest && accountsOpen === false; // S51 D5: no sign-up yet, so the example leads
+  const make = closed
     ? h("span", { class: "guest-draft" },
-      h("a", { class: "btn primary", href: signIn, "data-key": "handoff-signin", text: "Sign in to draft a note to the office" }),
-      h("span", { class: "example-slot" }))
-    : h("button", { class: `btn ${draft ? "quiet" : "primary"}`, type: "button", "data-key": "handoff-make",
-      disabled: H.busy !== null, onclick: () => makeDraft() },
-    icon("pen"), h("span", { text: draft ? "Draft again" : "Draft the email" }));
+      h("span", { class: "hint", text: "Accounts are not open yet. See what a signed-in user gets in the example." }),
+      h("span", { class: "example-slot" }),
+      h("a", { class: "quiet-link", href: signIn, "data-key": "handoff-signin", text: "Sign in" }))
+    : guest
+      ? h("span", { class: "guest-draft" },
+        h("a", { class: "btn primary", href: signIn, "data-key": "handoff-signin", text: "Sign in to draft a note to the office" }),
+        h("span", { class: "example-slot" }))
+      : h("button", { class: `btn ${draft ? "quiet" : "primary"}`, type: "button", "data-key": "handoff-make",
+        disabled: H.busy !== null, onclick: () => makeDraft() },
+      icon("pen"), h("span", { text: draft ? "Draft again" : "Draft the email" }));
 
   if (!usable.length) {  // only Temple's own calls are kept: no federal office applies
     fill(box, h("section", { class: "handoff", "aria-labelledby": "handoff-title" }, h("h2", { class: "section-title", id: "handoff-title", text: "Hand off" }),
@@ -189,7 +195,9 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
   const slot = box.querySelector(".example-slot");
   if (slot && api && api.exampleAvailable) {
     api.exampleAvailable("researcher").then((ok) => {
-      if (ok && slot.isConnected) slot.append(h("a", { class: "quiet-link", "data-key": "example-draft", href: "example.html?tab=compare", text: "Or see an example draft" }));
+      if (ok && slot.isConnected) slot.append(closed
+        ? h("a", { class: "btn primary", "data-key": "example-draft", href: "example.html?tab=compare", text: "See an example draft" })
+        : h("a", { class: "quiet-link", "data-key": "example-draft", href: "example.html?tab=compare", text: "Or see an example draft" }));
     }, () => {});
   }
 }

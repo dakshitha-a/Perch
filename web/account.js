@@ -347,8 +347,8 @@ export async function renderMyPerch(root, ctx, opts = {}) {
         h("div", { class: "brief-acts" },
           h("a", { class: "btn", href: `#/brief/${encodeURIComponent(b.id)}/routes` },
             h("span", { text: "Open" }), h("span", { class: "sr-only", text: ` the brief built ${f.formatDate(b.created_at)}` })),
-          busy ? h("button", { class: "btn quiet", type: "button", "data-key": `stop-${b.id}`, onclick: () => stopBrief(b.id) }, icon("stop"), h("span", { text: "Stop" })) : null,
-          h("a", { class: "quiet-link", href: `#/rerun/${encodeURIComponent(b.id)}`, text: "Change details and run again" })));
+          h("a", { class: "quiet-link", href: `#/rerun/${encodeURIComponent(b.id)}`, "aria-label": "Change details and run again", text: "Run again" }),
+          busy ? h("button", { class: "btn quiet", type: "button", "data-key": `stop-${b.id}`, onclick: () => stopBrief(b.id) }, icon("stop"), h("span", { text: "Stop" })) : null));
     })) : h("div", { class: "empty-list" }, h("p", { class: "lede", text: "No briefs yet." }),
       h("a", { class: "btn", href: startHref, text: student ? "Check my fit" : "Find a researcher" })));
     };
@@ -362,7 +362,7 @@ export async function renderMyPerch(root, ctx, opts = {}) {
         draw(fresh);
         const open = briefsEl.querySelector(`[data-id="${CSS.escape(id)}"] a.btn`);
         if (open) open.focus({ preventScroll: true });
-        ctx.announce("Stopped. Change details and run again builds a new one.");
+        ctx.announce("Stopped. Run again builds a new one.");
       } catch (e) {
         if (btn) { btn.disabled = false; btn.removeAttribute("aria-busy"); }
         ctx.announce(e.message);

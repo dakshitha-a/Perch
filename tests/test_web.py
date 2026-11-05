@@ -609,3 +609,48 @@ def test_s50_fe_a_card_sort_stop_and_example():
     assert 'import("./app.js")' in ex
     # the landing link shows only when the server holds the file
     assert "api.exampleAvailable(side)" in app and '"data-key": "example-brief"' in app
+
+
+def test_s51_researcher_card_and_list() -> None:
+    """S51 FE-A: the centre fold, the verdict on the face, the quiet folds, the budget line,
+    accounts closed, and Run again said once (docs/design/S51_DESIGN.md section 3.4)."""
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
+    # centre and programme grants fold under the single-lab cards; the weak fold reads "Show N more"
+    assert 'l.group === "centre"' in app and "Centre and programme grants (${centre.length})" in app
+    assert "Show ${folded.length} more" in app and "Weaker matches (" not in app
+    # the verdict sits on the card's face, tagged Inference; only the disclosure is labelled
+    assert '"fit-why"' in app and '"How it relates: " : "Why it fits: "' not in app
+    assert 'weakBand ? "How it relates" : "Why it fits"' in app
+    assert "function inferenceBox" not in app
+    assert "own && l.id === S.firstShown" in app
+    # a sentence not matched to a source is a quiet fold, not an amber notice
+    assert '"unsupported-fold"' in app
+    assert "This statement could not be matched to its source:" not in app
+    assert ".unsupported-fold summary { color: var(--ink-2);" in css
+    # the budget line comes first and stands in for the withheld note
+    assert 'startsWith("withheld: the daily model budget")' in app and '"data-budget": ""' in app
+    assert "Written reasons are paused: this session’s model budget for today is used." in app
+    # accounts closed: the landing offers the guest sample; every ctx says whether accounts are open
+    assert "sess.accounts_open === false" in app and app.count("accountsOpen: accountsOpen()") == 4
+    # Run again is hidden while the brief builds and after this reader stopped it
+    assert '["queued", "running"].includes(b.status) || stopped' in app
+    assert "What Perch read fills in first." in app and "The profile tab fills in first." not in app
+
+
+def test_s51_tier_b_polish() -> None:
+    """S51 FE-A Tier B: the Match hint, a lighter footer, the industry line, the Compare tab's
+    name, the award horizon and the thread subtitle (docs/design/S51_DESIGN.md section 3.4, A5)."""
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
+    # S51 QA: the Match hint moved from a line above the list to the pill's tooltip
+    student = (WEB_DIR / "student.js").read_text(encoding="utf-8")
+    assert "match-hint" not in app
+    assert "matches ${what}, out of 100. It is not the odds of funding.` }" in student
+    assert app.count('class: "btn quiet", "data-key": "dismiss"') == 2
+    assert ".lead-foot:not(:has(> .cover:not(:empty))) { border-top: 0; padding-top: 4px; }" in css
+    assert "l.inference && l.inference !== ORG_FALLBACK" in app
+    assert '"wide-600", text: " and draft"' in app
+    assert "@media (max-width: 599px) { .wide-600 { display: none; } }" in css
+    assert "Last federal award ${" in app and '"already passed"' not in app
+    assert "% of the papers’ weight. Newer papers count more." in app

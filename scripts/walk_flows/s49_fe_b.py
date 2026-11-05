@@ -285,6 +285,8 @@ def register(U):  # noqa: N803 - the module handed in by the loader
           quiet: document.querySelector('[data-key=handoff-make]').classList.contains('quiet') })""")
         w.check("s49_draft_again_below", geo["again"] > geo["body"] and geo["quiet"], f"Draft again top {geo['again']}, body top {geo['body']}, quiet {geo['quiet']}")
         w.check("s49_draft_rows_and_to", 8 <= geo["rows"] <= 18 and "add the address yourself" in to_line, f"rows {geo['rows']}, {to_line!r}")
+        # from the Hand off heading: a compare row half under the sticky tabs is a scroll position (S51 QA)
+        await page.evaluate("() => document.getElementById('handoff-title').scrollIntoView({ block: 'start' })")
         await w.snap(page, tag, "s49b-handoff-draft")
 
         # cover points, signed in, quota answers on two cards

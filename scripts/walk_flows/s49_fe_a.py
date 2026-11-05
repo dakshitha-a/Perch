@@ -199,6 +199,7 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
                 return len(vals) == 4 and max(vals) - min(vals) <= 1
             w.check("s49_left_edges_1280", even(e1) and even(e2), f"awards {e1}; brief {e2}")
             top = await page.evaluate("() => { const c = document.querySelector('#panel li.card.lead'); return c ? Math.round(c.getBoundingClientRect().top + scrollY) : null; }")
+            # S51 QA: the budget line and the Match hint share the list head and fit the same 600 px.
             w.check("s49_first_lead_top", top is not None and top <= 600, f"first lead top {top} px (target 600, round 1)")
             c = await page.evaluate(CENTRES)
             w.check("s49_sort_on_count_row", c["sort"] is not None and c["title"] is not None and abs(c["sort"] - c["title"]) <= 12,

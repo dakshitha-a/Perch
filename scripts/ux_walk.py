@@ -937,7 +937,8 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     w.check("cover_button_on_every_card", cards > 0 and btns == cards
             and (await page.locator(f"button[data-key='cover-{first}']").inner_text()) == "Cover-letter points",
             f"{cards} cards not dismissed, {btns} buttons")
-    w.check("cover_student_hint", hint0.strip() == "A model writes these from your CV and entries. You put them in your own words."
+    # S51 W9: this brief is the sample student's, so the line names the sample student's CV
+    w.check("cover_student_hint", hint0.strip() == "A model writes these from the sample student's CV and entries. You put them in your own words."
             and await page.locator("#panel [data-cover-line]").count() == 1 and card_hints == 0,
             f"list line {hint0!r}; {card_hints} card hints")
     w.check("cover_restore_is_one_get", seen["gets"] == [{"record_id": restored_rid}]
@@ -1136,12 +1137,17 @@ async def flow_handoff(w: Walk, browser: Browser, base: str, tag: str, view: dic
     busy = await page.locator(".handoff [role=status]").inner_text()
     w.check("handoff_busy_status", busy.startswith("A model is writing the opening paragraph. This can take up to two minutes")
             and await page.locator("[data-key=handoff-make]").is_disabled(), busy)
+    # The snapshot shows the hand-off from its heading; a compare row half under the sticky tabs
+    # is a scroll position, not a target (S51 QA: W7 removed a compare row, which moved it there).
+    top = "() => document.getElementById('handoff-title').scrollIntoView({ block: 'start' })"
+    await page.evaluate(top)
     await w.snap(page, tag, "handoff-busy", full=False)
     await page.wait_for_selector("[data-key=handoff-subject]", timeout=20_000)
     sent = await page.locator(".handoff").inner_text()
     w.check("handoff_draft_rendered", "Perch never sends it" in sent and len(seen["gets"]) == 2
             and await page.locator("[data-key=handoff-body]").input_value() != "" and seen["posts"][0][1] == "walk-csrf",
             f"posts {seen['posts']}, polls {len(seen['gets'])}")
+    await page.evaluate(top)
     await w.snap(page, tag, "handoff-draft")
     seen["fail"] = True
     await page.locator("[data-key=handoff-make]").click()
