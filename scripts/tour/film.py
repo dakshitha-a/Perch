@@ -38,6 +38,7 @@ import asyncio
 import csv
 import glob
 import importlib.util
+import json
 import os
 import re
 import subprocess
@@ -79,7 +80,14 @@ async def alias_responses(page: Page, names: dict[str, str]) -> None:
             if "json" not in r.headers.get("content-type", ""):
                 await route.fulfill(response=r)
                 return
-            body = swap_names(await r.text(), names)
+            body = await r.text()
+            try:
+                # GET /briefs/<id> writes JSON with ASCII escapes ("ó"), which a name
+                # swap on the raw text cannot match; the text is decoded to letters first (S52).
+                body = json.dumps(json.loads(body), ensure_ascii=False, separators=(",", ":"))
+            except ValueError:
+                pass
+            body = swap_names(body, names)
             # An ORCID leads straight to the person, so it goes too.
             body = re.sub(r'"orcid":\s*"[^"]*"', '"orcid": null', body)
             await route.fulfill(response=r, body=body)
@@ -163,6 +171,13 @@ async def build_and_wait(page: Page, rec: Recorder | None, button: str, speed: f
         await (rec.quickly(lambda: wait, speed=speed) if rec else wait)
     except Exception as e:  # noqa: BLE001
         raise SceneError(f"the brief did not show a lead in {LONG // 1000} s") from e
+    # Then the rest of the build (explanations, industry leads), also played quickly, so the
+    # scene shows a finished brief. A slow finish is not a failure: the leads are there.
+    done = page.locator("#progress .pcard").wait_for(state="detached", timeout=120_000)
+    try:
+        await (rec.quickly(lambda: done, speed=speed) if rec else done)
+    except Exception:  # noqa: BLE001
+        print("the brief was still building when the scene went on")
     await settle(page, 900)
 
 
@@ -194,10 +209,10 @@ async def sign_in(page: Page, base: str, login: str | None) -> None:
                          "PERCH_TOUR_PASSWORD")
     await page.wait_for_selector("#acct-btn, .welcome", timeout=30_000)
     if await page.locator(".welcome").count() or "#/welcome" in page.url:
-        # First visit: choose a side and agree, as a new user would.
-        roles = page.locator("[data-key^=role-]")
+        # First visit: choose the researcher side and agree, as a new user would.
+        await need(page, "[data-key=agree]", "the consent checkbox on the welcome step")
         if not await page.locator("[data-key^=role-]:checked").count():
-            await roles.first.check()
+            await page.check("[data-key=role-researcher]")
         if not await page.locator("[data-key=agree]").is_checked():
             await page.check("[data-key=agree]")
         await page.click("[data-key=continue]")
@@ -247,12 +262,14 @@ async def hero(page: Page, base: str, o: argparse.Namespace) -> Recorder:
     rec = Recorder(page, "hero", RAW)
     await rec.start()
     await rec.hold(1400)
-    await click(page, page.locator("[data-key=guest-start]"))
+    # Accounts open: "Try it as a guest" starts the guest. Accounts closed (S51 D4): the
+    # landing has no guest line, and "Try a sample student" starts the guest instead.
+    if await page.locator("[data-key=guest-start]").count():
+        await click(page, page.locator("[data-key=guest-start]"))
+    else:
+        await click(page, page.locator("[data-key=fit]"))
     await need(page, "[data-key=guest-banner]", "the guest banner")
-    await rec.hold(700)
-    await rec.focus(page.locator("[data-key=guest-banner]"), pad=30)
     await rec.hold(1500)
-    rec.wide()
     fit = await need(page, "[data-key=fit]", "the Try a sample student button")
     await click(page, fit)
     await need(page, ".student-start", "the Check my fit screen")
@@ -261,20 +278,24 @@ async def hero(page: Page, base: str, o: argparse.Namespace) -> Recorder:
     await rec.hold(2200)
     rec.wide()
     await build_and_wait(page, rec, "[data-key=st-build]", speed=14)
-    await rec.hold(1000)
+    await rec.hold(800)
     first = page.locator("#panel .leads > li").first
+    # The first card starts at the bottom edge: bring it up before the camera moves in.
+    top = await first.evaluate("e => e.getBoundingClientRect().top")
+    await scroll_by(page, max(0, top - 120), steps=8)
+    await rec.hold(500)
     await rec.focus(first, pad=20)
-    await rec.hold(2000)
+    await rec.hold(2200)
     rec.wide()
-    await scroll_by(page, 560)
+    await scroll_by(page, 520)
     await rec.hold(900)
-    await scroll_by(page, 420)
-    await rec.hold(900)
-    await page.evaluate("window.scrollTo({top: 0})")
-    await rec.hold(700)
+    await scroll_by(page, -520)
+    await rec.hold(600)
+    # The rail is sticky, so the record opens beside the card in view.
     await click(page, first.locator(".title-btn").first)
     box = evidence_box(page, rail=True)
     await need(page, "#rail-ev .rec-title", "the record in the evidence rail")
+    await page.locator("#rail-ev .rec-title").scroll_into_view_if_needed()
     await rec.hold(500)
     await rec.focus(box, pad=10)
     await rec.hold(3200)
@@ -368,6 +389,7 @@ async def researcher(page: Page, base: str, o: argparse.Namespace) -> Recorder:
     rec.wide()
     await click(page, top.locator(".title-btn").first)
     await need(page, "#rail-ev .rec-title", "the lead's record in the evidence rail")
+    await page.locator("#rail-ev .rec-title").scroll_into_view_if_needed()
     await rec.hold(500)
     await rec.focus(evidence_box(page, rail=True), pad=10)
     await rec.hold(3200)
