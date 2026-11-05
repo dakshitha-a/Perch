@@ -221,6 +221,43 @@ def test_a_wait_for_the_model_slot_does_not_count_against_the_timeout(clean, mon
     assert st.state == JobState.SUCCEEDED and st.result_ref == "ok"
 
 
+def test_one_precache_job_runs_at_a_time_and_briefs_still_run_beside_it(clean, monkeypatch):
+    """S50 C2: the nightly precache could fill all 16 job threads, each queued on the model
+    slot ahead of a user's brief. One worker now runs one precache job at a time."""
+    lock = threading.Lock()
+    now = {"precache": 0, "max": 0, "other_ran_during": False}
+
+    def pc(ctx):
+        with lock:
+            now["precache"] += 1
+            now["max"] = max(now["max"], now["precache"])
+        time.sleep(0.4)
+        with lock:
+            now["precache"] -= 1
+        return "ok"
+
+    def other(ctx):
+        with lock:
+            now["other_ran_during"] = now["precache"] > 0
+        return "ok"
+
+    reg(monkeypatch, "precache", pc)
+    reg(monkeypatch, "purge", other)
+    r = mk(clean["worker"])
+    ids = [r.submit("precache", pre(i), None, f"k{i}") for i in range(4)]
+    stop, t = start(r, kinds=("precache", "purge"), concurrency=4)
+    try:
+        time.sleep(0.2)
+        oid = r.submit("purge", {"action": "jobs"}, None, "p")
+        for j in [*ids, oid]:
+            assert r.wait(j, 20).state == JobState.SUCCEEDED
+    finally:
+        stop.set()
+        t.join()
+    assert now["max"] == 1
+    assert now["other_ran_during"] is True
+
+
 def test_retries_then_dead_letter(clean, monkeypatch):
     monkeypatch.setattr(jobs, "backoff_s", lambda n: 0.0)
     calls = []

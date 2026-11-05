@@ -615,16 +615,27 @@ class PostgresRunner(JobRunner):
         if not use:
             return
         wake = threading.Event()
+        # S50 C2: the nightly precache queues one job per researcher, and every one of them
+        # waits on the same model slot as a user's brief. At most PERCH_PRECACHE_CONCURRENCY
+        # (default 1) job threads of this worker run precache at once; the rest stay free.
+        bulk = threading.BoundedSemaphore(precache_concurrency())
 
         def loop(n: int) -> None:
             owner = f"{worker_id}/{n}"
             while not stop.is_set():
+                held = "precache" in use and bulk.acquire(blocking=False)
+                mine = use if held else [k for k in use if k != "precache"]
                 try:
-                    row = self.claim(owner, use)
+                    row = self.claim(owner, mine) if mine else None
                 except Exception as e:  # noqa: BLE001
                     log.warning("claim failed err=%s", type(e).__name__)
+                    if held:
+                        bulk.release()
                     stop.wait(self.timing.poll_s)
                     continue
+                if held and (row is None or row["kind"] != "precache"):
+                    bulk.release()
+                    held = False
                 if row is None:
                     wake.wait(self.timing.poll_s)
                     wake.clear()
@@ -635,6 +646,9 @@ class PostgresRunner(JobRunner):
                     # (S49 B3): the job's lease runs out and the reaper retries it.
                     log.warning("execute failed err=%s", type(e).__name__)
                     stop.wait(self.timing.poll_s)
+                finally:
+                    if held:
+                        bulk.release()
 
         def maintain() -> None:
             last_reap = last_tick = 0.0
@@ -685,6 +699,14 @@ class PostgresRunner(JobRunner):
                 c.execute("DELETE FROM worker_heartbeat WHERE worker = %s", (worker_id,))
         except Exception:  # noqa: BLE001
             pass
+
+
+def precache_concurrency() -> int:
+    """How many job threads of one worker may run precache at once (S50 C2)."""
+    try:
+        return max(1, int(os.environ.get("PERCH_PRECACHE_CONCURRENCY") or 1))
+    except ValueError:
+        return 1
 
 
 # --- the scheduler: daily purges and the nightly precache (S49 B5) ---
