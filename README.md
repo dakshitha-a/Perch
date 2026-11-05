@@ -48,6 +48,30 @@ These clips were filmed in the running v1 app. Researchers appear by alias. The 
 
 ![A signed-in user asks for cover-letter points on one lead card and reads the cited lines.](docs/tour/points.webp)
 
+## Screens
+
+Taken from the running v1 app, in light and dark, wide and phone. The researcher is shown as an alias. The student is a SYNTHETIC test account. All 76 images and what each shows are listed in [docs/screenshots/README.md](docs/screenshots/README.md).
+
+| Researcher brief | Why it fits | Evidence |
+| --- | --- | --- |
+| ![The routes list for PI-1 with the Grants, Temple internal and Industry tabs.](docs/screenshots/wide-light-5-researcher-brief.png) | ![One card with its Why it fits fold open and the cited papers.](docs/screenshots/wide-light-6-researcher-why.png) | ![One card with its evidence panel open.](docs/screenshots/wide-light-7-researcher-evidence.png) |
+
+The optional citizenship and state picks are open on the student start and folded on the researcher start. A card names the page where a citizenship rule was found.
+
+| Student start | Researcher start | Citizenship note on a card |
+| --- | --- | --- |
+| ![The student start with the optional citizenship and state picks.](docs/screenshots/wide-light-13-student-start-picks.png) | ![The researcher start with the folded Citizenship and state section.](docs/screenshots/wide-light-14-researcher-start-picks.png) | ![The Gilman scholarship card with its citizenship line and a Source page link.](docs/screenshots/wide-light-16-student-card-citizenship.png) |
+
+| What the rules read from your CV | Scout with Ask and Clear | Scout working |
+| --- | --- | --- |
+| ![The Read tab with the fields read by code and the You chose line.](docs/screenshots/wide-light-15-student-cv-panel.png) | ![A cited Scout answer above the question box with Ask and Clear.](docs/screenshots/wide-light-17-scout-ask-clear.png) | ![The question box glows while Scout works.](docs/screenshots/wide-light-18-scout-working.png) |
+
+On a phone the same screens fit one column:
+
+| Landing | Student card | Scout cleared |
+| --- | --- | --- |
+| ![The phone landing page.](docs/screenshots/phone-light-1-landing.png) | ![The phone view of the Gilman card.](docs/screenshots/phone-light-16-student-card-citizenship.png) | ![The phone Scout tab with Conversation cleared and Undo.](docs/screenshots/phone-light-19-scout-cleared-undo.png) |
+
 ## Quick start
 
 Perch needs [uv](https://docs.astral.sh/uv/) and `make`. uv installs Python 3.12 and every pinned dependency on first run.
@@ -135,6 +159,12 @@ Every command is in [docs/running.md](docs/running.md).
 - **Scout v2:** buttons on cards are answered by code. An open question first passes a scope gate. An out-of-scope question gets a refusal written by code, and the large model is not called. A message that reads as distress gets a fixed pointer to Temple's counselling and employee assistance services.
 - **Profiles:** `cloud-gpu` is the default. The embedder, reranker and MiniCheck run on the worker's one GPU, and the text jobs run on Anthropic. `cloud-cpu` is the no-GPU fallback profile.
 - **Stack:** Postgres with pgvector, Redis, a Postgres job queue and a worker. SQLite is kept behind the same interface for unit tests only.
+
+The figures are drawn from the files in `docs/architecture/`. Each is also rendered as a PNG in light and dark.
+
+![How Perch works, in one picture.](docs/architecture/v1-simple-light.png)
+
+[The detailed v1 figure](docs/architecture/v1-light.png), [the roadmap](docs/architecture/roadmap-light.png) and [the cost model](docs/architecture/cost_model-light.png) have `-dark.png` twins in the same folder.
 
 The design contract is [docs/ARCHITECTURE_V1.md](docs/ARCHITECTURE_V1.md). The plan and its revisions are in [docs/REBUILD_PLAN.md](docs/REBUILD_PLAN.md).
 
