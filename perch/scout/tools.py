@@ -509,6 +509,9 @@ def _opportunity(ctx: ScoutContext, opportunity_id: str) -> Opportunity:
     return o
 
 
+NO_CLOSING_DATE = "The record states no closing date."
+
+
 def get_record(ctx: ScoutContext, id: str) -> dict:
     with ctx.service.repo() as r:
         rec = r.get_any(id) or r.get_any(f"https://openalex.org/{id}")
@@ -520,7 +523,10 @@ def get_record(ctx: ScoutContext, id: str) -> dict:
         # so the model quotes the words and cannot say the date is missing or far off.
         d.pop("close_date", None)
         d.pop("close_date_note", None)
-        d = {"deadline": f"{rec.close_date_note} (the record's own words)", **d}
+        # S51 E5: G8 made a date ten years out a placeholder with or without a note; with
+        # none, this read "None (the record's own words)".
+        d = {"deadline": f"{rec.close_date_note} (the record's own words)"
+             if rec.close_date_note else NO_CLOSING_DATE, **d}
     elif isinstance(rec, Opportunity) and expires_only(rec):
         # G3 (T17, F3 again): a parent announcement's close date is when it expires. Under
         # close_date the model read it as the deadline, and later turns repeated it.
