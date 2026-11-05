@@ -368,7 +368,9 @@ def run_new(service: BriefService, q: dict[str, Any], run: Run, *, as_of: date, 
         run.drafts.append({"id": q["id"], "kind": q["kind"], "attempt": attempt,
                            "shown": attempt == m.get("attempt"), "draft": scrub(draft, al),
                            "removed": g.removed(detail=True),
-                           "kinds": [s.kind for s in g.sentences], "final": final})
+                           "kinds": [s.kind for s in g.sentences], "final": final,
+                           # The turn's tool log, so bench/scout_replay.py is exact (S49 Q0).
+                           "read": m.get("read") or [], "steps": m.get("steps") or []})
     if m.get("kind") == "answer":
         run.reasons.append(reason_row(q, m, drafts[0][2] if drafts else None))
     return score_new(service, q, m, meter, dt), shown_text(m)
@@ -541,7 +543,20 @@ def main() -> None:
     ap.add_argument("--no-grounder", action="store_true", help="skip MiniCheck")
     ap.add_argument("--as-of", default=None, help="YYYY-MM-DD; default today")
     ap.add_argument("--out", default=None, help="results folder; default bench/results/...")
+    ap.add_argument("--replay", default=None, metavar="DIR",
+                    help="re-grade DIR/drafts.jsonl with today's rules; no model call")
+    ap.add_argument("--records", default=None, help="with --replay: a folder of "
+                    "opportunity.jsonl and scholarship.jsonl; default the local store")
     a = ap.parse_args()
+    if a.replay:
+        import json as _json
+
+        from bench.scout_replay import load_records, replay, store_records, summary
+
+        recs = load_records(Path(a.records)) if a.records else store_records()
+        as_of = date.fromisoformat(a.as_of) if a.as_of else None
+        print(_json.dumps(summary(replay(Path(a.replay), recs, as_of)), indent=2))
+        return
     tag = a.tag or ("fake" if a.fake else "run")
     out = Path(a.out) if a.out else RESULTS / f"scout_open_{tag}"
     qs = [q for q in load_questions() if (not a.only or q["id"] in a.only)
