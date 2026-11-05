@@ -516,6 +516,10 @@ async def stub_signed_in(page: Page, state: dict) -> None:
             state["deleted_with"] = route.request.post_data
             state["gone"] = True
             return await route.fulfill(status=202, json={"ok": True})
+        if "/me/profile" in url:  # S53: the optional picks; an empty row, and a save is echoed
+            if route.request.method == "PUT":
+                return await route.fulfill(json=json.loads(route.request.post_data or "{}"))
+            return await route.fulfill(json={"citizenship": None, "residency_state": None})
         if "/me/docs" in url:
             return await route.fulfill(json=[{"id": "d1", "kind": "cv", "label": "CV", "chars": 900, "name": "cv.md"}])
         if "/me/saved" in url:  # S49: lists and My Perch read the saved list; an empty one here
@@ -848,7 +852,7 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
             w.check("scout_clear_empties_box", await page.input_value("#scout-q") == "", "box not emptied")
             hold = asyncio.Event()
 
-            async def slow(route: Route, hold: asyncio.Event = hold) -> None:  # hold the answer to measure the working state
+            async def slow(route: Route) -> None:  # hold the answer to measure the working state
                 await hold.wait()
                 await stub(route)
             await page.route(re.compile(r".*/briefs/[^/?]+/scout(\?.*)?$"), slow)
