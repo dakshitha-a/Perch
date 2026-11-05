@@ -326,3 +326,26 @@ def test_m9_scout_reads_temple_internal_leads_as_their_own_list():
     assert [x["id"] for x in out["leads"]] == [fed.id]
     assert [x["id"] for x in out["temple_internal"]] == [tp.id]
     assert t.ranks == {fed.id: 1}
+
+
+def test_m9_the_export_gives_temple_internal_funding_its_own_section():
+    from perch.export import brief_blocks
+    from perch.schemas import Brief, Lead
+
+    fed = opp(close_date=date(2026, 12, 1))
+    tp = temple_opp("k", "SYNTHETIC kidney seed grants", close_date=date(2025, 11, 15),
+                    deadline_quote="Applications close November 15, 2025.",
+                    details_url="https://example.temple.edu/k")
+    b = Brief(id="b", source="perch", source_url="perch://b", fetched_at=T, researcher_id="A1",
+              options={"as_of": AS_OF.isoformat()})
+    leads = [Lead(id="b:1", source="grants_gov", source_url="u", fetched_at=T, brief_id="b",
+                  route="A", record_id=fed.id, rank=1),
+             Lead(id="b:T1", source="temple_pages", source_url="u", fetched_at=T, brief_id="b",
+                  route="A", record_id=tp.id, rank=1, group="temple_internal",
+                  notes=["The page shows a past date, 15 Nov 2025. Check the page for this "
+                         "year's date."])]
+    blocks = brief_blocks(b, leads, opps={fed.id: fed, tp.id: tp})
+    heads = [x.text for x in blocks if x.kind in ("h2", "h3")]
+    assert "Grants (1)" in heads and "Temple internal funding (1)" in heads
+    assert heads.index("SYNTHETIC kidney seed grants") > heads.index("Temple internal funding (1)")
+    assert not any(h.startswith("2.") for h in heads)
