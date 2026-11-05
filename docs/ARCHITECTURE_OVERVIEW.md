@@ -11,7 +11,7 @@ Perch reads a Temple researcher's public papers, or a student's CV, and lays out
 ## How Perch fits together
 
 
-![The v1 build, top to bottom. A browser reaches a stateless web app. Sign-in goes through an OpenID Connect server and guests need no account. The web app reads Postgres, keeps sessions and counters in Redis, and puts jobs on a queue table. One worker with one GPU takes the jobs and runs a plain-code pipeline: retrieve, eligibility rules, rerank, student rules and citizenship picks. Cloud models write text. Every output passes the citation validator, whose second layer is a small local model. Perch sends nothing.](architecture/v1.svg)
+![The v1 build, top to bottom. A browser reaches a stateless web app. Sign-in goes through an OpenID Connect server and guests need no account. The web app reads Postgres, keeps sessions and counters in Redis, and puts jobs on a queue table. One worker with one GPU takes the jobs and runs a plain-code pipeline: retrieve, eligibility rules, rerank, student and citizenship rules. Cloud models write text. Every output passes the citation validator, whose second layer is a small local model. Perch sends nothing.](architecture/v1.svg)
 
 - **Browser and web app:** the browser talks to a web app that holds no state and never loads a model. It checks every request and hands slow work to a queue.
 - **One GPU node:** Perch runs on one GPU node. It is served through a public HTTPS tunnel on port 443, with the sign-in server on its own port. Nothing else is exposed.

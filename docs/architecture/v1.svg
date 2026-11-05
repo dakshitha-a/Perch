@@ -85,8 +85,7 @@
   <g font-size="12" fill="currentColor" font-weight="600"><text x="32" y="430">Worker: takes a job from the queue and runs it</text></g>
   <g fill="none" stroke="currentColor" stroke-opacity="0.45" class="k-code">
     <rect x="276" y="444" width="150" height="62" rx="6"/>
-    <rect x="32" y="540" width="150" height="72" rx="6"/>
-    <rect x="276" y="540" width="150" height="72" rx="6"/>
+    <rect x="32" y="540" width="394" height="72" rx="6"/>
     <rect x="520" y="540" width="168" height="72" rx="6"/>
   </g>
   <rect x="32" y="444" width="150" height="62" rx="6" fill="#dcefe8" stroke="#1f6f5c" class="k-local"/>
@@ -95,9 +94,8 @@
     <text x="42" y="464">1 Retrieve</text>
     <text x="286" y="464">2 Eligibility rules</text>
     <text x="530" y="464">3 Rerank</text>
-    <text x="42" y="560">4 Student rules</text>
-    <text x="286" y="560">5 Citizenship picks</text>
-    <text x="530" y="560">6 Build the lead list</text>
+    <text x="42" y="560">4 Rules about the person, all plain code</text>
+    <text x="530" y="560">5 Build the lead list</text>
   </g>
   <g font-size="11" fill="currentColor" opacity="0.85">
     <text x="42" y="480">embedder, dense</text>
@@ -106,11 +104,9 @@
     <text x="286" y="494">level, notices</text>
     <text x="530" y="480">reranker scores 100,</text>
     <text x="530" y="494">keeps 10</text>
-    <text x="42" y="577">class year, school, level;</text>
-    <text x="42" y="591">every rule leaves a line</text>
-    <text x="286" y="577">optional pick vs the</text>
-    <text x="286" y="591">listing's own words;</text>
-    <text x="286" y="605">moves it lower, never drops</text>
+    <text x="42" y="577">student rules: class year, school, level, GPA;</text>
+    <text x="42" y="591">optional citizenship and state vs the listing's own words,</text>
+    <text x="42" y="605">moved lower, never dropped; every rule leaves a line</text>
     <text x="530" y="577">numbers and dates copied</text>
     <text x="530" y="591">from record fields, with</text>
     <text x="530" y="605">source link on every row</text>
@@ -118,7 +114,7 @@
   <g stroke="currentColor" stroke-opacity="0.6" fill="none" marker-end="url(#oa)">
     <path d="M182 475 H274"/><path d="M426 475 H518"/>
     <path d="M604 506 V523 H107 V538" />
-    <path d="M182 576 H274"/><path d="M426 576 H518"/>
+    <path d="M426 576 H518"/>
     <path d="M360 372 V408"/>
   </g>
 
