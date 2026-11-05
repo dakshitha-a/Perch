@@ -168,3 +168,135 @@ def test_s10_ruled_out_records_are_capped_at_five():
     got = choose(xs, top=10)
     assert sum(x.verdict.verdict == "not eligible" for x in got) == 5
     assert len(got) == 8
+
+
+# --- M9: Temple internal funding has its own rules and its own group ---
+
+def temple_opp(i: str, title: str, **kw) -> Opportunity:
+    base = dict(id=f"temple_pages:{i}", source="temple_pages", fetched_at=T,
+                source_url=f"https://example.temple.edu/{i}", opportunity_number=i, title=title,
+                agency="SYNTHETIC Temple Office", audience_level="faculty")
+    return Opportunity(**(base | kw))
+
+
+def test_m9_temple_internal_rules():
+    from perch.eligibility import Constraints, check, check_temple_internal
+
+    c = Constraints(as_of=AS_OF)
+    o = temple_opp("a", "SYNTHETIC Blue Ribbon Seed Grants")
+    assert check(o, c)  # the federal rules still leave it out: no applicant types
+    assert check_temple_internal(o, c) == ([], [])
+    kw = dict(details_url="https://example.temple.edu/a")
+    old = o.model_copy(update={"close_date": date(2025, 11, 15),
+                               "deadline_quote": "Applications close November 15, 2025.", **kw})
+    assert check_temple_internal(old, c) == (
+        [], ["The page shows a past date, 15 Nov 2025. Check the page for this year's date."])
+    recent = o.model_copy(update={"close_date": date(2026, 10, 30)})
+    assert check_temple_internal(recent, c)[0] == ["closed 2026-10-30"]
+    student = o.model_copy(update={"audience_level": "undergraduate"})
+    assert check_temple_internal(student, c)[0]
+    assert check_temple_internal(opp(), c)[0]  # a federal record is not Temple internal
+
+
+def test_m9_route_a_keeps_temple_pages_in_their_own_group():
+    import numpy as np
+
+    from perch.brief import route_a
+    from perch.embed import FakeEmbedder
+    from perch.eligibility import Constraints
+    from perch.profile import Profile, Thread
+    from perch.rerank import FakeReranker
+    from perch.schemas import Researcher
+    from perch.store.sqlite import SQLiteRepository
+
+    emb = FakeEmbedder()
+    fed = opp(id="grants_gov:SYN-K", opportunity_number="SYN-K",
+              title="SYNTHETIC kidney repair research", close_date=date(2026, 12, 1),
+              eligible_applicants=UNI)
+    tp = [temple_opp("k", "SYNTHETIC kidney repair seed grants"),
+          temple_opp("m", "SYNTHETIC marsh ecology seed grants"),
+          temple_opp("s", "SYNTHETIC kidney student award", audience_level="undergraduate")]
+    import tempfile
+    from pathlib import Path
+
+    repo = SQLiteRepository(Path(tempfile.mkdtemp()) / "t.db")
+    repo.upsert([fed, *tp])
+
+    class Index:
+        def dense(self, vec, k):
+            return [(fed.id, 1.0), (tp[0].id, 0.9)]
+
+        def bm25(self, q, k):
+            return []
+
+        def upsert(self, *a):
+            return 0
+
+    vec = emb.embed_queries(["kidney repair"])[0]
+    prof = Profile("A1", AS_OF, emb.name, [Thread(0, np.asarray(vec), ["W1"], 1.0, "kidney",
+                                                  ["kidney repair"])], ["W1"])
+    res = Researcher(id="A1", source="openalex", source_url="https://openalex.org/A1",
+                     fetched_at=T, display_name="SYNTHETIC PI-1")
+    b = route_a(res, repo, Index(), emb, FakeReranker(), Constraints(as_of=AS_OF), top=10,
+                timings_log=None, profile=prof, index_new=False)
+    assert [x.opportunity.id for x in b.leads] == [fed.id]
+    assert tp[0].id not in b.rejected  # not counted as hidden by the federal rules
+    assert [x.opportunity.id for x in b.temple] == ["temple_pages:k", "temple_pages:m"]
+
+
+# --- M5: model text keys do not change with the as-of date ---
+
+def test_m5_text_profile_hash_has_no_date():
+    from perch.cache import profile_hash, text_profile_hash
+
+    assert profile_hash("A", ["w1"], "2026-11-03", [["w1"]]) != \
+        profile_hash("A", ["w1"], "2026-11-04", [["w1"]])
+    a = text_profile_hash("A", ["w2", "w1"], [["w1"], ["w2"]])
+    assert a == text_profile_hash("A", ["w1", "w2"], [["w2"], ["w1"]])
+    assert a != text_profile_hash("A", ["w1", "w3"], [["w1"], ["w3"]])
+    assert a != text_profile_hash("A", ["w1", "w2"], [["w1", "w2"]])
+
+
+def test_m5_the_service_keys_model_text_without_the_date():
+    """The summary and fit keys in perch/service.py use text_profile_hash (wiring commit)."""
+    import inspect
+
+    from perch import service
+
+    src = inspect.getsource(service.BriefService._run_summary) + inspect.getsource(
+        service.BriefService._run_explanations)
+    assert src.count("_text_hash(profile)") == 2
+    assert "cache_key(\"profile_summary\", precache" not in src
+    import numpy as np
+
+    from perch.profile import Profile, Thread
+
+    def p(d):
+        return Profile("A1", d, "fake", [Thread(0, np.zeros(2), ["W1"], 1.0, "x")], ["W1"])
+
+    assert service._text_hash(p(date(2026, 11, 3))) == service._text_hash(p(date(2026, 11, 4)))
+
+
+# --- F2: what the brief hid, as counts ---
+
+def test_f2_hidden_counts_group_every_rejected_record_once():
+    from perch.eligibility import hidden_counts
+
+    rejected = {"a": ["closed 2026-10-01"], "b": ["no close date in the record"],
+                "c": ["activity code R43: SBIR/STTR (small businesses apply, not universities)"],
+                "d": ["institutions of higher education are not eligible applicants",
+                      "closed 2026-01-01"],
+                "e": ["restricted by career stage, which public records cannot confirm"],
+                "f": ["mentions excluded keyword 'mouse'"], "g": ["something new"]}
+    got = hidden_counts(rejected)
+    assert got == [
+        {"key": "closed", "label": "closed or no close date", "count": 3,
+         "record_ids": ["a", "b", "d"]},
+        {"key": "small_business", "label": "for small businesses", "count": 1,
+         "record_ids": ["c"]},
+        {"key": "career_stage", "label": "limited by career stage", "count": 1,
+         "record_ids": ["e"]},
+        {"key": "your_filters", "label": "outside your filters", "count": 1,
+         "record_ids": ["f"]},
+        {"key": "other", "label": "other reasons", "count": 1, "record_ids": ["g"]}]
+    assert sum(x["count"] for x in got) == len(rejected)
