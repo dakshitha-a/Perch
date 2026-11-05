@@ -77,6 +77,17 @@ async function call(base, path, opts = {}) {
 // kept in memory only and sent on every request that is not a GET. A visitor with no
 // session gets a guest session before the first brief, on the side (audience) they asked
 // for. `onExpired(wasGuest)` runs when the server no longer knows the session.
+// S50: whether a static example brief is served for a side (web/example/<side>.json on the
+// deploy; gitignored). One HEAD request per side; never throws.
+const EXAMPLES = new Map();
+function exampleAvailable(side, base = "") {
+  if (!EXAMPLES.has(side)) {
+    EXAMPLES.set(side, fetch(`${base}/example/${encodeURIComponent(side)}.json`, { method: "HEAD" })
+      .then((r) => r.ok).catch(() => false));
+  }
+  return EXAMPLES.get(side);
+}
+
 export function liveApi(base = "") {
   let csrf = null, audience = null, guest = false;
   let epoch = 0; // bumps when the session is lost, so calls that fail together report it once
@@ -147,6 +158,9 @@ export function liveApi(base = "") {
     setLead: (id, leadId, action) => post(`${bid(id)}/leads/${encodeURIComponent(leadId)}/${action}`),
     record: (id) => p(`/records/${encodeURIComponent(id)}`),
     compare: (id) => p(`${bid(id)}/compare`),
+    // S50: Stop on the build screen (signed in) and the example brief's availability.
+    cancelBrief: (id) => post(`${bid(id)}/cancel`),
+    exampleAvailable: (side) => exampleAvailable(side, base),
     handoff: (id, body) => post(`${bid(id)}/handoff`, body),
     // Signed in (S48): POST queues a job and answers {job_id}; this reads the stored draft.
     handoffGet: (id, office, jobId) => p(`${bid(id)}/handoff${query({ office, job_id: jobId })}`),
@@ -293,6 +307,8 @@ export function replayApi(data) {
     // Later steps, recorded by scripts/export_replay.py (version 2 files). The comparison
     // is filtered to the kept leads; a hand-off draft and a Scout answer play back only
     // for what was recorded, and say so otherwise.
+    cancelBrief: () => Promise.reject(new ApiError("Stopping needs the live app.", 0)),
+    exampleAvailable: () => Promise.resolve(false),
     compare: () => {
       if (!data.compare) return Promise.reject(new ApiError("The comparison needs the live app.", 0));
       const kept = new Set(leadsIn().filter((l) => l.status === "kept").map((l) => l.id));

@@ -50,3 +50,5 @@ Thumbs.db
 # Raw Temple extraction output keeps names that the dataset build removes (S40); never commit it.
 data/temple/extracted*.jsonl
 data/temple/extracted*.jsonl.pages
+# S50: static example briefs served by the deploy only (copied from build/replay)
+web/example/
