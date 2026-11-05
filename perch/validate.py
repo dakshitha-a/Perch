@@ -134,6 +134,18 @@ def check(text: str, cited_ids: list[str], records: dict[str, Record]) -> Check:
     cited = [evidence(records[c]) for c in cited_ids if c in records]
     allowed_dates = set().union(*(e.dates for e in cited)) if cited else set()
     allowed_nums = set().union(*(e.numbers for e in cited)) if cited else set()
+    recs = [records[c] for c in cited_ids if c in records]
+    seen = " ".join([e.text for e in cited] + [r.source_url or "" for r in recs]
+                    + [r.id for r in recs])
+    links = list(dict.fromkeys(m.group(0).rstrip(".,;:") for m in URL_RE.finditer(text)))
+    for u in links:
+        if u.lower() not in seen.lower():
+            errors.append(f"link {u!r} is not in any cited record")
+    # A link that passed is copied whole from a record, so the digits inside it (a
+    # Grants.gov detail id, say) are not claims: drop it before counting numbers (M4).
+    for u in links:
+        if u.lower() in seen.lower():
+            text = text.replace(u, " ")
     for raw, d in find_dates(text):
         if d is None:
             errors.append(f"date {raw!r} is not a real date")
@@ -142,12 +154,6 @@ def check(text: str, cited_ids: list[str], records: dict[str, Record]) -> Check:
     for n in find_numbers(text):
         if n not in allowed_nums:
             errors.append(f"number {n!r} is not in any cited record")
-    recs = [records[c] for c in cited_ids if c in records]
-    seen = " ".join([e.text for e in cited] + [r.source_url or "" for r in recs]
-                    + [r.id for r in recs])
-    for u in dict.fromkeys(m.group(0).rstrip(".,;:") for m in URL_RE.finditer(text)):
-        if u.lower() not in seen.lower():
-            errors.append(f"link {u!r} is not in any cited record")
     for w in dict.fromkeys(m.group(1).lower() for m in ACTION_RE.finditer(text)):
         if not re.search(rf"\b{re.escape(w)}\b", seen, re.I):
             errors.append(f"the word {w!r} is not in any cited record: describe the "
