@@ -45,15 +45,16 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 **In**
 - Researcher identity, one of: name + "Temple University"; ORCID iD; OpenAlex author ID; up to 20 DOIs. Resolved to one OpenAlex author record; user confirms the match before anything runs.
 - Optional constraints: amount range, horizon (months), routes to consider, up to 5 emphasis keywords, exclusion keywords.
-- Optional documents (§4), held in the session only: a CV, a research direction, a draft proposal, unpublished work. Tests and demos of them use SYNTHETIC text.
+- Optional documents (§4): a CV, a research direction, a draft proposal. On `rebuild/v1` they are stored encrypted under the signed-in user's key, and a guest cannot add them. Perch does not accept unpublished research. Tests and demos use SYNTHETIC text. Before v1 they were held in the session only.
 
 **In — student brief (S18, S33)**
 - A CV, pasted or uploaded (text, Markdown, DOCX or PDF). Code reads level, year, major, GPA, enrolment, expected graduation and the number of referees by rule.
 - An interests note, which steers the search; up to five achievements, which are session records an explanation or a cover point may cite.
-- No public identity is needed. A student session is private by construction: choosing Student opens the session before any text leaves the browser.
+- No public identity is needed. On `rebuild/v1` a student brief needs a signed-in account for the CV; a guest can run a brief only on the SYNTHETIC sample student. The CV is stored encrypted under the user's key. The fallback build held it in a private session instead.
 
 **Out — the resourcing brief**
 - Research profile: 3–6 topic labels, 5–10 key papers (title, year, venue, DOI link), public federal awards with start/end dates, and the **public award horizon** (end date of the last public award). Nothing about lab finances is inferred.
+- Temple internal funding (v1, S49): Temple's own faculty funding pages show as a separate group of up to three leads, judged by their own rules and never mixed with the federal list.
 - Route A, grants and foundations: up to 10 open opportunities; sponsor, title, deadline, award size and eligibility *copied from the record*; 2–3 sentence fit explanation citing 1–3 of the researcher's papers; fit score.
 - Route B, industry leads: up to 5 organisations; the public signals found; suggested relationship type; fit explanation; confidence label; always "inferred from public signals; not verified".
 - Comparison: money, time to decision, effort, IP implications, evidence strength. Likelihood only for Route A, only as the back-tested hit rate for that opportunity type.
@@ -94,6 +95,12 @@ One-line answer for the judges: Pivot finds things that mention your keywords. P
 4. **Compare** — kept leads in one sortable table; evidence panel from any cell.
 5. **Hand off** — choose office, edit draft, copy or open in mail; shareable link and PDF. Under the To line a fixed note says Temple routes every grant proposal, and any company agreement that brings Temple funding, through ERA, with a "Find your research administrator" link.
 6. **Ask Scout** — plain follow-ups on the brief; "What could my cover letter for the top lead say?" runs `cover_points` (S33) and puts the checked points on the card with Copy.
+
+**What v1 changes in this walkthrough (S49, S50).**
+- **Keep:** Keep on a lead or on a browse card puts it on a saved list. My Perch shows the saved items with their deadlines, upcoming first. Saving needs an account.
+- **Closed calls:** the research funding list hides calls whose close date has passed, with a "Show closed calls" toggle.
+- **Rule lines:** each student card lists every rule the code checked and its outcome, written by code.
+- **Stop:** a running brief or Scout answer can be stopped.
 
 **Student walkthrough** (S18, S33)
 
@@ -156,7 +163,7 @@ Decision models are never used for skills 1–4 (profile summary, fit explanatio
 Two layers: the deterministic pipeline (what the back-test measures) and Scout on top.
 
 Scout can: run a brief end to end, each step as soon as the model asks for it; take plain-language follow-ups ("foundations only, under $200k"); monitor (award within 12 months of ending or new opportunity above threshold → refresh and draft a notification; built in S16, shelved in S23 until users have accounts); explain its ranking from its records.
-A student brief gets its own allowlist instead (S24, S33): search_options, check_option, explain_verdict, read_cv, compare_options, draft_note, cover_points and get_record. All but cover_points read only rule results and records; cover_points (S33) reads the CV, the interests note and the achievements, with contact details blanked, on the session's models, and returns checked points for a cover letter. Student Scout runs only in a private session; the MCP server keeps the researcher tools.
+A student brief gets its own allowlist instead (S24, S33): search_options, check_option, explain_verdict, read_cv, compare_options, draft_note, cover_points and get_record. All but cover_points read only rule results and records; cover_points (S33) reads the CV, the interests note and the achievements, with contact details blanked, on the session's models, and returns checked points for a cover letter. On `rebuild/v1`, student Scout needs a signed-in account; the private session is the fallback build's. The MCP server keeps the researcher tools.
 
 Scout cannot: call anything outside the allowlist (no web, no shell); state a number or date not in a cited record; send email or change a record; exceed the per-brief budget; read anything about a researcher that is not a public record or a document they added to the session.
 Tools: `build_profile · list_awards · search_opportunities(route, filters) · get_org_signals · explain_fit · compare · draft_handoff · cover_points · get_record`, fixed to the brief's researcher (cover_points, S33, is model skill 4: the points a cover letter for one record could make, each citing the record and the CV, a document, a paper or an award); the MCP server adds `resolve_author` and an `author_id` argument, because its client starts without a researcher. Every call logged with args and result hashes; a brief is replayable.
