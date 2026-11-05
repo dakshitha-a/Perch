@@ -22,6 +22,8 @@
    the older names are aliases so the S7 to S23 components follow the new palette. */
 :root {
   --bg: #F7F8F4; --surface: #FFFFFF; --line: #DCE3DE; --chip: #EBF0EC;
+  /* S50 (V10): the edge of a control, 3:1 or more on the page, cards and chips; card edges keep --line */
+  --line-strong: #7E8B85; --dialog: #FFFFFF;
   --ink: #16201C; --ink-2: #45524D; --ink-3: #5C6964;
   --accent: #23664F; --on-accent: #FFFFFF; --accent-soft: #E2F2E9;
   --ember: #8F5A08;      /* text-safe ember on light */
@@ -51,6 +53,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0F1715; --surface: #17221F; --line: #273631; --chip: #22302B;
+    --line-strong: #687B74; --dialog: #1F2D29;
     --ink: #E9EFEC; --ink-2: #B3C1BC; --ink-3: #93A39D;
     --accent: #7CCBA8; --on-accent: #0B1F17; --accent-soft: #1E3B30;
     --ember: #F0B54A; --ember-fill: #F0B54A; --ember-soft: #3A2E16;
@@ -66,6 +69,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #0F1715; --surface: #17221F; --line: #273631; --chip: #22302B;
+  --line-strong: #687B74; --dialog: #1F2D29;
   --ink: #E9EFEC; --ink-2: #B3C1BC; --ink-3: #93A39D;
   --accent: #7CCBA8; --on-accent: #0B1F17; --accent-soft: #1E3B30;
   --ember: #F0B54A; --ember-fill: #F0B54A; --ember-soft: #3A2E16;
@@ -92,6 +96,9 @@ p { margin: 0; }
 a { color: var(--moss); text-underline-offset: 2px; }
 button, input, select, summary { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+/* S50 (V1): a heading that code moves focus to, so a screen reader starts there, shows no ring;
+   every control keeps its ring. */
+:is(h1, h2, h3)[tabindex="-1"]:focus { outline: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip { position: absolute; left: 8px; top: -60px; background: var(--leaf); padding: 10px 14px; border-radius: var(--r-ctl); z-index: 30; }
 .skip:focus { top: 8px; }
@@ -113,11 +120,15 @@ button, input, select, summary { font: inherit; color: inherit; }
 
 /* ---------- buttons ---------- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px;
-  border-radius: var(--r-ctl); border: 1px solid var(--line); background: var(--leaf); color: var(--ink);
+  border-radius: var(--r-ctl); border: 1px solid var(--line-strong); background: var(--leaf); color: var(--ink);
   font-weight: 600; font-size: 15px; text-decoration: none; cursor: pointer; touch-action: manipulation; }
 .btn:hover { border-color: var(--ink-3); }
 .btn:active { transform: translateY(1px); }
-.btn[disabled], .btn[aria-disabled="true"] { opacity: .65; cursor: not-allowed; }
+/* S50 (V27): a disabled button looks disabled: the chip fill, the faint edge and muted text, no opacity. */
+.btn[disabled], .btn[aria-disabled="true"] { opacity: 1; cursor: not-allowed; background: var(--chip); border-color: var(--line); color: var(--ink-3); }
+.btn.primary[disabled], .btn.primary[aria-disabled="true"] { background: var(--chip); border-color: var(--line); color: var(--ink-3); filter: none; }
+.btn[disabled]:hover, .btn[aria-disabled="true"]:hover { border-color: var(--line); }
+.btn[disabled]:active, .btn[aria-disabled="true"]:active { transform: none; }
 .btn[aria-busy="true"] { cursor: progress; }
 .btn.primary { background: var(--moss); border-color: var(--moss); color: var(--moss-ink); }
 .btn.primary:hover { filter: brightness(1.06); }
@@ -161,7 +172,7 @@ button, input, select, summary { font: inherit; color: inherit; }
 .field-label { font-weight: 650; font-size: 15px; }
 .search-row { display: flex; gap: 8px; }
 input[type="search"], input[type="number"], input[type="text"], textarea, select {
-  min-height: 48px; border-radius: var(--r-ctl); border: 1px solid var(--line); background: var(--leaf);
+  min-height: 48px; border-radius: var(--r-ctl); border: 1px solid var(--line-strong); background: var(--leaf);
   padding: 0 14px; font-size: 17px; width: 100%; color: var(--ink); }
 input:focus-visible, select:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 input::placeholder { color: var(--ink-3); }
@@ -954,7 +965,7 @@ h1.page { font: 500 34px/1.15 var(--serif); letter-spacing: -.005em; }
 .landing h1 { margin-top: -6px; font: 500 clamp(38px, 5vw, 56px)/1.08 var(--serif); letter-spacing: -.01em; }
 .landing .lede { margin-top: -10px; font-size: 18px; line-height: 1.5; color: var(--ink-2); }
 .landing form, .landing .student-go { width: 100%; display: flex; flex-direction: column; gap: 10px; }
-.searchbox { display: flex; gap: 8px; padding: 6px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.searchbox { display: flex; gap: 8px; padding: 6px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line-strong); }
 .searchbox input { flex: 1; min-width: 0; min-height: 48px; border: 0; background: transparent; font-size: 17px; padding: 0 14px; }
 .searchbox .btn { flex: none; min-height: 48px; padding: 0 22px; font-size: 16px; }
 .searchbox.small input { min-height: 44px; font-size: 16px; }
@@ -1014,7 +1025,7 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 /* the brief: title row, progress card, tabs, two columns with a right rail */
 .brief-meta { margin-top: 4px; color: var(--ink-2); font-size: 15px; }
 .export-menu { position: relative; }
-.export-menu > summary { min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 15px; }
+.export-menu > summary { min-height: 44px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 15px; }
 .export-menu > summary::before { display: none; }
 .export-menu[open] > summary { border-color: var(--ink-3); }
 .export-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 8; width: min(340px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--line);
@@ -1264,7 +1275,11 @@ body[data-screen="landing"] .foot .promises { display: grid; }
   table.compare.stack tr { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); margin-bottom: 12px; overflow: hidden; }
   table.compare.stack tbody th { position: static; max-width: none; background: var(--chip); }
   table.compare.stack td { display: grid; grid-template-columns: 40% 1fr; gap: 8px; border-bottom: 1px solid var(--line); }
-  table.compare.stack td::before { content: attr(data-label); color: var(--ink-3); font-size: 13px; padding: 10px 0 10px 12px; }
+  table.compare.stack td::before { content: attr(data-label); color: var(--ink-3); font-size: 13px; padding: 0 0 0 12px; }
+  /* S50 (V12): the label and its value start on one line: the cell holds the padding, not its parts. */
+  table.compare.stack td { align-items: start; padding: 10px 12px 10px 0; }
+  table.compare.stack td > .cell-text:first-child, table.compare.stack td > .cell-none:first-child { padding-top: 0; }
+  table.compare.stack td > :last-child { padding-bottom: 0; }
 }
 /* A box an error names (U4) */
 textarea[aria-invalid="true"], input[aria-invalid="true"] { border-color: var(--brick); }
@@ -1422,20 +1437,17 @@ body.signed-in #theme { display: none; }
 .check-row { display: flex; align-items: center; gap: 14px; min-height: 56px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-ctl);
   background: var(--bg); cursor: pointer; }
 .check-row input { width: 24px; height: 24px; margin: 0; accent-color: var(--accent); flex: none; }
-.welcome .box, .account .box { max-width: 680px; }
 .consent-text { max-height: 280px; overflow: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--bg); line-height: 1.55; }
 .oa-field { display: grid; gap: 6px; }
-.welcome-go { display: grid; gap: 8px; max-width: 680px; }
+.welcome-go { display: grid; gap: 8px; }
 .welcome-go .btn.big { min-height: 56px; }
-.acct-facts { max-width: 680px; }
 .docs { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .doc { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .doc-name { flex: 1 1 14em; min-width: 0; overflow-wrap: anywhere; }
 .btn.danger { background: var(--brick-soft); border-color: var(--brick); color: var(--ink); }
 .btn.danger[disabled] { opacity: .5; cursor: not-allowed; }
 .danger-zone { border-color: var(--brick); }
-.del-dialog { width: min(520px, calc(100vw - 32px)); max-width: none; padding: 20px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); color: var(--ink); }
-.del-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+.del-dialog { width: min(520px, calc(100vw - 32px)); max-width: none; padding: 20px; border: 1px solid var(--line); border-radius: var(--r-card); color: var(--ink); }
 .del-dialog form { display: grid; gap: 12px; }
 .dlg-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .brief-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
@@ -1560,7 +1572,7 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
 }
 .ready-chip { position: relative; }
 .ready-chip > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px 0 8px; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: var(--fs-14); font-weight: 600; cursor: pointer; list-style: none; }
+  border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font-size: var(--fs-14); font-weight: 600; cursor: pointer; list-style: none; }
 .ready-chip > summary::-webkit-details-marker { display: none; }
 .ready-chip > summary::before { display: none; }
 .ready-chip > summary:hover, .ready-chip[open] > summary { border-color: var(--ink-3); }
@@ -1617,3 +1629,18 @@ body[data-screen="form"] .explain-check { min-height: 44px; }
   .brief .title-row > div:first-child { flex: 1 1 100%; }
   .brief-tools { justify-content: flex-start; }
 }
+
+/* ---------- S50 base styles (A1) ---------- */
+/* Dialogs (V37): their own surface, a step above the page in dark mode, over a darker scrim. */
+dialog { background: var(--dialog); color: var(--ink); }
+dialog::backdrop { background: rgba(10, 16, 14, .55); }
+:root[data-theme="dark"] dialog { border: 1px solid var(--line-strong); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) dialog { border: 1px solid var(--line-strong); } }
+/* The Evidence mark sits on the title's baseline and never parts from its icon (V43). */
+.lead-title .ev-mark, .ar-title .ev-mark { vertical-align: baseline; white-space: nowrap; }
+/* The landing's two student buttons share one width (V47). */
+.landing .student-go .btn { min-width: 264px; }
+/* The kept bar floats over the list's end on a phone (V36). */
+@media (max-width: 699px) { #panel { padding-bottom: 72px; } }
+/* The sort select (V3) shares the controls' edge. */
+.sort-pick { border-color: var(--line-strong); }
