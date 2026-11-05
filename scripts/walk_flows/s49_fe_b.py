@@ -66,7 +66,7 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         page = await U.new_page(browser, w, tag, view, base)
         await page.goto(base + "/#/awards")
         await page.wait_for_selector("li.award, li.award-row", timeout=30_000)
-        await page.wait_for_selector(".tag-row")
+        await page.wait_for_selector(".tag-row", state="attached")
         await w.snap(page, tag, "s49b-awards")
         if view["width"] > 600:
             hs = await page.evaluate("[...document.querySelectorAll('.award-row')].map(e => e.getBoundingClientRect().height)")
@@ -75,6 +75,8 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         rows = await page.evaluate("""() => [...document.querySelectorAll('.award-row')].map(e => {
           const t = e.textContent; return (t.match(/Not stated/g) || []).length; })""")
         w.check("s49_no_double_not_stated", bool(rows) and max(rows) <= 1, f"{len(rows)} rows, most 'Not stated' in one row: {max(rows or [0])}")
+        if await page.locator("[data-key=filters]").is_visible():  # S50: on a phone the filters start folded
+            await page.locator("[data-key=filters]").click()
         lab = await page.evaluate("""() => { const l = document.querySelector('label[for=list-level]');
           return l ? { text: l.textContent.trim(), vis: l.offsetParent !== null && !l.classList.contains('sr-only') } : null; }""")
         w.check("s49_level_label", bool(lab) and lab["text"] == "Level of study" and lab["vis"], f"{lab}")
@@ -117,6 +119,8 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         sw = page.locator("[data-key=show-closed]")
         on = await sw.count()
         if on:
+            if await page.locator("[data-key=filters]").is_visible() and not await sw.is_visible():
+                await page.locator("[data-key=filters]").click()  # S50: folded on a phone
             await sw.click()
             await page.wait_for_timeout(800)
         after = await page.locator(".tag.closed").count()

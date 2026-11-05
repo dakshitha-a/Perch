@@ -8,7 +8,6 @@ G8 words) may not be on the branch; QA re-runs them against the real routes afte
 
 from __future__ import annotations
 
-import json
 import re
 
 OFFICES = [{"key": "research_development", "name": "Research Development", "route": "A", "url": "https://example.invalid/rd"},
@@ -49,6 +48,11 @@ def register(U):  # noqa: N803 - the module handed in by the loader
             await page.wait_for_timeout(400)
             tops[side] = await page.evaluate("document.querySelector('.award-row').getBoundingClientRect().top")
             if phone:
+                if side == "funding" and await page.locator("[data-key=filters]").count():
+                    await page.locator("[data-key=filters]").click()
+                    await page.locator("[data-key=temple]").click()  # school chips show once Temple only is on
+                    await page.wait_for_selector(".tag-chip", timeout=15_000)
+                    await page.locator("[data-key=filters]").click()
                 tog = page.locator("[data-key=filters]")
                 if await tog.count():
                     await tog.click()
@@ -70,14 +74,14 @@ def register(U):  # noqa: N803 - the module handed in by the loader
             await page.locator(".ar-title .title-btn").first.click()
             ok = True
             try:
-                await page.wait_for_selector("#evidence:not([hidden])", timeout=5000)
+                await page.wait_for_function("() => { const e = document.getElementById('evidence'); return e && !e.hidden && e.querySelector('#evidence-body').textContent.length > 20; }", timeout=5000)
                 body = await page.locator("#evidence-body").inner_text()
                 ok = first_title in body
             except Exception:  # noqa: BLE001
                 ok = False
             w.check(f"s50b_title_opens_evidence_{side}", ok, f"title {first_title[:50]!r}")
+            await page.keyboard.press("Escape")
             if side == "funding":
-                await page.keyboard.press("Escape")
                 texts = await page.evaluate("[...document.querySelectorAll('.award-row')].slice(0, 2).map(e => e.querySelector('.ar-facts').textContent)")
                 w.check("s50b_far_date", len(texts) > 1 and "SYNTHETIC proposals accepted anytime" in texts[0] and "2076" not in texts[0],
                         f"[mock] {texts[0][:90] if texts else ''!r}")
