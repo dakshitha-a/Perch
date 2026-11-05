@@ -30,6 +30,8 @@ PATTERNS: dict[str, re.Pattern[str]] = {
     "email address": re.compile(r"\b[A-Za-z0-9._%+\-]+@(?!users\.noreply\.github\.com)"
                                 + r"[A-Za-z0-9\-]+\.[A-Za-z]{2,}\b"),
     "Claude session link": re.compile("claude" + r"\.ai/code/session_"),
+    # S51: a tailnet host name names this machine and the deploy (CLAUDE.local.md keeps it).
+    "tailnet host": re.compile(r"\b[a-z0-9\-]+\.tail[0-9a-f]{4,}" + r"\.ts\.net\b"),
 }
 
 # Allowed emails: the Claude co-author trailer only.

@@ -28,11 +28,11 @@ Rewritten 2026-11-05 at about 00:55 EST, at the close of S49. Dakshitha delegate
 
 ## The test deploy (live, on the S49 code)
 
-- **App:** https://sn4622120437.tailf0654d.ts.net:8443 (Funnel 8443 to 127.0.0.1:8200). Sign-in through the dev Keycloak on Funnel 10000.
+- **App:** the test deploy's URL (in CLAUDE.local.md) (Funnel 8443 to 127.0.0.1:8200). Sign-in through the dev Keycloak on Funnel 10000.
 - **Accounts:** SYNTHETIC `demo-presenter`, `demo-researcher`, `demo-student`; passwords only in `.env.deploy`.
 - **Guest budget for Demo Day:** $1.50 an address and $6.00 a day (raised in S49, `.env.deploy`), because an audience on one venue network shares one address. The Funnel does pass each visitor's address (checked in S49).
 - **Updating it:** commit, then `systemctl --user restart perch-v1-web perch-v1-worker`. Edits under `web/` are live at once. After a change to `perch/store/denorm.py`, run `scripts/redenorm.py --dsn-env PERCH_WORKER_DATABASE_URL` with `.env.deploy` sourced.
-- **Smoke:** `.venv/bin/python scripts/smoke_deploy.py --base https://sn4622120437.tailf0654d.ts.net:8443` (add `--no-researcher` to save about $0.10).
+- **Smoke:** `.venv/bin/python scripts/smoke_deploy.py --base <the test deploy's URL, in CLAUDE.local.md>` (add `--no-researcher` to save about $0.10).
 - **Logs:** the worker writes nothing to the journal; read a brief's own `error` through `GET /briefs/{id}`.
 
 ## Worth knowing

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -14,7 +15,9 @@ import httpx
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "build/s50_live"
-BASE = "https://sn4622120437.tailf0654d.ts.net:8443"
+BASE = os.environ.get("PERCH_LIVE_BASE", "")
+if not BASE:
+    sys.exit("set PERCH_LIVE_BASE to the deploy URL (it is kept out of the repository)")
 AUTHOR = "A5063022331"
 ALIAS = ("Tomasz Skórski", "Skórski", "Tomasz Skorski", "Skorski, Tomasz", "T. Skorski", "Skorski")
 LOG: dict = {"notes": []}

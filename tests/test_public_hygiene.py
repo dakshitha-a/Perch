@@ -23,6 +23,7 @@ def test_catches_secrets_and_personal_details():
     assert check_public.scan_text("/" + "home/someone/project")
     assert check_public.scan_text("someone" + "@example.com")
     assert check_public.scan_text("https://claude" + ".ai/code/session_abc")
+    assert check_public.scan_text("https://host1." + "tail0a1b2c.ts" + ".net:8443")
 
 
 def test_allows_normal_text():
