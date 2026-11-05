@@ -1074,7 +1074,7 @@ def safe_return_to(v: str | None) -> str:
 - **Entry.** `POST /auth/guest` with a CSRF-exempt, same-origin check. It creates a guest session with `guest=1` and `uid` empty. TTL is `PERCH_GUEST_TTL_S` absolute, with no sliding.
 - **Can do.** Browse and filter awards and funding. Build a brief for a public OpenAlex author id, or for a built-in SYNTHETIC student persona. Compare, export. Read the Help page.
 - **Cannot do.** Upload or paste a CV or entries. Scout. Hand-off drafts. Cover points. Save anything. These need an account.
-- **Stored.** No row in `users`, `user_data` or `consents`. A guest brief is a job with `user_id` NULL and `guest_sid_hash` set, submitted and read through `guest_tx`, and its result is a Redis key `perch:gres:<job_id>` that expires in an hour. The `jobs` row has public ids only and is deleted by `purge(action="guests")` after 24 hours.
+- **Stored.** No row in `users`, `user_data` or `consents`. A guest brief is a job with `user_id` NULL and `guest_sid_hash` set, submitted and read through `guest_tx`, and its result is a Redis key `perch:gres:<job_id>` that expires in an hour. Every guest brief value in Redis is sealed with AES-GCM under a random key of that guest session, `perch:gsess:<gsid_hash>:bkey` (S49 Q50); the worker knows only the session hash, so the key sits beside the values rather than in the session cookie. The `jobs` row has public ids only and is deleted by `purge(action="guests")` after 24 hours.
 - **Limits.** The `guest_job` rate limit and the guest daily budget are keyed by the guest session. A site-wide guest ceiling and a per-address ceiling on new guest sessions bound abuse, see sections 4.2 and 4.3.
 - **Banner.** Every guest page shows a banner stating that nothing is saved and the session ends in an hour. Exports from a guest session carry the banner text.
 - **Model use.** The brief's model text for a public author id is public-input text and may hit `public_cache`. The synthetic persona brief carries the sample badge and banner required by rule 11.
@@ -1135,7 +1135,8 @@ All routes sit under one FastAPI app. "Auth" is the weakest allowed session: `no
 | `GET /health` | kept | Adds `?ready=true` for readiness. |
 | `GET /authors/resolve` | kept | Auth `session`. Rate limited. Runs in `web` with the OpenAlex key and a single-host egress rule, D-13. Results are cached in Redis for the author cache TTL. |
 | `POST /briefs` | changed | Body gains `audience`. Returns `JobAccepted`. Auth `session`. |
-| `GET /briefs/{id}` | changed | Reads the encrypted `brief` row. Auth `session`. Guest reads Redis. |
+| `GET /briefs/{id}` | changed | Reads the encrypted `brief` row. Auth `session`. Guest reads Redis. Carries the brief's `job` (state, error code, attempts, queue place, whether a worker is alive); a brief whose job ended without it shows as `failed` with a code-written sentence (S49 B1). |
+| `POST /briefs/{id}/cancel` | new (S49) | Auth `session` and CSRF. Cancels the job that builds the brief. |
 | `POST /briefs/{id}/leads/{lead_id}/keep`, `dismiss`, `restore` | changed | Auth `session`, so a guest can keep and compare as section 7.4 says. A user updates the `brief` row. A guest updates the brief's Redis key and does not extend its hour. |
 | `GET /briefs/{id}/export.json`, `export.md`, `export.html` | changed | Shared `brief_blocks`. Auth `session`. |
 | `GET /briefs/{id}/compare` | changed | Shared `compare_rows`. Auth `session`. Reads the session's own brief. |
