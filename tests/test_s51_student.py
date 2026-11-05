@@ -127,3 +127,36 @@ def test_a_sample_brief_names_the_sample_students_entries(tmp_path):
         ctx = svc._ctx[b.id]
         assert [d.title for d in ctx["achieved"]] == [want]
         assert ctx["interests"].title == want.replace("entry", "interests note")
+
+
+# --- H10: each student card names its single closest record ---
+
+def test_a_student_card_is_given_one_closest_record():
+    import json
+    from datetime import date
+
+    import numpy as np
+
+    from perch.profile import Profile, Thread
+    from perch.schemas import Opportunity
+    from perch.skills.fit import explain_leads
+    from perch.student import achievement_docs
+    from tests.test_skills import audited
+
+    docs = achievement_docs(["SYNTHETIC poster on stream nitrate after storms",
+                             "SYNTHETIC volunteer team for monthly stream sampling",
+                             "SYNTHETIC map of storm drain outfalls"])
+    works = {d.id: d for d in docs}
+    prof = Profile("user:you", date(2026, 11, 6), "fake",
+                   [Thread(0, np.zeros(2), list(works), 1.0, "streams")], list(works))
+    o = Opportunity(id="grants_gov:syn-n", source="grants_gov", fetched_at=T,
+                    source_url="https://example.gov/n", opportunity_number="syn-n",
+                    title="SYNTHETIC Stream Nitrate Award", agency="SYNTHETIC Agency",
+                    description="Supports stream nitrate research after storms.")
+    reply = json.dumps({"reasoning": "r", "opportunity_sentence": "It funds stream work "
+                        "[syn-n].", "research_findings": [], "link_sentence": "",
+                        "cited_ids": ["syn-n"]})
+    p, _ = audited([reply])
+    explain_leads([o], prof, works, p, audience="student")
+    prompt = p.inner.calls[0]["messages"][0].content
+    assert "closest first: [user:achievement-a]." in prompt
