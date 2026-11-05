@@ -75,3 +75,20 @@ def test_top_lead_heading_passes_over_rank_one_only():
     assert _top("Your top lead", OPP2)  # rank 2
     assert _top("Top lead: SYNTHETIC Marsh Ecology Program", OPP)  # the title is not rank 1
     assert _top("Top two leads", OPP)  # only one record under it
+
+
+# --- G15: a one-line refusal inside a mixed answer ---
+
+def _errors(text: str, mark: str) -> list[str]:
+    t = guard_tools()
+    g = ans.grade(text, t.seen, NAMES, AS_OF, None, t)
+    return [e for s in g.sentences if mark in s.text for e in s.errors]
+
+
+def test_a_short_refusal_line_passes_and_a_claim_after_it_does_not():
+    ok = (f"The SYNTHETIC Kidney Repair Program closes 17 Nov 2026 [{OPP.id}]. "
+          "I cannot help with the integral question.")
+    assert _errors(ok, "integral") == []
+    assert _errors("I cannot help with that, but the SYNTHETIC Marsh Ecology Program pays "
+                   "$500,000.", "Marsh")
+    assert _errors("I cannot help with the SYNTHETIC Marsh Ecology Program.", "Marsh")

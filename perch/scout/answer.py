@@ -153,6 +153,7 @@ HELP_RE = re.compile(
 DECLINE_RE = re.compile(r"\b(?:can(?:not|'t)|unable to|not able to|only (?:help|answer))\b.{0,80}"
                         r"\b(?:help|answer|assist|with that|funding|scholarship)", re.I)
 CONTACT_RE = re.compile(r"^\[contact removed\]$", re.I)
+DECLINE_WORDS = 16  # G15: a refusal line longer than this is an answer, and needs citing
 NUMBER_WORDS = re.compile(
     r"\b(?:hundreds?|thousands?|millions?|billions?|percent|dozens?|"
     r"(?:twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety)(?:-\w+)?|"
@@ -695,6 +696,15 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
             s.fail("help_with_claim", "a help line with no citation must stop at the action; "
                    "a reason or verdict about a record needs its citation", n[:60])
             return
+    elif DECLINE_RE.search(body) and len(body.split()) <= DECLINE_WORDS \
+            and not CLAIM_TAIL_RE.search(body):
+        # G15 (S50): one short refusal inside a mixed answer ("I cannot help with the integral
+        # question.") is help text. It may name no record and state no number or date.
+        s.kind = "help"
+        _no_record_claims(s, body, names, seen, cited=False)
+        if validate.find_numbers(body) or validate.find_dates(body):
+            s.fail("uncited_number_or_date", "a number or date with no cited record")
+        return
     elif ABSENT_TEMPLATE_RE.fullmatch(n):
         s.kind = "absent"
         return  # a fixed template: nothing in it to check
