@@ -2056,7 +2056,8 @@ function renderSegs(segs, skip = new Set()) {
     const next = segs[i + 1];
     const m = typeof next === "string" ? next.match(/^[.,;:)]+/) : null;
     if (m) segs[i + 1] = next.slice(m[0].length);
-    out.push(cite(s.cite, papers), m ? m[0] : null);
+    // the punctuation after a chip stays on its line (S49: the chip itself does not wrap)
+    out.push(m ? h("span", { class: "nowrap" }, cite(s.cite, papers), m[0]) : cite(s.cite, papers));
   }
   return out;
 }
