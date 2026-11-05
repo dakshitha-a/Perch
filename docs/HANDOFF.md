@@ -30,6 +30,8 @@ Rewritten 2026-11-05 at about 14:00 EST, at the close of S53 and S54. Demo Day i
 - **Updating it:** commit, then `systemctl --user restart perch-v1-web perch-v1-worker`. Edits under `web/` are live at once.
 - **Walk servers** must use `PERCH_LIMIT_GPU=6` with their own lock file, never GPU 3, or the live worker cannot start.
 - **Rotate after the demo:** the database role password printed in S51.
+- **Known limit, after the demo:** the code-written distress reply still shows the "Cloud: Anthropic" line under it. It is a one-condition fix in web/scout.js; it was left so the films match the live app.
+- **Old agent worktrees** under .claude/worktrees hold finished branches with full venvs. Nothing sensitive is left in them; they can be removed.
 
 ## Open questions (mirror of bridge/QUESTIONS.md)
 

@@ -24,6 +24,9 @@ Do these on the morning of the demo, in this order.
 - **What they see:** a notice on every screen, and again beside the CV boxes: "Shared demo account. Everyone who signs in sees what you save here. Do not paste a real CV." They land straight in the app, with no Welcome step.
 - **Cleared nightly:** a timer wipes the account's CV, entries, documents, briefs, kept leads, hand-offs, cover points and Scout sessions at 03:30 local time. The account, its consent and its roles stay. Its spend record stays too, so the wipe does not reset the budget. Run the wipe by hand before the demo if the account has been used.
 - **Lockout:** after 10 failed sign-in tries the sign-in service locks the account. It unlocks by itself after 1 to 15 minutes. Presenters should not type the password wrong in front of the audience.
+- **One budget for the room:** the daily model budget is per account, and `demo` is one account. The deploy sets 5.00 USD a day. At the measured 0.1135 USD a student brief and 0.0139 USD a Scout question (docs/COST_MODEL.md), that is about 40 student briefs. After that the lists, dates and rule lines still work, and only the written reasons pause. Raising it is one line in the deploy's env file and a web restart.
+- **Port 10000:** sign-in pages are served on port 10000. If the venue network blocks that port, `demo` cannot sign in there. Then point people to Try as a guest, which needs no sign-in.
+- **Tested:** the wipe was run once on 5 Nov (S54): it wiped 1 of 1 shared accounts, and the account kept its roles and banner.
 - **Presenter account:** `demo-presenter` stays separate and unshared, so the pre-built briefs on it are not wiped.
 - **Operator setup:** the steps are in the comments of `.env.example` (PERCH_SHARED_ACCOUNTS) and `deploy/systemd/v1/perch-demo-wipe.service`.
 
