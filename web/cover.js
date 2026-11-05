@@ -150,3 +150,6 @@ export function coverBlock(ctx, briefId, recordId) {
   if (!ctx.guest && (ctx.stored || []).includes(recordId)) restore(k, briefId, recordId, ctx.api);
   return box;
 }
+
+// S49 step 0: FE-B replaces the body; FE-A and student.js import it.
+export function coverListLine() { return null; }

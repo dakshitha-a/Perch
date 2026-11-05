@@ -47,7 +47,7 @@ def bundle() -> str:
 
 def page(replay: dict) -> str:
     html = (WEB / "index.html").read_text(encoding="utf-8")
-    css = (WEB / "styles.css").read_text(encoding="utf-8")
+    css = "".join((WEB / n).read_text(encoding="utf-8") for n in ("styles.css", "pages.css"))
     data = json.dumps(replay, separators=(",", ":")).replace("<", "\\u003c")
     js = bundle().replace("</script", "<\\/script")
     # The fonts live in web/fonts (review S12); a single page carries them inline.
@@ -55,6 +55,7 @@ def page(replay: dict) -> str:
                  + base64.b64encode((WEB / "fonts" / m.group(1)).read_bytes()).decode() + ")", css)
     html = re.sub(r'<link rel="preload"[^>]*>\n', "", html)
     html = html.replace('<link rel="icon" href="favicon.svg" type="image/svg+xml">\n', "")
+    html = html.replace('<link rel="stylesheet" href="pages.css">\n', "")
     html = html.replace('<link rel="stylesheet" href="styles.css">', f"<style>\n{css}</style>")
     html = html.replace('<script type="module" src="app.js"></script>',
                         f"<script>window.PERCH_REPLAY = {data};</script>\n"

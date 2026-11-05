@@ -1179,7 +1179,25 @@ async def main(a: argparse.Namespace) -> int:
     return 1 if any(not ok for _, ok, _ in w.checks) else 0
 
 
+
+def _load_walk_flows() -> None:
+    """S49: each build package keeps its flows in scripts/walk_flows/<name>.py, defining
+    register(U) -> (flows: dict, plants: list). They are merged before argparse reads them."""
+    import importlib.util
+    me = sys.modules[__name__]
+    for f in sorted((Path(__file__).resolve().parent / "walk_flows").glob("*.py")):
+        if f.name.startswith("_"):
+            continue
+        spec = importlib.util.spec_from_file_location(f"walk_flows.{f.stem}", f)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        flows, plants = mod.register(me)
+        FLOWS.update(flows)
+        PLANTS.extend(p for p in plants if p not in PLANTS)
+
+
 if __name__ == "__main__":
+    _load_walk_flows()
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--base", default="http://127.0.0.1:8191")
     ap.add_argument("--out", default="build/s43_walk")
