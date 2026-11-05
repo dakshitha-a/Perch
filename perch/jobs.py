@@ -248,6 +248,7 @@ class JobContext:
         self.guest_sid_hash: bytes | None = (bytes(row["guest_sid_hash"])
                                              if row["guest_sid_hash"] is not None else None)
         self.attempt: int = row["attempts"]
+        self.max_attempts: int = row.get("max_attempts") or 1
         self.payload: Mapping[str, Any] = dict(row["payload"])
         self.lease_owner = owner
         self._deadline = deadline
@@ -523,9 +524,20 @@ class PostgresRunner(JobRunner):
         def beat() -> None:
             while not done.wait(self.timing.heartbeat_s):
                 if time.monotonic() > ctx._deadline:
+                    # S49 B6: end the job as failed with `timeout` now. The handler's next
+                    # fenced write raises LeaseLost, so a second attempt never runs beside it.
                     ctx._timed_out = True
+                    try:
+                        self.finish_error(ctx, "timeout", permanent=True)
+                    except LeaseLost:
+                        pass  # the handler finished first, or the job was cancelled
+                    except Exception as e:  # noqa: BLE001 - the lease runs out; the reaper acts
+                        log.warning("timeout write failed job=%s err=%s", ctx.job_id,
+                                    type(e).__name__)
                     ctx._cancel.set()
-                    return  # stop heartbeating: the lease runs out and the reaper acts
+                    log.info("timeout job=%s kind=%s attempt=%s", ctx.job_id, ctx.kind,
+                             ctx.attempt)
+                    return
                 try:
                     ctx.heartbeat()
                 except LeaseLost:
@@ -543,22 +555,24 @@ class PostgresRunner(JobRunner):
             finally:
                 done.set()
                 hb.join(timeout=5)
-            if ctx.cancelled():  # stale: the reaper or the owner has acted, write nothing
+            if ctx._cancel.is_set():  # stale: the reaper, the owner or the timeout acted
                 log.info("stale job=%s", ctx.job_id)
                 return
-            self.finish_ok(ctx, ref)
+            self.finish_ok(ctx, ref)  # fenced: a result just past the deadline still counts
             log.info("done job=%s kind=%s attempt=%s", ctx.job_id, ctx.kind, ctx.attempt)
         except LeaseLost:
             log.info("lease lost job=%s kind=%s attempt=%s", ctx.job_id, ctx.kind, ctx.attempt)
         except Exception as e:  # noqa: BLE001 - the class name and a fixed code are all we keep
             code = getattr(e, "code", "handler_error")
             code = code if code in ERROR_CODES else "handler_error"
+            if time.monotonic() > ctx._deadline:  # the handler stopped itself at the deadline
+                code = "timeout"
             log.warning("error job=%s kind=%s attempt=%s err=%s code=%s",
                         ctx.job_id, ctx.kind, ctx.attempt, type(e).__name__, code)
-            if ctx.cancelled():
+            if ctx._cancel.is_set():
                 return
             try:
-                self.finish_error(ctx, code, isinstance(e, PermanentError))
+                self.finish_error(ctx, code, isinstance(e, PermanentError) or code == "timeout")
             except LeaseLost:
                 pass
 

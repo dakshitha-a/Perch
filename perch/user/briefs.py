@@ -414,10 +414,14 @@ class GuestBriefStore(BriefStore):
     """No CV, no entries, no rows in Postgres. `job_id` is known in the worker; at creation the
     state goes to the session key, and from the first worker write on to `perch:gres:<job_id>`."""
 
-    def __init__(self, r: redis.Redis, gsid_hash: str, brief_id: str, job_id: UUID | None = None
-                 ) -> None:
+    def __init__(self, r: redis.Redis, gsid_hash: str, brief_id: str, job_id: UUID | None = None,
+                 *, ctx: JobContext | None = None) -> None:
         super().__init__(brief_id)
         self.r, self.gsid_hash, self.job_id = r, gsid_hash, job_id
+        self.ctx = ctx  # the worker's job: writes stop once the lease is lost (S49 B6)
+
+    def cancelled(self) -> bool:
+        return bool(self.ctx is not None and self.ctx.cancelled())
 
     def student_inputs(self) -> StudentInputs:
         """A guest has no CV: the student brief reads the SYNTHETIC persona named in its
@@ -456,6 +460,9 @@ class GuestBriefStore(BriefStore):
         else:
             key, ex = self.result_key, GRES_TTL_S
         watched = [key] if key == self.state_key else [key, self.state_key]
+        if self.ctx is not None:  # raises LeaseLost once the job timed out or was taken over
+            with self.ctx.guest_tx():
+                pass
         with self.r.pipeline() as p:
             for _ in range(WRITE_TRIES):
                 try:
@@ -526,7 +533,8 @@ def store_for_job(ctx: JobContext, ud: UserData | None = None, r: redis.Redis | 
     if ctx.guest_sid_hash is not None:
         from perch.redisx import get_client
 
-        return GuestBriefStore(r or get_client(), ctx.guest_sid_hash.hex(), brief_id, ctx.job_id)
+        return GuestBriefStore(r or get_client(), ctx.guest_sid_hash.hex(), brief_id, ctx.job_id,
+                               ctx=ctx)
     return None
 
 

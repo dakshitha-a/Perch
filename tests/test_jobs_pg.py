@@ -134,33 +134,52 @@ def test_expired_lease_is_reclaimed_and_late_update_is_fenced(clean, monkeypatch
     assert st.attempts == 2
 
 
-def test_timeout_stops_heartbeat_and_stale_result_is_dropped(clean, monkeypatch):
-    seen = {}
+def test_timeout_fails_the_job_at_once_and_the_late_result_is_dropped(clean, monkeypatch):
+    """S49 B6: a timed-out job used to go quiet until the reaper requeued it, while the old
+    handler kept running beside the next attempt. Now it fails with `timeout`, once."""
+    seen = {"runs": 0}
 
     def h(ctx):
-        time.sleep(2.5)  # past the 1 second timeout and the 1 second lease
+        seen["runs"] += 1
+        time.sleep(2.5)  # past the 1 second timeout; the lease (60 s) has not run out
         seen["cancelled"] = ctx.cancelled()
         with pytest.raises(LeaseLost):
             ctx.stage("late", "done")
         return "late"
 
-    reg(monkeypatch, "precache", h, max_attempts=1, timeout_s=1)
-    r = mk(clean["worker"], lease_s=1)
+    reg(monkeypatch, "precache", h, max_attempts=3, timeout_s=1)
+    r = mk(clean["worker"])
     jid = r.submit("precache", pre(1), None, "k")
     stop, t = start(r)
     try:
-        st = r.wait(jid, 20)
+        st = r.wait(jid, 10)
+        time.sleep(2)  # the handler finishes; nothing runs it again
     finally:
         stop.set()
         t.join()
-    assert seen["cancelled"] is True
-    assert st.state == JobState.DEAD
-    assert st.error_code == "lease_expired"
+    assert seen["cancelled"] is True and seen["runs"] == 1
+    assert st.state == JobState.FAILED
+    assert st.error_code == "timeout"
     assert st.result_ref is None
     with psycopg.connect(clean["admin"]) as c:
         assert c.execute("SELECT count(*) FROM job_events").fetchone()[0] == 0
-        assert c.execute("SELECT count(*) FROM audit_log WHERE event = 'job_dead'"
-                         ).fetchone()[0] == 1
+        assert c.execute("SELECT state, error_code FROM jobs").fetchall() == [("failed",
+                                                                              "timeout")]
+
+
+def test_a_result_just_past_the_deadline_is_kept(clean, monkeypatch):
+    """S49 B6: a handler that finished a moment after the deadline had its result thrown
+    away and was run again; the fence alone decides now."""
+    reg(monkeypatch, "precache", lambda ctx: time.sleep(1.2) or "ok", timeout_s=1)
+    r = mk(clean["worker"], heartbeat_s=5)  # the timeout check has not run yet
+    jid = r.submit("precache", pre(1), None, "k")
+    stop, t = start(r)
+    try:
+        st = r.wait(jid, 10)
+    finally:
+        stop.set()
+        t.join()
+    assert st.state == JobState.SUCCEEDED and st.result_ref == "ok"
 
 
 def test_retries_then_dead_letter(clean, monkeypatch):

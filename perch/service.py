@@ -558,6 +558,8 @@ class BriefService:
                 todo.append(i)
 
         def save(j: int, v: Validated[Fit]) -> None:
+            if store is not None and store.cancelled():  # timed out or taken over (S49 B6)
+                return
             i = todo[j]
             lead = leads[i]
             if v.value:
@@ -684,6 +686,8 @@ class BriefService:
         store = current_store.get()  # the explanation callbacks run on pool threads
 
         def save(i: int, v: Validated[Fit]) -> None:
+            if store is not None and store.cancelled():  # timed out or taken over (S49 B6)
+                return
             lead = leads[i]
             if v.value:
                 f = v.value

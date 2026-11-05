@@ -398,3 +398,37 @@ def test_a_guest_keep_while_the_brief_runs_is_not_lost(tmp_path):
     assert {x.id: x.status for x in got.leads}[kept["lead"]] == "kept"
     r.flushdb()
     r.close()
+
+
+@needs_redis
+def test_a_guest_store_stops_writing_once_its_job_is_lost(tmp_path):
+    """S49 B6: the guest store's `cancelled` was always False and its writes were not fenced,
+    so a timed-out guest brief ran on and overwrote the next attempt's result."""
+    from contextlib import contextmanager
+
+    import redis as redis_lib
+
+    from perch.jobs import LeaseLost
+
+    class LostCtx:
+        def cancelled(self):
+            return True
+
+        @contextmanager
+        def guest_tx(self):
+            raise LeaseLost
+            yield
+
+    r = redis_lib.Redis.from_url(REDIS_URL, decode_responses=True)
+    r.flushdb()
+    _, svc = make(tmp_path)
+    gsid = "cd" * 32
+    b = create_guest_brief(svc, r, gsid, "A5026494099", as_of=AS_OF)
+    job = uuid.uuid4()
+    store = GuestBriefStore(r, gsid, b.id, job, ctx=LostCtx())
+    assert store.load() and store.cancelled() is True
+    with pytest.raises(LeaseLost):
+        store.flush()
+    assert r.get(f"perch:gres:{job}") is None
+    r.flushdb()
+    r.close()
