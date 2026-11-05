@@ -63,7 +63,8 @@ def register(U):  # noqa: ANN001, ANN201 - U is the ux_walk module
         notes = await page.locator("#panel .list-note").count()
         amber = await page.locator("#panel .lead .notice.warn").count()
         lines = await page.locator("#panel .lead .withheld-line").count()
-        w.check("s49_student_withheld_once", notes == 1 and amber == 0 and lines == len(flagged) >= 2,
+        # S50 V5: with the list note up, the flagged cards carry no line of their own (their missing reason is the sign)
+        w.check("s49_student_withheld_once", notes == 1 and amber == 0 and lines == 0 and len(flagged) >= 2,
                 f"{notes} list notes, {amber} amber boxes on cards, {lines} withheld lines for {len(flagged)} flagged")
         more = await page.locator("#panel details.about-list").count()
         opened = await page.locator("#panel details.about-list[open]").count()

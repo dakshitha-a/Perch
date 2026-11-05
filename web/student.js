@@ -21,6 +21,41 @@ export function verdictChip(v) {
   const [cls, mark, word] = VERDICTS[v] || ["", "", v];
   return h("span", { class: `verdict ${cls}` }, h("span", { class: "mk", "aria-hidden": "true", text: mark }), h("span", { text: word }));
 }
+
+// The rule lines of a card: the server's `checks` when it sends them, else `verdict_lines`.
+// Order: fail, unknown, pass; the server's order holds inside each group. The text is shown as it came.
+const OUTCOME = { fail: ["✕", "Not met: "], unknown: ["?", "Not known: "], pass: ["✓", "Met: "] };
+const OUT_ORDER = ["fail", "unknown", "pass"];
+export function ruleItems(l) {
+  const items = Array.isArray(l.checks) && l.checks.length
+    ? l.checks.map((c) => ({ rule: c.rule, outcome: OUTCOME[c.outcome] ? c.outcome : "unknown", text: String(c.text || "") }))
+    : (l.verdict_lines || []).map((text) => ({ rule: null, text,
+      outcome: text === "Meets every rule Perch checks." ? "pass" : l.verdict === "not eligible" ? "fail" : "unknown" }));
+  return OUT_ORDER.flatMap((o) => items.filter((x) => x.outcome === o && x.text));
+}
+const checkItem = (c) => h("li", { class: "check", "data-outcome": c.outcome, ...(c.rule ? { "data-rule": c.rule } : {}) },
+  h("span", { class: "check-mk", "aria-hidden": "true", text: OUTCOME[c.outcome][0] }),
+  h("span", { class: "sr-only", text: OUTCOME[c.outcome][1] }), h("span", { text: c.text }));
+// Lines every card repeats are said once above the list, so a card leaves them out.
+function rulesBlock(l, skip) {
+  const items = ruleItems(l).filter((c) => !skip.has(c.text));
+  const cls = { eligible: "eligible", "may be eligible": "may", "not eligible": "not" }[l.verdict] || "";
+  return h("div", { class: "rules", "data-verdict": cls },
+    verdictChip(l.verdict),
+    items.length ? h("ul", { class: "checks" }, items.slice(0, 4).map(checkItem)) : null,
+    items.length > 4 ? h("details", { class: "checks-more" }, h("summary", { text: `${items.length - 4} more checks` }),
+      h("ul", { class: "checks" }, items.slice(4).map(checkItem))) : null);
+}
+function sharedRules(cards) {
+  if (cards.length < 3) return [];
+  const [first, ...rest] = cards.map((l) => ruleItems(l).map((c) => c.text));
+  return [...new Set(first)].filter((t) => rest.every((x) => x.includes(t)));
+}
+// Model-written and stored text shows without the test canary; the stored text keeps it (Q17).
+const CANARY_TAIL = /\s*SYNTHETIC sample record, canary \S+$/;
+const CANARY_LINE = /\s*Canary:\s*PERCH-CANARY-\S+/g;
+const noCanary = (t) => String(t || "").replace(CANARY_LINE, "").replace(CANARY_TAIL, "").trim();
+
 const D = { busy: false, error: null };
 // The brief on screen is the guest's invented sample student (options.persona); the wording
 // then says "the sample student" instead of "you" (S43 S8).
@@ -30,7 +65,7 @@ const cvWords = () => (SAMPLE_STUDENT ? "the sample student's CV" : "your CV");
 const NOT_STATED = "Not stated in the record";
 const MISSING = "Not stated"; // a card fact with nothing behind it (S49)
 const WITHHELD_LINE = "Written reason withheld: it failed the citation check.";
-const FLAGGED_NOTE = "Some written reasons failed Perch’s citation check, so they are left out. Every date, amount and rule result on the cards is still copied from the record.";
+const FLAGGED_NOTE = "Some written reasons failed Perch’s citation check, so those cards show no reason. Every date, amount and rule result on the cards is still copied from the record.";
 const SHUT = new Set(); // cards whose "More on why it may fit" was closed; it starts open (S27, Dakshitha)
 
 // Forget what this module held for the brief that was on screen (S27).
@@ -119,9 +154,40 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
     rd.onload = () => add("cv", { filename: file.name, data: String(rd.result).split(",")[1] || "" });
     rd.readAsDataURL(file);
   }
+  // The boxes that hold text no press has saved yet: the CV (when none is stored), interests, an achievement.
+  const val = (sel) => { const el = root.querySelector(sel); return el ? el.value.trim() : ""; };
+  const unsaved = () => [
+    !cv && val("#cv-text") ? ["cv", { text: val("#cv-text"), filename: "cv.txt" }] : null,
+    val("#st-interests") ? ["interests", { text: val("#st-interests") }] : null,
+    val("#st-ach") ? ["entry", { text: val("#st-ach"), label: "Achievement" }] : null,
+  ].filter(Boolean);
+  const buildBtn = () => root.querySelector('[data-key="st-build"]');
+  function syncBuild() {
+    const b = buildBtn(); if (!b || D.busy) return;
+    b.disabled = !(cv || val("#cv-text"));
+    const label = b.querySelector("span"); if (label) label.textContent = unsaved().length ? "Save and find awards" : "Find awards that fit";
+    const hint = root.querySelector(".build-hint"); if (hint) hint.hidden = !b.disabled;
+  }
+  function showError(msg) {
+    D.error = msg;
+    let e = root.querySelector("#st-error");
+    if (!e) {
+      e = h("p", { class: "notice error go-error", id: "st-error", role: "alert" }, icon("warn"), h("span"));
+      root.querySelector(".welcome-go").before(e);
+    }
+    e.querySelector("span:last-child").textContent = msg;
+  }
+  // Save every filled box, one after another and without a redraw, then build the brief. An error
+  // stops the run and leaves what was typed where it is.
   async function build() {
-    D.busy = true; D.error = null; draw();
+    const b = buildBtn();
+    D.busy = true; D.error = null;
+    const old = root.querySelector("#st-error"); if (old) old.remove();
+    b.disabled = true; b.querySelector("span").textContent = "Working";
     try {
+      const fresh = unsaved();
+      for (const [kind, body] of fresh) await api.addDoc({ kind, ...body }, "student");
+      if (fresh.length) { try { docs = await api.docs("student"); } catch { /* the ids below stay as they were */ } }
       if (sess.audience !== "student") {  // a dual-role account: the brief is built on the side it is on
         await api.setAudience("student");
         if (refresh) await refresh();
@@ -130,7 +196,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
       D.busy = false;
       go(`#/brief/${encodeURIComponent(r.id)}/routes`);
     } catch (e) {
-      D.error = e.message; D.busy = false; draw();
+      D.busy = false; showError(e.message); syncBuild();
       announce(e.message);
     }
   }
@@ -146,7 +212,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
         // S49 S6: an invented student fills the boxes; nothing is saved until Save.
         cv ? null : h("button", { class: "btn quiet", type: "button", "data-key": "load-sample", onclick: () => loadSample() },
           h("span", { text: "Load sample" }))),
-      cv ? null : h("p", { class: "hint", text: "Fills the boxes with an invented student. Nothing is saved until you press Save." }),
+      cv ? null : h("p", { class: "hint", text: "Fills the boxes with an invented student. Nothing is saved until you press Save, or Save and find awards." }),
       h("div", { class: "sample-ask-slot" }),
       cv ? h("div", { class: "added" }, h("span", { text: `${cv.name || "Your CV"} is stored.` }),
         h("button", { class: "btn", type: "button", "data-key": "rm-cv", onclick: () => remove(cv) }, h("span", { text: "Remove" })))
@@ -177,7 +243,8 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
     h("div", { class: "welcome-go" },
       h("button", { class: "btn primary big", type: "button", "data-key": "st-build", disabled: !ready || D.busy, onclick: build },
         h("span", { text: D.busy ? "Working" : "Find awards that fit" })),
-      !ready ? h("p", { class: "hint", text: "Save your CV first." }) : null)));
+      h("p", { class: "hint build-hint", hidden: ready, text: "Paste or upload your CV first." }))));
+  for (const sel of ["#cv-text", "#st-interests", "#st-ach"]) { const el = root.querySelector(sel); if (el) el.addEventListener("input", syncBuild); }
   const t = root.querySelector("#st-title");
   if (t && !D.busy) t.focus({ preventScroll: true });
 
@@ -191,15 +258,16 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
     field.text = SAMPLE_TEXT.cv;
     const s = slot("sample-slot");
     if (s) s.replaceChildren(h("span", { class: "tag sample", text: "SYNTHETIC example" }));
+    syncBuild();
   }
   function loadSample() {
     const typed = boxes().some(([el]) => el && el.value.trim());
     const ask = slot("sample-ask-slot");
-    if (!typed || !ask) { fillSample(); announce("Sample loaded. Nothing is saved until you press Save."); return; }
+    if (!typed || !ask) { fillSample(); announce("Sample loaded. Nothing is saved until you press Save, or Save and find awards."); return; }
     const done = () => { ask.replaceChildren(); const b = root.querySelector('[data-key="load-sample"]'); if (b) b.focus(); };
     ask.replaceChildren(h("div", { class: "inline-confirm", role: "group", "aria-label": "Replace what you typed" },
       h("span", { text: "Replace what you typed with the sample?" }),
-      h("button", { class: "btn", type: "button", onclick: () => { fillSample(); done(); announce("Sample loaded. Nothing is saved until you press Save."); } }, h("span", { text: "Replace" })),
+      h("button", { class: "btn", type: "button", onclick: () => { fillSample(); done(); announce("Sample loaded. Nothing is saved until you press Save, or Save and find awards."); } }, h("span", { text: "Replace" })),
       h("button", { class: "btn quiet", type: "button", onclick: done }, h("span", { text: "Keep mine" }))));
     const keep = ask.querySelector(".btn.quiet"); if (keep) keep.focus();
   }
@@ -224,9 +292,16 @@ export function studentProfile(d, { openEvidence }) {
   const interests = mine.filter(([id]) => /interests/.test(id));
   const achievements = mine.filter(([id]) => /achievement-/.test(id)); // one row per achievement
   // The documents the options cite: the interests note and the achievements.
-  const ref = ([id, w]) => h("li", { class: "fade-in" }, h("button", { class: "paper", type: "button", onclick: (e) => openEvidence(id, e.currentTarget) },
-    h("span", { class: "paper-title", text: w.title }),
-    w.text ? h("span", { class: "paper-meta", text: cutAtWord(w.text.replace(/^#.*$/gm, "").replace(/\s+/g, " ").trim(), 220) }) : null));
+  // V34: the interests note repeats its own heading, so it has no inner title; an achievement is
+  // titled by its first five words.
+  const ref = ([id, w]) => {
+    const words = noCanary(w.text).replace(/^#.*$/gm, "").replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+    const title = /interests/.test(id) ? null : words.length > 5 ? `${words.slice(0, 5).join(" ")}…` : words.length ? words.join(" ") : noCanary(w.title);
+    return refItem(id, w, title);
+  };
+  const refItem = (id, w, title) => h("li", { class: "fade-in" }, h("button", { class: "paper", type: "button", onclick: (e) => openEvidence(id, e.currentTarget) },
+    h("span", { class: "paper-title", text: title }),
+    w.text ? h("span", { class: "paper-meta", text: cutAtWord(noCanary(w.text).replace(/^#.*$/gm, "").replace(/\s+/g, " ").trim(), 220) }) : null));
   return [h("div", { class: "prof-cols" },
     h("div", { class: "left" }, h("section", { class: "pblock" },
       h("h2", { class: "section-title", text: "What the rules read from your CV" }),
@@ -255,12 +330,11 @@ function sortLeads(leads) {
   return out.sort((a, b) => (b.match_score ?? -1) - (a.match_score ?? -1) || a.rank - b.rank);
 }
 
-function sortSwitch(redraw) {
-  return h("div", { class: "sort-group" }, h("span", { class: "sort-label", "aria-hidden": "true", text: "Sort" }),
-    h("div", { class: "route-switch sort-switch", role: "group", "aria-label": "Sort options by" },
-      [["order", "Score"], ["closing", "Closing date"]].map(([k, label]) => h("button", { class: "route-btn",
-        "data-key": `sort-${k}`, "aria-pressed": String(SORT.by === k),
-        onclick: () => { SORT.by = k; redraw(); const b = document.querySelector(`#panel [data-key="sort-${k}"]`); if (b) b.focus(); } }, label))));
+function sortPick(redraw) {
+  return h("div", { class: "sort-group" }, h("label", { class: "sort-label", for: "sort-pick", text: "Sort" }),
+    h("select", { id: "sort-pick", class: "sort-pick", "data-key": "sort",
+      onchange: (e) => { SORT.by = e.target.value; redraw(); const b = document.querySelector("#sort-pick"); if (b) b.focus(); } },
+    [["order", "Best match"], ["closing", "Closing soonest"]].map(([k, label]) => h("option", { value: k, selected: SORT.by === k }, label))));
 }
 
 export function studentRoutes(panel, ctx) {
@@ -277,7 +351,8 @@ export function studentRoutes(panel, ctx) {
   };
   const ready = done(route === "F" ? "fellowships" : "scholarships");
   const n = (r) => brief.leads.filter((l) => l.route === r && l.verdict !== "not eligible" && l.status !== "dismissed").length;
-  const sw = h("div", { class: "route-switch", role: "group", "aria-label": "Route" },
+  // One route needs no switch; the count heading is its label (V13).
+  const sw = !hasS ? null : h("div", { class: "route-switch", role: "group", "aria-label": "Route" },
     (hasS ? ["F", "S"] : ["F"]).map((r) => h("button", { class: "route-btn", "data-key": `route-${r}`, "aria-pressed": String(route === r),
       "aria-label": `${STUDENT_ROUTES[r]}${r === "S" ? ", sample data" : ""}${done(r === "F" ? "fellowships" : "scholarships") ? `, ${n(r)}` : ""}`,
       onclick: () => setRoute(r) },
@@ -298,30 +373,34 @@ export function studentRoutes(panel, ctx) {
   // The cards' context: the same object cover.js takes, so its list line and each card agree.
   const cctx = { ...ctx, audience: "student", stored: (ctx.brief && ctx.brief.cover_points) || [] };
   const flaggedN = ok.filter((l) => l.flagged).length;
+  const shared = sharedRules(ok);
+  const cards = { ...ctx, withheldNote: flaggedN >= 2, sharedRules: new Set(shared) };
+  const cardsAll = { ...ctx, withheldNote: flaggedN >= 2 };
   const coverLine = coverListLine(cctx);
   const source = route === "F"
     ? "Public listings: Temple's public award pages, Temple's Scholar Development and Fellowships Advising list and NIH fellowships. Their own pages set the full rules, so the best verdict here is “may be eligible”."
     : `Checked against ${cvWords()} by rule. “May be eligible” means the record asks for something ${SAMPLE_STUDENT ? "that CV does" : "your CV does"} not show.`;
-  fill(panel, h("div", { class: "route-row" }, sw),
+  fill(panel, sw ? h("div", { class: "route-row" }, sw) : null,
     route === "S" ? h("p", { class: "notice warn sample-note" }, h("span", { class: "tag sample", text: SAMPLE }), h("span", { text: ` ${SAMPLE_NOTE}` })) : null,
-    h("div", { class: "list-head", style: "display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px" },
+    h("div", { class: "list-head" },
       h("h2", { class: "section-title", id: "routes-title",
         text: route === "S" ? `${f.plural(ok.length, "sample option")} (invented, for demonstration)`
-          : `${f.plural(ok.length, "option")} you may apply for` }),
-      sortSwitch(() => studentRoutes(panel, ctx))),
+          : `${f.plural(ok.length, "award")} to look into` }),
+      sortPick(() => studentRoutes(panel, ctx))),
     // The sources are the ones the Fellowships stage reads (_run_fellowships): every public
     // scholarship row in the store and NIH fellowships. Folded so the cards start high (U42).
     h("details", { class: "about-list" }, h("summary", { text: "About this list" }),
       h("p", { class: "hint", text: source })),
     h("div", { id: "list-notices" },
-      flaggedN >= 2 ? h("p", { class: "notice info list-note" }, icon("warn"), h("span", { text: FLAGGED_NOTE })) : null,
+      flaggedN >= 2 ? h("p", { class: "notice info list-note", "data-withheld": "" }, icon("info"), h("span", { text: FLAGGED_NOTE })) : null,
+      shared.map((t) => h("p", { class: "notice info list-note", "data-shared-rule": "" }, icon("info"), h("span", { text: `Every option below: ${t}` }))),
       coverLine),
-    h("ol", { class: "leads", "aria-labelledby": "routes-title" }, ok.map((l) => card(l, ctx))),
+    h("ol", { class: "leads", "aria-labelledby": "routes-title" }, ok.map((l) => card(l, cards))),
     samplesLink,
     gone.length ? h("details", { class: "dismissed" }, h("summary", { text: `Dismissed (${gone.length})` }),
-      h("ol", { class: "leads" }, gone.map((l) => card(l, ctx)))) : null,
+      h("ol", { class: "leads" }, gone.map((l) => card(l, cardsAll)))) : null,
     out.length ? h("details", { class: "dismissed" }, h("summary", { text: `Not eligible by rule (${out.length})` }),
-      h("ol", { class: "leads" }, out.map((l) => card(l, ctx)))) : null);
+      h("ol", { class: "leads" }, out.map((l) => card(l, cardsAll)))) : null);
 }
 
 // The Match pill: how closely the listing's text matches the papers, 0 to 100 (S27).
@@ -345,14 +424,14 @@ function dueText(r, d) {
 }
 function card(l, ctx) {
   const { openEvidence, setLead } = ctx;
+  const skip = ctx.sharedRules || new Set();
   const r = l.record || {};
   const sch = r.kind === "scholarship";
   const name = sch ? r.name : r.title;
   const deadline = sch ? r.deadline : r.close_date;
   const amount = sch ? amountText(r) : null;
   const parsed = f.parseExplanation(l.explanation, l.cited_ids);
-  // Keep and Dismiss sit in the card head, next to the Match pill (review W2); the title
-  // opens the record (W4).
+  // Keep and Dismiss sit in the footer row (S50 V2); the title opens the record (W4).
   const actions = h("div", { class: "actions" },
     l.status === "dismissed"
       ? h("button", { class: "btn", "data-key": `restore-${l.id}`, onclick: () => setLead(l.id, "restore") }, icon("restore"), h("span", { text: "Restore" }))
@@ -376,30 +455,36 @@ function card(l, ctx) {
   const money = !sch ? [h("span", { class: "missing", text: "See the record" })]
     : amount !== NOT_STATED ? [amount, fromPage(r) ? h("span", { class: "from-page", text: ` ${FROM_PAGE}` }) : null]
       : [h("span", { class: "missing", text: MISSING })];
+  // G7: a Temple fellowships-list record with neither a date nor an amount says so once.
+  const neither = r.source === "temple_sdfa" && sch && !deadline && !r.deadline_quote && amount === NOT_STATED;
+  const cover = l.status === "dismissed" ? null
+    : coverBlock({ ...ctx, audience: "student", stored: (ctx.brief && ctx.brief.cover_points) || [] }, ctx.briefId, l.record_id);
   return h("li", { class: `card lead${l.sample ? " is-sample" : ""}${l.status === "kept" ? " kept" : ""}`, "data-id": l.id },
     h("div", { class: "lead-top" },
       h("div", { class: "lead-name" },
         h("h3", { class: "lead-title" }, h("button", { class: "title-btn", onclick: (e) => openEvidence(l.record_id, e.currentTarget) },
           h("span", { text: name || "Untitled opportunity" }), evMark())),
         subLine.length ? h("p", { class: "lead-sub" }, subLine) : null),
-      h("div", { class: "lead-end" },
-        verdictChip(l.verdict),
-        l.match_score != null ? matchPill(l.match_score, f.fitBand(l.match_score), "your interests and CV") : null,
-        actions)),
+      l.match_score != null ? h("div", { class: "lead-pill" }, matchPill(l.match_score, f.fitBand(l.match_score), "your interests and CV")) : null),
     h("dl", { class: "facts facts-2" },
-      // G17: an expiry sits under its own label, as on the researcher card (F20)
-      h("div", { class: "fact" }, h("dt", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? "Announcement" : "Deadline" }), h("dd", {}, when)),
-      h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, money))),
-    l.verdict_lines.length ? h("div", { class: "reason" }, h("b", { text: l.verdict === "not eligible" ? "Why not: " : "To check: " }), // T23: not a second "Why"
-      l.verdict_lines.length === 1 ? h("span", { text: l.verdict_lines[0] })
-        : h("ul", { class: "notes" }, l.verdict_lines.map((x) => h("li", { text: x })))) : null,
+      neither ? h("div", { class: "fact fact-wide" }, h("dt", { text: "Deadline and amount" }),
+        h("dd", { text: "The fellowships list gives neither. Check the award’s own page." })) : [
+        // G17: an expiry sits under its own label, as on the researcher card (F20)
+        h("div", { class: "fact" }, h("dt", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? "Announcement" : "Deadline" }), h("dd", {}, when)),
+        h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, money))]),
+    rulesBlock(l, skip),
     l.gaps.length ? h("div", { class: "reason" }, h("b", { text: "Still needed: " }), h("span", { text: l.gaps.map(f.lowerFirst).join("; ") })) : null, // R17
     // Plain sentences the server wrote, such as a past-date line, shown muted as they came.
     ...(l.notes || []).map((n) => h("p", { class: "hint lead-note", text: n })),
-    l.flagged ? h("p", { class: "hint withheld-line", text: WITHHELD_LINE }) // said once above the list too (U3)
+    // With the list note up (two or more flagged cards) the card says nothing; its missing reason is the sign.
+    l.flagged ? (ctx.withheldNote ? null : h("p", { class: "hint withheld-line", text: WITHHELD_LINE }))
       : parsed ? fitReason(l) : null,
+    // G19: sentences the citation check could not match to a source, as on the researcher card.
+    l.unsupported && l.unsupported.length ? h("div", { class: "notice warn" }, icon("warn"),
+      h("div", {}, h("p", { text: "This statement could not be matched to its source:" }),
+        h("ul", {}, l.unsupported.map((u) => h("li", { text: u }))))) : null,
     // S46: on every lead card, a not-eligible one included; a dismissed card has none.
-    l.status === "dismissed" ? null : coverBlock({ ...ctx, audience: "student", stored: (ctx.brief && ctx.brief.cover_points) || [] }, ctx.briefId, l.record_id));
+    h("div", { class: "lead-foot" }, cover ? h("div", { class: "cover" }, cover) : null, actions));
 }
 
 // The reason it may fit leads, in plain view (S27, Dakshitha: say the reason right
@@ -493,7 +578,8 @@ export function studentCompare(panel, ctx) {
     return h("tr", {},
       h("th", { scope: "row" }, h("span", { class: "row-title", text: sch ? r.name : r.title }),
         l.sample ? h("span", { class: "tag sample", text: SAMPLE }) : null),
-      h("td", {}, verdictChip(l.verdict)),
+      // Q1: the chip and up to three of the rule lines, the unmet and unknown ones first.
+      h("td", {}, verdictChip(l.verdict), ruleItems(l).length ? h("ul", { class: "checks" }, ruleItems(l).slice(0, 3).map(checkItem)) : null),
       // G17: under the Deadline column an expiry says it is none
       h("td", { text: !sch && f.expiresOnly(r) && !f.standardDates(r) ? `None stated; the announcement expires ${f.formatDate(d)}` : withHint(dueText(r, d), r) }),
       h("td", { text: sch ? withHint(amountText(r), r) : "See the record" }),
@@ -510,9 +596,10 @@ export function studentCompare(panel, ctx) {
       h("div", { class: "table-wrap compare-wrap", role: "region", "aria-labelledby": `cmp-${r}`, tabindex: "0" }, labelCells(h("table", { class: "compare stack" },
         h("thead", {}, h("tr", {}, [r === "S" ? "Sample option" : "Award or fellowship", "Rule check", "Deadline", "Amount", "Still needed", "Temple office"].map((x) => h("th", { scope: "col", text: x })))),
         h("tbody", {}, byOffice[r].map(row))))))),
-    // The tables come first and the note after them (S49 P5).
+    // The tables come first, then the line that explains the cells, then the hand-off (S49 P5, S50 C5).
+    h("p", { class: "hint", text: `Each cell is copied from its record or checked against ${cvWords()} by rule. “Not stated in the record” means the listing leaves it blank.` }),
     h("section", { class: "handoff" },
-      h("h2", { class: "section-title", text: "Draft a note to a Temple office" }),
+      h("h2", { class: "section-title", text: "Hand off" }),
       h("fieldset", { class: "office-pick" }, h("legend", { text: "Office" }),
         routes.map((r) => h("label", { class: "office-opt" },
           h("input", { type: "radio", name: "st-office", checked: NOTE.office === r, onchange: () => { NOTE.office = r; draw(); } }),
@@ -525,8 +612,7 @@ export function studentCompare(panel, ctx) {
       ctx.guest ? null
       : got.note ? note(route, got.note, announce)
         : got.error ? h("p", { class: "notice error" }, icon("warn"), h("span", { text: `The note could not be written: ${got.error}` }))
-          : h("p", { class: "hint st-note-wait", role: "status", text: "Writing the note…" })),
-    h("p", { class: "hint", text: `Each cell is copied from its record or checked against ${cvWords()} by rule. “Not stated in the record” means the listing leaves it blank.` }));
+          : h("p", { class: "hint st-note-wait", role: "status", text: "Writing the note…" })));
 }
 
 // The note as the server wrote it (GET /briefs/{id}/student/note), editable here.
