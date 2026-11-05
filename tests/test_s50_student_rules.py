@@ -105,3 +105,55 @@ def test_different_names_are_not_merged():
     a = sch("SYNTHETIC Peer Teachers", audience="undergraduate", sid="pt")
     b = sch("SYNTHETIC Peer Mentors", audience="undergraduate", sid="pm")
     assert len(student_pool([a, b])[0]) == 2
+
+
+# --- Q1, G6: every card says what the rules checked ---
+
+FIXED = ("The listing says who may apply; the award's own page sets the full rules. Read it "
+         "before applying.")
+
+
+def test_listing_only_card_says_what_was_checked_and_quotes_the_listing():
+    s = sch("SYNTHETIC Research Scholars", audience="undergraduate", sid="rs",
+            scope="temple_wide", deadline=date(2027, 2, 15), details_fetched_at=T,
+            details_url="https://example.edu/SYNTHETIC/rs-details",
+            deadline_quote="Applications are due February 15, 2027.",
+            eligibility=ScholarshipEligibility(notes="For first-year students, sophomores, or "
+                                                     "juniors. Apply with a mentor."))
+    v = check(s, UG, AS_OF)
+    assert v.verdict == "may be eligible" and v.reason == "listing_only"
+    assert FIXED not in v.lines
+    assert v.lines[0] == "Perch checked level, school and deadline; nothing there rules you out."
+    assert v.lines[1] == ("The listing says: “For first-year students, sophomores, or "
+                          "juniors.”")
+    rules = {c["rule"]: c["outcome"] for c in v.checks}
+    assert rules == {"level": "pass", "school": "pass", "deadline": "pass",
+                     "citizenship": "unknown", "staff_only": "pass"}
+    assert all(set(c) == {"rule", "outcome", "text"} for c in v.checks)
+
+
+def test_a_ruled_out_card_still_lists_every_rule():
+    s = sch("SYNTHETIC Graduate Travel Grants", sid="gt", scope="school",
+            schools=["SYNTHETIC School"], eligibility=ScholarshipEligibility(citizenship="U.S. "
+                                                                             "citizen"))
+    v = check(s, UG, AS_OF)
+    assert v.verdict == "not eligible"
+    by = {c["rule"]: c for c in v.checks}
+    assert by["level"]["outcome"] == "fail" and "your CV says bachelor's" in by["level"]["text"]
+    assert by["school"]["outcome"] == "unknown" and "SYNTHETIC School" in by["school"]["text"]
+    assert by["citizenship"]["text"] == ("Citizenship: asks for U.S. citizen. You decide if "
+                                         "this applies.")
+    assert by["deadline"] == {"rule": "deadline", "outcome": "unknown",
+                              "text": "Deadline: the listing gives no date."}
+
+
+def test_leads_carry_the_checks():
+    from perch.schemas import Lead
+    from perch.student import Scored, to_leads
+
+    s = sch("SYNTHETIC Undergraduate Prize", sid="up")
+    leads = to_leads("b1", "S", [Scored(s, None, 1.0, check(s, UG, AS_OF))], UG)
+    d = Lead.model_validate(leads[0].model_dump(mode="json")).model_dump(mode="json")
+    assert d["checks"][0] == {"rule": "level", "outcome": "pass",
+                              "text": "Level: open to undergraduate students, by the award's "
+                                      "name; your CV says bachelor's."}
