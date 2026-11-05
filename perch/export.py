@@ -269,7 +269,7 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
     out.append(Block("link", "Find your research administrator", href=SUBMISSION_URL))
     if not a:
         out.append(Block("p", "No open opportunity passed the eligibility check."))
-    if n := sum(x.route == "A" and x.group is None for x in gone):  # numbered 1 to n, with no gaps (Q11)
+    if n := sum(x.route == "A" and x.group is None for x in gone):  # 1 to n, no gaps (Q11)
         out.append(Block("p", f"{n} dismissed {'lead is' if n == 1 else 'leads are'} left out."))
     for i, x in enumerate(a, 1):
         o = opps[x.record_id]

@@ -202,8 +202,8 @@ def test_m9_route_a_keeps_temple_pages_in_their_own_group():
     import numpy as np
 
     from perch.brief import route_a
-    from perch.embed import FakeEmbedder
     from perch.eligibility import Constraints
+    from perch.embed import FakeEmbedder
     from perch.profile import Profile, Thread
     from perch.rerank import FakeReranker
     from perch.schemas import Researcher
