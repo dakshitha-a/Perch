@@ -544,7 +544,8 @@ def test_s49_brief_screen_contracts_in_the_app_shell():
     app = (WEB_DIR / "app.js").read_text()
     css = (WEB_DIR / "styles.css").read_text()
     # routes: My Perch is a signed-in user's home; the landing has its own address; rerun
-    assert 'parts[0] === "rerun"' in app and 'goReplace("#/start")' in app and 'screen("home")' in app
+    assert 'parts[0] === "rerun"' in app and 'goReplace("#/start")' in app
+    assert 'screen("home")' in app
     # Temple internal funding is its own list, never mixed into the federal one
     assert 'l.group === "temple_internal" ? "T"' in app and '"Temple internal"' in app
     # the card: title first, no opportunity-number line, a fallback title that is not an id
@@ -553,8 +554,10 @@ def test_s49_brief_screen_contracts_in_the_app_shell():
     assert 'text: "Not stated"' in card and "Not stated in the record" not in card
     assert '"What Perch read", "Read"' in app and '"Compare and draft"' in app
     # the page scroll bar is always visible (U4); a citation chip is inline (M2)
-    assert "bar-near" not in app and "bar-near" not in css and "scrollbar-color: transparent" not in css
+    assert "bar-near" not in app and "bar-near" not in css
+    assert "scrollbar-color: transparent" not in css
     assert re.search(r"^\.cite \{ display: inline;", css, re.M)
-    assert len(re.findall(r"^\.cite \{", css, re.M)) == 1 and len(re.findall(r"^\.tag\.sample \{", css, re.M)) == 1
+    assert len(re.findall(r"^\.cite \{", css, re.M)) == 1
+    assert len(re.findall(r"^\.tag\.sample \{", css, re.M)) == 1
     assert "--page: 1180px" in css and "--form: 760px" in css
     assert "DRAFT copy" not in app
