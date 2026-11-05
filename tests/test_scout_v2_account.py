@@ -71,6 +71,11 @@ def stack(env, tmp_path, monkeypatch):
     c, svc = account_app(env, tmp_path, monkeypatch, responder=script)
     got = run_brief(env, svc, c)
     assert got["brief"]["status"] == "done", got["brief"]["error"]
+    # The brief's fit calls are metered since S48 M2 (the fake model is charged at the top
+    # price). These tests measure Scout's spend, so the day starts again from zero here.
+    for k in env.r.scan_iter(f"perch:q:u:{env.uid}:*"):
+        env.r.delete(k)
+    sql(env.pg, "DELETE FROM spend_ledger")
     jobs.set_brief_service(lambda: svc)
     yield env, c, svc, got["_id"], script
     jobs._brief_service = None
