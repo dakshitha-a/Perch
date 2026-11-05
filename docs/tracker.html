@@ -271,7 +271,7 @@ svg.arch .k-private, svg.arch .k-private-x { stroke: var(--cut); }
 <div id="s53"><div class="eyebrow">Current session</div>
 <div class="title-row"><h1>S53 · Post-release fixes from Dakshitha&#x27;s test</h1><span class="badge s-in-progress">in progress</span></div>
 <div class="meta">Started 2026-11-05 09:49 EST</div></div>
-<section class="glance" aria-label="At a glance"><div class="tile"><span class="k">Code freeze</span><span class="v"><span data-deadline="2026-11-05T18:00:00-05:00">5 Nov</span></span><span class="s">Thu 5 Nov 2026 18:00 EST</span></div><div class="tile"><span class="k">Demo</span><span class="v"><span data-deadline="2026-11-06T15:00:00-05:00">6 Nov</span></span><span class="s">Fri 6 Nov 2026 15:00 EST</span></div><div class="tile"><span class="k">Sessions</span><span class="v">53 of 55</span><span class="s">done</span></div><div class="tile"><span class="k">S53 tasks</span><span class="v">2 of 6</span><span class="s">done</span></div><div class="tile"><span class="k">Tests</span><span class="v">592</span><span class="s">recorded in the tracker, S44 row</span></div><div class="tile"><span class="k">Last commit</span><span class="v">1d3d1c4</span><span class="s">5 Nov 2026, 10:48</span></div><div class="tile"><span class="k">Anthropic spend</span><span class="v">$12.45 of $100</span><span class="s">2323 calls in the ledger, last 5 Nov 2026</span></div><div class="tile"><span class="k">Open questions</span><span class="v">8</span><span class="s">in bridge/QUESTIONS.md</span></div></section>
+<section class="glance" aria-label="At a glance"><div class="tile"><span class="k">Code freeze</span><span class="v"><span data-deadline="2026-11-05T18:00:00-05:00">5 Nov</span></span><span class="s">Thu 5 Nov 2026 18:00 EST</span></div><div class="tile"><span class="k">Demo</span><span class="v"><span data-deadline="2026-11-06T15:00:00-05:00">6 Nov</span></span><span class="s">Fri 6 Nov 2026 15:00 EST</span></div><div class="tile"><span class="k">Sessions</span><span class="v">53 of 55</span><span class="s">done</span></div><div class="tile"><span class="k">S53 tasks</span><span class="v">2 of 6</span><span class="s">done</span></div><div class="tile"><span class="k">Tests</span><span class="v">592</span><span class="s">recorded in the tracker, S44 row</span></div><div class="tile"><span class="k">Last commit</span><span class="v">14160f1</span><span class="s">5 Nov 2026, 10:48</span></div><div class="tile"><span class="k">Anthropic spend</span><span class="v">$12.45 of $100</span><span class="s">2323 calls in the ledger, last 5 Nov 2026</span></div><div class="tile"><span class="k">Open questions</span><span class="v">8</span><span class="s">in bridge/QUESTIONS.md</span></div></section>
 <p>Goal: four changes Dakshitha asked for after testing the v1 deploy. Started 2026-11-05 09:49 EST.</p>
 <section class="panel summary" aria-label="2 of 6 tasks done"><div class="counts"><span class="lead-count"><b>2/6</b>tasks done</span><span class="s-done"><b>2</b>done</span><span class="s-in-progress"><b>3</b>in progress</span><span class="s-todo"><b>1</b>todo</span></div><div class="bar" role="img" aria-label="2 of 6 tasks done"><span class="s-done" style="width:33.33%" title="done: 2"></span><span class="s-in-progress" style="width:50.00%" title="in progress: 3"></span><span class="s-todo" style="width:16.67%" title="todo: 1"></span></div></section>
 <div class="panel scroll"><table class="rt">
@@ -3575,6 +3575,94 @@ phone at 360 px
 <p class="src">Built from <code>docs/ARCHITECTURE_OVERVIEW.md</code>, last changed 5 Nov 2026, 10:48.</p>
 <blockquote><strong>This page describes the v1 build.</strong> The earlier fallback build, with local models and SQLite, is kept as the record in <a href="ARCHITECTURE.md">ARCHITECTURE.md</a>. The full design contract, with numbered sections that the code cites, is <a href="ARCHITECTURE_V1.md">ARCHITECTURE_V1.md</a>. Where the contract and the code differ, the code is right, and the top of the contract says so.</blockquote>
 <p>Perch reads a Temple researcher&#x27;s public papers, or a student&#x27;s CV, and lays out the routes to fund that work. Every claim is cited to a public record. This page shows how the parts fit, what is plain code, what is a model, and what Perch never does. Each model name and number below was checked against the code on 5 November 2026.</p>
+<h2>Perch in one picture</h2>
+<figure class="panel diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" class="arch" role="img" font-family="system-ui, sans-serif" aria-label="Perch in one picture. You give Perch your papers or your CV. Perch reads public records. Plain code ranks them and checks the rules. A cloud model explains the fit, and every sentence is checked against the record it cites. You get every route with its source, and Perch sends nothing.">
+  <defs>
+    <marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <text x="480" y="52" text-anchor="middle" font-size="30" font-weight="700" fill="currentColor">How Perch works</text>
+  <text x="480" y="84" text-anchor="middle" font-size="17" fill="currentColor" opacity="0.75">See every route to fund your work, each one cited to a public record.</text>
+
+  <!-- five steps, left to right -->
+  <g fill="none" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5">
+    <rect x="24" y="130" width="172" height="236" rx="12"/>
+    <rect x="210" y="130" width="172" height="236" rx="12"/>
+    <rect x="396" y="130" width="172" height="236" rx="12"/>
+  </g>
+  <rect x="582" y="130" width="172" height="236" rx="12" fill="#f6ead8" stroke="#a15c07" stroke-dasharray="6 4" stroke-width="1.5" class="k-cloud"/>
+  <rect x="768" y="130" width="172" height="236" rx="12" fill="#dcefe8" stroke="#1f6f5c" stroke-width="1.5" class="k-local"/>
+
+  <g stroke="currentColor" stroke-width="2" marker-end="url(#sa)">
+    <line x1="197" y1="248" x2="207" y2="248"/>
+    <line x1="383" y1="248" x2="393" y2="248"/>
+    <line x1="569" y1="248" x2="579" y2="248"/>
+    <line x1="755" y1="248" x2="765" y2="248"/>
+  </g>
+
+  <g fill="currentColor">
+    <text x="42" y="172" font-size="34" font-weight="700" opacity="0.35">1</text>
+    <text x="42" y="210" font-size="18" font-weight="700">You</text>
+    <text x="42" y="244" font-size="14">A researcher:</text>
+    <text x="42" y="264" font-size="14">public papers.</text>
+    <text x="42" y="296" font-size="14">A student:</text>
+    <text x="42" y="316" font-size="14">your CV.</text>
+    <text x="42" y="336" font-size="14">Citizenship only</text>
+    <text x="42" y="356" font-size="14">if you choose.</text>
+
+    <text x="228" y="172" font-size="34" font-weight="700" opacity="0.35">2</text>
+    <text x="228" y="210" font-size="18" font-weight="700">Public records</text>
+    <text x="228" y="244" font-size="14">Grants.gov, NIH,</text>
+    <text x="228" y="264" font-size="14">NSF and Temple</text>
+    <text x="228" y="284" font-size="14">award pages.</text>
+    <text x="228" y="316" font-size="14">Each keeps its</text>
+    <text x="228" y="336" font-size="14">link and date.</text>
+
+    <text x="414" y="172" font-size="34" font-weight="700" opacity="0.35">3</text>
+    <text x="414" y="210" font-size="18" font-weight="700">Plain code</text>
+    <text x="414" y="244" font-size="14">Ranks the records</text>
+    <text x="414" y="264" font-size="14">by fit, and checks</text>
+    <text x="414" y="284" font-size="14">deadlines and who</text>
+    <text x="414" y="304" font-size="14">may apply. Same</text>
+    <text x="414" y="324" font-size="14">result every time.</text>
+
+    <text x="600" y="172" font-size="34" font-weight="700" opacity="0.35">4</text>
+    <text x="600" y="210" font-size="18" font-weight="700">AI explains</text>
+    <text x="600" y="244" font-size="14">A cloud model</text>
+    <text x="600" y="264" font-size="14">says why each fits.</text>
+    <text x="600" y="296" font-size="14">Every sentence is</text>
+    <text x="600" y="316" font-size="14">checked against</text>
+    <text x="600" y="336" font-size="14">the record it cites.</text>
+
+    <text x="786" y="172" font-size="34" font-weight="700" opacity="0.35">5</text>
+    <text x="786" y="210" font-size="18" font-weight="700">Your routes</text>
+    <text x="786" y="244" font-size="14">Grants, awards</text>
+    <text x="786" y="264" font-size="14">and industry leads,</text>
+    <text x="786" y="284" font-size="14">each with its source.</text>
+    <text x="786" y="316" font-size="14">Ask Scout to dig</text>
+    <text x="786" y="336" font-size="14">into any of them.</text>
+  </g>
+
+  <!-- three promises -->
+  <g fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.2">
+    <rect x="24" y="404" width="292" height="92" rx="12"/>
+    <rect x="334" y="404" width="292" height="92" rx="12"/>
+    <rect x="644" y="404" width="296" height="92" rx="12"/>
+  </g>
+  <g fill="currentColor">
+    <text x="44" y="440" font-size="17" font-weight="700">Every claim is cited</text>
+    <text x="44" y="468" font-size="14">Numbers and dates are copied</text>
+    <text x="44" y="487" font-size="14">from the record, never by AI.</text>
+    <text x="354" y="440" font-size="17" font-weight="700">Your data stays yours</text>
+    <text x="354" y="468" font-size="14">Your CV is encrypted, and you</text>
+    <text x="354" y="487" font-size="14">can delete it any time.</text>
+    <text x="664" y="440" font-size="17" font-weight="700">Nothing is sent for you</text>
+    <text x="664" y="468" font-size="14">Hand-offs to Temple offices are</text>
+    <text x="664" y="487" font-size="14">drafts. You decide what to send.</text>
+  </g>
+</svg><figcaption>Perch in one picture, for a general audience. You give Perch your papers or your CV. Perch reads public records. Plain code ranks them and checks the rules. A cloud model explains the fit, and every sentence is checked against the record it cites. You get every route with its source, and Perch sends nothing.</figcaption></figure>
 <h2>How Perch fits together</h2>
 <figure class="panel diagram"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 880" class="arch" role="img" font-family="system-ui, sans-serif" aria-label="How Perch v1 fits together. A browser talks to a stateless web app. The web app reads Postgres with pgvector, keeps sessions and counters in Redis, and puts jobs on a queue in Postgres. Sign-in goes through an OpenID Connect server; guests need no account. A worker on one GPU takes the jobs. Its pipeline is plain code: retrieval with a local embedder, eligibility rules, a local reranker, and student and citizenship rules. Cloud models from Anthropic write the profile summary, fit explanations, hand-off openings, application points and Scout answers. Every model output passes the citation validator, whose second layer is a local MiniCheck model. User data is stored encrypted with per-user keys held in a separate keys database. The app sends nothing to anyone.">
   <defs>

@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" class="arch" role="img" font-family="system-ui, sans-serif" aria-label="Perch in one picture. You give Perch your papers or your CV. Perch reads public records. Plain code ranks them and checks the rules. A cloud model explains the fit, and every sentence is checked against the record it cites. You get every route with its source, and Perch sends nothing.">
+  <defs>
+    <marker id="sa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <text x="480" y="52" text-anchor="middle" font-size="30" font-weight="700" fill="currentColor">How Perch works</text>
+  <text x="480" y="84" text-anchor="middle" font-size="17" fill="currentColor" opacity="0.75">See every route to fund your work, each one cited to a public record.</text>
+
+  <!-- five steps, left to right -->
+  <g fill="none" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.5">
+    <rect x="24" y="130" width="172" height="236" rx="12"/>
+    <rect x="210" y="130" width="172" height="236" rx="12"/>
+    <rect x="396" y="130" width="172" height="236" rx="12"/>
+  </g>
+  <rect x="582" y="130" width="172" height="236" rx="12" fill="#f6ead8" stroke="#a15c07" stroke-dasharray="6 4" stroke-width="1.5" class="k-cloud"/>
+  <rect x="768" y="130" width="172" height="236" rx="12" fill="#dcefe8" stroke="#1f6f5c" stroke-width="1.5" class="k-local"/>
+
+  <g stroke="currentColor" stroke-width="2" marker-end="url(#sa)">
+    <line x1="197" y1="248" x2="207" y2="248"/>
+    <line x1="383" y1="248" x2="393" y2="248"/>
+    <line x1="569" y1="248" x2="579" y2="248"/>
+    <line x1="755" y1="248" x2="765" y2="248"/>
+  </g>
+
+  <g fill="currentColor">
+    <text x="42" y="172" font-size="34" font-weight="700" opacity="0.35">1</text>
+    <text x="42" y="210" font-size="18" font-weight="700">You</text>
+    <text x="42" y="244" font-size="14">A researcher:</text>
+    <text x="42" y="264" font-size="14">public papers.</text>
+    <text x="42" y="296" font-size="14">A student:</text>
+    <text x="42" y="316" font-size="14">your CV.</text>
+    <text x="42" y="336" font-size="14">Citizenship only</text>
+    <text x="42" y="356" font-size="14">if you choose.</text>
+
+    <text x="228" y="172" font-size="34" font-weight="700" opacity="0.35">2</text>
+    <text x="228" y="210" font-size="18" font-weight="700">Public records</text>
+    <text x="228" y="244" font-size="14">Grants.gov, NIH,</text>
+    <text x="228" y="264" font-size="14">NSF and Temple</text>
+    <text x="228" y="284" font-size="14">award pages.</text>
+    <text x="228" y="316" font-size="14">Each keeps its</text>
+    <text x="228" y="336" font-size="14">link and date.</text>
+
+    <text x="414" y="172" font-size="34" font-weight="700" opacity="0.35">3</text>
+    <text x="414" y="210" font-size="18" font-weight="700">Plain code</text>
+    <text x="414" y="244" font-size="14">Ranks the records</text>
+    <text x="414" y="264" font-size="14">by fit, and checks</text>
+    <text x="414" y="284" font-size="14">deadlines and who</text>
+    <text x="414" y="304" font-size="14">may apply. Same</text>
+    <text x="414" y="324" font-size="14">result every time.</text>
+
+    <text x="600" y="172" font-size="34" font-weight="700" opacity="0.35">4</text>
+    <text x="600" y="210" font-size="18" font-weight="700">AI explains</text>
+    <text x="600" y="244" font-size="14">A cloud model</text>
+    <text x="600" y="264" font-size="14">says why each fits.</text>
+    <text x="600" y="296" font-size="14">Every sentence is</text>
+    <text x="600" y="316" font-size="14">checked against</text>
+    <text x="600" y="336" font-size="14">the record it cites.</text>
+
+    <text x="786" y="172" font-size="34" font-weight="700" opacity="0.35">5</text>
+    <text x="786" y="210" font-size="18" font-weight="700">Your routes</text>
+    <text x="786" y="244" font-size="14">Grants, awards</text>
+    <text x="786" y="264" font-size="14">and industry leads,</text>
+    <text x="786" y="284" font-size="14">each with its source.</text>
+    <text x="786" y="316" font-size="14">Ask Scout to dig</text>
+    <text x="786" y="336" font-size="14">into any of them.</text>
+  </g>
+
+  <!-- three promises -->
+  <g fill="none" stroke="currentColor" stroke-opacity="0.3" stroke-width="1.2">
+    <rect x="24" y="404" width="292" height="92" rx="12"/>
+    <rect x="334" y="404" width="292" height="92" rx="12"/>
+    <rect x="644" y="404" width="296" height="92" rx="12"/>
+  </g>
+  <g fill="currentColor">
+    <text x="44" y="440" font-size="17" font-weight="700">Every claim is cited</text>
+    <text x="44" y="468" font-size="14">Numbers and dates are copied</text>
+    <text x="44" y="487" font-size="14">from the record, never by AI.</text>
+    <text x="354" y="440" font-size="17" font-weight="700">Your data stays yours</text>
+    <text x="354" y="468" font-size="14">Your CV is encrypted, and you</text>
+    <text x="354" y="487" font-size="14">can delete it any time.</text>
+    <text x="664" y="440" font-size="17" font-weight="700">Nothing is sent for you</text>
+    <text x="664" y="468" font-size="14">Hand-offs to Temple offices are</text>
+    <text x="664" y="487" font-size="14">drafts. You decide what to send.</text>
+  </g>
+</svg>

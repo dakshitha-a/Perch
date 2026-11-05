@@ -4,7 +4,12 @@
 
 Perch reads a Temple researcher's public papers, or a student's CV, and lays out the routes to fund that work. Every claim is cited to a public record. This page shows how the parts fit, what is plain code, what is a model, and what Perch never does. Each model name and number below was checked against the code on 5 November 2026.
 
+## Perch in one picture
+
+![Perch in one picture, for a general audience. You give Perch your papers or your CV. Perch reads public records. Plain code ranks them and checks the rules. A cloud model explains the fit, and every sentence is checked against the record it cites. You get every route with its source, and Perch sends nothing.](architecture/v1-simple.svg)
+
 ## How Perch fits together
+
 
 ![The v1 build, top to bottom. A browser reaches a stateless web app. Sign-in goes through an OpenID Connect server and guests need no account. The web app reads Postgres, keeps sessions and counters in Redis, and puts jobs on a queue table. One worker with one GPU takes the jobs and runs a plain-code pipeline: retrieve, eligibility rules, rerank, student rules and citizenship picks. Cloud models write text. Every output passes the citation validator, whose second layer is a small local model. Perch sends nothing.](architecture/v1.svg)
 
