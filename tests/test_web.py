@@ -60,6 +60,7 @@ const out = {
   soon: f.closesIn(12), months: f.closesIn(365), closed: f.closesIn(-1),
   years: f.closesIn(f.daysBetween("2026-11-01", "2029-09-26")),
   size: f.awardSize({award_ceiling: 1500000}), none: f.awardSize({}),
+  ready: [f.readyWord(0), f.readyWord(400), f.readyWord(999), f.readyWord(4200)],
   band: f.fitBand(62).label, higher: f.higherEdRows([
     "Private institutions of higher education",
     "Nonprofits, other than institutions of higher education",
@@ -84,6 +85,7 @@ console.log(JSON.stringify(out));
     assert out["years"] == "in about 3 years"  # T22: 2 years 11 months is not "in 2 years"
     assert out["size"] == "Up to $1,500,000" and out["none"] is None
     assert out["band"] == "Good match" and out["higher"] == 2
+    assert out["ready"] == ["Ready", "Ready", "Ready", "Ready · 4 s"]  # S50 V14: no "0 s"
     p = out["parsed"]
     assert p["opportunity"] == ["Funds X ", {"cite": "PAR-1"}, "."]
     assert p["findings"] == [{"paper": "W123456", "text": "did A"},
@@ -569,3 +571,41 @@ def test_a_queued_brief_without_a_worker_says_so():
     app = (ROOT / "web/app.js").read_text(encoding="utf-8")
     assert "job.worker_seen === false" in app
     assert "Another brief is building" not in app
+
+
+def test_s50_fe_a_card_sort_stop_and_example():
+    """S50 FE-A (docs/design/S50_DESIGN.md 3.3): the card's footer row, the sort select, Stop,
+    and the static example page. The walk (scripts/walk_flows/s50_fe_a.py) checks them on screen."""
+    app = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    css = (WEB_DIR / "styles.css").read_text(encoding="utf-8")
+    card = app[app.index("function leadCard(l)"):app.index("function coverCtx()")]
+    # the title row holds the title and the pill; the actions sit in the footer row
+    assert '"lead-pill"' in card and "lead-end" not in card and "leadFoot(" in card
+    assert "lead-end" not in css and "cardHead" not in app
+    assert ".facts-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 220px));" in css
+    # one control edge token, 3:1 in both themes, and disabled buttons with no opacity trick
+    assert css.count("--line-strong: #7E8B85") == 1 and css.count("--line-strong: #687B74") == 2
+    assert ':is(h1, h2, h3)[tabindex="-1"]:focus { outline: none; }' in css
+    assert ".btn[disabled], .btn[aria-disabled=\"true\"] { opacity: 1;" in css
+    # Sort is a select; Best match sorts by the Match score with the rank as tie-break
+    assert 'id: "sort-pick"' in app
+    assert '["order", "Best match"], ["closing", "Closing soonest"]' in app
+    assert '"data-key": `sort-${v}`' not in app
+    # Stop: signed-in users only, never in the replay; the stopped state is the page's own words
+    assert "api.cancelBrief(S.briefId)" in app and '"data-key": "stop-brief"' in app
+    assert 'S.session.signed_in && api.mode !== "replay"' in app
+    assert "You stopped this brief. Run again builds a new one." in app
+    # the withheld note is said once, with the info icon
+    assert "so those cards show no reason" in app and '"data-withheld": ""' in app
+    # the example page: index.html with its own title, wordmark link and script, nothing inline
+    index = (WEB_DIR / "index.html").read_text(encoding="utf-8")
+    example = (WEB_DIR / "example.html").read_text(encoding="utf-8")
+    assert example == (index.replace("<title>Perch</title>", "<title>Example brief — Perch</title>")
+                       .replace('class="wordmark" href="#/"', 'class="wordmark" href="./"')
+                       .replace('src="app.js"', 'src="example.js"'))
+    assert "<script>" not in example and "PERCH_EXAMPLE" in app
+    ex = (WEB_DIR / "example.js").read_text(encoding="utf-8")
+    assert "example/${side}.json" in ex and "The example is not on this server." in ex
+    assert 'import("./app.js")' in ex
+    # the landing link shows only when the server holds the file
+    assert "api.exampleAvailable(side)" in app and '"data-key": "example-brief"' in app

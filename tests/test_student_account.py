@@ -42,7 +42,11 @@ def test_each_persona_gets_leads_on_both_tabs(env, tmp_path, monkeypatch, name):
     assert all(x["sample"] and x["record"]["source"] == "synthetic" for x in by["S"])
     assert not any(x["sample"] for x in by["F"])
     s = ok(by["S"])[0]
-    assert s["explanation"] and "user:achievement-a" in s["cited_ids"]
+    # S50 3b: code picks the student's most relevant document per lead, so any user document
+    # may be cited; the panel must be able to open each one.
+    user_cites = [c for c in s["cited_ids"] if c.startswith("user:")]
+    assert s["explanation"] and user_cites
+    assert all(c in got["papers"] and got["papers"][c]["source"] == "user" for c in user_cites)
     assert all(isinstance(g, str) for x in by["S"] for g in x["gaps"])
     assert "user:achievement-a" in got["papers"]  # the evidence panel can open it
     assert got["papers"]["user:achievement-a"]["source"] == "user"

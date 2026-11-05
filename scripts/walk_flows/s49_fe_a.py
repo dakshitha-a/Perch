@@ -239,8 +239,10 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
         w.check(f"s49_ready_chip_{tag}", await chip.count() == 1 and not pcard and steps_ok,
                 f"chip {await chip.count()}, progress card visible {pcard}, steps shown {steps_ok}")
         tr = await page.locator("#tab-profile").get_attribute("aria-label")
-        hid = await page.evaluate("() => { const p = document.querySelector('#panel .hidden-line'); return p && p.offsetParent !== null ? p.innerText : null; }")
-        w.check(f"s49_hidden_line_{tag}", bool(hid) and "SYNTHETIC hidden reason (3)" in hid, f"{hid!r}")
+        # S50 V44: the line became a disclosure, "<total> hidden by the rules", one line per rule inside
+        hid = await page.evaluate("""() => { const d = document.querySelector('#panel details.hidden-fold'); if (!d || d.offsetParent === null) return null;
+          d.open = true; const t = d.innerText; d.open = false; return t; }""")
+        w.check(f"s49_hidden_line_{tag}", bool(hid) and "3 hidden by the rules" in hid and "SYNTHETIC hidden reason: 3" in hid, f"{hid!r}")
         # route T: two leads moved to T; the switch shows them apart from Grants
         await serve(page, RB, researcher_variant(raw_r, route_t=True))
         await page.evaluate("location.hash = '#/'")

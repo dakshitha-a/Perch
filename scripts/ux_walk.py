@@ -162,10 +162,28 @@ async def until(page: Page, expr: str, arg: object = None, secs: float = 30, eve
     raise TimeoutError(f"waited {secs:.0f} s for: {expr[:80]}")
 
 
+async def open_filters(page: Page) -> None:
+    """S50 (FE-B): on a phone the list filters fold behind a Filters button; open them."""
+    t = page.locator("[data-key=filters]")
+    if await t.count() and await t.is_visible() and await t.get_attribute("aria-expanded") == "false":
+        await t.click()
+        await page.wait_for_timeout(150)
+
+
+async def wait_filters(page: Page, sel: str = ".tag-row", timeout: int = 30_000) -> None:
+    """Wait for a filter-bar element, opening the folded phone filters first."""
+    await page.wait_for_selector(sel, state="attached", timeout=timeout)
+    await open_filters(page)
+    await page.wait_for_selector(sel, timeout=10_000)
+
+
 async def go(page: Page, base: str, hash_: str, ready: str) -> None:
     if not page.url.startswith(base):
         await page.goto(base + "/")
     await page.evaluate("(h) => { location.hash = h; }", hash_)
+    if ready == ".tag-row":
+        await wait_filters(page)
+        return
     await page.wait_for_selector(ready, timeout=30_000)
 
 
@@ -234,7 +252,7 @@ async def flow_awards(w: Walk, browser: Browser, base: str, tag: str, view: dict
             await route.fulfill(status=200, content_type="application/json", body=json.dumps(data))
         await page.route(re.compile(r".*/filters\?.*"), skew)
     await page.goto(base + "/#/awards")
-    await page.wait_for_selector(".tag-row")
+    await wait_filters(page)
     await page.wait_for_selector(".award")
     await w.snap(page, tag, "awards")
     flt = await page.evaluate("fetch('/filters?audience=student').then(r => r.json())")
@@ -247,13 +265,15 @@ async def flow_awards(w: Walk, browser: Browser, base: str, tag: str, view: dict
           c.style.height = '30px'; c.style.minHeight = '0'; c.querySelector('span').textContent += ' with a very long label added'; }""")
         tags = await page.evaluate(TAGS)
     if w.plant == "tag_row_contained":
-        await page.evaluate("document.querySelector('.tag-row').style.flexWrap = 'nowrap'")
+        await page.evaluate("document.querySelector('.tag-row').style.flexWrap = 'wrap'")
         tags = await page.evaluate(TAGS)
     low = [c for c in tags["chips"] if c["h"] < 44]
     w.check("tag_row_chips_44", not low and tags["pageOver"] <= 0, f"{len(tags['chips'])} chips, shortest {min(c['h'] for c in tags['chips'])} px, page overflow {tags['pageOver']}")
     if view["width"] < 600:
-        # S49 (S11): the school chips wrap onto as many lines as they need; no sideways scroller, nothing cut off
-        w.check("tag_row_contained", tags["lines"] > 1 and tags["sw"] <= tags["cw"] and tags["outside"] == 0 and tags["pageOver"] <= 0,
+        # S50 (decided, V9/V40/Q14): on a phone the school chips are one row that scrolls sideways inside
+        # itself; the page never scrolls sideways, and the row can reach every chip
+        w.check("tag_row_contained", tags["lines"] == 1 and (tags["sw"] <= tags["cw"] or tags["ox"] in ("auto", "scroll"))
+                and tags["pageOver"] <= 0,
                 f"{tags['lines']} chip lines, row scroll {tags['sw']} vs client {tags['cw']}, {tags['outside']} chips outside, page overflow {tags['pageOver']}")
     flt2 = await page.evaluate("fetch('/filters?audience=student').then(r => r.json())")
     shown = {c["label"]: c["count"] for c in tags["chips"] if c["count"] is not None}
@@ -275,7 +295,10 @@ async def flow_awards(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.click("[data-key^=more-]")
     await until(page, "(n) => document.querySelectorAll('.award').length > n", before)
     w.check("show_more", True, f"{before} cards, then more")
-    await page.fill("#list-q", "zzzzqqxx")
+    # focus as a user does (the browser honours scroll-padding under the sticky bar); Playwright's
+    # fill scrolls the box to the very top, under the bar, which axe then reports as covered (S50 QA)
+    await page.locator("#list-q").focus()
+    await page.keyboard.type("zzzzqqxx")
     await page.wait_for_selector(".empty-list")
     await w.snap(page, tag, "awards-empty")
     await page.click("[data-key=clear]")
@@ -304,6 +327,7 @@ async def flow_funding(w: Walk, browser: Browser, base: str, tag: str, view: dic
     await page.wait_for_selector(".award")
     w.check("funding_toggle_off", await page.locator("[data-key=temple]").get_attribute("aria-checked") == "false", "off by default")
     await w.snap(page, tag, "funding")
+    await open_filters(page)
     await page.click("[data-key=temple]")
     await until(page, "() => document.querySelector('[data-key=temple]').getAttribute('aria-checked') === 'true'")
     await page.wait_for_selector(".award")
@@ -311,11 +335,13 @@ async def flow_funding(w: Walk, browser: Browser, base: str, tag: str, view: dic
     if w.plant == "focus_order":
         await page.evaluate("""() => { const row = document.querySelector('.filter-row'); row.append(row.firstElementChild); }""")
     seq = await tab_order(page)
-    # S49 filter bar: row 1 search, level, sort; then the two switches (the school chips need Temple only on,
-    # so they follow it); then the chips, the guest keep line and the list
-    order = ["search", "level", "sort", "toggle", "closed", "tag", "keepline", "card"]
+    # S49 filter bar: row 1 search, sort; then the two switches (the school chips need Temple only on,
+    # so they follow it); then the chips, the guest keep line and the list. S50 (FE-B): the funding
+    # list has no level select, so "level" must not appear.
+    order = ["search", "sort", "toggle", "closed", "tag", "keepline", "card"]
     firsts = [seq.index(k) for k in order if k in seq]
-    w.check("focus_order_lists", [k for k in order if k in seq] == order and firsts == sorted(firsts), " > ".join(dict.fromkeys(seq)))
+    w.check("focus_order_lists", [k for k in order if k in seq] == order and firsts == sorted(firsts) and "level" not in seq,
+            " > ".join(dict.fromkeys(seq)))
     leak = await sample_leak(page)
     w.check("no_sample_in_funding", not leak, f"{leak}")
     await page.context.close()
@@ -503,7 +529,7 @@ async def flow_mocked(w: Walk, browser: Browser, base: str, tag: str, view: dict
     clip = await page.evaluate("() => { const t = document.querySelector('.consent-text'); return t.scrollHeight - t.clientHeight; }")
     w.check("consent_text_not_clipped", clip <= 0, f"scrollable overflow {clip} px")
     await page.evaluate("location.hash = '#/awards'")
-    await page.wait_for_selector(".tag-row")
+    await page.wait_for_selector(".tag-row", state="attached")
     w.check("public_lists_open_without_welcome", "#/awards" in page.url, page.url)
     await page.evaluate("location.hash = '#/welcome'")
     await page.wait_for_selector(".welcome")
@@ -789,6 +815,7 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
         await route.fulfill(json=signed)
     await page.route("**/auth/session", session_stub)
     res: dict[str, dict] = {}
+    chips: list[str] = []
     for name, msg in states.items():
         cur["msg"] = None
         await page.goto(base + f"/#/brief/{bid}/scout")
@@ -802,6 +829,11 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
             await page.evaluate("document.querySelectorAll('mark.unsupported .sr-only').forEach((e) => e.remove())")
         await w.snap(page, tag, f"scout-{name}")
         res[name] = await page.evaluate(MARKS)
+        if name == "clean":
+            chips = await page.locator(".scout-x .scout-answer .cite").all_inner_texts()
+    # S50 QA: a student answer's chip reads as the option's name, never "Record <source:id>"
+    bad = [t for t in chips if t.startswith("Record ") or re.search(r"[a-z_]+:[\w.-]+", t)]
+    w.check("scout_cites_are_names", len(chips) == 2 and not bad, f"chips {chips}")
     c, u, f, a = res["clean"], res["unsupported"], res["flagged"], res["withheld_all"]
     w.check("scout_clean_nothing_flagged", not c["marks"] and not c["notes"] and not c["general"] and c["cites"] == 2
             and c["checked"].endswith(CHECKED_OK), f"cites {c['cites']}, notes {c['notes']}, checked {c['checked']!r}")
@@ -899,11 +931,15 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await page.wait_for_timeout(600)
     cards = await page.locator("#panel li.card.lead:not(:has([data-key^=restore]))").count()
     btns = await page.locator("#panel li.card.lead button[data-key^=cover-]").count()
-    hint0 = await page.locator(f"[data-cover='{first}'] > .hint").first.inner_text()
+    # S50 B4: the hint is said once above the list, never on a card
+    hint0 = await page.locator("#panel [data-cover-line]").first.inner_text() if await page.locator("#panel [data-cover-line]").count() else ""
+    card_hints = await page.locator("#panel [data-cover] :text('A model writes these')").count()
     w.check("cover_button_on_every_card", cards > 0 and btns == cards
             and (await page.locator(f"button[data-key='cover-{first}']").inner_text()) == "Cover-letter points",
             f"{cards} cards not dismissed, {btns} buttons")
-    w.check("cover_student_hint", hint0 == "A model writes these from your CV and entries. You put them in your own words.", repr(hint0))
+    w.check("cover_student_hint", hint0.strip() == "A model writes these from your CV and entries. You put them in your own words."
+            and await page.locator("#panel [data-cover-line]").count() == 1 and card_hints == 0,
+            f"list line {hint0!r}; {card_hints} card hints")
     w.check("cover_restore_is_one_get", seen["gets"] == [{"record_id": restored_rid}]
             and await page.locator(f"[data-cover='{restored_rid}'] .scout-points").count() == 1
             and await page.locator(f"button[data-key='cover-{restored_rid}']").inner_text() == "Points again"
@@ -938,7 +974,9 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
       .filter((t) => /^[a-z_]+:[\\w.-]+$/i.test(t) || t === rid)""", first)
     w.check("cover_cites_are_titles", not ids_shown, f"chips showing an id: {ids_shown[:3]}")
     w.check("cover_result_focus_and_announce", res["focusSummary"] and res["live"] == "The points are ready below.", f"{res}")
-    w.check("cover_hint_hidden_with_result", not any(x.startswith("A model writes these") for x in res["hints"]), f"{res['hints']}")
+    after = await page.locator("#panel [data-cover] :text('A model writes these')").count()
+    w.check("cover_hint_hidden_with_result", not any(x.startswith("A model writes these") for x in res["hints"]) and after == 0
+            and await page.locator("#panel [data-cover-line]").count() == 1, f"{res['hints']}; {after} card hints")
     w.check("cover_post_sends_csrf", bool(seen["posts"]) and seen["posts"][0][:2] == (first, "walk-csrf"), f"{seen['posts']}")
     await show(page, f"[data-cover='{first}']")
     await w.snap(page, tag, "cover-result", full=False)
@@ -963,11 +1001,13 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await page.wait_for_selector(f"button[data-key='cover-{consent_rid}']")
     # a 403 for consent names the consent, not the sign-in
     await page.locator(f"button[data-key='cover-{consent_rid}']").click()
-    await page.wait_for_selector(f"[data-cover='{consent_rid}'] [role=alert]", timeout=10_000)
-    alert = await page.locator(f"[data-cover='{consent_rid}'] [role=alert]").inner_text()
+    # S50 (FE-B): consent is a step, not an error: an info status with a Read and agree link
+    await page.wait_for_selector(f"[data-cover='{consent_rid}'] .notice.info[role=status]", timeout=10_000)
+    alert = await page.locator(f"[data-cover='{consent_rid}'] .notice.info[role=status]").inner_text()
     href = await page.locator(f"[data-cover='{consent_rid}'] a.btn").get_attribute("href")
-    w.check("cover_consent_403_wording", alert.strip() == "Agree to the consent first." and "Sign in" not in alert
-            and href == "#/welcome", f"{alert!r} {href}")
+    errs = await page.locator(f"[data-cover='{consent_rid}'] [role=alert], [data-cover='{consent_rid}'] .notice.error").count()
+    w.check("cover_consent_403_wording", "need your consent first" in alert and "Sign in" not in alert and errs == 0
+            and href == "#/welcome", f"{alert!r} {href}; {errs} error notes")
     await show(page, f"[data-cover='{consent_rid}']")
     await w.snap(page, tag, "cover-consent", full=False)
     # S49 (U6): the allowance is said once, in a status line above the list; the card points to it
@@ -986,7 +1026,7 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await show(page, f"[data-cover='{quota_rid}']")
     await w.snap(page, tag, "cover-error", full=False)
     # a redraw (the sort switch) keeps the result: the state is held outside the card
-    await page.locator("[data-key=sort-closing]").click()
+    await page.locator("#sort-pick").select_option("closing")
     await page.wait_for_timeout(500)
     w.check("cover_result_survives_redraw", await page.locator(f"[data-cover='{first}'] .scout-points").count() == 1
             and await page.locator(f"[data-cover='{quota_rid}'] .quota-hint").count() == 1
@@ -1019,9 +1059,10 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await page.evaluate("(id) => { location.hash = '#/brief/' + encodeURIComponent(id) + '/routes'; }", rbid)
     await page.wait_for_selector("#panel li.card.lead button[data-key^=cover-]", timeout=20_000)
     rid = await page.locator("#panel [data-cover]").first.get_attribute("data-cover")
-    rhint = await page.locator(f"[data-cover='{rid}'] > .hint").first.inner_text()
+    rhint = (await page.locator("#panel [data-cover-line]").first.inner_text()).strip() if await page.locator("#panel [data-cover-line]").count() else ""
+    rcard = await page.locator("#panel [data-cover] :text('A model writes these')").count()
     w.check("cover_researcher_hint", rhint == "A model writes these from your CV, entries and the papers the record cites. You put them in your own words."
-            and not rseen["gets"], f"{rhint!r} gets {rseen['gets']}")
+            and rcard == 0 and not rseen["gets"], f"{rhint!r}; {rcard} card hints; gets {rseen['gets']}")
     await show(page, f"[data-cover='{rid}']")
     await w.snap(page, tag, "cover-researcher-button", full=False)
     await page.locator(f"button[data-key='cover-{rid}']").click()

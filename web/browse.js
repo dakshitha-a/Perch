@@ -18,6 +18,7 @@ const SOURCE_WORDS = { temple_pages: "Temple public page", temple_sdfa: "Temple 
   grants_gov: "Grants.gov", nih_reporter: "NIH RePORTER", nsf: "NSF Award Search", synthetic: "SYNTHETIC sample corpus (invented)" };
 const LEVEL_WORDS = { undergraduate: "Undergraduate", graduate: "Graduate", faculty: "Faculty", mixed: "Several levels" };
 const NOT_STATED = "not stated";
+const FAR_DAYS = 3650; // a close date this far out is a placeholder; the page's own words replace it (G8)
 const SAMPLE_PAGE = 12; // the samples screen loads a dozen, then Show more (S14)
 const SAMPLE_NOTE = "These are invented records from a test corpus. They show how Perch works; they are not real awards. Do not apply to them.";
 
@@ -61,10 +62,18 @@ function isPast(r) {
   return String(d).slice(0, 10) < f.localToday();
 }
 
+const farOff = (r) => {
+  const days = r.close_date ? f.daysBetween(f.localToday(), r.close_date) : null;
+  return days !== null && days > FAR_DAYS;
+};
+
 function deadlineText(r) {
   if (r.kind === "opportunity") {
-    if (r.close_date_note && f.standardDates(r)) return r.close_date_note;
-    if (!r.close_date) return r.close_date_note || NOT_STATED;
+    // The server's words for the close date; a placeholder date never shows. With no date at all
+    // the record's own words are quoted below as "The page says" (V29), so close_text is not used.
+    if (r.close_text && (r.close_date || r.placeholder_close_date)) return r.close_text;
+    if (r.close_date_note && (f.standardDates(r) || farOff(r))) return r.close_date_note;
+    if (!r.close_date) return NOT_STATED; // the page's own words, if any, show as a quote (V29)
     return `${f.expiresOnly(r) ? "Expires " : ""}${f.formatDate(r.close_date)}`;
   }
   return r.deadline ? f.formatDate(r.deadline) : NOT_STATED;
@@ -102,7 +111,8 @@ export function recordRow(r, { openEvidence }, keep = null) {
   const quote = firstQuote(r);
   const amount = amountText(r), due = deadlineText(r);
   const noDate = due === NOT_STATED;
-  const pageSays = noDate && r.deadline_quote ? `The page says: “${r.deadline_quote}”` : null;
+  const words = opp ? r.close_date_note : r.deadline_quote;
+  const pageSays = noDate && words ? `The page says: “${words}”` : null;
   const tid = `t-${String(r.id).replace(/[^A-Za-z0-9_-]/g, "_")}`;
   const sub = subParts(r);
   const past = isPast(r);
@@ -121,9 +131,9 @@ export function recordRow(r, { openEvidence }, keep = null) {
       subKids.length ? h("p", { class: "ar-sub" }, ...subKids) : null,
       quote ? h("blockquote", { class: "ar-quote", text: `“${quote}”` }) : null),
     h("div", { class: "ar-facts" },
-      bothMissing ? h("p", { class: "missing", text: "No amount or deadline on the page" })
+      bothMissing ? h("p", { class: "missing", text: "Not on the page" })
         : h("dl", {},
-          h("dt", { text: "Amount" }), h("dd", {}, h("span", { class: amount === NOT_STATED ? "missing" : null, text: amount === NOT_STATED ? "Not stated" : amount })),
+          h("dt", { text: "Amount" }), h("dd", { class: "amt" }, h("span", { class: amount === NOT_STATED ? "missing" : null, text: amount === NOT_STATED ? "Not stated" : amount })),
           h("dt", { text: dateLabel }), h("dd", {},
             pageSays ? h("span", { class: "quote-date", title: pageSays, text: pageSays })
               : h("span", { class: noDate ? "missing" : null, text: noDate ? "Not stated" : due }),
@@ -193,7 +203,7 @@ export async function renderList(root, ctx) {
   const roles = (sess.roles || []).filter((r) => r === "student" || r === "researcher");
   // Saving goes to the list's own side when the account has that role; else the session's side.
   const keepState = signedIn ? { saved: new Map(), side: roles.includes(aud) ? aud : (sess.audience || roles[0] || aud), api, announce } : null;
-  let filters = null, results = null, error = null, busy = true, gen = 0;
+  let filters = null, results = null, error = null, busy = true, gen = 0, folded = true;  // the filters start folded on a phone
   const groupsEl = h("div", { class: "groups", "aria-busy": "true" });
   const barEl = h("div", { class: "filter-bar" });
   const countEl = h("span", { class: "list-count", "aria-hidden": "true" });
@@ -308,24 +318,34 @@ export async function renderList(root, ctx) {
       aud === "researcher" ? h("button", { type: "button", role: "switch", class: "switch", "data-key": "show-closed", "aria-checked": String(st.closed),
         onclick: () => { st.closed = !st.closed; keep(drawBar); load(); } },
       h("span", { class: "knob", "aria-hidden": "true" }), h("span", { text: "Show closed calls" })) : null].filter(Boolean);
-    fill(barEl,
+    const set = [st.school, st.level, st.sort !== SORTS[aud][0][0] ? 1 : 0, st.closed, st.allTemple].filter(Boolean).length;
+    const searchField = h("input", { id: "list-q", name: "q", type: "search", value: st.q, placeholder: `Search ${word.noun}`, autocomplete: "off",
+      oninput: (e) => { st.q = e.target.value; clear.hidden = !st.q; syncCounts(); clearTimeout(drawBar.t); drawBar.t = setTimeout(load, 400); } });
+    const clear = h("button", { class: "btn quiet icon-only search-clear", type: "button", "aria-label": "Clear the search", hidden: !st.q,
+      onclick: () => { st.q = ""; searchField.value = ""; clear.hidden = true; searchField.focus(); syncCounts(); load(); } }, icon("close"));
+    const body = h("div", { id: "filter-body", class: `filter-body${folded ? " is-folded" : ""}` },
       h("div", { class: "filter-row" },
-        h("form", { class: "searchbox small", role: "search", onsubmit: (e) => { e.preventDefault(); st.q = e.currentTarget.q.value; load(); } },
-          h("label", { for: "list-q", class: "sr-only", text: `Search the ${word.noun}` }),
-          h("input", { id: "list-q", name: "q", type: "search", value: st.q, placeholder: `Search ${word.noun}`, autocomplete: "off",
-            oninput: (e) => { st.q = e.target.value; syncCounts(); clearTimeout(drawBar.t); drawBar.t = setTimeout(load, 400); } }),
-          h("button", { class: "btn", type: "submit", text: "Search" })),
-        h("div", { class: "field-pick level-pick" },
+        aud === "student" ? h("div", { class: "field-pick level-pick" },
           h("label", { for: "list-level", text: "Level of study" }),
-          h("select", { id: "list-level", "data-key": "level", onchange: (e) => { st.level = e.target.value; syncCounts(); load(); } },
+          h("select", { id: "list-level", "data-key": "level", onchange: (e) => { st.level = e.target.value; keep(drawBar); load(); } },
             h("option", { value: "", text: "Any level" }),
-            ...((filters && filters.levels) || []).map((v) => h("option", { value: v, selected: st.level === v, text: levelWord(v) })))),
+            ...((filters && filters.levels) || []).map((v) => h("option", { value: v, selected: st.level === v, text: levelWord(v) })))) : null,
         h("div", { class: "field-pick sort-pick" },
           h("label", { for: "list-sort", text: "Sort by" }),
-          h("select", { id: "list-sort", "data-key": "sort", onchange: (e) => { st.sort = e.target.value; load(); } },
+          h("select", { id: "list-sort", "data-key": "sort", onchange: (e) => { st.sort = e.target.value; keep(drawBar); load(); } },
             ...SORTS[aud].map(([v, label]) => h("option", { value: v, selected: st.sort === v, text: label }))))),
       toggles.length ? h("div", { class: "switch-row" }, ...toggles) : null,
       tagsOn ? tagRow : h("p", { class: "hint", text: "Turn on Temple only to choose a school." }));
+    const toggle = h("button", { class: "btn filter-toggle", type: "button", "data-key": "filters", "aria-expanded": String(!folded), "aria-controls": "filter-body",
+      onclick: () => { folded = !folded; body.classList.toggle("is-folded", folded); toggle.setAttribute("aria-expanded", String(!folded)); } },
+    icon("filter"), h("span", { text: "Filters" }), h("span", { class: "filter-n", hidden: !set, text: set ? ` · ${set}` : "" }));
+    fill(barEl,
+      h("div", { class: "search-row" },
+        h("form", { class: "searchbox small", role: "search", onsubmit: (e) => { e.preventDefault(); st.q = e.currentTarget.q.value; load(); } },
+          h("label", { for: "list-q", class: "sr-only", text: `Search the ${word.noun}` }),
+          h("div", { class: "search-field" }, searchField, clear),
+          h("button", { class: "btn", type: "submit", text: "Search" }))),
+      toggle, body);
     syncCounts();
   }
 

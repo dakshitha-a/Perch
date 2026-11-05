@@ -22,6 +22,8 @@
    the older names are aliases so the S7 to S23 components follow the new palette. */
 :root {
   --bg: #F7F8F4; --surface: #FFFFFF; --line: #DCE3DE; --chip: #EBF0EC;
+  /* S50 (V10): the edge of a control, 3:1 or more on the page, cards and chips; card edges keep --line */
+  --line-strong: #7E8B85; --dialog: #FFFFFF;
   --ink: #16201C; --ink-2: #45524D; --ink-3: #5C6964;
   --accent: #23664F; --on-accent: #FFFFFF; --accent-soft: #E2F2E9;
   --ember: #8F5A08;      /* text-safe ember on light */
@@ -51,6 +53,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0F1715; --surface: #17221F; --line: #273631; --chip: #22302B;
+    --line-strong: #687B74; --dialog: #1F2D29;
     --ink: #E9EFEC; --ink-2: #B3C1BC; --ink-3: #93A39D;
     --accent: #7CCBA8; --on-accent: #0B1F17; --accent-soft: #1E3B30;
     --ember: #F0B54A; --ember-fill: #F0B54A; --ember-soft: #3A2E16;
@@ -66,6 +69,7 @@
 }
 :root[data-theme="dark"] {
   --bg: #0F1715; --surface: #17221F; --line: #273631; --chip: #22302B;
+  --line-strong: #687B74; --dialog: #1F2D29;
   --ink: #E9EFEC; --ink-2: #B3C1BC; --ink-3: #93A39D;
   --accent: #7CCBA8; --on-accent: #0B1F17; --accent-soft: #1E3B30;
   --ember: #F0B54A; --ember-fill: #F0B54A; --ember-soft: #3A2E16;
@@ -92,6 +96,9 @@ p { margin: 0; }
 a { color: var(--moss); text-underline-offset: 2px; }
 button, input, select, summary { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+/* S50 (V1): a heading that code moves focus to, so a screen reader starts there, shows no ring;
+   every control keeps its ring. */
+:is(h1, h2, h3)[tabindex="-1"]:focus { outline: none; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .skip { position: absolute; left: 8px; top: -60px; background: var(--leaf); padding: 10px 14px; border-radius: var(--r-ctl); z-index: 30; }
 .skip:focus { top: 8px; }
@@ -113,11 +120,15 @@ button, input, select, summary { font: inherit; color: inherit; }
 
 /* ---------- buttons ---------- */
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 16px;
-  border-radius: var(--r-ctl); border: 1px solid var(--line); background: var(--leaf); color: var(--ink);
+  border-radius: var(--r-ctl); border: 1px solid var(--line-strong); background: var(--leaf); color: var(--ink);
   font-weight: 600; font-size: 15px; text-decoration: none; cursor: pointer; touch-action: manipulation; }
 .btn:hover { border-color: var(--ink-3); }
 .btn:active { transform: translateY(1px); }
-.btn[disabled], .btn[aria-disabled="true"] { opacity: .65; cursor: not-allowed; }
+/* S50 (V27): a disabled button looks disabled: the chip fill, the faint edge and muted text, no opacity. */
+.btn[disabled], .btn[aria-disabled="true"] { opacity: 1; cursor: not-allowed; background: var(--chip); border-color: var(--line); color: var(--ink-3); }
+.btn.primary[disabled], .btn.primary[aria-disabled="true"] { background: var(--chip); border-color: var(--line); color: var(--ink-3); filter: none; }
+.btn[disabled]:hover, .btn[aria-disabled="true"]:hover { border-color: var(--line); }
+.btn[disabled]:active, .btn[aria-disabled="true"]:active { transform: none; }
 .btn[aria-busy="true"] { cursor: progress; }
 .btn.primary { background: var(--moss); border-color: var(--moss); color: var(--moss-ink); }
 .btn.primary:hover { filter: brightness(1.06); }
@@ -161,7 +172,7 @@ button, input, select, summary { font: inherit; color: inherit; }
 .field-label { font-weight: 650; font-size: 15px; }
 .search-row { display: flex; gap: 8px; }
 input[type="search"], input[type="number"], input[type="text"], textarea, select {
-  min-height: 48px; border-radius: var(--r-ctl); border: 1px solid var(--line); background: var(--leaf);
+  min-height: 48px; border-radius: var(--r-ctl); border: 1px solid var(--line-strong); background: var(--leaf);
   padding: 0 14px; font-size: 17px; width: 100%; color: var(--ink); }
 input:focus-visible, select:focus-visible { outline: 3px solid var(--focus); outline-offset: 1px; }
 input::placeholder { color: var(--ink-3); }
@@ -197,6 +208,8 @@ details[open] > summary::before { transform: rotate(45deg); }
 .notice.warn { background: var(--ember-soft); color: var(--ink); }
 .notice.warn .icon { color: var(--ember); }
 .notice ul { margin: 6px 0 0; padding-left: 18px; }
+.shared-rules p { margin: 0; }
+.shared-rules ul { margin-top: 4px; }
 .notice-ended { align-items: center; }
 .notice-ended p { flex: 1; margin: 0; line-height: 1.5; }
 .notice-ended .x { width: 44px; height: 44px; flex: none; border: 0; border-radius: 8px; background: transparent; color: var(--ink-2); font-size: 20px; cursor: pointer; }
@@ -322,14 +335,13 @@ details[open] > summary::before { transform: rotate(45deg); }
 .lead-head .actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .fit-k { font-weight: 500; color: var(--ink-2); }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.fit { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; font-size: 13px; font-weight: 650; white-space: nowrap; }
-.fit b { min-width: 28px; height: 22px; border-radius: 999px; display: inline-grid; place-items: center; font-size: 13px; padding: 0 6px; }
-.fit.strong { background: var(--moss-soft); color: var(--ink); }
-.fit.strong b { background: var(--moss); color: var(--moss-ink); }
-.fit.good { background: var(--moss-soft); color: var(--ink); }
-.fit.good b { background: var(--leaf); color: var(--ink); box-shadow: inset 0 0 0 2px var(--moss); }
-.fit.partial, .fit.weak { background: var(--sunk); color: var(--ink-2); }
-.fit.partial b, .fit.weak b { background: var(--leaf); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
+/* S50 (V41): one Match pill shape in every band; only the tint changes. */
+.fit { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.fit b { font-weight: 700; min-width: 0; height: auto; padding: 0; background: none; box-shadow: none; border-radius: 0; }
+.fit.strong { background: var(--moss); color: var(--moss-ink); }
+.fit.strong .fit-k { color: var(--moss-ink); opacity: .85; }
+.fit.good { background: var(--accent-soft); color: var(--ok-ink); }
+.fit.partial, .fit.weak { background: var(--chip); color: var(--ink-2); }
 .fit.pending { background: var(--sunk); color: var(--ink-3); padding-right: 10px; }
 .owl-xs { width: 22px; height: 22px; margin-left: -4px; }
 .lead-title { font: 600 18px/1.3 var(--serif); }
@@ -954,7 +966,7 @@ h1.page { font: 500 34px/1.15 var(--serif); letter-spacing: -.005em; }
 .landing h1 { margin-top: -6px; font: 500 clamp(38px, 5vw, 56px)/1.08 var(--serif); letter-spacing: -.01em; }
 .landing .lede { margin-top: -10px; font-size: 18px; line-height: 1.5; color: var(--ink-2); }
 .landing form, .landing .student-go { width: 100%; display: flex; flex-direction: column; gap: 10px; }
-.searchbox { display: flex; gap: 8px; padding: 6px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.searchbox { display: flex; gap: 8px; padding: 6px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line-strong); }
 .searchbox input { flex: 1; min-width: 0; min-height: 48px; border: 0; background: transparent; font-size: 17px; padding: 0 14px; }
 .searchbox .btn { flex: none; min-height: 48px; padding: 0 22px; font-size: 16px; }
 .searchbox.small input { min-height: 44px; font-size: 16px; }
@@ -1014,7 +1026,7 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 /* the brief: title row, progress card, tabs, two columns with a right rail */
 .brief-meta { margin-top: 4px; color: var(--ink-2); font-size: 15px; }
 .export-menu { position: relative; }
-.export-menu > summary { min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 15px; }
+.export-menu > summary { min-height: 44px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 15px; }
 .export-menu > summary::before { display: none; }
 .export-menu[open] > summary { border-color: var(--ink-3); }
 .export-pop { position: absolute; right: 0; top: calc(100% + 6px); z-index: 8; width: min(340px, calc(100vw - 32px)); background: var(--surface); border: 1px solid var(--line);
@@ -1058,7 +1070,7 @@ body[data-screen="landing"] .foot .promises { display: grid; }
   .pcard.done .progress-steps:has(details[open]) { flex-basis: 100%; }
   .pcard.done .steps:not([open]) .steps-n { display: none; }
 }
-.pcard .btn.link { min-height: 40px; border: 0; background: transparent; color: var(--ink-2); text-decoration: underline; font-weight: 500; font-size: 14px; padding: 0 8px; }
+.pcard .btn.link { min-height: 44px; border: 0; background: transparent; color: var(--ink-2); text-decoration: underline; font-weight: 500; font-size: 14px; padding: 0 8px; }
 .tabs-wrap { background: var(--bg); padding: 0; margin: 0; border-bottom: 1px solid var(--line); }
 .tabs, .tabs.student { display: flex; gap: 4px; background: transparent; padding: 0; border-radius: 0; overflow-x: auto; scrollbar-width: none; }
 .tab { flex: none; min-height: 48px; padding: 0 16px; border-radius: 0; border-bottom: 3px solid transparent; font: 600 15px var(--sans); color: var(--ink-2); white-space: nowrap; }
@@ -1201,6 +1213,10 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .sort-switch { flex: 0 0 auto; }
 .sort-group { display: inline-flex; align-items: center; gap: 8px; }
 .sort-label { font-size: 14px; font-weight: 600; color: var(--ink-3); }
+/* S50 (V3, V42): Sort is a small select on the list's head row. */
+select.sort-pick { width: auto; min-height: 44px; padding: 0 36px 0 12px; font-size: 15px; font-weight: 600; color: var(--ink);
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236E7C76' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 10px center / 18px;
+  appearance: none; -webkit-appearance: none; cursor: pointer; }
 @media (max-width: 559px) {
   .sort-group { width: 100%; }
   .sort-group .sort-switch { flex: 1 1 auto; width: auto; display: grid; grid-template-columns: repeat(2, 1fr); }
@@ -1264,7 +1280,11 @@ body[data-screen="landing"] .foot .promises { display: grid; }
   table.compare.stack tr { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); margin-bottom: 12px; overflow: hidden; }
   table.compare.stack tbody th { position: static; max-width: none; background: var(--chip); }
   table.compare.stack td { display: grid; grid-template-columns: 40% 1fr; gap: 8px; border-bottom: 1px solid var(--line); }
-  table.compare.stack td::before { content: attr(data-label); color: var(--ink-3); font-size: 13px; padding: 10px 0 10px 12px; }
+  table.compare.stack td::before { content: attr(data-label); color: var(--ink-3); font-size: 13px; padding: 0 0 0 12px; }
+  /* S50 (V12): the label and its value start on one line: the cell holds the padding, not its parts. */
+  table.compare.stack td { align-items: start; padding: 10px 12px 10px 0; }
+  table.compare.stack td > .cell-text:first-child, table.compare.stack td > .cell-none:first-child { padding-top: 0; }
+  table.compare.stack td > :last-child { padding-bottom: 0; }
 }
 /* A box an error names (U4) */
 textarea[aria-invalid="true"], input[aria-invalid="true"] { border-color: var(--brick); }
@@ -1422,20 +1442,17 @@ body.signed-in #theme { display: none; }
 .check-row { display: flex; align-items: center; gap: 14px; min-height: 56px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--r-ctl);
   background: var(--bg); cursor: pointer; }
 .check-row input { width: 24px; height: 24px; margin: 0; accent-color: var(--accent); flex: none; }
-.welcome .box, .account .box { max-width: 680px; }
 .consent-text { max-height: 280px; overflow: auto; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--bg); line-height: 1.55; }
 .oa-field { display: grid; gap: 6px; }
-.welcome-go { display: grid; gap: 8px; max-width: 680px; }
+.welcome-go { display: grid; gap: 8px; }
 .welcome-go .btn.big { min-height: 56px; }
-.acct-facts { max-width: 680px; }
 .docs { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .doc { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .doc-name { flex: 1 1 14em; min-width: 0; overflow-wrap: anywhere; }
 .btn.danger { background: var(--brick-soft); border-color: var(--brick); color: var(--ink); }
 .btn.danger[disabled] { opacity: .5; cursor: not-allowed; }
 .danger-zone { border-color: var(--brick); }
-.del-dialog { width: min(520px, calc(100vw - 32px)); max-width: none; padding: 20px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--surface); color: var(--ink); }
-.del-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+.del-dialog { width: min(520px, calc(100vw - 32px)); max-width: none; padding: 20px; border: 1px solid var(--line); border-radius: var(--r-card); color: var(--ink); }
 .del-dialog form { display: grid; gap: 12px; }
 .dlg-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .brief-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
@@ -1504,15 +1521,23 @@ body[data-screen="landing"] .foot .promises { display: flex; flex-wrap: wrap; }
 /* ---------- S49 A4: the lead card, title first (D5, M1, U3, U43) ---------- */
 .card.lead { padding: 18px 20px; gap: 10px; }
 ol.leads { gap: 12px; }
-.lead-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: start; }
+/* S50 (V2, V6, V39): the title row holds the title and the Match pill; Keep and Dismiss sit in a
+   footer row with the cover-letter button; the two facts sit in fixed columns down the list. */
+.lead-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: start; }
 .lead-name { min-width: 0; }
-.lead-end { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
-.lead-end .actions { display: flex; gap: 6px; margin: 0; }
+.lead-pill { padding-top: 2px; }
+.lead-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--line); }
+.lead-foot > .cover { flex: 1 1 auto; min-width: 0; display: grid; gap: 8px; }
+.lead-foot > .cover:empty { display: none; }
+.lead-foot > .cover:has(.scout-points) { order: 2; flex-basis: 100%; }
+.lead-foot > .actions { margin-left: auto; display: flex; gap: 8px; }
+.org-tags { display: flex; }
 .lead-title { font: 600 var(--fs-19)/1.3 var(--serif); }
 .lead-title .ev-mark { font-size: 13px; vertical-align: baseline; }
 .lead-sub { margin-top: 2px; font-size: var(--fs-14); color: var(--ink-3); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .lead-sub .tag { height: 22px; min-height: 22px; }
-.facts-2 { display: flex; flex-wrap: wrap; gap: 4px 32px; margin: 0; }
+.facts-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 4px 32px; margin: 0; }
+.facts-2 .fact-wide { grid-column: 1 / -1; }
 .facts-2 .fact { background: none; padding: 0; border-radius: 0; }
 .facts-2 dt { font-size: var(--fs-12); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
 .facts-2 dd { font-size: 15px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
@@ -1539,7 +1564,8 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
 #list-notices .list-note { margin: 0; }
 @media (max-width: 599px) {
   .lead-top { grid-template-columns: 1fr; }
-  .lead-end { justify-content: space-between; flex-wrap: wrap; }
+  .lead-pill { padding-top: 0; }
+  .facts-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; }
   .card.lead { padding: 16px; }
 }
 @media (max-width: 559px) {
@@ -1547,6 +1573,22 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
   .list-head .sort-group .sort-switch { display: inline-flex; width: auto; }
   .sort-switch .route-btn { min-height: 44px; padding: 0 14px; }
 }
+
+/* The rule block on a student card (S50 contract 3.2; FE-C emits it). The chip sits on the lines
+   that explain it; each line has its mark and the record's words. */
+.rules { display: grid; gap: 6px; justify-items: start; }
+.rules[data-verdict] { min-width: 0; }
+ul.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: var(--fs-14); }
+li.check { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; color: var(--ink-2);
+  min-height: 0; padding: 0; cursor: auto; } /* a rule line, not the .check checkbox label above */
+/* The same lines in a compare cell, under the chip (FE-C): no list indent. */
+td .checks { margin: 6px 0 0; padding: 0; }
+table.compare.stack td > .checks { grid-column: 2; margin-top: 0; }
+.check-mk { font-weight: 700; text-align: center; }
+li.check[data-outcome="pass"] .check-mk { color: var(--ok-ink); }
+li.check[data-outcome="fail"] .check-mk { color: var(--no-ink); }
+li.check[data-outcome="unknown"] .check-mk { color: var(--may-ink); }
+details.checks-more > summary { font-size: var(--fs-14); color: var(--ink-2); min-height: 44px; }
 
 /* ---------- S49 A5: the brief header folds once ready (U37, S8, U55, U11) ---------- */
 .brief { gap: 16px; }
@@ -1560,7 +1602,7 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
 }
 .ready-chip { position: relative; }
 .ready-chip > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px 0 8px; border-radius: 999px;
-  border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: var(--fs-14); font-weight: 600; cursor: pointer; list-style: none; }
+  border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font-size: var(--fs-14); font-weight: 600; cursor: pointer; list-style: none; }
 .ready-chip > summary::-webkit-details-marker { display: none; }
 .ready-chip > summary::before { display: none; }
 .ready-chip > summary:hover, .ready-chip[open] > summary { border-color: var(--ink-3); }
@@ -1617,3 +1659,39 @@ body[data-screen="form"] .explain-check { min-height: 44px; }
   .brief .title-row > div:first-child { flex: 1 1 100%; }
   .brief-tools { justify-content: flex-start; }
 }
+
+/* ---------- S50 base styles (A1) ---------- */
+/* Dialogs (V37): their own surface, a step above the page in dark mode, over a darker scrim. */
+dialog { background: var(--dialog); color: var(--ink); }
+dialog::backdrop { background: rgba(10, 16, 14, .55); }
+:root[data-theme="dark"] dialog { border: 1px solid var(--line-strong); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) dialog { border: 1px solid var(--line-strong); } }
+/* The Evidence mark sits on the title's baseline and never parts from its icon (V43). */
+.lead-title .ev-mark, .ar-title .ev-mark { vertical-align: baseline; white-space: nowrap; }
+/* The landing's two student buttons share one width (V47). */
+.landing .student-go .btn { min-width: 264px; }
+/* The kept bar floats over the list's end on a phone (V36). */
+@media (max-width: 699px) { #panel { padding-bottom: 72px; } }
+/* The sort select (V3) shares the controls' edge. */
+.sort-pick { border-color: var(--line-strong); }
+/* The example brief (S50 Q22): its link on the landing, its banner and its missing-file page. */
+.example-slot { margin: 0; display: contents; }
+.example-slot:empty { display: none; }
+/* The researcher side's two quiet links share one row, so the landing still fits 1280 x 720. */
+.landing .landing-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 8px; }
+.example-banner .banner-line > .tag { flex: none; }
+.example-missing { padding: 48px 0; }
+.example-missing .lede { margin: 8px 0 20px; }
+/* What the rules left out (S50 V44): a quiet disclosure under the list head. */
+details.hidden-fold > summary { min-height: 44px; font-size: var(--fs-14); color: var(--ink-3); font-weight: 600; }
+.hidden-list { margin: 0 0 4px; padding-left: 22px; font-size: var(--fs-14); color: var(--ink-3); display: grid; gap: 2px; }
+#panel .hidden-fold { margin: -16px 0 -6px; }
+/* The pick screen's second Build button, at the foot of the form (S50 V32). */
+.build-foot { display: flex; justify-content: flex-end; }
+@media (max-width: 699px) { .build-foot .btn { width: 100%; } }
+.more-body > .explain-check { margin: 4px 0 8px; }
+/* Research threads (S50 V48): the thread's number and share, its label words as chips. */
+.thread-words { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.thread-words .chip { display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; background: var(--chip); color: var(--ink-2); font-size: var(--fs-14); }
+.threads-note { display: grid; gap: 2px; }
+details.threads-how > summary { min-height: 44px; font-size: var(--fs-14); font-weight: 600; color: var(--ink-2); }

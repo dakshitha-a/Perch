@@ -66,7 +66,7 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         page = await U.new_page(browser, w, tag, view, base)
         await page.goto(base + "/#/awards")
         await page.wait_for_selector("li.award, li.award-row", timeout=30_000)
-        await page.wait_for_selector(".tag-row")
+        await page.wait_for_selector(".tag-row", state="attached")
         await w.snap(page, tag, "s49b-awards")
         if view["width"] > 600:
             hs = await page.evaluate("[...document.querySelectorAll('.award-row')].map(e => e.getBoundingClientRect().height)")
@@ -75,6 +75,8 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         rows = await page.evaluate("""() => [...document.querySelectorAll('.award-row')].map(e => {
           const t = e.textContent; return (t.match(/Not stated/g) || []).length; })""")
         w.check("s49_no_double_not_stated", bool(rows) and max(rows) <= 1, f"{len(rows)} rows, most 'Not stated' in one row: {max(rows or [0])}")
+        if await page.locator("[data-key=filters]").is_visible():  # S50: on a phone the filters start folded
+            await page.locator("[data-key=filters]").click()
         lab = await page.evaluate("""() => { const l = document.querySelector('label[for=list-level]');
           return l ? { text: l.textContent.trim(), vis: l.offsetParent !== null && !l.classList.contains('sr-only') } : null; }""")
         w.check("s49_level_label", bool(lab) and lab["text"] == "Level of study" and lab["vis"], f"{lab}")
@@ -117,6 +119,8 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         sw = page.locator("[data-key=show-closed]")
         on = await sw.count()
         if on:
+            if await page.locator("[data-key=filters]").is_visible() and not await sw.is_visible():
+                await page.locator("[data-key=filters]").click()  # S50: folded on a phone
             await sw.click()
             await page.wait_for_timeout(800)
         after = await page.locator(".tag.closed").count()
@@ -310,9 +314,10 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         for q in (q1, q2):
             await page.locator(f"button[data-key='cover-{q}']").click()
             await page.wait_for_timeout(900)
-        notes = await page.locator("#list-notices .notice").count()
+        # S50: other notes (a withheld-reasons line) may share the slot; the quota line is said once
+        notes = await page.locator("#list-notices [data-cover-line]").count()
         card_err = await page.locator(".cover .notice.error").count()
-        text = await page.locator("#list-notices").inner_text()
+        text = await page.locator("#list-notices [data-cover-line]").first.inner_text() if notes else ""
         w.check("s49_quota_once", notes == 1 and card_err == 0 and "SYNTHETIC: you have used" in text and "comes back at" in text,
                 f"[mock slot, mock 429] {notes} notices above the list, {card_err} card errors, {text[:90]!r}")
         await page.evaluate("document.querySelector('#list-notices').scrollIntoView({ block: 'center' })")

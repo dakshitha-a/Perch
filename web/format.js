@@ -237,6 +237,12 @@ export function localToday(d = new Date()) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+// The ready chip's word (S50 V14): a brief that took under a second, such as one served from
+// the cache, reads "Ready" with no number; otherwise "Ready · 4 s".
+export function readyWord(ms) {
+  return ms < 1000 || !Number.isFinite(ms) ? "Ready" : `Ready · ${elapsed(ms)}`;
+}
+
 export function elapsed(ms) {
   const s = Math.max(0, Math.round(ms / 1000));
   if (s < 60) return `${s} s`;

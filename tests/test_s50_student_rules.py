@@ -157,3 +157,21 @@ def test_leads_carry_the_checks():
     assert d["checks"][0] == {"rule": "level", "outcome": "pass",
                               "text": "Level: open to undergraduate students, by the award's "
                                       "name; your CV says bachelor's."}
+
+
+def test_a_sample_brief_names_the_sample_students_cv():
+    """A guest's sample brief reads the SYNTHETIC sample student's CV, so no rule line,
+    verdict line or gap says "your CV" (S50 QA, the walk's sample_brief_not_your_cv)."""
+    from perch.student import Scored, to_leads
+
+    s = sch("SYNTHETIC Graduate Award", sid="ga", schools=["SYNTHETIC School"], scope="school",
+            eligibility=ScholarshipEligibility(gpa_min=3.5, enrolment_status="full-time"))
+    f = StudentFacts(level="bachelor's", class_year=3, major="Biology")
+    mine = to_leads("b1", "S", [Scored(s, None, 1.0, check(s, f, AS_OF))], f)[0]
+    theirs = to_leads("b1", "S", [Scored(s, None, 1.0, check(s, f, AS_OF))], f,
+                      sample=True)[0]
+    assert any("your CV" in c.text for c in mine.checks)
+    text = " ".join([*(c.text for c in theirs.checks), *theirs.verdict_lines, *theirs.gaps])
+    assert "your" not in text.lower().replace("you decide", "")
+    assert "the sample student's CV says bachelor's" in text
+    assert [c.outcome for c in theirs.checks] == [c.outcome for c in mine.checks]
