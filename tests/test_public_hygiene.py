@@ -57,8 +57,13 @@ def test_researcher_names_stay_out_of_shareable_docs():
         text = p.read_text("utf-8")
         # The generated table of Temple pages (scripts/gen_temple_sources.py) holds page URLs
         # whose slugs are award titles, which may name people (CLAUDE.md exception).
-        return re.sub(r"<!-- BEGIN temple-pages-table.*?<!-- END temple-pages-table -->", "",
+        text = re.sub(r"<!-- BEGIN temple-pages-table.*?<!-- END temple-pages-table -->", "",
                       text, flags=re.S)
+        if p.suffix == ".md":  # code (selectors such as li.card) is not prose about people
+            text = re.sub(r"```.*?```", "", text, flags=re.S)
+            text = re.sub(r"`[^`\n]*`", "", text)
+            text = re.sub(r"(?m)^ {4,}\S.*$", "", text)  # indented code lines
+        return text
 
     words = {p.name: set(re.findall(r"[a-z]+", fold(body(p)))) for p in shareable}
     # Two-letter names ("li") are also HTML tags, so markup files skip them.
