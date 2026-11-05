@@ -469,8 +469,20 @@ def cmd_serve(args: argparse.Namespace, client: oa.OpenAlexClient) -> int:
     from perch.service import BriefService, Clients, default_models
 
     data = Path(args.db).parent
+    repo_factory = None
+    if env("PERCH_DATABASE_URL"):
+        # v1: public records (browse lists, lead cards, evidence) come from Postgres, as in the
+        # worker; only scratch briefs stay in SQLite. Without this the web read the empty
+        # SQLite file and every list was empty on a fresh deployment (S48, found on the deploy).
+        from perch.store import pg
+        from perch.store.hybrid import HybridRepository
+
+        pool = pg.make_pool(env("PERCH_DATABASE_URL"), 4)
+        scratch = Path(args.db).with_name("briefs.db")
+        repo_factory = lambda: HybridRepository(pool, scratch)  # noqa: E731
     service = BriefService(args.db, default_models(args.models == "fake", data, args.llm),
-                           Clients(openalex=default_client), Path(args.overrides))
+                           Clients(openalex=default_client), Path(args.overrides),
+                           repo_factory=repo_factory)
     from perch.hardening import harden_process
 
     harden_process()

@@ -10,3 +10,11 @@ def test_cmd_worker_caches_the_brief_service():
     src = inspect.getsource(cli.cmd_worker)
     assert "built.append(make_brief_service())" in src
     assert "with lock:" in src and "return built[0]" in src
+
+
+def test_perch_serve_reads_public_records_from_postgres_when_configured():
+    """S48 deploy: `perch serve` with PERCH_DATABASE_URL read browse lists and lead records
+    from the empty SQLite file. It must use the Postgres-backed repository like the worker."""
+    src = inspect.getsource(cli.cmd_serve)
+    assert 'env("PERCH_DATABASE_URL")' in src and "HybridRepository(pool, scratch)" in src
+    assert "repo_factory=repo_factory" in src
