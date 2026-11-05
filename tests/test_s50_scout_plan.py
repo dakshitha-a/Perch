@@ -57,3 +57,21 @@ def test_neutral_section_names_pass_and_a_relevance_heading_does_not():
               "Your brief", "Where it sits in your brief", "What the search does not show"):
         assert _heading_errors(h) == [], h
     assert _heading_errors("Closest matches")
+
+
+# --- G12: a top-lead heading over the records the brief ranks first ---
+
+def _top(heading: str, *opps) -> list[str]:
+    t = guard_tools()
+    lines = "\n".join(f"- {o.title} closes soon [{o.id}]." for o in opps)
+    g = ans.grade(f"**{heading}**\n{lines}", t.seen, NAMES, AS_OF, None, t)
+    return [e for s in g.sentences if heading in s.text for e in s.errors]
+
+
+def test_top_lead_heading_passes_over_rank_one_only():
+    assert _top("Your top lead", OPP) == []
+    assert _top("Top lead: SYNTHETIC Kidney Repair Program", OPP) == []
+    assert _top("Top two leads", OPP, OPP2) == []
+    assert _top("Your top lead", OPP2)  # rank 2
+    assert _top("Top lead: SYNTHETIC Marsh Ecology Program", OPP)  # the title is not rank 1
+    assert _top("Top two leads", OPP)  # only one record under it

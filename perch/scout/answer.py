@@ -596,9 +596,29 @@ def is_heading(s: Sentence, line: Line) -> bool:
     return t.rstrip("*_ ").endswith(":") or bold or t.startswith("#") or fixed
 
 
+# G12 (S50): "Your top lead", "Top lead: <title>" or "Top two leads" over records the brief
+# ranks first is a section name, not a claim. Code checks the ranks of the records cited under
+# it (`top_heading_ok`); over any other record the heading is still removed.
+TOP_HEAD_RE = re.compile(r"(?:your )?top (?:lead|(two|three|2|3) leads)(?: in your brief)?"
+                         r"(?:\s*:\s*(.+))?")
+TOP_N = {"two": 2, "three": 3, "2": 2, "3": 3}
+
+
+def top_heading_ok(n: str, below: list[Record], tools: ReadTools | None, block: str) -> bool:
+    m = TOP_HEAD_RE.fullmatch(n)
+    if not m or tools is None or not tools.brief_read or not tools.ranks:
+        return False
+    k = TOP_N.get(m.group(1) or "", 1)
+    ordered = sorted(tools.ranks, key=lambda i: tools.ranks[i])[:k]
+    first = [r.id for r in below if not r.id.startswith(("user:", "search:"))][:k]
+    if len(first) < k or set(first) != set(ordered):
+        return False
+    return not m.group(2) or _label_words_in(m.group(2), block)
+
+
 def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None = None,
                    *, heading: bool = False, block: str = "",
-                   tools: ReadTools | None = None) -> None:
+                   tools: ReadTools | None = None, top_ok: bool = False) -> None:
     """`block` is the lower-case text of the records the lines under a heading cite (see
     `block_text`); a heading may name what that block cites."""
     raw = cites_in(s.text)
@@ -652,8 +672,8 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
     n = norm_exempt(s.text)
     if heading:
         s.kind = "heading"
-        if STRUCTURAL_RE.fullmatch(n):
-            return  # a fixed section name: nothing in it to check
+        if STRUCTURAL_RE.fullmatch(n) or top_ok:
+            return  # a fixed section name, or a top-lead heading code checked (G12)
         if LEADIN_RE.fullmatch(n) and not OFFER_FIT_RE.search(n) and not CLAIM_TAIL_RE.search(n):
             pass  # a how-to lead-in: its tail gets the content checks below
         elif not _label_words_in(n, block):
@@ -907,9 +927,11 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
                         if k.startswith("search:")}
     for li, ln in enumerate(g.lines):
         for si, s in enumerate(ln.sentences):
-            h = is_heading(s, ln) or bold_title(s, ln, cited_below(g.lines, li, seen))
-            check_sentence(s, seen, names, heading=h,
-                           block=block_text(g.lines, li, seen) if h else "", tools=tools)
+            below = cited_below(g.lines, li, seen)
+            h = is_heading(s, ln) or bold_title(s, ln, below)
+            block = block_text(g.lines, li, seen) if h else ""
+            check_sentence(s, seen, names, heading=h, block=block, tools=tools,
+                           top_ok=h and top_heading_ok(norm_exempt(s.text), below, tools, block))
             prev = (ln.sentences[si - 1] if si else
                     _prose_tail(g.lines[li - 1]) if li and not ln.prefix else None)
             inherit(s, prev, seen, tools)
