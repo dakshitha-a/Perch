@@ -25,6 +25,7 @@ import uuid
 
 import httpx
 
+from perch.llm import retry
 from perch.llm.base import (
     ChatResult,
     JsonSchema,
@@ -80,9 +81,9 @@ class OllamaProvider(Provider):
         self.http.close()
 
     def _post(self, body: dict) -> dict:
-        r = self.http.post("/api/chat", json=body)
+        r = retry.post(lambda: self.http.post("/api/chat", json=body))
         if r.status_code != 200:
-            raise ProviderError(f"ollama {r.status_code}: {r.text[:300]}")
+            raise ProviderError(f"ollama {r.status_code}: {r.text[:300]}", status=r.status_code)
         d = r.json()
         if d.get("error"):
             raise ProviderError(f"ollama: {d['error']}")

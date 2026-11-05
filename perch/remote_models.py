@@ -12,6 +12,7 @@ import numpy as np
 
 from perch.embed import Embedder
 from perch.grounding import Grounder
+from perch.llm import retry
 from perch.rerank import Reranker
 
 
@@ -27,7 +28,8 @@ class RemoteEmbedder(Embedder):
     def _embed(self, texts: list[str], kind: str) -> np.ndarray:
         if not texts:
             return np.zeros((0, getattr(self, "dim", 0)), dtype=np.float32)
-        r = self.http.post("/embed", json={"model": self.name, "kind": kind, "texts": texts})
+        r = retry.post(lambda: self.http.post("/embed", json={"model": self.name, "kind": kind,
+                                                               "texts": texts}))
         r.raise_for_status()
         return np.asarray(r.json()["vectors"], dtype=np.float32).reshape(len(texts), -1)
 
@@ -43,7 +45,8 @@ class RemoteReranker(Reranker):
         self.http, self.name = client(url, transport), model
 
     def score(self, query: str, docs: list[str]) -> list[float]:
-        r = self.http.post("/rerank", json={"model": self.name, "query": query, "docs": docs})
+        r = retry.post(lambda: self.http.post("/rerank", json={"model": self.name,
+                                                                "query": query, "docs": docs}))
         r.raise_for_status()
         return [float(x) for x in r.json()["scores"]]
 
@@ -55,6 +58,7 @@ class RemoteGrounder(Grounder):
         self.http = client(url, transport)
 
     def support(self, document: str, claims: list[str]) -> list[float]:
-        r = self.http.post("/ground", json={"document": document, "claims": claims})
+        r = retry.post(lambda: self.http.post("/ground", json={"document": document,
+                                                                "claims": claims}))
         r.raise_for_status()
         return [float(x) for x in r.json()["scores"]]

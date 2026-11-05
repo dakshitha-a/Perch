@@ -310,7 +310,7 @@ class BriefService:
             if store is not None and store.retry_left() and is_transient(e):
                 # S49 B8: a server that did not answer is retried by the job; the brief
                 # waits for it as queued, so the page keeps polling.
-                stage(current, "pending", RETRY_DETAIL)
+                stage(current, "pending", retry_detail(e))
                 b.status = "queued"
             else:
                 b.error = (str(e) if isinstance(e, Cancelled) else plain_error(e)
@@ -765,17 +765,34 @@ class Cancelled(Exception):
 
 
 RETRY_DETAIL = "A server did not answer. Trying again shortly."
+BUSY_DETAIL = "The models are busy with other briefs. Trying again shortly."
+
+
+def retry_detail(e: BaseException) -> str:
+    """The waiting stage's sentence: a busy model slot is not a server that did not answer."""
+    from perch.compute import SlotTimeout
+
+    return BUSY_DETAIL if any(isinstance(x, SlotTimeout)
+                              for x in (e, e.__cause__, e.__context__)) else RETRY_DETAIL
 
 
 def is_transient(e: BaseException) -> bool:
-    """A network failure or a server's 5xx or 429 answer: worth another attempt (S49 B8)."""
+    """A network failure, a server's 5xx or 429 answer (S49 B8), a model adapter's or the
+    provider SDK's busy answer, or no free model slot (S50 C1, C5): worth another attempt."""
     import httpx
 
+    from perch.compute import SlotTimeout
+    from perch.llm.retry import is_transient_provider_error
+
     for x in (e, e.__cause__, e.__context__):
-        if isinstance(x, httpx.TransportError):
+        if x is None:
+            continue
+        if isinstance(x, httpx.TransportError | SlotTimeout):
             return True
         if isinstance(x, httpx.HTTPStatusError) and (x.response.status_code >= 500
                                                      or x.response.status_code == 429):
+            return True
+        if is_transient_provider_error(x):
             return True
     return False
 
