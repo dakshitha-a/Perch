@@ -254,7 +254,8 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
         table = [["Lead", *[lbl for _, lbl in cols], "Office"]]
         for r in compare_rows:
             # /compare gives the close date as ISO text, which the screen formats (R1).
-            table.append([f"{'Industry' if r.route == 'B' else 'Grant'}: {r.title}",
+            lead_name = f"{r.number}: {r.title}" if r.number else r.title  # S49 V4
+            table.append([f"{'Industry' if r.route == 'B' else 'Grant'}: {lead_name}",
                           *[datefmt.shown(r.cells[k].text) if k == "closes" else r.cells[k].text
                             for k, _ in cols], r.cells["office"].text])
         out.append(Block("table", rows=table))

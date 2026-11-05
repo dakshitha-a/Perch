@@ -48,6 +48,7 @@ class Row:
     title: str
     record_id: str
     cells: dict[str, Cell]
+    number: str | None = None  # the opportunity number; `title` is the title alone (S49 V4)
 
 
 def lower_first(phrase: str) -> str:
@@ -104,6 +105,7 @@ def route_a_row(lead: Lead, o: Opportunity | None, as_of: date) -> Row:
         blank = Cell(NONE, None, rid)
         cells = {k: blank for k, _ in COLUMNS}
         title = rid
+        number = None
     else:
         papers = [c for c in lead.cited_ids if c.startswith("W")]
         state = ("explanation withheld" if lead.flagged else
@@ -119,10 +121,11 @@ def route_a_row(lead: Lead, o: Opportunity | None, as_of: date) -> Row:
                          ", ".join(o.funding_instruments) or None, rid, "funding instrument"),
             "evidence": Cell(ev, lead.match_score, rid, state),
         }
-        title = f"{o.opportunity_number}: {o.title}"
+        title = o.title
+        number = o.opportunity_number or None
     office = for_route("A")
     cells["office"] = Cell(office.name, office.name, None)
-    return Row(lead.id, "A", title, rid, cells)
+    return Row(lead.id, "A", title, rid, cells, number)
 
 
 def route_b_row(lead: Lead, org: Organisation | None) -> Row:
