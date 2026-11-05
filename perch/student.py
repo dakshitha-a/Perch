@@ -812,8 +812,9 @@ def choose(scored: list[Scored], top: int = TOP, ruled_out: int = RULED_OUT_SHOW
     # S53: a listing whose own rule the user's pick does not meet moves to the end of this list
     # (stable, so each group keeps its score order). It is still shown, and still counts as one
     # the student may apply for: only the not-eligible cap below is separate.
-    ok = sorted((x for x in scored if x.verdict.verdict != "not eligible"),
-                key=lambda x: x.verdict.demoted)[:top]
+    # The cut comes first: demotion only reorders the shown set and never drops a listing.
+    ok = sorted([x for x in scored if x.verdict.verdict != "not eligible"][:top],
+                key=lambda x: x.verdict.demoted)
     out = [x for x in scored if x.verdict.verdict == "not eligible"][:ruled_out]
     return ok + out
 

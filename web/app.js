@@ -694,8 +694,11 @@ function picksBox() {
   const F = S.find;
   if (api.mode === "replay" || (!S.session.signed_in && !S.session.guest)) return null;
   if (!F.picks) F.picks = { citizenship: null, residency_state: null };
+  // Folded on the researcher side: most researchers never need it (S53 review, decided).
   const box = h("section", { class: "box picks-box fade-in", "aria-label": "Optional citizenship and state" },
-    profilePicks({ prefix: "r-pick", value: F.picks }));
+    h("details", { class: "picks-fold", "data-key": "picks-fold", ...(F.picks.citizenship || F.picks.residency_state ? { open: true } : {}) },
+      h("summary", { text: "Citizenship and state (optional)" }),
+      profilePicks({ prefix: "r-pick", value: F.picks, guest: !S.session.signed_in })));
   if (S.session.signed_in && !F.picksLoaded) {
     F.picksLoaded = true;
     api.profile("researcher").then((p) => {
@@ -826,12 +829,17 @@ async function build(c) {
     if (F.picks.residency_state) req.residency_state = F.picks.residency_state;
   }
   keepFocus(renderPick);
+  let picksLost = false;
   try {
     if (S.session.signed_in && F.picks && F.picksStored !== undefined
         && ((F.picks.citizenship || null) !== (F.picksStored.citizenship || null)
           || (F.picks.residency_state || null) !== (F.picksStored.residency_state || null))) {
-      await api.saveProfile({ citizenship: F.picks.citizenship, residency_state: F.picks.residency_state }, "researcher");
-      F.picksStored = { ...F.picks };
+      try {
+        await api.saveProfile({ citizenship: F.picks.citizenship, residency_state: F.picks.residency_state }, "researcher");
+        F.picksStored = { ...F.picks };
+      } catch (e) {  // the brief still builds; the picks are only not kept (S53 review)
+        picksLost = true;
+      }
     }
     if (S.session.signed_in && S.session.audience !== "researcher" && (S.session.roles || []).includes("researcher")) {
       await api.setAudience("researcher");  // a brief is built on the side the session is on
@@ -843,7 +851,9 @@ async function build(c) {
     S.tab = "routes";
     S.briefId = null; // a new brief: open it fresh
     F.building = false;
-    go(`#/brief/${encodeURIComponent(r.id)}/routes`);
+    const to = `#/brief/${encodeURIComponent(r.id)}/routes`;
+    if (picksLost) flash("Your picks were not saved. Agree to the consent first.", to);
+    go(to);
   } catch (e) {
     F.building = false;
     F.error = `The brief could not start: ${e.message}`;
@@ -1770,6 +1780,7 @@ function renderRoutes(panel) {
       // S51 QA: what Match means is in its pill's tooltip and read aloud with it (W22 moved there,
       // as Dakshitha's S27 rule said), so the first card starts by 600 px.
       h("p", { class: "hint routes-sub" }),
+      h("p", { class: "hint rule-line", "data-key": "rule-line", hidden: true }),
       S.route === "T" ? h("p", { class: "hint route-hint", text: "Temple’s own funding calls for faculty, kept apart from federal grants. Each call’s page says whom to contact." }) : null,
       // One quiet row: what the rules hid and, when the model budget is used, the budget line.
       h("div", { class: "list-status" }, S.route === "T" ? null : hiddenLine(),
@@ -1797,6 +1808,16 @@ function renderRoutes(panel) {
   const sub = panel.querySelector(".routes-sub");
   sub.textContent = subBits.length ? `${subBits.join(". ")}.` : "";
   sub.hidden = !subBits.length;
+  // S53: when the user gave a pick and some listings state no rule to compare, say so once here
+  // and not on every card.
+  const ruleLine = panel.querySelector(".rule-line");
+  if (ruleLine) {
+    const c = S.brief.citizenship_rules;
+    const none = leads.some((l) => l.citizenship_rule && l.citizenship_rule.outcome === "none");
+    ruleLine.textContent = none && c && c.total
+      ? `${c.stated} of ${c.total} listings here state a rule Perch can read. For the others, Perch found no rule it can compare with your answer. Read the eligibility text.` : "";
+    ruleLine.hidden = !ruleLine.textContent;
+  }
   // U43: what model text is, said once above the list, when the list holds any.
   panel.querySelector(".model-line").hidden = !open.some((l) => l.explanation);
   // S50 (V5): two or more flagged cards on view: the list note says it once, the cards say nothing.
@@ -2208,7 +2229,7 @@ function leadNotes(l) {
   // S53: a note that quotes a listing's own citizenship or state rule links the page it came from.
   const src = l.citizenship_rule && l.citizenship_rule.quote ? l.citizenship_rule.source_url : null;
   return h("ul", { class: "lead-notes" }, l.notes.map((n) => h("li", {}, n,
-    src && /the listing asks for/.test(n) ? [" ", h("a", { class: "pick-source", href: src, target: "_blank", rel: "noopener noreferrer", text: "Source page" })] : null)));
+    src && /the listing asks for|residency field says/.test(n) ? [" ", h("a", { class: "pick-source", href: src, target: "_blank", rel: "noopener noreferrer", text: "Source page" })] : null)));
 }
 
 function explanationBlock(l, parsed, o) {

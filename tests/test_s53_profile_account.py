@@ -115,3 +115,23 @@ def test_profile_doc_rejects_unknown_fields_and_values():
         ProfileDoc(citizenship="nope")
     with pytest.raises(ValueError):
         ProfileDoc.model_validate(json.loads('{"citizenship": null, "extra": 1}'))
+
+
+def test_a_changed_pick_changes_the_researcher_brief_key(env):  # noqa: F811
+    """S53 review: the same-day brief must not be returned after the pick changed."""
+    from perch.user.briefs import compute_idempotency_key, side_row_ids
+
+    def key():
+        ids = side_row_ids(env.ud, env.uid, "researcher", ("profile",))
+        return compute_idempotency_key(str(env.uid), "researcher", "A1", ids, {}), ids
+
+    k0, ids0 = key()
+    assert ids0 == []
+    put(env, {"citizenship": "us_citizen", "residency_state": None}, "researcher")
+    k1, ids1 = key()
+    put(env, {"citizenship": "international", "residency_state": None}, "researcher")
+    k2, ids2 = key()
+    assert len(ids1) == len(ids2) == 1 and ids1 != ids2
+    assert len({k0, k1, k2}) == 3
+    put(env, {"citizenship": "us_citizen", "residency_state": None}, "student")
+    assert len(side_row_ids(env.ud, env.uid, "student")) == 1

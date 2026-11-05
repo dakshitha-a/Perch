@@ -872,7 +872,15 @@ def create_app(service: BriefService, runner: ClosureRunner,
             store = current_store.get()
             if store is not None:
                 try:
-                    view["student"] = parse_student_cv(store.student_inputs().cv).summary()
+                    inp = store.student_inputs()
+                    view["student"] = parse_student_cv(inp.cv).summary()
+                    # S53: what the user chose, in words, so the panel can say it beside the
+                    # count of rules read. Closed values only.
+                    from perch.citizenship import CITIZENSHIP_LABELS, STATES
+
+                    view["student_picks"] = {
+                        "citizenship": CITIZENSHIP_LABELS.get(inp.citizenship or ""),
+                        "residency": STATES.get(inp.residency_state or "")}
                 except (LookupError, ValueError) as e:  # no CV text in the log (rule 5)
                     logging.getLogger("perch").info("student CV summary skipped: %s",
                                                     type(e).__name__)

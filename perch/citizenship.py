@@ -43,6 +43,11 @@ _STATE_RES = re.compile(r"(?:" + _STATE_RE + r")\s+residents?\b", re.I)
 _US = re.compile(r"(?<!non-)(?<!non )\b(?:U\.?S\.?|United\s+States)\s+citizens?\b"
                  r"|\bcitizens?\s+(?:or\s+nationals?\s+)?of\s+the\s+United\s+States\b", re.I)
 _PR = re.compile(r"\bpermanent\s+residents?\b", re.I)
+# "U.S. citizen or Eligible Noncitizen" (the federal student aid phrase) lets permanent residents
+# apply; international students are not eligible noncitizens in that sense.
+_ENC = re.compile(r"\beligible\s+non-?\s?citizens?\b", re.I)
+# A sentence about filing the FAFSA is about the form, not who may apply for the award.
+_FAFSA = re.compile(r"\bFAFSA\b|\beligible\s+to\s+file\b", re.I)
 _INTL = re.compile(r"\binternational\s+students?\b", re.I)
 _NEG = re.compile(r"\b(?:not|ineligible|cannot|unable|excluded|non-residents?)\b", re.I)
 _POS_INTL = re.compile(r"\b(?:are\s+eligible|may\s+apply|can\s+apply|are\s+welcome|welcome|"
@@ -80,7 +85,7 @@ class Outcome:
 
 def _split(text: str) -> list[str]:
     t = re.sub(r"\bU\.S\.", "U\x01S\x01", " ".join(text.replace("\n", " ; ").split()))
-    parts = re.split(r";\s*|(?<=[.!?])\s+(?=[A-Z“\"(])", t)
+    parts = re.split(r";\s*|\s*\|\s*|(?<=[.!?])\s+(?=[A-Z“\"(])", t)
     return [p.replace("\x01", ".").strip() for p in parts if p.strip()]
 
 
@@ -89,7 +94,7 @@ def rules_in(text: str | None, field_name: str) -> list[Rule]:
     sentence that only states a preference is not a rule and gives none."""
     out: list[Rule] = []
     for sent in _split(text or ""):
-        if _PREF.search(sent):
+        if _PREF.search(sent) or _FAFSA.search(sent):
             continue
         neg = bool(_NEG.search(sent))
         us, pr, intl = _US.search(sent), _PR.search(sent), _INTL.search(sent)
@@ -97,6 +102,8 @@ def rules_in(text: str | None, field_name: str) -> list[Rule]:
             allows = {v for v, hit in (("us_citizen", us), ("permanent_resident", pr),
                                        ("international", intl and _POS_INTL.search(sent)))
                       if hit}
+            if _ENC.search(sent):
+                allows.add("permanent_resident")
             mode = "ok_for" if (pr and not us) else "only"
             out.append(Rule("citizenship", mode, frozenset(allows), sent, field_name))
         elif pr and neg and not us:
@@ -145,16 +152,23 @@ def where_words(field_name: str, source: str | None, is_grants: bool = False) ->
     return base
 
 
+def _asks(o: Outcome) -> str:
+    """What the listing asks for. A sentence code built from the residency field is not the
+    listing's own words, so it is not put in quote marks (S53)."""
+    if o.rule.field == "eligibility.residency_state":
+        names = o.rule.sentence.split("residents of ", 1)[-1].strip().rstrip(".")
+        return f"The award's residency field says: {names}."
+    return f"From {o.where}, the listing asks for: “{quote(o.rule.sentence)}”."
+
+
 def stated_note(kind_label: str, o: Outcome, you: str) -> str:
     """A rule the pick meets."""
-    return (f"{kind_label}: from {o.where}, the listing asks for: “{quote(o.rule.sentence)}”. "
-            f"You entered: {you}.")
+    return f"{kind_label}: {_asks(o)} You entered: {you}."
 
 
 def demoted_note(o: Outcome, you: str) -> str:
     """A rule the pick does not meet."""
-    return (f"From {o.where}, the listing asks for: “{quote(o.rule.sentence)}”. "
-            f"You entered: {you}.")
+    return f"{_asks(o)} You entered: {you}."
 
 
 def none_note(has_text: bool, where_all: str) -> str:
@@ -162,7 +176,7 @@ def none_note(has_text: bool, where_all: str) -> str:
     if not has_text:
         return ("This listing has no eligibility text for Perch to read; check the award's "
                 "page.")
-    return f"Perch read {where_all} and found no citizenship or residency rule."
+    return "Perch found no rule it can compare with your answer. Read the eligibility text."
 
 
 def you_label(kind: str, cit: str | None, res: str | None) -> str:
@@ -244,7 +258,29 @@ __all__ = ["CITIZENSHIP_LABELS", "CITIZENSHIP_VALUES", "STATES", "STATE_CODES", 
 # A line the pick comparison wrote. It names the user's answer, or shows that one was given,
 # so no model-facing path (Scout tools, cover points) may carry it (standing rule 5).
 _PICK_LINE = re.compile(r"You entered:|The sample student entered:|^Perch read this listing's "
-                        r"eligibility text|^This listing has no eligibility text for Perch")
+                        r"eligibility text|^Perch found no rule it can compare|"
+                        r"^This listing has no eligibility text for Perch")
+
+
+_ENTERED = re.compile(r"\s*(?:You entered|The sample student entered): .*$")
+
+
+def strip_entered(lines: list[str] | None) -> list[str]:
+    """Each line without the user's own answer, keeping the listing's quoted rule. A line that
+    only reports that nothing was found is dropped. For exports (S53)."""
+    out = []
+    for x in without_picks_only_notes(lines):
+        t = _ENTERED.sub("", x).strip()
+        if t:
+            out.append(t)
+    return out
+
+
+def without_picks_only_notes(lines: list[str] | None) -> list[str]:
+    """Drop the lines that say nothing but a pick or its absence of a rule."""
+    return [x for x in (lines or []) if not re.match(
+        r"^(?:Perch read this listing's eligibility text|Perch found no rule it can compare|"
+        r"This listing has no eligibility text for Perch)", x)]
 
 
 def without_picks(lines: list[str] | None) -> list[str]:

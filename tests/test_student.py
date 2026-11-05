@@ -197,3 +197,12 @@ def test_plain_headings_are_read_s53():
     f = parse_student_cv(cv)
     assert f.level == "bachelor's" and f.gpa == 3.40 and f.class_year == 3
     assert f.enrolment == "full-time" and f.honours == ["SYNTHETIC Dean's List, 2025"]
+
+
+def test_plain_heading_is_strict_s53_review():
+    from perch.user.cv import _plain_heading
+
+    for ok in ("Education", "Research and posters", "Work experience", "HONOURS"):
+        assert _plain_heading(ok), ok
+    for bad in ("Research Assistant, Smith Lab", "Teaching Assistant", "Volunteer tutor"):
+        assert not _plain_heading(bad), bad

@@ -21,19 +21,22 @@ export const STATE_OPTIONS = [["", "Not stated"], ["AL", "Alabama"], ["AK", "Ala
   ["VA", "Virginia"], ["WA", "Washington"], ["WV", "West Virginia"], ["WI", "Wisconsin"], ["WY", "Wyoming"]];
 
 export const PICKS_LEGEND = "Optional: who you are, for listings that ask";
+export const PICKS_HINT_GUEST = "Kept only in this guest session.";
 export const PICKS_HINT = "Stored encrypted with your other inputs. Perch only compares them with a listing's own words. Delete them any time under Account and data.";
 
 // `value` is {citizenship, residency_state} (null or a code); it is updated in place and
 // `onchange(value)` is called after each pick. `prefix` keeps the ids unique on a screen.
-export function profilePicks({ prefix = "picks", value, onchange = () => {}, disabled = false }) {
+// `guest` swaps the hint (nothing is stored for a guest); `legend: false` leaves the legend off
+// where the screen already shows it once, and the fieldset keeps its name.
+export function profilePicks({ prefix = "picks", value, onchange = () => {}, disabled = false, guest = false, legend = true }) {
   const select = (id, label, options, key) => {
     const sel = h("select", { id, "data-key": id, disabled, onchange: (e) => { value[key] = e.target.value || null; onchange(value); } },
       options.map(([v, t]) => h("option", { value: v, text: t, selected: (value[key] || "") === v })));
     return h("div", { class: "pick" }, h("label", { for: id, text: label }), sel);
   };
-  return h("fieldset", { class: "profile-picks" },
-    h("legend", { text: PICKS_LEGEND }),
+  return h("fieldset", { class: "profile-picks", ...(legend ? {} : { "aria-label": PICKS_LEGEND }) },
+    legend ? h("legend", { text: PICKS_LEGEND }) : null,
     select(`${prefix}-citizenship`, "Citizenship", CITIZENSHIP_OPTIONS, "citizenship"),
     select(`${prefix}-state`, "State of residence", STATE_OPTIONS, "residency_state"),
-    h("p", { class: "hint", text: PICKS_HINT }));
+    h("p", { class: "hint", text: guest ? PICKS_HINT_GUEST : PICKS_HINT }));
 }

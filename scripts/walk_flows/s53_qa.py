@@ -181,7 +181,7 @@ def register(U):  # noqa: N803 - the ux_walk module handed in by the loader
                 x["demoted"] = True
                 x["citizenship_rule"] = {"record_id": x.get("record_id") or "", "source_url": url, "field": "eligibility.notes",
                                          "where": "the award's eligibility notes", "quote": quote, "outcome": "fail", "has_text": True}
-                line = f"From the award's eligibility notes, the listing asks for: \u201c{quote}\u201d. You entered: International."
+                line = f"From the award's eligibility notes, the listing asks for: \u201c{quote.rstrip('.')}\u201d. You entered: International."
                 x["checks"] = [c for c in x.get("checks", []) if c["rule"] != "citizenship"] + [{"rule": "citizenship", "outcome": "unknown", "text": f"Citizenship: {line}"}]
             await page.route(re.compile(r".*/briefs/[^/?]+(\?.*)?$"), demote)
             await page.reload()

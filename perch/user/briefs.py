@@ -688,13 +688,15 @@ def compute_idempotency_key(owner: str, audience: str, author_id: str | None,
     return hashlib.sha256(canon.encode()).hexdigest()
 
 
-def side_row_ids(ud: UserData, user_id: UUID, audience: str) -> list[UUID]:
-    """The ids of the CV, documents and entries of one side (rows only, no text)."""
+def side_row_ids(ud: UserData, user_id: UUID, audience: str,
+                 kinds: tuple[str, ...] = ("cv", "doc", "entry", "profile")) -> list[UUID]:
+    """The ids of the CV, documents, entries and picks of one side (rows only, no text).
+    Saving the picks replaces the profile row, so a changed pick is a new id (S53)."""
     from perch.store import pg
 
     with pg.user_tx(ud.pool, user_id) as c:
         rows = c.execute("SELECT id FROM user_data WHERE user_id = %s AND audience = %s "
-                         "AND kind IN ('cv','doc','entry')", (user_id, audience)).fetchall()
+                         "AND kind = ANY(%s)", (user_id, audience, list(kinds))).fetchall()
     return [r[0] for r in rows]
 
 
@@ -726,8 +728,11 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
             require_consent(session)
         # A student brief reads every CV, note and entry of the side, so the key names their
         # row ids: a replaced CV or a new entry is a new brief, not the earlier one.
+        # A researcher brief names the picks row too: a changed pick is a new brief (S53).
         key_docs = (side_row_ids(ud, session.user_id, session.audience)
-                    if session.audience == "student" else doc_ids)
+                    if session.audience == "student"
+                    else [*doc_ids, *side_row_ids(ud, session.user_id, session.audience,
+                                                  ("profile",))])
         key = idempotency_key or compute_idempotency_key(
             str(session.user_id), session.audience, author_id, key_docs, options)
         found = _existing(runner, key, session.user_id, None)
@@ -761,7 +766,9 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     # The guest's brief lives in Redis for one TTL, so the key also carries the TTL window:
     # a key never outlives the state it points at.
     key = idempotency_key or compute_idempotency_key(
-        gh, session.audience, author_id, (), {**options, "window": int(time.time() // ttl)})
+        gh, session.audience, author_id, (),
+        {**options, "picks": {k: v for k, v in picks.items() if v},
+         "window": int(time.time() // ttl)})
     found = _existing(runner, key, None, bytes.fromhex(gh))
     if found is not None:
         return found

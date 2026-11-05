@@ -438,8 +438,38 @@ function answer(x, ctx, thinking) {
 
 // T4: forget this conversation on the page; the next question opens a new Scout session
 // on the same brief.
+// S53 review: after Clear, a short line offers Undo for about 8 seconds. The copy keeps the
+// old state, so Undo puts it back as it was.
+const UNDO_MS = 8000;
+const U = { prev: null, timer: null };
+function dropUndo() {
+  clearTimeout(U.timer);
+  U.prev = null; U.timer = null;
+  const el = document.querySelector(".scout-undo");
+  if (el) el.replaceChildren();
+}
+function undoLine(ctx) {
+  if (!U.prev) return null;
+  return h("p", { class: "hint scout-undo", role: "status", "data-key": "scout-undo" },
+    h("span", { text: "Conversation cleared. " }),
+    h("button", { class: "btn quiet", type: "button", "data-key": "scout-undo-btn", onclick: () => {
+      const prev = U.prev;
+      dropUndo();
+      if (!prev) return;
+      clearTimeout(T.timer);
+      Object.assign(T, prev, { timer: null });
+      ctx.rerender();
+      ctx.announce("Conversation restored.");
+    } }, h("span", { text: "Undo" })));
+}
+
 function newConversation(ctx) {
   const had = Boolean(T.data);
+  dropUndo();
+  if (had && !T.sending && !T.stopping) {
+    U.prev = { ...T, timer: null };
+    U.timer = setTimeout(dropUndo, UNDO_MS);
+  }
   reset(T.briefId);
   T.draft = "";  // S53: "Clear" empties the box too
   ctx.rerender();
@@ -575,7 +605,8 @@ function askForm(ctx, busy) {
       // empties the box. It waits while Scout works, and has nothing to do with no conversation and an empty box.
       h("button", { class: "btn quiet scout-clear", type: "button", "data-key": "scout-clear",
         disabled: busy || (!T.data && !T.draft.trim()), title: "Clear the conversation and the box",
-        onclick: () => newConversation(ctx) }, h("span", { text: "Clear" }))));
+        onclick: () => newConversation(ctx) }, h("span", { text: "Clear" }))),
+    undoLine(ctx) || h("p", { class: "hint scout-undo", role: "status" }));
 }
 
 async function send(ctx) {
