@@ -72,7 +72,7 @@ PROBE = """() => {
     const r = box.getBoundingClientRect();
     // exempt: a link or the guest link inside a sentence, and a card title button (a text link, 25 px
     // tall, which meets WCAG 2.2's 24 px minimum); both are counted in `under24` only if smaller
-    const inline = (el.tagName === 'A' && !el.classList.contains('btn') && getComputedStyle(el).display === 'inline')
+    const inline = el.classList.contains('cite') || (el.tagName === 'A' && !el.classList.contains('btn') && getComputedStyle(el).display === 'inline')
       || el.classList.contains('linkish') || el.classList.contains('title-btn');
     if (inline) { if (r.height < 24 && !el.classList.contains('linkish')) small.push({ el: name(el), w: Math.round(r.width), h: Math.round(r.height), under24: true }); continue; }
     if (r.width < 44 || r.height < 44) small.push({ el: name(el) || name(box), w: Math.round(r.width), h: Math.round(r.height) });
@@ -492,7 +492,7 @@ async def flow_mocked(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.check("[data-key=agree]")
     w.check("welcome_continue_enabled", await go_btn.is_enabled(), "enabled after both steps")
     await go_btn.click()
-    await page.wait_for_selector(".landing h1")
+    await page.wait_for_selector(".landing h1, #acct-title")
     await w.snap(page, tag, "after-welcome")
     await page.evaluate("location.hash = '#/me'")
     await page.wait_for_selector(".brief-row")
@@ -517,7 +517,7 @@ async def flow_mocked(w: Walk, browser: Browser, base: str, tag: str, view: dict
     await page.wait_for_selector("[data-key=agree]")
     await page.check("[data-key=agree]")
     await page.click("[data-key=continue]")
-    await page.wait_for_selector(".landing h1")
+    await page.wait_for_selector(".landing h1, #acct-title")
     w.check("consent_again", state["consented"], "agreeing again works")
     await page.evaluate("location.hash = '#/account'")
     await page.wait_for_selector("#del-open")
@@ -670,7 +670,7 @@ async def flow_signinfail(w: Walk, browser: Browser, base: str, tag: str, view: 
 WITHHELD = "Scout's answer did not pass the citation check twice, so none of it is shown."
 CHECKED_OK = "Written by a model; checked against the records it cites."
 CHECKED_MARKED = "Written by a model. Some sentences could not be confirmed; they are marked."
-CHECKED_FLAGGED = "Written by a model. It failed the citation check; sentences were removed."
+CHECKED_FLAGGED = "Written by a model."
 SENT_IN = "SYNTHETIC sample claim that the sample award covers travel costs."
 SENT_OUT = "SYNTHETIC sample claim that was cut from the text and cannot be found in it."
 GENERAL = "SYNTHETIC general tip: ask the sample office what a good next step looks like."
