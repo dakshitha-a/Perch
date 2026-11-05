@@ -66,7 +66,8 @@ class Worker:
         self.runner = runner
         self.dir = Path(tempfile.mkdtemp(prefix="perch-e2e-"))
         self.db = self.dir / "perch.db"
-        env = {**os.environ, "PERCH_DATABASE_URL": DSN}
+        env = {**os.environ, "PERCH_DATABASE_URL": DSN,
+               "PERCH_SHRED_LEDGER_URI": str(self.dir / "shred-ledger")}  # required (S48 M3)
         if real:
             env["PERCH_PROFILE"] = "cloud-gpu"
         else:

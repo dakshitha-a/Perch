@@ -91,6 +91,8 @@ def load_env() -> None:
         load_dotenv(ROOT / f)
     os.environ["PERCH_PUBLIC_URL"] = BASE
     os.environ["PERCH_COOKIE_INSECURE"] = "1"
+    # web and worker refuse to start without a shred ledger (S48 M3); a scratch one here
+    os.environ.setdefault("PERCH_SHRED_LEDGER_URI", tempfile.mkdtemp(prefix="perch-e2e-ledger-"))
     os.environ["PERCH_LLM_DEFAULT"] = "fake:fake-1"  # no spend, whatever .env says
     os.environ["PERCH_STORED_BRIEFS"] = "1"
     os.environ.pop("PERCH_ENV", None)

@@ -13,7 +13,12 @@
 #
 # Backups: the `backup` service dumps `perch` and `perch_keys` every day into separate
 # volumes and deletes dumps older than 35 days (backup.sh). Restore check:
-# restore_test.sh. After any restore run `perch reconcile-shreds`.
+# restore_test.sh. A real restore follows docs/deploy.md section 9: `perch restore-mark` first,
+# and the worker reconciles shreds at start before the web serves account routes again.
+#
+# The shred ledger (one file per deleted user) sits on its own volume, `shred-ledger`, apart
+# from the database and backup volumes, so a restore of both databases cannot revert it. Web
+# and worker refuse to start without it (S48 M3).
 name: perch-v1
 
 x-app-env: &app-env
@@ -27,6 +32,7 @@ x-app-env: &app-env
   PERCH_PUBLIC_URL: http://127.0.0.1:8190
   PERCH_COOKIE_INSECURE: "1"
   PERCH_LOG_FORMAT: ${PERCH_LOG_FORMAT:-json}
+  PERCH_SHRED_LEDGER_URI: /var/lib/perch/shred-ledger
 
 services:
   postgres:
@@ -112,6 +118,8 @@ services:
       PERCH_PEPPER: ${PERCH_PEPPER:-}
       PERCH_PEPPER_GUEST: ${PERCH_PEPPER_GUEST:-}
     ports: ["127.0.0.1:8190:8000"]
+    volumes:
+      - shred-ledger:/var/lib/perch/shred-ledger
     depends_on:
       migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
@@ -147,6 +155,7 @@ services:
       PERCH_SPEND_LEDGER: /var/lib/perch/spend/anthropic_spend.jsonl
     volumes:
       - spend:/var/lib/perch/spend
+      - shred-ledger:/var/lib/perch/shred-ledger
     depends_on:
       migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
@@ -194,6 +203,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  shred-ledger:
   spend:
   backups:
   backups-keys:

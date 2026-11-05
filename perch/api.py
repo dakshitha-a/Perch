@@ -397,6 +397,35 @@ class SecurityHeaders:
         await self.app(scope, receive, add)
 
 
+class RestoreGate:
+    """Pure ASGI middleware: while the restore marker exists (perch/shredhooks.py), every route
+    that reads or writes accounts answers 503, sign-in included, because a restored database
+    may hold a deleted user until the worker has reconciled (S48 M3). Public routes still
+    serve. The marker is a file on the ledger volume; it is checked at most once a second."""
+
+    PREFIXES = ("/auth", "/briefs", "/scout", "/me", "/usage", "/welcome")
+
+    def __init__(self, app: Callable, pending: Callable[[], bool] | None = None) -> None:
+        from perch import shredhooks
+
+        self.app, self.pending = app, pending or shredhooks.restore_pending
+        self._at, self._val = 0.0, False
+
+    def _blocked(self) -> bool:
+        now = time.monotonic()
+        if now - self._at > 1.0:
+            self._at, self._val = now, self.pending()
+        return self._val
+
+    async def __call__(self, scope: dict, receive: Callable, send: Callable) -> None:
+        path = scope.get("path", "") if scope["type"] == "http" else ""
+        if path.startswith(self.PREFIXES) and self._blocked():
+            await JSONResponse({"detail": {"error": "restore_pending"}}, status_code=503,
+                               headers={"Retry-After": "60"})(scope, receive, send)
+            return
+        await self.app(scope, receive, send)
+
+
 class Crashed:
     """Pure ASGI middleware: an unhandled exception becomes a 500 naming its type only,
     and is not raised further, so no server log holds its message or traceback."""
@@ -503,6 +532,7 @@ def create_app(service: BriefService, runner: ClosureRunner,
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     app.add_middleware(BodyLimit, limit=MAX_BODY)  # inside Crashed: its 413 stays a 413
     app.add_middleware(Crashed)
+    app.add_middleware(RestoreGate)  # a pending restore stops account routes (S48 M3)
     app.add_middleware(Counting)
     app.add_middleware(SecurityHeaders)  # outermost, so a 500 or 413 carries them too
 

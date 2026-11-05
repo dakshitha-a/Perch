@@ -94,7 +94,7 @@ Everything below follows the design in `ARCHITECTURE_V1.md`. A multi-host deploy
   - **In production:** its own instance, its own backup storage and its own retention. `backup.sh` takes `BACKUP_KEYS_DIR` for a second root.
   - **Network:** let only web and worker reach it.
   - **Honest limit:** web and worker both hold the `perch_keys` credentials. The separate role protects against a SQL bug in a data query, not against code running inside a process.
-- **Shred ledger:** `PERCH_SHRED_LEDGER_URI` is a third copy of each tombstone, an object store prefix with object lock or versioning, outside both databases. Compose sets none; set it before production. The concrete object store is `UNVERIFIED`.
+- **Shred ledger:** `PERCH_SHRED_LEDGER_URI` is a third copy of each tombstone, outside both databases. It is mandatory: `web` and the worker refuse to start without it (section 9). Compose puts it on its own named volume. In production it should be an object store prefix with object lock or versioning; that is `UNVERIFIED`, and object-store URIs are refused until it is built.
 - **Pool sizes:** `PERCH_DB_POOL_MAX` is per process (default 10). Total connections are roughly processes times pool size; check the server's limit.
 
 ## 5. First start
@@ -124,7 +124,7 @@ Everything below follows the design in `ARCHITECTURE_V1.md`. A multi-host deploy
 | Keycloak | `GET /realms/perch` returns 200, with a 40 s start period. |
 | Backup | The loop touches `/tmp/backup-heartbeat` after each run; healthy while it is under 1,500 minutes old. |
 
-`ARCHITECTURE_V1.md` names a separate `GET /ready`, and a restore marker that makes it fail until `perch reconcile-shreds` has run. Neither is in the code: the routes are `/health` and `/health?ready=true`, and nothing sets a restore marker. Run `reconcile-shreds` by hand after a restore (section 9).
+`ARCHITECTURE_V1.md` names a separate `GET /ready`. The route is `/health?ready=true`. It answers 503 with `restore: pending` while the restore marker exists (section 9).
 
 ## 7. Logs
 
@@ -159,12 +159,26 @@ PG_EXEC="docker compose -f deploy/compose/docker-compose.v1.yml exec -T postgres
 
 S47 ran it on the end-to-end test databases: 14 tables and 6,423 rows for the data database, 4 tables and 8 rows for the keys database. Whether the `PG_EXEC` line above works as written against the Compose stack: `UNVERIFIED` (the script's own example uses `docker exec -i`). Run it at least once a month and after any change of Postgres version.
 
+### The shred ledger and the restore marker (S48 M3)
+
+- **The ledger is mandatory.** `web` and the worker refuse to start unless `PERCH_SHRED_LEDGER_URI` names a writable directory. Compose mounts the named volume `shred-ledger` at `/var/lib/perch/shred-ledger` in both and sets the variable. It is separate from the database volume and from both backup volumes, and the backup service never touches it.
+- **Why.** The ledger holds one file per deleted user, named by the user id. A restore of both databases from before a deletion brings back the key rows, removes the tombstone, and brings back the `users` row and the old `shred_log` table, all together. The ledger is the one copy a restore cannot revert.
+- **Dev only:** `PERCH_SHRED_LEDGER_OPTIONAL=1` lets a process run without a ledger. Never set it in a deployment. The unit tests set it.
+- **Object stores.** An object-store URI (`s3://...`) is refused for now, because the ledger writes directories only. Writing to an object store with object lock is UNVERIFIED until a host is chosen.
+- **The marker.** `perch restore-mark` writes the file `RESTORE_PENDING` in the ledger directory. While it exists, `web` answers 503 with `{"error": "restore_pending"}` on `/auth`, `/briefs`, `/scout`, `/me`, `/usage` and `/welcome`, and `/health?ready=true` reports `restore: pending`. Public routes still serve.
+- **Who clears it.** The worker checks for the marker at start. If it is there, the worker runs the same reconcile as `perch reconcile-shreds` before it takes any job, then deletes the marker. `perch reconcile-shreds` also clears it.
+- **Why a file and not a database row.** ARCHITECTURE_V1 6.6 names a marker row in `ingest_runs`. A row in the data database can be erased by the restore it guards, so the marker lives on the ledger volume instead.
+
 ### Restoring for real
 
-1. Stop `web` and the worker.
-2. Restore the `perch` dump and, if needed, the `perch_keys` dump with `pg_restore`. Restore each one on its own schedule; do not restore an old keys backup together with a new data backup without step 3.
-3. Run `perch reconcile-shreds` before serving. It reads all three tombstone sources (keys database, `shred_log`, the ledger) and re-deletes any key or user row for a shredded user. Skipping it can revive a deleted user's key.
-4. Start `web` and the worker and check section 6.
+1. Write the marker first, so a restore that stops halfway is still guarded:
+   `docker compose -f deploy/compose/docker-compose.v1.yml run --rm --no-deps web perch restore-mark`
+2. Stop `web` and the worker.
+3. Restore the `perch` dump and, if needed, the `perch_keys` dump with `pg_restore`. Restore each one on its own schedule; do not restore an old keys backup together with a new data backup without step 4.
+4. Start the worker. It reads all three tombstone sources (keys database, `shred_log`, the ledger), re-tombstones every id, deletes any key rows and any user rows for those ids (`perch_delete_user_rows`), and clears the marker. Its log line `restore reconciled ids=... key_rows=... user_rows=...` gives counts only. To run the step by hand instead: `docker compose ... run --rm --no-deps worker perch reconcile-shreds`. It must run in the worker container, because only `perch_worker` may read `shred_log`.
+5. Start `web` and check section 6. `/health?ready=true` answers 503 while the marker is still there.
+
+The exact `docker compose run` lines above are UNVERIFIED: the v1 stack was not brought up for this change. `restore_test.sh` restores into a scratch database only, so it never writes the marker.
 
 ## 10. Capacity
 

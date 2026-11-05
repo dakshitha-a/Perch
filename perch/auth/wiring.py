@@ -143,5 +143,7 @@ def readiness(app: FastAPI) -> dict[str, Any]:
             out["keys"] = "ok"
         except Exception:  # noqa: BLE001
             out["keys"] = "down"
-    out["ready"] = "down" not in out.values()
+    if shredhooks.restore_pending():  # S48 M3: not ready until the worker has reconciled
+        out["restore"] = "pending"
+    out["ready"] = "down" not in out.values() and "restore" not in out
     return out

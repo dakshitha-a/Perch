@@ -644,8 +644,12 @@ def build_parser() -> argparse.ArgumentParser:
     tp.add_argument("--apply", action="store_true", help="really delete; default is a dry run")
     tp.add_argument("--days", type=int, default=None, help="retention; default "
                     "PERCH_TOMBSTONE_RETENTION_DAYS or 400; refused below 400")
-    sub.add_parser("reconcile-shreds", help="re-assert tombstones from all three sources "
-                   "after a restore")
+    sub.add_parser("reconcile-shreds", help="after a restore: re-assert tombstones from all "
+                   "three sources, delete the restored rows of shredded users, clear the "
+                   "restore marker. Run in the worker container (perch_worker reads shred_log)")
+    sub.add_parser("restore-mark", help="before a restore: write the restore marker on the "
+                   "shred ledger volume; the web answers 503 on user routes until the worker "
+                   "has reconciled")
     sv = sub.add_parser("serve", help="run the HTTP API")
     sv.add_argument("--host", default="127.0.0.1")
     sv.add_argument("--port", type=int, default=8100)
@@ -740,7 +744,12 @@ def cmd_worker(args: argparse.Namespace) -> int:
     from perch import shredhooks
 
     stop_sub = shredhooks.install(runner.pool, get_client() if env("PERCH_REDIS_URL") else None,
-                                  runner)
+                                  runner)  # refuses to start without the shred ledger (S48 M3)
+    try:  # a restore happened: reconcile before any job runs, then clear the marker
+        shredhooks.reconcile_if_restored(env("PERCH_KEYS_DATABASE_URL"), runner.pool)
+    except shredhooks.LedgerMissing as e:
+        print(str(e), file=sys.stderr)
+        return 2
     stop = threading.Event()
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: stop.set())
@@ -857,7 +866,7 @@ def cmd_keys(args: argparse.Namespace) -> int:
 
 
 def cmd_reconcile_shreds(args: argparse.Namespace) -> int:
-    from perch import crypto, shredhooks
+    from perch import shredhooks
     from perch.store.pg import make_pool
 
     keys_dsn = env("PERCH_KEYS_DATABASE_URL")
@@ -866,11 +875,24 @@ def cmd_reconcile_shreds(args: argparse.Namespace) -> int:
         return 2
     pool = make_pool()
     try:
-        ids = shredhooks.tombstone_union(keys_dsn, pool)
-        revived = crypto.reconcile_shreds(ids)
+        res = shredhooks.reconcile(keys_dsn, pool)
     finally:
         pool.close()
-    print(f"Reconciled {len(ids)} shredded users; {revived} had key rows that were removed.")
+    print(f"Reconciled {res['ids']} shredded users; {res['key_rows_revived']} had key rows "
+          f"and {res['user_rows_removed']} had user rows that were removed. Restore marker "
+          "cleared.")
+    return 0
+
+
+def cmd_restore_mark(args: argparse.Namespace) -> int:
+    from perch import shredhooks
+
+    try:
+        shredhooks.mark_restore()
+    except shredhooks.LedgerMissing as e:
+        print(str(e), file=sys.stderr)
+        return 2
+    print("Restore marker written. User routes answer 503 until the worker has reconciled.")
     return 0
 
 
@@ -922,6 +944,8 @@ def main(argv: Sequence[str] | None = None, client_factory: ClientFactory | None
         return cmd_temple(args)
     if args.command == "reconcile-shreds":
         return cmd_reconcile_shreds(args)
+    if args.command == "restore-mark":
+        return cmd_restore_mark(args)
     args.nih_factory, args.nsf_factory = nih_factory, nsf_factory
     args.grants_factory = grants_factory
     commands = {"resolve": cmd_resolve, "samples": cmd_samples,

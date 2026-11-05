@@ -23,6 +23,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -53,6 +54,8 @@ def main() -> int:
     os.environ.setdefault("PERCH_PUBLIC_URL", BASE)
     os.environ["PERCH_PUBLIC_URL"] = BASE
     os.environ["PERCH_COOKIE_INSECURE"] = "1"
+    # the web refuses to start without a shred ledger (S48 M3); a scratch one here
+    os.environ.setdefault("PERCH_SHRED_LEDGER_URI", tempfile.mkdtemp(prefix="perch-e2e-ledger-"))
     os.environ["PERCH_OIDC_ISSUER"] = "http://127.0.0.1:8180/realms/perch"
     os.environ["PERCH_OIDC_CLIENT_ID"] = "perch-web"
     os.environ.setdefault("PERCH_CONSENT_PROVIDER_NAME", "SYNTHETIC Provider")

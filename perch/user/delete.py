@@ -119,7 +119,7 @@ def _purge_tombstones(pool: ConnectionPool) -> None:
 
     keys_dsn = env("PERCH_KEYS_DATABASE_URL")
     if keys_dsn:
-        crypto.reconcile_shreds(shredhooks.tombstone_union(keys_dsn, pool))
+        shredhooks.reconcile(keys_dsn, pool)  # keys, then the restored rows (S48 S1)
     try:
         res = keyops.purge_old_tombstones(pool, dry_run=False)
     except CryptoError:

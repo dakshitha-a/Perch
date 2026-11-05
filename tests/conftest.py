@@ -16,6 +16,13 @@ from urllib.parse import urlsplit, urlunsplit
 import pytest
 
 PG_URL = os.environ.get("PERCH_TEST_DATABASE_URL", "")
+
+
+@pytest.fixture(autouse=True)
+def _shred_ledger_optional(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Web and worker refuse to start without a shred ledger (S48 M3). Unit tests run without
+    one through the explicit dev flag; tests of the ledger itself delete the flag."""
+    monkeypatch.setenv("PERCH_SHRED_LEDGER_OPTIONAL", "1")
 ROLE_PW = "perchtest-role"  # test-only; the server is local and disposable
 
 
