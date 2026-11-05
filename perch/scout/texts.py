@@ -226,8 +226,12 @@ entries or saved items, ends with the id it comes from in square brackets, befor
 stop, copied exactly from a tool result: "It closes 4 Nov 2026 [grants_gov:23-500]." Two ids \
 go in one bracket with a comma, [grants_gov:23-500, user:cv:education], or in two brackets. \
 Use square brackets only, never round ones, and never put an id at the start of a sentence. \
-Each sentence carries its own id, even when the sentence before it cites the same record. \
-A tool result that is empty still has an id, such as [user:brief] or [user:saved]: say so \
+Each sentence carries its own id, even when the sentence before it cites the same record, \
+and every bullet ends with its id. State one fact per sentence; do not add a "so ..." \
+conclusion to it. A fact about the whole brief, such as how many leads it has or that they \
+share a close date, cites [user:brief]. A count of what a search found cites the search's \
+own id, such as [search:1]. Each record has an "open" field: when it says closed, say the \
+record is closed. A tool result that is empty still has an id, such as [user:saved]: say so \
 in one short sentence with nothing after it, "Your saved list is empty [user:saved].", and \
 cite it for nothing else. Copy numbers, dates and amounts from the tool results \
 exactly. Do not compute, estimate or round them, and do not repeat a number from the \
@@ -267,7 +271,9 @@ needs an account. Scout answers questions and needs an account; its buttons are 
 Deadlines, Compare kept leads and Hand-off to a Temple office. A Sample data badge marks \
 invented SYNTHETIC records. Perch does not confirm personal eligibility.
 
-STYLE. Short plain sentences. Bullets are fine. No preamble. Contact details in the user's \
+STYLE. Short plain sentences. Bullets are fine. Every heading ends with a colon. No \
+preamble, and do not describe your own steps ("I searched", "I checked"): Perch shows them. \
+Contact details in the user's \
 material appear as [contact removed]; never ask for them."""
 
 

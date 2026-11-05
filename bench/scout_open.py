@@ -125,10 +125,27 @@ def persona(name: str | None) -> tuple[str | None, list[tuple[str | None, str]]]
     return cv, entries
 
 
-def shortlist(service: BriefService, audience: str, as_of: date, n: int = SHORTLIST
-              ) -> tuple[Brief, list[Lead]]:
+# Q15 (S49): the s45g shortlist had six leads that all closed on the run date, so every
+# deadline question was degenerate. `--brief FILE` reads a stored ranked brief instead (the
+# JSON of GET /briefs/{id}: {"brief": ..., "leads": [...]}), and `--spread` keeps one record
+# per close date. The replay (bench/scout_replay.py) keeps the old shortlist.
+LOADED: dict[str, tuple[Brief, list[Lead]]] = {}  # audience -> a stored brief
+SPREAD = False
+
+
+def load_brief(path: Path) -> tuple[Brief, list[Lead]]:
+    doc = json.loads(path.read_text())
+    return Brief.model_validate(doc["brief"]), [Lead.model_validate(x) for x in doc["leads"]]
+
+
+def shortlist(service: BriefService, audience: str, as_of: date, n: int = SHORTLIST,
+              spread: bool | None = None) -> tuple[Brief, list[Lead]]:
     """A fixed shortlist from the store, not a ranked brief: the open records that close next,
-    the first two marked kept. It gives the questions something to refer to ("my top lead")."""
+    the first two marked kept. It gives the questions something to refer to ("my top lead").
+    A stored brief loaded with --brief replaces it for its audience."""
+    if audience in LOADED:
+        return LOADED[audience]
+    spread = SPREAD if spread is None else spread
     with service.repo() as r:
         if audience == "student":
             # Temple's scholarship pages mostly give no deadline (S45: none of 76 did), so the
@@ -138,6 +155,11 @@ def shortlist(service: BriefService, audience: str, as_of: date, n: int = SHORTL
         else:
             recs = [x for x in r.list(Opportunity) if x.close_date and x.close_date >= as_of]
             recs.sort(key=lambda x: (x.close_date, x.id))
+    if spread:  # one record per close date, so deadline questions have an answer
+        seen: set[date | None] = set()
+        recs = [x for x in recs if (d := getattr(x, "close_date", None)
+                                    or getattr(x, "deadline", None)) is None
+                or not (d in seen or seen.add(d))]
     recs = recs[:n]
     b = Brief(id="bench", source="perch", source_url="perch://bench", fetched_at=utcnow(),
               researcher_id="user:bench", status="done",
@@ -547,7 +569,17 @@ def main() -> None:
                     help="re-grade DIR/drafts.jsonl with today's rules; no model call")
     ap.add_argument("--records", default=None, help="with --replay: a folder of "
                     "opportunity.jsonl and scholarship.jsonl; default the local store")
+    ap.add_argument("--brief", nargs="*", default=[], metavar="FILE",
+                    help="stored brief JSON ({brief, leads}) to use as the shortlist; one per "
+                    "audience, student when the brief's options say so (Q15)")
+    ap.add_argument("--spread", action="store_true",
+                    help="build the shortlist with one record per close date (Q15)")
     a = ap.parse_args()
+    global SPREAD
+    SPREAD = a.spread
+    for f in a.brief:
+        b, leads = load_brief(Path(f))
+        LOADED["student" if b.options.get("student") else "researcher"] = (b, leads)
     if a.replay:
         import json as _json
 

@@ -127,7 +127,7 @@ def replay(run_dir: Path, records: list[Record], as_of: date | None = None) -> T
     for qid, drafts in by_q.items():
         q = qs[qid]
         cv, entries = persona(q.get("persona"))
-        b, leads = shortlist(svc, q["audience"], as_of)  # type: ignore[arg-type]
+        b, leads = shortlist(svc, q["audience"], as_of, spread=False)  # type: ignore[arg-type]
         data = ScoutData(repo=svc.repo, audience=q["audience"], as_of=as_of, signed_in=True,
                          brief=lambda b=b, leads=leads: (b, leads), cv_text=lambda cv=cv: cv,
                          entries=lambda e=entries: e, saved=list)
