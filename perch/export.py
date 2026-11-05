@@ -467,7 +467,7 @@ def student_blocks(brief: Brief, leads: list[Lead], records: dict[str, object]
 def _not_eligible_line(x: Lead, rec: object) -> str:
     name = getattr(rec, "name", None) or getattr(rec, "title", None) or x.record_id
     head = (f"{name}{' [SAMPLE]' if x.sample else ''}{', kept' if x.status == 'kept' else ''}")
-    rule = " ".join(x.verdict_lines)
+    rule = " ".join(strip_entered(x.verdict_lines))  # S54: no pick in a forwarded export
     m = match_text(x.match_score)
     return f"{head}: {rule}" + (f" {m}." if m else "")
 
@@ -513,7 +513,7 @@ def _student_option(i: int, x: Lead, rec: object, office: object, names: dict[st
     # The verdict, its rule lines and the gaps are written by code from the rules and the
     # record. The brief is the student's own, so a value a rule read from their CV stays.
     lines = [] if len(x.verdict_lines) == 1 and x.verdict_lines[0] in common \
-        else x.verdict_lines
+        else strip_entered(x.verdict_lines)  # S54: a student may forward this to an office
     items = [f"Verdict: {x.verdict}", *lines]
     if m := match_text(x.match_score):
         items.insert(0, m)

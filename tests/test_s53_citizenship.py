@@ -320,3 +320,13 @@ def test_export_notes_keep_the_rule_and_drop_the_pick():
         "Your CV lists a past award from X."])
     assert got == ["From the award's eligibility notes, the listing asks for: “U.S. citizens "
                    "only”.", "Your CV lists a past award from X."]
+
+
+def test_student_export_drops_the_users_pick_s54():
+    """S54: a student may forward the export to an office, so it never carries the pick."""
+    from perch.citizenship import strip_entered
+
+    line = ('Citizenship: the listing asks for: "SYNTHETIC U.S. citizens only." '
+            "You entered: International.")
+    out = " ".join(strip_entered([line]))
+    assert "International" not in out and "U.S. citizens" in out
