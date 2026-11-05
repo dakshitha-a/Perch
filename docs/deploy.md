@@ -20,6 +20,16 @@ This page is for the person who runs Perch. Every command was checked against th
 - **Client addresses:** the host's proxy reaches `web` through the published port, so every request arrives from the Compose network's gateway. Compose pins the network to `172.29.190.0/24` and sets `PERCH_TRUSTED_PROXIES` to the gateway `172.29.190.1/32`, so `X-Forwarded-For` counts and the per-address limits see each visitor. The app reads the rightmost hop outside the trusted range, which is the address the proxy appended, so a value the visitor sent cannot stand in for it. If the subnet clashes on a host, change it and the variable together. That the peer is the gateway holds for Docker's default userland proxy; it is `UNVERIFIED` against a running v1 stack. Any process on the host that can reach the port can set the header, so keep the port on 127.0.0.1.
 - **The live fallback demo is separate:** the root `docker-compose.yml` on port 8090 never shares a file with `deploy/compose/docker-compose.v1.yml`. See section 12.
 
+### Daily jobs (S49)
+
+- **Who submits them:** the worker's maintenance thread runs a small scheduler (`Scheduler` in `perch/jobs.py`). There is no cron, timer or separate service to install.
+- **What it submits:** at 03:00 UTC one `purge` job for each of `guests`, `jobs`, `audit`, `tombstones` and `inactive`. At 02:00 UTC the nightly precache, one `precache` job per Temple-affiliated researcher, the same as `perch precache`.
+- **What each purge does:** `guests` deletes guest job rows older than 24 hours. `jobs` deletes finished, failed, cancelled and dead job rows older than 30 days. `audit` nulls actor ids older than 90 days. `tombstones` reconciles the shred copies, which also clears a leftover restore marker, and then drops tombstones past their retention floor. `inactive` deletes accounts with no activity for 12 months (standing rule 1).
+- **Times:** `PERCH_PURGE_AT` and `PERCH_PRECACHE_AT`, in UTC as `HH:MM`. A worker that starts after the time submits that day's jobs at once.
+- **Only once a day:** every key holds the UTC date, such as `purge:inactive:2026-11-05`. A tick submits nothing whose key already has a job row in any state. A purge that failed is therefore not resubmitted the same day; its failed or dead row is the alert.
+- **Many workers:** each worker checks once a minute, and a Postgres advisory lock lets only one tick at a time. Running two workers is safe.
+- **Turning it off:** set `PERCH_SCHEDULER=0` on a worker. Do this on every worker if the jobs are submitted some other way.
+
 ## 2. Secrets and `.env`
 
 Copy `.env.example` to `.env`. Never commit `.env` and never paste a value into a ticket, a log or this page. The Compose file refuses to start when a required name is empty.

@@ -769,7 +769,14 @@ def cmd_worker(args: argparse.Namespace) -> int:
     stop = threading.Event()
     for sig in (signal.SIGTERM, signal.SIGINT):
         signal.signal(sig, lambda *_: stop.set())
-    runner.run_forever(f"{socket.gethostname()}-{os.getpid()}", kinds, n, stop)
+    scheduler = None
+    if (env("PERCH_SCHEDULER", "1") or "1") != "0":  # daily purges and the nightly precache
+        from perch.jobs import Scheduler
+        from perch.precache import enqueue_nightly
+
+        scheduler = Scheduler.from_env(enqueue_nightly)
+    runner.run_forever(f"{socket.gethostname()}-{os.getpid()}", kinds, n, stop,
+                       scheduler=scheduler)
     stop_sub()
     runner.close()
     return 0
@@ -780,21 +787,13 @@ def cmd_precache(args: argparse.Namespace) -> int:
     from datetime import date
 
     from perch.jobs import PostgresRunner
-    from perch.precache import temple_affiliated
-    from perch.schemas import Researcher
-    from perch.store.postgres import PostgresRepository
+    from perch.precache import enqueue_nightly
 
     runner = PostgresRunner()
-    try:
-        repo = PostgresRepository(role="worker", pool=runner.pool)
-        authors = [r.id for r in repo.list(Researcher) if temple_affiliated(r)]
-        if args.limit:
-            authors = authors[:args.limit]
-        today = date.today().isoformat()
-        for a in authors:  # the date in the key makes a second run the same day a no-op
-            if not args.dry_run:
-                runner.submit("precache", {"author_id": a}, None, f"precache:{a}:{today}")
-        print(f"{'would enqueue' if args.dry_run else 'enqueued'} {len(authors)} precache jobs")
+    try:  # the date in the key makes a second run the same day a no-op
+        n = enqueue_nightly(runner, date.today().isoformat(), limit=args.limit,
+                            dry_run=args.dry_run)
+        print(f"{'would enqueue' if args.dry_run else 'enqueued'} {n} precache jobs")
     finally:
         runner.close()
     return 0

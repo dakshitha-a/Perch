@@ -367,3 +367,87 @@ def test_a_database_error_in_finish_does_not_end_the_job_thread(clean, monkeypat
         stop.set()
         t.join()
     assert calls == [first]
+
+
+# --- the scheduler (S49 B5) ---
+
+def _keys(dsns, kind):
+    with psycopg.connect(dsns["admin"]) as c:
+        return sorted(r[0] for r in c.execute(
+            "SELECT idempotency_key FROM jobs WHERE kind = %s", (kind,)))
+
+
+def test_the_scheduler_submits_each_daily_purge_once_a_day(clean):
+    """S49 B5: nothing submitted the retention purges, so the 12-month deletion never ran."""
+    from datetime import UTC, datetime
+
+    from perch.jobs import DAILY_PURGES, Scheduler
+
+    r = mk(clean["worker"])
+    day1 = datetime(2026, 11, 5, 2, 59, tzinfo=UTC)
+    assert Scheduler().tick(r, day1) == []  # before 03:00 UTC
+    at = datetime(2026, 11, 5, 3, 1, tzinfo=UTC)
+    assert len(Scheduler().tick(r, at)) == len(DAILY_PURGES)
+    assert _keys(clean, "purge") == sorted(f"purge:{a}:2026-11-05" for a in DAILY_PURGES)
+    with psycopg.connect(clean["admin"], autocommit=True) as c:  # one failed: not resubmitted
+        c.execute("UPDATE jobs SET state = 'failed', finished_at = now() "
+                  "WHERE idempotency_key = 'purge:inactive:2026-11-05'")
+    assert Scheduler().tick(r, at.replace(hour=9)) == []  # a restart, or a second worker
+    nxt = datetime(2026, 11, 6, 3, 0, tzinfo=UTC)
+    assert len(Scheduler().tick(r, nxt)) == len(DAILY_PURGES)
+    assert len(_keys(clean, "purge")) == 2 * len(DAILY_PURGES)
+    with psycopg.connect(clean["admin"]) as c:
+        actions = {row[0]["action"] for row in c.execute("SELECT payload FROM jobs")}
+    assert actions == set(DAILY_PURGES)
+
+
+def test_the_scheduler_enqueues_the_nightly_precache_once(clean):
+    from datetime import UTC, datetime
+
+    from perch.jobs import Scheduler
+
+    calls = []
+
+    def enqueue(runner, day):
+        calls.append(day)
+        for a in ("A1", "A2"):
+            runner.submit("precache", {"author_id": a}, None, f"precache:{a}:{day}")
+        return 2
+
+    r = mk(clean["worker"])
+    now = datetime(2026, 11, 5, 2, 30, tzinfo=UTC)  # after 02:00, before the purges
+    assert Scheduler(precache=enqueue).tick(r, now) == ["precache:2026-11-05"]
+    assert Scheduler(precache=enqueue).tick(r, now) == []
+    assert calls == ["2026-11-05"]
+    assert _keys(clean, "purge") == []
+
+
+def test_only_one_worker_ticks_at_a_time(clean):
+    from datetime import UTC, datetime
+
+    from perch.jobs import SCHEDULER_LOCK, Scheduler
+
+    r = mk(clean["worker"])
+    with psycopg.connect(clean["admin"], autocommit=True) as other:
+        other.execute("SELECT pg_advisory_lock(%s)", (SCHEDULER_LOCK,))
+        assert Scheduler().tick(r, datetime(2026, 11, 5, 4, tzinfo=UTC)) == []
+        other.execute("SELECT pg_advisory_unlock(%s)", (SCHEDULER_LOCK,))
+    assert Scheduler().tick(r, datetime(2026, 11, 5, 4, tzinfo=UTC))
+
+
+def test_the_worker_runs_the_scheduler_in_its_maintenance_thread(clean):
+    from perch.jobs import DAILY_PURGES, Scheduler
+
+    r = mk(clean["worker"])
+    stop = threading.Event()
+    t = threading.Thread(target=r.run_forever, args=("ws", ["precache"], 1, stop),
+                         kwargs={"scheduler": Scheduler(purge_at=(0, 0))})
+    t.start()
+    try:
+        end = time.monotonic() + 10
+        while len(_keys(clean, "purge")) < len(DAILY_PURGES) and time.monotonic() < end:
+            time.sleep(0.05)
+    finally:
+        stop.set()
+        t.join()
+    assert len(_keys(clean, "purge")) == len(DAILY_PURGES)

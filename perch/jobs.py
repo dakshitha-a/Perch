@@ -25,8 +25,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import AbstractContextManager, contextmanager
-from dataclasses import dataclass
-from datetime import datetime
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Annotated, Any, Literal
 from uuid import UUID
@@ -577,8 +577,9 @@ class PostgresRunner(JobRunner):
                 pass
 
     def run_forever(self, worker_id: str, kinds: Sequence[str], concurrency: int,
-                    stop: threading.Event) -> None:
-        """Claim and run jobs on `concurrency` threads until `stop` is set, then drain."""
+                    stop: threading.Event, *, scheduler: Scheduler | None = None) -> None:
+        """Claim and run jobs on `concurrency` threads until `stop` is set, then drain. With a
+        `scheduler`, the maintenance thread also submits the daily jobs (S49 B5)."""
         use = [k for k in kinds if k in _REGISTRY] if kinds else registered_kinds()
         if not use:
             return
@@ -605,7 +606,7 @@ class PostgresRunner(JobRunner):
                     stop.wait(self.timing.poll_s)
 
         def maintain() -> None:
-            last_reap = 0.0
+            last_reap = last_tick = 0.0
             while not stop.is_set():
                 try:
                     with pg.public_tx(self.pool) as c:
@@ -618,6 +619,12 @@ class PostgresRunner(JobRunner):
                         self.reap()
                 except Exception as e:  # noqa: BLE001
                     log.warning("maintenance failed err=%s", type(e).__name__)
+                if scheduler is not None and time.monotonic() - last_tick >= scheduler.every_s:
+                    last_tick = time.monotonic()
+                    try:
+                        scheduler.tick(self, datetime.now(UTC))
+                    except Exception as e:  # noqa: BLE001 - the next tick tries again
+                        log.warning("scheduler failed err=%s", type(e).__name__)
                 stop.wait(min(self.timing.heartbeat_s, self.timing.reaper_s))
 
         def listen() -> None:
@@ -647,6 +654,75 @@ class PostgresRunner(JobRunner):
                 c.execute("DELETE FROM worker_heartbeat WHERE worker = %s", (worker_id,))
         except Exception:  # noqa: BLE001
             pass
+
+
+# --- the scheduler: daily purges and the nightly precache (S49 B5) ---
+
+DAILY_PURGES = ("guests", "jobs", "audit", "tombstones", "inactive")
+SCHEDULER_LOCK = 0x70657263  # pg advisory lock id: one worker at a time runs a tick
+
+
+def _hhmm(text: str | None, default: str) -> tuple[int, int]:
+    h, _, m = (text or default).partition(":")
+    return int(h), int(m or 0)
+
+
+@dataclass
+class Scheduler:
+    """Submits each daily `purge` action once a UTC day at `purge_at`, and the nightly precache
+    at `precache_at` (UTC, HH:MM). Runs inside the worker's maintenance thread. Every key holds
+    the date, and a tick submits nothing whose key already has a row in any state, so a second
+    worker or a restart is harmless and a failed purge is not resubmitted the same day (its
+    row is the alert). A Postgres advisory lock keeps two workers from ticking at once.
+    `precache` enqueues the precache jobs for a date and returns how many."""
+
+    precache: Callable[[PostgresRunner, str], int] | None = None
+    purge_at: tuple[int, int] = (3, 0)
+    precache_at: tuple[int, int] = (2, 0)
+    every_s: float = 60.0
+    _done: set[str] = field(default_factory=set)
+
+    @classmethod
+    def from_env(cls, precache: Callable[[PostgresRunner, str], int] | None) -> Scheduler:
+        return cls(precache=precache,
+                   purge_at=_hhmm(os.environ.get("PERCH_PURGE_AT"), "03:00"),
+                   precache_at=_hhmm(os.environ.get("PERCH_PRECACHE_AT"), "02:00"))
+
+    def tick(self, runner: PostgresRunner, now: datetime) -> list[str]:
+        """Submit what is due at `now` (UTC). Returns the keys it submitted."""
+        day = now.date().isoformat()
+        due = []
+        if (now.hour, now.minute) >= self.purge_at:
+            due += [f"purge:{a}:{day}" for a in DAILY_PURGES]
+        if self.precache is not None and (now.hour, now.minute) >= self.precache_at:
+            due.append(f"precache:{day}")
+        due = [k for k in due if k not in self._done]
+        if not due:
+            return []
+        out: list[str] = []
+        with pg.public_tx(runner.pool) as c:
+            if not c.execute("SELECT pg_try_advisory_xact_lock(%s)",
+                             (SCHEDULER_LOCK,)).fetchone()[0]:
+                return []  # another worker is ticking
+            for key in due:
+                if key.startswith("purge:"):
+                    seen = c.execute("SELECT 1 FROM jobs WHERE kind = 'purge' "
+                                     "AND idempotency_key = %s LIMIT 1", (key,)).fetchone()
+                    if seen is None:
+                        runner.submit("purge", {"action": key.split(":")[1]}, None, key)
+                        out.append(key)
+                else:
+                    seen = c.execute("SELECT 1 FROM jobs WHERE kind = 'precache' "
+                                     "AND idempotency_key LIKE %s LIMIT 1",
+                                     (f"precache:%:{day}",)).fetchone()
+                    if seen is None and self.precache is not None:
+                        n = self.precache(runner, day)
+                        out.append(key)
+                        log.info("scheduled precache jobs=%s", n)
+                self._done.add(key)
+        for key in out:
+            log.info("scheduled %s", key.rsplit(":", 1)[0])
+        return out
 
 
 # --- the brief handler: the existing build, by id ---
