@@ -280,6 +280,10 @@ RATE_DEFAULTS: dict[str, tuple[int, int]] = {
     "login_start": (600, 600), "login_callback": (5, 600), "login_global": (100000, 600),
     "api_read": (300, 60), "api_write": (60, 60), "submit_job": (10, 60), "upload": (20, 600),
     "guest_job": (5, 600), "guest_new_global": (100000, 3600),
+    # S51 E4: guest_job counts per guest session; this counts every guest brief from one
+    # client address, so a visitor cannot open new sessions to queue more. Briefs with
+    # explanations off count too: they cost no money but hold a worker thread.
+    "guest_job_addr": (60, 600),
 }
 
 _RL = """

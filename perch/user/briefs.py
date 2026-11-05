@@ -734,6 +734,13 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     ok, retry = rate_limit(r, "guest_job", gh)
     if not ok:
         raise quota.RateLimited("guest_job", retry)
+    if addr_hash:  # S51 E4: and per address, with or without explanations
+        ok, retry = rate_limit(r, "guest_job_addr", addr_hash)
+        if not ok:
+            from perch.redisx import rate_refund
+
+            rate_refund(r, "guest_job", gh)  # nothing was queued
+            raise quota.RateLimited("guest_job_addr", retry)
     if options.get("explain", True):  # model text: the guest budget must have room (S48 M2)
         quota.admit_guest(r, gh, addr_hash=addr_hash)
         if addr_hash:  # so the worker's meter charges the address too (it holds no pepper)
@@ -747,6 +754,8 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
         from perch.redisx import rate_refund
 
         rate_refund(r, "guest_job", gh)  # nothing new ran (S50 C18)
+        if addr_hash:
+            rate_refund(r, "guest_job_addr", addr_hash)
         return won
     r.set(f"perch:gsess:{gh}:job:{b.id}", str(job), ex=ttl)  # brief id -> job id, for the read
     return b.id, job
