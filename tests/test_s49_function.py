@@ -349,3 +349,44 @@ def test_m9_the_export_gives_temple_internal_funding_its_own_section():
     assert "Grants (1)" in heads and "Temple internal funding (1)" in heads
     assert heads.index("SYNTHETIC kidney seed grants") > heads.index("Temple internal funding (1)")
     assert not any(h.startswith("2.") for h in heads)
+
+
+# --- S2: Scout says whether a record is open now, by code ---
+
+def test_s2_facts_say_whether_a_record_is_open():
+    assert facts(opp(close_date=date(2026, 12, 1)), AS_OF)["open"] == "open"
+    assert facts(opp(close_date=date(2026, 10, 1)), AS_OF)["open"] == "closed"
+    assert facts(opp(status="forecasted"), AS_OF)["open"] == "forecast"
+    assert facts(opp(), AS_OF)["open"] == "unknown"
+    anytime = opp(open_date=date(2025, 1, 1), close_date_note="Proposals accepted anytime")
+    assert facts(anytime, AS_OF)["open"] == "open"
+    kw = dict(deadline_quote="Applications are due February 13, 2026.",
+              details_url="https://example.temple.edu/s1", details_fetched_at=T)
+    assert facts(sch(deadline=date(2026, 2, 13), **kw), AS_OF)["open"] == "past_cycle"
+    assert facts(sch(), AS_OF)["open"] == "unknown"
+
+
+# --- Q2: a search is a record Scout can cite ---
+
+def test_q2_a_search_is_a_citable_record():
+    from contextlib import nullcontext
+
+    from perch.scout.read_tools import ReadTools, ScoutData
+
+    o = opp(close_date=date(2026, 12, 1), title="SYNTHETIC kidney repair research")
+
+    class Page:
+        items = [o]
+
+    class Repo:
+        def get_any(self, i):
+            return None
+
+        def browse(self, cls, q=None, limit=25):
+            return Page() if cls is Opportunity else type("P", (), {"items": []})()
+
+    t = ReadTools(ScoutData(repo=lambda: nullcontext(Repo()), as_of=AS_OF))
+    out = t.search_records("kidney repair")
+    assert out["id"] == "search:1" and out["count"] == 1
+    assert "found 1 record: SYNTHETIC kidney repair research" in t.seen["search:1"].abstract
+    assert t.search_records("kidney")["id"] == "search:2"

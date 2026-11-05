@@ -105,6 +105,30 @@ def deadline_words(rec: Opportunity | Scholarship, as_of: date) -> str:
         else NOT_STATED
 
 
+def open_now(rec: Opportunity | Scholarship, as_of: date) -> str:
+    """Whether the record takes applications on `as_of`, by code from its status and dates
+    (S49 S2): "open", "closed", "forecast", "unknown" (no date in the record) or
+    "past_cycle" (a Temple page shows a date more than a month old; most recur yearly)."""
+    from perch.student import PAST_CYCLE_DAYS, TEMPLE_SOURCES
+
+    d = rec.close_date if isinstance(rec, Opportunity) else rec.deadline
+    if rec.source in TEMPLE_SOURCES and d and (as_of - d).days > PAST_CYCLE_DAYS:
+        return "past_cycle"
+    if isinstance(rec, Opportunity):
+        from perch.eligibility import open_anytime
+
+        if rec.status == "forecasted":
+            return "forecast"
+        if rec.status in ("closed", "archived"):
+            return "closed"
+        if rec.close_date:
+            return "open" if rec.close_date >= as_of else "closed"
+        return "open" if open_anytime(rec, as_of) else "unknown"
+    if rec.deadline:
+        return "open" if rec.deadline >= as_of else "closed"
+    return "unknown"
+
+
 def facts(rec: Record, as_of: date) -> dict[str, Any]:
     """Title, sponsor, deadline and amount as the cards write them: copied, not computed."""
     out: dict[str, Any] = {"id": rec.id, "kind": rec.kind}
@@ -118,12 +142,33 @@ def facts(rec: Record, as_of: date) -> dict[str, Any]:
                 "amount": amount_text(rec) or NOT_STATED}
     elif isinstance(rec, Organisation):
         out |= {"title": rec.name, "type": rec.type}
+    if isinstance(rec, Opportunity | Scholarship):
+        out["open"] = open_now(rec, as_of)
     else:
         out["title"] = getattr(rec, "title", None) or getattr(rec, "name", None) or rec.id
     if rec.source == "synthetic":
         out["sample"] = True
         out["note"] = "SAMPLE record from a test corpus; not a real award"
     return out
+
+
+BRIEF_ID = "user:brief"
+BRIEF_TITLE = "Your brief"  # an empty brief's placeholder is titled "Brief" (`_empty`)
+
+
+def brief_summary(rows: list[dict[str, Any]]) -> str:
+    """The brief's public leads in one text, copied from the rows read_brief returns."""
+    n = len(rows)
+    parts = [f"The brief has {n} lead{'' if n == 1 else 's'}."]
+    for r in rows:
+        bits = [f"Rank {r['rank']}: {r['title']}" if r.get("rank") is not None
+                else str(r["title"])]
+        if r.get("sponsor"):
+            bits.append(f"from {r['sponsor']}")
+        bits.append(f"deadline: {r['deadline']}")
+        bits.append("kept" if r.get("kept") else "not kept")
+        parts.append(", ".join(bits) + ".")
+    return " ".join(parts)
 
 
 def _trim(text: str | None, n: int) -> str | None:
@@ -146,6 +191,7 @@ class ReadTools:
         self.saved: set[str] = set()  # ids the user saved
         self.brief_read = False
         self.saved_read = False
+        self.searches = 0  # search:N ids written so far this turn
 
     # --- definitions ---
 
@@ -259,7 +305,16 @@ class ReadTools:
         order = list(found.values())
         order.sort(key=lambda x: (x is not direct, -score(x)))
         rows = [facts(self._see(x), self.data.as_of) for x in order[:n]]
-        return {"query": q, "count": len(rows), "records": rows}
+        # The search itself as a record (S49 Q2), so "I searched for X and found N records"
+        # has something to cite. Written by code: the query, the count and the titles.
+        self.searches += 1
+        sid = f"search:{self.searches}"
+        titles = "; ".join(str(x["title"]) for x in rows)
+        self._see(user_doc(sid, f"Search {self.searches}",
+                           f"Scout searched the records for \"{q}\" and found {len(rows)} "
+                           f"record{'' if len(rows) == 1 else 's'}"
+                           + (f": {titles}." if rows else ".")))
+        return {"id": sid, "query": q, "count": len(rows), "records": rows}
 
     def read_record(self, id: str = "") -> dict[str, Any]:  # noqa: A002
         rec = self._get(str(id))
@@ -329,6 +384,12 @@ class ReadTools:
             out["temple_internal_note"] = ("temple_internal lists Temple's own faculty funding, "
                                            "a separate group with no rank. Never list it with "
                                            "leads.")
+        if public:
+            # The whole brief as one record (S49 Q2), so a sentence about all the leads ("All
+            # six leads close on 4 Nov 2026") can cite [user:brief]. Public leads only: one
+            # citation may not cover a sample and a public record together (rule 11).
+            self._see(user_doc(BRIEF_ID, BRIEF_TITLE, brief_summary(public)))
+            out["id"] = BRIEF_ID
         if not rows:
             out |= self._empty("user:brief", "Brief", "The user's brief has no leads.")
         if sample:

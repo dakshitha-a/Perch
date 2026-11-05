@@ -36,6 +36,10 @@ def test_q4_to_q11_shapes_now_pass():
         "Or should I compare either record with your CV?",  # Q10
         "You have no entries to add context [user:entries].",  # Q11
         f"Rank 1 is the SYNTHETIC Kidney Repair Program {C1}.",  # Q7: the brief's own rank
+        f"It closes 17 Nov 2026 {C1}. It supports kidney repair research.",  # Q3
+        f"The SYNTHETIC Kidney Repair Program closes 17 Nov 2026 {C1}.\nIts sponsor is the "
+        "National Institutes of Health.",  # Q3: from the prose line above
+        "Your brief has 2 leads [user:brief].",  # Q2: the brief as a record
     ]
     for text in ok:
         g = _grade(text)
@@ -70,4 +74,4 @@ def test_replay_regrades_a_stored_draft_with_no_model(tmp_path):
     t = replay(tmp_path, [OPP, OPP2], date(2026, 11, 4))
     s = summary(t)
     assert s["removed_rows"] == 1 and s["drafts_differing_from_stored"] == 0
-    assert s["reasons"] == {"no_citation": 1} and s["guard_leaks"] == 0
+    assert s["reasons"] == {"layer1_number": 1} and s["guard_leaks"] == 0  # Q3: inherited

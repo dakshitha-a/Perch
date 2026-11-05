@@ -188,6 +188,14 @@ HEADING_WORDS = 12
 # The ids a read tool returns for an empty result (perch/scout/read_tools.py `_empty`).
 PLACEHOLDER_IDS = frozenset({"user:brief", "user:saved", "user:entries", "user:cv"})
 
+
+def is_placeholder(rid: str, seen: dict[str, Record]) -> bool:
+    """An empty-result id. [user:brief] is one only when the brief was empty: a brief with
+    leads is a code-written record of its own (read_tools.brief_summary, S49 Q2)."""
+    if rid not in PLACEHOLDER_IDS:
+        return False
+    return not (rid == "user:brief" and getattr(seen.get(rid), "title", "") == "Your brief")
+
 # Every reason a sentence can be removed for. The first group is the grounded part, the second
 # the General advice part (and help sentences, which use the same checks).
 REASONS = (
@@ -548,7 +556,7 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
         # An empty-result placeholder ("user:saved", "user:brief") holds only "nothing found",
         # so alone it backs only a fixed empty-state template with nothing after it (S45 S4,
         # fix round 3: an allow-list, not a word list).
-        if ids and all(i in PLACEHOLDER_IDS for i in ids):
+        if ids and all(is_placeholder(i, seen) for i in ids):
             n = norm_exempt(s.text)
             m = EMPTY_TEMPLATE_RE.match(n)
             tail = n[m.end():] if m else ""
@@ -790,6 +798,34 @@ def name_index(records: list[Record]) -> set[str]:
     return out
 
 
+def _prose_tail(line: Line) -> Sentence | None:
+    """The last sentence of a prose line (no list marker, not a heading), else None."""
+    if line.prefix or not line.sentences or line.sentences[-1].kind == "heading":
+        return None
+    return line.sentences[-1]
+
+
+def inherit(s: Sentence, prev: Sentence | None, seen: dict[str, Record],
+            tools: ReadTools | None) -> None:
+    """Q3: an uncited sentence right after a cited one ("There are two tracks.") takes that
+    sentence's records and is checked against them like a cited sentence: Layer 1 here,
+    then the code check or MiniCheck in `grade`. It may not inherit a fit word ("a perfect
+    match"), a claim about who may apply, or a SYNTHETIC sample's citation."""
+    if [c for c, _ in s.reasons] != ["no_citation"] or prev is None:
+        return
+    if not prev.cites or prev.errors or prev.kind not in ("grounded", "inherited"):
+        return
+    if any(is_placeholder(c, seen) or seen[c].source == "synthetic" for c in prev.cites):
+        return
+    body = strip_cites(s.text)
+    if FIT_WORDS.search(body) or ELIGIBILITY.search(body) or OFFER_FIT_RE.search(body.lower()):
+        return
+    s.errors, s.reasons = [], []
+    s.cites, s.kind = list(prev.cites), "inherited"
+    for e in validate.check(_rank_checked(body, s.cites, tools), s.cites, seen).errors:
+        s.fail(_layer1_code(e), e, _token(e))
+
+
 def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
           grounder: Grounder | None = None, tools: ReadTools | None = None) -> Graded:
     """Parse and check one answer. Layer 2 runs only when layer 1 and the citation rules pass
@@ -797,10 +833,13 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
     grounded, general = split_general(normalise_cites(text, seen))
     g = Graded(parse(grounded), parse(general) if general else [])
     for li, ln in enumerate(g.lines):
-        for s in ln.sentences:
+        for si, s in enumerate(ln.sentences):
             h = is_heading(s, ln) or bold_title(s, ln, cited_below(g.lines, li, seen))
             check_sentence(s, seen, names, heading=h,
                            block=block_text(g.lines, li, seen) if h else "", tools=tools)
+            prev = (ln.sentences[si - 1] if si else
+                    _prose_tail(g.lines[li - 1]) if li and not ln.prefix else None)
+            inherit(s, prev, seen, tools)
     for s in g.general_sentences:
         s.kind = "general"
         for code, msg, d in general_reasons(s.text, names, seen):
@@ -830,7 +869,7 @@ def cited_below(lines: list[Line], at: int, seen: dict[str, Record]) -> list[Rec
         for s in ln.sentences:
             for c in cites_in(s.text):
                 rid = resolve(c, seen)
-                if rid is not None and rid not in PLACEHOLDER_IDS:
+                if rid is not None and not is_placeholder(rid, seen):
                     recs[rid] = seen[rid]
     return list(recs.values())
 
