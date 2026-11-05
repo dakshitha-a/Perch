@@ -123,6 +123,24 @@ Everything below follows the design in `ARCHITECTURE_V1.md`. A multi-host deploy
 4. **Sign-in:** open `PERCH_PUBLIC_URL`, sign in through the identity provider, accept consent once.
 5. **Check:** section 6.
 
+### Refreshing the federal records (S50 G4)
+
+Grants.gov listings close and new ones appear every day. This refresh updates the `grants_gov` records in place: it adds, rewrites and closes records and deletes none. It was first run on the v1 test deploy on 5 Nov 2026.
+
+1. **Back up** the records, vectors and epoch tables, outside the repo:
+   `docker exec perch-v1-postgres-1 pg_dump -U postgres -d perch -Fc -t public.records -t public.record_vectors -t public.ingest_runs > <backup dir>/records-<date>.dump`
+2. **Pull** every open listing (forecasted and posted, all agencies, the same scope as the corpus) into a scratch SQLite store. It makes one request a second, so 1,446 listings take about 25 minutes:
+   `scripts/run_limited.sh .venv/bin/perch --db <scratch>/gg.db fetch opportunities`
+3. **Load the deploy's DSNs:** `set -a; . ./.env.deploy; set +a`.
+4. **Plan:** `.venv/bin/python scripts/refresh_v1.py plan --sqlite <scratch>/gg.db`. It writes nothing to Postgres. It looks up, by number, each posted or forecasted record the pull no longer lists, and adds what it finds to the scratch store with its new status, such as `closed`. It prints new, changed, unchanged and still-missing counts, and the status changes. It stops if more than 200 open records are missing, because that means the pull broke. A record that is not found by number is left as it is and listed.
+5. **Apply:** `.venv/bin/python scripts/refresh_v1.py apply --sqlite <scratch>/gg.db`. Every pulled and looked-up record is upserted with its new `fetched_at`.
+6. **Vectors**, on the worker's GPU only: `PERCH_LIMIT_GPU=3 PERCH_LIMIT_LOCK=$XDG_RUNTIME_DIR/perch-refresh.lock scripts/run_limited.sh .venv/bin/python scripts/refresh_v1.py vectors`. It embeds only the records whose index text is new or changed.
+7. **Filter columns:** `.venv/bin/python scripts/redenorm.py --dsn-env PERCH_WORKER_DATABASE_URL`.
+8. **Caches:** `.venv/bin/python scripts/refresh_v1.py epoch` bumps the ingest epoch in Postgres and copies it to Redis, so cached lists and precached briefs go stale. The nightly precache at 02:00 UTC rebuilds the briefs.
+9. **Check:** `.venv/bin/python scripts/smoke_deploy.py --base <public url> --no-researcher` shows 0 failed. No service restart is needed.
+
+The archived records kept for the back-test are never touched. On 5 Nov 2026 the run gave 26 new, 59 changed and 1,412 unchanged records. 47 posted records became closed, 4 became archived and 2 forecasts were posted. 32 vectors were written. 10 forecasts that Grants.gov no longer lists under any status were left as they were.
+
 ## 6. Health checks
 
 | Check | What it tells you |
