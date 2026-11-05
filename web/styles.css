@@ -333,14 +333,13 @@ details[open] > summary::before { transform: rotate(45deg); }
 .lead-head .actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .fit-k { font-weight: 500; color: var(--ink-2); }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; }
-.fit { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; font-size: 13px; font-weight: 650; white-space: nowrap; }
-.fit b { min-width: 28px; height: 22px; border-radius: 999px; display: inline-grid; place-items: center; font-size: 13px; padding: 0 6px; }
-.fit.strong { background: var(--moss-soft); color: var(--ink); }
-.fit.strong b { background: var(--moss); color: var(--moss-ink); }
-.fit.good { background: var(--moss-soft); color: var(--ink); }
-.fit.good b { background: var(--leaf); color: var(--ink); box-shadow: inset 0 0 0 2px var(--moss); }
-.fit.partial, .fit.weak { background: var(--sunk); color: var(--ink-2); }
-.fit.partial b, .fit.weak b { background: var(--leaf); color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
+/* S50 (V41): one Match pill shape in every band; only the tint changes. */
+.fit { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.fit b { font-weight: 700; min-width: 0; height: auto; padding: 0; background: none; box-shadow: none; border-radius: 0; }
+.fit.strong { background: var(--moss); color: var(--moss-ink); }
+.fit.strong .fit-k { color: var(--moss-ink); opacity: .85; }
+.fit.good { background: var(--accent-soft); color: var(--ok-ink); }
+.fit.partial, .fit.weak { background: var(--chip); color: var(--ink-2); }
 .fit.pending { background: var(--sunk); color: var(--ink-3); padding-right: 10px; }
 .owl-xs { width: 22px; height: 22px; margin-left: -4px; }
 .lead-title { font: 600 18px/1.3 var(--serif); }
@@ -1069,7 +1068,7 @@ body[data-screen="landing"] .foot .promises { display: grid; }
   .pcard.done .progress-steps:has(details[open]) { flex-basis: 100%; }
   .pcard.done .steps:not([open]) .steps-n { display: none; }
 }
-.pcard .btn.link { min-height: 40px; border: 0; background: transparent; color: var(--ink-2); text-decoration: underline; font-weight: 500; font-size: 14px; padding: 0 8px; }
+.pcard .btn.link { min-height: 44px; border: 0; background: transparent; color: var(--ink-2); text-decoration: underline; font-weight: 500; font-size: 14px; padding: 0 8px; }
 .tabs-wrap { background: var(--bg); padding: 0; margin: 0; border-bottom: 1px solid var(--line); }
 .tabs, .tabs.student { display: flex; gap: 4px; background: transparent; padding: 0; border-radius: 0; overflow-x: auto; scrollbar-width: none; }
 .tab { flex: none; min-height: 48px; padding: 0 16px; border-radius: 0; border-bottom: 3px solid transparent; font: 600 15px var(--sans); color: var(--ink-2); white-space: nowrap; }
@@ -1212,6 +1211,10 @@ body[data-screen="landing"] .foot .promises { display: grid; }
 .sort-switch { flex: 0 0 auto; }
 .sort-group { display: inline-flex; align-items: center; gap: 8px; }
 .sort-label { font-size: 14px; font-weight: 600; color: var(--ink-3); }
+/* S50 (V3, V42): Sort is a small select on the list's head row. */
+select.sort-pick { width: auto; min-height: 44px; padding: 0 36px 0 12px; font-size: 15px; font-weight: 600; color: var(--ink);
+  background: var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236E7C76' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 10px center / 18px;
+  appearance: none; -webkit-appearance: none; cursor: pointer; }
 @media (max-width: 559px) {
   .sort-group { width: 100%; }
   .sort-group .sort-switch { flex: 1 1 auto; width: auto; display: grid; grid-template-columns: repeat(2, 1fr); }
@@ -1516,15 +1519,23 @@ body[data-screen="landing"] .foot .promises { display: flex; flex-wrap: wrap; }
 /* ---------- S49 A4: the lead card, title first (D5, M1, U3, U43) ---------- */
 .card.lead { padding: 18px 20px; gap: 10px; }
 ol.leads { gap: 12px; }
-.lead-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: start; }
+/* S50 (V2, V6, V39): the title row holds the title and the Match pill; Keep and Dismiss sit in a
+   footer row with the cover-letter button; the two facts sit in fixed columns down the list. */
+.lead-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: start; }
 .lead-name { min-width: 0; }
-.lead-end { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; }
-.lead-end .actions { display: flex; gap: 6px; margin: 0; }
+.lead-pill { padding-top: 2px; }
+.lead-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--line); }
+.lead-foot > .cover { flex: 1 1 auto; min-width: 0; display: grid; gap: 8px; }
+.lead-foot > .cover:empty { display: none; }
+.lead-foot > .cover:has(.scout-points) { order: 2; flex-basis: 100%; }
+.lead-foot > .actions { margin-left: auto; display: flex; gap: 8px; }
+.org-tags { display: flex; }
 .lead-title { font: 600 var(--fs-19)/1.3 var(--serif); }
 .lead-title .ev-mark { font-size: 13px; vertical-align: baseline; }
 .lead-sub { margin-top: 2px; font-size: var(--fs-14); color: var(--ink-3); display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .lead-sub .tag { height: 22px; min-height: 22px; }
-.facts-2 { display: flex; flex-wrap: wrap; gap: 4px 32px; margin: 0; }
+.facts-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 4px 32px; margin: 0; }
+.facts-2 .fact-wide { grid-column: 1 / -1; }
 .facts-2 .fact { background: none; padding: 0; border-radius: 0; }
 .facts-2 dt { font-size: var(--fs-12); letter-spacing: .04em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
 .facts-2 dd { font-size: 15px; font-weight: 600; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
@@ -1551,7 +1562,8 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
 #list-notices .list-note { margin: 0; }
 @media (max-width: 599px) {
   .lead-top { grid-template-columns: 1fr; }
-  .lead-end { justify-content: space-between; flex-wrap: wrap; }
+  .lead-pill { padding-top: 0; }
+  .facts-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; }
   .card.lead { padding: 16px; }
 }
 @media (max-width: 559px) {
@@ -1559,6 +1571,17 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
   .list-head .sort-group .sort-switch { display: inline-flex; width: auto; }
   .sort-switch .route-btn { min-height: 44px; padding: 0 14px; }
 }
+
+/* The rule block on a student card (S50 contract 3.2; FE-C emits it). The chip sits on the lines
+   that explain it; each line has its mark and the record's words. */
+.rules { display: grid; gap: 6px; justify-items: start; }
+.rules ul.checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: var(--fs-14); }
+.rules li.check { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 6px; color: var(--ink-2); }
+.check-mk { font-weight: 700; text-align: center; }
+li.check[data-outcome="pass"] .check-mk { color: var(--ok-ink); }
+li.check[data-outcome="fail"] .check-mk { color: var(--no-ink); }
+li.check[data-outcome="unknown"] .check-mk { color: var(--may-ink); }
+details.checks-more > summary { font-size: var(--fs-14); color: var(--ink-2); min-height: 32px; }
 
 /* ---------- S49 A5: the brief header folds once ready (U37, S8, U55, U11) ---------- */
 .brief { gap: 16px; }
@@ -1644,3 +1667,11 @@ dialog::backdrop { background: rgba(10, 16, 14, .55); }
 @media (max-width: 699px) { #panel { padding-bottom: 72px; } }
 /* The sort select (V3) shares the controls' edge. */
 .sort-pick { border-color: var(--line-strong); }
+/* The example brief (S50 Q22): its link on the landing, its banner and its missing-file page. */
+.example-slot { margin: 0; display: contents; }
+.example-slot:empty { display: none; }
+/* The researcher side's two quiet links share one row, so the landing still fits 1280 x 720. */
+.landing .landing-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 8px; }
+.example-banner .banner-line > .tag { flex: none; }
+.example-missing { padding: 48px 0; }
+.example-missing .lede { margin: 8px 0 20px; }
