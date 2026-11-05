@@ -125,10 +125,30 @@ def persona(name: str | None) -> tuple[str | None, list[tuple[str | None, str]]]
     return cv, entries
 
 
-def shortlist(service: BriefService, audience: str, as_of: date, n: int = SHORTLIST
-              ) -> tuple[Brief, list[Lead]]:
+# Q15 (S49): the s45g shortlist had six leads that all closed on the run date, so every
+# deadline question was degenerate. `--brief FILE` reads a stored ranked brief instead (the
+# JSON of GET /briefs/{id}: {"brief": ..., "leads": [...]}), and `--spread` keeps one record
+# per close date. The replay (bench/scout_replay.py) keeps the old shortlist.
+LOADED: dict[str, tuple[Brief, list[Lead]]] = {}  # audience -> a stored brief
+SPREAD = False
+
+
+def load_brief(path: Path) -> tuple[Brief, list[Lead]]:
+    doc = json.loads(path.read_text())
+    nested = ("opportunity", "organisation", "record")  # lead_json adds the record to a lead
+    leads = [Lead.model_validate({k: v for k, v in x.items() if k not in nested})
+             for x in doc["leads"]]
+    return Brief.model_validate(doc["brief"]), leads
+
+
+def shortlist(service: BriefService, audience: str, as_of: date, n: int = SHORTLIST,
+              spread: bool | None = None) -> tuple[Brief, list[Lead]]:
     """A fixed shortlist from the store, not a ranked brief: the open records that close next,
-    the first two marked kept. It gives the questions something to refer to ("my top lead")."""
+    the first two marked kept. It gives the questions something to refer to ("my top lead").
+    A stored brief loaded with --brief replaces it for its audience."""
+    if audience in LOADED:
+        return LOADED[audience]
+    spread = SPREAD if spread is None else spread
     with service.repo() as r:
         if audience == "student":
             # Temple's scholarship pages mostly give no deadline (S45: none of 76 did), so the
@@ -138,6 +158,11 @@ def shortlist(service: BriefService, audience: str, as_of: date, n: int = SHORTL
         else:
             recs = [x for x in r.list(Opportunity) if x.close_date and x.close_date >= as_of]
             recs.sort(key=lambda x: (x.close_date, x.id))
+    if spread:  # one record per close date, so deadline questions have an answer
+        seen: set[date | None] = set()
+        recs = [x for x in recs if (d := getattr(x, "close_date", None)
+                                    or getattr(x, "deadline", None)) is None
+                or not (d in seen or seen.add(d))]
     recs = recs[:n]
     b = Brief(id="bench", source="perch", source_url="perch://bench", fetched_at=utcnow(),
               researcher_id="user:bench", status="done",
@@ -368,7 +393,9 @@ def run_new(service: BriefService, q: dict[str, Any], run: Run, *, as_of: date, 
         run.drafts.append({"id": q["id"], "kind": q["kind"], "attempt": attempt,
                            "shown": attempt == m.get("attempt"), "draft": scrub(draft, al),
                            "removed": g.removed(detail=True),
-                           "kinds": [s.kind for s in g.sentences], "final": final})
+                           "kinds": [s.kind for s in g.sentences], "final": final,
+                           # The turn's tool log, so bench/scout_replay.py is exact (S49 Q0).
+                           "read": m.get("read") or [], "steps": m.get("steps") or []})
     if m.get("kind") == "answer":
         run.reasons.append(reason_row(q, m, drafts[0][2] if drafts else None))
     return score_new(service, q, m, meter, dt), shown_text(m)
@@ -541,7 +568,30 @@ def main() -> None:
     ap.add_argument("--no-grounder", action="store_true", help="skip MiniCheck")
     ap.add_argument("--as-of", default=None, help="YYYY-MM-DD; default today")
     ap.add_argument("--out", default=None, help="results folder; default bench/results/...")
+    ap.add_argument("--replay", default=None, metavar="DIR",
+                    help="re-grade DIR/drafts.jsonl with today's rules; no model call")
+    ap.add_argument("--records", default=None, help="with --replay: a folder of "
+                    "opportunity.jsonl and scholarship.jsonl; default the local store")
+    ap.add_argument("--brief", nargs="*", default=[], metavar="FILE",
+                    help="stored brief JSON ({brief, leads}) to use as the shortlist; one per "
+                    "audience, student when the brief's options say so (Q15)")
+    ap.add_argument("--spread", action="store_true",
+                    help="build the shortlist with one record per close date (Q15)")
     a = ap.parse_args()
+    global SPREAD
+    SPREAD = a.spread
+    for f in a.brief:
+        b, leads = load_brief(Path(f))
+        LOADED["student" if b.options.get("student") else "researcher"] = (b, leads)
+    if a.replay:
+        import json as _json
+
+        from bench.scout_replay import load_records, replay, store_records, summary
+
+        recs = load_records(Path(a.records)) if a.records else store_records()
+        as_of = date.fromisoformat(a.as_of) if a.as_of else None
+        print(_json.dumps(summary(replay(Path(a.replay), recs, as_of)), indent=2))
+        return
     tag = a.tag or ("fake" if a.fake else "run")
     out = Path(a.out) if a.out else RESULTS / f"scout_open_{tag}"
     qs = [q for q in load_questions() if (not a.only or q["id"] in a.only)

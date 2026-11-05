@@ -91,3 +91,17 @@ def test_a_number_inside_a_random_id_is_not_evidence():
                 fetched_at=datetime(2026, 11, 1, tzinfo=UTC), brief_id="x-9abQ", route="B",
                 record_id="I-9")
     assert not check("9 works cite your papers.", [lead.id], {lead.id: lead}).ok
+
+
+def test_digits_inside_an_allowed_link_are_not_numbers():
+    """S49 M4: a cited record's own link carries its detail id; that is not a claim."""
+    url = "https://www.grants.gov/search-results-detail/343980"
+    opp = OPP.model_copy(update={"source_url": url})
+    recs = {opp.id: opp}
+    ok = check(f"Read it at {url}.", [opp.id], recs)
+    assert ok.ok, ok.errors
+    # A link that is not in the record still fails.
+    bad = check("Read it at https://www.grants.gov/search-results-detail/999999.", [opp.id], recs)
+    assert not bad.ok and any("link" in e for e in bad.errors)
+    # A number outside the link is still checked.
+    assert not check(f"It funds 7 awards, {url}.", [opp.id], recs).ok

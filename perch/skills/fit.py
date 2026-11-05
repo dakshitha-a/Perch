@@ -1,6 +1,6 @@
 """Skill 2, fit explainer: one lead at a time, reasoning first, constrained JSON last.
 
-Output: a fit score 0 to 100 and a three-part explanation citing the opportunity and
+Output: a three-part explanation (no score since S49 S15) citing the opportunity and
 1 to 3 of the researcher's papers: an opportunity sentence (checked by validator layer 2
 against the opportunity record), a research sentence (checked against the cited papers)
 and a link sentence (a judgment, shown as an inference; layer 1 still checks it). The
@@ -32,12 +32,11 @@ from perch.skills import (
 from perch.validate import Check, Validated, check, generate_validated
 
 SKILL = "fit_explainer"
-PROMPT_VERSION = "fit-1"  # bump with INSTRUCTIONS or SCHEMA; keys cached text (tests/test_cache.py)
+PROMPT_VERSION = "fit-2"  # bump with INSTRUCTIONS or SCHEMA; keys cached text (tests/test_cache.py)
 SCHEMA = {
     "type": "object",
     "properties": {  # order matters: reasoning is generated before the answer
         "reasoning": {"type": "string"},
-        "fit": {"type": "integer", "minimum": 0, "maximum": 100},
         "opportunity_sentence": {"type": "string"},
         "research_findings": {"type": "array", "minItems": 1, "maxItems": 3, "items": {
             "type": "object",
@@ -47,15 +46,15 @@ SCHEMA = {
         "cited_ids": {"type": "array", "minItems": 2, "maxItems": 4,
                       "items": {"type": "string"}},
     },
-    "required": ["reasoning", "fit", "opportunity_sentence", "research_findings",
+    "required": ["reasoning", "opportunity_sentence", "research_findings",
                  "link_sentence", "cited_ids"],
     "additionalProperties": False,
 }
 INSTRUCTIONS = (
     "You explain how well one funding opportunity fits a researcher's published work. "
-    "First write brief private reasoning comparing the opportunity's aims with the papers. "
-    "Then give fit from 0 (no overlap) to 100 (the opportunity reads as if written for this "
-    "work), and three sentences for the researcher. opportunity_sentence: one factual sentence "
+    "First write private reasoning, at most three short sentences, comparing the "
+    "opportunity's aims with the papers. Then write three sentences for the researcher. "
+    "opportunity_sentence: one factual sentence "
     "on what the opportunity funds, using only the opportunity record. research_findings: 1 "
     "to 3 items, each one paper id and a short clause starting with a past-tense verb that "
     "states what that one paper did, using only that paper (e.g. \"surveyed living kidney "
@@ -67,7 +66,9 @@ INSTRUCTIONS = (
 
 @dataclass
 class Fit:
-    fit: int
+    # The model's own 0-100 number. Not asked for since S49 S15: it was never shown, and a
+    # generated number may not be (rule 3). Kept as a field so stored rows still load.
+    fit: int | None
     opportunity_sentence: str
     findings: list[tuple[str, str]]  # (paper id, clause)
     link_sentence: str
@@ -134,7 +135,7 @@ def explain_one(o: Opportunity, system: str, paper_records: dict[str, Record],
         try:
             findings = [(known(x["paper_id"]), x["finding"].strip())
                         for x in d["research_findings"]]
-            return Fit(int(d["fit"]), d["opportunity_sentence"].strip(), findings,
+            return Fit(None, d["opportunity_sentence"].strip(), findings,
                        d.get("link_sentence", "").strip(), [known(i) for i in d["cited_ids"]],
                        d.get("reasoning", ""))
         except (KeyError, TypeError, AttributeError) as e:
@@ -202,12 +203,23 @@ def explain_leads(opps: list[Opportunity], profile: Profile, works: dict[str, Wo
                   provider: AuditedProvider, grounder: Grounder | None = None,
                   workers: int = 4,
                   on_result: Callable[[int, Validated[Fit]], None] | None = None,
-                  audience: str = "researcher") -> list[Validated[Fit]]:
-    """Explain every lead; `on_result(index, result)` is called as each one finishes."""
+                  audience: str = "researcher",
+                  cancelled: Callable[[], bool] | None = None) -> list[Validated[Fit]]:
+    """Explain every lead; `on_result(index, result)` is called as each one finishes.
+    `cancelled` is checked before each lead, so a cancelled or timed-out job stops paying
+    between leads (S49 B6). By default it is the running job's own signal, read from the
+    brief store of the calling thread (pool threads do not inherit it)."""
+    if cancelled is None:
+        from perch.user.briefs import current_store
+
+        store = current_store.get()
+        cancelled = store.cancelled if store is not None else (lambda: False)
     system, paper_records = profile_prompt(profile, works, audience=audience)
     results: list[Validated[Fit] | None] = [None] * len(opps)
 
     def one(i: int) -> None:
+        if cancelled():
+            return
         results[i] = explain_one(opps[i], system, paper_records, provider, grounder)
         if on_result:
             on_result(i, results[i])

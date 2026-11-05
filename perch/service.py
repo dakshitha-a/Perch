@@ -21,10 +21,10 @@ from pathlib import Path
 
 from perch import awards as aw
 from perch import precache
-from perch.brief import route_a
-from perch.cache import InputContext, PublicCache, cache_key, is_public_input
+from perch.brief import route_a, temple_internal
+from perch.cache import InputContext, PublicCache, cache_key, is_public_input, text_profile_hash
 from perch.config import env
-from perch.eligibility import Constraints, agency_text, career_stage_restricted
+from perch.eligibility import Constraints, agency_text, career_stage_restricted, hidden_counts
 from perch.embed import Embedder
 from perch.grounding import Grounder
 from perch.llm import Provider, get_provider, spec_for_role
@@ -442,13 +442,30 @@ class BriefService:
                           rerank_score=round(x.rerank_score, 4), match_score=match_score(adj),
                           matched_thread=x.candidate.best_thread, notes=notes)
                      for i, (adj, x, notes) in enumerate(ranked, 1)]
-            r.upsert(leads)
-        b.lead_ids = [x.id for x in leads]
+            # Temple internal funding: its own group, ranked 1..n within it (S49 M9). A brief
+            # from the nightly pre-cache has not run it yet.
+            temple, tnotes = brief.temple, brief.temple_notes
+            if temple is None:
+                temple, tnotes = temple_internal(brief.profile, r, self.models.get("embedder"),
+                                                 self.models.get("reranker"), c,
+                                                 RerankCache(self.rerank_cache))
+            tleads = [Lead(id=f"{b.id}:T{i}", source=x.opportunity.source,
+                           source_url=x.opportunity.source_url,
+                           fetched_at=x.opportunity.fetched_at, brief_id=b.id, route="A",
+                           group="temple_internal", record_id=x.opportunity.id, rank=i,
+                           rerank_score=round(x.rerank_score, 4),
+                           match_score=match_score(x.rerank_score),
+                           matched_thread=x.candidate.best_thread,
+                           notes=tnotes.get(x.opportunity.id, []))
+                      for i, x in enumerate(temple, 1)]
+            r.upsert([*leads, *tleads])
+        b.lead_ids = [x.id for x in [*leads, *tleads]]
         b.timings_ms = brief.timings_ms
+        b.hidden = hidden_counts(brief.rejected)  # S49 F2
         kept_by_stage = sum(any("early-stage" in n for n in x.notes) for x in leads)
         extra = f", {kept_by_stage} kept by the career-stage rule" if cv else ""
         return (f"{brief.retrieved} retrieved, {len(brief.rejected)} ineligible removed, "
-                f"{len(leads)} leads{extra}"), False
+                f"{len(leads)} leads, {len(tleads)} Temple internal{extra}"), False
 
     def _run_route_b(self, b: Brief) -> tuple[str, bool]:
         from perch import route_b as rb
@@ -506,7 +523,7 @@ class BriefService:
             return "explanations off", True
         profile = self._ctx[b.id]["profile"]
         spec = self.models.summary_spec or spec_for_role("profile_summary")
-        key = cache_key("profile_summary", precache.public_profile_hash(profile),
+        key = cache_key("profile_summary", _text_hash(profile),
                         summary_skill.PROMPT_VERSION, spec.partition(":")[2] or spec,
                         VALIDATOR_VERSION)
         use = self._text_cache(b)
@@ -536,11 +553,13 @@ class BriefService:
             return "explanations off", True
         with self.repo() as r:
             works = self._works(r, b)
-            leads = [x for x in (r.get(Lead, i) for i in b.lead_ids) if x and x.route == "A"]
+            # Temple internal leads get no paid explanation (S49 M9: spend stays flat).
+            leads = [x for x in (r.get(Lead, i) for i in b.lead_ids)
+                     if x and x.route == "A" and x.group is None]
             opps = [r.get(Opportunity, x.record_id) for x in leads]
         profile = self._ctx[b.id]["profile"]
         spec = self.models.fit_spec or spec_for_role("fit_explainer")
-        phash = precache.public_profile_hash(profile)
+        phash = _text_hash(profile)
         use = self._text_cache(b)
 
         def fit_key(o: Opportunity) -> str:
@@ -714,6 +733,12 @@ class BriefService:
             return BUDGET_DETAIL, True
         flagged = sum(v.flagged for v in results)
         return f"{len(results) - flagged} explained, {flagged} withheld", False
+
+
+def _text_hash(profile) -> str:  # noqa: ANN001 - a perch.profile.Profile
+    """The profile part of a model-text cache key, without the as-of date (S49 M5)."""
+    return text_profile_hash(profile.researcher_id, profile.work_ids,
+                             [t.work_ids for t in profile.threads])
 
 
 def _has_sample_route(b: Brief) -> bool:

@@ -47,7 +47,7 @@ GOOD = "PAR-1 funds research on ethics of donation. studied living kidney donor 
 def test_fit_passes_first_time_and_is_logged():
     p, log = audited([fit_reply(GOOD)])
     (v,) = explain_leads([OPP], PROFILE, WORKS, p)
-    assert not v.flagged and v.value.fit == 80 and v.attempts == 1
+    assert not v.flagged and v.value.fit is None and v.attempts == 1  # S49 S15: no score
     assert log.rejection_rate("fit_explainer") == (0, 1)
     assert sum(e["kind"] == "call" for e in log.events) == 1
 

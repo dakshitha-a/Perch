@@ -1,0 +1,25 @@
+{
+  "drafts": 59,
+  "removed_rows": 204,
+  "removed_sentences": 197,
+  "drafts_with_removals": 49,
+  "stored_rows": 206,
+  "drafts_differing_from_stored": 2,
+  "in_scope_answers": 33,
+  "in_scope_first_draft_clean": 9,
+  "in_scope_clean_by_second_draft": 10,
+  "guard_leaks": 0,
+  "reasons": {
+    "no_citation": 128,
+    "absent_not_template": 25,
+    "heading_not_structural": 19,
+    "layer1_number": 12,
+    "placeholder_only": 6,
+    "cites_unreturned_id": 5,
+    "question_not_offer": 4,
+    "general_named_award": 2,
+    "general_link": 1,
+    "general_number": 1,
+    "uncited_fit_word": 1
+  }
+}

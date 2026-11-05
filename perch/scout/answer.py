@@ -75,6 +75,9 @@ ABSENT_RE = re.compile(
     r"didn't)\b.*\b(?:record|records|result|results|match|matches|found|find|information|help|"
     r"answer|read|access|leads?|brief|saved|entries|entry|cv|items?|ids?)\b", re.I)
 ABSENT_WORDS = 20  # a "nothing found" sentence is short; a long one may be hiding a claim
+BOLD_NUMBER_RE = re.compile(r"(?:\*\*|__)\d{1,2}[.)]")  # a list number inside bold marks
+BOLD_LINE_RE = re.compile(r"(?:\*\*[^*]+\*\*|__[^_]+__):?")
+BOLD_LIST_RE = re.compile(r"^(\s*(?:\*\*|__))\d{1,2}[.)]\s+")
 def _alts(patterns: tuple[str, ...]) -> re.Pattern[str]:
     return re.compile("|".join(f"(?:{p})" for p in patterns))
 
@@ -131,6 +134,9 @@ def _label_words_in(n: str, block: str) -> bool:
 # The system prompt's own disclaimer (texts.SCOUT_SYSTEM): the exact sentence needs no record.
 DISCLAIMER_RE = re.compile(
     r"^[\W_]*Perch (?:does not|doesn['’]t) confirm personal eligibility\.?[\W_]*$", re.I)
+DISCLAIMER_TAIL_RE = re.compile(
+    r"^[\W_]*Perch (?:does not|doesn['’]t) confirm personal eligibility[,;]\s+(?:so\s+)?"
+    r"((?:check|ask|confirm|contact|read|verify)\b[^\[\]]*?)[.!]?[\W_]*$", re.I)
 HELP_VERBS = (r"(?:read|list|compare|search|show|check|open|look|tell|help|draft|find|answer|"
               r"keep|dismiss|restore|save|browse|build|press|click|pick|choose|ask|use|start|"
               r"add|upload|go|sign|type)")
@@ -138,8 +144,8 @@ HELP_VERBS = (r"(?:read|list|compare|search|show|check|open|look|tell|help|draft
 # must name an action ("I can compare it with your CV"), so "I can see this record fits you"
 # and "You can expect a strong fit" are not help and still need a citation.
 HELP_RE = re.compile(
-    r"^[\W_]*(?:(?:please\s+)?(?:ask|tell me|let me know|check|open|read|try|use|pick|choose|"
-    r"click|press|tap|select|keep|save|dismiss|restore|compare|start|go to|look at|look for|"
+    r"^[\W_]*(?:or\s+)?(?:(?:please\s+)?(?:ask|tell me|let me know|check|open|read|try|use|pick|"
+    r"choose|click|press|tap|select|keep|save|dismiss|restore|compare|start|go to|look at|look for|"
     r"see|type|sign in|build|say|reply|send me|share|add|upload|paste|search|browse)\b|"
     r"(?:(?:i|scout|you)\s+(?:can|could|will|would)|i(?:'|’)ll)"
     r"(?:\s+(?:then|also|now|first|next|still|just))?\s+" + HELP_VERBS + r"\b|"
@@ -181,6 +187,14 @@ GENERIC_NAME_WORDS = {"research", "grant", "grants", "fellowship", "fellowships"
 HEADING_WORDS = 12
 # The ids a read tool returns for an empty result (perch/scout/read_tools.py `_empty`).
 PLACEHOLDER_IDS = frozenset({"user:brief", "user:saved", "user:entries", "user:cv"})
+
+
+def is_placeholder(rid: str, seen: dict[str, Record]) -> bool:
+    """An empty-result id. [user:brief] is one only when the brief was empty: a brief with
+    leads is a code-written record of its own (read_tools.brief_summary, S49 Q2)."""
+    if rid not in PLACEHOLDER_IDS:
+        return False
+    return not (rid == "user:brief" and getattr(seen.get(rid), "title", "") == "Your brief")
 
 # Every reason a sentence can be removed for. The first group is the grounded part, the second
 # the General advice part (and help sentences, which use the same checks).
@@ -332,6 +346,9 @@ def split_sentences(body: str) -> list[str]:
         if merged and ABBREV_RE.search(merged[-1]):  # "the U.S. National Science Foundation"
             merged[-1] += " " + p
             continue
+        if merged and BOLD_NUMBER_RE.fullmatch(merged[-1].strip()):  # "**1. SBE ...**" (Q5)
+            merged[-1] += " " + p
+            continue
         lead = LEAD_CITES_RE.match(p)
         if merged and lead and cites_in(lead.group(1)):
             # "A closes 4 Nov 2026. [id] B states no amount. [id]": the bracket after a full
@@ -386,6 +403,8 @@ RANK_WORD_RE = re.compile(
     r"(first|second|third|fourth|fifth)\s+(?:lead|pick|choice|result|match)|"
     r"ranked\s+(first|second|third|fourth|fifth)|(first|second|third|fourth|fifth)[- ]ranked)\b",
     re.I)
+EMPTY_BRIEF_RE = re.compile(r"\b(?:no leads|(?:brief|it) is empty|has nothing|holds nothing)\b",
+                            re.I)
 KEPT_RE = re.compile(r"\b(kept|shortlist(?:ed)?)\b", re.I)
 SAVED_RE = re.compile(r"\bsaved\b", re.I)
 NEG_RE = re.compile(r"\b(?:not|never|nothing|none|no)\b|n['’]t\b", re.I)
@@ -404,10 +423,11 @@ def _absent_fact(rec: Record, what: str, as_of: date) -> bool | None:
     """Does this record lack the deadline, amount or requirements? None when it cannot say."""
     what = what.lower()
     if what in ("deadline", "close date"):
+        # The page's deadline words count as a deadline (S49 M3).
         if isinstance(rec, Opportunity):
-            return not rec.close_date and not rec.close_date_note
+            return not (rec.close_date or rec.close_date_note or rec.deadline_quote)
         if isinstance(rec, Scholarship):
-            return rec.deadline is None
+            return rec.deadline is None and not rec.deadline_quote
         return None
     if what in ("amount", "award size"):
         if isinstance(rec, Opportunity | Scholarship):
@@ -437,6 +457,15 @@ def code_check(text: str, ids: list[str], seen: dict[str, Record], tools: ReadTo
     if tools is None:
         return None
     rows = [i for i in ids if not i.startswith("user:")]
+    if not rows and "user:brief" in ids and tools.brief_read and \
+            not is_placeholder("user:brief", seen):
+        # The brief as a record (Q2): an "empty brief" claim is false when it has leads, and a
+        # rank or kept claim is checked on the leads whose titles the sentence names.
+        if EMPTY_BRIEF_RE.search(body):
+            return not tools.ranks
+        low = body.lower()
+        rows = [i for i in tools.ranks
+                if (t := str(facts(seen[i], as_of).get("title") or "").lower()) and t in low]
     if not rows:
         return None
     ordered = sorted(tools.ranks, key=lambda k: tools.ranks[k])
@@ -462,6 +491,19 @@ def code_check(text: str, ids: list[str], seen: dict[str, Record], tools: ReadTo
         return None
     neg = bool(NEG_RE.search(body[max(0, at - 25):at]))
     return all((i in pool) != neg for i in rows)
+
+
+def _rank_checked(body: str, ids: list[str], tools: ReadTools | None) -> str:
+    """The body Layer 1 reads. A rank number that matches the rank read_brief gave the one
+    cited record ("Rank 1 is X [id]") is the brief's own number, not a claim to find in the
+    record, so it is left out of the count (Q7). A wrong rank stays in, and fails."""
+    if tools is None or not tools.brief_read:
+        return body
+    rows = [i for i in ids if not i.startswith(("user:", "search:"))]
+    m = RANK_NUM_RE.search(body)
+    if m and len(rows) == 1 and tools.ranks.get(rows[0]) == int(m.group(1) or m.group(2)):
+        return body[:m.start()] + body[m.end():]
+    return body
 
 
 def _token(message: str) -> str:
@@ -496,11 +538,14 @@ def is_heading(s: Sentence, line: Line) -> bool:
         return False
     bold = bool(re.fullmatch(r"\*\*[^*]+\*\*:?", strip_cites(t)) or
                 re.fullmatch(r"__[^_]+__:?", strip_cites(t)))
-    return t.rstrip("*_ ").endswith(":") or bold or t.startswith("#")
+    # A line that is exactly a fixed section name is a heading with or without a colon (Q4).
+    fixed = not line.prefix and bool(STRUCTURAL_RE.fullmatch(norm_exempt(t)))
+    return t.rstrip("*_ ").endswith(":") or bold or t.startswith("#") or fixed
 
 
 def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None = None,
-                   *, heading: bool = False, block: str = "") -> None:
+                   *, heading: bool = False, block: str = "",
+                   tools: ReadTools | None = None) -> None:
     """`block` is the lower-case text of the records the lines under a heading cite (see
     `block_text`); a heading may name what that block cites."""
     raw = cites_in(s.text)
@@ -513,17 +558,23 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
         elif rid not in ids:
             ids.append(rid)
     s.cites = ids
-    body = strip_cites(s.text)
+    # A list number inside bold marks ("**1. Title**") is numbering, not a number (Q5).
+    body = BOLD_LIST_RE.sub(r"\1", strip_cites(s.text))
     if raw:
-        for e in validate.check(body, ids, seen).errors:
+        for e in validate.check(_rank_checked(body, ids, tools), ids, seen).errors:
             if not e.startswith("cited id"):  # unresolved ids were reported above
                 s.fail(_layer1_code(e), e, _token(e))
         # An empty-result placeholder ("user:saved", "user:brief") holds only "nothing found",
         # so alone it backs only a fixed empty-state template with nothing after it (S45 S4,
         # fix round 3: an allow-list, not a word list).
-        if ids and all(i in PLACEHOLDER_IDS for i in ids):
-            if EMPTY_TEMPLATE_RE.fullmatch(norm_exempt(s.text)):
+        if ids and all(is_placeholder(i, seen) for i in ids):
+            n = norm_exempt(s.text)
+            m = EMPTY_TEMPLATE_RE.match(n)
+            tail = n[m.end():] if m else ""
+            if m and not tail:
                 s.kind = "absent"
+            elif m and EMPTY_TAIL_RE.match(tail) and not empty_tail_claims(tail, names, seen):
+                s.kind = "absent"  # "You have no entries to add context [user:entries]." (Q11)
             else:
                 s.fail("placeholder_only", "an empty-result id such as [user:saved] backs only "
                        "a short empty-state sentence such as 'Your saved list is empty "
@@ -533,6 +584,17 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
     # No citation: allowed only for a sentence that states no record fact.
     if DISCLAIMER_RE.match(s.text):
         s.kind = "help"  # the exact disclaimer the system prompt asks for; nothing to check
+        return
+    if m := DISCLAIMER_TAIL_RE.match(s.text):
+        # The disclaimer with a short "so check with ..." tail (Q6): the tail is help text and
+        # passes the same content checks as any uncited help line.
+        s.kind = "help"
+        tail = m.group(1)
+        if CLAIM_TAIL_RE.search(tail):
+            s.fail("help_with_claim", "a help line with no citation must stop at the action; "
+                   "a reason or verdict about a record needs its citation", tail[:60])
+            return
+        _no_record_claims(s, tail, names, seen, cited=False)
         return
     n = norm_exempt(s.text)
     if heading:
@@ -548,6 +610,7 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
             return
     elif s.text.rstrip("*_ ").endswith("?"):
         s.kind = "question"
+        n = re.sub(r"^or\s+", "", n)  # "Or should I compare them?" (Q10)
         if not OFFER_RE.match(n) or OFFER_FIT_RE.search(n) or CLAIM_TAIL_RE.search(n):
             s.fail("question_not_offer", "a question with no citation must be an offer that "
                    "starts 'Would you like', 'Do you want', 'Shall I', 'Should I', 'Want me to', "
@@ -574,8 +637,13 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
     # An uncited sentence of an exempt kind that is not a fixed text (a record's label, an
     # offer, a help sentence) passes the same content checks as General advice, so it cannot
     # carry an award's name or an eligibility rule (S45 S3).
-    _no_record_claims(s, body, names, seen, cited=False,
-                      block=block if s.kind == "heading" else "")
+    if s.kind in ("question", "help"):
+        # An offer or help line may name a record a tool returned this turn ("Would you like
+        # me to read the X record in full?"): it states nothing new about it (Q10).
+        _no_record_claims(s, body, names, seen, cited=False, allow_names=returned_titles(seen))
+    else:
+        _no_record_claims(s, body, names, seen, cited=False,
+                          block=block if s.kind == "heading" else "")
     if s.kind == "help":
         return
     if validate.find_numbers(body) or validate.find_dates(body):
@@ -584,13 +652,34 @@ def check_sentence(s: Sentence, seen: dict[str, Record], names: set[str] | None 
         s.fail("uncited_link", "a link with no cited record")
 
 
+# Only a purpose tail ("... no entries to add context"); a "so ..." or "that ..." tail is a
+# conclusion and stays removed (S45 fix round 2).
+EMPTY_TAIL_RE = re.compile(r"^\s+to (?:add|give|fill|show|draw on|use|cite)\b")
+
+
+def empty_tail_claims(tail: str, names: set[str] | None, seen: dict[str, Record]) -> bool:
+    """Does the tail after an empty-state template state anything? A number, a date, an award
+    name, a fit word or a reason ("since you ...") does."""
+    return bool(general_reasons(tail, names or set(), seen) or FIT_WORDS.search(tail)
+                or CLAIM_TAIL_RE.search(tail) or validate.find_numbers(tail))
+
+
+def returned_titles(seen: dict[str, Record]) -> str:
+    """The lower-case titles of the records the tools returned this turn, one per line."""
+    return "\n".join(t for r in seen.values() if not r.id.startswith("user:")
+                     and (t := str(facts(r, date.today()).get("title") or "").lower().strip()))
+
+
 def _no_record_claims(s: Sentence, body: str, names: set[str] | None,
-                      seen: dict[str, Record], *, cited: bool, block: str = "") -> None:
+                      seen: dict[str, Record], *, cited: bool, block: str = "",
+                      allow_names: str = "") -> None:
     """The General-advice content checks plus FIT_WORDS, for a sentence no real record backs.
     With `block` (a heading over cited lines), an award name or code found in the records that
-    block cites is a label, not a claim, and so is the bare noun "eligibility" (S46 replay)."""
+    block cites is a label, not a claim, and so is the bare noun "eligibility" (S46 replay).
+    `allow_names` (an offer or help line) lets it name a returned record and nothing more."""
     how = "citing only an empty-result id" if cited else "with no citation"
-    for code, msg, d in general_reasons(body, names or set(), seen, cited=cited, allow=block):
+    for code, msg, d in general_reasons(body, names or set(), seen, cited=cited,
+                                        allow=block or allow_names):
         s.fail(code, f"a {s.kind} sentence {how} {msg}", d)
     fit_body = re.sub(r"\beligibility\b", " ", body, flags=re.I) if block else body
     if m := FIT_WORDS.search(fit_body):
@@ -720,6 +809,34 @@ def name_index(records: list[Record]) -> set[str]:
     return out
 
 
+def _prose_tail(line: Line) -> Sentence | None:
+    """The last sentence of a prose line (no list marker, not a heading), else None."""
+    if line.prefix or not line.sentences or line.sentences[-1].kind == "heading":
+        return None
+    return line.sentences[-1]
+
+
+def inherit(s: Sentence, prev: Sentence | None, seen: dict[str, Record],
+            tools: ReadTools | None) -> None:
+    """Q3: an uncited sentence right after a cited one ("There are two tracks.") takes that
+    sentence's records and is checked against them like a cited sentence: Layer 1 here,
+    then the code check or MiniCheck in `grade`. It may not inherit a fit word ("a perfect
+    match"), a claim about who may apply, or a SYNTHETIC sample's citation."""
+    if [c for c, _ in s.reasons] != ["no_citation"] or prev is None:
+        return
+    if not prev.cites or prev.errors or prev.kind not in ("grounded", "inherited"):
+        return
+    if any(is_placeholder(c, seen) or seen[c].source == "synthetic" for c in prev.cites):
+        return
+    body = strip_cites(s.text)
+    if FIT_WORDS.search(body) or ELIGIBILITY.search(body) or OFFER_FIT_RE.search(body.lower()):
+        return
+    s.errors, s.reasons = [], []
+    s.cites, s.kind = list(prev.cites), "inherited"
+    for e in validate.check(_rank_checked(body, s.cites, tools), s.cites, seen).errors:
+        s.fail(_layer1_code(e), e, _token(e))
+
+
 def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
           grounder: Grounder | None = None, tools: ReadTools | None = None) -> Graded:
     """Parse and check one answer. Layer 2 runs only when layer 1 and the citation rules pass
@@ -727,10 +844,13 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
     grounded, general = split_general(normalise_cites(text, seen))
     g = Graded(parse(grounded), parse(general) if general else [])
     for li, ln in enumerate(g.lines):
-        for s in ln.sentences:
-            h = is_heading(s, ln)
+        for si, s in enumerate(ln.sentences):
+            h = is_heading(s, ln) or bold_title(s, ln, cited_below(g.lines, li, seen))
             check_sentence(s, seen, names, heading=h,
-                           block=block_text(g.lines, li, seen) if h else "")
+                           block=block_text(g.lines, li, seen) if h else "", tools=tools)
+            prev = (ln.sentences[si - 1] if si else
+                    _prose_tail(g.lines[li - 1]) if li and not ln.prefix else None)
+            inherit(s, prev, seen, tools)
     for s in g.general_sentences:
         s.kind = "general"
         for code, msg, d in general_reasons(s.text, names, seen):
@@ -750,9 +870,9 @@ def grade(text: str, seen: dict[str, Record], names: set[str], as_of: date,
     return g
 
 
-def block_text(lines: list[Line], at: int, seen: dict[str, Record]) -> str:
-    """The lower-case title and evidence text of every returned record cited by the lines under
-    the heading at `at`, up to the next heading. Empty when no line under it cites a record."""
+def cited_below(lines: list[Line], at: int, seen: dict[str, Record]) -> list[Record]:
+    """Every returned record cited by the lines under the line at `at`, up to the next
+    heading."""
     recs: dict[str, Record] = {}
     for ln in lines[at + 1:]:
         if len(ln.sentences) == 1 and is_heading(ln.sentences[0], ln):
@@ -760,10 +880,32 @@ def block_text(lines: list[Line], at: int, seen: dict[str, Record]) -> str:
         for s in ln.sentences:
             for c in cites_in(s.text):
                 rid = resolve(c, seen)
-                if rid is not None and rid not in PLACEHOLDER_IDS:
+                if rid is not None and not is_placeholder(rid, seen):
                     recs[rid] = seen[rid]
+    return list(recs.values())
+
+
+def _words(text: str) -> str:
+    return " ".join(WORD_RE.findall(text.lower()))
+
+
+def bold_title(s: Sentence, line: Line, below: list[Record]) -> bool:
+    """A bold line of any length that is exactly the title of a record cited under it (Q5).
+    It names that record; the record's own citations below carry its facts."""
+    if len(line.sentences) != 1 or cites_in(s.text):
+        return False
+    if not BOLD_LINE_RE.fullmatch(re.sub(r"^\s*\d{1,2}[.)]\s+", "", s.text.strip())):
+        return False
+    t = _words(norm_exempt(s.text))
+    return bool(t) and any(t == _words(str(facts(r, date.today()).get("title") or ""))
+                           for r in below)
+
+
+def block_text(lines: list[Line], at: int, seen: dict[str, Record]) -> str:
+    """The lower-case title and evidence text of every returned record cited by the lines under
+    the heading at `at`, up to the next heading. Empty when no line under it cites a record."""
     return "\n".join(f"{title_key(r)}\n{validate.evidence(r).text}".lower()
-                     for r in recs.values())
+                     for r in cited_below(lines, at, seen))
 
 
 def _join(lines: list[Line], *, drop_failed: bool) -> str:

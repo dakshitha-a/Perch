@@ -38,7 +38,7 @@ YEAR_WORDS = {"first-year": 1, "freshman": 1, "first year": 1, "sophomore": 2,
               "third year": 3, "senior": 4, "fourth-year": 4, "fourth year": 4}
 RULES = ("deadline", "level", "class_year", "graduation", "major", "gpa", "enrolment")
 UNKNOWN = ("listing_only", "nih_rules", "gpa_unstated", "residency", "citizenship", "targeted",
-           "level_unstated",
+           "level_unstated", "past_cycle_date",
            "class_year_unstated", "graduation_unstated", "major_unstated",
            "enrolment_unstated")
 GAP_ORDER = ("transcript", "essay", "interview", "fafsa", "letters", "portfolio", "gpa")
@@ -188,6 +188,33 @@ def _years(years: list[int]) -> str:
             else "years " + _and([str(y) for y in years]))
 
 
+# A Temple page's level tag, when the record has no level_of_study (S49 M2: empty on all
+# 284 Temple-page awards). "mixed" sets no rule; "faculty" records are not in the pool.
+# A professional-degree student (MD, JD) is a graduate student on these pages.
+AUDIENCE_LEVELS: dict[str, list[str]] = {"undergraduate": ["bachelor's"],
+                                         "graduate": ["graduate", "professional"]}
+TEMPLE_SOURCES = ("temple_pages", "temple_sdfa")
+# A Temple page date more than this many days old is from an earlier cycle: most of these
+# awards recur yearly, so the verdict is "may be eligible", never "not eligible" (S49 M7,
+# decided 2026-11-04). The date is still the page's own; nothing is inferred.
+PAST_CYCLE_DAYS = 31
+
+
+def study_levels(s: Scholarship) -> list[str]:
+    if s.level_of_study:
+        return list(s.level_of_study)
+    return AUDIENCE_LEVELS.get(s.audience_level or "", [])
+
+
+def past_cycle(s: Scholarship, as_of: date) -> bool:
+    return bool(s.source in TEMPLE_SOURCES and s.deadline
+                and (as_of - s.deadline).days > PAST_CYCLE_DAYS)
+
+
+def past_cycle_line(d: date) -> str:
+    return f"The page shows a past date, {_fmt(d)}. Check the page for this year's date."
+
+
 def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
     """Eligibility by rule for one record. Every value in a line is copied from the
     record or the parsed CV."""
@@ -195,13 +222,17 @@ def check(s: Scholarship, f: StudentFacts, as_of: date) -> Verdict:
     broken: list[tuple[str, str]] = []
     unknown: list[tuple[str, str]] = []
     if s.deadline and s.deadline < as_of:
-        broken.append(("deadline", f"The deadline, {_fmt(s.deadline)}, has passed."))
-    if s.level_of_study:
+        if past_cycle(s, as_of):
+            unknown.append(("past_cycle_date", past_cycle_line(s.deadline)))
+        else:
+            broken.append(("deadline", f"The deadline, {_fmt(s.deadline)}, has passed."))
+    levels = study_levels(s)
+    if levels:
         if not f.level:
             unknown.append(("level_unstated", "Your CV does not say your level of study."))
-        elif f.level not in s.level_of_study:
-            broken.append(("level", f"Open to {_levels(s.level_of_study)} students; your CV "
-                                    f"says {f.level}."))
+        elif f.level not in levels:
+            said = _levels(levels) if s.level_of_study else s.audience_level  # the record's word
+            broken.append(("level", f"Open to {said} students; your CV says {f.level}."))
     if e.class_year and f.level == "bachelor's":
         years = _years(e.class_year)
         if f.class_year is None:
@@ -381,6 +412,49 @@ class Scored:
     opp: Opportunity | None  # the NIH listing behind a fellowship, if any
     score: float
     verdict: Verdict
+    also_on: list[str] = field(default_factory=list)  # other pages listing the same award
+
+
+# Awards for staff that Temple's pages file with the student scholarships (S49 M8),
+# reviewed by hand on 2026-11-04 from the stored Temple-page records. Normalised names.
+STAFF_AWARDS = frozenset({"faculty advisor", "new advisor", "outstanding advising program award",
+                          "professional advisor", "michele o connor advising service award"})
+NOT_STUDENTS = ("faculty", "postdoc")
+
+
+def norm_name(name: str) -> str:
+    n = name.lower().replace("&", " and ")
+    n = re.sub(r"\([^)]*\)", " ", n)
+    n = re.sub(r"[^a-z0-9]+", " ", n).strip()
+    return " ".join(re.sub(r"^the ", "", n).split())
+
+
+def _filled(s: Scholarship) -> int:
+    return len(s.model_dump(exclude_defaults=True))
+
+
+def student_pool(records: list[Scholarship]) -> tuple[list[Scholarship], dict[str, list[str]]]:
+    """The records a student brief may rank, and {kept id: other pages listing it}.
+    Leaves out staff and faculty awards (M8). An award listed both on a Temple page and by
+    the fellowships office is one award: the copy with more fields is kept and the other's
+    page is listed under it (S7). A name found on one list only is left to
+    perch/temple_dedupe.py, which keeps same-list copies apart when their fields differ."""
+    pool = [s for s in records if s.audience_level not in NOT_STUDENTS
+            and norm_name(s.name) not in STAFF_AWARDS]
+    by_name: dict[str, list[Scholarship]] = {}
+    for s in pool:
+        if s.source in TEMPLE_SOURCES:
+            by_name.setdefault(norm_name(s.name), []).append(s)
+    drop: set[str] = set()
+    also: dict[str, list[str]] = {}
+    for group in by_name.values():
+        if len({s.source for s in group}) < 2:
+            continue
+        keep = max(group, key=lambda s: (_filled(s), s.source == "temple_sdfa"))
+        others = [s for s in group if s.id != keep.id]
+        drop |= {s.id for s in others}
+        also[keep.id] = [s.source_url for s in others]
+    return [s for s in pool if s.id not in drop], also
 
 
 def student_profile(facts: StudentFacts, interests: UserDoc | None, achieved: list[UserDoc],
@@ -401,7 +475,9 @@ def student_profile(facts: StudentFacts, interests: UserDoc | None, achieved: li
 
 def rank(records: list[Scholarship], profile: Profile, embedder: object, reranker: object,
          judge: callable, retrieve: int = RETRIEVE) -> list[Scored]:
-    """Cosine to the query thread, the nearest `retrieve` reranked, every one judged."""
+    """Cosine to the query thread, the nearest `retrieve` reranked, every one judged.
+    Records outside the student pool (staff awards, duplicates) are left out first."""
+    records, also = student_pool(records)
     if not records:
         return []
     texts = [record_text(s) for s in records]
@@ -409,15 +485,20 @@ def rank(records: list[Scholarship], profile: Profile, embedder: object, reranke
     sims = docs @ profile.threads[0].vector
     near = list(np.argsort(-sims)[:retrieve])
     scores = reranker.score(profile.threads[0].titles[0], [texts[i] for i in near])
-    out = [Scored(records[i], None, float(sc), judge(records[i])) for i, sc in zip(
-        near, scores, strict=True)]
+    out = [Scored(records[i], None, float(sc), judge(records[i]), also.get(records[i].id, []))
+           for i, sc in zip(near, scores, strict=True)]
     return sorted(out, key=lambda x: -x.score)
 
 
-def choose(scored: list[Scored], top: int = TOP) -> list[Scored]:
-    """The best `top` not ruled out, then the ruled-out ones among those retrieved."""
+RULED_OUT_SHOWN = 5  # S49 S10: every ruled-out record among 100 retrieved was too many
+
+
+def choose(scored: list[Scored], top: int = TOP, ruled_out: int = RULED_OUT_SHOWN
+           ) -> list[Scored]:
+    """The best `top` not ruled out, then the best `ruled_out` ruled-out ones, so the
+    student sees why."""
     ok = [x for x in scored if x.verdict.verdict != "not eligible"][:top]
-    out = [x for x in scored if x.verdict.verdict == "not eligible"]
+    out = [x for x in scored if x.verdict.verdict == "not eligible"][:ruled_out]
     return ok + out
 
 
@@ -434,7 +515,8 @@ def to_leads(brief_id: str, route: str, chosen: list[Scored], facts: StudentFact
             rank=i, rerank_score=round(x.score, 4), match_score=match_score(x.score),
             verdict=v.verdict,
             verdict_reason=v.reason, verdict_lines=v.lines, gaps=[t for _, t in g],
-            gap_keys=[k for k, _ in g], sample=s.synthetic))
+            gap_keys=[k for k, _ in g], sample=s.synthetic,
+            notes=[f"Also listed on {u}" for u in x.also_on]))
     return leads
 
 

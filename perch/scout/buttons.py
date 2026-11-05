@@ -47,7 +47,8 @@ def _leads(data: ScoutData) -> list[tuple[Lead, Record]]:
 
     tools = ReadTools(data)
     out = []
-    for x in sorted((x for x in leads if x.status != "dismissed" and x.route != "B"),
+    for x in sorted((x for x in leads if x.status != "dismissed" and x.route != "B"
+                     and x.group is None),
                     key=lambda x: x.rank or 0):
         rec = tools._get(x.record_id)  # noqa: SLF001 - the same public-record lookup
         if rec is not None:

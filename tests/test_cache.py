@@ -125,7 +125,7 @@ def test_prompt_text_changes_need_a_version_bump():
 
     seen = {"fit": (fit.PROMPT_VERSION, h(fit.INSTRUCTIONS, fit.SCHEMA)),
             "summary": (summary.PROMPT_VERSION, h(summary.SYSTEM, summary.SCHEMA))}
-    assert seen == {"fit": ("fit-1", "41219072572e"), "summary": ("summary-1", "20e6e9da50ed")}
+    assert seen == {"fit": ("fit-2", "6063c1bed812"), "summary": ("summary-1", "20e6e9da50ed")}
 
 
 # --- Anthropic prompt cache prefixes ---

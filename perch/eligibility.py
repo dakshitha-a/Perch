@@ -115,11 +115,27 @@ class Constraints:
     check_dates: bool = True  # the back-test sets False and applies its own time window
 
 
+# A posted call with no close date that says it takes proposals at any time is open (S49
+# M1, decided 2026-11-04). It is kept only with a posted date in the last ten years, so a
+# listing left up long after its programme ended (Ocean Drilling, posted 2014) stays out.
+# The card shows the record's own words as the deadline.
+ANYTIME_RE = re.compile(
+    r"\b(?:proposals|applications)\s+(?:are\s+)?accepted\s+(?:at\s+)?any\s?time\b"
+    r"|\b(?:remains\s+)?open until superseded\b", re.IGNORECASE)
+ANYTIME_MAX_AGE_DAYS = 3653
+
+
+def open_anytime(o: Opportunity, as_of: date) -> bool:
+    return (o.close_date is None and o.status == "posted" and o.open_date is not None
+            and 0 <= (as_of - o.open_date).days <= ANYTIME_MAX_AGE_DAYS
+            and bool(ANYTIME_RE.search(o.close_date_note or "")))
+
+
 def date_reasons(o: Opportunity, as_of: date) -> list[str]:
     reasons = []
     if o.open_date and o.open_date > as_of:
         reasons.append(f"opens {o.open_date.isoformat()}, after {as_of.isoformat()}")
-    if o.close_date is None and o.status != "forecasted":
+    if o.close_date is None and o.status != "forecasted" and not open_anytime(o, as_of):
         reasons.append("no close date in the record")
     elif o.close_date and o.close_date < as_of:
         reasons.append(f"closed {o.close_date.isoformat()}")
@@ -174,6 +190,81 @@ def check(o: Opportunity, c: Constraints) -> list[str]:
     if any(agency_matches(agency_text(o), a) for a in c.exclude_agencies):
         reasons.append(f"agency {o.agency} excluded by the user")
     return reasons
+
+
+# --- Temple internal funding (S49 M9, decided 2026-11-04) ---
+#
+# Temple's own faculty funding pages (source temple_pages) name no Grants.gov applicant type:
+# the applicant is a Temple researcher by definition. They get their own rules and their own
+# group in the brief, never mixed with the federal leads. A page date more than a month old is
+# from an earlier cycle: the lead stays, with a code-written line, and the date is the page's.
+TEMPLE_INTERNAL_SOURCE = "temple_pages"
+TEMPLE_INTERNAL_AUDIENCES = (None, "faculty", "postdoc", "mixed")
+PAST_CYCLE_DAYS = 31
+
+
+def past_cycle_line(d: date) -> str:
+    from perch.datefmt import day
+
+    return f"The page shows a past date, {day(d)}. Check the page for this year's date."
+
+
+def check_temple_internal(o: Opportunity, c: Constraints) -> tuple[list[str], list[str]]:
+    """(reasons it is left out, code-written notes) for one Temple internal opportunity."""
+    reasons: list[str] = []
+    notes: list[str] = []
+    if o.source != TEMPLE_INTERNAL_SOURCE:
+        return ["not a Temple internal funding page"], []
+    if o.audience_level not in TEMPLE_INTERNAL_AUDIENCES:
+        reasons.append(f"the page lists it for {o.audience_level} students, not researchers")
+    if c.check_dates and o.close_date and o.close_date < c.as_of:
+        if (c.as_of - o.close_date).days > PAST_CYCLE_DAYS:
+            notes.append(past_cycle_line(o.close_date))
+        else:
+            reasons.append(f"closed {o.close_date.isoformat()}")
+    if c.min_amount is not None and o.award_ceiling is not None and o.award_ceiling < c.min_amount:
+        reasons.append(f"award ceiling {o.award_ceiling:,.0f} is below {c.min_amount:,.0f}")
+    text = f"{o.title} {o.description or ''}".lower()
+    hit = [k for k in c.exclude_keywords if k.lower() in text]
+    if hit:
+        reasons.append(f"mentions excluded keyword {hit[0]!r}")
+    return reasons, notes
+
+
+# --- what a brief hid, and why (S49 F2) ---
+#
+# Every reason `check` writes falls in one of these groups, matched in this order. The counts
+# are of records, each in the group of its first reason, so they add up to the hidden total.
+HIDDEN_GROUPS: tuple[tuple[str, str, str], ...] = (
+    ("closed", "closed or no close date", r"^closed |no close date|^opens "),
+    ("forecast", "forecast, not open yet", r"^forecasted"),
+    ("applicant", "not open to universities", r"applicant types|higher education are not"),
+    ("small_business", "for small businesses", r"SBIR/STTR"),
+    ("career_stage", "limited by career stage", r"career stage|fellowship \(students|"
+     r"postdoctoral transition|dissertation award"),
+    ("restricted", "limited to named applicants, institutions or states",
+     r"limited competition|undergraduate-focused|EPSCoR"),
+    ("your_filters", "outside your filters", r"^closes |award ceiling|keyword"
+     r"|activity code .* (?:excluded|not in)|agency .* (?:not in|excluded)"),
+)
+
+
+def hidden_counts(rejected: dict[str, list[str]]) -> list[dict[str, object]]:
+    """[{key, label, count, record_ids}] for each group with at least one record, in
+    HIDDEN_GROUPS order, then "other" for any reason no group names. Written by code from the
+    reasons `check` gave; nothing here is a model's."""
+    ids: dict[str, list[str]] = {}
+    for rid, reasons in rejected.items():
+        key = "other"
+        for k, _, rx in HIDDEN_GROUPS:
+            if any(re.search(rx, r) for r in reasons):
+                key = k
+                break
+        ids.setdefault(key, []).append(rid)
+    labels = {k: label for k, label, _ in HIDDEN_GROUPS} | {"other": "other reasons"}
+    order = [k for k, _, _ in HIDDEN_GROUPS] + ["other"]
+    return [{"key": k, "label": labels[k], "count": len(ids[k]), "record_ids": ids[k]}
+            for k in order if k in ids]
 
 
 def split(opps: list[Opportunity], c: Constraints

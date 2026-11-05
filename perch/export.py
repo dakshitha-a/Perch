@@ -261,14 +261,15 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
 
     shown = [x for x in leads if x.status != "dismissed"]
     gone = [x for x in leads if x.status == "dismissed"]
-    a = [x for x in shown if x.route == "A" and x.record_id in opps]
+    a = [x for x in shown if x.route == "A" and x.group is None and x.record_id in opps]
+    temple = [x for x in shown if x.group == "temple_internal" and x.record_id in opps]
     b = [x for x in shown if x.route == "B"]
     out.append(Block("h2", f"Grants ({len(a)})"))
     out.append(Block("note", SUBMISSION_NOTE))
     out.append(Block("link", "Find your research administrator", href=SUBMISSION_URL))
     if not a:
         out.append(Block("p", "No open opportunity passed the eligibility check."))
-    if n := sum(x.route == "A" for x in gone):  # numbered 1 to n, with no gaps (Q11)
+    if n := sum(x.route == "A" and x.group is None for x in gone):  # 1 to n, no gaps (Q11)
         out.append(Block("p", f"{n} dismissed {'lead is' if n == 1 else 'leads are'} left out."))
     for i, x in enumerate(a, 1):
         o = opps[x.record_id]
@@ -301,6 +302,21 @@ def blocks(brief: Brief, researcher: Researcher | None, leads: list[Lead],
         if desc := excerpt(o.description):
             out.append(Block("p", f"From the record: {desc}"))
         out.append(Block("link", f"Record: Grants.gov {o.opportunity_number}", href=o.source_url))
+
+    # Temple's own faculty funding, its own section, never numbered with the grants (S49 M9).
+    if temple:
+        out.append(Block("h2", f"Temple internal funding ({len(temple)})"))
+        for x in temple:
+            o = opps[x.record_id]
+            mark = ", kept" if x.status == "kept" else ""
+            out.append(Block("h3", f"{o.title}{mark}"))
+            when = (datefmt.closes(o, date.fromisoformat(as_of)) if o.close_date
+                    else (f"the page says: {o.deadline_quote}" if o.deadline_quote else None))
+            facts = [f"Listed by: {o.page_owner or o.agency}",
+                     f"Closes: {when or 'Not on the page'}",
+                     *(_note_line(n) for n in x.notes)]
+            out.append(Block("list", items=facts))
+            out.append(Block("link", "Record: Temple page", href=o.source_url))
 
     # A brief with no public papers has no industry search: no empty section (R18).
     skipped = any(s.name == "route_b" and s.status == "skipped" for s in brief.stages)

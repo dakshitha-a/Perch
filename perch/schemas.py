@@ -248,6 +248,9 @@ class Lead(Record):
     gaps: list[str] = Field(default_factory=list, description="Requirements the CV lacks")
     gap_keys: list[str] = Field(default_factory=list)
     sample: bool = Field(default=False, description="Points at a SYNTHETIC sample record")
+    group: Literal["temple_internal"] | None = Field(
+        default=None, description="None: the route's own list. 'temple_internal': Temple's own "
+        "faculty funding, shown as its own group, never in the federal list (S49 M9)")
 
 
 class Stage(BaseModel):
@@ -279,6 +282,9 @@ class Brief(Record):
     topics: list[str] = Field(default_factory=list)
     summary: str | None = None
     timings_ms: dict[str, float] = Field(default_factory=dict)
+    hidden: list[dict] = Field(
+        default_factory=list, description="Grant records the rules left out, by group: "
+        "[{key, label, count}], written by code (perch/eligibility.py hidden_counts, S49 F2)")
 
 
 class Change(BaseModel):
