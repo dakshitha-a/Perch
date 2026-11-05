@@ -129,7 +129,7 @@ function route() {
     return;
   }
   const rt = { api, go, goReplace, announce, session: () => S.session, refresh: refreshSession,
-    signIn: signInHref, flash, openEvidence: (rec, opener) => openRecord(rec, opener), closeEvidence };
+    signIn: signInHref, flash, openEvidence: (rec, opener) => openEvidence(rec && rec.id ? rec.id : rec, opener), closeEvidence };
   if (parts[0] === "welcome") {
     leaveBrief();
     screen("form");
