@@ -15,6 +15,7 @@ import re
 from collections.abc import Callable
 from datetime import date
 
+from perch.citizenship import without_picks
 from perch.compare import lower_first
 from perch.datefmt import (
     amount_text,
@@ -90,9 +91,10 @@ def _row(ctx: ScoutContext, lead: Lead) -> dict:
     out = {"id": ctx.see(rec) if rec else lead.record_id, "title": facts.pop("title"),
            "route": ROUTES[lead.route], **facts, "verdict": lead.verdict,
            "kept": lead.status == "kept"}
-    if lead.verdict != "eligible" and lead.verdict_lines:  # F6: the rule's reason, by code
-        out["why"] = lead.verdict_lines[:2]
-        ctx.facts[out["id"]] = [*lead.verdict_lines, *lead.gaps]
+    lines = without_picks(lead.verdict_lines)  # S53: never the user's own pick
+    if lead.verdict != "eligible" and lines:  # F6: the rule's reason, by code
+        out["why"] = lines[:2]
+        ctx.facts[out["id"]] = [*lines, *lead.gaps]
     if lead.sample:
         out["sample"] = True
         out["note"] = "SAMPLE record from a test corpus; not a real scholarship"
@@ -278,13 +280,14 @@ SAMPLE_HEADING = re.compile(r"^\W*sample scholarships", re.I | re.M)
 
 def _facts(ctx: ScoutContext, row: dict, x: Lead) -> dict:
     """The option's rule lines and gaps, written by code, may back an answer's numbers."""
-    ctx.facts[row["id"]] = [*x.verdict_lines, *x.gaps]
+    ctx.facts[row["id"]] = [*without_picks(x.verdict_lines), *x.gaps]
     return row
 
 
 def check_option(ctx: ScoutContext, option_id: str) -> dict:
     x = _find(ctx, option_id)
-    return {**_facts(ctx, _row(ctx, x), x), "rule_lines": x.verdict_lines, "still_needed": x.gaps,
+    return {**_facts(ctx, _row(ctx, x), x), "rule_lines": without_picks(x.verdict_lines),
+            "still_needed": x.gaps,
             "note": "Checked by rule code against the fields read from the CV; no model "
             "made this check."}
 
@@ -304,7 +307,8 @@ def explain_verdict(ctx: ScoutContext, option_id: str) -> dict:
             "listing_notes": e.notes if e else None}.items() if v not in (None, "")}
     elif isinstance(rec, Opportunity) and rec.eligibility_notes:
         asks = {"eligibility_notes": rec.eligibility_notes[:800]}
-    return {**_facts(ctx, _row(ctx, x), x), "why": x.verdict_lines, "still_needed": x.gaps,
+    return {**_facts(ctx, _row(ctx, x), x), "why": without_picks(x.verdict_lines),
+            "still_needed": x.gaps,
             "what_the_record_asks": asks,
             "note": "The verdict comes from rule code; the asks are copied from the record."}
 
@@ -420,7 +424,7 @@ def cover_points(ctx: ScoutContext, record_id: str) -> dict:
     others += achievement_docs(inp.entries)
     s = ctx.service
     provider = ctx.handoff or s._audited("handoff", s.models.handoff_spec)
-    lines = [*x.verdict_lines, *x.gaps]
+    lines = [*without_picks(x.verdict_lines), *x.gaps]
     v, records = points_for(o, cv, others, [], [], provider, grounder=s.models.get("grounder"),
                             context=lines, audience="student")
     out = cover_result(ctx, rec, facts_of(rec)["title"], o.opportunity_number, v, records,

@@ -213,6 +213,9 @@ export function liveApi(base = "") {
     linkOpenAlex: (authorId) => p("/me/openalex", { method: "PUT", body: JSON.stringify({ author_id: authorId }) }),
     docs: (side = null) => p(`/me/docs${query({ audience: side })}`),
     addDoc: (body, side = null) => post(`/me/docs${query({ audience: side })}`, body),
+    // The optional citizenship and state picks (S53), one stored row per side.
+    profile: (side = null) => p(`/me/profile${query({ audience: side })}`),
+    saveProfile: (body, side = null) => p(`/me/profile${query({ audience: side })}`, { method: "PUT", body: JSON.stringify(body) }),
     removeDoc: (id) => p(`/me/docs/${encodeURIComponent(id)}`, { method: "DELETE" }),
     myBriefs: (side = null) => p(`/me/briefs${query({ audience: side })}`),
     // The saved list (S49): saved awards and kept leads together, in the server's order.

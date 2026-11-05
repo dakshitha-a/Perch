@@ -4,6 +4,7 @@
 
 import { evMark, fill, h, icon } from "./dom.js";
 import { owl } from "./owl.js";
+import { profilePicks } from "./profile_picks.js";
 import * as f from "./format.js";
 
 const needSignIn = (ctx, what) => h("div", { class: "screen" },
@@ -108,6 +109,28 @@ export async function renderAccount(root, ctx) {
   const roles = (sess.roles || []).filter((r) => r === "student" || r === "researcher");
   const docsEl = h("div", { class: "doc-list", "aria-busy": "true" }, h("div", { class: "shimmer-card" }));
   let docs = [], docError = null;
+  // S53: the optional picks, one block per side the account uses. Saving with both blank
+  // removes the stored row.
+  const picksEl = h("div", { class: "picks-list" });
+  async function loadPicks() {
+    for (const side of roles) {
+      const value = { citizenship: null, residency_state: null };
+      let err = null;
+      try { Object.assign(value, await ctx.api.profile(side)); } catch (e) { err = e; }
+      const status = h("p", { class: "hint", role: "status" });
+      const save = h("button", { class: "btn", type: "button", "data-key": `picks-save-${side}`, text: "Save", onclick: async () => {
+        try {
+          await ctx.api.saveProfile({ citizenship: value.citizenship || null, residency_state: value.residency_state || null }, side);
+          status.textContent = value.citizenship || value.residency_state ? "Saved." : "Nothing is stored.";
+          ctx.announce(status.textContent);
+        } catch (e) { status.textContent = e.code === "consent_required" || e.status === 403 ? "Agree to the consent first." : e.message; }
+      } });
+      picksEl.append(h("div", { class: "picks-side" },
+        roles.length > 1 ? h("h3", { class: "mini", text: sideWord(side) }) : null,
+        err ? h("p", { class: "notice warn" }, icon("warn"), h("span", { text: `These could not be loaded. ${err.message}` }))
+          : [profilePicks({ prefix: `acct-${side}`, value }), save, status]));
+    }
+  }
 
   const sideWord = (s) => (s === "student" ? "Student" : "Researcher");
   async function loadDocs() {
@@ -212,6 +235,8 @@ export async function renderAccount(root, ctx) {
               onclick: () => wdDlg.showModal() }, h("span", { text: "Withdraw consent…" })))) : null),
     h("section", { class: "box", "aria-labelledby": "docs-h" },
       h("h2", { class: "section-title", id: "docs-h", tabindex: "-1", text: "Your documents" }), docsEl),
+    h("section", { class: "box", "aria-labelledby": "picks-h" },
+      h("h2", { class: "section-title", id: "picks-h", text: "Citizenship and state (optional)" }), picksEl),
     h("section", { class: "box danger-zone", "aria-labelledby": "del-h" },
       h("h2", { class: "section-title", id: "del-h", text: "Delete my data" }),
       h("p", { text: "Delete your CV and entries, your briefs, your saved awards and leads, your hand-off drafts and cover points, and your account. Perch also deletes your data after 12 months without use." }),
@@ -219,6 +244,7 @@ export async function renderAccount(root, ctx) {
     dlg, wdDlg));
   document.getElementById("acct-title").focus({ preventScroll: true });
   await loadDocs();
+  await loadPicks();
 }
 
 // ---------- My Perch: the signed-in home ----------

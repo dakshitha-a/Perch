@@ -25,6 +25,7 @@ import redis
 from psycopg_pool import ConnectionPool
 
 from perch import jobs, redisx
+from perch.citizenship import without_picks
 from perch.jobs import JobContext, PermanentError, register
 from perch.llm import Provider, spec_for_role
 from perch.llm.audit import AuditedProvider
@@ -247,7 +248,8 @@ def cover_points_handler(ctx: JobContext) -> str | None:
     try:
         v, records = cover_points(o, cv, others, papers, [], provider,
                                   grounder=service.models.get("grounder"),
-                                  context=[*lead.verdict_lines, *lead.gaps], audience=audience)
+                                  context=[*without_picks(lead.verdict_lines), *lead.gaps],
+                                  audience=audience)
     except redisx.QuotaExceeded:
         raise PermanentError("budget_exceeded") from None
     except TurnCancelled:

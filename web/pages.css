@@ -137,3 +137,13 @@ ul.award-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0
 /* S51 W30: air above the My Perch heading; W17: the wide fact reads as a plain sentence. */
 .my-perch .title-row { padding-top: 24px; }
 .fact-wide dd { font-weight: 400; }
+
+/* S53: the optional citizenship and state picks, the same on every screen that shows them. */
+.profile-picks { border: 1px solid var(--line, currentColor); border-radius: 8px; padding: 12px 16px; margin: 0; display: grid; gap: 12px; }
+.profile-picks legend { padding: 0 6px; font-weight: 600; }
+.profile-picks .pick { display: grid; gap: 4px; }
+.profile-picks .pick label { font-weight: 600; }
+.profile-picks select { max-width: 24rem; }
+.profile-picks .hint { margin: 0; }
+.picks-side + .picks-side { margin-top: 16px; }
+.pick-source { white-space: nowrap; }

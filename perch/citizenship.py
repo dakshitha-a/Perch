@@ -239,3 +239,13 @@ def opportunity_sources(o) -> list[tuple[str, str | None]]:  # noqa: ANN001 - an
 
 __all__ = ["CITIZENSHIP_LABELS", "CITIZENSHIP_VALUES", "STATES", "STATE_CODES", "Outcome", "Rule",
            "judge", "rules_in", "stated"]
+
+
+# A line the pick comparison wrote. It names the user's answer, or shows that one was given,
+# so no model-facing path (Scout tools, cover points) may carry it (standing rule 5).
+_PICK_LINE = re.compile(r"You entered:|The sample student entered:|^Perch read this listing's "
+                        r"eligibility text|^This listing has no eligibility text for Perch")
+
+
+def without_picks(lines: list[str] | None) -> list[str]:
+    return [x for x in (lines or []) if not _PICK_LINE.search(x)]

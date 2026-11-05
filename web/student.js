@@ -8,6 +8,7 @@ import { coverBlock, coverListLine } from "./cover.js";
 import { copy, mailto } from "./handoff.js";
 import * as f from "./format.js";
 import { SAMPLE_STUDENT as SAMPLE_TEXT } from "./sample_student.js";
+import { profilePicks } from "./profile_picks.js";
 
 // The sample tab holds fellowships and prizes as well as scholarships (S22, audit S9).
 export const STUDENT_ROUTES = { F: "Temple awards and fellowships (public)", S: "Scholarships and awards (sample)" };
@@ -24,18 +25,27 @@ export function verdictChip(v) {
 
 // The rule lines of a card: the server's `checks` when it sends them, else `verdict_lines`.
 // Order: fail, unknown, pass; the server's order holds inside each group. The text is shown as it came.
-const OUTCOME = { fail: ["✕", "Not met: "], unknown: ["?", "Not known: "], pass: ["✓", "Met: "] };
+const OUTCOME = { fail: ["✕", "Not met: "], unknown: ["?", "Not known: "], pass: ["✓", "Met: "], lower: ["↓", "Moved lower: "] };
+const PICK_RULES = new Set(["citizenship", "residency"]);
 const OUT_ORDER = ["fail", "unknown", "pass"];
 export function ruleItems(l) {
+  // S53: a rule found in the listing's own words, and where it was found: the note says so in
+  // plain words; the link opens the record's page.
+  const src = l.citizenship_rule && l.citizenship_rule.quote ? l.citizenship_rule.source_url : null;
   const items = Array.isArray(l.checks) && l.checks.length
-    ? l.checks.map((c) => ({ rule: c.rule, outcome: OUTCOME[c.outcome] ? c.outcome : "unknown", text: String(c.text || "") }))
+    ? l.checks.map((c) => {
+      const pick = PICK_RULES.has(c.rule) && /listing asks for/.test(c.text || "");
+      const lower = Boolean(l.demoted) && pick && c.outcome === "unknown";
+      return { rule: c.rule, outcome: OUTCOME[c.outcome] ? c.outcome : "unknown", text: String(c.text || ""), lower, url: pick ? src : null };
+    })
     : (l.verdict_lines || []).map((text) => ({ rule: null, text,
       outcome: text === "Meets every rule Perch checks." ? "pass" : l.verdict === "not eligible" ? "fail" : "unknown" }));
   return OUT_ORDER.flatMap((o) => items.filter((x) => x.outcome === o && x.text));
 }
-const checkItem = (c) => h("li", { class: "check", "data-outcome": c.outcome, ...(c.rule ? { "data-rule": c.rule } : {}) },
-  h("span", { class: "check-mk", "aria-hidden": "true", text: OUTCOME[c.outcome][0] }),
-  h("span", { class: "sr-only", text: OUTCOME[c.outcome][1] }), h("span", { text: c.text }));
+const checkItem = (c) => h("li", { class: "check", "data-outcome": c.outcome, ...(c.rule ? { "data-rule": c.rule } : {}), ...(c.lower ? { "data-lower": "1" } : {}) },
+  h("span", { class: "check-mk", "aria-hidden": "true", text: OUTCOME[c.lower ? "lower" : c.outcome][0] }),
+  h("span", { class: "sr-only", text: OUTCOME[c.lower ? "lower" : c.outcome][1] }), h("span", { text: c.text }),
+  c.url ? [" ", h("a", { class: "pick-source", href: c.url, target: "_blank", rel: "noopener noreferrer", text: "Source page" })] : null);
 // Lines every card repeats are said once above the list, so a card leaves them out.
 function rulesBlock(l, skip, noDeadline = false) {
   // S51 W16: a card whose facts already say there is no deadline does not repeat it as a check.
@@ -73,6 +83,7 @@ export function withCanary(key, text) {
 }
 
 const D = { busy: false, error: null };
+const PICKS = { draft: null };  // the picks typed on the start screen and not saved yet (S53)
 // The brief on screen is the guest's invented sample student (options.persona); the wording
 // then says "the sample student" instead of "you" (S43 S8).
 let SAMPLE_STUDENT = false;
@@ -161,6 +172,11 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
   }
   const cv = docs.find((d) => d.kind === "cv");
   const ready = Boolean(cv);
+  // S53: the optional picks. A draft the user has not saved yet survives a redraw.
+  let stored = { citizenship: null, residency_state: null };
+  try { stored = await api.profile("student"); } catch { /* the form still works without it */ }
+  const picks = PICKS.draft || { citizenship: stored.citizenship || null, residency_state: stored.residency_state || null };
+  const picksDirty = () => (picks.citizenship || null) !== (stored.citizenship || null) || (picks.residency_state || null) !== (stored.residency_state || null);
   const provider = (sess.consent && sess.consent.provider_name) || "the model provider";
   const field = { text: "", label: "", interests: "" };
 
@@ -185,6 +201,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
   // The boxes that hold text no press has saved yet: the CV (when none is stored), interests, an achievement.
   const val = (sel, key) => { const el = root.querySelector(sel); return el ? (key ? withCanary(key, el.value) : el.value.trim()) : ""; };
   const unsaved = () => [
+    picksDirty() ? ["picks", picks] : null,
     !cv && val("#cv-text") ? ["cv", { text: val("#cv-text", "cv"), filename: "cv.txt" }] : null,
     val("#st-interests") ? ["interests", { text: val("#st-interests", "interests") }] : null,
     val("#st-ach") ? ["entry", { text: val("#st-ach", "achievement"), label: "Achievement" }] : null,
@@ -214,7 +231,10 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
     b.disabled = true; b.querySelector("span").textContent = "Working";
     try {
       const fresh = unsaved();
-      for (const [kind, body] of fresh) await api.addDoc({ kind, ...body }, "student");
+      for (const [kind, body] of fresh) {
+        if (kind === "picks") { await api.saveProfile({ citizenship: body.citizenship, residency_state: body.residency_state }, "student"); stored = { ...body }; PICKS.draft = null; }
+        else await api.addDoc({ kind, ...body }, "student");
+      }
       if (fresh.length) { try { docs = await api.docs("student"); } catch { /* the ids below stay as they were */ } }
       if (sess.audience !== "student") {  // a dual-role account: the brief is built on the side it is on
         await api.setAudience("student");
@@ -267,6 +287,8 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
       h("textarea", { id: "st-ach", rows: 3, maxlength: 4000 }),
       h("button", { class: "btn", type: "button", disabled: D.busy, onclick: () => { const t = withCanary("achievement", root.querySelector("#st-ach").value); if (t) add("entry", { text: t, label: "Achievement" }); } },
         h("span", { text: "Add achievement" }))),
+    h("section", { class: "box", "aria-label": "Optional citizenship and state" },
+      profilePicks({ prefix: "st-pick", value: picks, onchange: () => { PICKS.draft = picks; syncBuild(); } })),
     D.error ? h("p", { class: "notice error go-error", id: "st-error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null,
     h("div", { class: "welcome-go" },
       h("button", { class: "btn primary big", type: "button", "data-key": "st-build", disabled: !ready || D.busy, onclick: build },
@@ -283,6 +305,9 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
   function clearTag() { const s = slot("sample-slot"); if (s) s.replaceChildren(); }
   function fillSample() {
     for (const [el, text] of boxes()) if (el) el.value = noCanary(text);
+    // The invented student ticks "international" (S53).
+    picks.citizenship = "international"; PICKS.draft = picks;
+    const ps = root.querySelector("#st-pick-citizenship"); if (ps) ps.value = "international";
     field.text = noCanary(SAMPLE_TEXT.cv);
     const s = slot("sample-slot");
     if (s) s.replaceChildren(h("span", { class: "tag sample", text: "SYNTHETIC example" }));
@@ -314,6 +339,12 @@ function cutAtWord(text, n) {
 // Values the rules write ("graduate", "full-time") start with a capital; what the CV said does not change (U49).
 const CODE_WRITTEN = new Set(["Level of study", "Enrollment"]);
 
+// "N of M listings here state a rule Perch can read." from the brief's own count (S53).
+function ruleCount(d) {
+  const c = d && d.citizenship_rules;
+  return c && c.total ? ` ${c.stated} of ${c.total} listings here state a rule Perch can read.` : "";
+}
+
 export function studentProfile(d, { openEvidence }) {
   const rows = d.student || [];
   const mine = Object.entries(d.papers || {}).filter(([id, w]) => w.source === "user" || w.kind === "user");
@@ -343,7 +374,7 @@ export function studentProfile(d, { openEvidence }) {
       h("h3", { class: "mini", text: "Your achievements" }),
       achievements.length ? h("ul", { class: "papers" }, achievements.map(ref)) : h("p", { class: "hint", text: "None added." }),
       h("p", { class: "hint", text: "Explanations may cite these." }))),
-    h("p", { class: "notice", style: "flex: 1 1 100%" }, icon("lock"), h("span", { text: "Perch never asks about residency, citizenship or other personal criteria. When a listing has one, it is quoted on the card for you to judge." })))];
+    h("p", { class: "notice", style: "flex: 1 1 100%" }, icon("lock"), h("span", { text: "Perch asks about citizenship and state only if you choose to answer. It compares your answer with a listing's own words. A listing that asks for something else moves lower. It is never hidden." + ruleCount(d) })))];
 }
 
 // ----- routes -----
@@ -358,7 +389,9 @@ function sortLeads(leads) {
   // S51 re-check D6: a listing that gives only an award's name says nothing a student can act on,
   // so in the default order it follows the listings that do (its Match is unchanged).
   const thin = (l) => ((l.notes || []).some((n) => String(n).includes("gives only the award")) ? 1 : 0);
-  return out.sort((a, b) => thin(a) - thin(b) || (b.match_score ?? -1) - (a.match_score ?? -1) || a.rank - b.rank);
+  // S53: a listing whose own citizenship or state rule the pick does not meet follows the others.
+  const low = (l) => (l.demoted ? 1 : 0);
+  return out.sort((a, b) => low(a) - low(b) || thin(a) - thin(b) || (b.match_score ?? -1) - (a.match_score ?? -1) || a.rank - b.rank);
 }
 
 function sortPick(redraw) {
