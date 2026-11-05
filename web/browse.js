@@ -334,9 +334,10 @@ export async function renderList(root, ctx) {
     h("div", { class: "title-row" },
       h("div", {}, h("h1", { class: "page", id: "list-title", tabindex: "-1", text: word.title }), countEl)),
     barEl,
+    // The link is the sentence's own first words, so it reads once and sits inside the text (S49 QA).
     signedIn ? null : h("p", { class: "hint keep-line" }, icon("keep"),
-      h("span", { text: `Sign in to keep ${word.keepNoun}. What you keep, with its date, collects on My Perch. ` }),
-      h("a", { href: ctx.signIn ? ctx.signIn() : "#/", text: "Sign in" })),
+      h("span", {}, h("a", { href: ctx.signIn ? ctx.signIn() : "#/", text: "Sign in" }),
+        ` to keep ${word.keepNoun}. What you keep, with its date, collects on My Perch.`)),
     groupsEl,
     h("p", { class: "samples-link" }, h("a", { href: `#/samples/${aud}`, text: "See how Perch works with sample records" })));
   fill(root, page);

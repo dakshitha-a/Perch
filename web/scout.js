@@ -288,8 +288,8 @@ const POINTS_HINT = "Perch never sends this, and it never enters an export or a 
 // `short`: the cover points on a lead card put "Cover-letter points" in the summary; the record
 // is the card's own title there. Scout's call keeps the long heading (U15).
 export function pointsBlock(p, ctx, { short = false } = {}) {
-  const title = p.for.title || p.for.id;
-  const cite = (id) => pointCite(id, p, ctx);
+  const title = p.for.title || "Untitled opportunity";
+  const cite = (id) => pointCite(id, p, ctx, short);
   const text = pointsText(p);
   const flagged = new Set(p.unsupported || []);
   return h("details", { class: "scout-points", open: true },
@@ -326,15 +326,25 @@ function pointsText(p) {
   for (const m of p.missing || []) lines.push(`Still missing: ${m}`);
   const used = [...new Set(p.points.flatMap((pt) => [...pt.asks_ids, ...pt.you_ids]))];
   lines.push(`Each point cites: ${used.map((id) => `${id}: ${(p.sources || {})[id] || id}`).join("; ")}`);
-  return `Points for your cover letter: ${p.for.title || p.for.id}${p.for.sample ? " (sample data)" : ""}\n\n${lines.join("\n")}`;
+  return `Points for your cover letter: ${p.for.title || "Untitled opportunity"}${p.for.sample ? " (sample data)" : ""}\n\n${lines.join("\n")}`;
 }
 
 // A citation chip for a point, labelled by the source's title (the id is the tooltip).
 // The user's own document ("user:interests") shows a lock and opens nothing; a public record opens
 // in the evidence panel, as the answer's citations do.
-function pointCite(id, p, ctx) {
-  const full = (p.sources || {})[id] || id;
-  const short = full.length > 56 ? `${full.slice(0, 54).replace(/\s+\S*$/, "")}…` : full;
+// The label is never a bare record id (S49): without a title in `sources`, the card's own record
+// reads by its title and any other record as the brief names it.
+function sourceTitle(id, p, ctx) {
+  const known = ctx.label ? ctx.label(id) : null;
+  return (p.sources || {})[id] || (id === p.for.id && p.for.title) || (known && (known.full || known.name))
+    || (id.startsWith("user:") ? "Your document" : "The record");
+}
+
+// On a lead card (`onCard`) the card's own record is the title just above, so its chip reads "Evidence".
+function pointCite(id, p, ctx, onCard = false) {
+  const full = sourceTitle(id, p, ctx);
+  const short = onCard && id === p.for.id ? "Evidence"
+    : full.length > 56 ? `${full.slice(0, 54).replace(/\s+\S*$/, "")}…` : full;
   if (id.startsWith("user:")) {
     return h("span", { class: "cite own", title: id }, icon("lock"), h("span", { text: short }),
       h("span", { class: "sr-only", text: `, from ${full}, your own document` }));

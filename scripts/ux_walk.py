@@ -74,6 +74,13 @@ PROBE = """() => {
     // tall, which meets WCAG 2.2's 24 px minimum); both are counted in `under24` only if smaller
     const inline = el.classList.contains('cite') || (el.tagName === 'A' && !el.classList.contains('btn') && getComputedStyle(el).display === 'inline')
       || el.classList.contains('linkish') || el.classList.contains('title-btn');
+    // WCAG 2.5.8's inline exception: a link or citation chip inside a sentence is exempt outright when its
+    // block holds other words; a standalone inline link (nothing else in its block) still needs 24 px (S49 QA)
+    let blk = el.parentElement;
+    while (blk && ['inline', 'inline-block', 'inline-flex', 'contents'].includes(getComputedStyle(blk).display)) blk = blk.parentElement;
+    const words = blk ? blk.textContent.replace(el.textContent, '').replace(/[^A-Za-z0-9]/g, '').length : 0;
+    const inSentence = !el.classList.contains('title-btn') && !el.classList.contains('linkish') && words >= 3;
+    if (inline && inSentence) continue;
     if (inline) { if (r.height < 24 && !el.classList.contains('linkish')) small.push({ el: name(el), w: Math.round(r.width), h: Math.round(r.height), under24: true }); continue; }
     if (r.width < 44 || r.height < 44) small.push({ el: name(el) || name(box), w: Math.round(r.width), h: Math.round(r.height) });
   }
@@ -86,7 +93,10 @@ AXE = """async () => { const r = await axe.run(document, { runOnly: ['wcag2a', '
     targets: v.nodes.slice(0, 3).map(x => x.target.join(' ')) })); }"""
 TAGS = """() => { const row = document.querySelector('.tag-row'); if (!row) return null;
   const chips = [...row.querySelectorAll('.tag-chip')];
+  const rr = row.getBoundingClientRect();
   return { sw: row.scrollWidth, cw: row.clientWidth, ox: getComputedStyle(row).overflowX,
+    lines: new Set(chips.map(c => Math.round(c.getBoundingClientRect().top))).size,
+    outside: chips.filter(c => { const r = c.getBoundingClientRect(); return r.left < rr.left - 1 || r.right > rr.right + 1; }).length,
     pageOver: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     chips: chips.map(c => ({ label: c.querySelector('span').textContent,
       count: c.querySelector('.n') ? Number(c.querySelector('.n').textContent) : null,
@@ -237,13 +247,14 @@ async def flow_awards(w: Walk, browser: Browser, base: str, tag: str, view: dict
           c.style.height = '30px'; c.style.minHeight = '0'; c.querySelector('span').textContent += ' with a very long label added'; }""")
         tags = await page.evaluate(TAGS)
     if w.plant == "tag_row_contained":
-        await page.evaluate("document.querySelector('.tag-row').style.overflowX = 'visible'")
+        await page.evaluate("document.querySelector('.tag-row').style.flexWrap = 'nowrap'")
         tags = await page.evaluate(TAGS)
     low = [c for c in tags["chips"] if c["h"] < 44]
     w.check("tag_row_chips_44", not low and tags["pageOver"] <= 0, f"{len(tags['chips'])} chips, shortest {min(c['h'] for c in tags['chips'])} px, page overflow {tags['pageOver']}")
     if view["width"] < 600:
-        w.check("tag_row_contained", tags["sw"] > tags["cw"] and tags["pageOver"] <= 0 and tags["ox"] == "auto",
-                f"row scroll {tags['sw']} > client {tags['cw']}, page overflow {tags['pageOver']}")
+        # S49 (S11): the school chips wrap onto as many lines as they need; no sideways scroller, nothing cut off
+        w.check("tag_row_contained", tags["lines"] > 1 and tags["sw"] <= tags["cw"] and tags["outside"] == 0 and tags["pageOver"] <= 0,
+                f"{tags['lines']} chip lines, row scroll {tags['sw']} vs client {tags['cw']}, {tags['outside']} chips outside, page overflow {tags['pageOver']}")
     flt2 = await page.evaluate("fetch('/filters?audience=student').then(r => r.json())")
     shown = {c["label"]: c["count"] for c in tags["chips"] if c["count"] is not None}
     want = {s["name"]: s["count"] for s in flt2["schools"]}
@@ -276,10 +287,12 @@ async def flow_awards(w: Walk, browser: Browser, base: str, tag: str, view: dict
 async def tab_order(page: Page) -> list[str]:
     await page.focus("#list-title")
     seq = []
-    for _ in range(9):
+    for _ in range(12):
         await page.keyboard.press("Tab")
         seq.append(await page.evaluate("""() => { const e = document.activeElement;
           if (e.matches('[data-key=temple]')) return 'toggle'; if (e.id === 'list-q') return 'search';
+          if (e.matches('[data-key=show-closed]')) return 'closed'; if (e.id === 'list-sort') return 'sort';
+          if (e.closest('.keep-line')) return 'keepline';
           if (e.closest('form[role=search]')) return 'search'; if (e.id === 'list-level') return 'level';
           if (e.matches('.tag-chip')) return 'tag'; if (e.closest('.award')) return 'card'; return e.tagName; }"""))
     return seq
@@ -298,7 +311,9 @@ async def flow_funding(w: Walk, browser: Browser, base: str, tag: str, view: dic
     if w.plant == "focus_order":
         await page.evaluate("""() => { const row = document.querySelector('.filter-row'); row.append(row.firstElementChild); }""")
     seq = await tab_order(page)
-    order = ["toggle", "search", "level", "tag", "card"]
+    # S49 filter bar: row 1 search, level, sort; then the two switches (the school chips need Temple only on,
+    # so they follow it); then the chips, the guest keep line and the list
+    order = ["search", "level", "sort", "toggle", "closed", "tag", "keepline", "card"]
     firsts = [seq.index(k) for k in order if k in seq]
     w.check("focus_order_lists", [k for k in order if k in seq] == order and firsts == sorted(firsts), " > ".join(dict.fromkeys(seq)))
     leak = await sample_leak(page)
@@ -833,11 +848,16 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     await page.wait_for_selector("#panel li.card.lead")
     await page.evaluate("document.querySelectorAll('#panel details.dismissed').forEach((d) => { d.open = true; })")
     cards = await page.locator("#panel li.card.lead").count()
-    links = await page.locator("#panel li.card.lead a[data-key^=cover-]").count()
+    # S49 (U16): a guest is told once, in one line above the list, not on every card
+    links = await page.locator("#panel li.card.lead [data-cover] a, #panel li.card.lead a[data-key^=cover-]").count()
     btns = await page.locator("#panel li.card.lead button[data-key^=cover-]").count()
-    w.check("cover_guest_sees_signin_link", cards > 0 and links == cards and btns == 0
-            and (await page.locator("a[data-key^=cover-]").first.inner_text()) == "Sign in to get cover-letter points",
-            f"{cards} cards, {links} sign-in links, {btns} buttons")
+    line = page.locator("#list-notices [data-cover-line]")
+    lines = await line.count()
+    text = (await line.first.inner_text()).strip() if lines else ""
+    signin = await line.locator("a:text-is('Sign in')").count() if lines else 0
+    w.check("cover_guest_sees_signin_link", cards > 0 and lines == 1 and signin == 1 and links == 0 and btns == 0
+            and text.startswith("Cover-letter points need an account."),
+            f"{cards} cards, {lines} list lines {text!r}, {signin} Sign in links in it, {links} card links, {btns} buttons")
     await w.snap(page, tag, "cover-guest")
     # a dismissed card has no sign-in link or button (done as the guest: the stub below has no real session)
     gone = await page.locator("#panel li.card.lead:has([data-key^=dismiss])").last.get_attribute("data-id")
@@ -908,10 +928,15 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     res = await page.evaluate("""(rid) => { const c = document.querySelector(`[data-cover='${rid}']`);
       const a = document.activeElement; return { tag: c.querySelector('.scout-points .tag.model')?.textContent || '',
         copy: Boolean(c.querySelector('.points-copy')), items: c.querySelectorAll('.points-list > li').length,
-        focusSummary: a.tagName === 'SUMMARY' && c.contains(a), label: c.querySelector('button').textContent.trim(),
+        focusSummary: a.tagName === 'SUMMARY' && c.contains(a), label: c.querySelector('button[data-key^=cover-]').textContent.trim(),
         hints: [...c.querySelectorAll(':scope > .hint')].map((e) => e.textContent), live: document.querySelector('#live').textContent }; }""", first)
     w.check("cover_result_card", res["tag"] == "Model text" and res["copy"] and res["items"] == 3
             and res["label"] == "Points again", f"{res}")
+    # the owner's bug (S49): an evidence chip reads as the record's title, never as a record id
+    ids_shown = await page.evaluate("""(rid) => [...document.querySelectorAll(`[data-cover='${rid}'] .scout-points .cite`)]
+      .flatMap((c) => [c.textContent.trim(), (c.getAttribute('aria-label') || '').replace(/^Evidence: /, '')])
+      .filter((t) => /^[a-z_]+:[\\w.-]+$/i.test(t) || t === rid)""", first)
+    w.check("cover_cites_are_titles", not ids_shown, f"chips showing an id: {ids_shown[:3]}")
     w.check("cover_result_focus_and_announce", res["focusSummary"] and res["live"] == "The points are ready below.", f"{res}")
     w.check("cover_hint_hidden_with_result", not any(x.startswith("A model writes these") for x in res["hints"]), f"{res['hints']}")
     w.check("cover_post_sends_csrf", bool(seen["posts"]) and seen["posts"][0][:2] == (first, "walk-csrf"), f"{seen['posts']}")
@@ -945,20 +970,27 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
             and href == "#/welcome", f"{alert!r} {href}")
     await show(page, f"[data-cover='{consent_rid}']")
     await w.snap(page, tag, "cover-consent", full=False)
+    # S49 (U6): the allowance is said once, in a status line above the list; the card points to it
     await page.locator(f"button[data-key='cover-{quota_rid}']").click()
-    await page.wait_for_selector(f"[data-cover='{quota_rid}'] [role=alert]", timeout=10_000)
-    alert = await page.locator(f"[data-cover='{quota_rid}'] [role=alert]").inner_text()
+    await page.wait_for_selector("#list-notices [data-cover-line][role=status]", timeout=10_000)
+    await page.wait_for_selector(f"[data-cover='{quota_rid}'] .quota-hint", timeout=10_000)
+    alert = await page.locator("#list-notices [data-cover-line][role=status]").inner_text()
+    hint = await page.locator(f"[data-cover='{quota_rid}'] .quota-hint").inner_text()
+    card_alerts = await page.locator(f"[data-cover='{quota_rid}'] [role=alert]").count()
     second = page.locator(f"button[data-key='cover-{quota_rid}']")
-    w.check("cover_quota_alert", alert.strip() == "SYNTHETIC: you have used today's allowance."
+    w.check("cover_quota_alert", alert.strip().startswith("SYNTHETIC: you have used today's allowance.")
+            and hint.strip() == "Today’s allowance is used. See the note above the list." and card_alerts == 0
             and not await second.is_disabled() and await page.evaluate(
-                "(r) => document.activeElement === document.querySelector(`button[data-key='cover-${r}']`)", quota_rid), repr(alert))
+                "(r) => document.activeElement === document.querySelector(`button[data-key='cover-${r}']`)", quota_rid),
+            f"line {alert.strip()!r}; card {hint.strip()!r}; {card_alerts} card alerts"),
     await show(page, f"[data-cover='{quota_rid}']")
     await w.snap(page, tag, "cover-error", full=False)
     # a redraw (the sort switch) keeps the result: the state is held outside the card
     await page.locator("[data-key=sort-closing]").click()
     await page.wait_for_timeout(500)
     w.check("cover_result_survives_redraw", await page.locator(f"[data-cover='{first}'] .scout-points").count() == 1
-            and await page.locator(f"[data-cover='{quota_rid}'] [role=alert]").count() == 1, "result and error kept")
+            and await page.locator(f"[data-cover='{quota_rid}'] .quota-hint").count() == 1
+            and await page.locator("#list-notices [data-cover-line][role=status]").count() == 1, "result, card pointer and list line kept")
     await page.context.close()
 
     # the researcher lead card: a guest brief for the public author id, a stubbed signed-in session
@@ -977,7 +1009,10 @@ async def flow_cover(w: Walk, browser: Browser, base: str, tag: str, view: dict)
     w.check("cover_researcher_brief_built", status == "done", f"status {status}")
     rbid = await page.evaluate("decodeURIComponent(location.hash.split('/')[2])")
     got = await page.evaluate("(id) => fetch('/briefs/' + id).then(r => r.json())", rbid)
-    rtitles = {x["record_id"]: ((x.get("record") or {}).get("name") or (x.get("record") or {}).get("title")
+    # a researcher lead carries its record as `opportunity`, a student lead as `record`; the server's
+    # sources map gives the record's title (perch/scout/job.py), so the stub does too
+    rtitles = {x["record_id"]: ((x.get("record") or x.get("opportunity") or {}).get("name")
+                                or (x.get("record") or x.get("opportunity") or {}).get("title")
                                 or x.get("title") or x["record_id"]) for x in got["leads"]}
     rseen = await stub_cover(page, rbid, rtitles, "researcher")
     await page.goto(base + "/")

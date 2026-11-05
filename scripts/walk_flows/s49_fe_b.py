@@ -82,7 +82,9 @@ def register(U):  # noqa: N803 - the module handed in by the loader
           return s ? [...s.options].map(o => o.textContent) : null; }""")
         w.check("s49_awards_sort_options", sortopts == ["A to Z", "Deadline soonest", "Largest amount"], f"{sortopts}")
         keepline = await page.evaluate("document.querySelector('.keep-line')?.textContent || ''")
-        w.check("s49_guest_keep_line", "Sign in to keep awards" in keepline and await page.locator(".award-row .keep").count() == 0, repr(keepline))
+        keeplinks = await page.locator(".keep-line a:text-is('Sign in')").count()
+        w.check("s49_guest_keep_line", "Sign in to keep awards" in keepline and keeplinks == 1 and keepline.count("Sign in") == 1
+                and await page.locator(".award-row .keep").count() == 0, f"{keepline!r}, {keeplinks} links")
         await page.fill("#list-q", "zzzzqqxx")
         await page.wait_for_selector(".empty-list")
         shown = await page.evaluate("[...document.querySelectorAll('.tag-chip .n')].filter(e => e.offsetParent !== null).length")
@@ -212,11 +214,6 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         status = await U.build_wait(page)
         w.check("s49_brief_built", status == "done", f"status {status}")
         bid = await page.evaluate("decodeURIComponent(location.hash.split('/')[2])")
-        # the slot FE-A will emit; mocked in so cover.js can be walked before the merge
-        await page.add_init_script("""new MutationObserver(() => { if (document.getElementById('list-notices')) return;
-          const l = document.querySelector('ol.leads, ul.leads'); if (!l || l.closest('.my-perch')) return;
-          const d = document.createElement('div'); d.id = 'list-notices'; l.parentNode.insertBefore(d, l); })
-          .observe(document, { childList: true, subtree: true });""")
         await page.goto(base + "/")
         await page.evaluate("(id) => { location.hash = '#/brief/' + encodeURIComponent(id) + '/routes'; }", bid)
         await page.wait_for_selector("#panel .btn.keep", timeout=30_000)
@@ -225,11 +222,8 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         links = await page.locator("#panel [data-cover] a, #panel a[data-key^=cover-]").count()
         w.check("s49_cover_guest_no_card_links", cards > 0 and links == 0, f"{cards} cards, {links} sign-in links on cards")
         slot = await page.locator("#list-notices").count()
-        if slot and await page.locator("#list-notices a").count():
-            once = await page.locator("#list-notices a:text-is('Sign in')").count() == 1
-            w.check("s49_cover_guest_once", once, "one Sign in link above the list")
-        else:
-            w.check("s49_cover_guest_once", True, "SKIPPED until FE-A/BE-S call coverListLine: no notice line is rendered on this branch")
+        once = await page.locator("#list-notices [data-cover-line] a:text-is('Sign in')").count()
+        w.check("s49_cover_guest_once", slot == 1 and once == 1, f"{slot} notice slots, {once} Sign in links above the list")
         kept = await U.keep_two(page)
         # compare: table first; titles clean and numbers in their own line (the /compare answer is mocked)
         async def compare(route) -> None:
@@ -293,7 +287,7 @@ def register(U):  # noqa: N803 - the module handed in by the loader
         titles = {}
         got = await page.evaluate("(id) => fetch('/briefs/' + id).then(r => r.json())", bid)
         for x in got["leads"]:
-            r = x.get("record") or {}
+            r = x.get("record") or x.get("opportunity") or {}  # a researcher lead's record is `opportunity`
             titles[x["record_id"]] = r.get("name") or r.get("title") or x.get("title") or x["record_id"]
         cseen = await U.stub_cover(page, bid, titles, "researcher")
         await page.route("**/usage", lambda r: r.fulfill(json={"spent_usd": 1.0, "limit_usd": 1.0, "resets_at": "2099-01-01T05:00:00+00:00"}))
