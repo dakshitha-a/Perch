@@ -5,7 +5,7 @@ import { liveApi, replayApi } from "./api.js";
 import { add, evMark, fill, h, icon } from "./dom.js";
 import { renderHelp } from "./help.js";
 import { compareOffices, loadCompare, renderCompare } from "./compare.js";
-import { coverBlock } from "./cover.js";
+import { coverBlock, coverListLine } from "./cover.js";
 import { renderHandoff } from "./handoff.js";
 import { renderScout } from "./scout.js";
 import * as f from "./format.js";
@@ -1459,12 +1459,16 @@ function renderRoutes(panel) {
   const sig = `routes:${isDone("route_b")}`;
   if (panel.dataset.sig !== sig) {
     panel.dataset.sig = sig;
-    // The sort switch shares the Grants | Industry row (Dakshitha, S27); the title and its
-    // note sit under both, so the switch never moves when the note changes length.
-    fill(panel, h("div", { class: "route-row" }, routeSwitch(), sortSwitch()),
-      h("div", { class: "routes-bar" },
-        h("div", {}, h("h2", { class: "section-title", id: "routes-title" }),
-          h("p", { class: "hint routes-sub" }))),
+    // S49 (U10, A6): the route row holds the route switch alone; the count heading and Sort
+    // share the list's head row, and the notices sit under it, said once for the list.
+    fill(panel, h("div", { class: "route-row" }, routeSwitch()),
+      h("div", { class: "list-head" },
+        h("h2", { class: "section-title", id: "routes-title" }),
+        sortSwitch()),
+      h("p", { class: "hint routes-sub" }),
+      hiddenLine(),
+      h("p", { class: "hint model-line", text: "Model text is a model’s reading of the fit, checked against the records it cites." }),
+      h("div", { id: "list-notices" }),
       h("div", { class: "filter-box" }),
       h("ol", { class: "leads", "aria-labelledby": "routes-title" }),
       h("div", { class: "weak-box" }),
@@ -1485,6 +1489,9 @@ function renderRoutes(panel) {
   const sub = panel.querySelector(".routes-sub");
   sub.textContent = subBits.length ? `${subBits.join(". ")}.` : "";
   sub.hidden = !subBits.length;
+  // U43: what model text is, said once above the list, when the list holds any.
+  panel.querySelector(".model-line").hidden = !open.some((l) => l.explanation);
+  drawNotices(panel.querySelector("#list-notices"), active);
 
   if (!leads.length) {
     fill(panel.querySelector(".leads"), h("li", { class: "empty" }, owl("worry", "owl-md"),
@@ -1520,7 +1527,30 @@ function renderRoutes(panel) {
   syncList(det.querySelector("ol"), dismissed);
 }
 
-const RESEARCH_SECURITY = "Companies outside the United States may need a research-security review before any contact; the office makes that check.";
+// What the rules left out (S49 F2), one quiet line; the labels and counts are the server's.
+function hiddenLine() {
+  const hid = (S.brief.brief.hidden || S.brief.hidden || []).filter((x) => x && x.label && x.count);
+  if (!hid.length) return null;
+  return h("p", { class: "hint hidden-line", text: `Hidden: ${hid.map((x) => `${x.label} (${x.count})`).join(", ")}` });
+}
+
+// The list's notices (S49 U3, U16): the withheld-reason note once for the list when two or
+// more cards on it are flagged, and cover.js's one line. Empty, the slot takes no room.
+function drawNotices(box, shown) {
+  if (!box) return;
+  const flagged = shown.filter((l) => l.flagged).length;
+  const items = [
+    flagged >= 2 ? h("p", { class: "notice info list-note" }, icon("help"),
+      h("span", { text: "Some written reasons failed Perch’s citation check, so they are left out. Every date, amount and rule result on the cards is still copied from the record." })) : null,
+    coverListLine(coverCtx())].filter(Boolean);
+  const sig = JSON.stringify([flagged >= 2, items.map((x) => x.textContent)]);
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  fill(box, ...items);
+  box.hidden = !items.length;
+}
+
+const RESEARCH_SECURITY ="Companies outside the United States may need a research-security review before any contact; the office makes that check.";
 const OPEN_FIRST = 5; // cards shown open before the Weaker matches fold (Q6)
 
 // One-click filters (U25), built only from the values on the leads themselves: each
@@ -1730,28 +1760,35 @@ function leadCard(l) {
     fit = h("span", { class: "fit pending" }, owl("work", "owl-xs"), h("span", { text: "Reading" }));
   }
 
-  const tags = h("span", { class: "tags" },
-    h("span", { class: "tag", text: f.agencyShort(o.agency, o.parent_agency) }),
-    o.activity_code ? h("span", { class: "tag", text: o.activity_code }) : null,
-    o.status && o.status !== "posted" ? h("span", { class: "tag ember", text: o.status === "forecasted" ? "Forecast" : o.status }) : null);
+  // S49 (M1, R3): the line under the title holds the agency, the activity code and a status
+  // word, each only when the record has it, so no empty tag is ever drawn. The opportunity
+  // number stays in the evidence panel.
+  const subText = [f.agencyShort(o.agency, o.parent_agency), o.activity_code].filter((x) => x && String(x).trim()).join(" · ");
+  const status = o.status && o.status !== "posted" ? (o.status === "forecasted" ? "Forecast" : o.status) : null;
+  const sub = subText || status ? h("p", { class: "lead-sub" }, subText ? h("span", { text: subText }) : null,
+    status ? h("span", { class: "tag ember", text: status }) : null) : null;
 
   // NSF dates its open-anytime programs decades out: past ten years the record's own
   // words stand in place of the date (U3, Q3). Evidence keeps both fields.
   const far = Boolean(o.close_date_note && days !== null && days > 3650) || f.standardDates(o);
   const expires = f.expiresOnly(o);  // T17: a parent announcement's date is its expiry
-  const facts = h("dl", { class: `facts${size ? "" : " one"}` },
+  // FM3: with no date, the page's own deadline words are shown in quotes, never "Not stated".
+  const quote = !o.close_date && !far ? (o.deadline_quote || (l.record && l.record.deadline_quote) || null) : null;
+  const missing = () => h("span", { class: "missing", text: "Not stated" });
+  // D5: always two facts, the date and the amount, so every card has the same shape.
+  const facts = h("dl", { class: "facts facts-2" },
     // F20: an expiry date sits under its own label, not under "Closes".
-    h("div", { class: `fact close ${urg}` }, h("dt", { text: expires && !far ? "Announcement" : "Closes" }),
+    h("div", { class: `fact close ${urg}` }, h("dt", { text: quote ? "Deadline" : expires && !far ? "Announcement" : "Closes" }),
       h("dd", {}, far ? h("span", { text: o.close_date_note })
-        : o.close_date ? h("span", { text: `${expires ? "Expires " : ""}${f.formatDate(o.close_date)}` }) : h("span", { class: "missing", text: "Not stated in the record" }),
+        : o.close_date ? h("span", { text: `${expires ? "Expires " : ""}${f.formatDate(o.close_date)}` })
+          : quote ? h("span", { class: "quote-date", text: `The page says: “${quote}”` }) : missing(),
         !far && !expires && days !== null ? h("span", { class: "rel", text: f.closesIn(days) }) : null)),
-    size ? h("div", { class: "fact" }, h("dt", { text: "Award size" }), h("dd", {}, h("span", { text: size }))) : null);
-  const noSize = size ? null : h("p", { class: "hint no-size", text: "Award size: not stated in the record." });
+    h("div", { class: "fact" }, h("dt", { text: "Amount" }), h("dd", {}, size ? h("span", { text: size }) : missing())));
 
   let explain = null;
   if (l.flagged) {
-    explain = h("p", { class: "notice warn" }, icon("warn"), h("span", {
-      text: "The explanation was withheld because it failed the citation checks twice. The fields above are copied from the record." }));
+    // U3: one quiet line on the card; the list says why once, above the cards.
+    explain = h("p", { class: "hint withheld-line", text: "Written reason withheld: it failed the citation check." });
   } else if (pending) {
     explain = h("div", { class: "writing" }, skeleton(2), h("p", { class: "hint", text: "Writing a cited explanation" }));
   } else if (parsed) {
@@ -1775,36 +1812,36 @@ function leadCard(l) {
   for (const b of actions) b.setAttribute("aria-describedby", `t-${cssId(l.id)}`);
   return h("li", { class: `card lead${l.status === "kept" ? " kept" : ""}${l.status === "dismissed" ? " gone" : ""}`,
     "data-id": l.id },
-  cardHead(tags, fit, actions),
-  h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
-    onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: o.title || l.record_id }), evMark())),
-  h("p", { class: "opp-num", text: o.opportunity_number || "" }),
-  facts, noSize, leadNotes(l), explain,
+  // The title comes first (S49 D5); the Match pill and the actions sit at the end of its row.
+  h("div", { class: "lead-top" },
+    h("div", { class: "lead-name" },
+      h("h3", { class: "lead-title" }, h("button", { class: "title-btn", "data-key": "title", id: `t-${cssId(l.id)}`,
+        onclick: (e) => openEvidence(l.record_id, e.currentTarget) }, h("span", { text: o.title || "Untitled opportunity" }), evMark())),
+      sub),
+    h("div", { class: "lead-end" }, fit || null, h("div", { class: "actions" }, actions))),
+  facts, leadNotes(l), explain,
   // S46: cover-letter points, on every grant lead that is not dismissed.
-  l.status === "dismissed" ? null : coverBlock({ api, announce, openEvidence, guest: Boolean(S.session.guest),
-    signIn: signInHref(), audience: "researcher", stored: (S.brief && S.brief.cover_points) || [] }, S.briefId, l.record_id));
+  l.status === "dismissed" ? null : coverBlock(coverCtx(), S.briefId, l.record_id));
 }
 
-// The card head: tags on the left; the Match pill and the actions on the right, so Keep
-// is in reach without scrolling past the explanation (review W2).
-function cardHead(tags, fit, actions) {
-  return h("div", { class: "lead-head" }, tags,
-    h("div", { class: "head-end" }, fit || null, h("div", { class: "actions" }, actions)));
+// What cover.js needs for a researcher card and for the list's one line (S49 U16).
+function coverCtx() {
+  return { api, announce, openEvidence, guest: Boolean(S.session.guest), signIn: signInHref(), audience: "researcher",
+    stored: (S.brief && S.brief.cover_points) || [] };
 }
 
 // Rule notes written by code: a career-stage unlock, a past sponsor, what the user said.
 function leadNotes(l) {
   if (!l.notes || !l.notes.length) return null;
-  return h("ul", { class: "lead-notes" }, l.notes.map((n) => h("li", {},
-    h("span", { class: "tag", text: "Rule" }),
-    h("span", { text: ` ${n}` }))));
+  // Each note is a plain line written by code, such as a past date on the page (S49).
+  return h("ul", { class: "lead-notes" }, l.notes.map((n) => h("li", { text: n })));
 }
 
 function explanationBlock(l, parsed, o) {
   const papers = S.brief.papers || {};
   if (parsed.raw) {
-    return h("div", { class: "explain" }, modelTag(),
-      h("p", { class: "what" }, renderSegs(parsed.raw, ownIds(o))), inferenceBox(l, o));
+    return h("div", { class: "explain" },
+      h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.raw, ownIds(o))), inferenceBox(l, o));
   }
   // With the researcher's CV or current research in the brief, the reasons start open
   // (S27, Dakshitha), as they do for a student.
@@ -1833,14 +1870,8 @@ function explanationBlock(l, parsed, o) {
     h("div", {}, h("p", { text: "This statement could not be matched to its source:" }),
       h("ul", {}, l.unsupported.map((u) => h("li", { text: u }))))) : null,
   eligibilityRows(o));
-  return h("div", { class: "explain" }, modelTag(),
-    h("p", { class: "what" }, renderSegs(parsed.opportunity, ownIds(o))), why);
-}
-
-// The tag on model text: the model's reading, checked against the records it cites.
-function modelTag() {
-  return h("p", { class: "provenance" }, modelWord(),
-    h("span", { text: "Checked against the records it cites." }));
+  return h("div", { class: "explain" },
+    h("p", { class: "what" }, modelWord(), " ", renderSegs(parsed.opportunity, ownIds(o))), why);
 }
 
 function modelWord() {
