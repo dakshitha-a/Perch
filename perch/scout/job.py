@@ -26,20 +26,19 @@ from psycopg_pool import ConnectionPool
 
 from perch import jobs, redisx
 from perch.jobs import JobContext, PermanentError, register
-from perch.llm import ChatResult, Message, Provider, spec_for_role
+from perch.llm import Provider, spec_for_role
 from perch.llm.audit import AuditedProvider
-from perch.llm.budget import call_cost
 from perch.llm.contacts import blank_contacts
 from perch.schemas import Lead, Opportunity, Record, Scholarship
 from perch.scout import session
 from perch.scout.answer import name_index
 from perch.scout.read_tools import SavedRef, ScoutData
-from perch.scout.turn import ESTIMATE_MICRO, Meter, TurnCancelled, TurnDeps, run_turn
-from perch.store import pg
+from perch.scout.turn import Meter, TurnCancelled, TurnDeps, run_turn
 from perch.user import quota
 from perch.user.briefs import read_user_brief
 from perch.user.data import UserData
 from perch.user.models import CoverPointSet, CvDoc, EntryDoc, SavedItem, UserDoc
+from perch.user.spend import SpendMeter
 
 if TYPE_CHECKING:
     from perch.service import BriefService
@@ -50,40 +49,14 @@ _names: dict[str, tuple[float, set[str]]] = {}
 _names_lock = threading.Lock()
 
 
-class RedisMeter(Meter):
-    """Reserve against the user's day and the global month, call, settle, write the ledger."""
+class RedisMeter(SpendMeter, Meter):
+    """Reserve against the user's day and the global month, call, settle, write the ledger.
+    The shared mechanism is perch/user/spend.py; brief jobs and the hand-off use it too."""
 
     def __init__(self, r: redis.Redis, pool: ConnectionPool, uid: UUID, job_id: UUID | None
                  ) -> None:
-        self.r, self.pool, self.uid, self.job_id = r, pool, uid, job_id
-
-    def call(self, role: str, provider: Provider, messages: list[Message], **kw: object
-             ) -> ChatResult:
-        est = ESTIMATE_MICRO.get(role, ESTIMATE_MICRO["scout"])
-        scopes = quota.reserve_call(self.r, self.uid, est)  # raises QuotaExceeded
-        res: ChatResult | None = None
-        try:
-            res = provider.chat(messages, **kw)
-            return res
-        finally:
-            cost = call_cost(res.model, res.usage) if res else 0.0
-            micro = redisx.usd_micro(cost)
-            gate = role == "gate"
-            quota.settle_call(self.r, scopes, est, micro,
-                              in_tok=res.usage.input_tokens if res else 0,
-                              out_tok=res.usage.output_tokens if res else 0, gate=gate)
-            if res is not None:
-                self._ledger(role, res, max(cost, 1e-6) if gate else cost)
-
-    def _ledger(self, role: str, res: ChatResult, cost: float) -> None:
-        with pg.public_tx(self.pool) as c:
-            c.execute(
-                "INSERT INTO spend_ledger (user_id, job_id, role, provider, model, "
-                "input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_usd) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-                (self.uid, self.job_id, role, res.provider, res.model, res.usage.input_tokens,
-                 res.usage.output_tokens, res.usage.cache_read_tokens,
-                 res.usage.cache_write_tokens, round(cost, 6)))
+        SpendMeter.__init__(self, r, pool, lambda: quota.user_scopes(uid), user_id=uid,
+                            job_id=job_id)
 
 
 # --- inputs read from the account ---

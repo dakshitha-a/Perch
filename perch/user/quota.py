@@ -79,6 +79,16 @@ def admit(r: redis.Redis, pool: ConnectionPool, uid: UUID, rate_scope: str = "su
         raise QuotaExceeded(scope.name)
 
 
+def admit_guest(r: redis.Redis, gsid_hash: str, *, now: datetime | None = None,
+                **limits: float) -> None:
+    """Before a guest job that will call a model: the guest session's day, the guest ceiling
+    and the global month must each have room. Raises QuotaExceeded. Each call is then reserved
+    and settled by the job (perch/user/spend.py), so the guest budget bounds what runs."""
+    for scope in redisx.quota_scopes(gsid_hash=gsid_hash, now=now, **limits):
+        if redisx.spent_micro(r, scope) + int(r.get(scope.inflight) or 0) >= scope.limit:
+            raise QuotaExceeded(scope.name)
+
+
 FREE_GATE_PER_DAY = 10  # out-of-budget distress screens per account per UTC day (S45 S1)
 
 

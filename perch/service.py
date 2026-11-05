@@ -55,6 +55,7 @@ from perch.store.sqlite import SQLiteRepository
 from perch.student import STUDENT_STAGES, YOU
 from perch.user.briefs import current_store, using_store
 from perch.user.cv import sponsor_match
+from perch.user.spend import QuotaExceeded, metered
 from perch.validate import VALIDATOR_VERSION, Validated
 
 # Explanations come before the summary: they are what the Routes tab waits for (P2).
@@ -81,6 +82,11 @@ SAID_ID = "said:direction"
 ESI_SAID = ("You said you are an early-stage investigator, so this opportunity, limited by "
             "career stage, is kept. Check NIH's definition: "
             "https://grants.nih.gov/policy-and-compliance/policy-topics/early-stage-investigators")
+
+
+# A summary or explanation stage the budget refused (S48 M2): the brief still finishes with its
+# deterministic leads, and the stage says why it has no model text.
+BUDGET_DETAIL = "withheld: the daily model budget is used"
 
 
 def now() -> datetime:
@@ -456,8 +462,11 @@ class BriefService:
                 f"SBIR/STTR records; {len(leads)} leads with two or more kinds of signal"), False
 
     def _audited(self, role: str, spec: str | None) -> AuditedProvider:
-        return AuditedProvider(self.models.provider(spec or spec_for_role(role)), self.audit,
-                               role)
+        """The role's provider, audited, and metered when a job set a meter (S48 M2). The meter
+        is read here, on the stage's thread, and bound into the provider: the fit step calls
+        it from pool threads, where the context variable is not visible."""
+        inner = metered(self.models.provider(spec or spec_for_role(role)), role)
+        return AuditedProvider(inner, self.audit, role)
 
     def _works(self, r: SQLiteRepository, b: Brief) -> dict[str, Work]:
         """Records the model skills may cite as research: the author's public papers, and
@@ -500,8 +509,11 @@ class BriefService:
             return "validated (cached)", False
         with self.repo() as r:
             works = self._works(r, b)
-        v = summarise_profile(profile, works,
-                              self._audited("profile_summary", self.models.summary_spec))
+        try:
+            v = summarise_profile(profile, works,
+                                  self._audited("profile_summary", self.models.summary_spec))
+        except QuotaExceeded:  # the leads stand; only the model text is withheld (S48 M2)
+            return BUDGET_DETAIL, True
         if v.value:
             b.topics = [t for t, _ in v.value.topics]
             b.summary = v.value.summary
@@ -566,9 +578,12 @@ class BriefService:
 
         results = []
         if todo:
-            results = explain_leads([opps[i] for i in todo], profile, works,  # type: ignore[misc]
-                                    self._audited("fit_explainer", self.models.fit_spec),
-                                    grounder=self.models.get("grounder"), on_result=save)
+            try:
+                results = explain_leads([opps[i] for i in todo], profile, works,  # type: ignore[misc]
+                                        self._audited("fit_explainer", self.models.fit_spec),
+                                        grounder=self.models.get("grounder"), on_result=save)
+            except QuotaExceeded:  # explanations saved so far stay (S48 M2)
+                return BUDGET_DETAIL, True
         flagged = sum(v.flagged for v in results)
         unsupported = sum(bool(v.value and v.value.unsupported) for v in results)
         return (f"{len(results) - flagged + done_cached} explained ({done_cached} cached), "
@@ -680,10 +695,13 @@ class BriefService:
             with using_store(store), lock, self.repo() as r:  # on a pool thread: no context
                 r.upsert([lead.model_copy(update=upd)])
 
-        results = explain_leads(opps, ctx["profile"], works,
-                                self._audited("fit_explainer", self.models.fit_spec),
-                                grounder=self.models.get("grounder"), on_result=save,
-                                audience="student")
+        try:
+            results = explain_leads(opps, ctx["profile"], works,
+                                    self._audited("fit_explainer", self.models.fit_spec),
+                                    grounder=self.models.get("grounder"), on_result=save,
+                                    audience="student")
+        except QuotaExceeded:  # explanations saved so far stay (S48 M2)
+            return BUDGET_DETAIL, True
         flagged = sum(v.flagged for v in results)
         return f"{len(results) - flagged} explained, {flagged} withheld", False
 

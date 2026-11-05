@@ -40,7 +40,9 @@ def budget_usd() -> float:
 
 
 def ledger_path() -> Path:
-    return Path(env("PERCH_SPEND_LEDGER", str(LEDGER)))
+    """Absolute, so the ledger does not move with the working directory. A container sets
+    PERCH_SPEND_LEDGER to a file on a named volume, so recreating it keeps the total (S48 M2)."""
+    return Path(env("PERCH_SPEND_LEDGER", "") or str(LEDGER)).expanduser().absolute()
 
 
 def call_cost(model: str, usage: Usage) -> float:

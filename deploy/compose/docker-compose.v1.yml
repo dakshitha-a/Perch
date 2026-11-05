@@ -142,6 +142,11 @@ services:
       PERCH_WORKER_CONCURRENCY: ${PERCH_WORKER_CONCURRENCY:-16}
       PERCH_AUDIT_KEY: ${PERCH_AUDIT_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # The adapter's own spend file (perch/llm/budget.py), on a named volume so recreating
+      # the container keeps the running total (S48 M2). Only the worker calls a paid model.
+      PERCH_SPEND_LEDGER: /var/lib/perch/spend/anthropic_spend.jsonl
+    volumes:
+      - spend:/var/lib/perch/spend
     depends_on:
       migrate: {condition: service_completed_successfully}
       redis: {condition: service_healthy}
@@ -189,6 +194,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  spend:
   backups:
   backups-keys:
   pgdata:

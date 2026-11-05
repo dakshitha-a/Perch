@@ -646,28 +646,51 @@ def brief_handler(ctx: JobContext) -> str | None:
     if _brief_service is None:
         raise PermanentError("no_handler")
     brief_id = ctx.payload["brief_id"]
-    from perch.user.briefs import store_for_job, using_store
+    from perch.user.briefs import store_for_job
 
     store = store_for_job(ctx)  # user_data row, or Redis for a guest; None: the SQLite path
     if store is None:
         status = _brief_service().run(brief_id)
     else:
-        if not store.load():
-            raise PermanentError("permanent")
-        if getattr(store, "needs_consent", False):  # reads the user's text: consent must stand
-            from perch.auth.accounts import consent_version_of
-            from perch.config import env
-
-            with ctx.user_tx() as c:
-                have = consent_version_of(c, ctx.user_id)
-            if have < int(env("PERCH_CONSENT_VERSION", "1") or 1):
-                raise PermanentError("consent_required")
-        ctx.save_partial(store.result_ref)  # the page reads partial text from the same row
-        with using_store(store):
-            status = _brief_service().run(brief_id)
+        status = _run_stored_brief(ctx, store, brief_id)
     if status in ("failed", "missing"):  # the brief holds the stage detail, never the log
         raise PermanentError("permanent")
     return store.result_ref if store is not None else f"brief:{brief_id}"
+
+
+def job_meter(ctx: JobContext) -> Any:  # noqa: ANN401 - a perch.user.spend.SpendMeter or None
+    """Every paid call of this job is reserved and settled against its owner's counters (the
+    account's day or the guest session's, the guest ceiling, the global month; S48 M2).
+    None without Redis: no account or guest job can be submitted without it (the web admits
+    each one against the same counters), and the adapter's file ledger still caps the total."""
+    from perch.config import env
+    from perch.redisx import get_client
+    from perch.user.spend import for_job
+
+    if not env("PERCH_REDIS_URL"):
+        return None
+    return for_job(get_client(), ctx.pool, user_id=ctx.user_id,
+                   guest_sid_hash=ctx.guest_sid_hash, job_id=ctx.job_id)
+
+
+def _run_stored_brief(ctx: JobContext, store: Any, brief_id: str) -> str:  # noqa: ANN401
+    from perch.user.briefs import using_store
+    from perch.user.spend import using_meter
+
+    assert _brief_service is not None
+    if not store.load():
+        raise PermanentError("permanent")
+    if getattr(store, "needs_consent", False):  # reads the user's text: consent must stand
+        from perch.auth.accounts import consent_version_of
+        from perch.config import env
+
+        with ctx.user_tx() as c:
+            have = consent_version_of(c, ctx.user_id)
+        if have < int(env("PERCH_CONSENT_VERSION", "1") or 1):
+            raise PermanentError("consent_required")
+    ctx.save_partial(store.result_ref)  # the page reads partial text from the same row
+    with using_store(store), using_meter(job_meter(ctx)):
+        return _brief_service().run(brief_id)
 
 
 @register("precache", max_attempts=3, timeout_s=900, priority=8)

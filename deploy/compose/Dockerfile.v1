@@ -16,7 +16,9 @@ FROM base AS worker-gpu
 RUN uv sync --frozen --no-dev --extra anthropic --extra ml --no-install-project
 COPY perch ./perch
 RUN uv pip install --python /opt/venv/bin/python --no-deps .
-RUN useradd --system --uid 10001 --create-home perch
+RUN useradd --system --uid 10001 --create-home perch \
+    && mkdir -p /var/lib/perch/spend /var/lib/perch/shred-ledger \
+    && chown -R perch /var/lib/perch
 USER perch
 CMD ["/opt/venv/bin/perch", "worker"]
 
@@ -26,7 +28,9 @@ COPY perch ./perch
 COPY web ./web
 COPY deploy/compose/migrate.py ./deploy/compose/migrate.py
 RUN uv sync --frozen --no-dev --extra anthropic
-RUN useradd --system --uid 10001 perch
+RUN useradd --system --uid 10001 perch \
+    && mkdir -p /var/lib/perch/spend /var/lib/perch/shred-ledger \
+    && chown -R perch /var/lib/perch
 USER perch
 EXPOSE 8000
 CMD ["/opt/venv/bin/perch", "serve", "--host", "0.0.0.0", "--port", "8000"]
@@ -38,7 +42,9 @@ RUN uv pip install --python /opt/venv/bin/python --reinstall --no-deps \
     --index-url https://download.pytorch.org/whl/cpu "torch==2.14.1+cpu"
 COPY perch ./perch
 RUN uv pip install --python /opt/venv/bin/python --no-deps .
-RUN useradd --system --uid 10001 --create-home perch
+RUN useradd --system --uid 10001 --create-home perch \
+    && mkdir -p /var/lib/perch/spend /var/lib/perch/shred-ledger \
+    && chown -R perch /var/lib/perch
 USER perch
 ENV CUDA_VISIBLE_DEVICES=""
 CMD ["/opt/venv/bin/perch", "worker"]

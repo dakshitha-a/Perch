@@ -580,6 +580,8 @@ def submit_brief(svc: BriefService, runner: JobRunner, ud: UserData, r: redis.Re
     ok, retry = rate_limit(r, "guest_job", gh)
     if not ok:
         raise quota.RateLimited("guest_job", retry)
+    if options.get("explain", True):  # model text: the guest budget must have room (S48 M2)
+        quota.admit_guest(r, gh)
     b = create_guest_brief(svc, r, gh, author_id, audience=session.audience, **options)
     job = runner.submit("brief", {"brief_id": b.id}, None, key,
                         audience=session.audience, guest_sid_hash=bytes.fromhex(gh))
