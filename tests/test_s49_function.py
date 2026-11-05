@@ -416,7 +416,7 @@ def test_s15_the_fit_skill_asks_for_no_number():
 
     assert "fit" not in fit.SCHEMA["properties"] and "fit" not in fit.SCHEMA["required"]
     assert "0 (no overlap)" not in fit.INSTRUCTIONS and "at most three" in fit.INSTRUCTIONS
-    assert fit.PROMPT_VERSION == "fit-2"
+    assert fit.PROMPT_VERSION == "fit-3"
 
 
 # --- S8: one word per level in the filter columns ---
@@ -472,3 +472,27 @@ def test_b6_explain_leads_stops_when_the_job_is_cancelled():
     got = explain_leads([OPP, OPP, OPP], PROFILE, WORKS, p, workers=1, cancelled=cancelled)
     assert len(got) == 1
     assert sum(e["kind"] == "call" for e in log.events) == 1
+
+
+def test_a_refusal_withholds_one_output_and_never_raises():
+    """S49 QA: a provider refusal on one lead must not fail the whole explanation stage."""
+    from perch.llm.base import Refusal
+    from perch.validate import Check, generate_validated
+
+    calls = []
+
+    def gen(feedback):
+        calls.append(feedback)
+        raise Refusal("anthropic refused (reasoning_extraction)")
+
+    v = generate_validated(gen, lambda x: Check(True, []))
+    assert v.value is None and v.flagged and v.errors == ["model_declined"]
+    assert len(calls) == 1  # no second paid try
+
+
+def test_fit_prompt_asks_for_no_private_reasoning():
+    from perch.skills import cover, fit
+
+    assert "private reasoning" not in fit.INSTRUCTIONS
+    assert "private reasoning" not in fit.STUDENT_INSTRUCTIONS
+    assert "private reasoning" not in cover.INSTRUCTIONS

@@ -18,6 +18,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
+from perch.llm.base import Refusal
 from perch.schemas import Record
 
 VALIDATOR_VERSION = "1"  # bump when a check gets stricter; it keys cached model text
@@ -181,6 +182,10 @@ def generate_validated[T](generate: Callable[[list[str]], T],
     for attempt in (1, 2):
         try:
             value = generate(feedback)
+        except Refusal:
+            # The provider declined (S49): withhold this one output, never fail the caller's
+            # whole stage. A second try would be declined the same way and cost the same.
+            return Validated(None, attempt, True, ["model_declined"])
         except ValueError as e:
             feedback = [f"output could not be parsed: {e}"]
             if on_unparseable:

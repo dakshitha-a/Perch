@@ -78,7 +78,8 @@ SCHEMA = {
 }
 INSTRUCTIONS = (
     "You list the points a cover letter or an application for one funding record could "
-    "make, for the applicant to put in their own words. First write brief private reasoning: "
+    "make, for the applicant to put in their own words. First, in the reasoning field, "
+    "write short working notes: "
     "what the target record asks for or rewards, and which applicant records answer each "
     f"ask. Then give {MIN_POINTS} to {MAX_POINTS} points. In each point, asks is one full "
     "sentence, with a subject and a verb, on one thing the target record asks for or rewards "

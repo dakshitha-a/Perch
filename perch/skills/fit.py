@@ -32,7 +32,7 @@ from perch.skills import (
 from perch.validate import Check, Validated, check, generate_validated
 
 SKILL = "fit_explainer"
-PROMPT_VERSION = "fit-2"  # bump with INSTRUCTIONS or SCHEMA; keys cached text (tests/test_cache.py)
+PROMPT_VERSION = "fit-3"  # bump with INSTRUCTIONS or SCHEMA; keys cached text (tests/test_cache.py)
 SCHEMA = {
     "type": "object",
     "properties": {  # order matters: reasoning is generated before the answer
@@ -52,8 +52,8 @@ SCHEMA = {
 }
 INSTRUCTIONS = (
     "You explain how well one funding opportunity fits a researcher's published work. "
-    "First write private reasoning, at most three short sentences, comparing the "
-    "opportunity's aims with the papers. Then write three sentences for the researcher. "
+    "First, in the reasoning field, note in at most three short phrases which of the "
+    "opportunity's aims the papers touch. Then write three sentences for the researcher. "
     "opportunity_sentence: one factual sentence "
     "on what the opportunity funds, using only the opportunity record. research_findings: 1 "
     "to 3 items, each one paper id and a short clause starting with a past-tense verb that "
@@ -94,7 +94,7 @@ class Fit:
 STUDENT_INSTRUCTIONS = (
     INSTRUCTIONS.replace("a researcher's published work", "a student's achievements and interests")
     .replace("for the researcher", "for the student")
-    .replace("with the papers", "with the student's records")
+    .replace("the papers touch", "the student's records touch")
     + " The person is a student: call them \"you\" or \"the student\", never \"the researcher\"."
 )
 
