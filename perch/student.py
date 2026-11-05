@@ -552,10 +552,23 @@ def achievement_docs(items: list[str], fetched_at: datetime | None = None) -> li
             for i, a in enumerate(items[:5])]
 
 
+# S51 H4: 43 Temple pages give only an award's name. A model asked about one wrote "The
+# record names ... and gives no further detail", which MiniCheck flagged every time. Such a
+# listing gets this code-written line instead of a model call.
+NAME_ONLY_NOTE = "This listing gives only the award’s name. Read its page for what it funds."
+CANARY_TAIL = re.compile(r"\s*SYNTHETIC sample record, canary \S+$")
+
+
+def name_only(s: Scholarship) -> bool:
+    """No purpose (after the canary tail), no eligibility notes and no field of study."""
+    return not (CANARY_TAIL.sub("", s.purpose or "").strip() or (s.eligibility.notes or "").strip()
+                or s.field_of_study)
+
+
 def record_text(s: Scholarship) -> str:
     """What is embedded and reranked: name, sponsor, purpose without its canary line,
     fields and the page notes."""
-    purpose = re.sub(r"\s*SYNTHETIC sample record, canary \S+$", "", s.purpose or "")
+    purpose = CANARY_TAIL.sub("", s.purpose or "")
     parts = [s.name, s.sponsor or "", purpose, ", ".join(s.field_of_study),
              ", ".join(s.level_of_study), s.eligibility.notes or ""]
     return ". ".join(p for p in parts if p)

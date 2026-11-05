@@ -715,7 +715,7 @@ class BriefService:
 
     def _run_student_explanations(self, b: Brief) -> tuple[str, bool]:
         from perch.schemas import Scholarship
-        from perch.student import as_opportunity
+        from perch.student import NAME_ONLY_NOTE, as_opportunity, name_only
 
         if not b.options.get("explain"):
             return "explanations off", True
@@ -726,8 +726,17 @@ class BriefService:
         with self.repo() as r:
             leads = [x for x in (r.get(Lead, i) for i in b.lead_ids)
                      if x and x.verdict != "not eligible"]
-            opps = [r.get(Opportunity, x.record_id)
-                    or as_opportunity(r.get(Scholarship, x.record_id)) for x in leads]
+            recs = [r.get(Opportunity, x.record_id) or r.get(Scholarship, x.record_id)
+                    for x in leads]
+            # S51 H4: a listing that gives only the award's name gets a code line, no call.
+            bare = [x for x, s in zip(leads, recs, strict=True)
+                    if isinstance(s, Scholarship) and name_only(s)]
+            r.upsert([x.model_copy(update={"notes": [*x.notes, NAME_ONLY_NOTE]})
+                      for x in bare if NAME_ONLY_NOTE not in x.notes])
+            keep = [(x, s) for x, s in zip(leads, recs, strict=True) if x not in bare]
+            leads = [x for x, _ in keep]
+            opps = [s if isinstance(s, Opportunity) else as_opportunity(s) for _, s in keep]
+        named = f", {len(bare)} name only" if bare else ""
         lock = threading.Lock()
         store = current_store.get()  # the explanation callbacks run on pool threads
 
@@ -751,9 +760,9 @@ class BriefService:
                                     grounder=self.models.get("grounder"), on_result=save,
                                     audience="student")
         except QuotaExceeded:  # explanations saved so far stay (S48 M2)
-            return BUDGET_DETAIL, True
+            return BUDGET_DETAIL + named, True
         flagged = sum(v.flagged for v in results)
-        return f"{len(results) - flagged} explained, {flagged} withheld", False
+        return f"{len(results) - flagged} explained, {flagged} withheld{named}", False
 
 
 def _text_hash(profile) -> str:  # noqa: ANN001 - a perch.profile.Profile
