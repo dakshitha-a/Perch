@@ -263,6 +263,39 @@ def test_delete_my_data_follows_the_order_and_leaves_nothing(env, pg_clean, tmp_
     delete.clear_rows(PostgresRunner(pg_clean.worker, timing=FAST, pool_size=2).pool, env.uid)
 
 
+def test_a_failed_shred_hook_in_the_purge_is_retried_until_it_finishes(env, pg_clean,
+                                                                      monkeypatch):
+    """S50 C9 (B15): the purge job clears the user's rows, its own job row too, so the retry
+    it asked for after a failed shred hook was lost. An ownerless retry now carries it."""
+    assert env.client.post("/me/delete", json={"confirm": "delete"}).status_code == 202
+    calls = {"n": 0}
+
+    def flaky_shred(uid):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise crypto.CryptoError("SYNTHETIC hook failure")
+
+    monkeypatch.setattr(delete.crypto, "shred", flaky_shred)
+    retried = ("SELECT state FROM jobs WHERE kind = 'purge' AND user_id IS NULL "
+               "AND payload->>'user_id' = %s")
+    run_worker(pg_clean, ["purge"],
+               lambda: sql(pg_clean, retried, str(env.uid)) == [("succeeded",)])
+    assert sql(pg_clean, retried, str(env.uid)) == [("succeeded",)]
+    assert calls["n"] == 2
+    assert sql(pg_clean, "SELECT count(*) FROM users WHERE id = %s", env.uid) == [(0,)]
+    assert sql(pg_clean, "SELECT count(*) FROM audit_log WHERE event = 'purge_user_retry'"
+               ) == [(1,)]
+
+    # a retry that died is queued again by the daily `jobs` purge, once a day
+    sql(pg_clean, "UPDATE jobs SET state = 'dead' WHERE user_id IS NULL AND kind = 'purge'")
+    runner = PostgresRunner(pg_clean.worker, timing=FAST, pool_size=2)
+    try:
+        assert delete.requeue_dead_purges(runner.pool, runner, "2026-11-05") == 1
+        assert delete.requeue_dead_purges(runner.pool, runner, "2026-11-05") == 0
+    finally:
+        runner.close()
+
+
 def test_delete_needs_the_confirm_word(env):
     assert env.client.post("/me/delete", json={"confirm": "yes"}).status_code == 422
     assert env.client.post("/me/delete", json={}).status_code == 422

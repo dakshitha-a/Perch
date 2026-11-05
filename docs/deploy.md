@@ -28,6 +28,7 @@ This page is for the person who runs Perch. Every command was checked against th
 - **Precache beside briefs (S50):** one worker runs at most `PERCH_PRECACHE_CONCURRENCY` precache jobs at once, default 1. Its other job threads stay free for briefs, Scout and hand-offs, which would otherwise queue behind the precache on the model slot.
 - **Times:** `PERCH_PURGE_AT` and `PERCH_PRECACHE_AT`, in UTC as `HH:MM`. A worker that starts after the time submits that day's jobs at once.
 - **Only once a day:** every key holds the UTC date, such as `purge:inactive:2026-11-05`. A tick submits nothing whose key already has a job row in any state. A purge that failed is therefore not resubmitted the same day; its failed or dead row is the alert.
+- **A delete whose shred hook failed (S50):** the user's own purge job is deleted with the user's rows, so the purge queues an ownerless `purge` job with the same user id and writes a `purge_user_retry` audit row. That job retries with backoff. If it dies, the daily `jobs` purge queues it again, once a day, until it succeeds. To see the backlog, as the worker role: `SELECT payload->>'user_id', state FROM jobs WHERE kind = 'purge' AND user_id IS NULL AND payload->>'action' = 'user' AND state <> 'succeeded'`.
 - **Many workers:** each worker checks once a minute, and a Postgres advisory lock lets only one tick at a time. Running two workers is safe.
 - **Turning it off:** set `PERCH_SCHEDULER=0` on a worker. Do this on every worker if the jobs are submitted some other way.
 
