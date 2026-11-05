@@ -1136,12 +1136,17 @@ async def flow_handoff(w: Walk, browser: Browser, base: str, tag: str, view: dic
     busy = await page.locator(".handoff [role=status]").inner_text()
     w.check("handoff_busy_status", busy.startswith("A model is writing the opening paragraph. This can take up to two minutes")
             and await page.locator("[data-key=handoff-make]").is_disabled(), busy)
+    # The snapshot shows the hand-off from its heading; a compare row half under the sticky tabs
+    # is a scroll position, not a target (S51 QA: W7 removed a compare row, which moved it there).
+    top = "() => document.getElementById('handoff-title').scrollIntoView({ block: 'start' })"
+    await page.evaluate(top)
     await w.snap(page, tag, "handoff-busy", full=False)
     await page.wait_for_selector("[data-key=handoff-subject]", timeout=20_000)
     sent = await page.locator(".handoff").inner_text()
     w.check("handoff_draft_rendered", "Perch never sends it" in sent and len(seen["gets"]) == 2
             and await page.locator("[data-key=handoff-body]").input_value() != "" and seen["posts"][0][1] == "walk-csrf",
             f"posts {seen['posts']}, polls {len(seen['gets'])}")
+    await page.evaluate(top)
     await w.snap(page, tag, "handoff-draft")
     seen["fail"] = True
     await page.locator("[data-key=handoff-make]").click()
