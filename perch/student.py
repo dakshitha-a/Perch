@@ -760,6 +760,25 @@ SAMPLE_WORDS = [
 ]
 
 
+# S52: the model sometimes puts "your" before a sample document's title, which already names
+# the sample student ("your the sample student's interests note note says"). Code tidies the
+# possessive only; no claim changes.
+SAMPLE_TIDY = [
+    (re.compile(r"\b([Yy])our ([Tt]he sample student's)"),
+     lambda m: ("T" if m.group(1) == "Y" else "t") + m.group(2)[1:]),
+    (re.compile(r"\b(interests note|entry) \1\b"), r"\1"),
+    (re.compile(r"\binterests note note\b"), "interests note"),
+]
+
+
+def tidy_sample_text(text: str | None) -> str | None:
+    if not text:
+        return text
+    for pat, rep in SAMPLE_TIDY:
+        text = pat.sub(rep, text)
+    return text
+
+
 def for_sample(text: str) -> str:
     """A rule line reworded for the sample student: "your CV" becomes theirs."""
     for pat, rep in SAMPLE_WORDS:

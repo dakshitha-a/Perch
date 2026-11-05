@@ -555,8 +555,10 @@ function you(text) {
 function plainExplanation(text) {
   const who = SAMPLE_STUDENT ? "the sample student's" : "your";
   return String(text || "").replace(/\s*\[[^\]]*\]/g, "")
-    .replace(/\b(?:user:)?achievement-[a-e]\b/g, () => `one of ${who} entries`)
-    .replace(/\b(?:user:)?interests\b/g, `${who} interests note`)
+    // Only a document's id is replaced, never the plain word "interests" (S52: the title
+    // "the sample student's interests note" was doubled).
+    .replace(/\buser:achievement-[a-e]\b/g, () => `one of ${who} entries`)
+    .replace(/\buser:interests\b/g, `${who} interests note`)
     .replace(/\bCited work:/, "Your work:").trim()
     .replace(/^./, (c) => c.toUpperCase());
 }

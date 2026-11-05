@@ -752,6 +752,7 @@ class BriefService:
             opps = [s if isinstance(s, Opportunity) else as_opportunity(s) for _, s in keep]
         named = f", {len(bare)} name only" if bare else ""
         lock = threading.Lock()
+        sample_route = _has_sample_route(b)
         store = current_store.get()  # the explanation callbacks run on pool threads
 
         def save(i: int, v: Validated[Fit]) -> None:
@@ -763,6 +764,10 @@ class BriefService:
                 upd = {"fit_score": f.fit, "inference": f.link_sentence or None,
                        "explanation": f"{f.opportunity_sentence} {f.research_sentence}",
                        "unsupported": f.unsupported, "cited_ids": f.cited_ids}
+                if sample_route:  # S52: tidy "your the sample student's …" (no claim changes)
+                    from perch.student import tidy_sample_text
+                    upd["inference"] = tidy_sample_text(upd["inference"])
+                    upd["explanation"] = tidy_sample_text(upd["explanation"])
             else:
                 upd = {"flagged": True}
             with using_store(store), lock, self.repo() as r:  # on a pool thread: no context

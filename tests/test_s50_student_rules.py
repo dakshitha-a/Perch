@@ -175,3 +175,15 @@ def test_a_sample_brief_names_the_sample_students_cv():
     assert "your" not in text.lower().replace("you decide", "")
     assert "the sample student's CV says bachelor's" in text
     assert [c.outcome for c in theirs.checks] == [c.outcome for c in mine.checks]
+
+
+def test_sample_text_tidies_a_doubled_possessive():
+    """S52: the model wrote "your the sample student's interests note note says"."""
+    from perch.student import tidy_sample_text
+
+    t = "Your stream work fits, but your the sample student's interests note note says nothing."
+    assert tidy_sample_text(t) == ("Your stream work fits, but the sample student's interests note"
+                                   " says nothing.")
+    assert tidy_sample_text("Your The sample student's entry shows it.") == (
+        "The sample student's entry shows it.")
+    assert tidy_sample_text(None) is None
