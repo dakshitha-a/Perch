@@ -147,6 +147,14 @@ STRUCTURAL_HEADINGS = (
     # G13 (S50): neutral section names from the s49b drafts. "Closest matches" stays out: it
     # judges relevance.
     r"side by side", r"closes? soonest", r"next", r"deadlines in your brief", r"your brief",
+    # S51 H13: comparison, side-by-side and soonest forms from the s49b replay. "Top" stays
+    # out ("Comparison of your top two leads"): uncited, it is a rank claim.
+    r"which (?:one |lead |record |of them )?closes? (?:soonest|first)",
+    r"comparison of (?:your |the |these )?(?:two |three |kept |saved |both )?"
+    r"(?:leads|records|options|grants|awards)",
+    r"(?:(?:your|the|these) )?(?:two |three )?(?:leads|records|options|grants|awards),? "
+    r"side by side",
+    r"(?:main|key) themes? of your (?:work|research|papers)",
     r"where (?:it|they|each|this) sits? in your brief", r"what the search does not show",
     r"who (?:may|can) apply,? per the records?", r"what the records? (?:do )?says?",
     # groups of records by where they come from (S45 fix round 3 replay)
