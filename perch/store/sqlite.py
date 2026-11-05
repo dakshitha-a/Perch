@@ -9,12 +9,12 @@ from __future__ import annotations
 import base64
 import json
 import sqlite3
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from datetime import date
 from pathlib import Path
 
 from perch.schemas import RECORD_TYPES, Record, Work
-from perch.store.base import Page, R, Repository
+from perch.store.base import SORTS, Page, R, Repository, offset_cursor, read_offset
 from perch.store.denorm import TEMPLE_SOURCES, columns, matches_text
 
 SCHEMA = """
@@ -66,7 +66,12 @@ class SQLiteRepository(Repository):
                audience_level: Sequence[str] = (), q: str | None = None,
                closes_after: date | None = None, limit: int = 50,
                cursor: str | None = None, scopes: Sequence[str] = (),
-               exclude_schools: Sequence[str] = ()) -> Page[R]:
+               exclude_schools: Sequence[str] = (), sort: str = "name",
+               open_only: bool = False, today: date | None = None) -> Page[R]:
+        if sort not in SORTS:
+            raise ValueError("bad sort")
+        today = today or date.today()
+
         def keep(r: R) -> bool:
             c = columns(r)
             return ((not temple_only or r.source in TEMPLE_SOURCES)
@@ -76,12 +81,16 @@ class SQLiteRepository(Repository):
                     and (not audience_level or bool(set(audience_level) & set(c.audience_level)))
                     and (not q or matches_text(r, q))
                     and (closes_after is None
-                         or (c.deadline is not None and c.deadline >= closes_after)))
+                         or (c.deadline is not None and c.deadline >= closes_after))
+                    and (not open_only or c.deadline is None or c.deadline >= today))
 
         # Name order, case-folded, then the id, as in the Postgres store (S43 S6).
         def key(r: R) -> tuple[str, str]:
             return (str(getattr(r, "name", None) or getattr(r, "title", None) or "").lower(), r.id)
 
+        if sort != "name":
+            return self._browse_ranked(cls, [r for r in self.list(cls) if keep(r)], key, sort,
+                                       today, limit, cursor)
         hits = sorted((r for r in self.list(cls) if keep(r)), key=key)
         after = None
         if cursor:
@@ -94,6 +103,27 @@ class SQLiteRepository(Repository):
         nxt = (base64.urlsafe_b64encode(json.dumps(list(key(page[-1]))).encode()).decode()
                if more else None)
         return Page(items=page, next_cursor=nxt, total=len(hits))
+
+    def _browse_ranked(self, cls: type[R], found: list[R], key: Callable[[R], tuple[str, str]],
+                       sort: str, today: date, limit: int, cursor: str | None) -> Page[R]:
+        """The closing and amount orders; the cursor is an offset (S49 V1)."""
+        def rank(r: R) -> tuple:
+            c = columns(r)
+            if sort == "amount":
+                return (c.amount_max is None, -(c.amount_max or 0), *key(r))
+            d = c.deadline
+            if d is None:
+                return (2, 0, *key(r))
+            if d >= today:
+                return (0, d.toordinal(), *key(r))
+            return (1, -d.toordinal(), *key(r))
+
+        hits = sorted(found, key=rank)
+        start = read_offset(cursor)
+        page = hits[start:start + limit]
+        more = start + limit < len(hits)
+        return Page(items=page, next_cursor=offset_cursor(start + limit) if more else None,
+                    total=len(hits))
 
     def epoch(self) -> int:
         row = self.conn.execute("SELECT value FROM meta WHERE key = 'epoch'").fetchone()

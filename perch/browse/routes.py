@@ -78,9 +78,11 @@ def make_router(repo_factory: Callable[[], Repository]) -> APIRouter:
 
     def listing(cls: type[Record], *, temple_only: bool, school: str | None,
                 scope: str | None, level: list[str], q: str | None, closes_after: date | None,
-                group: str | None, cursor: str | None, limit: int) -> JSONResponse:
+                group: str | None, cursor: str | None, limit: int, sort: str = "name",
+                open_only: bool = False) -> JSONResponse:
         scopes = [s for s in (scope or "").split(",") if s]
-        common = dict(audience_level=level, q=q, closes_after=closes_after, limit=limit)
+        common = dict(audience_level=level, q=q, closes_after=closes_after, limit=limit, sort=sort,
+                      open_only=open_only, today=date.today())
         specs: list[tuple[str, str, dict]]  # key, label, browse arguments
         if school:
             specs = [("school", school, {"schools": [school], "temple_only": temple_only}),
@@ -100,7 +102,7 @@ def make_router(repo_factory: Callable[[], Repository]) -> APIRouter:
                                "items": [item(r) for r in page.items]})
         if not groups:  # only a name that matches neither group of a school view
             raise HTTPException(422, {"error": "unknown_group"})
-        return JSONResponse({"kind": cls.kind, "groups": groups})
+        return JSONResponse({"kind": cls.kind, "sort": sort, "groups": groups})
 
     def route(cls: type[Record]):  # noqa: ANN202
         def handler(request: Request,
@@ -112,12 +114,14 @@ def make_router(repo_factory: Callable[[], Repository]) -> APIRouter:
                     closes_after: date | None = None,
                     group: Annotated[str | None, Query(max_length=10)] = None,
                     cursor: Annotated[str | None, Query(max_length=400)] = None,
-                    limit: Annotated[int, Query(ge=1, le=100)] = 50) -> JSONResponse:
+                    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+                    sort: Literal["name", "closing", "amount"] = "name",
+                    open_only: bool = False) -> JSONResponse:
             limited(request)
             try:
                 return listing(cls, temple_only=temple_only, school=school, scope=scope,
                                level=level or [], q=q, closes_after=closes_after, group=group,
-                               cursor=cursor, limit=limit)
+                               cursor=cursor, limit=limit, sort=sort, open_only=open_only)
             except (ValueError, UnicodeError) as e:  # a cursor that is not ours
                 raise HTTPException(422, {"error": "bad_cursor"}) from e
         return handler

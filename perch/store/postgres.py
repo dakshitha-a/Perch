@@ -22,7 +22,17 @@ from psycopg_pool import ConnectionPool
 
 from perch.embed import DEFAULT_MODEL
 from perch.schemas import RECORD_TYPES, Record, Work
-from perch.store.base import Facets, Page, R, Repository, VectorIndex, sorted_counts
+from perch.store.base import (
+    SORTS,
+    Facets,
+    Page,
+    R,
+    Repository,
+    VectorIndex,
+    offset_cursor,
+    read_offset,
+    sorted_counts,
+)
 from perch.store.denorm import STORED_KINDS, TEMPLE_SOURCES, TEXT_SQL, columns
 from perch.store.pg import EMBED_DIM, make_pool
 
@@ -113,7 +123,11 @@ class PostgresRepository(Repository):
                audience_level: Sequence[str] = (), q: str | None = None,
                closes_after: date | None = None, limit: int = 50,
                cursor: str | None = None, scopes: Sequence[str] = (),
-               exclude_schools: Sequence[str] = ()) -> Page[R]:
+               exclude_schools: Sequence[str] = (), sort: str = "name",
+               open_only: bool = False, today: date | None = None) -> Page[R]:
+        if sort not in SORTS:
+            raise ValueError("bad sort")
+        today = today or date.today()
         where = ["kind = %s", "NOT sample"]
         args: list = [cls.kind]
         if temple_only:
@@ -137,7 +151,12 @@ class PostgresRepository(Repository):
         if closes_after is not None:
             where.append("deadline >= %s")
             args.append(closes_after)
+        if open_only:
+            where.append("(deadline IS NULL OR deadline >= %s)")
+            args.append(today)
         base = " AND ".join(where)
+        if sort != "name":
+            return self._browse_ranked(cls, base, args, sort, today, limit, cursor)
         page_where, page_args = base, list(args)
         if cursor:
             # Name order, case-folded, with the id as the tie-break; the cursor holds both.
@@ -158,6 +177,27 @@ class PostgresRepository(Repository):
         nxt = (base64.urlsafe_b64encode(json.dumps([rows[-1][2], rows[-1][0]]).encode()).decode()
                if more else None)
         return Page(items=[cls.model_validate(r[1]) for r in rows], next_cursor=nxt, total=total)
+
+    def _browse_ranked(self, cls: type[R], base: str, args: list, sort: str, today: date,
+                       limit: int, cursor: str | None) -> Page[R]:
+        """The closing and amount orders (S49 V1). The cursor is an offset."""
+        start = read_offset(cursor)
+        tail = f'{NAME_SQL}, id COLLATE "C"'
+        if sort == "amount":
+            order, oargs = f"amount_max DESC NULLS LAST, {tail}", []
+        else:
+            order = ("CASE WHEN deadline IS NULL THEN 2 WHEN deadline >= %s THEN 0 ELSE 1 END, "
+                     "CASE WHEN deadline >= %s THEN deadline END ASC, "
+                     f"CASE WHEN deadline < %s THEN deadline END DESC, {tail}")
+            oargs = [today, today, today]
+        with self.pool.connection() as conn:
+            total = conn.execute(f"SELECT count(*) FROM records WHERE {base}", args).fetchone()[0]
+            rows = conn.execute(
+                f"SELECT data FROM records WHERE {base} ORDER BY {order} LIMIT %s OFFSET %s",
+                [*args, *oargs, limit, start]).fetchall()
+        more = start + limit < total
+        return Page(items=[cls.model_validate(r[0]) for r in rows],
+                    next_cursor=offset_cursor(start + limit) if more else None, total=total)
 
     def facets(self, cls: type[R]) -> Facets:
         with self.pool.connection() as conn:
