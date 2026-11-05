@@ -134,6 +134,7 @@ button, input, select, summary { font: inherit; color: inherit; }
 .btn.primary:hover { filter: brightness(1.06); }
 .btn.quiet { background: transparent; border-color: transparent; color: var(--ink-2); padding: 0 10px; }
 .btn.quiet:hover { background: var(--sunk); }
+.btn.quiet[disabled], .btn.quiet[disabled]:hover { background: transparent; border-color: transparent; color: var(--ink-3); } /* S53 QA: a disabled quiet button (Clear) must look disabled */
 .btn.icon-only { width: 44px; padding: 0; }
 .btn.wide { width: 100%; }
 .btn.keep.on { background: var(--moss-soft); border-color: var(--moss); color: var(--ink); }

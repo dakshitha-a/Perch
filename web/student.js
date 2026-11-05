@@ -44,8 +44,8 @@ export function ruleItems(l) {
 }
 const checkItem = (c) => h("li", { class: "check", "data-outcome": c.outcome, ...(c.rule ? { "data-rule": c.rule } : {}), ...(c.lower ? { "data-lower": "1" } : {}) },
   h("span", { class: "check-mk", "aria-hidden": "true", text: OUTCOME[c.lower ? "lower" : c.outcome][0] }),
-  h("span", { class: "sr-only", text: OUTCOME[c.lower ? "lower" : c.outcome][1] }), h("span", { text: c.text }),
-  c.url ? [" ", h("a", { class: "pick-source", href: c.url, target: "_blank", rel: "noopener noreferrer", text: "Source page" })] : null);
+  h("span", { class: "sr-only", text: OUTCOME[c.lower ? "lower" : c.outcome][1] }), h("span", {}, c.text,
+    c.url ? [" ", h("a", { class: "pick-source", href: c.url, target: "_blank", rel: "noopener noreferrer", text: "Source page" })] : null));
 // Lines every card repeats are said once above the list, so a card leaves them out.
 function rulesBlock(l, skip, noDeadline = false) {
   // S51 W16: a card whose facts already say there is no deadline does not repeat it as a check.

@@ -853,7 +853,7 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
             hold = asyncio.Event()
 
             async def slow(route: Route) -> None:  # hold the answer to measure the working state
-                await hold.wait()
+                await hold.wait()  # noqa: B023 - used within this iteration
                 await stub(route)
             await page.route(re.compile(r".*/briefs/[^/?]+/scout(\?.*)?$"), slow)
         await page.fill("#scout-q", cur["q"])
@@ -868,6 +868,9 @@ async def flow_scoutmarks(w: Walk, browser: Browser, base: str, tag: str, view: 
             await page.emulate_media(reduced_motion="reduce")
             w.check("scout_glow_while_working", still["shadow"] != "none" and still["anim"] == "none"
                     and moving["anim"] == "scout-glow", f"reduced {still}, motion {moving}")
+            await page.emulate_media(reduced_motion="no-preference")  # the picture shows the glow, as a visitor sees it
+            await w.snap(page, tag, "scout-working")
+            await page.emulate_media(reduced_motion="reduce")
             hold.set()
             await page.unroute(re.compile(r".*/briefs/[^/?]+/scout(\?.*)?$"), slow)
         await page.wait_for_selector(".scout-x .notice.warn, .scout-x .scout-answer")

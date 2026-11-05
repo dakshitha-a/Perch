@@ -145,5 +145,9 @@ ul.award-list { display: grid; gap: 8px; list-style: none; padding: 0; margin: 0
 .profile-picks .pick label { font-weight: 600; }
 .profile-picks select { max-width: 24rem; }
 .profile-picks .hint { margin: 0; }
+/* Inside a box the box is the frame: no second border around the picks (S53 QA). */
+.box > .profile-picks, .picks-side > .profile-picks { border: 0; padding: 0; }
+.box > .profile-picks legend, .picks-side > .profile-picks legend { padding: 0; margin-bottom: 8px; font-size: 1.125rem; }
+.picks-side > .btn { margin-top: 12px; }
 .picks-side + .picks-side { margin-top: 16px; }
 .pick-source { white-space: nowrap; }

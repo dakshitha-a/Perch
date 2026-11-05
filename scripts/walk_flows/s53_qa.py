@@ -1,4 +1,4 @@
-# ruff: noqa: ANN001, ANN202, E501  (walk flow: inline JavaScript probes, flows take the ux_walk objects)
+# ruff: noqa: ANN001, ANN201, ANN202, E501  (walk flow: inline JavaScript probes, flows take the ux_walk objects)
 """S53 QA walk flows: the optional citizenship and state picks, the CV panel, the footer.
 
 Loaded by scripts/ux_walk.py. Flows:
@@ -183,7 +183,6 @@ def register(U):  # noqa: N803 - the ux_walk module handed in by the loader
                                          "where": "the award's eligibility notes", "quote": quote, "outcome": "fail", "has_text": True}
                 line = f"From the award's eligibility notes, the listing asks for: \u201c{quote}\u201d. You entered: International."
                 x["checks"] = [c for c in x.get("checks", []) if c["rule"] != "citizenship"] + [{"rule": "citizenship", "outcome": "unknown", "text": f"Citizenship: {line}"}]
-                x["notes"] = [*x.get("notes", []), f"Citizenship: {line}"]
             await page.route(re.compile(r".*/briefs/[^/?]+(\?.*)?$"), demote)
             await page.reload()
             await page.wait_for_selector("#panel .card.lead", timeout=30_000)
