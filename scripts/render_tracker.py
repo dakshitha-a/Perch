@@ -278,7 +278,8 @@ details .inner > * { min-width: 0; }
 figure.diagram { margin: 0; padding: 16px; display: grid; gap: 12px; justify-items: center; overflow-x: auto; }
 figure.diagram svg { width: 100%; min-width: 560px; max-width: 720px; height: auto; color: var(--fg); }
 @media (max-width: 600px) { figure.diagram { justify-items: start; }
-  figure.diagram svg { min-width: 0; } }
+  figure.diagram::after { content: "Scroll sideways to see the whole figure"; font-size: var(--t-xs);
+    color: var(--muted); position: sticky; left: 0; } }
 figure.shot { margin: 0; padding: 12px; display: grid; gap: 8px; justify-items: center; }
 figure.shot img { max-width: 100%; max-height: 640px; height: auto; border-radius: 6px; }
 figure figcaption { font-size: var(--t-sm); color: var(--muted); justify-self: start;
@@ -1625,7 +1626,7 @@ def render_page(master_md: str, session_files: dict[str, str], artifact: bool = 
         ("persona", "Personas", lambda: view_persona(
             persona, note("data/synthetic/persona-1/README.md", check=False)), persona),
     ) if t[3]]
-    tabs.sort(key=lambda t: t[0] != "ui")  # the landing tab is UI when it exists; the sort is stable
+    tabs.sort(key=lambda t: {"ui": 0, "architecture": 1}.get(t[0], 2))  # UI lands first, then Architecture; stable
     nav = "\n".join(f'<a id="tab-{k}" href="#{k}"{" aria-current=\"page\"" if i == 0 else ""}>'
                     f"{label}</a>" for i, (k, label, _, _) in enumerate(tabs))
     views = "\n".join(f'<section id="view-{k}" class="view" data-view="{k}"'

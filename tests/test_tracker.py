@@ -217,6 +217,7 @@ def test_tabs_open_on_current_in_reader_order(tmp_path):
     order = re.findall(r'<a id="tab-([a-z]+)"', p)
     assert order == [
         "ui",
+        "architecture",
         "current",
         "master",
         "decisions",
@@ -224,7 +225,6 @@ def test_tabs_open_on_current_in_reader_order(tmp_path):
         "ux",
         "bench",
         "readme",
-        "architecture",
         "persona",
     ]
     assert re.findall(r'data-view="([a-z]+)"', p) == order
