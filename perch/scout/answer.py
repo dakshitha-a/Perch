@@ -144,8 +144,8 @@ HELP_VERBS = (r"(?:read|list|compare|search|show|check|open|look|tell|help|draft
 # must name an action ("I can compare it with your CV"), so "I can see this record fits you"
 # and "You can expect a strong fit" are not help and still need a citation.
 HELP_RE = re.compile(
-    r"^[\W_]*(?:or\s+)?(?:(?:please\s+)?(?:ask|tell me|let me know|check|open|read|try|use|pick|choose|"
-    r"click|press|tap|select|keep|save|dismiss|restore|compare|start|go to|look at|look for|"
+    r"^[\W_]*(?:or\s+)?(?:(?:please\s+)?(?:ask|tell me|let me know|check|open|read|try|use|pick|"
+    r"choose|click|press|tap|select|keep|save|dismiss|restore|compare|start|go to|look at|look for|"
     r"see|type|sign in|build|say|reply|send me|share|add|upload|paste|search|browse)\b|"
     r"(?:(?:i|scout|you)\s+(?:can|could|will|would)|i(?:'|’)ll)"
     r"(?:\s+(?:then|also|now|first|next|still|just))?\s+" + HELP_VERBS + r"\b|"
