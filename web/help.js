@@ -189,7 +189,7 @@ function keeping() {
     ["Temple’s own calls in a hand-off.", " A note to Research Development lists kept federal grants only. Temple’s own calls name their contact on each call’s page."],
     ["A past date on an award.", " Many Temple awards recur each year. When an award’s page shows a date that has passed, the card says Past date on the page, and a check of your fit says may be eligible, with the date from the page. Check the page for this year’s date."],
     ["My Perch is your home.", " When you are signed in, Perch opens on My Perch: what you kept and saved, sorted by date, your briefs, and your documents. Start a new search from there."],
-    ["Run again.", " On My Perch, Run again opens the start screen with your details filled in. Running it makes a new brief; the old one stays on My Perch."],
+    ["Run again.", " On My Perch, Run again (read aloud as Change details and run again) opens the start screen with your details filled in. Running it makes a new brief; the old one stays on My Perch."],
     ["A researcher CV.", " A researcher may add a CV before building a brief. It is optional. Perch uses it for cover-letter points and Scout, stores it encrypted, and blanks contact details before a model reads it."],
   ];
   return h("section", { class: "help-block", "aria-labelledby": "h-keep" },
