@@ -1697,6 +1697,9 @@ details.hidden-fold > summary { min-height: 44px; font-size: var(--fs-14); color
 #panel .budget-note { display: flex; gap: 8px; align-items: flex-start; flex: 1 1 22rem; margin: 0; font-size: var(--fs-14); color: var(--ink-2); }
 #panel .budget-note .icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--ink-3); }
 @media (max-width: 599px) { #panel .list-status { margin-bottom: 0; } }
+/* The student list's budget line (FE-B) looks the same: quiet text with its icon, not a box. */
+#list-notices > .notice[data-budget] { background: none; padding: 0; gap: 8px; font-size: var(--fs-14); color: var(--ink-2); }
+#list-notices > .notice[data-budget] .icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--ink-3); }
 /* The pick screen's second Build button, at the foot of the form (S50 V32). */
 .build-foot { display: flex; justify-content: flex-end; }
 @media (max-width: 699px) { .build-foot .btn { width: 100%; } }
