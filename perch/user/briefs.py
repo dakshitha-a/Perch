@@ -116,6 +116,11 @@ class BriefStore(ABC):
     def cancelled(self) -> bool:
         return False
 
+    def retry_left(self) -> bool:
+        """True when this brief runs in a job that has another attempt (S49 B8)."""
+        ctx = getattr(self, "ctx", None)
+        return bool(ctx is not None and ctx.attempt < ctx.max_attempts)
+
     def user_docs(self) -> list[Work]:
         """User documents (CV text excluded) that become query threads. Empty for guests."""
         return []

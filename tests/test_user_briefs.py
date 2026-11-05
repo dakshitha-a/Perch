@@ -429,3 +429,91 @@ def test_a_guest_store_stops_writing_once_its_job_is_lost(tmp_path):
     assert r.get(f"perch:gres:{job}") is None
     r.flushdb()
     r.close()
+
+
+def _run_brief_worker(pg_clean, svc, until, timeout=60):
+    import threading
+    import time
+
+    from perch import jobs
+    from perch.jobs import PostgresRunner, Timing
+
+    fast = Timing(lease_s=60, heartbeat_s=0.2, reaper_s=0.3, poll_s=0.05, drain_s=10)
+    jobs.set_brief_service(lambda: svc)
+    w = PostgresRunner(pg_clean.worker, timing=fast, pool_size=4)
+    stop = threading.Event()
+    t = threading.Thread(target=w.run_forever, args=("w-b8", ["brief"], 1, stop))
+    t.start()
+    try:
+        end = time.monotonic() + timeout
+        while time.monotonic() < end and not until():
+            time.sleep(0.1)
+    finally:
+        stop.set()
+        t.join()
+        jobs._brief_service = None
+        w.close()
+
+
+def _job_state(pg_clean, jid):
+    return rows(pg_clean, "SELECT state FROM jobs WHERE id = %s", jid)[0][0]
+
+
+@needs_pg
+def test_a_server_that_did_not_answer_is_retried(pg_clean, ud, tmp_path, web_pool, keys,
+                                                 monkeypatch):
+    """S49 B8: a network error failed the brief at once; max_attempts applied only to a lost
+    lease. Now the job is retried and the brief waits as queued in between."""
+    import httpx
+
+    from perch import jobs
+    from perch.jobs import PostgresRunner, Timing
+
+    monkeypatch.setattr(jobs, "backoff_s", lambda n: 0.0)
+    uid = new_user(pg_clean)
+    _, svc = make(tmp_path)
+    b = create_user_brief(svc, ud, uid, "researcher", "A5026494099", as_of=AS_OF)
+    jid = PostgresRunner(pool=web_pool, timing=Timing()).submit(
+        "brief", {"brief_id": b.id}, uid, f"k-{b.id}", audience="researcher")
+    real, seen = svc._run_works, []
+
+    def flaky(brief):
+        seen.append(1)
+        if len(seen) == 1:
+            raise httpx.ConnectError("no route")
+        return real(brief)
+
+    svc._run_works = flaky
+    _run_brief_worker(pg_clean, svc,
+                      lambda: _job_state(pg_clean, jid) in ("succeeded", "failed", "dead"))
+    assert rows(pg_clean, "SELECT state, attempts FROM jobs WHERE id = %s", jid) \
+        == [("succeeded", 2)]
+    got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
+    assert got.brief.status == "done" and len(seen) == 2
+
+
+@needs_pg
+def test_a_pending_retry_leaves_the_brief_queued(pg_clean, ud, tmp_path, keys):
+    """Between attempts the page must keep polling, so the brief is not written as failed."""
+    import httpx
+
+    uid = new_user(pg_clean)
+    _, svc = make(tmp_path)
+    b = create_user_brief(svc, ud, uid, "researcher", "A5026494099", as_of=AS_OF)
+
+    def down(brief):
+        raise httpx.ConnectError("no route")
+
+    svc._run_works = down
+    store = UserBriefStore(ud, uid, "researcher", b.id)
+    store.retry_left = lambda: True  # the job has another attempt
+    assert store.load()
+    with using_store(store):
+        assert svc.run(b.id) == "queued"
+    got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
+    assert got.brief.status == "queued" and not got.brief.error
+    store.retry_left = lambda: False  # the last attempt
+    with using_store(store):
+        assert svc.run(b.id) == "failed"
+    got = ud.get(uid, uuid.UUID(b.id), StoredBrief)
+    assert got.brief.status == "failed" and "ConnectError" in got.brief.error

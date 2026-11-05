@@ -671,6 +671,8 @@ def brief_handler(ctx: JobContext) -> str | None:
     if store is None:  # v1 submits every brief with an owner (S49 B31)
         raise PermanentError("invalid_input")
     status = _run_stored_brief(ctx, store, brief_id)
+    if status == "queued":  # a server did not answer: the brief waits for the retry (S49 B8)
+        raise RetryableError("network_error")
     if status in ("failed", "missing"):  # the brief holds the stage detail, never the log
         raise PermanentError("permanent")
     return store.result_ref

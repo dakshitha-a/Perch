@@ -307,12 +307,18 @@ class BriefService:
                 raise err
             b.status = "done"
         except Exception as e:  # recorded on the brief; the job thread must not die silently
-            b.error = (str(e) if isinstance(e, Cancelled) else plain_error(e)
-                       if quiet else f"{type(e).__name__}: {e}")
-            stage(current, "failed", b.error)
-            b.status = "failed"
-            if not quiet:
-                traceback.print_exc()
+            if store is not None and store.retry_left() and is_transient(e):
+                # S49 B8: a server that did not answer is retried by the job; the brief
+                # waits for it as queued, so the page keeps polling.
+                stage(current, "pending", RETRY_DETAIL)
+                b.status = "queued"
+            else:
+                b.error = (str(e) if isinstance(e, Cancelled) else plain_error(e)
+                           if quiet else f"{type(e).__name__}: {e}")
+                stage(current, "failed", b.error)
+                b.status = "failed"
+                if not quiet:
+                    traceback.print_exc()
         with self.repo() as r:
             r.upsert([b])
         self._ctx.pop(b.id, None)
@@ -731,6 +737,22 @@ class InputProblem(ValueError):
 
 class Cancelled(Exception):
     """A brief stopped between stages; its message is written by code."""
+
+
+RETRY_DETAIL = "A server did not answer. Trying again shortly."
+
+
+def is_transient(e: BaseException) -> bool:
+    """A network failure or a server's 5xx or 429 answer: worth another attempt (S49 B8)."""
+    import httpx
+
+    for x in (e, e.__cause__, e.__context__):
+        if isinstance(x, httpx.TransportError):
+            return True
+        if isinstance(x, httpx.HTTPStatusError) and (x.response.status_code >= 500
+                                                     or x.response.status_code == 429):
+            return True
+    return False
 
 
 def plain_error(e: Exception) -> str:
