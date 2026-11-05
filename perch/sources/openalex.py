@@ -157,6 +157,9 @@ def companies_on(raw: dict[str, Any], fetched_at: datetime) -> list[Organisation
     return list(seen.values())
 
 
+# The longest Retry-After worth waiting for inside a request (S51).
+MAX_RETRY_AFTER_S = 30.0
+
 class OpenAlexClient:
     """Small synchronous client with retries. Pass `transport` in tests."""
 
@@ -197,7 +200,12 @@ class OpenAlexClient:
                 if attempt == self.retries:
                     r.raise_for_status()
                 retry_after = r.headers.get("Retry-After", "")
-                time.sleep(float(retry_after) if retry_after.isdigit() else 2**attempt)
+                wait = float(retry_after) if retry_after.isdigit() else 2**attempt
+                if wait > MAX_RETRY_AFTER_S:
+                    # S51: OpenAlex once asked for 13 hours; a brief must fail clearly
+                    # (OpenAlex could not be reached) rather than hang until its timeout.
+                    r.raise_for_status()
+                time.sleep(wait)
                 continue
             r.raise_for_status()
             return r.json()
