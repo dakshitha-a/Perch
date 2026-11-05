@@ -829,7 +829,10 @@ function renderMissing(id, msg) {
 const leadsOf = () => (S.brief ? S.brief.leads : []);
 const stage = (name) => S.brief.brief.stages.find((s) => s.name === name) || { status: "pending" };
 const isDone = (name) => ["done", "skipped"].includes(stage(name).status);
-const routeLeads = (r) => leadsOf().filter((l) => (l.route || "A") === r);
+// Temple internal funding is its own list, route "T" on screen: the back end marks those
+// leads group "temple_internal" on route A (S49 FM9). They never join the federal list.
+const routeOf = (l) => (l.group === "temple_internal" ? "T" : l.route || "A");
+const routeLeads = (r) => leadsOf().filter((l) => routeOf(l) === r);
 const explainedCount = () => routeLeads("A").filter((l) => l.explanation || l.flagged).length;
 
 function renderBrief() {
@@ -839,7 +842,7 @@ function renderBrief() {
   const name = student ? "Your options" : r.display_name || "Your brief";
   document.title = `${name} — Perch`;
   if (student && !["F", "S"].includes(S.route)) S.route = "F";
-  if (!student && !["A", "B"].includes(S.route)) S.route = "A";
+  if (!student && !["A", "B", "T"].includes(S.route)) S.route = "A";
   // F23: the date's parts never part at a line end ("1" / "Nov 2026").
   const asOf = f.formatDate(d.brief.options.as_of).replace(/ /g, "\u00a0");
   // A guest's sample brief says whose CV it checks (S43 S8).
@@ -1141,7 +1144,7 @@ function syncWarnings() {
 
 // The right rail on the list tab: the shortlist card above the evidence panel. Under
 // 900 px the rail hides and a floating keep pill takes the shortlist's place.
-const KIND_SHORT = { A: "Grant", B: "Industry", F: "Award", S: "Sample" };
+const KIND_SHORT = { A: "Grant", T: "Temple", B: "Industry", F: "Award", S: "Sample" };
 
 function leadTitle(l) {
   return (l.opportunity && l.opportunity.title) || (l.organisation && l.organisation.name)
@@ -1170,7 +1173,7 @@ function drawRail() {
       card.classList.toggle("has", kept.length > 0);
       const focusKey = card.contains(document.activeElement) ? "sl-compare" : null;
       const item = (l) => h("li", { class: "fade-in" },
-        h("span", { class: "kind-short", text: KIND_SHORT[l.route || "A"] || "Lead" }),
+        h("span", { class: "kind-short", text: KIND_SHORT[routeOf(l)] || "Lead" }),
         h("span", { class: "sl-title", text: leadTitle(l), title: leadTitle(l) }),
         h("button", { class: "x", type: "button", "aria-label": `Remove from shortlist: ${leadTitle(l)}`,
           onclick: () => setLead(l.id, "restore") }, "×"));
@@ -1522,17 +1525,21 @@ function sortedLeads() {
   return leads;
 }
 
-// Grants and industry leads sit side by side as two equal routes; a switch picks one.
+// Grants, Temple internal calls (when the brief has any) and industry leads sit side by side
+// as equal routes; a switch picks one.
 function routeSwitch() {
   const n = (r) => routeLeads(r).filter((l) => l.status !== "dismissed").length;
   const btn = (r, label) => {
-    const ready = isDone(r === "A" ? "route_a" : "route_b");
+    const ready = isDone(r === "B" ? "route_b" : "route_a"); // T is found with the grants
     return h("button", { class: "route-btn", "data-key": `route-${r}`, "aria-pressed": String(S.route === r),
       onclick: () => switchRoute(r) },
-    h("span", { text: label }), ready ? h("span", { class: "route-n", text: String(n(r)) }) : null);
+    // On a phone "Temple internal" reads "Temple", so three routes fit one row.
+    r === "T" ? [h("span", { class: "route-long", text: label }), h("span", { class: "route-short", "aria-hidden": "true", text: "Temple" })]
+      : h("span", { text: label }),
+    ready ? h("span", { class: "route-n", text: String(n(r)) }) : null);
   };
   return h("div", { class: "route-switch", role: "group", "aria-label": "Route" },
-    btn("A", "Grants"), btn("B", "Industry"));
+    btn("A", "Grants"), routeLeads("T").length ? btn("T", "Temple internal") : null, btn("B", "Industry"));
 }
 
 // The sort order as the same segmented pill as Grants | Industry, smaller (S27).
@@ -1550,7 +1557,7 @@ function sortSwitch() {
 }
 
 function updateSwitch(panel) {
-  for (const r of ["A", "B"]) {
+  for (const r of ["A", "T", "B"]) {
     const el = panel.querySelector(`[data-key="route-${r}"] .route-n`);
     if (el) el.textContent = String(routeLeads(r).filter((l) => l.status !== "dismissed").length);
   }
@@ -1581,7 +1588,7 @@ function renderRoutes(panel) {
   const dismissed = leads.filter((l) => l.status === "dismissed");
   const explaining = stage("explanations").status === "running" || stage("explanations").status === "pending";
 
-  const sig = `routes:${isDone("route_b")}`;
+  const sig = `routes:${S.route}:${isDone("route_b")}:${routeLeads("T").length > 0}`;
   if (panel.dataset.sig !== sig) {
     panel.dataset.sig = sig;
     // S49 (U10, A6): the route row holds the route switch alone; the count heading and Sort
@@ -1591,7 +1598,8 @@ function renderRoutes(panel) {
         h("h2", { class: "section-title", id: "routes-title" }),
         sortSwitch()),
       h("p", { class: "hint routes-sub" }),
-      hiddenLine(),
+      S.route === "T" ? h("p", { class: "hint route-hint", text: "Temple’s own funding calls for faculty, kept apart from federal grants. Each call’s page says whom to contact." })
+        : hiddenLine(),
       h("p", { class: "hint model-line", text: "Model text is a model’s reading of the fit, checked against the records it cites." }),
       h("div", { id: "list-notices" }),
       h("div", { class: "filter-box" }),
@@ -1603,9 +1611,10 @@ function renderRoutes(panel) {
   for (const b of panel.querySelectorAll(".sort-switch button")) {
     b.setAttribute("aria-pressed", String(b.dataset.key === `sort-${S.sort}`));
   }
+  const noun = S.route === "T" ? ["Temple internal call", "Temple internal calls"] : ["open opportunity", "open opportunities"];
   panel.querySelector("#routes-title").textContent = active.length === open.length
-    ? f.plural(open.length, "open opportunity", "open opportunities")
-    : `${active.length} of ${f.plural(open.length, "open opportunity", "open opportunities")}`;
+    ? f.plural(open.length, ...noun)
+    : `${active.length} of ${f.plural(open.length, ...noun)}`;
   drawFilters(panel.querySelector(".filter-box"), open);
   // The kept count shows in the shortlist, the floating pill and the Compare tab (W3).
   const subBits = [];

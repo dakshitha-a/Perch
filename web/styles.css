@@ -1531,7 +1531,7 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
 /* The list's head (A6): the count on the left, Sort on the right; the notices under it. */
 .list-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
 .list-head .section-title { font-size: 17px; }
-#panel .model-line, #panel .hidden-line { margin-top: -8px; }
+#panel .model-line, #panel .hidden-line, #panel .route-hint { margin-top: -8px; }
 .lead .lead-notes { margin: 0; font-size: var(--fs-14); }
 .lead .lead-notes li { color: var(--ink-3); line-height: 1.45; overflow-wrap: anywhere; }
 #list-notices { display: grid; gap: 8px; }
@@ -1602,3 +1602,17 @@ details.about-list > summary { min-height: 44px; font-size: var(--fs-14); font-w
 /* In the 760 px form column the Build box sits under the title, on the same left edge. */
 body[data-screen="form"] .build-box { justify-items: start; max-width: none; width: 100%; }
 body[data-screen="form"] .explain-check { min-height: 44px; }
+
+/* ---------- S49 A9: the Temple internal route ---------- */
+.route-btn .route-short { display: none; }
+@media (max-width: 479px) {
+  /* the full name stays for screen readers; the eye reads "Temple" */
+  .route-btn .route-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .route-btn .route-short { display: inline; }
+}
+/* On a phone the brief's tools (Ready, Export) sit under the name, on its left edge. */
+@media (max-width: 699px) {
+  .brief .title-row { flex-wrap: wrap; }
+  .brief .title-row > div:first-child { flex: 1 1 100%; }
+  .brief-tools { justify-content: flex-start; }
+}

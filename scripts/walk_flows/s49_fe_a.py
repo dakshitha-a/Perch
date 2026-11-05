@@ -244,7 +244,7 @@ def register(U) -> tuple[dict, list]:  # noqa: C901 - one walk module, flows as 
         await page.evaluate("location.hash = '#/'")
         await page.wait_for_selector(".landing h1, #acct-title")
         await open_brief(page, RB)
-        tids = {x["id"] for x in researcher_variant(raw_r, route_t=True)["leads"] if x.get("route") == "T"}
+        tids = {x["id"] for x in researcher_variant(raw_r, route_t=True)["leads"] if x.get("group") == "temple_internal"}
         ok, detail = False, "no Temple internal button"
         if await page.locator("[data-key=route-T]").count():
             await page.click("[data-key=route-T]")
