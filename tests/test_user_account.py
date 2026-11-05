@@ -506,3 +506,54 @@ def test_opening_a_document_id_as_a_brief_is_a_404(env, tmp_path, monkeypatch):
     r = c.get(f"/briefs/{cv}")
     assert r.status_code == 404, r.text
     assert UserBriefStore(env.ud, env.uid, "researcher", str(cv)).load() is False
+
+
+def test_a_brief_whose_job_ended_without_it_stops_the_page(env, pg_clean, tmp_path,
+                                                         monkeypatch):
+    """S49 B1: the page read only the brief's own status, so a job refused before the run,
+    dead after its lease ran out, or gone left the owl spinning for good."""
+    from perch.user.briefs import JOB_ENDED, JOB_ENDED_DEFAULT, JOB_GONE
+
+    c, _ = brief_client(env, tmp_path, monkeypatch)
+
+    def new_brief(n):
+        r = c.post("/briefs", json={"author_id": "A5026494099", "as_of": f"2026-10-{n:02d}"})
+        assert r.status_code == 202, r.text
+        return r.json()["id"], r.json()["job_id"]
+
+    bid, jid = new_brief(1)
+    got = c.get(f"/briefs/{bid}").json()
+    assert got["brief"]["status"] == "queued"
+    assert got["job"]["state"] == "queued" and got["job"]["worker_seen"] is False
+
+    sql(pg_clean, "UPDATE jobs SET state = 'dead', error_code = 'lease_expired', "
+        "finished_at = now() WHERE id = %s", jid)
+    got = c.get(f"/briefs/{bid}").json()
+    assert got["brief"]["status"] == "failed" and got["brief"]["error"] == JOB_ENDED_DEFAULT
+    assert got["job"]["state"] == "dead"
+
+    bid, jid = new_brief(2)
+    sql(pg_clean, "UPDATE jobs SET state = 'failed', error_code = 'consent_required', "
+        "finished_at = now() WHERE id = %s", jid)
+    assert c.get(f"/briefs/{bid}").json()["brief"]["error"] == JOB_ENDED["consent_required"]
+
+    bid, jid = new_brief(3)
+    sql(pg_clean, "DELETE FROM jobs WHERE id = %s", jid)
+    got = c.get(f"/briefs/{bid}").json()
+    assert got["brief"]["status"] == "failed" and got["brief"]["error"] == JOB_GONE
+
+    bid, jid = new_brief(4)  # the owner stops it
+    assert c.post(f"/briefs/{bid}/cancel").json()["cancelled"] is True
+    got = c.get(f"/briefs/{bid}").json()
+    assert got["brief"]["status"] == "failed" and got["brief"]["error"] == JOB_ENDED["cancelled"]
+    assert c.post(f"/briefs/{bid}/cancel").json()["cancelled"] is False
+
+    bid, jid = new_brief(5)  # a retry is pending: the page keeps polling
+    sql(pg_clean, "UPDATE jobs SET attempts = 1, error_code = 'network_error' WHERE id = %s",
+        jid)
+    assert c.get(f"/briefs/{bid}").json()["brief"]["status"] == "queued"
+
+    # the stored brief itself is unchanged; another account sees nothing
+    assert UserBriefStore(env.ud, env.uid, "researcher", bid).load()
+    env.session.user_id = new_user(pg_clean)
+    assert c.post(f"/briefs/{bid}/cancel").status_code == 404

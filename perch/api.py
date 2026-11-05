@@ -710,6 +710,12 @@ def create_app(service: BriefService, runner: ClosureRunner,
         while nothing changed (review P3)."""
         with scope(request, sess, brief_id):
             out = brief_view(brief_id)
+            if sess is not None:  # S49 B1: a job that ended without the brief stops the page
+                from perch.user.briefs import brief_job, job_overlay
+
+                sv = request.app.state.user_services
+                out["job"] = brief_job(sv.runner, sv.ud, sv.redis, sess, brief_id)
+                job_overlay(out["brief"], out["job"])
             svc_u = accounts(request)
             if sess is not None and sess.user_id is not None and svc_u is not None:
                 from perch.scout import web as sweb
@@ -796,6 +802,20 @@ def create_app(service: BriefService, runner: ClosureRunner,
     def restore(brief_id: str, lead_id: str, request: Request,
                 sess: object | None = Depends(account_session_csrf)) -> dict:
         return set_status(brief_id, lead_id, "new", request, sess)
+
+    @app.post("/briefs/{brief_id}/cancel", dependencies=STORED)
+    def cancel_brief(brief_id: str, request: Request,
+                     sess: object | None = Depends(account_session_csrf)) -> dict:
+        """Stop the job that builds this brief (S49 B1). The next poll shows it as cancelled."""
+        if sess is None:
+            raise HTTPException(404, {"error": "not_found"})
+        from perch.user.briefs import cancel_brief as cancel
+
+        sv = request.app.state.user_services
+        got = cancel(sv.runner, sv.ud, sv.redis, sess, brief_id)
+        if got is None:
+            raise HTTPException(404, {"error": "not_found"})
+        return {"id": brief_id, "cancelled": got}
 
     @app.get("/briefs/{brief_id}/export.json", dependencies=STORED)
     def export(brief_id: str, request: Request, status: str | None = None,

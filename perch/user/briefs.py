@@ -711,6 +711,97 @@ def open_store(ud: UserData, r: redis.Redis, session: Session, brief_id: str
     return store if store.load() else None
 
 
+# --- the brief's job, as the page sees it (S49 B1) ---
+
+# Written by code: the only sentences a brief shows for a job that ended without it.
+JOB_ENDED = {
+    "consent_required": "This brief reads your own text, and your consent is not current. "
+                        "Accept it again, then build the brief again.",
+    "timeout": "This brief took too long and was stopped. Build it again.",
+    "cancelled": "This brief was cancelled.",
+    "quota_exceeded": "Today's budget for written explanations is used up. Build the brief "
+                      "again tomorrow.",
+    "budget_exceeded": "Today's budget for written explanations is used up. Build the brief "
+                       "again tomorrow.",
+}
+JOB_ENDED_DEFAULT = "This brief could not finish. Build it again in a few minutes."
+JOB_GONE = "This brief has no job on record any more. Build it again."
+WORKER_FRESH_S = 90  # a worker whose heartbeat row is older than this is not counted
+
+
+def _brief_job_id(ud: UserData, r: redis.Redis, session: Session, brief_id: str
+                  ) -> UUID | None:
+    if session.user_id is not None:
+        from perch.store import pg
+
+        with pg.user_tx(ud.pool, session.user_id) as c:
+            row = c.execute(
+                "SELECT id FROM jobs WHERE user_id = %s AND kind = 'brief' "
+                "AND payload->>'brief_id' = %s ORDER BY created_at DESC LIMIT 1",
+                (session.user_id, brief_id)).fetchone()
+        return row[0] if row else None
+    job = r.get(f"perch:gsess:{guest_hash(session.sid)}:job:{brief_id}")
+    return UUID(job.decode() if isinstance(job, bytes) else job) if job else None
+
+
+def brief_job(runner: JobRunner, ud: UserData, r: redis.Redis, session: Session,
+              brief_id: str) -> dict:
+    """The state of the job that builds this brief: `state` (a job state, or `missing` when
+    no job row is left), `error_code`, `attempts`, `queued_ahead`, and for a queued job
+    `worker_seen` (False when no worker has beaten for this kind lately; None when unknown).
+    Ids, states and fixed codes only."""
+    jid = _brief_job_id(ud, r, session, brief_id)
+    guest = None if session.user_id is not None else bytes.fromhex(guest_hash(session.sid))
+    st = runner.status(jid, session.user_id, guest_sid_hash=guest) if jid else None
+    if st is None:
+        return {"state": "missing"}
+    out: dict = {"id": str(st.job_id), "state": st.state.value, "error_code": st.error_code,
+                 "attempts": st.attempts, "queued_ahead": st.queued_ahead}
+    if st.state.value == "queued":
+        out["worker_seen"] = _worker_seen(ud, "brief")
+    return out
+
+
+def _worker_seen(ud: UserData, kind: str) -> bool | None:
+    from perch.store import pg
+
+    try:
+        with pg.public_tx(ud.pool) as c:
+            row = c.execute(
+                "SELECT 1 FROM worker_heartbeat WHERE at > now() - make_interval(secs => %s) "
+                "AND (kinds = '{}' OR %s = ANY(kinds)) LIMIT 1", (WORKER_FRESH_S, kind)
+            ).fetchone()
+    except psycopg.Error:
+        return None
+    return row is not None
+
+
+def job_overlay(brief: dict, job: dict) -> None:
+    """A brief still marked queued or running whose job has ended without it (refused before
+    the run, dead after its lease ran out, timed out, cancelled, or gone) is shown as failed
+    with a sentence written by code, so the page stops waiting. The stored brief is not
+    changed. A job still queued or running leaves the brief as it is."""
+    if brief.get("status") not in ("queued", "running"):
+        return
+    state = job.get("state")
+    if state == "missing":
+        brief["status"], brief["error"] = "failed", JOB_GONE
+    elif state in ("failed", "dead", "cancelled"):
+        brief["status"] = "failed"
+        brief["error"] = JOB_ENDED.get(job.get("error_code") or "", JOB_ENDED_DEFAULT)
+
+
+def cancel_brief(runner: JobRunner, ud: UserData, r: redis.Redis, session: Session,
+                 brief_id: str) -> bool | None:
+    """Cancel the job that builds this brief. None when the brief is not the session's;
+    False when the job already ended."""
+    jid = _brief_job_id(ud, r, session, brief_id)
+    if jid is None:
+        return None
+    guest = None if session.user_id is not None else bytes.fromhex(guest_hash(session.sid))
+    return runner.cancel(jid, session.user_id, guest_sid_hash=guest)
+
+
 def load_brief(ud: UserData, r: redis.Redis, session: Session, brief_id: str
                ) -> StoredBrief | None:
     """The brief for this session, or None (also for a brief that belongs to someone else)."""
