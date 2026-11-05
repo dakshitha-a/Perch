@@ -144,6 +144,10 @@ STRUCTURAL_HEADINGS = (
     # S49 Q9: section names the s45g drafts used; none states a result. "Your top lead" stays
     # out: uncited, it is a rank claim on the record under it (S45 fix round 3).
     r"differences", r"similarities",
+    # G13 (S50): neutral section names from the s49b drafts. "Closest matches" stays out: it
+    # judges relevance.
+    r"side by side", r"closes? soonest", r"next", r"deadlines in your brief", r"your brief",
+    r"where (?:it|they|each|this) sits? in your brief", r"what the search does not show",
     r"who (?:may|can) apply,? per the records?", r"what the records? (?:do )?says?",
     # groups of records by where they come from (S45 fix round 3 replay)
     r"(?:federal|temple|temple-listed|foundation|industry|other|public|sample) (?:fellowship |"

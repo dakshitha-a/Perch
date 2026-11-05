@@ -41,3 +41,19 @@ def test_a_logged_search_makes_its_count_checkable_in_the_replay():
 
 def test_guard_tools_still_build():
     assert "user:brief" in guard_tools().seen
+
+
+# --- G13: neutral section names ---
+
+def _heading_errors(heading: str) -> list[str]:
+    t = guard_tools()
+    text = f"**{heading}**\n- The SYNTHETIC Kidney Repair Program closes 17 Nov 2026 [{OPP.id}]."
+    g = ans.grade(text, t.seen, NAMES, AS_OF, None, t)
+    return [e for s in g.sentences if heading in s.text for e in s.errors]
+
+
+def test_neutral_section_names_pass_and_a_relevance_heading_does_not():
+    for h in ("Side by side", "Closes soonest", "Next", "Deadlines in your brief",
+              "Your brief", "Where it sits in your brief", "What the search does not show"):
+        assert _heading_errors(h) == [], h
+    assert _heading_errors("Closest matches")
