@@ -294,8 +294,17 @@ class ReadTools:
         b, leads = got
         self.brief_read = True
         rows: list[dict[str, Any]] = []
-        for x in sorted((x for x in leads if x.status != "dismissed" and x.route != "B"),
-                        key=lambda x: x.rank or 0)[:MAX_LEADS]:
+        temple = []  # Temple internal funding: its own list, outside the ranks (S49 M9)
+        for x in sorted((x for x in leads if x.status != "dismissed" and x.group
+                         == "temple_internal"), key=lambda x: x.rank or 0)[:MAX_LEADS]:
+            if (rec := self._get(x.record_id)) is not None:
+                temple.append(facts(self._see(rec), self.data.as_of)
+                              | {"kept": x.status == "kept"}
+                              | ({"notes": x.notes} if x.notes else {}))
+                if x.status == "kept":
+                    self.kept.add(rec.id)
+        for x in sorted((x for x in leads if x.status != "dismissed" and x.route != "B"
+                         and x.group is None), key=lambda x: x.rank or 0)[:MAX_LEADS]:
             rec = self._get(x.record_id)
             if rec is None:
                 continue
@@ -315,6 +324,11 @@ class ReadTools:
         sample = [r for r in rows if r.get("sample")]
         out: dict[str, Any] = {"leads": public,
                                "note": "Leads are in the brief's own order, the strongest first."}
+        if temple:
+            out["temple_internal"] = temple
+            out["temple_internal_note"] = ("temple_internal lists Temple's own faculty funding, "
+                                           "a separate group with no rank. Never list it with "
+                                           "leads.")
         if not rows:
             out |= self._empty("user:brief", "Brief", "The user's brief has no leads.")
         if sample:

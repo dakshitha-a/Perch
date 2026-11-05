@@ -300,3 +300,29 @@ def test_f2_hidden_counts_group_every_rejected_record_once():
          "record_ids": ["f"]},
         {"key": "other", "label": "other reasons", "count": 1, "record_ids": ["g"]}]
     assert sum(x["count"] for x in got) == len(rejected)
+
+
+def test_m9_scout_reads_temple_internal_leads_as_their_own_list():
+    from contextlib import nullcontext
+
+    from perch.schemas import Brief, Lead
+    from perch.scout.read_tools import ReadTools, ScoutData
+
+    fed = opp(close_date=date(2026, 12, 1))
+    tp = temple_opp("k", "SYNTHETIC kidney seed grants")
+
+    class Repo:
+        def get_any(self, i):
+            return {fed.id: fed, tp.id: tp}.get(i)
+
+    b = Brief(id="b", source="perch", source_url="perch://b", fetched_at=T, researcher_id="A1")
+    leads = [Lead(id="b:1", source="grants_gov", source_url="u", fetched_at=T, brief_id="b",
+                  route="A", record_id=fed.id, rank=1),
+             Lead(id="b:T1", source="temple_pages", source_url="u", fetched_at=T, brief_id="b",
+                  route="A", record_id=tp.id, rank=1, group="temple_internal")]
+    t = ReadTools(ScoutData(repo=lambda: nullcontext(Repo()), as_of=AS_OF,
+                            brief=lambda: (b, leads)))
+    out = t.read_brief()
+    assert [x["id"] for x in out["leads"]] == [fed.id]
+    assert [x["id"] for x in out["temple_internal"]] == [tp.id]
+    assert t.ranks == {fed.id: 1}
