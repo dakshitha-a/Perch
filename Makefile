@@ -34,7 +34,7 @@ test-user:
 		$(UV) run pytest tests/test_user_data_pg.py tests/test_user_briefs.py tests/test_user_account.py tests/test_key_ops_user.py tests/test_s41_integration.py \
 		tests/test_student_account.py tests/test_student_routes.py tests/test_leak_check.py \
 		tests/test_scout_v2_account.py tests/test_scout_s45_account.py tests/test_scout_cover_account.py \
-		tests/test_spend_meter.py tests/test_restore_safety.py -p no:cacheprovider
+		tests/test_spend_meter.py tests/test_restore_safety.py tests/test_handoff_job.py -p no:cacheprovider
 
 # The demo (S9, deploy-2gpu, hybrid): models as systemd user units on two GPUs, the app
 # in Docker on 127.0.0.1:8090. One command: `make demo`. GPUs default to 6 and 7.

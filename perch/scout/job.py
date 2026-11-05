@@ -277,3 +277,52 @@ def cover_points_handler(ctx: JobContext) -> str | None:
         row = ud.put(uid, "cover_points", audience, out, conn=c)  # type: ignore[arg-type]
     ctx.stage("cover_points", "done", out.status)
     return f"user_data:{row}"
+
+
+# --- the handoff job (S48 S3) ---
+
+@register("handoff", max_attempts=3, timeout_s=120, priority=1)
+def handoff_handler(ctx: JobContext) -> str | None:
+    """The hand-off draft for one office of the user's brief, on the worker, where the model
+    key is. The payload holds ids only. The model call is reserved and settled against the
+    account's day and the global month; if the budget refuses it, the draft is the code-written
+    one. Stored as an encrypted `handoff` row, the newest per brief and office. Nothing is sent."""
+    if ctx.user_id is None or jobs._brief_service is None:  # noqa: SLF001
+        raise PermanentError("no_handler")
+    from perch.api import draft_json
+    from perch.auth.accounts import consent_version_of
+    from perch.config import env
+    from perch.user.briefs import UserBriefStore, using_store
+    from perch.user.models import HandoffDraft
+    from perch.user.spend import using_meter
+
+    brief_id, office = str(ctx.payload["brief_id"]), str(ctx.payload["office"])
+    lead_ids = [str(x) for x in ctx.payload.get("lead_ids") or []] or None
+    uid, service = ctx.user_id, jobs._brief_service()  # noqa: SLF001
+    ud = UserData(ctx.pool)
+    with ctx.user_tx() as c:
+        if consent_version_of(c, uid) < int(env("PERCH_CONSENT_VERSION", "1") or 1):
+            raise PermanentError("consent_required")
+    audience: Any = ctx.audience or "researcher"
+    store = UserBriefStore(ud, uid, audience, brief_id)
+    if not store.load():
+        raise PermanentError("invalid_input")
+    ctx.stage("handoff", "running")
+    with using_store(store):
+        try:
+            with using_meter(RedisMeter(_redis(), ctx.pool, uid, ctx.job_id)):
+                d = service.handoff(brief_id, office, lead_ids)
+        except redisx.QuotaExceeded:  # the day is used: the code-written draft, no model
+            d = service.handoff(brief_id, office, lead_ids, use_model=False)
+        except LookupError:  # nothing kept for that office any more
+            raise PermanentError("invalid_input") from None
+    if d is None:
+        raise PermanentError("invalid_input")
+    out = HandoffDraft(brief_id=brief_id, office=office, draft=draft_json(d))
+    with ctx.user_tx() as c:  # lease-fenced; one stored draft per brief and office
+        for rid, old in ud.list(uid, "handoff", audience, HandoffDraft, limit=100, conn=c):
+            if old.brief_id == brief_id and old.office == office:
+                ud.delete(uid, rid, kinds=("handoff",), conn=c)
+        row = ud.put(uid, "handoff", audience, out, conn=c)
+    ctx.stage("handoff", "done", "flagged" if d.flagged else d.opening_by)
+    return f"user_data:{row}"

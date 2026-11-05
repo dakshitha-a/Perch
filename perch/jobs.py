@@ -35,7 +35,7 @@ import psycopg
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from psycopg_pool import ConnectionPool
-from pydantic import BaseModel, ConfigDict, StringConstraints, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 
 from perch.store import pg
 
@@ -123,8 +123,8 @@ class ScoutTurnPayload(_P):
 
 class HandoffPayload(_P):
     brief_id: Id
-    record_id: Id
-    office: Id | None = None
+    office: Literal["research_development", "technology_commercialization"]
+    lead_ids: list[Id] = Field(default_factory=list, max_length=25)
 
 
 class CoverPointsPayload(_P):

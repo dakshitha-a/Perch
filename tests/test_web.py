@@ -499,3 +499,35 @@ def test_cover_points_button_is_wired_on_every_lead_card():
     assert "verdict !== \"not eligible\"" not in student.split("coverBlock({ ...ctx")[1][:80]
     mods = (ROOT / "scripts/build_ui_preview.py").read_text()
     assert mods.index('"scout.js"') < mods.index('"cover.js"') < mods.index('"student.js"')
+
+
+def test_a_signed_in_handoff_polls_the_stored_draft():
+    """S48 S3: signed in, POST /handoff queues a job; draftOf polls GET until the draft is
+    stored. Without accounts the POST's own draft is used as before."""
+    script = """
+import { draftOf } from './web/handoff.js';
+const draft = { subject: 'SYNTHETIC subject', body: 'SYNTHETIC body', lead_ids: ['l1'] };
+const polls = [];
+const queued = { handoff: async () => ({ job_id: 'j1', status: 'queued' }),
+  handoffGet: async (id, office, job) => { polls.push([id, office, job]);
+    return polls.length < 2 ? { result: null, job: { id: job, state: 'running' } }
+      : { result: draft, job: { id: job, state: 'succeeded' } }; } };
+const direct = { handoff: async () => draft, handoffGet: async () => { throw new Error('no'); } };
+const failed = { handoff: async () => ({ job_id: 'j2' }),
+  handoffGet: async () => ({ result: null,
+    job: { id: 'j2', state: 'dead', error: 'consent_required' } }) };
+const none = async () => {};
+(async () => {
+const a = await draftOf(queued, 'b1', 'research_development', none);
+const b = await draftOf(direct, 'b1', 'research_development', none);
+const c = await draftOf(failed, 'b1', 'research_development', none).catch((e) => e.message);
+console.log(JSON.stringify({ a, b, c, polls }));
+})().catch((e) => { console.error(e); process.exit(1); });
+"""
+    r = subprocess.run(["node", "--input-type=module", "-e", script], capture_output=True,
+                       text=True, cwd=ROOT, timeout=30)
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["a"]["subject"] == "SYNTHETIC subject" and out["b"] == out["a"]
+    assert out["polls"] == [["b1", "research_development", "j1"]] * 2
+    assert "consent" in out["c"]

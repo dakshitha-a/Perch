@@ -349,5 +349,57 @@ def delete(sv: UserServices, uid: UUID, sid: UUID) -> bool:
         return False
 
 
-__all__ = ["TERMINAL", "ask", "audience_of", "delete", "sessions_for", "start_session", "stop",
-           "usage_view", "view"]
+# --- the hand-off draft on the account path (S48 S3) ---
+
+def handoff_submit(sv: UserServices, uid: UUID, audience: str, brief_id: str, office: str,
+                   lead_ids: list[str]) -> dict[str, Any]:
+    """Queue a `handoff` job: the model call runs on the worker, where the model key is, and is
+    metered there. The web admits it against the account's rate window and daily budget first.
+    Each request makes a new draft, so the key carries a fresh nonce."""
+    from uuid import uuid4
+
+    from perch.jobs import PayloadError
+    from perch.user.quota import RateLimited
+
+    try:
+        quota.admit(sv.redis, sv.pool, uid, "submit_job")
+    except RateLimited as e:
+        raise HTTPException(429, {"error": "rate_limited"},
+                            headers={"Retry-After": str(e.retry_after)}) from None
+    except QuotaExceeded:
+        raise HTTPException(429, {"error": "quota_exceeded", "message": texts.BUDGET,
+                                  "usage": usage_view(sv, uid)}) from None
+    key = hashlib.sha256(f"handoff|{uid}|{brief_id}|{office}|{uuid4().hex}".encode()).hexdigest()
+    try:
+        job = sv.runner.submit("handoff", {"brief_id": brief_id, "office": office,
+                                           "lead_ids": lead_ids}, uid, key,
+                               audience=audience)  # type: ignore[arg-type]
+    except PayloadError:
+        raise HTTPException(422, "Those lead ids cannot be used.") from None
+    return {"job_id": str(job), "status": "queued",
+            "poll": f"/briefs/{brief_id}/handoff?office={office}&job_id={job}"}
+
+
+def handoff_get(sv: UserServices, uid: UUID, audience: str, brief_id: str, office: str,
+                job_id: str | None) -> dict[str, Any]:
+    """{"result": the newest stored draft for this office or null, "job": {"id", "state",
+    "error"} or null}. The draft has the shape the synchronous route returns."""
+    from perch.user.models import HandoffDraft
+
+    best = None
+    for _, x in sv.ud.list(uid, "handoff", audience, HandoffDraft, limit=100):  # type: ignore[arg-type]
+        if x.brief_id == brief_id and x.office == office \
+                and (best is None or x.created_at > best.created_at):
+            best = x
+    job = None
+    if job_id:
+        try:
+            st = sv.runner.status(UUID(job_id), uid)
+        except ValueError:
+            st = None
+        job = {"id": job_id, "state": st.state.value, "error": st.error_code} if st else None
+    return {"result": best.draft if best is not None else None, "job": job}
+
+
+__all__ = ["TERMINAL", "ask", "audience_of", "delete", "handoff_get", "handoff_submit",
+           "sessions_for", "start_session", "stop", "usage_view", "view"]

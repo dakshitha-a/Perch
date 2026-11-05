@@ -56,9 +56,13 @@ class SavedItem(_M):
 
 
 class HandoffDraft(_M):
+    """The newest hand-off draft for one office of one brief (S48 S3), stored encrypted: its
+    opening paragraph may cite the user's own documents. Nothing is sent."""
+
     brief_id: str
     office: str
     draft: dict[str, Any]
+    created_at: datetime = Field(default_factory=utcnow)
 
 
 class CoverPointSet(_M):

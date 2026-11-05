@@ -1,6 +1,9 @@
 // Hand off: a draft email to one Temple office about the kept leads (POST
 // /briefs/{id}/handoff). A model writes the opening paragraph; code writes the list with
-// dates and amounts copied from the records. Perch never sends it and does not save it.
+// dates and amounts copied from the records. Perch never sends it. Signed in, the draft is
+// made by a job on the worker (S48): the POST answers {job_id} and draftOf polls GET
+// /briefs/{id}/handoff until the draft is stored, encrypted, in the account. Without
+// accounts the POST answers the draft itself.
 
 import { h, fill, icon } from "./dom.js";
 
@@ -15,6 +18,27 @@ const H = { briefId: null, office: null, drafts: {}, busy: null, error: null, ke
 
 function reset(briefId) {
   Object.assign(H, { briefId, office: null, drafts: {}, busy: null, error: null, keptSig: "" });
+}
+
+const POLL_MS = 1500;
+const POLL_MAX_MS = 120000;
+
+// The draft from the POST, or, when the POST queued a job, from polling the stored draft.
+export async function draftOf(api, briefId, office, sleep = (ms) => new Promise((r) => setTimeout(r, ms))) {
+  const d = await api.handoff(briefId, { office });
+  if (!d.job_id || d.subject !== undefined) return d;
+  const end = Date.now() + POLL_MAX_MS;
+  for (;;) {
+    await sleep(POLL_MS);
+    const got = await api.handoffGet(briefId, office, d.job_id);
+    const state = got.job && got.job.state;
+    if (state === "succeeded" && got.result) return got.result;
+    if (!got.job || state === "succeeded" || ["failed", "dead", "cancelled"].includes(state)) {
+      throw new Error(got.job && got.job.error === "consent_required"
+        ? "accept the current consent first, in Account and data." : "the job did not finish. Try again.");
+    }
+    if (Date.now() > end) throw new Error("it is taking longer than usual. Try again in a minute.");
+  }
 }
 
 function draftText(d) {
@@ -72,7 +96,7 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
   async function makeDraft(focusKey = "handoff-subject") {
     H.busy = office.key; H.error = null; redraw("handoff-make");
     try {
-      const d = await api.handoff(briefId, { office: office.key });
+      const d = await draftOf(api, briefId, office.key);
       H.drafts[office.key] = { subject: d.subject, body: d.body, flagged: d.flagged, model: d.model,
         n: d.lead_ids.length };
       announce("The draft is ready below. You can edit it.");

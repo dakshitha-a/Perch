@@ -871,10 +871,25 @@ def create_app(service: BriefService, runner: ClosureRunner,
                 sess: object | None = Depends(account_session_csrf)) -> dict:
         signed_in(sess)
         with scope(request, sess, brief_id):
-            b, _ = load(brief_id)
+            b, leads = load(brief_id)
             if b.options.get("student"):  # student notes come from /student/note
                 raise HTTPException(422, "A student brief drafts its note to the office from "
                                     "the Compare tab.")
+            if sess is not None and accounts(request) is not None:
+                # S48 S3: the model call runs on the worker (the web holds no model key),
+                # admitted here and metered there. 202 with a poll URL; GET reads the draft.
+                from perch.offices import OFFICES
+                from perch.scout import web as sweb
+
+                route = OFFICES[req.office].route
+                chosen = [x for x in leads if (x.id in req.lead_ids if req.lead_ids else
+                                               x.status == "kept" and x.route == route)]
+                if not chosen:  # F26: the same answer as the in-process draft
+                    raise HTTPException(422, "No kept industry leads." if route == "B"
+                                        else "No kept grants.")
+                out = sweb.handoff_submit(accounts(request), sess.user_id, sweb.audience_of(b),
+                                          brief_id, req.office, list(req.lead_ids))
+                return JSONResponse(out, status_code=202)
             wait = handoff_limiter.take(client_key(request))
             if wait:
                 raise HTTPException(429, f"Too many drafts this hour. Try again in "
@@ -887,6 +902,23 @@ def create_app(service: BriefService, runner: ClosureRunner,
         if d is None:
             raise HTTPException(404, f"no brief {brief_id!r}")
         return draft_json(d)
+
+    @app.get("/briefs/{brief_id}/handoff", dependencies=STORED)
+    def handoff_get(brief_id: str, office: Literal["research_development",
+                                                   "technology_commercialization"],
+                    request: Request, job_id: str | None = None,
+                    sess: object | None = Depends(account_session)) -> dict:
+        """The newest stored draft for one office, or null while the job runs (pass `job_id`
+        for its state). Account path only (S48 S3)."""
+        from perch.scout import web as sweb
+
+        if sess is None or accounts(request) is None:
+            raise HTTPException(404, "Stored drafts need accounts.")
+        signed_in(sess)
+        with scope(request, sess, brief_id):
+            b, _ = load(brief_id)
+        return sweb.handoff_get(accounts(request), sess.user_id, sweb.audience_of(b), brief_id,
+                                office, job_id)
 
     @app.get("/briefs/{brief_id}/student/note", dependencies=STORED)
     def student_note(brief_id: str, route: Literal["F", "S"], request: Request,

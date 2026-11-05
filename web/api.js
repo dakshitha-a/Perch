@@ -145,6 +145,8 @@ export function liveApi(base = "") {
     record: (id) => p(`/records/${encodeURIComponent(id)}`),
     compare: (id) => p(`${bid(id)}/compare`),
     handoff: (id, body) => post(`${bid(id)}/handoff`, body),
+    // Signed in (S48): POST queues a job and answers {job_id}; this reads the stored draft.
+    handoffGet: (id, office, jobId) => p(`${bid(id)}/handoff${query({ office, job_id: jobId })}`),
     // Cover-letter points (S46): queue the job, then poll it; a GET with no job id reads what is stored.
     coverStart: (id, recordId, again = false) => post(`${bid(id)}/cover-points`, again ? { record_id: recordId, again: true } : { record_id: recordId }),
     coverGet: (id, recordId, jobId) => p(`${bid(id)}/cover-points${query({ record_id: recordId, job_id: jobId })}`),
