@@ -1,0 +1,23 @@
+# Perch v1 web process as a systemd unit (an alternative to the Compose `web` service).
+# Install: copy to /etc/systemd/system/ (or ~/.config/systemd/user/ for a user unit),
+# set the paths below for your host, then `systemctl enable --now perch-web`.
+# /opt/perch is the checkout with `uv sync --extra ml --extra anthropic` done;
+# /etc/perch/perch.env holds the settings listed in .env.example (mode 600).
+[Unit]
+Description=Perch v1 web (FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/perch
+EnvironmentFile=/etc/perch/perch.env
+# The web role's DSN; the worker uses its own role (ARCHITECTURE_V1 section 6).
+ExecStart=/bin/sh -c 'PERCH_DATABASE_URL="$${PERCH_WEB_DATABASE_URL}" exec /opt/perch/.venv/bin/perch serve --host 127.0.0.1 --port 8200'
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
