@@ -6,7 +6,8 @@ Rewritten 2026-11-05 at about 00:55 EST, at the close of S49. Dakshitha delegate
 
 - **Branch:** work on `rebuild/v1`. `main` is not developed.
 - **Plan:** `docs/REBUILD_PLAN.md`, Phase 12 (rounds S49 to S51) and Release (S52).
-- **Next:** S50, Phase 12 round 2. Start with P6 (student cards do not say what the rules checked; `docs/design/S49_PRODUCT_REVIEW.md`) and `docs/design/S49_ORCHESTRATOR_NOTES.md`. Then run the round as in S49: four fresh reviews, a design, builders split by file, QA, a re-check.
+- **Next:** S51, Phase 12 round 3 (the last). Start from `docs/design/S50_ORCHESTRATOR_NOTES.md`. Run it as S49 and S50 did: four fresh reviews, a design, builders split by file, QA, a re-check. Then S52, the release.
+- **S50 in short:** round 2 closed with no open must-fix (`docs/sessions/S50.md`). Federal records refreshed on the deploy on 5 Nov (`scripts/refresh_v1.py`, backup in the deploy's backup folder). Walk 228 states light and dark, 0 errors, 0 axe. Suites: unit 1051, pg 91, redis 117, keys 67, user 135. New tools: `scripts/live_capture.py` (real-model text from the deploy), `scripts/refresh_v1.py`. The README tour script (`scripts/tour/film.py`) is rewritten for v1; filming waits for round 3. Owed in S52: the back-test re-run after S50's eligibility change, the tour, screenshots, docs.
 - **The gate:** Thursday 5 Nov at 6:00 pm. A one-shot reminder is set for 17:31 in this context. Write the submission decision to `bridge/QUESTIONS.md` and DECISIONS.md.
 - **The fallback:** frozen at d6f6210 (tag `v0.1-demo-fallback`), served on 8090 through the Funnel on 443. Never touch it.
 - **Compute rules:** heavy jobs only through `scripts/run_limited.sh`. GPU 3 only, with a lock file of its own for anything beside the deploy worker (`PERCH_LIMIT_LOCK=/run/user/1002/perch-walk.lock` for the walk, `perch-bench.lock` for benches). Never GPUs 0, 6 or 7. Never ports 8090, 8093, 8097, 8098, 8200.
