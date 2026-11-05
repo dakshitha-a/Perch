@@ -1,0 +1,31 @@
+{
+  "drafts": 54,
+  "removed_rows": 98,
+  "removed_sentences": 88,
+  "drafts_with_removals": 33,
+  "stored_rows": 95,
+  "drafts_differing_from_stored": 3,
+  "in_scope_answers": 33,
+  "in_scope_first_draft_clean": 12,
+  "in_scope_clean_by_second_draft": 21,
+  "in_scope_shown_layer1_pass": 21,
+  "layer2_code_true": 19,
+  "layer2_code_false": 2,
+  "to_minicheck": {
+    "record": 73,
+    "user_material": 64,
+    "brief": 9,
+    "inherited": 1
+  },
+  "minicheck_flagged": 0,
+  "guard_leaks": 0,
+  "reasons": {
+    "no_citation": 50,
+    "layer1_number": 20,
+    "heading_not_structural": 16,
+    "absent_not_template": 5,
+    "placeholder_only": 4,
+    "question_not_offer": 2,
+    "help_with_claim": 1
+  }
+}

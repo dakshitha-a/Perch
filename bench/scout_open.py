@@ -240,8 +240,9 @@ def ids_in(text: str) -> list[str]:
 
 
 def resolves(service: BriefService, rid: str) -> bool:
-    """The id names a real record: in the store, in the sample store, or the user's own."""
-    if rid.startswith("user:"):
+    """The id names a real record: in the store, in the sample store, the user's own, or a
+    search the turn ran (S49 Q2: a code-written record, not a store row)."""
+    if rid.startswith(("user:", "search:")):  # the user's own, or a search this turn ran
         return True
     from perch.user.briefs import _sample
 

@@ -80,6 +80,11 @@ CASES: list[tuple[str, str, str]] = [
     ("Your brief has no leads [user:brief].", "no leads", "a false empty-brief claim"),
     ("The SYNTHETIC Marsh Ecology Program is kept [user:brief].", "kept",
      "a wrong kept claim cited to the brief record"),
+    ("Your brief has three leads [user:brief].", "three leads", "a wrong lead count"),
+    (f"Your soonest-closing lead is the SYNTHETIC Marsh Ecology Program {C2}.", "soonest",
+     "a wrong soonest-closing claim"),
+    (f"The SYNTHETIC Kidney Repair Program closes 17 Nov 2026 {C1}. The best one is:",
+     "best one", "a lead-in that grades a record"),
     ("**1. SYNTHETIC Kidney Repair Program pays $900,000**\n"
      f"- It closes 17 Nov 2026 {C1}.", "$900,000", "a bold numbered line with a claim"),
 ]
