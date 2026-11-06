@@ -29,7 +29,7 @@ Rewritten 2026-11-05 at about 14:00 EST, at the close of S53 and S54; updated at
 
 - **Units:** `perch-v1-web` and `perch-v1-worker` (worker on GPU 7 through run_limited since S55), `perch-demo-wipe.timer`. Postgres and Redis in the Compose project `perch-v1`. Keycloak is the container `perch-dev-keycloak`; never remove it.
 - **Updating it:** commit, then `systemctl --user restart perch-v1-web perch-v1-worker`. Edits under `web/` are live at once.
-- **Walk servers** must use `PERCH_LIMIT_GPU=6` with their own lock file, never GPU 7, or the live worker cannot start.
+- **Walk servers** must use `PERCH_LIMIT_GPU=7` with their own lock file (never the default `perch-gpu.lock`, which the live worker holds). Other GPUs are in use by other work (Dakshitha, 2026-11-06).
 - **Rotate after the demo:** the database role password printed in S51.
 - **Known limit, after the demo:** the code-written distress reply still shows the "Cloud: Anthropic" line under it. It is a one-condition fix in web/scout.js; it was left so the films match the live app.
 - **Old agent worktrees** under .claude/worktrees hold finished branches with full venvs. Nothing sensitive is left in them; they can be removed.
