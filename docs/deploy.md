@@ -83,7 +83,7 @@ This is how the demo node runs (decision S47, 2026-11-04): this host has no NVID
 4. Run it on one GPU. On the shared lab node, `scripts/run_limited.sh` is the only allowed way to run a heavy job; with `PERCH_LIMIT_GPU` it exposes that one GPU, uses 4 cores by default, caps memory at 24 GB, and refuses to start (exit 75) while another GPU job holds the lock:
 
 ```sh
-PERCH_LIMIT_GPU=3 scripts/run_limited.sh uv run --extra ml --extra anthropic perch worker
+PERCH_LIMIT_GPU=7 scripts/run_limited.sh uv run --extra ml --extra anthropic perch worker
 ```
 
 - **Not a general rule:** `run_limited.sh` is a guard for the shared lab node. On your own host run `CUDA_VISIBLE_DEVICES=<index> uv run --extra ml --extra anthropic perch worker`, or a systemd user unit.
@@ -159,7 +159,7 @@ Grants.gov listings close and new ones appear every day. This refresh updates th
 3. **Load the deploy's DSNs:** `set -a; . ./.env.deploy; set +a`.
 4. **Plan:** `.venv/bin/python scripts/refresh_v1.py plan --sqlite <scratch>/gg.db`. It writes nothing to Postgres. It looks up, by number, each posted or forecasted record the pull no longer lists, and adds what it finds to the scratch store with its new status, such as `closed`. It prints new, changed, unchanged and still-missing counts, and the status changes. It stops if more than 200 open records are missing, because that means the pull broke. A record that is not found by number is left as it is and listed.
 5. **Apply:** `.venv/bin/python scripts/refresh_v1.py apply --sqlite <scratch>/gg.db`. Every pulled and looked-up record is upserted with its new `fetched_at`.
-6. **Vectors**, on the worker's GPU only: `PERCH_LIMIT_GPU=3 PERCH_LIMIT_LOCK=$XDG_RUNTIME_DIR/perch-refresh.lock scripts/run_limited.sh .venv/bin/python scripts/refresh_v1.py vectors`. It embeds only the records whose index text is new or changed.
+6. **Vectors**, on the worker's GPU only: `PERCH_LIMIT_GPU=7 PERCH_LIMIT_LOCK=$XDG_RUNTIME_DIR/perch-refresh.lock scripts/run_limited.sh .venv/bin/python scripts/refresh_v1.py vectors`. It embeds only the records whose index text is new or changed.
 7. **Filter columns:** `.venv/bin/python scripts/redenorm.py --dsn-env PERCH_WORKER_DATABASE_URL`.
 8. **Caches:** `.venv/bin/python scripts/refresh_v1.py epoch` bumps the ingest epoch in Postgres and copies it to Redis, so cached lists and precached briefs go stale. The nightly precache rebuilds the briefs at `PERCH_PRECACHE_AT` (default 02:00 UTC; the test deploy uses 08:00 UTC, night in Philadelphia).
 9. **Check:** `.venv/bin/python scripts/smoke_deploy.py --base <public url> --no-researcher` shows 0 failed. No service restart is needed.
