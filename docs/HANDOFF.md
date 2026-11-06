@@ -9,7 +9,7 @@ Rewritten 2026-11-05 at about 14:00 EST, at the close of S53 and S54; updated at
 - **The tracker opens on the UI tab** with an audience strip; Architecture is second (Dakshitha, S55).
 - **Two links go to the audience:** the live site and the build tracker (link in CLAUDE.local.md). Every tracker tab is current; it was read for operator details before sharing.
 - **The audience account is `demo` / `demo`.** It is shared: every screen says so and says not to paste a real CV. Its data is wiped each night at 03:30 by a user timer. Lockout is realm-wide: after 10 wrong passwords the wait is 1 to 15 minutes.
-- **The films are in `docs/films/`:** `researcher.mp4` (47 s, PI-1 by alias), `student.mp4` (58 s, the SYNTHETIC persona-demo), `scout.mp4` (46 s) and the slide film `quick-student.mp4` (30 s at 1.5x, with a Scout section). Each has a WebP beside it. Re-run them with `scripts/tour/demo_films.py` (see its header).
+- **The films are in `docs/films/`:** `researcher.mp4` (54 s, PI-1 by alias, the Draft the email button glowing), `student.mp4` (58 s, the SYNTHETIC persona-demo), `scout.mp4` (50 s, the Cover-letter points button glowing) and the slide film `quick-student.mp4` (30 s at 1.5x, with a Scout section). Each has a WebP beside it. Re-run them with `scripts/tour/demo_films.py` (see its header).
 - **Run sheet:** `docs/DEMO.md`. Before the demo, run `scripts/demo_reset.py --apply` with the deploy's env file sourced.
 - **Commit trailer:** only `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Never a `Claude-Session:` line.
 - **In the main checkout** the deploy runs from `.venv`. Use `uv sync --extra ml --extra anthropic` only; never a plain `uv sync`, and never switch branches there.

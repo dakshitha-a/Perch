@@ -62,9 +62,9 @@ These clips were filmed in the running v1 app. Researchers appear by alias. The 
 
 ![A signed-in user asks for cover-letter points on one lead card and reads the cited lines.](docs/tour/points.webp)
 
-**Films:** [researcher, 47 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/researcher.mp4) · [student, 58 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/student.mp4) · [scout, 46 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/scout.mp4) · [quick student, 30 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/quick-student.mp4)
+**Films:** [researcher, 54 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/researcher.mp4) · [student, 58 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/student.mp4) · [scout, 50 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/scout.mp4) · [quick student, 30 s](https://github.com/dakshitha-a/Perch/blob/main/docs/films/quick-student.mp4)
 
-Four longer films, in 1920 by 1080 MP4 and 1280 by 720 WebP, are in [docs/films](docs/films). Each is filmed in the v1 app. `researcher` shows PI-1 by alias. `student` and `quick-student` use the SYNTHETIC sample student. `scout` shows cover-letter points, the glow while Scout works, Clear and Undo, and the reply to a distress message.
+Four longer films, in 1920 by 1080 MP4 and 1280 by 720 WebP, are in [docs/films](docs/films). Each is filmed in the v1 app. `researcher` shows PI-1 by alias, with the Draft the email button glowing while a model writes the hand-off. `student` and `quick-student` use the SYNTHETIC sample student. `scout` shows the Cover-letter points button glowing while they are written, the points, the glow while Scout works, Clear and Undo, and the reply to a distress message.
 
 ## Screens
 

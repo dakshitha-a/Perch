@@ -15,7 +15,7 @@ Do these on the morning of the demo, in this order.
 - **Pre-build the researcher brief on that account.** Wait for Ready. Keep two individual-lab leads and draft the hand-off. Ask one Scout question so the thread already holds an answer.
 - **Pre-build the student brief on that account.** Use Try a sample student. Open the Samples tab and find where the card that fails on GPA sits.
 - **Keep two windows.** One is signed in on My Perch. One is a private window, signed out, which shows what the audience sees.
-- **Load the films.** The files are in `docs/films`. The presentation shows the researcher film, the student film and the Scout film, which are 47, 58 and 46 seconds. A fourth, `quick-student`, runs 30 seconds at 1.5 times speed for a short slide. Check that each plays from the slides.
+- **Load the films.** The files are in `docs/films`. The presentation shows the researcher film, the student film and the Scout film, which are 54, 58 and 50 seconds. A fourth, `quick-student`, runs 30 seconds at 1.5 times speed for a short slide. Check that each plays from the slides.
 - **Stay signed in.** A session ends after 30 idle minutes, so use the app at least every 25 minutes.
 
 ## Audience sign-in
