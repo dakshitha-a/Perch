@@ -404,7 +404,7 @@ async def researcher(page: Page, base: str, o: argparse.Namespace, check: NameCh
     await need(page, "#panel .leads > li", "a brief with leads", LONG)
     await page.locator("#progress .pcard").wait_for(state="detached", timeout=180_000)
     await settle(page, 800)
-    # Off camera: two kept leads and a drafted hand-off, so no long wait is filmed.
+    # Off camera: two kept leads. The draft itself is written on camera (the button glows).
     href = await page.evaluate("location.hash")
     title = await page.evaluate("document.querySelector('h1').innerText")
     if not re.match(r"PI-\d+", title):
@@ -412,9 +412,6 @@ async def researcher(page: Page, base: str, o: argparse.Namespace, check: NameCh
     await ensure_two_kept(page)
     await page.click("#tab-compare")
     await need(page, "[data-key=handoff-make]", "the Draft the email button")
-    if not await page.locator("[data-key=handoff-subject]").count():
-        await page.click("[data-key=handoff-make]")
-        await page.locator("[data-key=handoff-subject]").wait_for(timeout=240_000)
     await page.goto(base + "/" + href)  # the saved state is what the film shows
     await need(page, "#panel .leads > li", "the brief again")
     await settle(page, 1200)
@@ -471,7 +468,22 @@ async def researcher(page: Page, base: str, o: argparse.Namespace, check: NameCh
     await rec.focus(table, pad=20)
     await rec.hold(4300)
     rec.wide()
+    make = await need(page, "[data-key=handoff-make]", "the Draft the email button")
+    await make.scroll_into_view_if_needed()
+    rec.cap("The button glows while a model writes the draft")
+    await rec.hold(500)
+    await rec.focus(make, pad=160)
+    await rec.hold(900)
+    await click(page, make)
+    await rec.hold(3600)  # the glow, at full speed
+    try:
+        await rec.quickly(lambda: page.locator(
+            "[data-key=handoff-make]:not([aria-busy=true])").wait_for(timeout=240_000), speed=12)
+    except Exception as e:  # noqa: BLE001
+        raise SceneError("the hand-off draft took longer than 240 s") from e
+    rec.wide()
     subject = await need(page, "[data-key=handoff-subject]", "the drafted hand-off")
+    await settle(page, 600)
     rec.cap("A draft to a Temple office. Perch never sends it.")
     await subject.evaluate("e => window.scrollBy(0, e.getBoundingClientRect().top - 110)")
     await rec.hold(700)
@@ -720,17 +732,6 @@ async def scout(page: Page, base: str, o: argparse.Namespace, check: NameCheck) 
     await need(page, "#panel .leads > li", "the brief's leads", LONG)
     await page.locator("#progress .pcard").wait_for(state="detached", timeout=180_000)
     await settle(page, 800)
-    # Off camera: cover-letter points for the top lead, so no long wait is filmed.
-    top = page.locator("#panel .leads > li").first
-    btn = await need(page, "#panel .leads > li:first-child [data-key^=cover-]", "a Cover-letter points button")
-    block = top.locator(".scout-points")
-    if not await block.count():
-        for attempt in range(3):
-            await btn.click()
-            await block.first.wait_for(timeout=240_000)
-            if not await block.first.locator(":scope > p.notice.warn").count():
-                break
-            print(f"scout: points attempt {attempt + 1} withheld")
     # Off camera: a fresh Scout thread, so the crisis reply is not suppressed as a repeat.
     await page.click("#tab-scout")
     await need(page, "#scout-q", "the Scout box")
@@ -749,7 +750,24 @@ async def scout(page: Page, base: str, o: argparse.Namespace, check: NameCheck) 
     await rec.hold(2000)
     top = page.locator("#panel .leads > li").first
     block = top.locator(".scout-points").first
-    await need(page, "#panel .leads > li:first-child .scout-points", "the stored cover-letter points")
+    btn = await need(page, "#panel .leads > li:first-child [data-key^=cover-]", "a Cover-letter points button")
+    await btn.scroll_into_view_if_needed()
+    rec.cap("The button glows while a model reads the CV and writes the points")
+    await rec.hold(500)
+    await rec.focus(btn, pad=200)
+    await rec.hold(900)
+    await click(page, btn)
+    await rec.hold(3600)  # the glow, at full speed
+    try:
+        await rec.quickly(lambda: top.locator(
+            "[data-key^=cover-]:not([aria-busy=true])").wait_for(timeout=240_000), speed=14)
+    except Exception as e:  # noqa: BLE001
+        raise SceneError("the cover-letter points took longer than 240 s") from e
+    await need(page, "#panel .leads > li:first-child .scout-points", "the cover-letter points")
+    if await block.locator(":scope > p.notice.warn").count():
+        raise SceneError("the cover-letter points were withheld; run again")
+    rec.wide()
+    rec.cap("Scout, the student's helper. Cover-letter points for one award")
     await block.scroll_into_view_if_needed()
     await rec.hold(500)
     await rec.focus(block, pad=24)
