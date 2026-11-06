@@ -1371,14 +1371,15 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
 @media (prefers-reduced-motion: no-preference) {
   .btn.ai[aria-busy="true"] { animation: scout-glow 2.4s ease-in-out infinite; animation-delay: var(--glow-delay, 0ms); }
 }
-/* S56: other slow waits are quiet: a moss edge, no motion. */
-.btn[aria-busy="true"]:not(.ai) { border-color: var(--moss); }
-.btn[aria-busy="true"]:not(.ai)[disabled], .btn[aria-busy="true"]:not(.ai)[aria-disabled="true"] { border-color: var(--moss); }
+/* S56: other slow waits are quiet: a moss edge, no motion. It shows only after .3 s, so a quick
+   action (Keep, an export) does not flash. */
+.btn:not(.ai)[aria-busy="true"] { border-color: var(--moss); transition: border-color 0s .3s; }
+/* A list being refreshed dims after .25 s; the first-load skeleton is left alone. */
 .groups { transition: opacity .15s; }
-.groups[aria-busy="true"] { opacity: .6; }
+.groups[aria-busy="true"]:not(:has(> .shimmer-card)) { opacity: .6; transition-delay: .25s; }
 /* S56: the lead card's Reading pill sweeps gently; still when motion is reduced. */
 @media (prefers-reduced-motion: no-preference) {
-  .fit.pending { background-image: linear-gradient(90deg, var(--sunk) 0%, var(--line) 50%, var(--sunk) 100%);
+  .fit.pending { background-image: linear-gradient(90deg, var(--sunk) 0%, color-mix(in srgb, var(--sunk) 50%, var(--line)) 50%, var(--sunk) 100%);
     background-size: 300% 100%; animation: shimmer 2.2s linear infinite; }
 }
 /* F25: the hint under Find says what is missing */

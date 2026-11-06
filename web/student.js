@@ -186,8 +186,10 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
   const provider = (sess.consent && sess.consent.provider_name) || "the model provider";
   const field = { text: "", label: "", interests: "" };
 
-  async function add(kind, body) {
+  async function add(kind, body, btn) {
     D.busy = true; D.error = null;
+    // S56: draw() rebuilds the form from empty fields, so mark the pressed button itself while it saves.
+    if (btn) { btn.disabled = true; btn.setAttribute("aria-busy", "true"); }
     try {
       await api.addDoc({ kind, ...body }, "student");
       announce("Saved.");
@@ -275,7 +277,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
           h("textarea", { id: "cv-text", rows: 6, maxlength: 60000, value: field.text, oninput: (e) => { field.text = e.target.value; } }),
           h("div", { class: "file-row" },
             h("button", { class: "btn", type: "button", "data-key": "cv-save", disabled: D.busy, "aria-busy": D.busy ? "true" : null,
-              onclick: () => { const t = withCanary("cv", root.querySelector("#cv-text").value); if (t) add("cv", { text: t, filename: "cv.txt" }); else announce("Paste your CV text first."); } },
+              onclick: (e) => { const b = e.currentTarget; const t = withCanary("cv", root.querySelector("#cv-text").value); if (t) add("cv", { text: t, filename: "cv.txt" }, b); else announce("Paste your CV text first."); } },
             h("span", { text: "Save my CV" })),
             h("label", { class: "btn", for: "cv-file" }, h("span", { text: "Or upload a file" })),
             h("input", { id: "cv-file", class: "sr-only", type: "file", accept: ".pdf,.docx,.txt,.md",
@@ -288,11 +290,11 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
         h("button", { class: "btn", type: "button", "data-key": `rm-${d.id}`, onclick: () => remove(d), "aria-label": `Remove ${d.label || d.kind}` }, h("span", { text: "Remove" }))))) : null,
       h("label", { class: "big", for: "st-interests", text: "What you are interested in" }),
       h("textarea", { id: "st-interests", rows: 3, maxlength: 4000 }),
-      h("button", { class: "btn", type: "button", disabled: D.busy, "aria-busy": D.busy ? "true" : null, onclick: () => { const t = withCanary("interests", root.querySelector("#st-interests").value); if (t) add("interests", { text: t }); } },
+      h("button", { class: "btn", type: "button", disabled: D.busy, "aria-busy": D.busy ? "true" : null, onclick: (e) => { const b = e.currentTarget; const t = withCanary("interests", root.querySelector("#st-interests").value); if (t) add("interests", { text: t }, b); } },
         h("span", { text: "Save interests" })),
       h("label", { class: "big", for: "st-ach", text: "An achievement" }),
       h("textarea", { id: "st-ach", rows: 3, maxlength: 4000 }),
-      h("button", { class: "btn", type: "button", disabled: D.busy, "aria-busy": D.busy ? "true" : null, onclick: () => { const t = withCanary("achievement", root.querySelector("#st-ach").value); if (t) add("entry", { text: t, label: "Achievement" }); } },
+      h("button", { class: "btn", type: "button", disabled: D.busy, "aria-busy": D.busy ? "true" : null, onclick: (e) => { const b = e.currentTarget; const t = withCanary("achievement", root.querySelector("#st-ach").value); if (t) add("entry", { text: t, label: "Achievement" }, b); } },
         h("span", { text: "Add achievement" }))),
     h("section", { class: "box", "aria-label": "Optional citizenship and state" },
       profilePicks({ prefix: "st-pick", value: picks, guest: !sess.signed_in, onchange: () => { PICKS.draft = picks; sampleSetPick = false; syncBuild(); } })),

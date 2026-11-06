@@ -617,7 +617,7 @@ function renderPick() {
 
 function buildButton(c, key) {
   const F = S.find;
-  return h("button", { class: "btn primary big", type: "button", "data-key": key, disabled: F.building,
+  return h("button", { class: "btn primary big", type: "button", "data-key": key, disabled: F.building, "aria-busy": F.building ? "true" : null,
     onclick: () => build(c) }, h("span", { text: F.building ? "Starting" : "Build brief" }));
 }
 
