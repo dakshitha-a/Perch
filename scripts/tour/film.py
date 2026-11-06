@@ -270,14 +270,18 @@ async def hero(page: Page, base: str, o: argparse.Namespace) -> Recorder:
         await click(page, page.locator("[data-key=fit]"))
     await need(page, "[data-key=guest-banner]", "the guest banner")
     await rec.hold(1500)
-    fit = await need(page, "[data-key=fit]", "the Try a sample student button")
-    await click(page, fit)
-    await need(page, ".student-start", "the Check my fit screen")
-    await rec.hold(700)
-    await rec.focus(page.locator(".student-start"), pad=10)
-    await rec.hold(2200)
-    rec.wide()
-    await build_and_wait(page, rec, "[data-key=st-build]", speed=14)
+    # One press on the landing's "Try a sample student" opens the sample brief at once (S52);
+    # an older build went through the Check my fit screen and built the brief there.
+    if await page.locator(".student-start").count():
+        await need(page, ".student-start", "the Check my fit screen")
+        await rec.hold(700)
+        await rec.focus(page.locator(".student-start"), pad=10)
+        await rec.hold(2200)
+        rec.wide()
+        await build_and_wait(page, rec, "[data-key=st-build]", speed=14)
+    else:
+        await need(page, "#panel .leads > li", "the sample student's brief", 60_000)
+        await rec.hold(1500)
     await rec.hold(800)
     first = page.locator("#panel .leads > li").first
     # The first card starts at the bottom edge: bring it up before the camera moves in.
