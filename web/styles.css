@@ -1363,6 +1363,24 @@ body.warn-in-view .keep-float { opacity: 0; visibility: hidden; }
   0%, 100% { box-shadow: 0 0 0 2px var(--moss-soft); }
   50% { box-shadow: 0 0 0 2px var(--moss-soft), 0 0 14px 4px color-mix(in srgb, var(--moss) 28%, transparent); }
 }
+/* S56: a button that asks a model glows while it works, like the Scout box; the same still ring when motion is reduced.
+   A disabled one keeps its grey fill, so it still reads as not clickable. Box-shadow only: no layout shift.
+   Focus is an outline, so it still shows on a busy button. */
+.btn.ai[aria-busy="true"], .btn.ai[aria-busy="true"][disabled], .btn.ai[aria-busy="true"][aria-disabled="true"],
+.btn.ai.primary[aria-busy="true"][disabled] { border-color: var(--moss); box-shadow: 0 0 0 3px var(--moss-soft); }
+@media (prefers-reduced-motion: no-preference) {
+  .btn.ai[aria-busy="true"] { animation: scout-glow 2.4s ease-in-out infinite; animation-delay: var(--glow-delay, 0ms); }
+}
+/* S56: other slow waits are quiet: a moss edge, no motion. */
+.btn[aria-busy="true"]:not(.ai) { border-color: var(--moss); }
+.btn[aria-busy="true"]:not(.ai)[disabled], .btn[aria-busy="true"]:not(.ai)[aria-disabled="true"] { border-color: var(--moss); }
+.groups { transition: opacity .15s; }
+.groups[aria-busy="true"] { opacity: .6; }
+/* S56: the lead card's Reading pill sweeps gently; still when motion is reduced. */
+@media (prefers-reduced-motion: no-preference) {
+  .fit.pending { background-image: linear-gradient(90deg, var(--sunk) 0%, var(--line) 50%, var(--sunk) 100%);
+    background-size: 300% 100%; animation: shimmer 2.2s linear infinite; }
+}
 /* F25: the hint under Find says what is missing */
 .hint-row .field-error { color: var(--brick); font-weight: 600; }
 /* G8: Tab never leaves a control under the kept pill (WCAG 2.4.11). While the pill shows

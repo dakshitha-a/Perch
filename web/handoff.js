@@ -144,7 +144,9 @@ export function renderHandoff(box, { api, briefId, kept, offices, announce, redr
       ? h("span", { class: "guest-draft" },
         h("a", { class: "btn primary", href: signIn, "data-key": "handoff-signin", text: "Sign in to draft a note to the office" }),
         h("span", { class: "example-slot" }))
-      : h("button", { class: `btn ${draft ? "quiet" : "primary"}`, type: "button", "data-key": "handoff-make",
+      : h("button", { class: `btn ai ${draft ? "quiet" : "primary"}`, type: "button", "data-key": "handoff-make",
+        "aria-busy": H.busy === office.key ? "true" : null,
+        style: H.busy === office.key ? `--glow-delay: -${Date.now() % 2400}ms` : null,
         disabled: H.busy !== null, onclick: () => makeDraft() },
       icon("pen"), h("span", { text: draft ? "Draft again" : "Draft the email" }));
 

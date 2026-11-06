@@ -326,8 +326,11 @@ export async function renderMyPerch(root, ctx, opts = {}) {
           onclick: async () => { if (r === side) return; try { await ctx.api.setAudience(r); await ctx.refresh(); renderMyPerch(root, ctx, opts); } catch (e) { ctx.announce(e.message); } } },
         h("span", { text: r === "student" ? "Student" : "Researcher" })))) : null),
     h("div", { class: "start-row" },
-      h("a", { class: "btn primary", href: student ? "#/awards" : "#/start", text: student ? "Browse Temple awards" : "Find a researcher" }),
-      h("a", { class: "btn", href: student ? "#/student" : "#/funding", text: student ? "Check my fit" : "Browse funding" })),
+      student
+        ? [h("a", { class: "btn primary", href: "#/student", text: "Check my fit" }),
+          h("a", { class: "btn", href: "#/awards", text: "Browse Temple awards" })]
+        : [h("a", { class: "btn primary", href: "#/start", text: "Find a researcher" }),
+          h("a", { class: "btn", href: "#/funding", text: "Browse funding" })]),
     h("div", { class: "home-grid" },
       h("section", { class: "box home-kept", "aria-labelledby": "kept-h" }, h("h2", { class: "section-title", id: "kept-h", text: "Kept and saved" }), keptEl),
       h("section", { class: "box home-briefs", "aria-labelledby": "briefs-h" }, h("h2", { class: "section-title", id: "briefs-h", text: "Briefs" }), briefsEl),

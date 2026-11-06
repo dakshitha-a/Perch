@@ -185,8 +185,9 @@ export function coverBlock(ctx, briefId, recordId) {
   const s = st(k);
   const build = () => {
     const act = h("div", { class: "actions" },
-      h("button", { class: "btn", type: "button", "data-key": `cover-${recordId}`,
+      h("button", { class: "btn ai", type: "button", "data-key": `cover-${recordId}`,
         "aria-disabled": s.busy ? "true" : null, "aria-busy": s.busy ? "true" : null,
+        style: s.busy ? `--glow-delay: -${Date.now() % 2400}ms` : null,
         onclick: () => run(k, briefId, recordId) },
       icon("pen"), h("span", { text: s.result ? "Points again" : "Cover-letter points" })));
     // With a result, the points come first and the action to ask again sits under them (U14).

@@ -769,13 +769,13 @@ function cvBox() {
       h("div", { class: "file-row" },
         h("input", { id: "r-cv-file", class: "sr-only file-input", type: "file", accept: ".pdf,.docx,.txt,.md", disabled: F.cvBusy,
           onchange: (e) => upload(e.target.files[0]) }),
-        h("label", { class: "btn", for: "r-cv-file", "aria-disabled": F.cvBusy ? "true" : null },
+        h("label", { class: "btn", for: "r-cv-file", "aria-disabled": F.cvBusy ? "true" : null, "aria-busy": F.cvBusy ? "true" : null },
           icon("paper"), h("span", { text: F.cvBusy ? "Saving" : "Upload a file" }))),
       h("details", { class: "cv-paste", open: Boolean(F.cvText) },
         h("summary", { "data-key": "cv-paste", text: "Paste text instead" }),
         h("label", { class: "sr-only", for: "r-cv-text", text: "Your CV as text" }),
         text,
-        h("button", { class: "btn", type: "button", "data-key": "cv-save", disabled: F.cvBusy,
+        h("button", { class: "btn", type: "button", "data-key": "cv-save", disabled: F.cvBusy, "aria-busy": F.cvBusy ? "true" : null,
           onclick: () => { if ((F.cvText || "").trim()) save({ text: F.cvText, filename: "cv.txt" }); } },
         h("span", { text: "Save my CV" }))),
       status);
@@ -990,7 +990,10 @@ function rerunLink(cls) {
 function exportMenu(student = false) {
   if (!api.exportFile) return null;
   const err = h("p", { class: "hint", role: "status" });
-  async function download(kind) {
+  async function download(kind, ev) {
+    const btn = ev && ev.currentTarget;
+    if (btn) { if (btn.getAttribute("aria-busy") === "true") return; btn.setAttribute("aria-busy", "true"); }
+    announce("Preparing the export");
     try {
       const blob = await api.exportFile(S.briefId, kind);
       const url = URL.createObjectURL(blob);
@@ -999,14 +1002,14 @@ function exportMenu(student = false) {
       document.body.append(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 60000);
       err.textContent = "";
-    } catch (e) { err.textContent = e.message; }
+    } catch (e) { err.textContent = e.message; } finally { if (btn) btn.removeAttribute("aria-busy"); }
   }
   const pop = h("section", { class: "export-bar" },
     h("p", { class: "export" },
       rerunLink("rerun-narrow"),
-      h("button", { class: "btn quiet", onclick: () => download("html") }, icon("paper"), h("span", { text: "Print or save as PDF" })),
-      h("button", { class: "btn quiet", onclick: () => download("md") }, icon("download"), h("span", { text: "Markdown" })),
-      student ? null : h("button", { class: "btn quiet", onclick: () => download("json") }, icon("download"), h("span", { text: "Records as JSON" }))),
+      h("button", { class: "btn quiet", onclick: (ev) => download("html", ev) }, icon("paper"), h("span", { text: "Print or save as PDF" })),
+      h("button", { class: "btn quiet", onclick: (ev) => download("md", ev) }, icon("download"), h("span", { text: "Markdown" })),
+      student ? null : h("button", { class: "btn quiet", onclick: (ev) => download("json", ev) }, icon("download"), h("span", { text: "Records as JSON" }))),
     err);
   const det = h("details", { class: "export-menu" },
     h("summary", { "data-key": "export" }, icon("download"), h("span", { text: "Export" })),

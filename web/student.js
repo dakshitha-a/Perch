@@ -161,7 +161,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
         h("p", { class: "page-sub", text: "Perch checks each option against a student's CV by rule and shows what is still needed. Sign in to use your own CV, or try the sample student to see how it works." })),
       h("div", { class: "sample-row" },
         h("span", { text: "The sample is an invented student, labelled SYNTHETIC. Nothing in it is about you. Its sample scholarships are invented; the fellowships it checks are real public listings." }),
-        h("button", { class: "btn primary", type: "button", "data-key": "st-build", disabled: D.busy, onclick: sample },
+        h("button", { class: "btn primary", type: "button", "data-key": "st-build", disabled: D.busy, "aria-busy": D.busy ? "true" : null, onclick: sample },
           h("span", { text: D.busy ? "Starting" : "Try a sample student" })),
         sess.guest ? h("a", { class: "btn", href: signIn(), text: "Sign in to use your own CV" }) : null,
         !sess.guest ? h("a", { class: "btn", href: signIn(), text: "Sign in" }) : null),
@@ -234,7 +234,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
     const b = buildBtn();
     D.busy = true; D.error = null;
     const old = root.querySelector("#st-error"); if (old) old.remove();
-    b.disabled = true; b.querySelector("span").textContent = "Working";
+    b.disabled = true; b.setAttribute("aria-busy", "true"); b.querySelector("span").textContent = "Working";
     try {
       const fresh = unsaved();
       for (const [kind, body] of fresh) {
@@ -250,7 +250,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
       D.busy = false;
       go(`#/brief/${encodeURIComponent(r.id)}/routes`);
     } catch (e) {
-      D.busy = false; showError(e.message); syncBuild();
+      D.busy = false; b.removeAttribute("aria-busy"); showError(e.message); syncBuild();
       announce(e.message);
     }
   }
@@ -274,7 +274,7 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
         : [h("label", { class: "big", for: "cv-text", text: "Paste your CV text" }),
           h("textarea", { id: "cv-text", rows: 6, maxlength: 60000, value: field.text, oninput: (e) => { field.text = e.target.value; } }),
           h("div", { class: "file-row" },
-            h("button", { class: "btn", type: "button", "data-key": "cv-save", disabled: D.busy,
+            h("button", { class: "btn", type: "button", "data-key": "cv-save", disabled: D.busy, "aria-busy": D.busy ? "true" : null,
               onclick: () => { const t = withCanary("cv", root.querySelector("#cv-text").value); if (t) add("cv", { text: t, filename: "cv.txt" }); else announce("Paste your CV text first."); } },
             h("span", { text: "Save my CV" })),
             h("label", { class: "btn", for: "cv-file" }, h("span", { text: "Or upload a file" })),
@@ -288,17 +288,17 @@ export async function renderStudentStart(root, { api, go, announce, session, sig
         h("button", { class: "btn", type: "button", "data-key": `rm-${d.id}`, onclick: () => remove(d), "aria-label": `Remove ${d.label || d.kind}` }, h("span", { text: "Remove" }))))) : null,
       h("label", { class: "big", for: "st-interests", text: "What you are interested in" }),
       h("textarea", { id: "st-interests", rows: 3, maxlength: 4000 }),
-      h("button", { class: "btn", type: "button", disabled: D.busy, onclick: () => { const t = withCanary("interests", root.querySelector("#st-interests").value); if (t) add("interests", { text: t }); } },
+      h("button", { class: "btn", type: "button", disabled: D.busy, "aria-busy": D.busy ? "true" : null, onclick: () => { const t = withCanary("interests", root.querySelector("#st-interests").value); if (t) add("interests", { text: t }); } },
         h("span", { text: "Save interests" })),
       h("label", { class: "big", for: "st-ach", text: "An achievement" }),
       h("textarea", { id: "st-ach", rows: 3, maxlength: 4000 }),
-      h("button", { class: "btn", type: "button", disabled: D.busy, onclick: () => { const t = withCanary("achievement", root.querySelector("#st-ach").value); if (t) add("entry", { text: t, label: "Achievement" }); } },
+      h("button", { class: "btn", type: "button", disabled: D.busy, "aria-busy": D.busy ? "true" : null, onclick: () => { const t = withCanary("achievement", root.querySelector("#st-ach").value); if (t) add("entry", { text: t, label: "Achievement" }); } },
         h("span", { text: "Add achievement" }))),
     h("section", { class: "box", "aria-label": "Optional citizenship and state" },
       profilePicks({ prefix: "st-pick", value: picks, guest: !sess.signed_in, onchange: () => { PICKS.draft = picks; sampleSetPick = false; syncBuild(); } })),
     D.error ? h("p", { class: "notice error go-error", id: "st-error", role: "alert" }, icon("warn"), h("span", { text: D.error })) : null,
     h("div", { class: "welcome-go" },
-      h("button", { class: "btn primary big", type: "button", "data-key": "st-build", disabled: !ready || D.busy, onclick: build },
+      h("button", { class: "btn primary big", type: "button", "data-key": "st-build", disabled: !ready || D.busy, "aria-busy": D.busy ? "true" : null, onclick: build },
         h("span", { text: D.busy ? "Working" : "Find awards that fit" })),
       h("p", { class: "hint build-hint", hidden: ready, text: "Paste or upload your CV first." }))));
   for (const sel of ["#cv-text", "#st-interests", "#st-ach"]) { const el = root.querySelector(sel); if (el) el.addEventListener("input", syncBuild); }
